@@ -316,13 +316,15 @@ export default class QueryHeader extends Component {
         ]);
 
         // native mode toggle
-        buttonSections.push([
-            <QueryModeToggle
-                key="queryModeToggle"
-                currentQueryMode={this.props.card.dataset_query.type}
-                setQueryModeFn={this.props.setQueryModeFn}
-            />
-        ]);
+        if (!this.props.cardIsDirtyFn()) {
+            buttonSections.push([
+                <QueryModeToggle
+                    key="queryModeToggle"
+                    currentQueryMode={this.props.card.dataset_query.type}
+                    setQueryModeFn={this.props.setQueryModeFn}
+                />
+            ]);
+        }
 
         return (
             <ButtonBar buttons={buttonSections} className="Header-buttonSection" />

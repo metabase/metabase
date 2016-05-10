@@ -101,36 +101,28 @@ CardControllers.controller('CardDetail', [
 
                     // if we are going from MBQL -> Native then attempt to carry over the query
                     if (type === "native") {
+                        let nativeQuery = createQuery("native", database).native;
                         if (queryResult && queryResult.data && queryResult.data.native_form) {
                             // since we have the native form from the last execution of our query, just use that
-                            datasetQuery.type = "native";
-                            datasetQuery.native = {
-                                query: queryResult.data.native_form.query
-                            };
+                            nativeQuery = _.pick(queryResult.data.native_form, "query", "collection");
 
-                            // when the driver requires JSON we need to stringify our query result native form
+                            // when the driver requires JSON we need to stringify it because it's been parsed already
                             if (_.contains(["mongo", "druid"], tableMetadata.db.engine)) {
-                                datasetQuery.native.query = JSON.stringify(queryResult.data.native_form.query);
+                                nativeQuery.query = JSON.stringify(queryResult.data.native_form.query);
                             }
-
-                            // only on Mongo (for now) do we need to support an extra key for the collection
-                            if (tableMetadata.db.engine === "mongo") {
-                                datasetQuery.native.collection = queryResult.data.native_form.collection;
-                            }
-                        } else {
-                            // we have no previous basis for the native form, so just create a new one
-                            let nativeQuery = createQuery("native", database);
-
-                            datasetQuery.type = "native";
-                            datasetQuery.native = nativeQuery.native;
                         }
 
-                    // if we are going from Native -> MQBL then we simply want to start a new query (with database)
+                        // NOTE: we purposely leave the MBQL query form on the query
+                        datasetQuery.type = "native";
+                        datasetQuery.native = nativeQuery;
+
+                    // we are going from Native -> MQBL, which is only allowed if the query wasn't modified
                     } else {
-                        datasetQuery = createQuery("query", database);
+                        datasetQuery.type = "query";
+                        delete datasetQuery.native;
                     }
 
-                    onQueryChanged(datasetQuery);
+                    setQuery(datasetQuery);
                     MetabaseAnalytics.trackEvent('QueryBuilder', 'Query Started', type);
                 }
             },
@@ -683,6 +675,11 @@ CardControllers.controller('CardDetail', [
                 delete card.description;
             }
 
+            if (dataset_query.type === "native" && dataset_query.query) {
+                // if we have an old reference to an MBQL query then we can safely kill that now
+                delete dataset_query.query;
+            }
+
             setQuery(dataset_query);
         }
 
@@ -919,6 +916,10 @@ CardControllers.controller('CardDetail', [
         }
 
         function cardIsDirty() {
+            if (card.dataset_query.type === "native" && card.dataset_query.query) {
+                return false;
+            }
+
             var newCardSerialized = serializeCardForUrl(card);
 
             return newCardSerialized !== savedCardSerialized;

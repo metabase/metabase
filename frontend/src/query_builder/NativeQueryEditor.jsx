@@ -34,7 +34,7 @@ export default class NativeQueryEditor extends Component {
 
     componentWillMount() {
         // if the sql is empty then start with the editor showing, otherwise our default is to start out collapsed
-        if (!this.props.query.native.query) {
+        if (!this.props.query.native.query || this.props.query.query) {
             this.setState({
                 showEditor: true
             });
