@@ -59,8 +59,7 @@
   generic/IGenericSQLDatasetLoader
   (merge generic/DefaultsMixin
          {:execute-sql!              generic/sequentially-execute-sql!
-          :field-base-type->sql-type (fn [_ base-type]
-                                       (field-base-type->sql-type base-type))
+          :field-base-type->sql-type (u/drop-first-arg field-base-type->sql-type)
           :pk-sql-type               (constantly "integer")
           :create-db-sql             (constantly nil)
           :add-fk-sql                (constantly nil)
