@@ -134,7 +134,7 @@
 (defendpoint GET "/"
   "Get all the `Cards`. Option filter param `f` can be used to change the set of Cards that are returned; default is `all`,
    but other options include `mine`, `fav`, `database`, `table`, `recent`, `popular`, and `archived`. See corresponding implementation
-   functions above for the specific behavior of each filter option.
+   functions above for the specific behavior of each filter option. :card_index:
 
    Optionally filter cards by LABEL slug."
   [f model_id label]
@@ -143,7 +143,7 @@
     (checkp (integer? model_id) "id" (format "id is required parameter when filter mode is '%s'" (name f)))
     (case f
       :database (read-check Database model_id)
-      :table    (read-check Database (:db_id (sel :one :fields [Table :db_id] :id model_id)))))
+      :table    (read-check Database (sel :one :field [Table :db_id] :id model_id))))
   (cards-for-filter-option f model_id label))
 
 (defendpoint POST "/"
