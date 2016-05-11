@@ -49,7 +49,9 @@
 (def ^:private ^:const year   (* 365 day))
 (def ^:private ^:const month  (Math/round (float (/ year 12))))
 
-(defn date [_ unit expr]
+(defn date
+  "ISQLDriver `date` implementation"
+  [_ unit expr]
   (let [v (if (instance? Timestamp expr)
             (kx/literal (u/date->iso-8601 expr))
             expr)]
