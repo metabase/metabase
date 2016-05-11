@@ -1,33 +1,38 @@
 (ns metabase.driver.crate.util
-  (:require [metabase.util.korma-extensions :as kx]
-            [korma.sql.utils :as kutils]
+  (:refer-clojure :exclude [second])
+  (:require [korma.sql.utils :as kutils]
             [korma.core :as k]
+            [metabase.driver.generic-sql.query-processor :as qp]
             [metabase.util :as u]
-            [metabase.driver.generic-sql.query-processor :as qp])
+            [metabase.util.korma-extensions :as kx])
   (:import (java.sql Timestamp)))
 
-(defn unix-timestamp->timestamp [_ expr seconds-or-milliseconds]
+(defn unix-timestamp->timestamp
   "Converts datetime string to a valid timestamp"
+  [_ expr seconds-or-milliseconds]
   (case seconds-or-milliseconds
     :seconds      (recur nil (kx/* expr 1000) :milliseconds)
     :milliseconds (kutils/func (str "TRY_CAST(%s as TIMESTAMP)") [expr])))
 
-(defn- date-trunc [unit expr]
+(defn- date-trunc
   "date_trunc('interval', timezone, timestamp): truncates a timestamp to a given interval"
+  [unit expr]
   (let [timezone    (get-in qp/*query* [:settings :report-timezone])]
     (if (= (nil? timezone) true)
       (k/sqlfn :DATE_TRUNC (kx/literal unit) expr)
       (k/sqlfn :DATE_TRUNC (kx/literal unit) timezone expr))))
 
-(defn- date-format [format expr]
+(defn- date-format
   "date_format('format_string', timezone, timestamp): formats the timestamp as string"
+  [fmt expr]
   (let [timezone    (get-in qp/*query* [:settings :report-timezone])]
     (if (nil? timezone)
-      (k/sqlfn :DATE_FORMAT format expr)
-      (k/sqlfn :DATE_FORMAT format timezone expr))))
+      (k/sqlfn :DATE_FORMAT fmt expr)
+      (k/sqlfn :DATE_FORMAT fmt timezone expr))))
 
-(defn- extract    [unit expr]
+(defn- extract
   "extract(field from expr): extracts subfields of a timestamp"
+  [unit expr]
   (case unit
     ;; Crate DOW starts with Monday (1) to Sunday (7)
     :day_of_week (kx/+ (kx/mod (kutils/func (format "EXTRACT(%s FROM %%s)" (name unit)) [expr]) 7) 1)
@@ -71,8 +76,9 @@
 (defn- sql-interval [unit amount]
   (format "CURRENT_TIMESTAMP + %d" (* unit amount)))
 
-(defn date-interval [_ unit amount]
+(defn date-interval
   "defines the sql command required for date-interval calculation"
+  [_ unit amount]
   (case unit
     :quarter (recur nil :month (kx/* amount 3))
     :year (k/raw (sql-interval year amount))
