@@ -7,15 +7,15 @@
 
 ; # Build a cost dictionary, assuming Zipf's law and cost = -math.log(probability).
 ; words = open("words-by-frequency.txt").read().split()
-(def words (s/split-lines (slurp (io/file (io/resource "words-by-frequency.txt")))))
+(def ^:const ^:private words (s/split-lines (slurp (io/file (io/resource "words-by-frequency.txt")))))
 
 ; wordcost = dict((k, log((i+1)*log(len(words)))) for i,k in enumerate(words))
-(def word-cost
+(def ^:const ^:private word-cost
   (apply hash-map (flatten (map-indexed
     (fn [idx word] [word (Math/log (* (+ idx 1) (Math/log (count words))))]) words))))
 
 ; maxword = max(len(x) for x in words)
-(def max-word (apply max (map count words)))
+(def ^:const ^:private max-word (apply max (map count words)))
 
 ; def infer_spaces(s):
 ;     """Uses dynamic programming to infer the location of spaces in a string
@@ -27,7 +27,7 @@
 ;     def best_match(i):
 ;         candidates = enumerate(reversed(cost[max(0, i-maxword):i]))
 ;         return min((c + wordcost.get(s[i-k-1:i], 9e999), k+1) for k,c in candidates)
-(defn best-match
+(defn- best-match
   [i s cost]
   (let [candidates (reverse (subvec cost (max 0 (- i max-word)) i))]
     (apply min-key first (map-indexed (fn [k c] [(+ c (get word-cost (subs s (- i k 1) i) 9e9999)) (+ k 1)]) candidates))))
@@ -37,7 +37,7 @@
 ;     for i in range(1,len(s)+1):
 ;         c,k = best_match(i)
 ;         cost.append(c)
-(defn build-cost-array
+(defn- build-cost-array
   [s]
   (loop [i 1
          cost [0]]
@@ -57,6 +57,7 @@
 ;
 ;     return " ".join(reversed(out))
 (defn infer-spaces
+  "Splits a string with no spaces into words using magic"
   [input]
   (let [s (s/lower-case input)
         cost (build-cost-array s)]
