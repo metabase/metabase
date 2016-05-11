@@ -485,7 +485,7 @@
               :position 0
               :visibility_type :normal
               :preview_display true
-              :display_name "Id"
+              :display_name "ID"
               :created_at true
               :base_type :IntegerField}
              {:description nil
@@ -535,7 +535,7 @@
               :position 0
               :visibility_type :normal
               :preview_display true
-              :display_name "Id"
+              :display_name "ID"
               :created_at true
               :base_type :IntegerField}
              {:description nil
@@ -585,7 +585,7 @@
               :position 0
               :visibility_type :normal
               :preview_display true
-              :display_name "Id"
+              :display_name "ID"
               :created_at true
               :base_type :IntegerField}
              {:description nil
@@ -603,7 +603,7 @@
               :position 0
               :visibility_type :normal
               :preview_display true
-              :display_name "Reviewer Id"
+              :display_name "Reviewer ID"
               :created_at true
               :base_type :IntegerField
               :fk_target_field {:schema "common", :name "user", :col-name "id"}}
@@ -640,7 +640,7 @@
               :position 0
               :visibility_type :normal
               :preview_display true
-              :display_name "Venue Id"
+              :display_name "Venue ID"
               :created_at true
               :base_type :IntegerField
               :fk_target_field {:schema "s1", :name "venue", :col-name "id"}}]
@@ -673,7 +673,7 @@
               :position 0
               :visibility_type :normal
               :preview_display true
-              :display_name "City Id"
+              :display_name "City ID"
               :created_at true
               :base_type :IntegerField
               :fk_target_field {:schema "s1", :name "city", :col-name "id"}}
@@ -692,7 +692,7 @@
               :position 0
               :visibility_type :normal
               :preview_display true
-              :display_name "Id"
+              :display_name "ID"
               :created_at true
               :base_type :IntegerField}
              {:description nil
@@ -742,7 +742,7 @@
               :position 0
               :visibility_type :normal
               :preview_display true
-              :display_name "Id"
+              :display_name "ID"
               :created_at true
               :base_type :IntegerField}
              {:description nil
@@ -792,7 +792,7 @@
               :position 0
               :visibility_type :normal
               :preview_display true
-              :display_name "Id"
+              :display_name "ID"
               :created_at true
               :base_type :IntegerField}
              {:description nil
@@ -810,7 +810,7 @@
               :position 0
               :visibility_type :normal
               :preview_display true
-              :display_name "Reviewer Id"
+              :display_name "Reviewer ID"
               :created_at true
               :base_type :IntegerField
               :fk_target_field {:schema "common", :name "user", :col-name "id"}}
@@ -847,7 +847,7 @@
               :position 0
               :visibility_type :normal
               :preview_display true
-              :display_name "Venue Id"
+              :display_name "Venue ID"
               :created_at true
               :base_type :IntegerField
               :fk_target_field {:schema "s2", :name "venue", :col-name "id"}}]
@@ -880,7 +880,7 @@
               :position 0
               :visibility_type :normal
               :preview_display true
-              :display_name "City Id"
+              :display_name "City ID"
               :created_at true
               :base_type :IntegerField
               :fk_target_field {:schema "s2", :name "city", :col-name "id"}}
@@ -899,7 +899,7 @@
               :position 0
               :visibility_type :normal
               :preview_display true
-              :display_name "Id"
+              :display_name "ID"
               :created_at true
               :base_type :IntegerField}
              {:description nil
@@ -949,7 +949,7 @@
               :position 0
               :visibility_type :normal
               :preview_display true
-              :display_name "Id"
+              :display_name "ID"
               :created_at true
               :base_type :IntegerField}
              {:description nil
@@ -999,7 +999,7 @@
               :position 0
               :visibility_type :normal
               :preview_display true
-              :display_name "Id"
+              :display_name "ID"
               :created_at true
               :base_type :IntegerField}
              {:description nil
@@ -1017,7 +1017,7 @@
               :position 0
               :visibility_type :normal
               :preview_display true
-              :display_name "Reviewer Id"
+              :display_name "Reviewer ID"
               :created_at true
               :base_type :IntegerField
               :fk_target_field {:schema "common", :name "user", :col-name "id"}}
@@ -1054,7 +1054,7 @@
               :position 0
               :visibility_type :normal
               :preview_display true
-              :display_name "Venue Id"
+              :display_name "Venue ID"
               :created_at true
               :base_type :IntegerField
               :fk_target_field {:schema "s3", :name "venue", :col-name "id"}}]
@@ -1087,7 +1087,7 @@
               :position 0
               :visibility_type :normal
               :preview_display true
-              :display_name "City Id"
+              :display_name "City ID"
               :created_at true
               :base_type :IntegerField
               :fk_target_field {:schema "s3", :name "city", :col-name "id"}}
@@ -1106,7 +1106,7 @@
               :position 0
               :visibility_type :normal
               :preview_display true
-              :display_name "Id"
+              :display_name "ID"
               :created_at true
               :base_type :IntegerField}
              {:description nil

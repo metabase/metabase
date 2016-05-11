@@ -88,7 +88,7 @@
      :id   {:special_type :id
             :base_type    (id-field-type)
             :name         (format-name "id")
-            :display_name "Id"}
+            :display_name "ID"}
      :name {:special_type :name
             :base_type    (expected-base-type->actual :TextField)
             :name         (format-name "name")
@@ -106,7 +106,7 @@
      :id         {:special_type :id
                   :base_type    (id-field-type)
                   :name         (format-name "id")
-                  :display_name "Id"}
+                  :display_name "ID"}
      :name       {:special_type :name
                   :base_type    (expected-base-type->actual :TextField)
                   :name         (format-name "name")
@@ -134,7 +134,7 @@
      :id          {:special_type :id
                    :base_type    (id-field-type)
                    :name         (format-name "id")
-                   :display_name "Id"}
+                   :display_name "ID"}
      :category_id {:extra_info   (if (fks-supported?)
                                    {:target_table_id (id :categories)}
                                    {})
@@ -145,7 +145,7 @@
                                    :category)
                    :base_type    (expected-base-type->actual :IntegerField)
                    :name         (format-name "category_id")
-                   :display_name "Category Id"}
+                   :display_name "Category ID"}
      :price       {:special_type :category
                    :base_type    (expected-base-type->actual :IntegerField)
                    :name         (format-name "price")
@@ -180,7 +180,7 @@
      :id       {:special_type :id
                 :base_type    (id-field-type)
                 :name         (format-name "id")
-                :display_name "Id"}
+                :display_name "ID"}
      :venue_id {:extra_info   (if (fks-supported?) {:target_table_id (id :venues)}
                                   {})
                 :target       (if (fks-supported?) (-> (venues-col :id)
@@ -190,7 +190,7 @@
                                 :fk)
                 :base_type    (expected-base-type->actual :IntegerField)
                 :name         (format-name "venue_id")
-                :display_name "Venue Id"}
+                :display_name "Venue ID"}
      :user_id  {:extra_info   (if (fks-supported?) {:target_table_id (id :users)}
                                   {})
                 :target       (if (fks-supported?) (-> (users-col :id)
@@ -200,7 +200,7 @@
                                   :category)
                 :base_type    (expected-base-type->actual :IntegerField)
                 :name         (format-name "user_id")
-                :display_name "User Id"})))
+                :display_name "User ID"})))
 
 
 ;;; #### aggregate columns

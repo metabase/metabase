@@ -79,7 +79,7 @@
 ;; test that we can do basic field update work, including unsetting some fields such as special-type
 (expect
   [{:name            "Field Test"
-    :display_name    "Field test"
+    :display_name    "Field Test"
     :description     nil
     :special_type    nil
     :visibility_type :normal}

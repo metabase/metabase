@@ -98,7 +98,7 @@
             :table_id            (id :categories)
             :special_type        "id"
             :name                "ID"
-            :display_name        "Id"
+            :display_name        "ID"
             :updated_at          $
             :active              true
             :id                  (id :categories :id)
@@ -148,7 +148,7 @@
                             :table_id        (id :categories)
                             :special_type    "id"
                             :name            "ID"
-                            :display_name    "Id"
+                            :display_name    "ID"
                             :updated_at      $
                             :active          true
                             :id              $
@@ -231,7 +231,7 @@
                             :table_id        (id :users)
                             :special_type    "id"
                             :name            "ID"
-                            :display_name    "Id"
+                            :display_name    "ID"
                             :updated_at      $
                             :active          true
                             :id              $
@@ -350,7 +350,7 @@
                             :table_id        (id :users)
                             :special_type    "id"
                             :name            "ID"
-                            :display_name    "Id"
+                            :display_name    "ID"
                             :updated_at      $
                             :active          true
                             :id              $
@@ -488,7 +488,7 @@
                          :raw_column_id   $
                          :parent_id       nil
                          :name            "USER_ID"
-                         :display_name    "User Id"
+                         :display_name    "User ID"
                          :description     nil
                          :base_type       "IntegerField"
                          :visibility_type "normal"
@@ -523,7 +523,7 @@
                          :raw_column_id   $
                          :parent_id       nil
                          :name            "ID"
-                         :display_name    "Id"
+                         :display_name    "ID"
                          :description     nil
                          :base_type       "BigIntegerField"
                          :visibility_type "normal"

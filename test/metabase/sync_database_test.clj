@@ -94,7 +94,7 @@
                        :field_type         :info
                        :position           0
                        :preview_display    true
-                       :display_name       "Id"
+                       :display_name       "ID"
                        :base_type          :IntegerField
                        :visibility_type    :normal
                        :fk_target_field_id false
@@ -223,7 +223,7 @@
                       :field_type         :info
                       :position           0
                       :preview_display    true
-                      :display_name       "Id"
+                      :display_name       "ID"
                       :base_type          :IntegerField
                       :visibility_type    :normal
                       :fk_target_field_id false

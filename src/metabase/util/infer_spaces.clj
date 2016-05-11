@@ -5,17 +5,19 @@
 
 ; ported from https://stackoverflow.com/questions/8870261/how-to-split-text-without-spaces-into-list-of-words/11642687#11642687
 
+(def ^:const ^:private special-words [
+    "checkins"])
+
 ; # Build a cost dictionary, assuming Zipf's law and cost = -math.log(probability).
-; words = open("words-by-frequency.txt").read().split()
-(def ^:const ^:private words (s/split-lines (slurp (io/file (io/resource "words-by-frequency.txt")))))
+(def ^:private words (concat special-words (s/split-lines (slurp (io/file (io/resource "words-by-frequency.txt"))))))
 
 ; wordcost = dict((k, log((i+1)*log(len(words)))) for i,k in enumerate(words))
-(def ^:const ^:private word-cost
+(def ^:private word-cost
   (apply hash-map (flatten (map-indexed
     (fn [idx word] [word (Math/log (* (+ idx 1) (Math/log (count words))))]) words))))
 
 ; maxword = max(len(x) for x in words)
-(def ^:const ^:private max-word (apply max (map count words)))
+(def ^:private max-word (apply max (map count words)))
 
 ; def infer_spaces(s):
 ;     """Uses dynamic programming to infer the location of spaces in a string

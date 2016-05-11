@@ -237,7 +237,7 @@
                                                  :table_id           (id :categories)
                                                  :special_type       "id"
                                                  :name               "ID"
-                                                 :display_name       "Id"
+                                                 :display_name       "ID"
                                                  :updated_at         $
                                                  :active             true
                                                  :id                 $
