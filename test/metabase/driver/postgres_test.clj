@@ -108,7 +108,7 @@
 
 
 ;;; # Make sure that duplicate column names (e.g. caused by using a FK) still return both columns
-(i/def-database-definition duplicate-names
+(i/def-database-definition ^:const ^:private duplicate-names
   ["birds"
    [{:field-name "name", :base-type :TextField}]
    [["Rasta"]

@@ -143,16 +143,24 @@
       (catch Throwable t
         (log/error (u/format-color 'red "Unexpected error syncing table") t)))))
 
-(def ^:private ^:const blacklisted-table-names
-  "Names of Tables to skip syncing. These should be lowercased, as we'll compare them with lowercased names of `raw-tables` below.
-   These are Tables that are known to not contain useful data, such as migration or web framework internal tables."
-  #{"_metabase_metadata"
-    ;; Django
+(def ^:private ^:const crufty-table-names
+  "Names of Tables that should automatically given the `visibility-type` of `:cruft`.
+   This means they are automatically hidden to users (but can be unhidden in the admin panel).
+   These `Tables` are known to not contain useful data, such as migration or web framework internal tables."
+  #{;; Django
+    "auth_group"
+    "auth_group_permissions"
+    "auth_permission"
     "django_admin_log"
     "django_content_type"
+    "django_migrations"
     "django_session"
     "django_site"
     "south_migrationhistory"
+    "user_groups"
+    "user_user_permissions"
+    ;; Rails / Active Record
+    "schema_migrations"
     ;; PostGIS
     "spatial_ref_sys"
     ;; nginx
@@ -163,24 +171,26 @@
     ;; Lobos
     "lobos_migrations"})
 
-(defn- non-blacklisted-tables
-  "Filter out Tables that we don't want to sync.
-   This includes the `_metabase_metadata` Table, if present, as well as Tables for frameworks like Rails or Django."
-  [raw-tables]
-  (for [table raw-tables
-        :when (not (contains? blacklisted-table-names (s/lower-case (:name table))))]
-    table))
+(defn- is-crufty-table?
+  "Should we give newly created TABLE a `visibility_type` of `:cruft`?"
+  [table]
+  (contains? crufty-table-names (s/lower-case (:name table))))
 
 (defn- create-and-update-tables!
   "Create/update tables (and their fields)."
   [database existing-tables raw-tables]
-  (doseq [{raw-table-id :id, :as raw-table} (non-blacklisted-tables raw-tables)]
+  (doseq [{raw-table-id :id, :as raw-table} (for [table raw-tables
+                                                  :when (not= "_metabase_metadata" (s/lower-case (:name table)))]
+                                              table)]
     (try
       (save-table-fields! (if-let [existing-table (get existing-tables raw-table-id)]
                             ;; table already exists, update it
                             (table/update-table existing-table raw-table)
                             ;; must be a new table, insert it
-                            (table/create-table (:id database) (assoc raw-table :raw-table-id raw-table-id))))
+                            (table/create-table (:id database) (assoc raw-table
+                                                                      :raw-table-id    raw-table-id
+                                                                      :visibility-type (when (is-crufty-table? raw-table)
+                                                                                         :cruft)))))
       (catch Throwable e
         (log/error (u/format-color 'red "Unexpected error syncing table") e)))))
 
