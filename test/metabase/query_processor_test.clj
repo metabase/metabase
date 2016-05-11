@@ -485,7 +485,7 @@
      :cols    [(aggregate-col :count)]}
   (format-rows-by [int] (run-query checkins
                           (ql/aggregation (ql/count))
-                          (ql/filter (ql/between (ql/datetime-field $date :day) "2015-04-01" "2015-05-01")))))
+                          (ql/filter (ql/between $date "2015-04-01" "2015-05-01")))))
 
 ;; ### FILTER -- "OR", "<=", "="
 (expect-with-non-timeseries-dbs
@@ -859,8 +859,8 @@
     9)
   (count (rows (dataset sad-toucan-incidents
                  (run-query incidents
-                   (ql/filter (ql/and (ql/> (ql/datetime-field $timestamp :day) "2015-06-01")
-                                      (ql/< (ql/datetime-field $timestamp :day) "2015-06-03")))
+                   (ql/filter (ql/and (ql/> $timestamp "2015-06-01")
+                                      (ql/< $timestamp "2015-06-03")))
                    (ql/order-by (ql/asc $timestamp)))))))
 
 (expect-with-non-timeseries-dbs
@@ -905,7 +905,7 @@
   (->> (dataset sad-toucan-incidents
          (run-query incidents
            (ql/aggregation (ql/count))
-           (ql/breakout (ql/datetime-field $timestamp :day))
+           (ql/breakout $timestamp)
            (ql/limit 10)))
        rows (format-rows-by [identity int])))
 

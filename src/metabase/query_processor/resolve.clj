@@ -97,13 +97,12 @@
   (if-let [{:keys [base-type special-type], :as field} (some-> (field-id->fields field-id)
                                                                map->Field)]
     ;; try to resolve the Field with the ones available in field-id->fields
-    (let [datetime-field? (or datetime-unit
-                              (contains? #{:DateField :DateTimeField} base-type)
+    (let [datetime-field? (or (contains? #{:DateField :DateTimeField} base-type)
                               (contains? #{:timestamp_seconds :timestamp_milliseconds} special-type))]
       (if-not datetime-field?
         field
         (map->DateTimeField {:field field
-                             :unit  (or datetime-unit :default)})))
+                             :unit  (or datetime-unit :day)}))) ; default to `:day` if a unit wasn't specified
     ;; If that fails just return ourselves as-is
     this))
 
