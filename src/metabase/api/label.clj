@@ -8,19 +8,19 @@
             [metabase.models.label :refer [Label]]))
 
 (defendpoint GET "/"
-  "List all labels."
+  "List all `Labels`. :label:"
   []
   (db/sel :many Label (k/order (k/sqlfn :LOWER :name))))
 
 (defendpoint POST "/"
-  "Create a new label."
+  "Create a new `Label`. :label: "
   [:as {{:keys [name icon]} :body}]
   {name [Required NonEmptyString]
    icon NonEmptyString}
   (db/ins Label, :name name, :icon icon))
 
 (defendpoint PUT "/:id"
-  "Update a label."
+  "Update a `Label`. :label:"
   [id :as {{:keys [name icon], :as body} :body}]
   {name NonEmptyString
    icon NonEmptyString}
@@ -29,7 +29,7 @@
   (Label id)) ; return the updated Label
 
 (defendpoint DELETE "/:id"
-  "Delete a label."
+  "Delete a `Label`. :label:"
   [id]
   (write-check Label id)
   (db/cascade-delete Label :id id))

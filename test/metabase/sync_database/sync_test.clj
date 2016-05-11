@@ -12,6 +12,8 @@
                              [table :refer [Table]])
             (metabase.sync-database [introspect :as introspect]
                                     [sync :refer :all])
+            [metabase.test.data :as data]
+            [metabase.test.data.interface :as i]
             [metabase.test.util :as tu]))
 
 (tu/resolve-private-fns metabase.sync-database.sync
@@ -152,7 +154,7 @@
      :description        nil
      :base_type          :DecimalField
      :visibility_type    :normal
-     :special_type       :id,                 ; existing special types are NOT modified
+     :special_type       :id                  ; existing special types are NOT modified
      :parent_id          false
      :fk_target_field_id false
      :last_analyzed      false
@@ -194,7 +196,7 @@
      :description        nil
      :base_type          :IntegerField
      :visibility_type    :normal
-     :special_type       :category,            ; should be infered from name
+     :special_type       :category             ; should be infered from name
      :parent_id          false
      :fk_target_field_id false
      :last_analyzed      false
@@ -208,7 +210,7 @@
      :display_name       "First"
      :description        nil
      :base_type          :DecimalField
-     :visibility_type    :retired,            ; field retired when RawColumn disabled
+     :visibility_type    :retired             ; field retired when RawColumn disabled
      :special_type       :id
      :parent_id          false
      :fk_target_field_id false
@@ -251,7 +253,7 @@
      :description        nil
      :base_type          :IntegerField
      :visibility_type    :normal
-     :special_type       :category,            ; should be infered from name
+     :special_type       :category             ; should be infered from name
      :parent_id          false
      :fk_target_field_id false
      :last_analyzed      false
@@ -443,3 +445,26 @@
        (do
          (update-data-models-from-raw-tables! db)
          (db-tables database-id))])))
+
+
+;;; ------------------------------------------------------------ Make sure that "crufty" tables are marked as such ------------------------------------------------------------
+(i/def-database-definition ^:const ^:private db-with-some-cruft
+  ["acquired_toucans"
+   [{:field-name "species",              :base-type :CharField}
+    {:field-name "cam_has_acquired_one", :base-type :BooleanField}]
+   [["Toco"               false]
+    ["Chestnut-Mandibled" true]
+    ["Keel-billed"        false]
+    ["Channel-billed"     false]]]
+  ["south_migrationhistory"
+   [{:field-name "app_name",  :base-type :CharField}
+    {:field-name "migration", :base-type :CharField}]
+   [["main" "0001_initial"]
+    ["main" "0002_add_toucans"]]])
+
+;; south_migrationhistory, being a CRUFTY table, should still be synced, but marked as such
+(expect
+  #{{:name "SOUTH_MIGRATIONHISTORY", :visibility_type :cruft}
+    {:name "ACQUIRED_TOUCANS",       :visibility_type nil}}
+  (data/dataset metabase.sync-database.sync-test/db-with-some-cruft
+    (set (db/sel :many :fields [Table :name :visibility_type] :db_id (data/id)))))

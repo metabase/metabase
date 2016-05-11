@@ -244,6 +244,8 @@
         database-id
         (get-most-recent-database-id))"
   {:style/indent 1}
+  ;; TODO - maybe it makes more sense to have the signature be [with-temp*-form expected & actual] and wrap `actual` in a `do` since it seems like a pretty common use-case.
+  ;; I'm not sure about the readability implications however :scream_cat:
   [with-temp*-form expected actual]
   ;; use `gensym` instead of auto gensym here so we can be sure it's a unique symbol every time. Otherwise since expectations hashes its body
   ;; to generate function names it will treat every usage of `expect-with-temp` as the same test and only a single one will end up being ran

@@ -104,7 +104,8 @@
    DATE is anything that can coerced to a `Timestamp` via `->Timestamp`, such as a `Date`, `Timestamp`,
    `Long` (ms since the epoch), or an ISO-8601 `String`. DATE defaults to the current moment in time.
 
-   DATE-FORMAT is anything that can be passed to `->DateTimeFormatter`, such as `String`, `Keyword`, or `DateTimeFormatter`.
+   DATE-FORMAT is anything that can be passed to `->DateTimeFormatter`, such as `String` (using [the usual date format args](http://docs.oracle.com/javase/7/docs/api/java/text/SimpleDateFormat.html)),
+   `Keyword`, or `DateTimeFormatter`.
 
 
      (format-date \"yyyy-MM-dd\")                        -> \"2015-11-18\"

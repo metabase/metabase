@@ -126,18 +126,19 @@
   (features ^java.util.Set [this]
     "*OPTIONAL*. A set of keyword names of optional features supported by this driver, such as `:foreign-keys`. Valid features are:
 
-     *  `:foreign-keys`
-     *  `:nested-fields`
-     *  `:set-timezone`
-     *  `:standard-deviation-aggregations`
-     *  `:expressions`")
+  *  `:foreign-keys` - Does this database support foreign key relationships?
+  *  `:nested-fields` - Does this database support nested fields (e.g. Mongo)?
+  *  `:set-timezone` - Does this driver support setting a timezone for the query?
+  *  `:standard-deviation-aggregations` - Does this driver support [standard deviation aggregations](https://github.com/metabase/metabase/wiki/Query-Language-'98#stddev-aggregation)?
+  *  `:expressions` - Does this driver support [expressions](https://github.com/metabase/metabase/wiki/Query-Language-'98#expressions) (e.g. adding the values of 2 columns together)?
+  *  `:dynamic-schema` -  Does this Database have no fixed definitions of schemas? (e.g. Mongo)")
 
   (field-values-lazy-seq ^clojure.lang.Sequential [this, ^FieldInstance field]
     "Return a lazy sequence of all values of FIELD.
      This is used to implement some methods of the database sync process which require rows of data during execution.
 
-     The lazy sequence should not return more than `max-sync-lazy-seq-results`, which is currently `10000`.
-     For drivers that provide a chunked implementation, a recommended chunk size is `field-values-lazy-seq-chunk-size`, which is currently `500`.")
+  The lazy sequence should not return more than `max-sync-lazy-seq-results`, which is currently `10000`.
+  For drivers that provide a chunked implementation, a recommended chunk size is `field-values-lazy-seq-chunk-size`, which is currently `500`.")
 
   (humanize-connection-error-message ^String [this, ^String message]
     "*OPTIONAL*. Return a humanized (user-facing) version of an connection error message string.

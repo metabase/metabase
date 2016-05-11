@@ -15,7 +15,8 @@
            java.util.Map
            clojure.lang.Keyword
            com.mchange.v2.c3p0.ComboPooledDataSource
-           (metabase.query_processor.interface Field Value)))
+           (metabase.query_processor.interface Field Value)
+           (clojure.lang PersistentVector)))
 
 (declare korma-entity)
 
@@ -85,6 +86,9 @@
     "Return a korma form appropriate for converting a Unix timestamp integer field or value to an proper SQL `Timestamp`.
      SECONDS-OR-MILLISECONDS refers to the resolution of the int in question and with be either `:seconds` or `:milliseconds`."))
 
+(extend-protocol jdbc/IResultSetReadColumn
+  (class (object-array []))
+  (result-set-read-column [x _ _] (PersistentVector/adopt x)))
 
 (def ^:dynamic ^:private connection-pools
   "A map of our currently open connection pools, keyed by DATABASE `:id`."
@@ -229,7 +233,7 @@
        ~@body)))
 
 (defn fast-active-tables
-  "Default, fast implementation of `IDriver/active-tables` best suited for DBs with lots of system tables (like Oracle).
+  "Default, fast implementation of `ISQLDriver/active-tables` best suited for DBs with lots of system tables (like Oracle).
    Fetch list of schemas, then for each one not in `excluded-schemas`, fetch its Tables, and combine the results.
 
    This is as much as 15x faster for Databases with lots of system tables than `post-filtered-active-tables` (4 seconds vs 60)."
@@ -237,16 +241,16 @@
   (let [all-schemas (set (map :table_schem (jdbc/result-set-seq (.getSchemas metadata))))
         schemas     (set/difference all-schemas (excluded-schemas driver))]
     (set (for [schema     schemas
-               table-name (mapv :table_name (jdbc/result-set-seq (.getTables metadata nil schema nil (into-array String ["TABLE", "VIEW"]))))]
+               table-name (mapv :table_name (jdbc/result-set-seq (.getTables metadata nil schema "%" (into-array String ["TABLE", "VIEW"]))))] ; tablePattern "%" = match all tables
            {:name   table-name
             :schema schema}))))
 
 (defn post-filtered-active-tables
-  "Alternative implementation of `IDriver/active-tables` best suited for DBs with little or no support for schemas.
+  "Alternative implementation of `ISQLDriver/active-tables` best suited for DBs with little or no support for schemas.
    Fetch *all* Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
   [driver, ^DatabaseMetaData metadata]
   (set (for [table (filter #(not (contains? (excluded-schemas driver) (:table_schem %)))
-                           (jdbc/result-set-seq (.getTables metadata nil nil nil (into-array String ["TABLE", "VIEW"]))))]
+                           (jdbc/result-set-seq (.getTables metadata nil nil "%" (into-array String ["TABLE", "VIEW"]))))] ; tablePattern "%" = match all tables
          {:name   (:table_name table)
           :schema (:table_schem table)})))
 
@@ -273,7 +277,9 @@
                                    (if-not (contains? pks (:name field)) field
                                                                          (assoc field :pk? true))))))))
 
-(defn- describe-database [driver database]
+(defn describe-database
+  "Default implementation of `describe-database` for JDBC-based drivers."
+  [driver database]
   (with-metadata [metadata driver database]
     {:tables (active-tables driver, ^DatabaseMetaData metadata)}))
 
