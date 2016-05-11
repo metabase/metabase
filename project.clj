@@ -31,6 +31,7 @@
                                commons-io
                                slingshot]]
                  [clj-time "0.11.0"]                                  ; library for dealing with date/time
+                 [clojure.jdbc/clojure.jdbc-c3p0 "0.3.2"]             ; JDBC Connection pools
                  [clojurewerkz/quartzite "2.0.0"]                     ; scheduling library
                  [colorize "0.1.1" :exclusions [org.clojure/clojure]] ; string output with ANSI color codes (for logging)
                  [com.cemerick/friend "0.2.1"                         ; auth library
@@ -47,6 +48,7 @@
                  [compojure "1.5.0"]                                  ; HTTP Routing library built on Ring
                  [environ "1.0.2"]                                    ; easy environment management
                  [hiccup "1.0.5"]                                     ; HTML templating
+                 [honeysql "0.6.3"]                                   ; Transform Clojure data structures to SQL
                  [korma "0.4.2"]                                      ; SQL generation
                  [log4j/log4j "1.2.17"                                ; logging framework
                   :exclusions [javax.mail/mail
