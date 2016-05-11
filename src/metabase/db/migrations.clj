@@ -1,10 +1,10 @@
 (ns metabase.db.migrations
   "Clojure-land data migration definitions and fns for running them."
   (:require [clojure.tools.logging :as log]
-            [korma.core :as k]
-            [korma.db :as kdb]
-            [metabase.db :as db]
-            [metabase.driver :as driver]
+            (korma [core :as k]
+                   [db :as kdb])
+            (metabase [db :as db]
+                      [driver :as driver])
             [metabase.events.activity-feed :refer [activity-feed-topics]]
             (metabase.models [activity :refer [Activity]]
                              [card :refer [Card]]

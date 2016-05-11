@@ -60,7 +60,8 @@ CardControllers.controller('CardDetail', [
                 dataset_query: {},
             },
             originalCard,
-            savedCardSerialized = null;
+            savedCardSerialized = null,
+            cancelQueryDeferred;
 
         resetDirty();
 
@@ -176,6 +177,7 @@ CardControllers.controller('CardDetail', [
             tableForeignKeyReferences: null,
             isRunning: false,
             runQueryFn: runQuery,
+            cancelQueryFn: cancelQuery,
             isObjectDetail: false,
             setDisplayFn: function(display) {
                 onVisualizationSettingsChanged(display, card.visualization_settings);
@@ -445,14 +447,16 @@ CardControllers.controller('CardDetail', [
             }
 
             isRunning = true;
+            cancelQueryDeferred = $q.defer();
 
             updateUrl();
 
             renderAll();
 
             let startTime = new Date();
+
             // make our api call
-            Metabase.dataset(dataset_query, function (result) {
+            Metabase.dataset({ timeout: cancelQueryDeferred.promise }, dataset_query, function (result) {
                 queryResult = result;
                 isRunning = false;
 
@@ -526,7 +530,12 @@ CardControllers.controller('CardDetail', [
 
             }, function (error) {
                 isRunning = false;
-                queryResult = { error: error, duration: new Date() - startTime };
+
+                if (error && error.status === 0) {
+                    // cancelled, do nothing
+                } else {
+                    queryResult = { error: error, duration: new Date() - startTime };
+                }
 
                 renderAll();
             });
@@ -535,6 +544,12 @@ CardControllers.controller('CardDetail', [
 
             // HACK: prevent SQL editor from losing focus
             try { ace.edit("id_sql").focus() } catch (e) {}
+        }
+
+        function cancelQuery() {
+            if (isRunning && cancelQueryDeferred) {
+                cancelQueryDeferred.resolve();
+            }
         }
 
         function loadTableInfo(tableId) {

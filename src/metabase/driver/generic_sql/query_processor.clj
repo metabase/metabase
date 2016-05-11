@@ -150,7 +150,7 @@
   (apply k/fields korma-form (for [field fields]
                                 (as (formatted field) field))))
 
-(defn- filter-subclause->predicate
+(defn filter-subclause->predicate
   "Given a filter SUBCLAUSE, return a Korma filter predicate form for use in korma `where`."
   [{:keys [filter-type field value], :as filter}]
   {:pre [(map? filter) field]}
@@ -167,7 +167,10 @@
              :=           ['=    (formatted value)]
              :!=          ['not= (formatted value)])}))
 
-(defn- filter-clause->predicate [{:keys [compound-type subclause subclauses], :as clause}]
+(defn filter-clause->predicate
+  "Given a filter CLAUSE, return a Korma filter predicate form for use in korma `where`.  If this is a compound
+   clause then we call `filter-subclause->predicate` on all of the subclauses."
+  [{:keys [compound-type subclause subclauses], :as clause}]
   (case compound-type
     :and (apply kfns/pred-and (map filter-clause->predicate subclauses))
     :or  (apply kfns/pred-or  (map filter-clause->predicate subclauses))
