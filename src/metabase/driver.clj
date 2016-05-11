@@ -121,8 +121,8 @@
     "Return a lazy sequence of all values of FIELD.
      This is used to implement some methods of the database sync process which require rows of data during execution.
 
-     The lazy sequence should not return more than `max-sync-lazy-seq-results`, which is currently `10000`.
-     For drivers that provide a chunked implementation, a recommended chunk size is `field-values-lazy-seq-chunk-size`, which is currently `500`.")
+  The lazy sequence should not return more than `max-sync-lazy-seq-results`, which is currently `10000`.
+  For drivers that provide a chunked implementation, a recommended chunk size is `field-values-lazy-seq-chunk-size`, which is currently `500`.")
 
   (humanize-connection-error-message ^String [this, ^String message]
     "*OPTIONAL*. Return a humanized (user-facing) version of an connection error message string.
