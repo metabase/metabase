@@ -167,7 +167,10 @@
              :=           ['=    (formatted value)]
              :!=          ['not= (formatted value)])}))
 
-(defn filter-clause->predicate [{:keys [compound-type subclause subclauses], :as clause}]
+(defn filter-clause->predicate
+  "Given a filter CLAUSE, return a Korma filter predicate form for use in korma `where`.  If this is a compound
+   clause then we call `filter-subclause->predicate` on all of the subclauses."
+  [{:keys [compound-type subclause subclauses], :as clause}]
   (case compound-type
     :and (apply kfns/pred-and (map filter-clause->predicate subclauses))
     :or  (apply kfns/pred-or  (map filter-clause->predicate subclauses))
