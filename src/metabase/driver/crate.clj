@@ -4,8 +4,7 @@
             [metabase.driver.generic-sql :as sql]
             (metabase.driver.crate [query-processor :as qp]
                                    [util :as u]
-                                   [generic-sql :as gs]
-                                   [native :as n])
+                                   [generic-sql :as gs])
             [korma.core :as k])
   (:import (clojure.lang Named)))
 
@@ -82,13 +81,13 @@
 (extend CrateDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {:details-fields (constantly [{:name         "hosts"
-                                        :display-name "Hosts"
-                                        :default      "//localhost:4300"}])
+         {:analyze-table  gs/analyze-table
           :can-connect?   can-connect
           :date-interval  u/date-interval
-          :analyze-table  gs/analyze-table
-          :process-native n/process-and-run
+          :details-fields (constantly [{:name         "hosts"
+                                        :display-name "Hosts"
+                                        :default      "//localhost:4300"}])
+          :execute-query  qp/execute-query
           :features       (fn [this]
                             (set/difference (sql/features this)
                                             #{:foreign-keys}))})
