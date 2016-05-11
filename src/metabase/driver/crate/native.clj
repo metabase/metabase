@@ -1,11 +1,11 @@
 (ns metabase.driver.crate.native
   (:require [clojure.java.jdbc :as jdbc]
-            [metabase.models.database :refer [Database]]
+            [clojure.tools.logging :as log]
             [metabase.db :refer [sel]]
             [metabase.driver.generic-sql :as sql]
-            [clojure.tools.logging :as log]
-            [metabase.util :as u]
-            [metabase.driver.generic-sql.native :as n]))
+            [metabase.driver.generic-sql.native :as n]
+            [metabase.models.database :refer [Database]]
+            [metabase.util :as u]))
 
 (defn process-and-run
   "Process and run a native (raw SQL) QUERY."
