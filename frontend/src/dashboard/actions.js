@@ -11,7 +11,7 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
 
 const DATASET_SLOW_TIMEOUT   = 15 * 1000;
-const DATASET_USUALLY_FAST_THRESHOLD = 30 * 1000;
+const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
 
 // normalizr schemas
 const dashcard = new Schema('dashcard');

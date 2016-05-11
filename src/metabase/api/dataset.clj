@@ -40,9 +40,12 @@
    (read-check Database database)
    ;; add sensible constraints for results limits on our query
    (let [query (assoc body :constraints dataset-query-api-constraints)]
-     (first (k/select QueryExecution
-                      (k/aggregate (avg :running_time) :average)
-                      (k/where {:json_query (json/generate-string query)})))))
+     (first (k/select [(k/subselect QueryExecution
+                        (k/fields :running_time)
+                        (k/where {:json_query (json/generate-string query)})
+                        (k/order :started_at :desc)
+                        (k/limit 10)) :_]
+              (k/aggregate (avg :running_time) :average)))))
 
 (defendpoint POST "/csv"
   "Execute an MQL query and download the result data as a CSV file."
