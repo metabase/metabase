@@ -836,16 +836,16 @@
          (ql/order-by (ql/asc (ql/aggregate-field 0))))
        :data (format-rows-by [int int])))
 
-;;; order_by aggregate ["stddev" field-id]
-;; MySQL has a nasty tendency to return different results on different systems so just round everything to the nearest int.
-;; It also seems to give slightly different results than less-sucky DBs as evidenced below
+;;; ### order_by aggregate ["stddev" field-id]
+;; SQRT calculations are always NOT EXACT (normal behavior) so round everything to the nearest int.
+;; Databases might use different versions of SQRT implementations
 (datasets/expect-with-engines (engines-that-support :standard-deviation-aggregations)
   {:columns [(format-name "price")
              "stddev"]
-   :rows    [[3 (if (= *engine* :mysql) 25 26)]
+   :rows    [[3 (if (contains? #{:mysql :crate} *engine*) 25 26)]
              [1 24]
              [2 21]
-             [4 (if (= *engine* :mysql) 14 15)]]
+             [4 (if (contains? #{:mysql :crate} *engine*) 14 15)]]
    :cols    [(venues-col :price)
              (aggregate-col :stddev (venues-col :category_id))]}
   (->> (run-query venues
@@ -924,7 +924,7 @@
 
 (expect-with-non-timeseries-dbs
   (cond
-    (= *engine* :sqlite)
+    (contains? #{:sqlite :crate} *engine*)
     [["2015-06-01"  6]
      ["2015-06-02" 10]
      ["2015-06-03"  4]
@@ -1287,7 +1287,7 @@
 
 (expect-with-non-timeseries-dbs
   (cond
-    (= *engine* :sqlite)
+    (contains? #{:sqlite :crate} *engine*)
     [["2015-06-01 10:31:00" 1]
      ["2015-06-01 16:06:00" 1]
      ["2015-06-01 17:23:00" 1]
@@ -1326,7 +1326,7 @@
 
 (expect-with-non-timeseries-dbs
   (cond
-    (= *engine* :sqlite)
+    (contains? #{:sqlite :crate} *engine*)
     [["2015-06-01 10:31:00" 1]
      ["2015-06-01 16:06:00" 1]
      ["2015-06-01 17:23:00" 1]
@@ -1378,7 +1378,7 @@
 
 (expect-with-non-timeseries-dbs
   (cond
-    (= *engine* :sqlite)
+    (contains? #{:sqlite :crate} *engine*)
     [["2015-06-01 10:00:00" 1]
      ["2015-06-01 16:00:00" 1]
      ["2015-06-01 17:00:00" 1]
@@ -1423,7 +1423,7 @@
 
 (expect-with-non-timeseries-dbs
   (cond
-    (= *engine* :sqlite)
+    (contains? #{:sqlite :crate} *engine*)
     [["2015-06-01"  6]
      ["2015-06-02" 10]
      ["2015-06-03"  4]
@@ -1480,7 +1480,7 @@
 
 (expect-with-non-timeseries-dbs
   (cond
-    (= *engine* :sqlite)
+    (contains? #{:sqlite :crate} *engine*)
     [["2015-05-31" 46]
      ["2015-06-07" 47]
      ["2015-06-14" 40]
@@ -1505,7 +1505,7 @@
 (expect-with-non-timeseries-dbs
   ;; Not really sure why different drivers have different opinions on these </3
   (cond
-    (contains? #{:sqlserver :sqlite} *engine*)
+    (contains? #{:sqlserver :sqlite :crate} *engine*)
     [[23 54] [24 46] [25 39] [26 61]]
 
     (contains? #{:mongo :redshift :bigquery :postgres :h2} *engine*)
@@ -1516,7 +1516,7 @@
   (sad-toucan-incidents-with-bucketing :week-of-year))
 
 (expect-with-non-timeseries-dbs
-  [[(if (= *engine* :sqlite) "2015-06-01", "2015-06-01T00:00:00.000Z") 200]]
+  [[(if (contains? #{:sqlite :crate} *engine*) "2015-06-01", "2015-06-01T00:00:00.000Z") 200]]
   (sad-toucan-incidents-with-bucketing :month))
 
 (expect-with-non-timeseries-dbs
@@ -1524,7 +1524,7 @@
   (sad-toucan-incidents-with-bucketing :month-of-year))
 
 (expect-with-non-timeseries-dbs
-  [[(if (= *engine* :sqlite) "2015-04-01", "2015-04-01T00:00:00.000Z") 200]]
+  [[(if (contains? #{:sqlite :crate} *engine*) "2015-04-01", "2015-04-01T00:00:00.000Z") 200]]
   (sad-toucan-incidents-with-bucketing :quarter))
 
 (expect-with-non-timeseries-dbs
