@@ -110,14 +110,14 @@
   (execute-query ^java.util.Map [this, ^Map query]
     "Execute a query against the database and return the results.
 
-     The query passed in will contain:
+  The query passed in will contain:
 
          {:database ^DatabaseInstance
           :native   {... driver specific query form such as one returned from a call to `mbql->native` ...}
           :settings {:report-timezone \"US/Pacific\"
                      :other-setting   \"and its value\"}}
 
-     Results should look like:
+  Results should look like:
 
          {:columns [\"id\", \"name\"]
           :rows    [[1 \"Lucky Bird\"]
@@ -147,12 +147,12 @@
   (mbql->native ^java.util.Map [this, ^Map query]
     "Transpile an MBQL structured query into the appropriate native query form.
 
-     The input query will be a fully expanded MBQL query (https://github.com/metabase/metabase/wiki/Expanded-Queries) with
-     all the necessary pieces of information to build a properly formatted native query for the given database.
+  The input query will be a fully expanded MBQL query (https://github.com/metabase/metabase/wiki/Expanded-Queries) with
+  all the necessary pieces of information to build a properly formatted native query for the given database.
 
-     The result of this function will be passed directly into calls to `execute-query`.
+  The result of this function will be passed directly into calls to `execute-query`.
 
-     For example, a driver like Postgres would build a valid SQL expression and return a map such as:
+  For example, a driver like Postgres would build a valid SQL expression and return a map such as:
 
        {:query \"SELECT * FROM my_table\"}")
 
