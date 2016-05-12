@@ -42,7 +42,7 @@
    We specifically write out own `execute-query` function to avoid the autoCommit(false) call."
   [_ {:keys [database], {sql :query, params :params} :native}]
   (try (let [db-conn (sql/db->jdbc-connection-spec database)]
-         (jdbc/with-db-transaction [t-conn db-conn]
+         (jdbc/with-db-connection [t-conn db-conn]
            (let [statement (if params
                              (into [sql] params)
                              sql)]
