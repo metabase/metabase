@@ -436,11 +436,13 @@
    If this is an MBQL query then we first call `mbql->native` which builds a database dependent form for execution and
    then we pass that form into the `execute-query` function for final execution.
 
-   If the query is already a NATIVE query then we simply pass it through to `execute-query` unmodified."
+   If the query is already a *native* query then we simply pass it through to `execute-query` unmodified."
   [query]
-  (let [native-form  (if-not (mbql-query? query)
-                       (:native query)
-                       (driver/mbql->native (:driver query) query))
+  (let [native-form  (u/prog1 (if-not (mbql-query? query)
+                                (:native query)
+                                (driver/mbql->native (:driver query) query))
+                       (when-not *disable-qp-logging*
+                         (log/debug (u/format-color 'green "NATIVE FORM:\n%s\n" (u/pprint-to-str <>)))))
         native-query (if-not (mbql-query? query)
                        query
                        (assoc query :native native-form))
