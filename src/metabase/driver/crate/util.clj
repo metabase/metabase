@@ -1,11 +1,11 @@
 (ns metabase.driver.crate.util
   (:refer-clojure :exclude [second])
-  (:require [korma.sql.utils :as kutils]
-            [korma.core :as k]
+  (:require [korma.core :as k]
+            [korma.sql.utils :as kutils]
             [metabase.driver.generic-sql.query-processor :as qp]
             [metabase.util :as u]
             [metabase.util.korma-extensions :as kx])
-  (:import (java.sql Timestamp)))
+  (:import java.sql.Timestamp))
 
 (defn unix-timestamp->timestamp
   "Converts datetime string to a valid timestamp"
@@ -17,15 +17,15 @@
 (defn- date-trunc
   "date_trunc('interval', timezone, timestamp): truncates a timestamp to a given interval"
   [unit expr]
-  (let [timezone    (get-in qp/*query* [:settings :report-timezone])]
-    (if (= (nil? timezone) true)
+  (let [timezone (get-in qp/*query* [:settings :report-timezone])]
+    (if (nil? timezone)
       (k/sqlfn :DATE_TRUNC (kx/literal unit) expr)
       (k/sqlfn :DATE_TRUNC (kx/literal unit) timezone expr))))
 
 (defn- date-format
   "date_format('format_string', timezone, timestamp): formats the timestamp as string"
   [fmt expr]
-  (let [timezone    (get-in qp/*query* [:settings :report-timezone])]
+  (let [timezone (get-in qp/*query* [:settings :report-timezone])]
     (if (nil? timezone)
       (k/sqlfn :DATE_FORMAT fmt expr)
       (k/sqlfn :DATE_FORMAT fmt timezone expr))))
@@ -83,10 +83,10 @@
   [_ unit amount]
   (case unit
     :quarter (recur nil :month (kx/* amount 3))
-    :year (k/raw (sql-interval year amount))
-    :month (k/raw (sql-interval month amount))
-    :week (k/raw (sql-interval week amount))
-    :day (k/raw (sql-interval day amount))
-    :hour (k/raw (sql-interval hour amount))
-    :minute (k/raw (sql-interval minute amount))
-    :second (k/raw (sql-interval second amount))))
+    :year    (k/raw (sql-interval year   amount))
+    :month   (k/raw (sql-interval month  amount))
+    :week    (k/raw (sql-interval week   amount))
+    :day     (k/raw (sql-interval day    amount))
+    :hour    (k/raw (sql-interval hour   amount))
+    :minute  (k/raw (sql-interval minute amount))
+    :second  (k/raw (sql-interval second amount))))
