@@ -225,8 +225,8 @@
           :column->base-type         (u/drop-first-arg column->base-type)
           :connection-details->spec  (u/drop-first-arg connection-details->spec)
           :date                      (u/drop-first-arg date)
-          :prepare-identifier        (u/drop-first-arg s/upper-case)
           :string-length-fn          (constantly :LENGTH)
-          :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
+          :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)
+          :quote-style               (constantly :h2)}))
 
 (driver/register-driver! :h2 (H2Driver.))

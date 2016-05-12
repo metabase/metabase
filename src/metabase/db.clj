@@ -5,12 +5,14 @@
             (clojure [set :as set]
                      [string :as s]
                      [walk :as walk])
+            (honeysql [core :as hsql]
+                      [helpers :as h])
             (korma [core :as k]
                    [db :as kdb])
             [medley.core :as m]
             [ring.util.codec :as codec]
             [metabase.config :as config]
-            [metabase.db.internal :as i]
+            [metabase.db.internal :as internal]
             [metabase.models.interface :as models]
             [metabase.util :as u])
   (:import java.io.StringWriter
@@ -53,12 +55,16 @@
                    codec/form-decode
                    walk/keywordize-keys))))
 
+(def ^:const ^clojure.lang.Keyword db-type
+  "The type of backing DB used to run Metabase. `:h2`, `:mysql`, or `:postgres`."
+  (config/config-kw :mb-db-type))
+
 (def db-connection-details
   "Connection details that can be used when pretending the Metabase DB is itself a `Database`
    (e.g., to use the Generic SQL driver functions on the Metabase DB itself)."
   (delay (or (when-let [uri (config/config-str :mb-db-connection-uri)]
                (parse-connection-string uri))
-             (case (config/config-kw :mb-db-type)
+             (case db-type
                :h2       {:type     :h2
                           :db       @db-file}
                :mysql    {:type     :mysql
@@ -88,8 +94,7 @@
 
 ;; ## MIGRATE
 
-(def ^:private ^:const changelog-file
-  "migrations/liquibase.json")
+(def ^:private ^:const changelog-file "migrations/liquibase.json")
 
 (defn migrate
   "Migrate the database:
@@ -120,6 +125,46 @@
 
 
 ;; ## SETUP-DB
+
+(defn db []
+  @(:pool @korma.db/_default))
+
+(def ^:const quoting-style
+  "Style of `:quoting` that should be passed to HoneySQL `format`."
+  (case db-type
+    :h2       :h2
+    :mysql    :mysql
+    :postgres :ansi))
+
+(defn query
+  ([honeysql-form]
+   (jdbc/query (db)
+               (u/prog1 (hsql/format (merge {:select [:*]}
+                                            honeysql-form)
+                           :quoting quoting-style)
+                 (println "SQL:" <>))))
+  ([entity honeysql-form]
+   (let [entity (internal/entity->korma entity)]
+     (query (merge {:select (or (models/default-fields entity)
+                                [:*])
+                    :from   [(keyword (:table entity))]}
+                   honeysql-form)))))
+
+(defn- x []
+  (query (-> {}
+             (k/from :core-user)
+             (h/limit 1)
+             (h/where [:= :first-name "Cam"]))))
+
+(defn- y []
+  (query 'User (-> (h/limit 1)
+                   (h/where [:= :first-name "Cam"]))))
+
+(defn query-1 [entity honeysql-form]
+  (first (query entity (h/limit honeysql-form 1))))
+
+(defn- z []
+  (query-1 'User (h/where [:= :first-name "Cam"])))
 
 (def ^:private setup-db-has-been-called?
   (atom false))
@@ -338,7 +383,7 @@
 
     (exists? User :id 100)"
   [entity & {:as kwargs}]
-  `(boolean (seq (k/select (i/entity->korma ~entity)
+  `(boolean (seq (k/select (internal/entity->korma ~entity)
                            (k/fields [:id])
                            (k/where ~(if (seq kwargs) kwargs {}))
                            (k/limit 1)))))
@@ -348,8 +393,8 @@
 (defn -cascade-delete
   "Internal implementation of `cascade-delete`. Don't use this directly!"
   [entity f]
-  (let [entity  (i/entity->korma entity)
-        results (i/sel-exec entity f)]
+  (let [entity  (internal/entity->korma entity)
+        results (internal/sel-exec entity f)]
     (dorun (for [obj (map (partial models/do-post-select entity) results)]
              (do (models/pre-cascade-delete obj)
                  (del entity :id (:id obj))))))
@@ -361,4 +406,4 @@
 
    Like `del`, this returns a 204/nil reponse so it can be used directly in an API endpoint."
   [entity & kwargs]
-  `(-cascade-delete ~entity (i/sel-fn ~@kwargs)))
+  `(-cascade-delete ~entity (internal/sel-fn ~@kwargs)))

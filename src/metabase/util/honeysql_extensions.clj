@@ -1,11 +1,18 @@
 (ns metabase.util.honeysql-extensions
   (:refer-clojure :exclude [+ - / * mod inc dec cast concat format])
-  (:require (honeysql [core :as hsql]
+  (:require [clojure.string :as s]
+            (honeysql [core :as hsql]
                       [format :as hformat]))
   (:import honeysql.format.ToSql))
 
 (alter-meta! #'honeysql.core/format assoc :style/indent 1)
 (alter-meta! #'honeysql.core/call assoc :style/indent 1)
+
+;; Add an `:h2` quote style that uppercases the identifier
+(let [quote-fns @(resolve 'honeysql.format/quote-fns)]
+  (intern 'honeysql.format 'quote-fns
+          (assoc quote-fns :h2 (fn [identifier]
+                                 (str \" (s/upper-case (s/replace identifier "\"" "\"\"")) \")))))
 
 
 (defrecord Literal [s]

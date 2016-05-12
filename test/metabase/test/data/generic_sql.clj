@@ -228,15 +228,14 @@
       (println (u/format-color 'green "Inserting %d rows took %s." (count rows) (u/format-nanoseconds (- (System/nanoTime) start-time)))))))
 
 (defn- do-insert! [driver spec table-name row-or-rows]
-  (let [prepare-key (comp keyword (partial sql/prepare-identifier driver) name)
-        rows        (if (sequential? row-or-rows)
+  (let [rows        (if (sequential? row-or-rows)
                       row-or-rows
                       [row-or-rows])
         columns     (keys (first rows))
         values      (vec (for [row rows]
                            (mapv row columns)))
-        hsql-form   (-> (apply h/columns (map prepare-key columns))
-                        (h/insert-into (prepare-key table-name))
+        hsql-form   (-> (apply h/columns (map keyword columns))
+                        (h/insert-into (keyword table-name))
                         (h/values values))
         sql+args    (hsql/format hsql-form
                       :quoting             (sql/quote-style driver)

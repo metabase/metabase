@@ -68,11 +68,6 @@
 
      Return `nil` to prevent FIELD from being aliased.")
 
-  (prepare-identifier [this, ^String identifier]
-    "*OPTIONAL*. Prepare an identifier, such as a Table or Field name, when it is used in a SQL query.
-     This is used by drivers like H2 to transform names to upper-case.
-     The default implementation is `identity`.")
-
   (prepare-value [this, ^Value value]
     "*OPTIONAL*. Prepare a value (e.g. a `String` or `Integer`) that will be used in a korma form. By default, this returns VALUE's `:value` as-is, which
      is eventually passed as a parameter in a prepared statement. Drivers such as BigQuery that don't support prepared statements can skip this
@@ -80,7 +75,8 @@
 
   (quote-style ^clojure.lang.Keyword [this]
     "*OPTIONAL*. Return the quoting style that should be used by [HoneySQL](https://github.com/jkk/honeysql) when building a SQL statement.
-     Defaults to `:ansi`, but other valid options are `:mysql`, `:sqlserver`, and `:oracle`.
+     Defaults to `:ansi`, but other valid options are `:mysql`, `:sqlserver`, `:oracle`, and `:h2` (added in `metabase.util.honeysql-extensions`;
+     like `:ansi`, but uppercases the result).
 
        (hsql/format ... :quoting (quote-style driver))")
 
@@ -204,16 +200,16 @@
 (defn- db->spec [{:keys [engine details]}]
   (connection-details->spec (driver/engine->driver engine) details))
 
-(defn- table->qualified-kw [driver {table-name :name, schema :schema}]
+(defn- table->qualified-kw [{table-name :name, schema :schema}]
   {:pre [table-name]}
   (hsql/qualify (when schema
-                  (keyword (prepare-identifier driver (name schema))))
-                (keyword (prepare-identifier driver (name table-name)))))
+                  (keyword (name schema)))
+                (keyword (name table-name))))
 
-(defn- table-rows-seq [driver database table]
+(defn- table-rows-seq [database table]
   (jdbc/query (db->spec database)
               (hsql/format (-> (h/select :*)
-                               (h/from (table->qualified-kw driver table))))))
+                               (h/from (table->qualified-kw table))))))
 
 (defn- field-avg-length [driver field]
   (or (some-> (korma-entity (field/table field))
@@ -350,7 +346,6 @@
    :current-datetime-fn     (constantly (hsql/call :now))
    :excluded-schemas        (constantly nil)
    :field->alias            (u/drop-first-arg name)
-   :prepare-identifier      (u/drop-first-arg identity)
    :prepare-value           (u/drop-first-arg :value)
    :quote-style             (constantly :ansi)
    :set-timezone-sql        (constantly nil)
@@ -373,7 +368,7 @@
           :notify-database-updated notify-database-updated
           :process-native          (resolve 'metabase.driver.generic-sql.native/process-and-run)
           :process-mbql            (resolve 'metabase.driver.generic-sql.query-processor/process-mbql)
-          :table-rows-seq          table-rows-seq}))
+          :table-rows-seq          (u/drop-first-arg table-rows-seq)}))
 
 
 ;;; ### Util Fns
