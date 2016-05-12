@@ -1,8 +1,23 @@
 (ns metabase.util.honeysql-extensions
   (:refer-clojure :exclude [+ - / * mod inc dec cast concat format])
-  (:require [honeysql.core :as hsql]))
+  (:require (honeysql [core :as hsql]
+                      [format :as hformat]))
+  (:import honeysql.format.ToSql))
 
 (alter-meta! #'honeysql.core/format assoc :style/indent 1)
+(alter-meta! #'honeysql.core/call assoc :style/indent 1)
+
+
+(defrecord Literal [s]
+  ToSql
+  (to-sql [_]
+    (str \' (name s) \')))
+
+(defn literal
+  "Wrap keyword or string S in single quotes and a HoneySQL `raw` form."
+  [s]
+  (Literal. s))
+
 
 (def ^{:arglists '([& exprs])}  +  "Math operator. Interpose `+` between EXPRS and wrap in parentheses." (partial hsql/call :+))
 (def ^{:arglists '([& exprs])}  -  "Math operator. Interpose `-` between EXPRS and wrap in parentheses." (partial hsql/call :-))
@@ -13,10 +28,6 @@
 (defn inc "Add 1 to X."        [x] (+ x 1))
 (defn dec "Subtract 1 from X." [x] (- x 1))
 
-(defn literal
-  "Wrap keyword or string S in single quotes and a korma `raw` form."
-  [s]
-  (hsql/raw (str \' (name s) \')))
 
 (defn cast
   "Generate a statement like `cast(x AS c)`/"

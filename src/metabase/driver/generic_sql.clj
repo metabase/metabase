@@ -78,6 +78,12 @@
      is eventually passed as a parameter in a prepared statement. Drivers such as BigQuery that don't support prepared statements can skip this
      behavior by returning a korma `raw` form instead, or other drivers can perform custom type conversion as appropriate.")
 
+  (quote-style ^clojure.lang.Keyword [this]
+    "*OPTIONAL*. Return the quoting style that should be used by [HoneySQL](https://github.com/jkk/honeysql) when building a SQL statement.
+     Defaults to `:ansi`, but other valid options are `:mysql`, `:sqlserver`, and `:oracle`.
+
+       (hsql/format ... :quoting (quote-style driver))")
+
   (set-timezone-sql ^String [this]
     "*OPTIONAL*. This should be a prepared JDBC SQL statement string to be used to set the timezone for the current transaction.
 
@@ -93,9 +99,12 @@
     "Return a korma form appropriate for converting a Unix timestamp integer field or value to an proper SQL `Timestamp`.
      SECONDS-OR-MILLISECONDS refers to the resolution of the int in question and with be either `:seconds` or `:milliseconds`."))
 
+
+;; This does something important for the Crate driver, apparently (what?)
 (extend-protocol jdbc/IResultSetReadColumn
   (class (object-array []))
   (result-set-read-column [x _ _] (PersistentVector/adopt x)))
+
 
 (def ^:dynamic ^:private connection-pools
   "A map of our currently open connection pools, keyed by DATABASE `:id`."
@@ -343,6 +352,7 @@
    :field->alias            (u/drop-first-arg name)
    :prepare-identifier      (u/drop-first-arg identity)
    :prepare-value           (u/drop-first-arg :value)
+   :quote-style             (constantly :ansi)
    :set-timezone-sql        (constantly nil)
    :stddev-fn               (constantly :STDDEV)})
 

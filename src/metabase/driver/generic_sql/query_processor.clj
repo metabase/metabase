@@ -240,9 +240,8 @@
 
 (defn- honeysql-form->sql+args [honeysql-form]
   {:pre [(map? honeysql-form)]}
-  ;; TODO - quoting style
   (hsql/format honeysql-form
-    :quoting             :ansi
+    :quoting             (sql/quote-style (driver))
     :allow-dashed-names? true))
 
 (defn log-honeysql-form
@@ -289,10 +288,9 @@
 
 (defn build-honeysql-form
   "Build the HoneySQL form we will compile to SQL and execute."
-  [driverr {inner-query :query, :as outer-query}]
-  {:pre [(map? outer-query) (map? inner-query) (:driver outer-query)]}
-  (binding [*query* outer-query]
-    (apply-clauses driverr {} inner-query)))
+  [driverr {inner-query :query}]
+  {:pre [(map? inner-query)]}
+  (apply-clauses driverr {} inner-query))
 
 ;; (require '[metabase.test.data.datasets :as datasets])
 ;; (require '[metabase.test.data :refer [dataset run-query]])
@@ -340,15 +338,16 @@
 (defn process-mbql
   "Convert QUERY into a HoneySQL form and execute it."
   [driver {database :database, settings :settings, :as outer-query}]
-  (let [timezone      (:report-timezone settings)
-        honeysql-form (build-honeysql-form driver outer-query)
-        f             (fn []
-                        (query! database honeysql-form))
-        ;; f             (fn []
-        ;;                 (kdb/with-db (:db entity)
-        ;;                   (if (seq timezone)
-        ;;                     (do-with-timezone driver timezone f)
-        ;;                     (f))))
-        ]
-    (log-honeysql-form honeysql-form)
-    (do-with-try-catch f)))
+  (binding [*query* outer-query]
+    (let [timezone      (:report-timezone settings)
+          honeysql-form (build-honeysql-form driver outer-query)
+          f             (fn []
+                          (query! database honeysql-form))
+          ;; f             (fn []
+          ;;                 (kdb/with-db (:db entity)
+          ;;                   (if (seq timezone)
+          ;;                     (do-with-timezone driver timezone f)
+          ;;                     (f))))
+          ]
+      (log-honeysql-form honeysql-form)
+      (do-with-try-catch f))))

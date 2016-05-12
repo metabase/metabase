@@ -227,8 +227,8 @@
       (insert! rows)
       (println (u/format-color 'green "Inserting %d rows took %s." (count rows) (u/format-nanoseconds (- (System/nanoTime) start-time)))))))
 
-(defn- do-insert! [spec prepare-key-fn table-name row-or-rows]
-  (let [prepare-key (comp keyword prepare-key-fn name)
+(defn- do-insert! [driver spec table-name row-or-rows]
+  (let [prepare-key (comp keyword (partial sql/prepare-identifier driver) name)
         rows        (if (sequential? row-or-rows)
                       row-or-rows
                       [row-or-rows])
@@ -239,7 +239,7 @@
                         (h/insert-into (prepare-key table-name))
                         (h/values values))
         sql+args    (hsql/format hsql-form
-                      :quoting             :ansi ; TODO
+                      :quoting             (sql/quote-style driver)
                       :allow-dashed-names? true)]
     (jdbc/execute! spec sql+args)))
 
@@ -251,7 +251,7 @@
     (let [entity      (korma-entity driver dbdef tabledef)
           spec        (database->spec driver :db dbdef)
           prepare-key (get-in entity [:db :options :naming :fields])
-          insert!     ((apply comp wrap-insert-fns) (partial do-insert! spec prepare-key (:table entity)))
+          insert!     ((apply comp wrap-insert-fns) (partial do-insert! driver spec (:table entity)))
           rows        (load-data-get-rows driver dbdef tabledef)]
       (insert! rows))))
 
