@@ -294,14 +294,16 @@
     (apply-clauses driverr {} inner-query)))
 
 ;; (require '[metabase.test.data.datasets :as datasets])
-;; (require '[metabase.test.data :refer [run-query]])
+;; (require '[metabase.test.data :refer [dataset run-query]])
 ;; (require '[metabase.query-processor.expand :as ql])
 
 ;; (defn- x []
-;;   (datasets/with-engine :postgres
-;;     (run-query venues
-;;       (ql/limit 10)
-;;       (ql/order-by (ql/asc $id)))))
+;;   (dataset tupac-sightings
+;;            (run-query sightings
+;;              (ql/order-by (ql/asc $city_id->cities.name)
+;;                           (ql/desc $category_id->categories.name)
+;;                           (ql/asc $id))
+;;              (ql/limit 10))))
 
 ;; (defn- do-with-timezone [driver connection timezone f]
 ;;   (log/debug (u/format-color 'blue (sql/set-timezone-sql driver)))
