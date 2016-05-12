@@ -5,6 +5,7 @@
             [clojure.tools.logging :as log]
             (honeysql [core :as hsql]
                       [format :as hformat])
+            [metabase.db.spec :as spec]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
             [metabase.util :as u]
@@ -92,17 +93,6 @@
   "Params to include in the JDBC connection spec to disable SSL."
   {:sslmode "disable"})
 
-(defn- postgres
-  "Create a database specification for a Postgres database."
-  [{:keys [host port db make-pool?]
-    :or   {host "localhost", port 5432, db "", make-pool? true}
-    :as   opts}]
-  (merge {:classname   "org.postgresql.Driver" ; must be in classpath
-          :subprotocol "postgresql"
-          :subname     (str "//" host ":" port "/" db)
-          :make-pool?  make-pool?}
-         (dissoc opts :host :port :db)))
-
 (defn- connection-details->spec [{:keys [ssl] :as details-map}]
   (-> details-map
       (update :port (fn [port]
@@ -115,7 +105,7 @@
                ssl-params
                disable-ssl-params))
       (rename-keys {:dbname :db})
-      postgres))
+      spec/postgres))
 
 (defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
   (case seconds-or-milliseconds

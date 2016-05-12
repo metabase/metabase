@@ -2,6 +2,7 @@
   (:require (clojure [set :as set]
                      [string :as s])
             [honeysql.core :as hsql]
+            [metabase.db.spec :as spec]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
             [metabase.util :as u]
@@ -53,20 +54,8 @@
   (apply str "?" (interpose \& (for [[k v] connection-args]
                                  (str (name k) \= (name v))))))
 
-(defn mysql
-  "Create a database specification for a MySQL database."
-  [{:keys [host port db make-pool?]
-    :or   {host "localhost", port 3306, db "", make-pool? true}
-    :as   opts}]
-  (merge {:classname   "com.mysql.jdbc.Driver" ; must be in classpath
-          :subprotocol "mysql"
-          :subname     (str "//" host ":" port "/" db)
-          :delimiters  "`"
-          :make-pool?  make-pool?}
-         (dissoc opts :host :port :db)))
-
 (defn- connection-details->spec [details]
-  (-> (mysql (set/rename-keys details {:dbname :db}))
+  (-> (spec/mysql (set/rename-keys details {:dbname :db}))
       (update :subname (u/rpartial str connection-args-string))))
 
 (defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]

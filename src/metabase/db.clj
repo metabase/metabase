@@ -12,7 +12,8 @@
             [medley.core :as m]
             [ring.util.codec :as codec]
             [metabase.config :as config]
-            [metabase.db.internal :as internal]
+            (metabase.db [internal :as internal]
+                         [spec :as spec])
             [metabase.models.interface :as models]
             [metabase.util :as u])
   (:import java.io.StringWriter
@@ -86,10 +87,10 @@
   {:pre [(map? db-details)]}
   ;; TODO: it's probably a good idea to put some more validation here and be really strict about what's in `db-details`
   (case (:type db-details)
-    :h2       (kdb/h2       (assoc db-details :naming {:keys   s/lower-case
-                                                       :fields s/upper-case}))
-    :mysql    (kdb/mysql    (assoc db-details :db (:dbname db-details)))
-    :postgres (kdb/postgres (assoc db-details :db (:dbname db-details)))))
+    :h2       (spec/h2       (assoc db-details :naming {:keys   s/lower-case
+                                                        :fields s/upper-case}))
+    :mysql    (spec/mysql    (assoc db-details :db (:dbname db-details)))
+    :postgres (spec/postgres (assoc db-details :db (:dbname db-details)))))
 
 
 ;; ## MIGRATE
@@ -152,7 +153,7 @@
 
 (defn- x []
   (query (-> {}
-             (k/from :core-user)
+             (h/from :core-user)
              (h/limit 1)
              (h/where [:= :first-name "Cam"]))))
 
