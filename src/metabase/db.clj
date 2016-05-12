@@ -166,6 +166,18 @@
 (defn- z []
   (query-1 'User (h/where [:= :first-name "Cam"])))
 
+;; TODO
+;; k/
+;; kdb/
+;; kfns/
+;; kengine/
+;; kx/
+;; kutils/
+;; "korma"
+;; korma-entity
+;; internal/entity->korma -> resolve-entity
+;; c3p0
+
 (def ^:private setup-db-has-been-called?
   (atom false))
 
