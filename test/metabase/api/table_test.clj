@@ -1,7 +1,7 @@
 (ns metabase.api.table-test
   "Tests for /api/table endpoints."
   (:require [expectations :refer :all]
-            [metabase.db :refer :all]
+            [metabase.db :as db]
             (metabase [http-client :as http]
                       [middleware :as middleware])
             (metabase.models [field :refer [Field]]
@@ -218,7 +218,7 @@
 ;;; GET api/table/:id/query_metadata?include_sensitive_fields
 ;;; Make sure that getting the User table *does* include info about the password field, but not actual values themselves
 (expect
-    (match-$ (sel :one Table :id (id :users))
+    (match-$ (db/sel :one Table :id (id :users))
       {:description     nil
        :entity_type     nil
        :visibility_type nil
@@ -226,7 +226,7 @@
        :schema          "PUBLIC"
        :name            "USERS"
        :display_name    "Users"
-       :fields          [(match-$ (sel :one Field :id (id :users :id))
+       :fields          [(match-$ (db/sel :one Field :id (id :users :id))
                            {:description     nil
                             :table_id        (id :users)
                             :special_type    "id"
@@ -246,7 +246,7 @@
                             :parent_id       nil
                             :raw_column_id   $
                             :last_analyzed   $})
-                         (match-$ (sel :one Field :id (id :users :last_login))
+                         (match-$ (db/sel :one Field :id (id :users :last_login))
                            {:description     nil
                             :table_id        (id :users)
                             :special_type    nil
@@ -266,7 +266,7 @@
                             :parent_id       nil
                             :raw_column_id   $
                             :last_analyzed   $})
-                         (match-$ (sel :one Field :id (id :users :name))
+                         (match-$ (db/sel :one Field :id (id :users :name))
                            {:description     nil
                             :table_id        (id :users)
                             :special_type    "name"
@@ -286,7 +286,7 @@
                             :parent_id       nil
                             :raw_column_id   $
                             :last_analyzed   $})
-                         (match-$ (sel :one Field :table_id (id :users) :name "PASSWORD")
+                         (match-$ (db/sel :one Field :table_id (id :users) :name "PASSWORD")
                            {:description     nil
                             :table_id        (id :users)
                             :special_type    "category"
@@ -438,7 +438,7 @@
 (expect-eval-actual-first
     (match-$ (let [table (Table (id :users))]
                ;; reset Table back to its original state
-               (upd Table (id :users) :display_name "Users" :entity_type nil :visibility_type nil :description nil)
+               (db/upd Table (id :users) :display_name "Users" :entity_type nil :visibility_type nil :description nil)
                table)
       {:description     "What a nice table!"
        :entity_type     "person"
@@ -477,8 +477,8 @@
 ;; ## GET /api/table/:id/fks
 ;; We expect a single FK from CHECKINS.USER_ID -> USERS.ID
 (expect
-  (let [checkins-user-field (sel :one Field :table_id (id :checkins) :name "USER_ID")
-        users-id-field (sel :one Field :table_id (id :users) :name "ID")]
+  (let [checkins-user-field (db/sel :one Field :table_id (id :checkins) :name "USER_ID")
+        users-id-field (db/sel :one Field :table_id (id :users) :name "ID")]
     [{:origin_id      (:id checkins-user-field)
       :destination_id (:id users-id-field)
       :relationship   "Mt1"
@@ -557,15 +557,15 @@
 ;; ## POST /api/table/:id/reorder
 (expect-eval-actual-first
     {:result "success"}
-  (let [categories-id-field   (sel :one Field :table_id (id :categories) :name "ID")
-        categories-name-field (sel :one Field :table_id (id :categories) :name "NAME")
+  (let [categories-id-field   (db/sel :one Field :table_id (id :categories) :name "ID")
+        categories-name-field (db/sel :one Field :table_id (id :categories) :name "NAME")
         api-response          ((user->client :crowberto) :post 200 (format "table/%d/reorder" (id :categories))
                                {:new_order [(:id categories-name-field) (:id categories-id-field)]})]
     ;; check the modified values (have to do it here because the api response tells us nothing)
-    (assert (= 0 (:position (sel :one :fields [Field :position] :id (:id categories-name-field)))))
-    (assert (= 1 (:position (sel :one :fields [Field :position] :id (:id categories-id-field)))))
+    (assert (= 0 (:position (db/sel :one :fields [Field :position] :id (:id categories-name-field)))))
+    (assert (= 1 (:position (db/sel :one :fields [Field :position] :id (:id categories-id-field)))))
     ;; put the values back to their previous state
-    (upd Field (:id categories-name-field) :position 0)
-    (upd Field (:id categories-id-field) :position 0)
+    (db/upd Field (:id categories-name-field) :position 0)
+    (db/upd Field (:id categories-id-field) :position 0)
     ;; return our origin api response for validation
     api-response))

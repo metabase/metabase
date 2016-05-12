@@ -61,7 +61,7 @@
          (string? segment-name)
          (integer? creator-id)
          (map? definition)]}
-  (let [segment (db/ins Segment
+  (let [segment (db/insert! Segment
                   :table_id    table-id
                   :creator_id  creator-id
                   :name        segment-name

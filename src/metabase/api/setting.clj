@@ -37,6 +37,7 @@
   [key]
   {key Required}
   (check-superuser)
-  (setting/delete (keyword key)))
+  (setting/delete (keyword key))
+  generic-204-response)
 
 (define-routes)

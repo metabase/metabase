@@ -74,7 +74,7 @@
    (We're smart about it: DATABASE isn't even evaluated if `*mongo-connection*` is already bound.)
 
      ;; delay isn't derefed if *mongo-connection* is already bound
-     (with-mongo-connection [^com.mongodb.DB conn @(:db (sel :one Table ...))]
+     (with-mongo-connection [^com.mongodb.DB conn @(:db (db/sel :one Table ...))]
        ...)
 
      ;; You can use a string instead of a Database

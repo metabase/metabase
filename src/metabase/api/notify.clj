@@ -2,7 +2,7 @@
   "/api/notify/* endpoints which receive inbound etl server notifications."
   (:require [compojure.core :refer [POST]]
             [metabase.api.common :refer :all]
-            [metabase.db :refer :all]
+            [metabase.db :as db]
             [metabase.driver :as driver]
             (metabase.models [database :refer [Database]]
                              [table :refer [Table]])
@@ -15,9 +15,9 @@
   [id :as {{:keys [table_id table_name]} :body}]
   (let-404 [database (Database id)]
     (cond
-      table_id (when-let [table (sel :one Table :db_id id :id (int table_id))]
+      table_id (when-let [table (db/sel :one Table :db_id id :id (int table_id))]
                  (future (sync-database/sync-table! table)))
-      table_name (when-let [table (sel :one Table :db_id id :name table_name)]
+      table_name (when-let [table (db/sel :one Table :db_id id :name table_name)]
                    (future (sync-database/sync-table! table)))
       :else (future (sync-database/sync-database! database))))
   {:success true})

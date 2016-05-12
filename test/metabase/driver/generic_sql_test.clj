@@ -1,6 +1,6 @@
 (ns metabase.driver.generic-sql-test
   (:require [expectations :refer :all]
-            [metabase.db :refer :all]
+            [metabase.db :as db]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :refer :all]
             (metabase.models [field :refer [Field]]
@@ -11,7 +11,7 @@
   (:import metabase.driver.h2.H2Driver))
 
 (def users-table
-  (delay (sel :one Table :name "USERS")))
+  (delay (db/sel :one Table :name "USERS")))
 
 (def venues-table
   (delay (Table (id :venues))))

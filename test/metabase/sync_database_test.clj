@@ -399,7 +399,7 @@
     [ ;; 1. Check that we have expected field values to start with
      (get-field-values)
      ;; 2. Delete the Field values, make sure they're gone
-     (do (db/cascade-delete FieldValues :id (get-field-values-id))
+     (do (db/cascade-delete! FieldValues :id (get-field-values-id))
          (get-field-values))
      ;; 3. Now re-sync the table and make sure they're back
      (do (sync-table! @venues-table)

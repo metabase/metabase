@@ -599,4 +599,4 @@
       (m/mapply db/upd QueryExecution id query-execution)
       query-execution)
     ;; first time saving execution, so insert it
-    (m/mapply db/ins QueryExecution query-execution)))
+    (m/mapply db/insert! QueryExecution query-execution)))

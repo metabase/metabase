@@ -2,7 +2,7 @@
   (:require [clojure.data :refer [diff]]
             [korma.core :as k]
             [medley.core :as m]
-            [metabase.db :refer :all]
+            [metabase.db :as db]
             (metabase.models [dashboard-card :refer [DashboardCard] :as dashboard-card]
                              [interface :as i]
                              [revision :as revision])
@@ -14,11 +14,11 @@
   "Return the `DashboardCards` associated with DASHBOARD, in the order they were created."
   {:hydrate :ordered_cards, :arglists '([dashboard])}
   [{:keys [id]}]
-  (sel :many DashboardCard, :dashboard_id id, (k/order :created_at :asc)))
+  (db/sel :many DashboardCard, :dashboard_id id, (k/order :created_at :asc)))
 
 (defn- pre-cascade-delete [{:keys [id]}]
-  (cascade-delete 'Revision :model "Dashboard" :model_id id)
-  (cascade-delete DashboardCard :dashboard_id id))
+  (db/cascade-delete! 'Revision :model "Dashboard" :model_id id)
+  (db/cascade-delete! DashboardCard :dashboard_id id))
 
 
 (i/defentity Dashboard :report_dashboard)
@@ -49,11 +49,11 @@
   "Revert a `Dashboard` to the state defined by SERIALIZED-DASHBOARD."
   [dashboard-id user-id serialized-dashboard]
   ;; Update the dashboard description / name / permissions
-  (m/mapply upd Dashboard dashboard-id (dissoc serialized-dashboard :cards))
+  (m/mapply db/upd Dashboard dashboard-id (dissoc serialized-dashboard :cards))
   ;; Now update the cards as needed
   (let [serialized-cards    (:cards serialized-dashboard)
         id->serialized-card (zipmap (map :id serialized-cards) serialized-cards)
-        current-cards       (sel :many :fields [DashboardCard :sizeX :sizeY :row :col :id :card_id], :dashboard_id dashboard-id)
+        current-cards       (db/sel :many :fields [DashboardCard :sizeX :sizeY :row :col :id :card_id], :dashboard_id dashboard-id)
         id->current-card    (zipmap (map :id current-cards) current-cards)
         all-dashcard-ids    (concat (map :id serialized-cards)
                                     (map :id current-cards))]

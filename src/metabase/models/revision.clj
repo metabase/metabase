@@ -111,7 +111,7 @@
   [entity id]
   {:pre [(i/metabase-entity? entity) (integer? id)]}
   (when-let [old-revisions (seq (drop max-revisions (db/sel :many :id Revision, :model (:name entity), :model_id id, (k/order :timestamp :DESC))))]
-    (db/cascade-delete Revision :id [in old-revisions])))
+    (db/cascade-delete! Revision :id [in old-revisions])))
 
 (defn push-revision
   "Record a new `Revision` for ENTITY with ID.
@@ -130,7 +130,7 @@
         object (serialize-instance entity id object)]
     ;; make sure we still have a map after calling out serialization function
     (assert (map? object))
-    (db/ins Revision
+    (db/insert! Revision
       :model        (:name entity)
       :model_id     id
       :user_id      user-id
@@ -156,7 +156,7 @@
       (revert-to-revision entity id user-id serialized-instance)
       ;; Push a new revision to record this change
       (let [last-revision (db/sel :one Revision, :model (:name entity), :model_id id, (k/order :id :DESC))
-            new-revision  (db/ins Revision
+            new-revision  (db/insert! Revision
                             :model        (:name entity)
                             :model_id     id
                             :user_id      user-id

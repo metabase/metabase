@@ -4,7 +4,7 @@
   (:require [clojure.math.numeric-tower :as math]
             [clojure.set :as set]
             [expectations :refer :all]
-            (metabase [db :refer :all]
+            (metabase [db :as db]
                       [driver :as driver])
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])
@@ -872,9 +872,9 @@
                                    (ql/limit 1))
                                  :data :cols set))]
     [(get-col-names)
-     (do (upd Field (id :venues :price) :visibility_type :details-only)
+     (do (db/upd Field (id :venues :price) :visibility_type :details-only)
          (get-col-names))
-     (do (upd Field (id :venues :price) :visibility_type :normal)
+     (do (db/upd Field (id :venues :price) :visibility_type :normal)
          (get-col-names))]))
 
 

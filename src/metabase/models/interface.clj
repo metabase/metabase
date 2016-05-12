@@ -70,14 +70,14 @@
      you can provide custom implementations to do things like add hydrateable keys or remove sensitive fields.")
 
   (pre-cascade-delete [this]
-    "Called by `cascade-delete` for each matching object that is about to be deleted.
+    "Called by `cascade-delete!` for each matching object that is about to be deleted.
      Implementations should delete any objects related to this object by recursively
-     calling `cascade-delete`.
+     calling `cascade-delete!`.
 
      The output of this function is ignored.
 
         (pre-cascade-delete [_ {database-id :id :as database}]
-          (cascade-delete Card :database_id database-id)
+          (db/cascade-delete! Card :database_id database-id)
           ...)")
 
   (^{:hydrate :can_read} can-read? ^Boolean [instance], ^Boolean [entity, ^Integer id]

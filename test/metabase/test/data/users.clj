@@ -1,7 +1,7 @@
 (ns metabase.test.data.users
   "Code related to creating / managing fake `Users` for testing purposes."
   (:require [medley.core :as m]
-            (metabase [db :refer :all]
+            (metabase [db :as db]
                       [http-client :as http])
             (metabase.models [user :refer [User]])
             [metabase.util :as u]
@@ -53,7 +53,7 @@
                     :last_name  (random-name)
                     :email      (.toLowerCase ^String (str first-name "@metabase.com"))
                     :password   first-name}]
-    (m/mapply ins User (merge defaults kwargs))))
+    (m/mapply db/insert! User (merge defaults kwargs))))
 
 (defn fetch-user
   "Fetch the User object associated with USERNAME.
@@ -124,8 +124,8 @@
       :or {superuser false
            active    true}}]
   {:pre [(string? email) (string? first) (string? last) (string? password) (m/boolean? superuser)]}
-  (or (sel :one User :email email)
-      (ins User
+  (or (db/sel :one User :email email)
+      (db/insert! User
         :email        email
         :first_name   first
         :last_name    last

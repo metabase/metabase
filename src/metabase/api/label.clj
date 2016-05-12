@@ -17,7 +17,7 @@
   [:as {{:keys [name icon]} :body}]
   {name [Required NonEmptyString]
    icon NonEmptyString}
-  (db/ins Label, :name name, :icon icon))
+  (db/insert! Label, :name name, :icon icon))
 
 (defendpoint PUT "/:id"
   "Update a `Label`. :label:"
@@ -32,6 +32,6 @@
   "Delete a `Label`. :label:"
   [id]
   (write-check Label id)
-  (db/cascade-delete Label :id id))
+  (db/cascade-delete! Label :id id))
 
 (define-routes)

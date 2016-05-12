@@ -2,7 +2,7 @@
   "Tests for Mongo driver."
   (:require [expectations :refer :all]
             [korma.core :as k]
-            [metabase.db :refer :all]
+            [metabase.db :as db]
             [metabase.driver :as driver]
             (metabase.models [field :refer [Field]]
                              [table :refer [Table] :as table])
@@ -117,7 +117,7 @@
      {:rows 1000, :active true, :name "checkins"}
      {:rows 15,   :active true, :name "users"}
      {:rows 100,  :active true, :name "venues"}]
-  (sel :many :fields [Table :name :active :rows] :db_id (:id (mongo-db)) (k/order :name)))
+  (db/sel :many :fields [Table :name :active :rows] :db_id (:id (mongo-db)) (k/order :name)))
 
 ;; Test that Fields got synced correctly, and types are correct
 (expect-when-testing-mongo
@@ -138,5 +138,5 @@
       {:special_type :name,      :base_type :TextField,     :name "name"}
       {:special_type :category,  :base_type :IntegerField,  :name "price"}]]
     (for [nm table-names]
-      (sel :many :fields [Field :name :base_type :special_type], :active true, :table_id (:id (table-name->table nm))
+      (db/sel :many :fields [Field :name :base_type :special_type], :active true, :table_id (:id (table-name->table nm))
            (k/order :name))))

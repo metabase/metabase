@@ -1,6 +1,5 @@
 (ns metabase.driver.generic-sql.connection-test
   (:require [expectations :refer :all]
-            [metabase.db :refer [sel]]
             [metabase.driver :as driver]
             [metabase.models.database :refer [Database]]
             [metabase.test.data :refer :all]))

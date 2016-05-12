@@ -30,11 +30,11 @@
   [:as {{:keys [name description public_perms]} :body}]
   {name         [Required NonEmptyString]
    public_perms [Required PublicPerms]}
-  (->> (db/ins Dashboard
-               :name name
-               :description description
-               :public_perms public_perms
-               :creator_id *current-user-id*)
+  (->> (db/insert! Dashboard
+         :name         name
+         :description  description
+         :public_perms public_perms
+         :creator_id   *current-user-id*)
        (events/publish-event :dashboard-create)))
 
 (defendpoint GET "/:id"
@@ -62,9 +62,9 @@
   "Delete a `Dashboard`."
   [id]
   (write-check Dashboard id)
-  ;; TODO - it would be much more natural if `cascade-delete` returned the deleted entity instead of an api response
+  ;; TODO - it would be much more natural if `cascade-delete!` returned the deleted entity instead of an api response
   (let [dashboard (db/sel :one Dashboard :id id)
-        result    (db/cascade-delete Dashboard :id id)]
+        result    (db/cascade-delete! Dashboard :id id)]
     (events/publish-event :dashboard-delete (assoc dashboard :actor_id *current-user-id*))
     result))
 

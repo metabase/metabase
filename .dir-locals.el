@@ -28,7 +28,6 @@
                               (expect-with-all-engines 0)
                               (expect-with-engine 1)
                               (expect-with-engines 1)
-                              (ins 1)
                               (let-400 1)
                               (let-404 1)
                               (let-500 1)

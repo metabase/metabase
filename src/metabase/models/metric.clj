@@ -75,7 +75,7 @@
          (string? metric-name)
          (integer? creator-id)
          (map? definition)]}
-  (let [metric (db/ins Metric
+  (let [metric (db/insert! Metric
                   :table_id    table-id
                   :creator_id  creator-id
                   :name        metric-name

@@ -1,7 +1,7 @@
 (ns metabase.driver.crate.native
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
-            [metabase.db :refer [sel]]
+            [metabase.db :as db]
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.native :as n]
             [metabase.models.database :refer [Database]]
@@ -10,7 +10,7 @@
 (defn process-and-run
   "Process and run a native (raw SQL) QUERY."
   [driver {{sql :query} :native, database-id :database, :as query}]
-  (try (let [database (sel :one :fields [Database :engine :details] :id database-id)
+  (try (let [database (db/sel :one :fields [Database :engine :details] :id database-id)
              db-conn  (sql/db->jdbc-connection-spec database)]
          (jdbc/with-db-connection [t-conn db-conn]
            (let [^java.sql.Connection jdbc-connection (:connection t-conn)]

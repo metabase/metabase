@@ -2,7 +2,7 @@
   (:require [compojure.core :refer [defroutes POST]]
             (metabase.api [common :refer :all]
                           [database :refer [annotation:DBEngine]])
-            [metabase.db :refer :all]
+            [metabase.db :as db]
             [metabase.driver :as driver]
             [metabase.events :as events]
             (metabase.models [database :refer [Database]]
@@ -32,7 +32,7 @@
   (@(ns-resolve 'metabase.core 'site-url) request)
   ;; Now create the user
   (let [session-id (str (java.util.UUID/randomUUID))
-        new-user   (ins User
+        new-user   (db/insert! User
                      :email        email
                      :first_name   first_name
                      :last_name    last_name
@@ -46,13 +46,13 @@
     (setting/set :anon-tracking-enabled (or allow_tracking "true"))
     ;; setup database (if needed)
     (when (driver/is-engine? engine)
-      (->> (ins Database :name name :engine engine :details details :is_full_sync (if-not (nil? is_full_sync) is_full_sync
+      (->> (db/insert! Database :name name :engine engine :details details :is_full_sync (if-not (nil? is_full_sync) is_full_sync
                                                                                                               true))
            (events/publish-event :database-create)))
     ;; clear the setup token now, it's no longer needed
     (setup/token-clear)
     ;; then we create a session right away because we want our new user logged in to continue the setup process
-    (ins Session
+    (db/insert! Session
       :id session-id
       :user_id (:id new-user))
     ;; notify that we've got a new user in the system AND that this user logged in

@@ -4,8 +4,8 @@
             [clj-http.client :as http]
             [cheshire.core :as json]
             [metabase.api.common :refer [let-404]]
-            [metabase.db :refer [sel]]
-            [metabase.driver :as driver]
+            (metabase [db :as db]
+                      [driver :as driver])
             [metabase.driver.druid.query-processor :as qp]
             (metabase.models [database :refer [Database]]
                              [field :as field]
@@ -74,7 +74,7 @@
 
 (defn- process-native [{database-id :database, {query :query} :native, :as outer-query}]
   {:pre [(integer? database-id) query]}
-  (let-404 [details (sel :one :field [Database :details], :id database-id)]
+  (let-404 [details (db/sel :one :field [Database :details], :id database-id)]
     (let [query (if (string? query)
                   (json/parse-string query keyword)
                   query)]

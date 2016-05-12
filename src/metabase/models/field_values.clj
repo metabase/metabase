@@ -1,6 +1,6 @@
 (ns metabase.models.field-values
   (:require [clojure.tools.logging :as log]
-            [metabase.db :refer [ins sel upd cascade-delete]]
+            [metabase.db :as db]
             [metabase.models.interface :as i]
             [metabase.util :as u]))
 
@@ -43,7 +43,7 @@
   [{field-id :id, field-name :name, :as field} & [human-readable-values]]
   {:pre [(integer? field-id)]}
   (log/debug (format "Creating FieldValues for Field %s..." (or field-name field-id))) ; use field name if available
-  (ins FieldValues
+  (db/insert! FieldValues
     :field_id              field-id
     :values                ((resolve 'metabase.db.metadata-queries/field-distinct-values) field)
     :human_readable_values human-readable-values))
@@ -53,8 +53,8 @@
   [{field-id :id, :as field}]
   {:pre [(integer? field-id)
          (field-should-have-field-values? field)]}
-  (if-let [field-values (sel :one FieldValues :field_id field-id)]
-    (upd FieldValues (:id field-values)
+  (if-let [field-values (db/sel :one FieldValues :field_id field-id)]
+    (db/upd FieldValues (:id field-values)
       :values ((resolve 'metabase.db.metadata-queries/field-distinct-values) field))
     (create-field-values field)))
 
@@ -66,7 +66,7 @@
   [{field-id :id :as field} & [human-readable-values]]
   {:pre [(integer? field-id)]}
   (when (field-should-have-field-values? field)
-    (or (sel :one FieldValues :field_id field-id)
+    (or (db/sel :one FieldValues :field_id field-id)
         (create-field-values field human-readable-values))))
 
 (defn save-field-values
@@ -74,12 +74,12 @@
   [field-id values]
   {:pre [(integer? field-id)
          (coll? values)]}
-  (if-let [field-values (sel :one FieldValues :field_id field-id)]
-    (upd FieldValues (:id field-values) :values values)
-    (ins FieldValues :field_id field-id, :values values)))
+  (if-let [field-values (db/sel :one FieldValues :field_id field-id)]
+    (db/upd FieldValues (:id field-values) :values values)
+    (db/insert! FieldValues :field_id field-id, :values values)))
 
 (defn clear-field-values
   "Remove the `FieldValues` for FIELD-ID."
   [field-id]
   {:pre [(integer? field-id)]}
-  (cascade-delete FieldValues :field_id field-id))
+  (db/cascade-delete! FieldValues :field_id field-id))

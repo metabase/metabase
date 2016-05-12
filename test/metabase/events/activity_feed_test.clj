@@ -23,21 +23,21 @@
   "Simple helper function which creates a series of test objects for use in the tests"
   []
   (let [rand-name (random-name)
-        user      (db/ins User
+        user      (db/insert! User
                     :email      (str rand-name "@metabase.com")
                     :first_name rand-name
                     :last_name  rand-name
                     :password   rand-name)
         ;; i don't know why, but the below `ins` doesn't return an object :(
-        session   (db/ins Session
+        session   (db/insert! Session
                     :id      rand-name
                     :user_id (:id user))
-        dashboard (db/ins Dashboard
+        dashboard (db/insert! Dashboard
                     :name         rand-name
                     :description  rand-name
                     :creator_id   (:id user)
                     :public_perms 2)
-        card      (db/ins Card
+        card      (db/insert! Card
                     :name                   rand-name
                     :creator_id             (:id user)
                     :public_perms           2
@@ -46,29 +46,29 @@
                                              :type     :query
                                              :query    {:source_table (id :categories)}}
                     :visualization_settings {})
-        dashcard  (db/ins DashboardCard
+        dashcard  (db/insert! DashboardCard
                     :card_id      (:id card)
                     :dashboard_id (:id dashboard))
-        pulse     (db/ins Pulse
+        pulse     (db/insert! Pulse
                     :creator_id   (:id user)
                     :name         rand-name
                     :public_perms 2)
-        database  (db/ins Database
+        database  (db/insert! Database
                     :name      "Activity Database"
                     :engine    :yeehaw
                     :details   {}
                     :is_sample false)
-        table     (db/ins Table
+        table     (db/insert! Table
                     :name   "Activity Table"
                     :db_id  (:id database)
                     :active true)
-        segment   (db/ins Segment
+        segment   (db/insert! Segment
                     :creator_id  (:id user)
                     :table_id    (:id table)
                     :name        "Activity Segment"
                     :description "Something worth reading"
                     :definition  {:a "b"})
-        metric   (db/ins Metric
+        metric   (db/insert! Metric
                     :creator_id  (:id user)
                     :table_id    (:id table)
                     :name        "Activity Metric"

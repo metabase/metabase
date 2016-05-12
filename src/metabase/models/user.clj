@@ -17,7 +17,7 @@
   (assert (and (string? password)
                (not (s/blank? password))))
   (assert (not (:password_salt user))
-    "Don't try to pass an encrypted password to (ins User). Password encryption is handled by pre-insert.")
+    "Don't try to pass an encrypted password to (db/insert! User). Password encryption is handled by pre-insert.")
   (let [salt     (.toString (java.util.UUID/randomUUID))
         defaults {:date_joined  (u/new-sql-timestamp)
                   :last_login   nil
@@ -43,14 +43,14 @@
     (or first_name last_name) (assoc :common_name (str first_name " " last_name))))
 
 (defn- pre-cascade-delete [{:keys [id]}]
-  (db/cascade-delete 'Session :user_id id)
-  (db/cascade-delete 'Dashboard :creator_id id)
-  (db/cascade-delete 'Card :creator_id id)
-  (db/cascade-delete 'Pulse :creator_id id)
-  (db/cascade-delete 'Activity :user_id id)
-  (db/cascade-delete 'ViewLog :user_id id)
-  (db/cascade-delete 'Segment :creator_id id)
-  (db/cascade-delete 'Metric :creator_id id))
+  (db/cascade-delete! 'Session :user_id id)
+  (db/cascade-delete! 'Dashboard :creator_id id)
+  (db/cascade-delete! 'Card :creator_id id)
+  (db/cascade-delete! 'Pulse :creator_id id)
+  (db/cascade-delete! 'Activity :user_id id)
+  (db/cascade-delete! 'ViewLog :user_id id)
+  (db/cascade-delete! 'Segment :creator_id id)
+  (db/cascade-delete! 'Metric :creator_id id))
 
 (u/strict-extend (class User)
   i/IEntity
@@ -77,7 +77,7 @@
   {:pre [(string? first-name)
          (string? last-name)
          (string? email-address)]}
-  (when-let [new-user (db/ins User
+  (when-let [new-user (db/insert! User
                         :email email-address
                         :first_name first-name
                         :last_name last-name

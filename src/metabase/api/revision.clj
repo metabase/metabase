@@ -1,7 +1,7 @@
 (ns metabase.api.revision
   (:require [compojure.core :refer [GET POST]]
             [metabase.api.common :refer :all]
-            [metabase.db :refer [exists?]]
+            [metabase.db :as db]
             (metabase.models [card :refer [Card]]
                              [dashboard :refer [Dashboard]]
                              [revision :as revision])))
@@ -21,14 +21,14 @@
   "Get revisions of an object."
   [entity id]
   {entity Entity, id Integer}
-  (check-404 (exists? entity :id id))
+  (check-404 (db/exists? entity :id id))
   (revision/revisions+details entity id))
 
 (defendpoint POST "/revert"
   "Revert an object to a prior revision."
   [:as {{:keys [entity id revision_id]} :body}]
   {entity Entity, id Integer, revision_id Integer}
-  (check-404 (exists? revision/Revision :model (:name entity) :model_id id :id revision_id))
+  (check-404 (db/exists? revision/Revision :model (:name entity) :model_id id :id revision_id))
   (revision/revert
     :entity      entity
     :id          id

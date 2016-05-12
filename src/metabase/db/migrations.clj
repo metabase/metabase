@@ -113,7 +113,7 @@
       (when (< 1 (count fks))
         (log/debug "Removing duplicate FK entries for" k)
         (doseq [duplicate-fk (drop-last fks)]
-          (db/del ForeignKey :id (:id duplicate-fk)))))))
+          (db/delete! ForeignKey :id (:id duplicate-fk)))))))
 
 
 ;; Migrate dashboards to the new grid
@@ -205,7 +205,7 @@
                     ;; add this table to the set of tables we've processed
                     (swap! processed-tables conj {:schema table-schema, :name table-name})
                     ;; create the RawTable
-                    (let [{raw-table-id :id} (db/ins RawTable
+                    (let [{raw-table-id :id} (db/insert! RawTable
                                                :database_id  database-id
                                                :schema       table-schema
                                                :name         table-name
@@ -226,7 +226,7 @@
                                 (k/set-fields {:visibility_type "retired"})
                                 (k/where      {:id field-id}))
                               ;; normal unmigrated field, so lets use it
-                              (let [{raw-column-id :id} (db/ins RawColumn
+                              (let [{raw-column-id :id} (db/insert! RawColumn
                                                           :raw_table_id  raw-table-id
                                                           :name          column-name
                                                           :is_pk         (= :id (:special_type field))

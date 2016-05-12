@@ -127,58 +127,6 @@
 
 ;; ## SETUP-DB
 
-(defn db []
-  @(:pool @korma.db/_default))
-
-(def ^:const quoting-style
-  "Style of `:quoting` that should be passed to HoneySQL `format`."
-  (case db-type
-    :h2       :h2
-    :mysql    :mysql
-    :postgres :ansi))
-
-(defn query
-  ([honeysql-form]
-   (jdbc/query (db)
-               (u/prog1 (hsql/format (merge {:select [:*]}
-                                            honeysql-form)
-                           :quoting quoting-style)
-                 (println "SQL:" <>))))
-  ([entity honeysql-form]
-   (let [entity (internal/entity->korma entity)]
-     (query (merge {:select (or (models/default-fields entity)
-                                [:*])
-                    :from   [(keyword (:table entity))]}
-                   honeysql-form)))))
-
-(defn- x []
-  (query (-> {}
-             (h/from :core-user)
-             (h/limit 1)
-             (h/where [:= :first-name "Cam"]))))
-
-(defn- y []
-  (query 'User (-> (h/limit 1)
-                   (h/where [:= :first-name "Cam"]))))
-
-(defn query-1 [entity honeysql-form]
-  (first (query entity (h/limit honeysql-form 1))))
-
-(defn- z []
-  (query-1 'User (h/where [:= :first-name "Cam"])))
-
-;; TODO
-;; k/
-;; kdb/
-;; kfns/
-;; kengine/
-;; kx/
-;; kutils/
-;; "korma"
-;; korma-entity
-;; internal/entity->korma -> resolve-entity
-;; c3p0
-
 (def ^:private setup-db-has-been-called?
   (atom false))
 
@@ -251,13 +199,89 @@
 
 ;; # ---------------------------------------- UTILITY FUNCTIONS ----------------------------------------
 
+(defn db-spec []
+  @(:pool @korma.db/_default))
+
+(def ^:const quoting-style
+  "Style of `:quoting` that should be passed to HoneySQL `format`."
+  (case db-type
+    :h2       :h2
+    :mysql    :mysql
+    :postgres :ansi))
+
+;;; DB Primitives -- These replace the equivalent k0rma functions.
+(defn- honeysql->sql
+  "Compile HONEYSQL-FROM to SQL."
+  ^String [honeysql-form]
+  (u/prog1 (hsql/format honeysql-form :quoting quoting-style)
+    (println "SQL:" (first <>))))
+
+(defn query
+  "Compile HONEYSQL-FROM and call `jdbc/query` against the Metabase database."
+  [honeysql-form]
+  (jdbc/query (db-spec) (honeysql->sql honeysql-form)))
+
+(defn- entity->name [entity]
+  (keyword (:table entity)))
+
+(defn select
+  "Select objects from the database."
+  ([honeysql-form]
+   (query (merge {:select [:*]} honeysql-form)))
+
+  ([entity honeysql-form]
+   (let [entity (internal/entity->korma entity)]
+     (select (merge {:select (or (models/default-fields entity)
+                                 [:*])
+                     :from   [(entity->name entity)]}
+                    honeysql-form)))))
+
+(defn select-1
+  "Select a single object from the database.
+
+     (select-1 'User (h/where [:= :first-name \"Cam\"]))"
+  ([entity]
+   (select-1 entity {}))
+  ([entity honeysql-form]
+   (first (select entity (h/limit honeysql-form 1)))))
+
+(defn execute!
+  "Compile HONEYSQL-FORM and call `jdbc/execute!` against the Metabase DB."
+  [honeysql-form]
+  (jdbc/execute! (db-spec) (honeysql->sql honeysql-form)))
+
+(defn where
+  "Generate a HoneySQL `where` form using key-value args.
+
+     (where {} :a :b)      -> (h/where {} [:= :a :b])
+     (where {} :a [:!= b]) -> (h/where {} [:!= :a :b])"
+  ([honeysql-form]
+   honeysql-form) ; no-op
+  ([honeysql-form m]
+   (m/mapply where honeysql-form m))
+  ([honeysql-form k v]
+   (h/merge-where honeysql-form (if (vector? v)
+                                  (let [[f v] v] ; e.g. :id [:!= 1] -> [:!= :id 1]
+                                    (assert (keyword? f))
+                                    [f k v])
+                                  [:= k v])))
+  ([honeysql-form k v & more]
+   (apply where (where honeysql-form k v) more)))
+
+(defn select-1-where
+  "Select a single object matching some conditions.
+
+     (select-1-where 'Label :name \"Cam\")"
+  [entity & kvs]
+  (select-1 entity (apply where {} kvs)))
+
 ;; ## UPD
 
 (defn upd
   "Wrapper around `korma.core/update` that updates a single row by its id value and
    automatically passes &rest KWARGS to `korma.core/set-fields`.
 
-     (upd User 123 :is_active false) ; updates user with id=123, setting is_active=false
+     (db/upd User 123 :is_active false) ; updates user with id=123, setting is_active=false
 
    Returns true if update modified rows, false otherwise."
   [entity entity-id & {:as kwargs}]
@@ -278,15 +302,23 @@
        (m/mapply upd entity entity-id)))
 
 
-;; ## DEL
+;; ## DELETE!
 
-(defn del
-  "Wrapper around `korma.core/delete` that makes it easier to delete a row given a single PK value.
-   Returns a `204 (No Content)` response dictionary."
-  [entity & {:as kwargs}]
-  (k/delete entity (k/where kwargs))
-  {:status 204
-   :body nil})
+(defn delete!
+  "Delete an object or objects from the Metabase DB matching certain constraints. Returns `true` if something was deleted, `false` otherwise.
+
+     (delete! 'Label)                ; delete all Labels
+     (delete! Label :name \"Cam\")   ; delete labels where :name == \"Cam\"
+     (delete! Label {:name \"Cam\"}) ; for flexibility either a single map or kwargs are accepted"
+  {:style/indent 1}
+  ([entity]
+   (delete! entity {}))
+  ([entity kvs]
+   (let [entity (internal/entity->korma entity)]
+     (not= [0] (execute! (-> (h/delete-from (entity->name entity))
+                             (where kvs))))))
+  ([entity k v & more]
+   (delete! entity (apply array-map k v more))))
 
 
 ;; ## SEL
@@ -373,50 +405,54 @@
       ~@args)))
 
 
-;; ## INS
+;; ## INSERT!
 
-(defn ins
-  "Wrapper around `korma.core/insert` that renames the `:scope_identity()` keyword in output to `:id`
-   and automatically passes &rest KWARGS to `korma.core/values`.
+(defn insert!
+  "Insert a new object into the Database. Resolves ENTITY, and calls its `pre-insert` method on OBJECT to prepare it before insertion;
+   after insertion, it calls `post-insert` on the newly created object and returns it.
 
-   Returns a newly created object by calling `sel`."
-  [entity & {:as kwargs}]
-  (let [vals         (models/do-pre-insert entity kwargs)
-        ;; take database-specific keys returned from a jdbc insert and map them to :id
-        {:keys [id]} (set/rename-keys (k/insert entity (k/values vals))
-                                      {(keyword "scope_identity()") :id
-                                       :generated_key               :id})]
-    (some-> id entity models/post-insert)))
+   For flexibility, `insert!` OBJECT can be either a single map or individual kwargs:
+
+     (insert! Label {:name \"Toucan Unfriendly\"})
+     (insert! 'Label :name \"Toucan Friendly\")"
+  {:style/indent 1}
+  ([entity object]
+   (let [entity (internal/entity->korma entity)
+         object (models/do-pre-insert entity object)
+         id     (first (vals (first (jdbc/insert! (db-spec) (entity->name entity) object))))]
+     (some-> id entity models/post-insert)))
+
+  ([entity k v & more]
+   (insert! entity (apply array-map k v more))))
 
 
 ;; ## EXISTS?
 
-(defmacro exists?
-  "Easy way to see if something exists in the db.
+(defn exists?
+  "Easy way to see if something exists in the DB.
 
-    (exists? User :id 100)"
-  [entity & {:as kwargs}]
-  `(boolean (seq (k/select (internal/entity->korma ~entity)
-                           (k/fields [:id])
-                           (k/where ~(if (seq kwargs) kwargs {}))
-                           (k/limit 1)))))
+    (db/exists? User :id 100)
+
+   NOTE: This only works for objects that have an `:id` field."
+  [entity & kvs]
+  (boolean (select-1 entity (apply where (h/select :id) kvs))))
 
 ;; ## CASADE-DELETE
 
-(defn -cascade-delete
-  "Internal implementation of `cascade-delete`. Don't use this directly!"
+(defn -cascade-delete!
+  "Internal implementation of `cascade-delete!`. Don't use this directly!"
   [entity f]
   (let [entity  (internal/entity->korma entity)
         results (internal/sel-exec entity f)]
     (dorun (for [obj (map (partial models/do-post-select entity) results)]
              (do (models/pre-cascade-delete obj)
-                 (del entity :id (:id obj))))))
+                 (delete! entity :id (:id obj))))))
   {:status 204, :body nil})
 
-(defmacro cascade-delete
+(defmacro cascade-delete!
   "Do a cascading delete of object(s). For each matching object, the `pre-cascade-delete` multimethod is called,
    which should delete any objects related the object about to be deleted.
 
    Like `del`, this returns a 204/nil reponse so it can be used directly in an API endpoint."
   [entity & kwargs]
-  `(-cascade-delete ~entity (internal/sel-fn ~@kwargs)))
+  `(-cascade-delete! ~entity (internal/sel-fn ~@kwargs)))

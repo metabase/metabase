@@ -2,8 +2,7 @@
   "Helper functions and macros for writing unit tests."
   (:require [cheshire.core :as json]
             [expectations :refer :all]
-            [medley.core :as m]
-            (metabase [db :refer :all]
+            (metabase [db :as db]
                       [util :as u])
             (metabase.models [card :refer [Card]]
                              [common :as common]
@@ -21,7 +20,7 @@
 
 (declare $->prop)
 
-;; ## match-$
+;; ## match-$!
 
 (defmacro match-$
   "Walk over map DEST-OBJECT and replace values of the form `$`, `$key`, or `$$` as follows:
@@ -194,12 +193,12 @@
 (defn do-with-temp
   "Internal implementation of `with-temp` (don't call this directly)."
   [entity attributes f]
-  (let [temp-object (m/mapply ins entity (merge (with-temp-defaults entity)
-                                                attributes))]
+  (let [temp-object (db/insert! entity (merge (with-temp-defaults entity)
+                                              attributes))]
     (try
       (f temp-object)
       (finally
-        (cascade-delete entity :id (:id temp-object))))))
+        (db/cascade-delete! entity :id (:id temp-object))))))
 
 
 ;;; # with-temp

@@ -118,7 +118,7 @@
                 (k/where {:id [in (k/subselect PulseChannelRecipient (k/fields :user_id) (k/where {:pulse_channel_id id}))]}))))
 
 (defn- pre-cascade-delete [{:keys [id]}]
-  (db/cascade-delete PulseChannelRecipient :pulse_channel_id id))
+  (db/cascade-delete! PulseChannelRecipient :pulse_channel_id id))
 
 (u/strict-extend (class PulseChannel)
   i/IEntity (merge i/IEntityDefaults
@@ -232,18 +232,18 @@
          (coll? recipients)
          (every? map? recipients)]}
   (let [recipients-by-type (group-by integer? (filter identity (map #(or (:id %) (:email %)) recipients)))
-        {:keys [id]} (db/ins PulseChannel
-                       :pulse_id         pulse_id
-                       :channel_type     channel_type
-                       :details          (cond-> details
-                                           (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
-                       :schedule_type    schedule_type
-                       :schedule_hour    (when (not= schedule_type :hourly)
-                                           schedule_hour)
-                       :schedule_day     (when (contains? #{:weekly :monthly} schedule_type)
-                                           schedule_day)
-                       :schedule_frame   (when (= schedule_type :monthly)
-                                           schedule_frame))]
+        {:keys [id]} (db/insert! PulseChannel
+                       :pulse_id       pulse_id
+                       :channel_type   channel_type
+                       :details        (cond-> details
+                                         (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
+                       :schedule_type  schedule_type
+                       :schedule_hour  (when (not= schedule_type :hourly)
+                                         schedule_hour)
+                       :schedule_day   (when (contains? #{:weekly :monthly} schedule_type)
+                                         schedule_day)
+                       :schedule_frame (when (= schedule_type :monthly)
+                                         schedule_frame))]
     (when (and (supports-recipients? channel_type) (seq (get recipients-by-type true)))
       (update-recipients! id (get recipients-by-type true)))
     ;; return the id of our newly created channel

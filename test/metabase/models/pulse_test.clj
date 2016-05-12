@@ -63,8 +63,8 @@
                                                               :details  {:other  "stuff"
                                                                          :emails ["foo@bar.com"]}}]
                   Card         [{card-id :id}                {:name "Test Card"}]]
-    (db/ins PulseCard, :pulse_id pulse-id, :card_id card-id, :position 0)
-    (db/ins PulseChannelRecipient, :pulse_channel_id channel-id, :user_id (user->id :rasta))
+    (db/insert! PulseCard, :pulse_id pulse-id, :card_id card-id, :position 0)
+    (db/insert! PulseChannelRecipient, :pulse_channel_id channel-id, :user_id (user->id :rasta))
     (-> (dissoc (retrieve-pulse pulse-id) :id :pulse_id :created_at :updated_at)
         (update :creator  (u/rpartial dissoc :date_joined :last_login))
         (update :cards    (fn [cards] (for [card cards]

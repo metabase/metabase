@@ -113,11 +113,11 @@
           (metabase.api.common.internal/auto-parse [id]
             (metabase.api.common.internal/let-annotated-args
              {id Required}
-             (clojure.core/-> (do (->404 (sel :one Card :id id)))
+             (clojure.core/-> (do (->404 (db/sel :one Card :id id)))
                               metabase.api.common.internal/wrap-response-if-needed))))))
     (defendpoint GET "/:id" [id]
       {id Required}
-      (->404 (sel :one Card :id id)))))
+      (->404 (db/sel :one Card :id id)))))
 
 
 ;;; ------------------------------------------------------------ ANNOTATION TESTS ------------------------------------------------------------
