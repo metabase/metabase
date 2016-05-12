@@ -3,6 +3,8 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as s]
             [clojure.tools.logging :as log]
+            (honeysql [core :as hsql]
+                      [helpers :as h])
             (korma [core :as k]
                    [db :as kdb])
             [medley.core :as m]
@@ -208,31 +210,48 @@
     (into {} (for [[k v] row-or-rows]
                {(sql/escape-field-name k) v}))))
 
-(defn load-data-with-debug-logging
-  "Add debug logging to the data loading fn. This should passed as the first arg to `make-load-data-fn`."
-  [insert!]
-  (fn [rows]
-    (println (u/format-color 'blue "Inserting %d rows like:\n%s" (count rows) (s/replace (k/sql-only (k/insert :some-table (k/values (escape-field-names (first rows)))))
-                                                                                         #"\"SOME-TABLE\""
-                                                                                         "[table]")))
-    (let [start-time (System/currentTimeMillis)]
-      (insert! rows)
-      (println (u/format-color 'green "Inserting %d rows took %d ms." (count rows) (- (System/currentTimeMillis) start-time))))))
+;; (defn load-data-with-debug-logging
+;;   "Add debug logging to the data loading fn. This should passed as the first arg to `make-load-data-fn`."
+;;   [insert!]
+;;   (fn [rows]
+;;     (println (u/format-color 'blue "Inserting %d rows like:\n%s" (count rows) (s/replace (k/sql-only (k/insert :some-table (k/values (escape-field-names (first rows)))))
+;;                                                                                          #"\"SOME-TABLE\""
+;;                                                                                          "[table]")))
+;;     (let [start-time (System/currentTimeMillis)]
+;;       (insert! rows)
+;;       (println (u/format-color 'green "Inserting %d rows took %d ms." (count rows) (- (System/currentTimeMillis) start-time))))))
+
+(defn- insert! [spec prepare-key-fn table-name row-or-rows]
+  (let [prepare-key (comp keyword prepare-key-fn name)
+        rows        (u/prog1 (if (sequential? row-or-rows)
+                               row-or-rows
+                               [row-or-rows])
+                      (println "ROWS[0]:" (first <>)))
+        first-row   (first rows)
+        columns     (keys first-row)
+        values      (vec (for [row rows]
+                           (mapv row columns)))
+        hsql-form   (-> (apply h/columns (map prepare-key columns))
+                        (h/insert-into (prepare-key table-name))
+                        (h/values values))
+        sql+args    (hsql/format hsql-form
+                      :quoting             :ansi ; TODO
+                      :allow-dashed-names? true)]
+    (println "COLUMNS:" columns)
+    (println "VALUES[0]:" (first values))
+    (println "SQL:" (first sql+args))
+    (jdbc/execute! spec sql+args)))
 
 (defn make-load-data-fn
   "Create a `load-data!` function. This creates a function to actually insert a row or rows, wraps it with any WRAP-INSERT-FNS,
    the calls the resulting function with the rows to insert."
   [& wrap-insert-fns]
   (fn [driver dbdef tabledef]
-    (let [entity  (korma-entity driver dbdef tabledef)
-          ;; _       (assert (or (delay? (:pool (:db entity)))
-          ;;                     (println "Expected pooled connection:" (u/pprint-to-str 'cyan entity))))
-          insert! ((apply comp wrap-insert-fns) (fn [row-or-rows]
-                                                  ;; (let [id (:id row-or-rows)]
-                                                  ;;   (when (zero? (mod id 50))
-                                                  ;;     (println id)))
-                                                  (k/insert entity (k/values (escape-field-names row-or-rows)))))
-          rows    (load-data-get-rows driver dbdef tabledef)]
+    (let [entity      (korma-entity driver dbdef tabledef)
+          spec        (database->spec driver :db dbdef)
+          prepare-key (get-in entity [:db :options :naming :fields])
+          insert!     ((apply comp wrap-insert-fns) (partial insert! spec prepare-key (:table entity)))
+          rows        (load-data-get-rows driver dbdef tabledef)]
       (insert! rows))))
 
 (def load-data-all-at-once!             "Insert all rows at once."                             (make-load-data-fn))
@@ -249,7 +268,6 @@
                (not (s/blank? (s/replace sql #";" ""))))
       ;; Remove excess semicolons, otherwise snippy DBs like Oracle will barf
       (let [sql (s/replace sql #";+" ";")]
-        ;; (println (u/format-color 'blue "[SQL] <<<%s>>>" sql))
         (try
           (jdbc/execute! (database->spec driver context dbdef) [sql] :transaction? false, :multi? true)
           (catch java.sql.SQLException e

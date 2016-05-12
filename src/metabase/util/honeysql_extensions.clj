@@ -2,6 +2,8 @@
   (:refer-clojure :exclude [+ - / * mod inc dec cast concat format])
   (:require [honeysql.core :as hsql]))
 
+(alter-meta! #'honeysql.core/format assoc :style/indent 1)
+
 (def ^{:arglists '([& exprs])}  +  "Math operator. Interpose `+` between EXPRS and wrap in parentheses." (partial hsql/call :+))
 (def ^{:arglists '([& exprs])}  -  "Math operator. Interpose `-` between EXPRS and wrap in parentheses." (partial hsql/call :-))
 (def ^{:arglists '([& exprs])}  /  "Math operator. Interpose `/` between EXPRS and wrap in parentheses." (partial hsql/call :/))
