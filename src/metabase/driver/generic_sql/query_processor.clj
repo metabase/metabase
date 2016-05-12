@@ -1,18 +1,18 @@
 (ns metabase.driver.generic-sql.query-processor
   "The Query Processor is responsible for translating the Metabase Query Language into korma SQL forms."
-  (:require [clj-time.coerce :as tc]
-            [clj-time.core :as t]
-            [clj-time.format :as tf]
-            [clojure.java.jdbc :as jdbc]
+  (:require [clojure.java.jdbc :as jdbc]
             (clojure [string :as s]
                      [walk :as walk])
             [clojure.tools.logging :as log]
+            [clj-time.coerce :as tc]
+            [clj-time.core :as t]
+            [clj-time.format :as tf]
             (korma [core :as k]
                    [db :as kdb])
             (korma.sql [engine :as kengine]
                        [fns :as kfns])
-            [metabase.config :as config]
-            [metabase.driver :as driver]
+            (metabase [config :as config]
+                      [driver :as driver])
             [metabase.driver.generic-sql :as sql]
             [metabase.query-processor :as qp]
             metabase.query-processor.interface
@@ -170,7 +170,10 @@
              :=           ['=    (formatted value)]
              :!=          ['not= (formatted value)])}))
 
-(defn filter-clause->predicate [{:keys [compound-type subclause subclauses], :as clause}]
+(defn filter-clause->predicate
+  "Given a filter CLAUSE, return a Korma filter predicate form for use in korma `where`.  If this is a compound
+   clause then we call `filter-subclause->predicate` on all of the subclauses."
+  [{:keys [compound-type subclause subclauses], :as clause}]
   (case compound-type
     :and (apply kfns/pred-and (map filter-clause->predicate subclauses))
     :or  (apply kfns/pred-or  (map filter-clause->predicate subclauses))
@@ -292,7 +295,7 @@
   "Build the korma form we will call `k/exec` on."
   [driver {inner-query :query :as outer-query} entity]
   (binding [*query* outer-query]
-      (apply-clauses driver (k/select* entity) inner-query)))
+    (apply-clauses driver (k/select* entity) inner-query)))
 
 
 (def ^:private formatter (tf/formatter "YYYY-MM-dd" (t/default-time-zone)))

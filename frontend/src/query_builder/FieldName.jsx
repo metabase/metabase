@@ -4,7 +4,6 @@ import Icon from "metabase/components/Icon.jsx";
 
 import Query from "metabase/lib/query";
 import { formatBucketing, parseFieldBucketing, parseFieldTarget } from "metabase/lib/query_time";
-import { isDate } from "metabase/lib/schema_metadata";
 import { stripId } from "metabase/lib/formatting";
 
 import _ from "underscore";
@@ -54,7 +53,7 @@ export default class FieldName extends Component {
         }
 
         // if this is a datetime field then add an extra bit of labeling about the time bucket
-        if (fieldDef && isDate(fieldDef)) {
+        if (fieldDef && bucketing) {
             bucketingTitle = ": " + formatBucketing(bucketing);
         }
 

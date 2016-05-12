@@ -312,27 +312,37 @@
 
 ;;; ## order-by
 
-(s/defn ^:private ^:always-validate maybe-parse-order-by-subclause :- i/OrderBy [subclause]
-  (cond
-    (map? subclause)    subclause
-    (vector? subclause) (let [[f direction] subclause]
-                          (log/warn (u/format-color 'yellow (str "The syntax for order-by has changed in MBQL '98. [<field> :ascending/:descending] is deprecated. "
-                                                                 "Prefer [:asc/:desc <field>] instead.")))
-                          {:field (field f), :direction (normalize-token direction)})))
+(s/defn ^:private ^:always-validate order-by-subclause :- i/OrderBy
+  [direction :- i/OrderByDirection, f]
+  ;; it's not particularly useful to sort datetime fields with the default `:day` bucketing,
+  ;; so specifiy `:default` bucketing to prevent the default of `:day` from being set during resolution.
+  ;; This won't affect fields that aren't `DateTimeFields`.
+  {:direction direction
+   :field     (let [f (field f)]
+                (if-not (instance? FieldPlaceholder f)
+                  f
+                  (update f :datetime-unit (fn [unit]
+                                             (core/or unit :default)))))})
 
-(s/defn ^:ql ^:always-validate asc :- i/OrderBy
-  "order-by subclause. Specify that results should be returned in ascending order for Field or AgRef F.
+(def ^:ql ^{:arglists '([field])} asc
+  "`order-by` subclause. Specify that results should be returned in ascending order for Field or AgRef F.
 
      (order-by {} (asc 100))"
-  [f]
-  {:field (field f), :direction :ascending})
+  (partial order-by-subclause :ascending))
 
-(s/defn ^:ql ^:always-validate desc :- i/OrderBy
-  "order-by subclause. Specify that results should be returned in ascending order for Field or AgRef F.
+(def ^:ql ^{:arglists '([field])} desc
+  "`order-by` subclause. Specify that results should be returned in ascending order for Field or AgRef F.
 
      (order-by {} (desc 100))"
-  [f]
-  {:field (field f), :direction :descending})
+  (partial order-by-subclause :descending))
+
+(s/defn ^:private ^:always-validate maybe-parse-order-by-subclause :- i/OrderBy
+  [subclause]
+  (cond
+    (map? subclause)    subclause ; already parsed by `asc` or `desc`
+    (vector? subclause) (let [[f direction] subclause]
+                          (log/warn (u/format-color 'yellow "The syntax for order-by has changed in MBQL '98. [<field> :ascending/:descending] is deprecated. Prefer [:asc/:desc <field>] instead."))
+                          (order-by-subclause (normalize-token direction) f))))
 
 (defn ^:ql order-by
   "Specify how ordering should be done for this query.
@@ -382,10 +392,10 @@
                                                          (float arg) ; convert args to floats so things like 5 / 10 -> 0.5 instead of 0
                                                          arg)))}))
 
-(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} + "Arithmetic addition function."       (partial expression-fn :+))
-(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} - "Arithmetic subtraction function."    (partial expression-fn :-))
-(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} * "Arithmetic multiplication function." (partial expression-fn :*))
-(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more])} / "Arithmetic division function."       (partial expression-fn :/))
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} + "Arithmetic addition function."       (partial expression-fn :+))
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} - "Arithmetic subtraction function."    (partial expression-fn :-))
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} * "Arithmetic multiplication function." (partial expression-fn :*))
+(def ^:ql ^{:arglists '([rvalue1 rvalue2 & more]), :added "0.17.0"} / "Arithmetic division function."       (partial expression-fn :/))
 
 ;;; EXPRESSION PARSING
 
@@ -395,8 +405,7 @@
 (def ^:private token->ql-fn
   "A map of keywords (e.g., `:=`), to the matching vars (e.g., `#'=`)."
   (into {} (for [[symb varr] (ns-publics *ns*)
-                 :let        [metta (meta varr)]
-                 :when       (:ql metta)]
+                 :when       (:ql (meta varr))]
              {(keyword symb) varr})))
 
 (defn- fn-for-token

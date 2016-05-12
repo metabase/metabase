@@ -461,7 +461,8 @@ export let CardRenderer = {
         let xValues = _.chain(datas)
             .map((data) => _.pluck(data, 0))
             .flatten(true)
-            .uniq()
+            .sortBy(value => value)
+            .uniq(true)
             .value();
 
         let dimension, groups, yAxisSplit;

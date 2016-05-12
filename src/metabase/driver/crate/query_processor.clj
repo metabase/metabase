@@ -11,8 +11,13 @@
 (defn- rewrite-between
   "Rewrite [:between <field> <min> <max>] -> [:and [:>= <field> <min>] [:<= <field> <max>]]"
   [clause]
-  (i/strict-map->CompoundFilter {:compound-type :and :subclauses [(ComparisonFilter. :>= (:field clause) (:min-val clause))
-                                       (ComparisonFilter. :<= (:field clause) (:max-val clause))]}))
+  (i/strict-map->CompoundFilter {:compound-type :and
+                                 :subclauses    [(i/strict-map->ComparisonFilter {:filter-type :>=
+                                                                                  :field       (:field clause)
+                                                                                  :value       (:min-val clause)})
+                                                 (i/strict-map->ComparisonFilter {:filter-type :<=
+                                                                                  :field       (:field clause)
+                                                                                  :value       (:max-val clause)})]}))
 
 (defn resolve-subclauses
   "resolve filters recursively"
@@ -23,7 +28,7 @@
            (qp/filter-clause->predicate clause))
     (case (:compound-type clause)
       :and (apply kfns/pred-and (map resolve-subclauses (:subclauses clause)))
-      :or (apply kfns/pred-or  (map resolve-subclauses (:subclauses clause)))
+      :or  (apply kfns/pred-or  (map resolve-subclauses (:subclauses clause)))
       :not (kfns/pred-not (kengine/pred-map (qp/filter-subclause->predicate clause))))))
 
 (defn apply-filter

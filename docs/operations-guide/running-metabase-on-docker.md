@@ -44,12 +44,12 @@ In this scenario all you need to do is make sure you launch Metabase with the co
 Keep in mind that Metabase will be connecting from within your docker container, so make sure that either you're using a fully qualified hostname or that you've set a proper entry in your container's `/etc/hosts file`.
 
 
-### Setting the JVM Timezone
+### Setting the Java Timezone
 
-It's best to set your JVM timezone to match the timezone you'd like all your reports to come in.  You can do this by simply specifying the `JVM_TIMEZONE` environment variable which is picked up by the Metabase launch script.  For example:
+It's best to set your Java timezone to match the timezone you'd like all your reports to come in.  You can do this by simply specifying the `JAVA_TIMEZONE` environment variable which is picked up by the Metabase launch script.  For example:
 
     docker run -d -p 3000:3000 \
-      -e "JVM_TIMEZONE=US/Pacific" \
+      -e "JAVA_TIMEZONE=US/Pacific" \
       --name metabase metabase/metabase
 
 

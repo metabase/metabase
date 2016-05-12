@@ -106,7 +106,7 @@ export const isString = isFieldType.bind(null, STRING);
 export const isSummable = isFieldType.bind(null, SUMMABLE);
 export const isCategory = isFieldType.bind(null, CATEGORY);
 export const isDimension = () => true;
-
+export const isMetric = (col) => isNumeric(col)
 
 // operator argument constructors:
 
