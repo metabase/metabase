@@ -179,7 +179,7 @@
   {:pre [(seq database-name) (sequential? table-definitions)]}
   (let [database-name (normalize-name-and-add-prefix database-name)]
     (when-not (contains? @created-databases database-name)
-      (u/auto-retry 3
+      (u/auto-retry 5
         (u/ignore-exceptions
           (destroy-dataset! database-name))
         (create-dataset! database-name)

@@ -6,8 +6,8 @@
             [medley.core :as m]
             [metabase.db :refer [ins sel upd]]
             (metabase.models [database :refer [Database]]
-                             [query-execution :refer [QueryExecution]])
-            [metabase.models.setting :refer [defsetting]]
+                             [query-execution :refer [QueryExecution]]
+                             [setting :refer [defsetting]])
             [metabase.util :as u])
   (:import clojure.lang.Keyword))
 
@@ -110,18 +110,19 @@
   (features ^java.util.Set [this]
     "*OPTIONAL*. A set of keyword names of optional features supported by this driver, such as `:foreign-keys`. Valid features are:
 
-     *  `:foreign-keys`
-     *  `:nested-fields`
-     *  `:set-timezone`
-     *  `:standard-deviation-aggregations`
-     *  `:expressions`")
+  *  `:foreign-keys` - Does this database support foreign key relationships?
+  *  `:nested-fields` - Does this database support nested fields (e.g. Mongo)?
+  *  `:set-timezone` - Does this driver support setting a timezone for the query?
+  *  `:standard-deviation-aggregations` - Does this driver support [standard deviation aggregations](https://github.com/metabase/metabase/wiki/Query-Language-'98#stddev-aggregation)?
+  *  `:expressions` - Does this driver support [expressions](https://github.com/metabase/metabase/wiki/Query-Language-'98#expressions) (e.g. adding the values of 2 columns together)?
+  *  `:dynamic-schema` -  Does this Database have no fixed definitions of schemas? (e.g. Mongo)")
 
   (field-values-lazy-seq ^clojure.lang.Sequential [this, ^FieldInstance field]
     "Return a lazy sequence of all values of FIELD.
      This is used to implement some methods of the database sync process which require rows of data during execution.
 
-     The lazy sequence should not return more than `max-sync-lazy-seq-results`, which is currently `10000`.
-     For drivers that provide a chunked implementation, a recommended chunk size is `field-values-lazy-seq-chunk-size`, which is currently `500`.")
+  The lazy sequence should not return more than `max-sync-lazy-seq-results`, which is currently `10000`.
+  For drivers that provide a chunked implementation, a recommended chunk size is `field-values-lazy-seq-chunk-size`, which is currently `500`.")
 
   (humanize-connection-error-message ^String [this, ^String message]
     "*OPTIONAL*. Return a humanized (user-facing) version of an connection error message string.
@@ -134,7 +135,7 @@
   (process-native [this, {^Integer database-id :database, {^String native-query :query} :native, :as ^Map query}]
     "Process a native QUERY. This function is called by `metabase.driver/process-query`.
 
-     Results should look something like:
+ Results should look something like:
 
        {:columns [\"id\", \"bird_name\"]
         :cols    [{:name \"id\", :base_type :IntegerField}
@@ -142,11 +143,11 @@
         :rows    [[1 \"Lucky Bird\"]
                   [2 \"Rasta Can\"]]}")
 
-  (process-structured [this, ^Map query]
+  (process-mbql [this, ^Map query]
     "Process a native or structured QUERY. This function is called by `metabase.driver/process-query` after performing various driver-unspecific
      steps like Query Expansion and other preprocessing.
 
-     Results should look something like:
+ Results should look something like:
 
        [{:id 1, :name \"Lucky Bird\"}
         {:id 2, :name \"Rasta Can\"}]")

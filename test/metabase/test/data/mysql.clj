@@ -20,7 +20,7 @@
    :TextField       "TEXT"
    :TimeField       "TIME"})
 
-(defn- database->connection-details [_ context {:keys [database-name short-lived?]}]
+(defn- database->connection-details [context {:keys [database-name short-lived?]}]
   (merge {:host         "localhost"
           :port         3306
           :timezone     :America/Los_Angeles
@@ -30,19 +30,18 @@
          (when (= context :db)
            {:db database-name})))
 
-(defn- quote-name [_ nm]
+(defn- quote-name [nm]
   (str \` nm \`))
 
 (u/strict-extend MySQLDriver
   generic/IGenericSQLDatasetLoader
   (merge generic/DefaultsMixin
-         {:execute-sql!              generic/sequentially-execute-sql!
-          :field-base-type->sql-type (fn [_ base-type]
-                                       (field-base-type->sql-type base-type))
+         {:execute-sql!              generic/sequentially-execute-sql!                  ; TODO - we might be able to do SQL all at once by setting `allowMultiQueries=true` on the connection string
+          :field-base-type->sql-type (u/drop-first-arg field-base-type->sql-type)
           :load-data!                generic/load-data-all-at-once!
           :pk-sql-type               (constantly "INTEGER NOT NULL AUTO_INCREMENT")
-          :quote-name                quote-name})
+          :quote-name                (u/drop-first-arg quote-name)})
   i/IDatasetLoader
   (merge generic/IDatasetLoaderMixin
-         {:database->connection-details database->connection-details
+         {:database->connection-details (u/drop-first-arg database->connection-details)
           :engine                       (constantly :mysql)}))

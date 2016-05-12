@@ -378,6 +378,12 @@ var Aggregators = [{
     "validFieldsFilters": [summableFields],
     "requiresField": true
 }, {
+    "name": "Cumulative count of rows",
+    "short": "cum_count",
+    "description": "Additive count of the number of rows.\ne.x. total number of sales over time.",
+    "validFieldsFilters": [],
+    "requiresField": false
+}, {
     "name": "Standard deviation of ...",
     "short": "stddev",
     "description": "Number which expresses how much the values of a column vary among all rows in the answer.",

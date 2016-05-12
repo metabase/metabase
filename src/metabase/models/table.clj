@@ -113,11 +113,12 @@
 
 (defn create-table
   "Create `Table` with the data from TABLE-DEF."
-  [database-id {schema-name :schema, table-name :name, raw-table-id :raw-table-id}]
+  [database-id {schema-name :schema, table-name :name, raw-table-id :raw-table-id, visibility-type :visibility-type}]
   (db/ins Table
-    :db_id        database-id
-    :raw_table_id raw-table-id
-    :schema       schema-name
-    :name         table-name
-    :display_name (common/name->human-readable-name table-name)
-    :active       true))
+    :db_id           database-id
+    :raw_table_id    raw-table-id
+    :schema          schema-name
+    :name            table-name
+    :visibility_type visibility-type
+    :display_name    (common/name->human-readable-name table-name)
+    :active          true))

@@ -499,6 +499,14 @@
 (defmethod post-process ::topN       [_ results] (-> results first :result))
 (defmethod post-process ::groupBy    [_ results] (map :event results))
 
+(defn post-process-native
+  "Post-process the results of a *native* Druid query.
+   The appropriate ns-qualified query type keyword (e.g. `::select`, used for mutlimethod dispatch) is inferred from the query itself."
+  [{:keys [queryType], :as query} results]
+  {:pre [queryType]}
+  (post-process (keyword "metabase.driver.druid.query-processor" (name queryType))
+                results))
+
 
 (defn- remove-bonus-keys
   "Remove keys that start with `___` from the results -- they were temporary, and we don't want to return them."
@@ -512,10 +520,10 @@
         (apply dissoc result keys-to-remove)))))
 
 
-;;; ### process-structured-query
+;;; ### process-mbql-query
 
-(defn process-structured-query
-  "Process a structured (inner) query for a Druid DB."
+(defn process-mbql-query
+  "Process an MBQL (inner) query for a Druid DB."
   [do-query query]
   (binding [*query* query]
     (let [[query-type druid-query] (build-druid-query query)]

@@ -1,23 +1,26 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 
-import DataReferenceMain from './DataReferenceMain.jsx';
-import DataReferenceTable from './DataReferenceTable.jsx';
-import DataReferenceField from './DataReferenceField.jsx';
+import MainPane from './MainPane.jsx';
+import TablePane from './TablePane.jsx';
+import FieldPane from './FieldPane.jsx';
+import SegmentPane from './SegmentPane.jsx';
+import MetricPane from './MetricPane.jsx';
 import Icon from "metabase/components/Icon.jsx";
+
+import _ from "underscore";
 
 export default class DataReference extends Component {
     constructor(props, context) {
         super(props, context);
-        this.back = this.back.bind(this);
-        this.close = this.close.bind(this);
-        this.showField = this.showField.bind(this);
-        this.showTable = this.showTable.bind(this);
 
         this.state = {
             stack: [],
             tables: {},
             fields: {}
         };
+
+        _.bindAll(this, "back", "close", "show");
     }
 
     static propTypes = {
@@ -41,28 +44,26 @@ export default class DataReference extends Component {
         });
     }
 
-    showField(field) {
+    show(type, item) {
         this.setState({
-            stack: this.state.stack.concat({ type: "field", field: field })
-        });
-    }
-
-    showTable(table) {
-        this.setState({
-            stack: this.state.stack.concat({ type: "table", table: table })
+            stack: this.state.stack.concat({ type, item })
         });
     }
 
     render() {
         var content;
         if (this.state.stack.length === 0) {
-            content = <DataReferenceMain {...this.props} showTable={this.showTable} />
+            content = <MainPane {...this.props} show={this.show} />
         } else {
             var page = this.state.stack[this.state.stack.length - 1];
             if (page.type === "table") {
-                content = <DataReferenceTable {...this.props} table={page.table} showField={this.showField} />
+                content = <TablePane {...this.props} show={this.show} table={page.item} />
             } else if (page.type === "field") {
-                content = <DataReferenceField {...this.props} field={page.field}/>
+                content = <FieldPane {...this.props} show={this.show} field={page.item}/>
+            } else if (page.type === "segment") {
+                content = <SegmentPane {...this.props} show={this.show} segment={page.item}/>
+            } else if (page.type === "metric") {
+                content = <MetricPane {...this.props} show={this.show} metric={page.item}/>
             }
         }
 

@@ -150,7 +150,7 @@
   (apply k/fields korma-form (for [field fields]
                                 (as (formatted field) field))))
 
-(defn- filter-subclause->predicate
+(defn filter-subclause->predicate
   "Given a filter SUBCLAUSE, return a Korma filter predicate form for use in korma `where`."
   [{:keys [filter-type field value], :as filter}]
   {:pre [(map? filter) field]}
@@ -167,7 +167,10 @@
              :=           ['=    (formatted value)]
              :!=          ['not= (formatted value)])}))
 
-(defn- filter-clause->predicate [{:keys [compound-type subclause subclauses], :as clause}]
+(defn filter-clause->predicate
+  "Given a filter CLAUSE, return a Korma filter predicate form for use in korma `where`.  If this is a compound
+   clause then we call `filter-subclause->predicate` on all of the subclauses."
+  [{:keys [compound-type subclause subclauses], :as clause}]
   (case compound-type
     :and (apply kfns/pred-and (map filter-clause->predicate subclauses))
     :or  (apply kfns/pred-or  (map filter-clause->predicate subclauses))
@@ -294,24 +297,26 @@
                       (with-out-str (jdbc/print-sql-exception-chain e))))
          (f))))
 
+(defn- exception->nice-error-message ^String [^java.sql.SQLException e]
+  (or (->> (.getMessage e)                       ; error message comes back like "Error message ... [status-code]" sometimes
+           (re-find  #"(?s)(^.*)\s+\[[\d-]+\]$") ; status code isn't useful and makes unit tests hard to write so strip it off
+           second)                               ; (?s) = Pattern.DOTALL - tell regex `.` to match newline characters as well
+      (.getMessage e)))
+
 (defn- do-with-try-catch [f]
   (try
     (f)
     (catch java.sql.SQLException e
       (jdbc/print-sql-exception-chain e)
-      (let [^String message (or (->> (.getMessage e)                       ; error message comes back like "Error message ... [status-code]" sometimes
-                                     (re-find  #"(?s)(^.*)\s+\[[\d-]+\]$") ; status code isn't useful and makes unit tests hard to write so strip it off
-                                     second)                               ; (?s) = Pattern.DOTALL - tell regex `.` to match newline characters as well
-                                (.getMessage e))]
-        (throw (Exception. message))))))
+      (throw (Exception. (exception->nice-error-message e))))))
 
 (defn build-korma-form
   "Build the korma form we will call `k/exec` on."
   [driver {inner-query :query :as outer-query} entity]
   (binding [*query* outer-query]
-      (apply-clauses driver (k/select* entity) inner-query)))
+    (apply-clauses driver (k/select* entity) inner-query)))
 
-(defn process-structured
+(defn process-mbql
   "Convert QUERY into a korma `select` form, execute it, and annotate the results."
   [driver {{:keys [source-table]} :query, database :database, settings :settings, :as outer-query}]
   (let [timezone   (:report-timezone settings)

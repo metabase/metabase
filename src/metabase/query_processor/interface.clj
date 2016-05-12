@@ -248,7 +248,8 @@
 
 ;;; # ------------------------------------------------------------ CLAUSE SCHEMAS ------------------------------------------------------------
 
-(s/defrecord AggregationWithoutField [aggregation-type :- (s/eq :count)])
+(s/defrecord AggregationWithoutField [aggregation-type :- (s/named (s/enum :count :cumulative-count)
+                                                                   "Valid aggregation type")])
 
 (s/defrecord AggregationWithField [aggregation-type :- (s/named (s/enum :avg :count :cumulative-sum :distinct :max :min :stddev :sum)
                                                                 "Valid aggregation type")

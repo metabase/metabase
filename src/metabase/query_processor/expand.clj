@@ -107,6 +107,7 @@
                                                                    (normalize-token unit))})))
 
 (s/defn ^:ql ^:always-validate expression :- ExpressionRef
+  {:added "0.17.0"}
   [expression-name :- (s/cond-pre s/Str s/Keyword)]
   (i/strict-map->ExpressionRef {:expression-name (name expression-name)}))
 
@@ -134,6 +135,11 @@
   "Aggregation clause. Return total row count (e.g., `COUNT(*)`). If F is specified, only count rows where F is non-null (e.g. `COUNT(f)`)."
   ([]  (i/strict-map->AggregationWithoutField {:aggregation-type :count}))
   ([f] (ag-with-field :count f)))
+
+(s/defn ^:ql ^:always-validate cum-count :- i/Aggregation
+  "Aggregation clause. Return the cumulative row count (presumably broken out in some way)."
+  []
+  (i/strict-map->AggregationWithoutField {:aggregation-type :cumulative-count}))
 
 (defn ^:ql ^:deprecated rows
   "Bare rows aggregation. This is the default behavior, so specifying it is deprecated."
@@ -173,7 +179,7 @@
 ;;; ## filter
 
 (s/defn ^:private ^:always-validate compound-filter :- i/Filter
-  ([compound-type subclause :- i/Filter]
+  ([compound-type, subclause :- i/Filter]
    (log/warn (u/format-color 'yellow "You shouldn't specify an %s filter with only one subclause." compound-type))
    subclause)
 

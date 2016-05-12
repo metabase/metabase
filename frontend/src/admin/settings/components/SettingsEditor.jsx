@@ -1,11 +1,13 @@
 import React, { Component, PropTypes } from "react";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
+import MetabaseSettings from "metabase/lib/settings";
 
 import SettingsHeader from "./SettingsHeader.jsx";
 import SettingsSetting from "./SettingsSetting.jsx";
 import SettingsEmailForm from "./SettingsEmailForm.jsx";
 import SettingsSlackForm from "./SettingsSlackForm.jsx";
+import SettingsUpdatesForm from "./SettingsUpdatesForm.jsx";
 
 import _ from "underscore";
 import cx from 'classnames';
@@ -84,6 +86,18 @@ export default class SettingsEditor extends Component {
                     />
                 </div>
             );
+        } else if (section.name === "Updates") {
+            return (
+                <div className="px2">
+                    <SettingsUpdatesForm
+                        ref="updatesForm"
+                        settings={this.props.settings}
+                        elements={section.settings}
+                        updateSetting={this.updateSetting}
+                        handleChangeEvent={this.handleChangeEvent}
+                    />
+                </div>
+            );
         } else {
             let settings = section.settings.map((setting, index) => {
                 return <SettingsSetting key={setting.key} setting={setting} updateSetting={this.updateSetting} handleChangeEvent={this.handleChangeEvent} autoFocus={index === 0}/>
@@ -99,14 +113,23 @@ export default class SettingsEditor extends Component {
 
     renderSettingsSections() {
         const sections = _.map(this.props.sections, (section, idx) => {
-            const classes = cx("AdminList-item", "flex", "align-center", "no-decoration", {
+            const classes = cx("AdminList-item", "flex", "align-center", "justify-between", "no-decoration", {
                 "selected": this.state.currentSection === idx
             });
+
+            // if this is the Updates section && there is a new version then lets add a little indicator
+            let newVersionIndicator;
+            if (section.name === "Updates" && MetabaseSettings.newVersionAvailable(this.props.settings)) {
+                newVersionIndicator = (
+                    <span style={{padding: "4px 8px 4px 8px"}} className="bg-brand rounded text-white text-bold h6">1</span>
+                );
+            }
 
             return (
                 <li key={section.name}>
                     <a href="#" className={classes} onClick={this.selectSection.bind(null, idx)}>
-                        {section.name}
+                        <span>{section.name}</span>
+                        {newVersionIndicator}
                     </a>
                 </li>
             );

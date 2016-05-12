@@ -29,6 +29,10 @@
   width: 480px;
 }
 
+.Modal.Modal--wide {
+  width: 85%;
+}
+
 .Modal-backdrop {
     position: fixed;
     top: 0;

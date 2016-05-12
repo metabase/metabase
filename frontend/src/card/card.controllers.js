@@ -3,7 +3,7 @@
 import React from "react";
 import ReactDOM from "react-dom";
 
-import DataReference from '../query_builder/DataReference.jsx';
+import DataReference from '../query_builder/dataref/DataReference.jsx';
 import GuiQueryEditor from '../query_builder/GuiQueryEditor.jsx';
 import NativeQueryEditor from '../query_builder/NativeQueryEditor.jsx';
 import QueryHeader from '../query_builder/QueryHeader.jsx';
@@ -60,7 +60,8 @@ CardControllers.controller('CardDetail', [
                 dataset_query: {},
             },
             originalCard,
-            savedCardSerialized = null;
+            savedCardSerialized = null,
+            cancelQueryDeferred;
 
         resetDirty();
 
@@ -141,6 +142,7 @@ CardControllers.controller('CardDetail', [
             query: null,
             setQueryFn: onQueryChanged,
             setDatabaseFn: setDatabase,
+            setTableFn: setTable,            // this is used for native queries, vs. setSourceTable, which is used for MBQL
             setSourceTableFn: setSourceTable,
             autocompleteResultsFn: function(prefix) {
                 var apiCall = Metabase.db_autocomplete_suggestions({
@@ -148,6 +150,21 @@ CardControllers.controller('CardDetail', [
                     prefix: prefix
                 });
                 return apiCall.$promise;
+            },
+            getModeInfo: function() {
+                let databaseID = card ? card.dataset_query.database : null,
+                    database   = _.findWhere(databases, { id: databaseID }),
+                    engine     = database ? database.engine : null;
+
+                return {
+                    mode: engine === 'druid' || engine === 'mongo' ? 'ace/mode/json'  :
+                          engine === 'mysql'                       ? 'ace/mode/mysql' :
+                          engine === 'postgres'                    ? 'ace/mode/pgsql' :
+                          engine === 'sqlserver'                   ? 'ace/mode/sqlserver' :
+                                                                     'ace/mode/sql',
+                    description: engine === 'druid' || engine === 'mongo' ? 'JSON' : 'SQL',
+                    requiresTable: engine === 'mongo'
+                };
             }
         };
 
@@ -160,6 +177,7 @@ CardControllers.controller('CardDetail', [
             tableForeignKeyReferences: null,
             isRunning: false,
             runQueryFn: runQuery,
+            cancelQueryFn: cancelQuery,
             isObjectDetail: false,
             setDisplayFn: function(display) {
                 onVisualizationSettingsChanged(display, card.visualization_settings);
@@ -427,14 +445,16 @@ CardControllers.controller('CardDetail', [
             }
 
             isRunning = true;
+            cancelQueryDeferred = $q.defer();
 
             updateUrl();
 
             renderAll();
 
             let startTime = new Date();
+
             // make our api call
-            Metabase.dataset(dataset_query, function (result) {
+            Metabase.dataset({ timeout: cancelQueryDeferred.promise }, dataset_query, function (result) {
                 queryResult = result;
                 isRunning = false;
 
@@ -508,7 +528,12 @@ CardControllers.controller('CardDetail', [
 
             }, function (error) {
                 isRunning = false;
-                queryResult = { error: error, duration: new Date() - startTime };
+
+                if (error && error.status === 0) {
+                    // cancelled, do nothing
+                } else {
+                    queryResult = { error: error, duration: new Date() - startTime };
+                }
 
                 renderAll();
             });
@@ -517,6 +542,12 @@ CardControllers.controller('CardDetail', [
 
             // HACK: prevent SQL editor from losing focus
             try { ace.edit("id_sql").focus() } catch (e) {}
+        }
+
+        function cancelQuery() {
+            if (isRunning && cancelQueryDeferred) {
+                cancelQueryDeferred.resolve();
+            }
         }
 
         function loadTableInfo(tableId) {
@@ -575,6 +606,16 @@ CardControllers.controller('CardDetail', [
                     }
 
                     setCard(newCard, {runQuery: false});
+
+                    // set the initial Table ID for the query if this is a native query
+                    // this is only used for Mongo queries which need to be ran against a specific collection
+                    if (newCard.dataset_query.type === 'native') {
+                        let database = _.findWhere(databases, { id: databaseId }),
+                            tables   = database ? database.tables : [],
+                            table    = tables.length > 0 ? tables[0] : null;
+                        if (table) newCard.dataset_query.table = table.id;
+                    }
+
                 } else {
                     // if we are editing a saved query we don't want to replace the card, so just start a fresh query only
                     // TODO: should this clear the visualization as well?
@@ -591,6 +632,14 @@ CardControllers.controller('CardDetail', [
             return card.dataset_query;
         }
 
+        /// Sets the table ID for a *native* query.
+        function setTable(tableID) {
+            let query = card.dataset_query;
+            query.table = tableID;
+            setQuery(query);
+        }
+
+        // This is for MBQL queries
         // indicates that the table for the query should be changed to the given value
         // when editing, simply update the value.  otherwise, this should create a completely new card
         function setSourceTable(sourceTable) {

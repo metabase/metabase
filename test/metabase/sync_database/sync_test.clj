@@ -2,23 +2,25 @@
   (:require [expectations :refer :all]
             [korma.core :as k]
             [metabase.db :as db]
-            [metabase.mock.moviedb :as moviedb]
-            [metabase.mock.schema-per-customer :as schema-per-customer]
-            [metabase.models.database :as database]
-            [metabase.models.field :as field]
-            [metabase.models.hydrate :as hydrate]
-            [metabase.models.raw-column :as raw-column]
-            [metabase.models.raw-table :as raw-table]
-            [metabase.models.table :as table]
-            [metabase.sync-database.introspect :as introspect]
-            [metabase.sync-database.sync :refer :all]
+            (metabase.mock [moviedb :as moviedb]
+                           [schema-per-customer :as schema-per-customer])
+            (metabase.models [database :refer [Database]]
+                             [field :refer [Field]]
+                             [hydrate :as hydrate]
+                             [raw-column :refer [RawColumn]]
+                             [raw-table :refer [RawTable]]
+                             [table :refer [Table]])
+            (metabase.sync-database [introspect :as introspect]
+                                    [sync :refer :all])
+            [metabase.test.data :as data]
+            [metabase.test.data.interface :as i]
             [metabase.test.util :as tu]))
 
 (tu/resolve-private-fns metabase.sync-database.sync
   save-fks! save-table-fields!)
 
 (defn- get-tables [database-id]
-  (->> (hydrate/hydrate (db/sel :many table/Table :db_id database-id (k/order :id)) :fields)
+  (->> (hydrate/hydrate (db/sel :many Table :db_id database-id (k/order :id)) :fields)
        (mapv tu/boolean-ids-and-timestamps)))
 
 
@@ -28,20 +30,21 @@
    [{:special_type :fk, :name "fk1", :fk_target_field_id true}]
    [{:special_type :fk, :name "fk1", :fk_target_field_id true}]
    [{:special_type :fk, :name "fk1", :fk_target_field_id true}]]
-  (tu/with-temp* [database/Database    [{database-id :id}]
-                  raw-table/RawTable   [{raw-table-id1 :id, :as table} {:database_id database-id, :name "fk_source"}]
-                  raw-column/RawColumn [{raw-fk1 :id} {:raw_table_id raw-table-id1, :name "fk1"}]
-                  table/Table          [{t1 :id} {:db_id database-id, :raw_table_id raw-table-id1, :name "fk_source"}]
-                  field/Field          [{fk1 :id} {:table_id t1, :raw_column_id raw-fk1, :name "fk1"}]
-                  raw-table/RawTable   [{raw-table-id2 :id, :as table1} {:database_id database-id, :name "fk_target"}]
-                  raw-column/RawColumn [{raw-target1 :id} {:raw_table_id raw-table-id2, :name "target1"}]
-                  raw-column/RawColumn [{raw-target2 :id} {:raw_table_id raw-table-id2, :name "target2"}]
-                  table/Table          [{t2 :id} {:db_id database-id, :raw_table_id raw-table-id2, :name "fk_target"}]
-                  field/Field          [{target1 :id} {:table_id t2, :raw_column_id raw-target1, :name "target1"}]
-                  field/Field          [{target2 :id} {:table_id t2, :raw_column_id raw-target2, :name "target2"}]]
-    (let [get-fields #(->> (db/sel :many :fields [field/Field :name :special_type :fk_target_field_id] :table_id %)
-                           (mapv tu/boolean-ids-and-timestamps))]
-      [;; original list should not have any fks
+  (tu/with-temp* [Database  [{database-id :id}]
+                  RawTable  [{raw-table-id1 :id, :as table}  {:database_id database-id, :name "fk_source"}]
+                  RawColumn [{raw-fk1 :id}                   {:raw_table_id raw-table-id1, :name "fk1"}]
+                  Table     [{t1 :id}                        {:db_id database-id, :raw_table_id raw-table-id1, :name "fk_source"}]
+                  Field     [{fk1 :id}                       {:table_id t1, :raw_column_id raw-fk1, :name "fk1"}]
+                  RawTable  [{raw-table-id2 :id, :as table1} {:database_id database-id, :name "fk_target"}]
+                  RawColumn [{raw-target1 :id}               {:raw_table_id raw-table-id2, :name "target1"}]
+                  RawColumn [{raw-target2 :id}               {:raw_table_id raw-table-id2, :name "target2"}]
+                  Table     [{t2 :id}                        {:db_id database-id, :raw_table_id raw-table-id2, :name "fk_target"}]
+                  Field     [{target1 :id}                   {:table_id t2, :raw_column_id raw-target1, :name "target1"}]
+                  Field     [{target2 :id}                   {:table_id t2, :raw_column_id raw-target2, :name "target2"}]]
+    (let [get-fields (fn [table-id]
+                       (->> (db/sel :many :fields [Field :name :special_type :fk_target_field_id] :table_id table-id)
+                            (mapv tu/boolean-ids-and-timestamps)))]
+      [ ;; original list should not have any fks
        (get-fields t1)
        ;; now add a fk
        (do
@@ -70,16 +73,16 @@
     :id true
     :fields [{:name "filming"
               :description "If the movie is currently being filmed."}]}]
-  (tu/with-temp* [database/Database [{database-id :id, :as db} {:engine :moviedb}]]
+  (tu/with-temp* [Database [{database-id :id, :as db} {:engine :moviedb}]]
     ;; setup a couple things we'll use in the test
     (introspect/introspect-database-and-update-raw-tables! (moviedb/->MovieDbDriver) db)
-    (let [raw-table-id (db/sel :one :field [raw-table/RawTable :id] :database_id database-id, :name "movies")
-          table        (db/ins table/Table
+    (let [raw-table-id (db/sel :one :id RawTable, :database_id database-id, :name "movies")
+          table        (db/ins Table
                          :db_id        database-id
                          :raw_table_id raw-table-id
                          :name         "movies"
                          :active       true)
-          get-table    #(-> (db/sel :one :fields [table/Table :id :name :description] :id (:id table))
+          get-table    #(-> (db/sel :one :fields [Table :id :name :description] :id (:id table))
                             (hydrate/hydrate :fields)
                             (update :fields (fn [fields]
                                               (for [f fields
@@ -151,7 +154,7 @@
      :description        nil
      :base_type          :DecimalField
      :visibility_type    :normal
-     :special_type       :id,                 ; existing special types are NOT modified
+     :special_type       :id                  ; existing special types are NOT modified
      :parent_id          false
      :fk_target_field_id false
      :last_analyzed      false
@@ -193,7 +196,7 @@
      :description        nil
      :base_type          :IntegerField
      :visibility_type    :normal
-     :special_type       :category,            ; should be infered from name
+     :special_type       :category             ; should be infered from name
      :parent_id          false
      :fk_target_field_id false
      :last_analyzed      false
@@ -207,7 +210,7 @@
      :display_name       "First"
      :description        nil
      :base_type          :DecimalField
-     :visibility_type    :retired,            ; field retired when RawColumn disabled
+     :visibility_type    :retired             ; field retired when RawColumn disabled
      :special_type       :id
      :parent_id          false
      :fk_target_field_id false
@@ -250,19 +253,19 @@
      :description        nil
      :base_type          :IntegerField
      :visibility_type    :normal
-     :special_type       :category,            ; should be infered from name
+     :special_type       :category             ; should be infered from name
      :parent_id          false
      :fk_target_field_id false
      :last_analyzed      false
      :created_at         true
      :updated_at         true}]]
-  (tu/with-temp* [database/Database    [{database-id :id}]
-                  raw-table/RawTable   [{raw-table-id :id, :as table} {:database_id database-id}]
-                  raw-column/RawColumn [{raw-column-id1 :id} {:raw_table_id raw-table-id, :name "First", :is_pk true, :details {:base-type "IntegerField"}}]
-                  raw-column/RawColumn [{raw-column-id2 :id} {:raw_table_id raw-table-id, :name "Second", :details {:special-type :category, :base-type "TextField"}}]
-                  raw-column/RawColumn [{raw-column-id3 :id} {:raw_table_id raw-table-id, :name "Third", :details {:base-type "BooleanField"}}]
-                  table/Table          [{table-id :id, :as tbl} {:db_id database-id, :raw_table_id raw-table-id}]]
-    (let [get-fields #(->> (db/sel :many field/Field :table_id table-id (k/order :id))
+  (tu/with-temp* [Database    [{database-id :id}]
+                  RawTable   [{raw-table-id :id, :as table} {:database_id database-id}]
+                  RawColumn [{raw-column-id1 :id} {:raw_table_id raw-table-id, :name "First", :is_pk true, :details {:base-type "IntegerField"}}]
+                  RawColumn [{raw-column-id2 :id} {:raw_table_id raw-table-id, :name "Second", :details {:special-type :category, :base-type "TextField"}}]
+                  RawColumn [{raw-column-id3 :id} {:raw_table_id raw-table-id, :name "Third", :details {:base-type "BooleanField"}}]
+                  Table          [{table-id :id, :as tbl} {:db_id database-id, :raw_table_id raw-table-id}]]
+    (let [get-fields #(->> (db/sel :many Field :table_id table-id (k/order :id))
                            (mapv tu/boolean-ids-and-timestamps)
                            (mapv (fn [m]
                                    (dissoc m :active :field_type :position :preview_display))))
@@ -270,20 +273,20 @@
           first-sync     (do
                            (save-table-fields! tbl)
                            (get-fields))]
-      (tu/with-temp* [raw-column/RawColumn [_ {:raw_table_id raw-table-id, :name "rating", :details {:base-type "IntegerField"}}]]
+      (tu/with-temp* [RawColumn [_ {:raw_table_id raw-table-id, :name "rating", :details {:base-type "IntegerField"}}]]
         ;; start with no fields
         [initial-fields
          ;; first sync will add all the fields
          first-sync
          ;; now add another column and modify the first
          (do
-           (db/upd raw-column/RawColumn raw-column-id1 :is_pk false, :details {:base-type "DecimalField"})
+           (db/upd RawColumn raw-column-id1 :is_pk false, :details {:base-type "DecimalField"})
            (save-table-fields! tbl)
            (get-fields))
          ;; now disable the first column
          (do
-           (db/upd raw-column/RawColumn raw-column-id1 :active false)
-           (db/upd raw-column/RawColumn raw-column-id3 :is_pk true)
+           (db/upd RawColumn raw-column-id1 :active false)
+           (db/upd RawColumn raw-column-id3 :is_pk true)
            (save-table-fields! tbl)
            (get-fields))]))))
 
@@ -297,17 +300,17 @@
                                             :fields [])))]
     [moviedb/moviedb-tables-and-fields
      (mapv disabled-movies-table moviedb/moviedb-tables-and-fields)])
-  (tu/with-temp* [database/Database [{database-id :id, :as db} {:engine :moviedb}]]
+  (tu/with-temp* [Database [{database-id :id, :as db} {:engine :moviedb}]]
     ;; setup a couple things we'll use in the test
     (introspect/introspect-database-and-update-raw-tables! (moviedb/->MovieDbDriver) db)
     (update-data-models-from-raw-tables! db)
-    (let [get-tables #(->> (hydrate/hydrate (db/sel :many table/Table :db_id database-id (k/order :id)) :fields)
+    (let [get-tables #(->> (hydrate/hydrate (db/sel :many Table :db_id database-id (k/order :id)) :fields)
                            (mapv tu/boolean-ids-and-timestamps))]
       ;; here we go
       [(get-tables)
        (do
          ;; disable the table
-         (k/update raw-table/RawTable
+         (k/update RawTable
            (k/set-fields {:active false})
            (k/where {:database_id database-id, :name "movies"}))
          ;; run our retires function
@@ -318,12 +321,12 @@
 
 ;; update-data-models-for-table!
 (expect
-  (let [disable-fks #(map (fn [fld]
-                            (if (= :fk (:special_type fld))
-                              (assoc fld
+  (let [disable-fks #(map (fn [field]
+                            (if (= :fk (:special_type field))
+                              (assoc field
                                 :special_type       nil
                                 :fk_target_field_id false)
-                              fld)) %)]
+                              field)) %)]
     [[(-> (last moviedb/moviedb-tables-and-fields)
           (update :fields disable-fks))]
      [(-> (last moviedb/moviedb-tables-and-fields)
@@ -331,14 +334,14 @@
      [(-> (last moviedb/moviedb-tables-and-fields)
           (assoc :active false
                  :fields []))]])
-  (tu/with-temp* [database/Database [{database-id :id, :as db} {:engine :moviedb}]]
+  (tu/with-temp* [Database [{database-id :id, :as db} {:engine :moviedb}]]
     (let [driver (moviedb/->MovieDbDriver)]
       ;; do a quick introspection to add the RawTables to the db
       (introspect/introspect-database-and-update-raw-tables! driver db)
 
       ;; stub out the Table we are going to sync for real below
-      (let [raw-table-id (db/sel :one :field [raw-table/RawTable :id] :database_id database-id, :name "roles")
-            tbl          (db/ins table/Table
+      (let [raw-table-id (db/sel :one :id RawTable, :database_id database-id, :name "roles")
+            tbl          (db/ins Table
                            :db_id        database-id
                            :raw_table_id raw-table-id
                            :name         "roles"
@@ -353,7 +356,7 @@
            (get-tables database-id))
          ;; one more time, but lets disable the table this time and ensure that's handled properly
          (do
-           (k/update raw-table/RawTable
+           (k/update RawTable
              (k/set-fields {:active false})
              (k/where {:database_id database-id, :name "roles"}))
            (update-data-models-for-table! tbl)
@@ -369,13 +372,13 @@
          (-> (last moviedb/moviedb-tables-and-fields)
              (assoc :active false
                     :fields [])))]
-  (tu/with-temp* [database/Database [{database-id :id, :as db} {:engine :moviedb}]]
+  (tu/with-temp* [Database [{database-id :id, :as db} {:engine :moviedb}]]
     (let [driver (moviedb/->MovieDbDriver)]
       ;; do a quick introspection to add the RawTables to the db
       (introspect/introspect-database-and-update-raw-tables! driver db)
 
       [;; first check that the raw tables stack up as expected
-       (->> (hydrate/hydrate (db/sel :many raw-table/RawTable :database_id database-id (k/order :id)) :columns)
+       (->> (hydrate/hydrate (db/sel :many RawTable :database_id database-id (k/order :id)) :columns)
             (mapv tu/boolean-ids-and-timestamps))
        ;; now lets run a sync and check what we got
        (do
@@ -387,7 +390,7 @@
          (get-tables database-id))
        ;; one more time, but lets disable a table this time and ensure that's handled properly
        (do
-         (k/update raw-table/RawTable
+         (k/update RawTable
            (k/set-fields {:active false})
            (k/where {:database_id database-id, :name "roles"}))
          (update-data-models-from-raw-tables! db)
@@ -398,12 +401,12 @@
   "Convert :fk_target_[column|field]_id into more testable information with table/schema names."
   [m]
   (let [resolve-raw-column (fn [column-id]
-                             (when-let [{col-name :name, table :raw_table_id} (db/sel :one :fields [raw-column/RawColumn :raw_table_id :name] :id column-id)]
-                               (-> (db/sel :one :fields [raw-table/RawTable :schema :name] :id table)
+                             (when-let [{col-name :name, table :raw_table_id} (db/sel :one :fields [RawColumn :raw_table_id :name] :id column-id)]
+                               (-> (db/sel :one :fields [RawTable :schema :name] :id table)
                                    (assoc :col-name col-name))))
         resolve-field      (fn [field-id]
-                             (when-let [{col-name :name, table :table_id} (db/sel :one :fields [field/Field :table_id :name] :id field-id)]
-                               (-> (db/sel :one :fields [table/Table :schema :name] :id table)
+                             (when-let [{col-name :name, table :table_id} (db/sel :one :fields [Field :table_id :name] :id field-id)]
+                               (-> (db/sel :one :fields [Table :schema :name] :id table)
                                    (assoc :col-name col-name))))
         resolve-fk         (fn [m]
                              (cond
@@ -422,16 +425,16 @@
   [schema-per-customer/schema-per-customer-raw-tables
    schema-per-customer/schema-per-customer-tables-and-fields
    schema-per-customer/schema-per-customer-tables-and-fields]
-  (tu/with-temp* [database/Database [{database-id :id, :as db} {:engine :schema-per-customer}]]
+  (tu/with-temp* [Database [{database-id :id, :as db} {:engine :schema-per-customer}]]
     (let [driver     (schema-per-customer/->SchemaPerCustomerDriver)
-          db-tables  #(->> (hydrate/hydrate (db/sel :many table/Table :db_id % (k/order :id)) :fields)
+          db-tables  #(->> (hydrate/hydrate (db/sel :many Table :db_id % (k/order :id)) :fields)
                            (mapv resolve-fk-targets)
                            (mapv tu/boolean-ids-and-timestamps))]
       ;; do a quick introspection to add the RawTables to the db
       (introspect/introspect-database-and-update-raw-tables! driver db)
 
       [;; first check that the raw tables stack up as expected
-       (->> (hydrate/hydrate (db/sel :many raw-table/RawTable :database_id database-id (k/order :id)) :columns)
+       (->> (hydrate/hydrate (db/sel :many RawTable :database_id database-id (k/order :id)) :columns)
             (mapv resolve-fk-targets)
             (mapv tu/boolean-ids-and-timestamps))
        ;; now lets run a sync and check what we got
@@ -442,3 +445,26 @@
        (do
          (update-data-models-from-raw-tables! db)
          (db-tables database-id))])))
+
+
+;;; ------------------------------------------------------------ Make sure that "crufty" tables are marked as such ------------------------------------------------------------
+(i/def-database-definition ^:const ^:private db-with-some-cruft
+  ["acquired_toucans"
+   [{:field-name "species",              :base-type :CharField}
+    {:field-name "cam_has_acquired_one", :base-type :BooleanField}]
+   [["Toco"               false]
+    ["Chestnut-Mandibled" true]
+    ["Keel-billed"        false]
+    ["Channel-billed"     false]]]
+  ["south_migrationhistory"
+   [{:field-name "app_name",  :base-type :CharField}
+    {:field-name "migration", :base-type :CharField}]
+   [["main" "0001_initial"]
+    ["main" "0002_add_toucans"]]])
+
+;; south_migrationhistory, being a CRUFTY table, should still be synced, but marked as such
+(expect
+  #{{:name "SOUTH_MIGRATIONHISTORY", :visibility_type :cruft}
+    {:name "ACQUIRED_TOUCANS",       :visibility_type nil}}
+  (data/dataset metabase.sync-database.sync-test/db-with-some-cruft
+    (set (db/sel :many :fields [Table :name :visibility_type] :db_id (data/id)))))

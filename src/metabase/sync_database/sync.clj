@@ -1,14 +1,14 @@
 (ns metabase.sync-database.sync
-  (:require [clojure.set :as set]
-            [clojure.string :as s]
+  (:require (clojure [set :as set]
+                     [string :as s])
             [clojure.tools.logging :as log]
             [korma.core :as k]
-            [metabase.db :as db]
-            [metabase.driver :as driver]
-            [metabase.models.field :as field]
-            [metabase.models.raw-column :as raw-column]
-            [metabase.models.raw-table :as raw-table]
-            [metabase.models.table :as table]
+            (metabase [db :as db]
+                      [driver :as driver])
+            (metabase.models [field :refer [Field], :as field]
+                             [raw-column :refer [RawColumn]]
+                             [raw-table :refer [RawTable], :as raw-table]
+                             [table :refer [Table], :as table])
             [metabase.util :as u]))
 
 
@@ -21,9 +21,9 @@
          (every? map? fk-sources)]}
   (doseq [{fk-source-id :source-column, fk-target-id :target-column} fk-sources]
     ;; TODO: eventually limit this to just "core" schema tables
-    (when-let [source-field-id (db/sel :one :field [field/Field :id] :raw_column_id fk-source-id, :visibility_type [not= "retired"])]
-      (when-let [target-field-id (db/sel :one :field [field/Field :id] :raw_column_id fk-target-id, :visibility_type [not= "retired"])]
-        (db/upd field/Field source-field-id
+    (when-let [source-field-id (db/sel :one :id Field, :raw_column_id fk-source-id, :visibility_type [not= "retired"])]
+      (when-let [target-field-id (db/sel :one :id Field, :raw_column_id fk-target-id, :visibility_type [not= "retired"])]
+        (db/upd Field source-field-id
           :special_type       :fk
           :fk_target_field_id target-field-id)))))
 
@@ -48,14 +48,14 @@
     ;; TODO: this does not support schemas in dbs :(
     (let [[_ table-name field-name k] (re-matches #"^([^.]+)\.(?:([^.]+)\.)?([^.]+)$" keypath)]
       (try (when (not= 1 (if field-name
-                           (k/update field/Field
-                             (k/where {:name field-name, :table_id (k/subselect table/Table
+                           (k/update Field
+                             (k/where {:name field-name, :table_id (k/subselect Table
                                                                                 (k/fields :id)
                                                                                 ;; TODO: this needs to support schemas
                                                                                 ;; TODO: eventually limit this to "core" schema tables
                                                                                 (k/where {:db_id (:id database), :name table-name, :active true}))})
                              (k/set-fields {(keyword k) value}))
-                           (k/update table/Table
+                           (k/update Table
                              (k/where {:name table-name, :db_id (:id database)})
                              (k/set-fields {(keyword k) value}))))
              (log/error (u/format-color "Error syncing _metabase_metadata: no matching keypath: %s" keypath)))
@@ -72,12 +72,12 @@
   [{table-id :id, raw-table-id :raw_table_id}]
   (let [active-raw-columns  (raw-table/active-columns {:id raw-table-id})
         active-column-ids   (set (map :id active-raw-columns))
-        existing-fields     (into {} (for [{raw-column-id :raw_column_id, :as fld} (db/sel :many field/Field, :table_id table-id, :visibility_type [not= "retired"], :parent_id nil)]
+        existing-fields     (into {} (for [{raw-column-id :raw_column_id, :as fld} (db/sel :many Field, :table_id table-id, :visibility_type [not= "retired"], :parent_id nil)]
                                        {raw-column-id fld}))]
     ;; retire any fields which were disabled in the schema (including child nested fields)
     (doseq [[raw-column-id {field-id :id}] existing-fields]
       (when-not (contains? active-column-ids raw-column-id)
-        (k/update field/Field
+        (k/update Field
           (k/where (or {:id field-id}
                        {:parent_id field-id}))
           (k/set-fields {:visibility_type "retired"}))))
@@ -102,14 +102,14 @@
   [{database-id :id}]
   {:pre [(integer? database-id)]}
   ;; retire tables (and their fields) as needed
-  (let [tables-to-remove (set (map :id (k/select table/Table
+  (let [tables-to-remove (set (map :id (k/select Table
                                          (k/fields :id)
                                          ;; NOTE: something really wrong happening with SQLKorma here which requires us
                                          ;;       to be explicit about :metabase_table.raw_table_id in the join condition
                                          ;;       without this it seems to want to join against metabase_field !?
-                                         (k/join raw-table/RawTable (= :raw_table.id :metabase_table.raw_table_id))
-                                         (k/where {:db_id database-id
-                                                   :active true
+                                         (k/join RawTable (= :raw_table.id :metabase_table.raw_table_id))
+                                         (k/where {:db_id            database-id
+                                                   :active           true
                                                    :raw_table.active false}))))]
     (table/retire-tables tables-to-remove)))
 
@@ -118,24 +118,23 @@
   "Update the working `Table` and `Field` metadata for a given `Table` based on the latest raw schema information.
    This function uses the data in `RawTable` and `RawColumn` to update the working data models as needed."
   [{raw-table-id :raw_table_id, table-id :id, :as existing-table}]
-  (when-let [{database-id :database_id, :as raw-tbl} (db/sel :one raw-table/RawTable :id raw-table-id)]
+  (when-let [{database-id :database_id, :as raw-table} (db/sel :one RawTable :id raw-table-id)]
     (try
-      (if-not (:active raw-tbl)
+      (if-not (:active raw-table)
         ;; looks like the table has been deactivated, so lets retire this Table and its fields
         (table/retire-tables #{table-id})
         ;; otherwise update based on the RawTable/RawColumn information
         (do
-          (-> (table/update-table existing-table raw-tbl)
-              save-table-fields!)
+          (save-table-fields! (table/update-table existing-table raw-table))
 
           ;; handle setting any fk relationships
-          (when-let [table-fks (k/select raw-column/RawColumn
+          (when-let [table-fks (k/select RawColumn
                                  (k/fields [:id :source-column]
                                            [:fk_target_column_id :target-column])
                                  ;; NOTE: something really wrong happening with SQLKorma here which requires us
                                  ;;       to be explicit about :metabase_table.raw_table_id in the join condition
                                  ;;       without this it seems to want to join against metabase_field !?
-                                 (k/join raw-table/RawTable (= :raw_table.id :raw_column.raw_table_id))
+                                 (k/join RawTable (= :raw_table.id :raw_column.raw_table_id))
                                  (k/where {:raw_table.database_id database-id
                                            :raw_table.id raw-table-id})
                                  (k/where (not= :raw_column.fk_target_column_id nil)))]
@@ -144,6 +143,77 @@
       (catch Throwable t
         (log/error (u/format-color 'red "Unexpected error syncing table") t)))))
 
+(def ^:private ^:const crufty-table-names
+  "Names of Tables that should automatically given the `visibility-type` of `:cruft`.
+   This means they are automatically hidden to users (but can be unhidden in the admin panel).
+   These `Tables` are known to not contain useful data, such as migration or web framework internal tables."
+  #{;; Django
+    "auth_group"
+    "auth_group_permissions"
+    "auth_permission"
+    "django_admin_log"
+    "django_content_type"
+    "django_migrations"
+    "django_session"
+    "django_site"
+    "south_migrationhistory"
+    "user_groups"
+    "user_user_permissions"
+    ;; Rails / Active Record
+    "schema_migrations"
+    ;; PostGIS
+    "spatial_ref_sys"
+    ;; nginx
+    "nginx_access_log"
+    ;; Liquibase
+    "databasechangelog"
+    "databasechangeloglock"
+    ;; Lobos
+    "lobos_migrations"})
+
+(defn- is-crufty-table?
+  "Should we give newly created TABLE a `visibility_type` of `:cruft`?"
+  [table]
+  (contains? crufty-table-names (s/lower-case (:name table))))
+
+(defn- create-and-update-tables!
+  "Create/update tables (and their fields)."
+  [database existing-tables raw-tables]
+  (doseq [{raw-table-id :id, :as raw-table} (for [table raw-tables
+                                                  :when (not= "_metabase_metadata" (s/lower-case (:name table)))]
+                                              table)]
+    (try
+      (save-table-fields! (if-let [existing-table (get existing-tables raw-table-id)]
+                            ;; table already exists, update it
+                            (table/update-table existing-table raw-table)
+                            ;; must be a new table, insert it
+                            (table/create-table (:id database) (assoc raw-table
+                                                                      :raw-table-id    raw-table-id
+                                                                      :visibility-type (when (is-crufty-table? raw-table)
+                                                                                         :cruft)))))
+      (catch Throwable e
+        (log/error (u/format-color 'red "Unexpected error syncing table") e)))))
+
+(defn- set-fk-relationships!
+  "Handle setting any FK relationships. This must be done after fully syncing the tables/fields because we need all tables/fields in place."
+  [database]
+  (when-let [db-fks (k/select RawColumn
+                      (k/fields [:id :source-column]
+                                [:fk_target_column_id :target-column])
+                      ;; NOTE: something really wrong happening with SQLKorma here which requires us
+                      ;;       to be explicit about :metabase_table.raw_table_id in the join condition
+                      ;;       without this it seems to want to join against metabase_field !?
+                      (k/join RawTable (= :raw_table.id :raw_column.raw_table_id))
+                      (k/where {:raw_table.database_id (:id database)})
+                      (k/where (not= :raw_column.fk_target_column_id nil)))]
+    (save-fks! db-fks)))
+
+(defn- maybe-sync-metabase-metadata-table!
+  "Sync the `_metabase_metadata` table, a special table with Metabase metadata, if present.
+   If per chance there were multiple `_metabase_metadata` tables in different schemas, just sync the first one we find."
+  [database raw-tables]
+  (when-let [metadata-table (first (filter #(= (s/lower-case (:name %)) "_metabase_metadata") raw-tables))]
+    (sync-metabase-metadata-table! (driver/engine->driver (:engine database)) database metadata-table)))
 
 (defn update-data-models-from-raw-tables!
   "Update the working `Table` and `Field` metadata for *all* tables in a `Database` based on the latest raw schema information.
@@ -159,35 +229,9 @@
   (retire-tables! database)
 
   (let [raw-tables      (raw-table/active-tables database-id)
-        existing-tables (into {} (for [{raw-table-id :raw_table_id, :as table} (db/sel :many table/Table, :db_id database-id, :active true)]
+        existing-tables (into {} (for [{raw-table-id :raw_table_id, :as table} (db/sel :many Table, :db_id database-id, :active true)]
                                    {raw-table-id table}))]
-    ;; create/update tables (and their fields)
-    ;; NOTE: we make sure to skip the _metabase_metadata table here.  it's not a normal table.
-    (doseq [{raw-table-id :id, :as raw-tbl} (filter #(not= "_metabase_metadata" (s/lower-case (:name %))) raw-tables)]
-      (try
-        (if-let [existing-table (get existing-tables raw-table-id)]
-          ;; table already exists, update it
-          (-> (table/update-table existing-table raw-tbl)
-              save-table-fields!)
-          ;; must be a new table, insert it
-          (-> (table/create-table database-id (assoc raw-tbl :raw-table-id raw-table-id))
-              save-table-fields!))
-        (catch Throwable t
-          (log/error (u/format-color 'red "Unexpected error syncing table") t))))
 
-    ;; handle setting any fk relationships
-    ;; NOTE: this must be done after fully syncing the tables/fields because we need all tables/fields in place
-    (when-let [db-fks (k/select raw-column/RawColumn
-                        (k/fields [:id :source-column]
-                                  [:fk_target_column_id :target-column])
-                        ;; NOTE: something really wrong happening with SQLKorma here which requires us
-                        ;;       to be explicit about :metabase_table.raw_table_id in the join condition
-                        ;;       without this it seems to want to join against metabase_field !?
-                        (k/join raw-table/RawTable (= :raw_table.id :raw_column.raw_table_id))
-                        (k/where {:raw_table.database_id database-id})
-                        (k/where (not= :raw_column.fk_target_column_id nil)))]
-      (save-fks! db-fks))
-
-    ;; NOTE: if per chance there were multiple _metabase_metadata tables in different schemas, we just take the first
-    (when-let [_metabase_metadata (first (filter #(= (s/lower-case (:name %)) "_metabase_metadata") raw-tables))]
-      (sync-metabase-metadata-table! (driver/engine->driver (:engine database)) database _metabase_metadata))))
+    (create-and-update-tables! database existing-tables raw-tables)
+    (set-fk-relationships! database)
+    (maybe-sync-metabase-metadata-table! database raw-tables)))

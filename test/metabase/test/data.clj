@@ -37,7 +37,7 @@
 
 (defn db
   "Return the current database.
-   Relies on the dynamic variable `*get-db`, which can be rebound with `with-db`."
+   Relies on the dynamic variable `*get-db*`, which can be rebound with `with-db`."
   []
   (*get-db*))
 
@@ -253,17 +253,18 @@
 
 
 (defmacro with-temp-db
-  "Load and sync DATABASE-DEFINITION with DATASET-LOADER and execute BODY with
-   the newly created `Database` bound to DB-BINDING.
-   Add `Database` to `loader->loaded-db-def`, which can be destroyed with `destroy-loaded-temp-dbs!`,
-   which is automatically ran at the end of the test suite.
+  "Load and sync DATABASE-DEFINITION with DATASET-LOADER and execute BODY with the newly created `Database` bound to DB-BINDING,
+   and make it the current database for `metabase.test.data` functions like `id`.
 
      (with-temp-db [db tupac-sightings]
        (driver/process-quiery {:database (:id db)
                                :type     :query
                                :query    {:source_table (:id &events)
                                           :aggregation  [\"count\"]
-                                          :filter       [\"<\" (:id &events.timestamp) \"1765-01-01\"]}}))"
+                                          :filter       [\"<\" (:id &events.timestamp) \"1765-01-01\"]}}))
+
+   A given Database is only created once per run of the test suite, and is automatically destroyed at the conclusion of the suite.
+   (The created Database is added to `loader->loaded-db-def`, which can be destroyed with `destroy-loaded-temp-dbs!`, which is automatically ran at the end of the test suite.)"
   [[db-binding ^DatabaseDefinition database-definition] & body]
   `(do-with-temp-db ~database-definition
      (fn [~db-binding]
@@ -275,7 +276,7 @@
        (throw (Exception. (format "Dataset definition not found: '%s' or 'metabase.test.data.dataset-definitions/%s'" symb symb)))))
 
 (defmacro dataset
-  "Bind temp `Database` for DATASET as the current DB and execute BODY.
+  "Load and sync a temporary `Database` defined by DATASET, make it the current DB (for `metabase.test.data` functions like `id`), and execute BODY.
 
    Like `with-temp-db`, but takes an unquoted symbol naming a `DatabaseDefinition` rather than the dbef itself.
    DATASET is optionally namespace-qualified; if not, `metabase.test.data.dataset-definitions` is assumed.
