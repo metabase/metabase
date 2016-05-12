@@ -7,6 +7,7 @@ import DataSelector from './DataSelector.jsx';
 import ExtendedOptions from "./ExtendedOptions.jsx";
 import FilterList from './filters/FilterList.jsx';
 import FilterPopover from './filters/FilterPopover.jsx';
+import ParameterPicker from "./parameters/ParameterPicker.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import IconBorder from 'metabase/components/IconBorder.jsx';
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
@@ -107,6 +108,25 @@ export default class GuiQueryEditor extends Component {
         this.setQuery(this.props.query);
 
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove Filter');
+    }
+
+    setParameterValue(parameter, value) {
+        let parameters = this.props.query.parameters,
+            param = _.find(parameters, (p) => p.name === parameter.name);
+
+        // ick, mutability :(
+        if (value && !_.isEmpty(value)) {
+            param.value = value;
+        } else {
+            delete param.value;
+        }
+
+        this.setQuery(this.props.query);
+
+        console.log("set parameter value", parameter, value);
+        console.log("parameters", this.props.query.parameters);
+
+        MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Parameter Value');  // parameter type?
     }
 
     renderAdd(text, onClick, targetRefName) {
@@ -355,20 +375,36 @@ export default class GuiQueryEditor extends Component {
 
     render() {
         return (
-            <div className={cx("GuiBuilder rounded shadowed", { "GuiBuilder--expand": this.state.expanded })} ref="guiBuilder">
-                <div className="GuiBuilder-row flex">
-                    {this.renderDataSection()}
-                    {this.renderFilterSection()}
-                </div>
-                <div className="GuiBuilder-row flex flex-full">
-                    {this.renderViewSection()}
-                    <div className="flex-full"></div>
-                    {this.props.children}
-                    <ExtendedOptions 
-                        {...this.props}
-                        setQuery={(query) => this.setQuery(query)}
-                    />
-                </div>
+            <div>
+                {this.props.isShowingQueryBar ?
+                    <div className={cx("GuiBuilder rounded shadowed", { "GuiBuilder--expand": this.state.expanded })} ref="guiBuilder">
+                        <div className="GuiBuilder-row flex">
+                            {this.renderDataSection()}
+                            {this.renderFilterSection()}
+                        </div>
+                        <div className="GuiBuilder-row flex flex-full">
+                            {this.renderViewSection()}
+                            <div className="flex-full"></div>
+                            {this.props.children}
+                            <ExtendedOptions 
+                                {...this.props}
+                                setQuery={(query) => this.setQuery(query)}
+                            />
+                        </div>
+                    </div>
+                :
+                    <span ref="guiBuilder" />
+                }
+
+                {this.props.query.parameters && this.props.query.parameters.length > 0 &&
+                    <div className="flex flex-row" ref="parameters">
+                        {this.props.query.parameters.map(parameter =>
+                            <ParameterPicker
+                                parameter={parameter}
+                                onChange={(value) => this.setParameterValue(parameter, value)} />
+                        )}
+                    </div>
+                }
             </div>
         );
     }

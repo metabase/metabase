@@ -16,6 +16,7 @@
                                       [expand :as expand]
                                       [interface :refer :all]
                                       [macros :as macros]
+                                      [parameters :as params]
                                       [resolve :as resolve])
             [metabase.util :as u])
   (:import (schema.utils NamedError ValidationError)))
@@ -140,6 +141,19 @@
                       (log/debug (u/format-color 'cyan "\n\nMACRO/SUBSTITUTED: 😻\n%s" (u/pprint-to-str <>))))))]
       (qp query))))
 
+(defn- pre-substitute-parameters
+  "Looks for macros in a structured (unexpanded) query and substitutes the macros for their contents."
+  [qp]
+  (fn [query]
+    ;; if necessary, handle parameters substitution
+    (let [query (if-not (mbql-query? query)
+                  query
+                  ;; for MBQL queries run our macro expansion
+                  (u/prog1 (params/expand-parameters query)
+                    (when (and (not *disable-qp-logging*)
+                               (not= <> query))
+                      (log/debug (u/format-color 'cyan "\n\nMACRO/SUBSTITUTED: 😻\n%s" (u/pprint-to-str <>))))))]
+      (qp query))))
 
 (defn- pre-expand-resolve
   "Transforms an MBQL into an expanded form with more information and structure.  Also resolves references to fields, tables,
@@ -500,6 +514,7 @@
         ((<<- wrap-catch-exceptions
               pre-add-settings
               pre-expand-macros
+              pre-substitute-parameters
               pre-expand-resolve
               driver-process-in-context
               post-add-row-count-and-status

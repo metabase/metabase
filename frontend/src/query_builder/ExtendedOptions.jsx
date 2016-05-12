@@ -7,6 +7,8 @@ import Expressions from "./expressions/Expressions.jsx";
 import ExpressionWidget from './expressions/ExpressionWidget.jsx';
 import LimitWidget from "./LimitWidget.jsx";
 import SortWidget from "./SortWidget.jsx";
+import Parameters from "./parameters/Parameters.jsx";
+import ParameterWidget from "./parameters/ParameterWidget.jsx";
 import Popover from "metabase/components/Popover.jsx";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
@@ -20,7 +22,8 @@ export default class ExtendedOptions extends Component {
 
         this.state = {
             isOpen: false,
-            editExpression: null
+            editExpression: null,
+            editParameter: null
         };
 
         _.bindAll(
@@ -37,7 +40,8 @@ export default class ExtendedOptions extends Component {
     };
 
     static defaultProps = {
-        expressions: {}
+        expressions: {},
+        parameters: []
     };
 
 
@@ -97,6 +101,41 @@ export default class ExtendedOptions extends Component {
         this.setState({editExpression: null});
 
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove Expression');
+    }
+
+    setParameter(parameter, previousName) {
+        console.log("setting parameter", parameter, previousName);
+        
+        let parameters = this.props.query.parameters || [];
+        
+        if (!_.isEmpty(previousName)) {
+            // remove old expression using original name.  this accounts for case where parameter is renamed.
+            parameters = _.reject(parameters, (p) => p.name === previousName);
+        }
+
+        // now add the new parameter
+        parameters = [...parameters, parameter];
+        this.props.query.parameters = parameters;
+        this.props.setQuery(this.props.query);
+        this.setState({editParameter: null});
+
+        console.log("parameters", this.props.query.parameters);
+
+        MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Parameter', !_.isEmpty(previousName));
+    }
+
+    removeParameter(parameter) {
+        console.log("remove parameter", parameter);
+
+        let parameters = this.props.query.parameters || [];
+        parameters = _.reject(parameters, (p) => p.name === parameter.name);
+        this.props.query.parameters = parameters;
+        this.props.setQuery(this.props.query);
+        this.setState({editParameter: null});
+
+        console.log("parameters", this.props.query.parameters);
+
+        MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove Parameter');
     }
 
     renderSort() {
@@ -171,6 +210,29 @@ export default class ExtendedOptions extends Component {
         );
     }
 
+    renderParametersWidget() {
+        // if we aren't editing any parameter then there is nothing to do
+        if (!this.state.editParameter || !this.props.tableMetadata) return null;
+
+        const parameters = this.props.query.parameters,
+              parameter = parameters && _.find(parameters, (p) => p.name === this.state.editParameter),
+              name = _.isString(this.state.editParameter) ? this.state.editParameter : "";
+
+        // TODO: at some point we need to prevent the add parameter button if there are none possible?
+        // TODO: pass in names that aren't allowed to be used (to prevent dupes)
+        return (
+            <Popover onClose={() => this.setState({editParameter: null})}>
+                <ParameterWidget
+                    parameter={parameter}
+                    tableMetadata={this.props.tableMetadata}
+                    onSetParameter={(newParameter) => this.setParameter(newParameter, name)}
+                    onRemoveParameter={(parameter) => this.removeParameter(parameter)}
+                    onCancel={() => this.setState({editParameter: null})}
+                />
+            </Popover>
+        );
+    }
+
     renderPopover() {
         if (!this.state.isOpen) return null;
 
@@ -192,6 +254,16 @@ export default class ExtendedOptions extends Component {
                             }}
                         />
                     : null}
+
+                    <Parameters
+                        parameters={query.parameters}
+                        tableMetadata={tableMetadata}
+                        onAddParameter={() => this.setState({isOpen: false, editParameter: true})}
+                        onEditParameter={(name) => {
+                            this.setState({isOpen: false, editParameter: name});
+                            MetabaseAnalytics.trackEvent("QueryBuilder", "Show Edit Parameter");
+                        }}
+                    />
 
                     { features.limit &&
                         <div>
@@ -215,6 +287,7 @@ export default class ExtendedOptions extends Component {
                 <span className={cx("EllipsisButton no-decoration text-grey-1 px1", {"cursor-pointer": onClick})} onClick={onClick}>…</span>
                 {this.renderPopover()}
                 {this.renderExpressionWidget()}
+                {this.renderParametersWidget()}
             </div>
         );
     }

@@ -52,6 +52,7 @@ CardControllers.controller('CardDetail', [
             isEditing = false,
             isObjectDetail = false,
             isShowingTutorial = false,
+            isShowingQueryBar = true,
             isShowingNewbModal = false,
             card = {
                 name: null,
@@ -135,6 +136,7 @@ CardControllers.controller('CardDetail', [
             onChangeLocation: function(url) {
                 $timeout(() => $location.url(url))
             },
+            toggleQueryBarVisibility: toggleQueryBarVisibility,
             toggleDataReferenceFn: toggleDataReference,
             onBeginEditing: function() {
                 isEditing = true;
@@ -152,7 +154,8 @@ CardControllers.controller('CardDetail', [
                 MetabaseAnalytics.trackEvent('QueryBuilder', 'Restore Original');
             },
             cardIsNewFn: cardIsNew,
-            cardIsDirtyFn: cardIsDirty
+            cardIsDirtyFn: cardIsDirty,
+            setQuery: onQueryChanged
         };
 
         var editorModel = {
@@ -376,6 +379,7 @@ CardControllers.controller('CardDetail', [
             // ensure rendering model is up to date
             editorModel.isRunning = isRunning;
             editorModel.isShowingDataReference = $scope.isShowingDataReference;
+            editorModel.isShowingQueryBar = isShowingQueryBar;
             editorModel.isShowingTutorial = isShowingTutorial;
             editorModel.databases = databases;
             editorModel.tableMetadata = tableMetadata;
@@ -476,6 +480,10 @@ CardControllers.controller('CardDetail', [
             renderAll();
 
             let startTime = new Date();
+
+            /// deal with adding parameters to the query if we have them
+            // dataset_query = angular.clone(dataset_query);
+            // dataset_query.parameters = [{name: "test", value: "Widget", field: ["field-id", 123]}];
 
             // make our api call
             Metabase.dataset({ timeout: cancelQueryDeferred.promise }, dataset_query, function (result) {
@@ -778,6 +786,12 @@ CardControllers.controller('CardDetail', [
                     return data.rows[0][i];
                 }
             }
+        }
+
+        function toggleQueryBarVisibility() {
+            console.log("toggling");
+            isShowingQueryBar = !isShowingQueryBar;
+            renderAll();
         }
 
         function toggleDataReference() {

@@ -19,6 +19,10 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 import Query from "metabase/lib/query";
 import { cancelable } from "metabase/lib/promise";
 
+import ParametersPopover from "./parameters/ParametersPopover.jsx";
+import ParameterWidget from "./parameters/ParameterWidget.jsx";
+import Popover from "metabase/components/Popover.jsx";
+
 import cx from "classnames";
 import _ from "underscore";
 
@@ -29,12 +33,13 @@ export default class QueryHeader extends Component {
         this.state = {
             recentlySaved: null,
             modal: null,
-            revisions: null
+            revisions: null,
+            isShowingQueryBar: true
         };
 
         _.bindAll(this, "resetStateOnTimeout",
             "onCreate", "onSave", "onBeginEditing", "onCancel", "onDelete",
-            "onFollowBreadcrumb", "onToggleDataReference",
+            "onFollowBreadcrumb", "onToggleDataReference", "onToggleQueryBarVisibility",
             "onFetchRevisions", "onRevertToRevision", "onRevertedRevision"
         );
     }
@@ -146,6 +151,10 @@ export default class QueryHeader extends Component {
         this.props.onRestoreOriginalQuery();
     }
 
+    onToggleQueryBarVisibility() {
+        this.props.toggleQueryBarVisibility();
+    }
+
     onToggleDataReference() {
         this.props.toggleDataReferenceFn();
     }
@@ -166,6 +175,40 @@ export default class QueryHeader extends Component {
     onRevertedRevision() {
         this.props.reloadCardFn();
         this.refs.cardHistory.toggle();
+    }
+
+    setParameter(parameter, previousName) {
+        console.log("setting parameter", parameter, previousName);
+        
+        let parameters = this.props.card && this.props.card.dataset_query && this.props.card.dataset_query.parameters || [];
+        
+        if (!_.isEmpty(previousName)) {
+            // remove old expression using original name.  this accounts for case where parameter is renamed.
+            parameters = _.reject(parameters, (p) => p.name === previousName);
+        }
+
+        // now add the new parameter
+        parameters = [...parameters, parameter];
+        this.props.card.dataset_query.parameters = parameters;
+        this.props.setQuery(this.props.card.dataset_query);
+
+        console.log("parameters", this.props.card.dataset_query.parameters);
+
+        MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Parameter', !_.isEmpty(previousName));
+    }
+
+    removeParameter(parameter) {
+        console.log("remove parameter", parameter);
+
+        let parameters = this.props.card && this.props.card.dataset_query && this.props.card.dataset_query.parameters || [];
+        parameters = _.reject(parameters, (p) => p.name === parameter.name);
+        this.props.card.dataset_query.parameters = parameters;
+        this.props.setQuery(this.props.card.dataset_query);
+        this.setState({editParameter: null});
+
+        console.log("parameters", this.props.card.dataset_query.parameters);
+
+        MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove Parameter');
     }
 
     getHeaderButtons() {
@@ -257,6 +300,30 @@ export default class QueryHeader extends Component {
             }
         }
 
+        // parameters
+        const paramsClasses = cx('mx1 transition-color', {
+            'text-grey-4': !this.props.isShowingDataReference,
+            'text-brand': this.props.isShowingDataReference,
+            'text-brand-hover': !this.state.isShowingDataReference});
+        buttonSections.push([
+            <span>
+                <a key="parameters" className={paramsClasses} title="Add quick parameters">
+                    <Icon name='filter' width="16px" height="16px" onClick={() => this.setState({ modal: "parameters" })}></Icon>
+                </a>
+                {this.state.modal && this.state.modal === "parameters" &&
+                    <Popover onClose={() => this.setState({modal: false})}>
+                        <ParametersPopover
+                            parameters={this.props.card.dataset_query.parameters}
+                            tableMetadata={this.props.tableMetadata}
+                            onSetParameter={(newParameter) => this.setParameter(newParameter, name)}
+                            onRemoveParameter={(parameter) => this.removeParameter(parameter)}
+                            onClose={() => this.setState({modal: false})}
+                        />
+                    </Popover>
+                }
+            </span>
+        ]);
+
         // add to dashboard
         if (!this.props.cardIsNewFn() && !this.props.isEditing) {
             // simply adding an existing saved card to a dashboard, so show the modal to do so
@@ -323,6 +390,18 @@ export default class QueryHeader extends Component {
             />
         ]);
 
+        // query bar toggle
+        var queryBarToggleClasses = cx('mx1 transition-color', {
+            'text-grey-4': !this.props.isShowingQueryBar,
+            'text-brand': this.props.isShowingQueryBar,
+            'text-brand-hover': !this.state.isShowingQueryBar
+        });
+        buttonSections.push([
+            <a key="queryBarToggle" className={queryBarToggleClasses} title="Toggle the full query bar">
+                <Icon name='chevrondown' width="16px" height="16px" onClick={this.onToggleQueryBarVisibility}></Icon>
+            </a>
+        ]);
+        
         // data reference button
         var dataReferenceButtonClasses = cx('mr1 transition-color', {
             'text-brand': this.props.isShowingDataReference,
