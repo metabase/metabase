@@ -70,12 +70,13 @@ export default class QueryHeader extends Component {
     }
 
     onCreate(card, addToDash) {
+        // MBQL->NATIVE
         // if we are a native query with an MBQL query definition, remove the old MBQL stuff (happens when going from mbql -> native)
-        if (card.dataset_query.type === "native" && card.dataset_query.query) {
-            delete card.dataset_query.query;
-        } else if(card.dataset_query.type === "query" && card.dataset_query.native) {
-            delete card.dataset_query.native;
-        }
+        // if (card.dataset_query.type === "native" && card.dataset_query.query) {
+        //     delete card.dataset_query.query;
+        // } else if (card.dataset_query.type === "query" && card.dataset_query.native) {
+        //     delete card.dataset_query.native;
+        // }
 
         if (card.dataset_query.query) {
             Query.cleanQuery(card.dataset_query.query);
@@ -93,12 +94,13 @@ export default class QueryHeader extends Component {
     }
 
     onSave(card, addToDash) {
+        // MBQL->NATIVE
         // if we are a native query with an MBQL query definition, remove the old MBQL stuff (happens when going from mbql -> native)
-        if (card.dataset_query.type === "native" && card.dataset_query.query) {
-            delete card.dataset_query.query;
-        } else if(card.dataset_query.type === "query" && card.dataset_query.native) {
-            delete card.dataset_query.native;
-        }
+        // if (card.dataset_query.type === "native" && card.dataset_query.query) {
+        //     delete card.dataset_query.query;
+        // } else if (card.dataset_query.type === "query" && card.dataset_query.native) {
+        //     delete card.dataset_query.native;
+        // }
 
         if (card.dataset_query.query) {
             Query.cleanQuery(card.dataset_query.query);
@@ -187,6 +189,15 @@ export default class QueryHeader extends Component {
                             closeFn={() => this.refs.saveModal.toggle()}
                         />
                     </ModalWithTrigger>
+                ]);
+            } else {
+                // MBQL->NATIVE
+                buttonSections.push([
+                    <QueryModeToggle
+                        key="queryModeToggle"
+                        currentQueryMode={this.props.card.dataset_query.type}
+                        setQueryModeFn={this.props.setQueryModeFn}
+                    />
                 ]);
             }
         }
@@ -315,16 +326,17 @@ export default class QueryHeader extends Component {
             </a>
         ]);
 
+        // MBQL->NATIVE
         // native mode toggle
-        if (!this.props.cardIsDirtyFn()) {
-            buttonSections.push([
-                <QueryModeToggle
-                    key="queryModeToggle"
-                    currentQueryMode={this.props.card.dataset_query.type}
-                    setQueryModeFn={this.props.setQueryModeFn}
-                />
-            ]);
-        }
+        // if (!this.props.cardIsDirtyFn()) {
+        //     buttonSections.push([
+        //         <QueryModeToggle
+        //             key="queryModeToggle"
+        //             currentQueryMode={this.props.card.dataset_query.type}
+        //             setQueryModeFn={this.props.setQueryModeFn}
+        //         />
+        //     ]);
+        // }
 
         return (
             <ButtonBar buttons={buttonSections} className="Header-buttonSection" />
