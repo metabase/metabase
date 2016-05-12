@@ -2,6 +2,8 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.set :as set]
             [clojure.tools.logging :as log]
+            (honeysql [core :as hsql]
+                      [helpers :as h])
             (korma [core :as k]
                    [db :as kdb])
             [metabase.driver :as driver]
@@ -52,7 +54,7 @@
     "Given a `Database` DETAILS-MAP, return a JDBC connection spec.")
 
   (current-datetime-fn [this]
-    "*OPTIONAL*. Korma form that should be used to get the current `DATETIME` (or equivalent). Defaults to `(k/sqlfn* :NOW)`.")
+    "*OPTIONAL*. Korma form that should be used to get the current `DATETIME` (or equivalent). Defaults to `(hsql/call :now)`.")
 
   (date [this, ^Keyword unit, field-or-value]
     "Return a korma form for truncating a date or timestamp field or value to a given resolution, or extracting a date component.")
@@ -65,6 +67,11 @@
      returns the *unqualified* name of `Field`.
 
      Return `nil` to prevent FIELD from being aliased.")
+
+  (prepare-identifier [this, ^String identifier]
+    "*OPTIONAL*. Prepare an identifier, such as a Table or Field name, when it is used in a SQL query.
+     This is used by drivers like H2 to transform names to upper-case.
+     The default implementation is `identity`.")
 
   (prepare-value [this, ^Value value]
     "*OPTIONAL*. Prepare a value (e.g. a `String` or `Integer`) that will be used in a korma form. By default, this returns VALUE's `:value` as-is, which
@@ -146,11 +153,8 @@
 
 
 (defn- can-connect? [driver details]
-  (let [connection (connection-details->spec driver details)]
-    (= 1 (-> (k/exec-raw connection "SELECT 1" :results)
-             first
-             vals
-             first))))
+  (= 1 (first (vals (first (jdbc/query (connection-details->spec driver details)
+                                       ["SELECT 1"]))))))
 
 (defn pattern-based-column->base-type
   "Return a `column->base-type` function that matches types based on a sequence of pattern / base-type pairs."
@@ -188,8 +192,19 @@
                                                (-fetch-page (inc page-num)))))))]
     (fetch-page 0)))
 
-(defn- table-rows-seq [_ database table]
-  (k/select (korma-entity database table)))
+(defn- db->spec [{:keys [engine details]}]
+  (connection-details->spec (driver/engine->driver engine) details))
+
+(defn- table->qualified-kw [driver {table-name :name, schema :schema}]
+  {:pre [table-name]}
+  (hsql/qualify (when schema
+                  (keyword (prepare-identifier driver (name schema))))
+                (keyword (prepare-identifier driver (name table-name)))))
+
+(defn- table-rows-seq [driver database table]
+  (jdbc/query (db->spec database)
+              (hsql/format (-> (h/select :*)
+                               (h/from (table->qualified-kw driver table))))))
 
 (defn- field-avg-length [driver field]
   (or (some-> (korma-entity (field/table field))
@@ -268,14 +283,12 @@
 
 (defn- add-table-pks
   [^DatabaseMetaData metadata, table]
-  (let [pks (->> (.getPrimaryKeys metadata nil nil (:name table))
-                 jdbc/result-set-seq
-                 (mapv :column_name)
-                 set)]
+  (let [pks (set (map :column_name (jdbc/result-set-seq (.getPrimaryKeys metadata nil nil (:name table)))))]
     (update table :fields (fn [fields]
                             (set (for [field fields]
-                                   (if-not (contains? pks (:name field)) field
-                                                                         (assoc field :pk? true))))))))
+                                   (if-not (contains? pks (:name field))
+                                     field
+                                     (assoc field :pk? true))))))))
 
 (defn describe-database
   "Default implementation of `describe-database` for JDBC-based drivers."
@@ -325,9 +338,10 @@
    :apply-order-by          (resolve 'metabase.driver.generic-sql.query-processor/apply-order-by)
    :apply-page              (resolve 'metabase.driver.generic-sql.query-processor/apply-page)
    :column->special-type    (constantly nil)
-   :current-datetime-fn     (constantly (k/sqlfn* :NOW))
+   :current-datetime-fn     (constantly (hsql/call :now))
    :excluded-schemas        (constantly nil)
    :field->alias            (u/drop-first-arg name)
+   :prepare-identifier      (u/drop-first-arg identity)
    :prepare-value           (u/drop-first-arg :value)
    :set-timezone-sql        (constantly nil)
    :stddev-fn               (constantly :STDDEV)})
@@ -350,7 +364,6 @@
           :process-native          (resolve 'metabase.driver.generic-sql.native/process-and-run)
           :process-mbql            (resolve 'metabase.driver.generic-sql.query-processor/process-mbql)
           :table-rows-seq          table-rows-seq}))
-
 
 
 ;;; ### Util Fns

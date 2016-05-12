@@ -43,8 +43,8 @@
    `keypath` is of the form `table-name.key` or `table-name.field-name.key`, where `key` is the name of some property of `Table` or `Field`.
 
    This functionality is currently only used by the Sample Dataset. In order to use this functionality, drivers must implement optional fn `:table-rows-seq`."
-  [driver database _metabase_metadata]
-  (doseq [{:keys [keypath value]} (driver/table-rows-seq driver database _metabase_metadata)]
+  [driver database metabase-metadata-table]
+  (doseq [{:keys [keypath value]} (driver/table-rows-seq driver database metabase-metadata-table)]
     ;; TODO: this does not support schemas in dbs :(
     (let [[_ table-name field-name k] (re-matches #"^([^.]+)\.(?:([^.]+)\.)?([^.]+)$" keypath)]
       (try (when (not= 1 (if field-name

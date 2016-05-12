@@ -189,9 +189,9 @@
   (loop [honeysql-form honeysql-form, [{:keys [table-name pk-field source-field schema]} & more] join-tables]
     (let [table-name        (hsql/qualify schema table-name)
           source-table-name (hsql/qualify source-schema source-table-name)
-          honeysql-form     (h/join honeysql-form table-name
-                                    [:= (hsql/qualify source-table-name (:field-name source-field))
-                                        (hsql/qualify table-name        (:field-name pk-field))])]
+          honeysql-form     (h/left-join honeysql-form table-name
+                                         [:= (hsql/qualify source-table-name (:field-name source-field))
+                                             (hsql/qualify table-name        (:field-name pk-field))])]
       (if (seq more)
         (recur honeysql-form more)
         honeysql-form))))

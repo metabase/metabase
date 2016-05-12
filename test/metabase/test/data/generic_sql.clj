@@ -210,25 +210,29 @@
     (into {} (for [[k v] row-or-rows]
                {(sql/escape-field-name k) v}))))
 
-;; (defn load-data-with-debug-logging
-;;   "Add debug logging to the data loading fn. This should passed as the first arg to `make-load-data-fn`."
-;;   [insert!]
-;;   (fn [rows]
-;;     (println (u/format-color 'blue "Inserting %d rows like:\n%s" (count rows) (s/replace (k/sql-only (k/insert :some-table (k/values (escape-field-names (first rows)))))
-;;                                                                                          #"\"SOME-TABLE\""
-;;                                                                                          "[table]")))
-;;     (let [start-time (System/currentTimeMillis)]
-;;       (insert! rows)
-;;       (println (u/format-color 'green "Inserting %d rows took %d ms." (count rows) (- (System/currentTimeMillis) start-time))))))
+#_(defn load-data-with-debug-logging
+  "Add debug logging to the data loading fn. This should passed as the first arg to `make-load-data-fn`."
+  [insert!]
+  (fn [rows]
+    (println (u/format-color 'blue "Inserting %d rows like:\n%s" (count rows) (s/replace (k/sql-only (k/insert :some-table (k/values (escape-field-names (first rows)))))
+                                                                                         #"\"SOME-TABLE\""
+                                                                                         "[table]")))
+    (insert! rows)))
 
-(defn- insert! [spec prepare-key-fn table-name row-or-rows]
+#_(defn load-data-with-time-logging
+  "Add logging for the amount of the data loading took. This should be passed as the first arg to `make-load-data-fn`."
+  [insert!]
+  (fn [rows]
+    (let [start-time (System/nanoTime)]
+      (insert! rows)
+      (println (u/format-color 'green "Inserting %d rows took %s." (count rows) (u/format-nanoseconds (- (System/nanoTime) start-time)))))))
+
+(defn- do-insert! [spec prepare-key-fn table-name row-or-rows]
   (let [prepare-key (comp keyword prepare-key-fn name)
-        rows        (u/prog1 (if (sequential? row-or-rows)
-                               row-or-rows
-                               [row-or-rows])
-                      (println "ROWS[0]:" (first <>)))
-        first-row   (first rows)
-        columns     (keys first-row)
+        rows        (if (sequential? row-or-rows)
+                      row-or-rows
+                      [row-or-rows])
+        columns     (keys (first rows))
         values      (vec (for [row rows]
                            (mapv row columns)))
         hsql-form   (-> (apply h/columns (map prepare-key columns))
@@ -237,9 +241,6 @@
         sql+args    (hsql/format hsql-form
                       :quoting             :ansi ; TODO
                       :allow-dashed-names? true)]
-    (println "COLUMNS:" columns)
-    (println "VALUES[0]:" (first values))
-    (println "SQL:" (first sql+args))
     (jdbc/execute! spec sql+args)))
 
 (defn make-load-data-fn
@@ -250,7 +251,7 @@
     (let [entity      (korma-entity driver dbdef tabledef)
           spec        (database->spec driver :db dbdef)
           prepare-key (get-in entity [:db :options :naming :fields])
-          insert!     ((apply comp wrap-insert-fns) (partial insert! spec prepare-key (:table entity)))
+          insert!     ((apply comp wrap-insert-fns) (partial do-insert! spec prepare-key (:table entity)))
           rows        (load-data-get-rows driver dbdef tabledef)]
       (insert! rows))))
 

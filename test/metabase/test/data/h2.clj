@@ -27,24 +27,23 @@
 (def ^:private ^:dynamic *dbdef*
   nil)
 
-(defn- database->connection-details
-  [_ context {:keys [short-lived?], :as dbdef}]
+(defn- database->connection-details [context {:keys [short-lived?], :as dbdef}]
   {:short-lived? short-lived?
    :db           (str "mem:" (i/escaped-name dbdef) (when (= context :db)
                                                       ;; Return details with the GUEST user added so SQL queries are allowed.
                                                       ";USER=GUEST;PASSWORD=guest"))})
 
 
-(defn quote-name [_ nm]
+(defn quote-name [nm]
   (str \" (s/upper-case nm) \"))
 
-(defn- korma-entity [_ dbdef {:keys [table-name]}]
+(defn- korma-entity [dbdef {:keys [table-name]}]
   (-> (k/create-entity table-name)
-      (k/database (kdb/create-db (kdb/h2 (assoc (database->connection-details nil :db dbdef)
+      (k/database (kdb/create-db (kdb/h2 (assoc (database->connection-details :db dbdef)
                                                 :naming {:keys   s/lower-case
                                                          :fields s/upper-case}))))))
 
-(defn create-db-sql [_ {:keys [short-lived?]}]
+(defn create-db-sql [{:keys [short-lived?]}]
   (str
    ;; We don't need to actually do anything to create a database here. Just disable the undo
    ;; log (i.e., transactions) for this DB session because the bulk operations to load data don't need to be atomic
@@ -64,37 +63,34 @@
    (generic/default-create-table-sql this dbdef tabledef) ";\n"
 
    ;; Grant the GUEST account r/w permissions for this table
-   (format "GRANT ALL ON %s TO GUEST;" (quote-name this table-name))))
+   (format "GRANT ALL ON %s TO GUEST;" (quote-name table-name))))
 
 
 (u/strict-extend H2Driver
   generic/IGenericSQLDatasetLoader
   (let [{:keys [execute-sql!], :as mixin} generic/DefaultsMixin]
     (merge mixin
-           {:create-db-sql             create-db-sql
+           {:create-db-sql             (u/drop-first-arg create-db-sql)
             :create-table-sql          create-table-sql
-            :database->spec            (fn [this context dbdef]
-                                         ;; Don't use the h2 driver implementation, which makes the connection string read-only & if-exists only
-                                         (kdb/h2 (i/database->connection-details this context dbdef)))
+            ;; Don't use the h2 driver implementation, which makes the connection string read-only & if-exists only
+            :database->spec            (comp kdb/h2 (u/drop-first-arg database->connection-details))
             :drop-db-if-exists-sql     (constantly nil)
             :execute-sql!              (fn [this _ dbdef sql]
                                          ;; we always want to use 'server' context when execute-sql! is called
                                          ;; (never try connect as GUEST, since we're not giving them priviledges to create tables / etc)
                                          (execute-sql! this :server dbdef sql))
-            :field-base-type->sql-type (fn [_ base-type]
-                                         (field-base-type->sql-type base-type))
-            :korma-entity              korma-entity
+            :field-base-type->sql-type (u/drop-first-arg field-base-type->sql-type)
+            :korma-entity              (u/drop-first-arg korma-entity)
             :load-data!                generic/load-data-all-at-once!
             :pk-field-name             (constantly "ID")
             :pk-sql-type               (constantly "BIGINT AUTO_INCREMENT")
-            :quote-name                quote-name}))
+            :quote-name                (u/drop-first-arg quote-name)}))
 
   i/IDatasetLoader
   (merge generic/IDatasetLoaderMixin
-         {:database->connection-details       database->connection-details
+         {:database->connection-details       (u/drop-first-arg database->connection-details)
           :default-schema                     (constantly "PUBLIC")
           :engine                             (constantly :h2)
-          :format-name                        (fn [_ table-or-field-name]
-                                                (s/upper-case table-or-field-name))
+          :format-name                        (u/drop-first-arg s/upper-case)
           :has-questionable-timezone-support? (constantly true)
           :id-field-type                      (constantly :BigIntegerField)}))
