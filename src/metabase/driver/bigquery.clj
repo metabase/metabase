@@ -318,8 +318,8 @@
                      x))
                  query))
 
-(defn- korma-form [query entity]
-  (sqlqp/build-korma-form driver (add-dataset-id-to-fields query) entity))
+(defn- korma-form [query]
+  (sqlqp/build-honeysql-form driver (add-dataset-id-to-fields query)))
 
 (defn- korma-form->sql [korma-form]
   {:pre [(map? korma-form)]}
@@ -328,7 +328,7 @@
                     (k/as-sql korma-form))
                   #"\]\.\[" ".")
        (catch Throwable e
-         (log/error (u/format-color 'red "Couldn't convert korma form to SQL:\n%s" (sqlqp/pprint-korma-form korma-form)))
+         (log/error (u/format-color 'red "Couldn't convert korma form to SQL:\n%s" (u/pprint-to-str korma-form)))
          (throw e))))
 
 (defn- post-process-mbql [dataset-id table-name {:keys [columns rows]}]
@@ -341,9 +341,9 @@
 
 (defn- process-mbql [{{{:keys [dataset-id]} :details, :as database} :database, {{table-name :name} :source-table} :query, :as query}]
   {:pre [(map? database) (seq dataset-id) (seq table-name)]}
-  (let [korma-form (korma-form query (entity dataset-id table-name))
+  (let [korma-form (korma-form query)
         sql        (korma-form->sql korma-form)]
-    (sqlqp/log-korma-form korma-form sql)
+    (u/pprint-to-str korma-form sql)
     (post-process-mbql dataset-id table-name (process-native* database sql))))
 
 ;; This provides an implementation of `prepare-value` that prevents korma from converting forms to prepared statement parameters (`?`)

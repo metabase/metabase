@@ -30,8 +30,9 @@
 
 (defn escaped-name
   "Return escaped version of database name suitable for use as a filename / database name / etc."
-  ^String [^DatabaseDefinition database-definition]
-  (s/replace (:database-name database-definition) #"\s+" "_"))
+  ^String [{:keys [database-name]}]
+  {:pre [(string? database-name)]}
+  (s/replace database-name #"\s+" "_"))
 
 
 (defprotocol IMetabaseInstance

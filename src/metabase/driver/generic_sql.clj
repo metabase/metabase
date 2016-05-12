@@ -2,6 +2,8 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.set :as set]
             [clojure.tools.logging :as log]
+            (honeysql [core :as hsql]
+                      [helpers :as h])
             (korma [core :as k]
                    [db :as kdb])
             [metabase.driver :as driver]
@@ -52,7 +54,7 @@
     "Given a `Database` DETAILS-MAP, return a JDBC connection spec.")
 
   (current-datetime-fn [this]
-    "*OPTIONAL*. Korma form that should be used to get the current `DATETIME` (or equivalent). Defaults to `(k/sqlfn* :NOW)`.")
+    "*OPTIONAL*. Korma form that should be used to get the current `DATETIME` (or equivalent). Defaults to `(hsql/call :now)`.")
 
   (date [this, ^Keyword unit, field-or-value]
     "Return a korma form for truncating a date or timestamp field or value to a given resolution, or extracting a date component.")
@@ -71,6 +73,13 @@
      is eventually passed as a parameter in a prepared statement. Drivers such as BigQuery that don't support prepared statements can skip this
      behavior by returning a korma `raw` form instead, or other drivers can perform custom type conversion as appropriate.")
 
+  (quote-style ^clojure.lang.Keyword [this]
+    "*OPTIONAL*. Return the quoting style that should be used by [HoneySQL](https://github.com/jkk/honeysql) when building a SQL statement.
+     Defaults to `:ansi`, but other valid options are `:mysql`, `:sqlserver`, `:oracle`, and `:h2` (added in `metabase.util.honeysql-extensions`;
+     like `:ansi`, but uppercases the result).
+
+       (hsql/format ... :quoting (quote-style driver))")
+
   (set-timezone-sql ^String [this]
     "*OPTIONAL*. This should be a prepared JDBC SQL statement string to be used to set the timezone for the current transaction.
 
@@ -86,9 +95,12 @@
     "Return a korma form appropriate for converting a Unix timestamp integer field or value to an proper SQL `Timestamp`.
      SECONDS-OR-MILLISECONDS refers to the resolution of the int in question and with be either `:seconds` or `:milliseconds`."))
 
+
+;; This does something important for the Crate driver, apparently (what?)
 (extend-protocol jdbc/IResultSetReadColumn
   (class (object-array []))
   (result-set-read-column [x _ _] (PersistentVector/adopt x)))
+
 
 (def ^:dynamic ^:private connection-pools
   "A map of our currently open connection pools, keyed by DATABASE `:id`."
@@ -146,11 +158,8 @@
 
 
 (defn- can-connect? [driver details]
-  (let [connection (connection-details->spec driver details)]
-    (= 1 (-> (k/exec-raw connection "SELECT 1" :results)
-             first
-             vals
-             first))))
+  (= 1 (first (vals (first (jdbc/query (connection-details->spec driver details)
+                                       ["SELECT 1"]))))))
 
 (defn pattern-based-column->base-type
   "Return a `column->base-type` function that matches types based on a sequence of pattern / base-type pairs."
@@ -188,8 +197,19 @@
                                                (-fetch-page (inc page-num)))))))]
     (fetch-page 0)))
 
-(defn- table-rows-seq [_ database table]
-  (k/select (korma-entity database table)))
+(defn- db->spec [{:keys [engine details]}]
+  (connection-details->spec (driver/engine->driver engine) details))
+
+(defn- table->qualified-kw [{table-name :name, schema :schema}]
+  {:pre [table-name]}
+  (hsql/qualify (when schema
+                  (keyword (name schema)))
+                (keyword (name table-name))))
+
+(defn- table-rows-seq [database table]
+  (jdbc/query (db->spec database)
+              (hsql/format (-> (h/select :*)
+                               (h/from (table->qualified-kw table))))))
 
 (defn- field-avg-length [driver field]
   (or (some-> (korma-entity (field/table field))
@@ -268,14 +288,12 @@
 
 (defn- add-table-pks
   [^DatabaseMetaData metadata, table]
-  (let [pks (->> (.getPrimaryKeys metadata nil nil (:name table))
-                 jdbc/result-set-seq
-                 (mapv :column_name)
-                 set)]
+  (let [pks (set (map :column_name (jdbc/result-set-seq (.getPrimaryKeys metadata nil nil (:name table)))))]
     (update table :fields (fn [fields]
                             (set (for [field fields]
-                                   (if-not (contains? pks (:name field)) field
-                                                                         (assoc field :pk? true))))))))
+                                   (if-not (contains? pks (:name field))
+                                     field
+                                     (assoc field :pk? true))))))))
 
 (defn describe-database
   "Default implementation of `describe-database` for JDBC-based drivers."
@@ -325,10 +343,11 @@
    :apply-order-by          (resolve 'metabase.driver.generic-sql.query-processor/apply-order-by)
    :apply-page              (resolve 'metabase.driver.generic-sql.query-processor/apply-page)
    :column->special-type    (constantly nil)
-   :current-datetime-fn     (constantly (k/sqlfn* :NOW))
+   :current-datetime-fn     (constantly (hsql/call :now))
    :excluded-schemas        (constantly nil)
    :field->alias            (u/drop-first-arg name)
    :prepare-value           (u/drop-first-arg :value)
+   :quote-style             (constantly :ansi)
    :set-timezone-sql        (constantly nil)
    :stddev-fn               (constantly :STDDEV)})
 
@@ -349,8 +368,7 @@
           :notify-database-updated notify-database-updated
           :process-native          (resolve 'metabase.driver.generic-sql.native/process-and-run)
           :process-mbql            (resolve 'metabase.driver.generic-sql.query-processor/process-mbql)
-          :table-rows-seq          table-rows-seq}))
-
+          :table-rows-seq          (u/drop-first-arg table-rows-seq)}))
 
 
 ;;; ### Util Fns
