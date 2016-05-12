@@ -200,8 +200,6 @@ CardControllers.controller('CardDetail', [
                         } else {
                             field = ["aggregation", 0];
                         }
-                    } else if (column.unit != null) {
-                        field = ["datetime_field", column.id, "as", column.unit];
                     } else {
                         field = column.id;
                     }

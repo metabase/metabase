@@ -1,5 +1,6 @@
 (ns metabase.driver.bigquery
-  (:require (clojure [string :as s]
+  (:require (clojure [set :as set]
+                     [string :as s]
                      [walk :as walk])
             [clojure.tools.logging :as log]
             (korma [core :as k]
@@ -9,11 +10,11 @@
                       [driver :as driver])
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
-            metabase.query-processor.interface
             (metabase.models [database :refer [Database]]
                              [field :as field]
                              [table :as table])
             [metabase.sync-database.analyze :as analyze]
+            metabase.query-processor.interface
             [metabase.util :as u]
             [metabase.util.korma-extensions :as kx])
   (:import (java.util Collections Date)
@@ -207,9 +208,10 @@
      (let [^TableSchema schema (.getSchema response)
            parsers             (for [^TableFieldSchema field (.getFields schema)]
                                  (type->parser (.getType field)))
-           cols                (table-schema->metabase-field-info schema)]
-       {:columns (map :name cols)
-        :cols    cols
+           columns             (for [column (table-schema->metabase-field-info schema)]
+                                 (set/rename-keys column {:base-type :base_type}))]
+       {:columns (map :name columns)
+        :cols    columns
         :rows    (for [^TableRow row (.getRows response)]
                    (for [[^TableCell cell, parser] (partition 2 (interleave (.getF row) parsers))]
                      (when-let [v (.getV cell)]
@@ -310,16 +312,17 @@
   (-> (k/create-entity (k/raw (format "[%s.%s]" dataset-id table-name)))
       (k/database korma-db)))
 
-;; Make the dataset-id the "schema" of every field in the query because BigQuery can't figure out fields that are qualified with their just their table name
-(defn- add-dataset-id-to-fields [{{{:keys [dataset-id]} :details} :database, :as query}]
+;; Make the dataset-id the "schema" of every field or table in the query because otherwise BigQuery can't figure out where things is from
+(defn- qualify-fields-and-tables-with-dataset-id [{{{:keys [dataset-id]} :details} :database, :as query}]
   (walk/postwalk (fn [x]
-                   (if (instance? metabase.query_processor.interface.Field x)
-                     (assoc x :schema-name dataset-id)
-                     x))
-                 query))
+                   (cond
+                     (instance? metabase.query_processor.interface.Field x)     (assoc x :schema-name dataset-id) ; TODO - it is inconvenient that we use different keys for `schema` across different
+                     (instance? metabase.query_processor.interface.JoinTable x) (assoc x :schema      dataset-id) ; classes. We should one day refactor to use the same key everywhere.
+                     :else                                                      x))
+                 (assoc-in query [:query :source-table :schema] dataset-id)))
 
 (defn- korma-form [query entity]
-  (sqlqp/build-korma-form driver (add-dataset-id-to-fields query) entity))
+  (sqlqp/build-korma-form driver (qualify-fields-and-tables-with-dataset-id query) entity))
 
 (defn- korma-form->sql [korma-form]
   {:pre [(map? korma-form)]}
@@ -443,6 +446,12 @@
                                                :display-name "Auth Code"
                                                :placeholder  "4/HSk-KtxkSzTt61j5zcbee2Rmm5JHkRFbL5gD5lgkXek"
                                                :required     true}])
+          ;; Don't enable foreign keys when testing because BigQuery *doesn't* have a notion of foreign keys. Joins are still allowed, which puts us in a weird position, however;
+          ;; people can manually specifiy "foreign key" relationships in admin and everything should work correctly.
+          ;; Since we can't infer any "FK" relationships during sync our normal FK tests are not appropriate for BigQuery, so they're disabled for the time being.
+          ;; TODO - either write BigQuery-speciifc tests for FK functionality or add additional code to manually set up these FK relationships for FK tables
+          :features              (constantly (when-not config/is-test?
+                                               #{:foreign-keys}))
           :field-values-lazy-seq (u/drop-first-arg field-values-lazy-seq)
           :process-native        (u/drop-first-arg process-native)
           :process-mbql          (u/drop-first-arg process-mbql)}))

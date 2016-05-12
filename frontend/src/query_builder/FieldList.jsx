@@ -143,7 +143,7 @@ export default class FieldList extends Component {
     renderTimeGroupingTrigger(field) {
         return (
             <div className="FieldList-grouping-trigger flex align-center p1 cursor-pointer">
-                <h4 className="mr1">by {parseFieldBucketing(field).split("-").join(" ")}</h4>
+                <h4 className="mr1">by {parseFieldBucketing(field, "day").split("-").join(" ")}</h4>
                 <Icon name="chevronright" width={16} height={16} />
             </div>
         );

@@ -8,8 +8,8 @@
                    [db :as kdb])
             (korma.sql [engine :as kengine]
                        [fns :as kfns])
-            [metabase.config :as config]
-            [metabase.driver :as driver]
+            (metabase [config :as config]
+                      [driver :as driver])
             [metabase.driver.generic-sql :as sql]
             [metabase.query-processor :as qp]
             metabase.query-processor.interface

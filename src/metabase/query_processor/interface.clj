@@ -46,7 +46,8 @@
 (s/defrecord JoinTable [source-field :- JoinTableField
                         pk-field     :- JoinTableField
                         table-id     :- IntGreaterThanZero
-                        table-name   :- s/Str])
+                        table-name   :- s/Str
+                        schema       :- (s/maybe s/Str)])
 
 ;;; # ------------------------------------------------------------ PROTOCOLS ------------------------------------------------------------
 
@@ -300,11 +301,14 @@
   (s/named (s/cond-pre SimpleFilterClause NotFilter CompoundFilter)
            "Valid filter clause"))
 
+(def OrderByDirection
+  "Schema for the direction in an `OrderBy` subclause."
+  (s/named (s/enum :ascending :descending) "Valid order-by direction"))
 
 (def OrderBy
   "Schema for top-level `order-by` clause in an MBQL query."
   (s/named {:field     AnyField
-            :direction (s/named (s/enum :ascending :descending) "Valid order-by direction")}
+            :direction OrderByDirection}
            "Valid order-by subclause"))
 
 
