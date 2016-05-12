@@ -1,3 +1,5 @@
+/* @flow weak */
+
 import 'babel-polyfill';
 
 // angular:

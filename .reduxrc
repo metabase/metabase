@@ -1,5 +1,5 @@
 {
-    "sourceBase":"frontend/src",
+    "sourceBase":"frontend/src/metabase",
     "testBase":"frontend/test/unit",
     "smartPath":"containers",
     "dumbPath":"components",
