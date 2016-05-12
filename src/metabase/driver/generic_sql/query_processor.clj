@@ -333,7 +333,8 @@
   (let [sql+args (honeysql-form->sql+args honeysql-form)]
     (jdbc/with-db-connection [connection (sql/db->jdbc-connection-spec database)]
       (jdbc/query connection sql+args
-        :identifiers identity))))
+        ;; :identifiers identity
+        ))))
 
 (defn process-mbql
   "Convert QUERY into a HoneySQL form and execute it."

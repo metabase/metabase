@@ -9,10 +9,10 @@
 (alter-meta! #'honeysql.core/call assoc :style/indent 1)
 
 ;; Add an `:h2` quote style that uppercases the identifier
-(let [quote-fns @(resolve 'honeysql.format/quote-fns)]
+(let [quote-fns     @(resolve 'honeysql.format/quote-fns)
+      ansi-quote-fn (:ansi quote-fns)]
   (intern 'honeysql.format 'quote-fns
-          (assoc quote-fns :h2 (fn [identifier]
-                                 (str \" (s/upper-case (s/replace identifier "\"" "\"\"")) \")))))
+          (assoc quote-fns :h2 (comp s/upper-case ansi-quote-fn))))
 
 
 (defrecord Literal [s]

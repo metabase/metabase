@@ -107,8 +107,8 @@
   [actual-keys fields]
   {:pre [(set? actual-keys)
          (every? keyword? actual-keys)]}
-  (let [expected-keys (set (map :field-name fields))
-        _             (assert (every? keyword? expected-keys))
+  (let [expected-keys (u/prog1 (set (map :field-name fields))
+                        (assert (every? keyword? <>)))
         missing-keys  (set/difference actual-keys expected-keys)]
     (when (seq missing-keys)
       (log/warn (u/format-color 'yellow "There are fields we weren't expecting in the results: %s\nExpected: %s\nActual: %s"
