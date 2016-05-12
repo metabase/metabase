@@ -189,9 +189,9 @@
   (loop [honeysql-form honeysql-form, [{:keys [table-name pk-field source-field schema]} & more] join-tables]
     (let [table-name        (hsql/qualify schema table-name)
           source-table-name (hsql/qualify source-schema source-table-name)
-          honeysql-form     (h/left-join honeysql-form table-name
-                                         [:= (hsql/qualify source-table-name (:field-name source-field))
-                                             (hsql/qualify table-name        (:field-name pk-field))])]
+          honeysql-form     (h/merge-left-join honeysql-form table-name
+                                               [:= (hsql/qualify source-table-name (:field-name source-field))
+                                                   (hsql/qualify table-name        (:field-name pk-field))])]
       (if (seq more)
         (recur honeysql-form more)
         honeysql-form))))
@@ -223,6 +223,7 @@
   (and (config/config-bool :mb-db-logging)
        (not qp/*disable-qp-logging*)))
 
+;; TODO - not sure "pprint" is appropriate since this function doesn't print anything
 (defn pprint-sql
   "Add newlines to the SQL to make it more readable."
   [sql]
