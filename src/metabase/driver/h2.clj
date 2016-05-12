@@ -1,7 +1,6 @@
 (ns metabase.driver.h2
   (:require [clojure.string :as s]
             [honeysql.core :as hsql]
-            [korma.db :as kdb]
             (metabase [db :as db]
                       [driver :as driver])
             [metabase.driver.generic-sql :as sql]
@@ -103,9 +102,20 @@
     (file+options->connection-string file (merge options {"IFEXISTS"         "TRUE"
                                                           "ACCESS_MODE_DATA" "r"}))))
 
+(defn- h2
+  "Create a database specification for an H2 database."
+  [{:keys [db make-pool?]
+    :or   {db "h2.db", make-pool? true}
+    :as   opts}]
+  (merge {:classname   "org.h2.Driver"
+          :subprotocol "h2"
+          :subname     db
+          :make-pool?  make-pool?}
+         (dissoc opts :db)))
+
 (defn- connection-details->spec [details]
-  (kdb/h2 (if db/*allow-potentailly-unsafe-connections* details
-              (update details :db connection-string-set-safe-options))))
+  (h2 (if db/*allow-potentailly-unsafe-connections* details
+          (update details :db connection-string-set-safe-options))))
 
 
 (defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
@@ -123,9 +133,9 @@
     ;; For :native queries check to make sure the DB in question has a (non-default) NAME property specified in the connection string.
     ;; We don't allow SQL execution on H2 databases for the default admin account for security reasons
     (when (= (keyword query-type) :native)
-      (let [{:keys [db]}   (db/sel :one :field [Database :details] :id (:database query))
-            _              (assert db)
-            [_ options]    (connection-string->file+options db)
+      (let [db          (u/prog1 (:db (db/sel :one :field [Database :details] :id (:database query)))
+                          (assert <>))
+            [_ options] (connection-string->file+options db)
             {:strs [USER]} options]
         (when (or (s/blank? USER)
                   (= USER "sa")) ; "sa" is the default USER
