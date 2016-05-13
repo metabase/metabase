@@ -106,6 +106,10 @@
     height: 100%;
 }
 
+.DashCard .Card.Card--slow {
+    border-color: var(--gold-color);
+}
+
 .Dash--editing .DashCard .Card {
     pointer-events: none;
     transition: border .3s, background-color .3s;

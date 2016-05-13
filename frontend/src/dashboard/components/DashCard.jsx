@@ -30,7 +30,7 @@ export default class DashCard extends Component {
     };
 
     async componentDidMount() {
-        const { dashcard } = this.props;
+        const { dashcard, markNewCardSeen, fetchCardData } = this.props;
 
         this.visibilityTimer = window.setInterval(this.updateVisibility, 2000);
         window.addEventListener("scroll", this.updateVisibility, false);
@@ -38,15 +38,12 @@ export default class DashCard extends Component {
         // HACK: way to scroll to a newly added card
         if (dashcard.justAdded) {
             ReactDOM.findDOMNode(this).scrollIntoView();
-            this.props.markNewCardSeen(dashcard.id);
+            markNewCardSeen(dashcard.id);
         }
 
+        let cards = [dashcard.card].concat(...(dashcard.series || []));
         try {
-            await Promise.all([
-                this.props.fetchCardData(dashcard.card)
-            ].concat(
-                dashcard.series && dashcard.series.map(this.props.fetchCardData)
-            ));
+            await Promise.all(cards.map(fetchCardData));
         } catch (error) {
             console.error("DashCard error", error)
             this.setState({ error });
@@ -73,7 +70,7 @@ export default class DashCard extends Component {
     }
 
     render() {
-        const { dashcard, cardData, isEditing, onAddSeries, onRemove } = this.props;
+        const { dashcard, cardData, cardDurations, isEditing, onAddSeries, onRemove } = this.props;
 
         const cards = [dashcard.card].concat(dashcard.series || []);
         const series = cards
@@ -81,7 +78,14 @@ export default class DashCard extends Component {
                 card: card,
                 data: cardData[card.id] && cardData[card.id].data,
                 error: cardData[card.id] && cardData[card.id].error,
+                duration: cardDurations[card.id]
             }));
+
+        const loading = !(series.length > 0 && _.every(series, (s) => s.data));
+        const expectedDuration = Math.max(...series.map((s) => s.duration ? s.duration.average : 0));
+        const usuallyFast = _.every(series, (s) => s.duration && s.duration.average < s.duration.fast_threshold);
+        const isSlow = loading && _.some(series, (s) => s.duration) && (usuallyFast ? "usually-fast" : "usually-slow");
+
         const errors = series.map(s => s.error).filter(e => e);
         const error = errors[0] || this.state.error;
 
@@ -100,10 +104,12 @@ export default class DashCard extends Component {
 
         const CardVisualization = visualizations.get(series[0].card.display);
         return (
-            <div className={"Card bordered rounded flex flex-column " + cx({ "Card--recent": dashcard.isAdded })}>
+            <div className={"Card bordered rounded flex flex-column " + cx({ "Card--recent": dashcard.isAdded, "Card--slow": isSlow === "usually-slow" })}>
                 <Visualization
                     className="flex-full"
                     error={errorMessage}
+                    isSlow={isSlow}
+                    expectedDuration={expectedDuration}
                     series={series}
                     isDashboard={true}
                     isEditing={isEditing}

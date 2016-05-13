@@ -111,7 +111,7 @@ export default class QueryVisualizationObjectDetailTable extends Component {
         }).map(function(fk) {
 
             var fkCount = (
-                <LoadingSpinner width="25px" height="25px" />
+                <LoadingSpinner size={25} />
             ),
                 fkCountValue = 0,
                 fkClickable = false;

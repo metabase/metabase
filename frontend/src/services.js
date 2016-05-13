@@ -593,6 +593,10 @@ CoreServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', funct
                 delete this.then;
                 resolve(this);
             }
+        },
+        dataset_duration: {
+            url: '/api/dataset/duration',
+            method: 'POST'
         }
     });
 }]);

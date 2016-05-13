@@ -4,18 +4,17 @@ import "./LoadingSpinner.css";
 
 export default class LoadingSpinner extends Component {
     static defaultProps = {
-        width: '32px',
-        height: '32px',
-        borderWidth: '4px',
+        size: 32,
+        borderWidth: 4,
         fill: 'currentcolor',
         spinnerClassName: 'LoadingSpinner'
     };
 
     render() {
-        var { width, height, borderWidth, className, spinnerClassName } = this.props;
+        var { size, borderWidth, className, spinnerClassName } = this.props;
         return (
             <div className={className}>
-                <div className={spinnerClassName} style={{ width, height, borderWidth }}></div>
+                <div className={spinnerClassName} style={{ width: size, height: size, borderWidth }}></div>
             </div>
         );
     }

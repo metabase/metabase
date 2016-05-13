@@ -8,6 +8,7 @@ const cardsSelector             = state => state.cards;
 const dashboardsSelector        = state => state.dashboards;
 const dashcardsSelector         = state => state.dashcards;
 const cardDataSelector          = state => state.cardData;
+const cardDurationsSelector     = state => state.cardDurations;
 const cardIdListSelector        = state => state.cardList;
 const revisionsSelector         = state => state.revisions;
 
@@ -45,6 +46,6 @@ const cardListSelector = createSelector(
 );
 
 export const dashboardSelectors = createSelector(
-    [isEditingSelector, isDirtySelector, selectedDashboardSelector, dashboardCompleteSelector, cardListSelector, revisionsSelector, cardDataSelector, databasesSelector],
-    (isEditing, isDirty, selectedDashboard, dashboard, cards, revisions, cardData, databases) => ({ isEditing, isDirty, selectedDashboard, dashboard, cards, revisions, cardData, databases })
+    [isEditingSelector, isDirtySelector, selectedDashboardSelector, dashboardCompleteSelector, cardListSelector, revisionsSelector, cardDataSelector, cardDurationsSelector, databasesSelector],
+    (isEditing, isDirty, selectedDashboard, dashboard, cards, revisions, cardData, cardDurations, databases) => ({ isEditing, isDirty, selectedDashboard, dashboard, cards, revisions, cardData, cardDurations, databases })
 );

@@ -35,7 +35,7 @@ export default class SaveStatus extends Component {
 
     render() {
         if (this.state.saving) {
-            return (<div className="SaveStatus mx2 px2 border-right"><LoadingSpinner width="24" height="24" /></div>);
+            return (<div className="SaveStatus mx2 px2 border-right"><LoadingSpinner size={24} /></div>);
         } else if (this.state.error) {
             return (<div className="SaveStatus mx2 px2 border-right text-error">Error: {this.state.error}</div>)
         } else if (this.state.recentlySavedTimeout != null) {
