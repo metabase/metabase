@@ -4,7 +4,7 @@
                      [walk :as walk])
             [clojure.tools.logging :as log]
             [schema.core :as s]
-            (metabase [db :refer :all, :as db]
+            (metabase [db :as db]
                       [driver :as driver])
             (metabase.models [database :refer [Database]]
                              [field :refer [Field] :as field]
@@ -120,18 +120,18 @@
 
 (defn- get-table-id-or-explode [db-id table-name]
   (let [table-name (format-name table-name)]
-    (or (sel :one :id Table, :db_id db-id, :name table-name)
+    (or (db/sel :one :id Table, :db_id db-id, :name table-name)
         (throw (Exception. (format "No Table '%s' found for Database %d.\nFound: %s" table-name db-id
-                                   (u/pprint-to-str (sel :many :id->field [Table :name], :db_id db-id, :active true))))))))
+                                   (u/pprint-to-str (db/sel :many :id->field [Table :name], :db_id db-id, :active true))))))))
 
 (defn- get-field-id-or-explode [table-id field-name & {:keys [parent-id]}]
   (let [field-name (format-name field-name)]
-    (or (sel :one :id Field, :active true, :table_id table-id, :name field-name, :parent_id parent-id)
+    (or (db/sel :one :id Field, :active true, :table_id table-id, :name field-name, :parent_id parent-id)
         (throw (Exception. (format "Couldn't find Field %s for Table %d.\nFound: %s"
                                    (str \' field-name \' (when parent-id
                                                            (format " (parent: %d)" parent-id)))
                                    table-id
-                                   (u/pprint-to-str (sel :many :id->field [Field :name], :active true, :table_id table-id))))))))
+                                   (u/pprint-to-str (db/sel :many :id->field [Field :name], :active true, :table_id table-id))))))))
 
 (defn id
   "Get the ID of the current database or one of its `Tables` or `Fields`.
@@ -178,7 +178,7 @@
            (i/create-db! dataset-loader database-definition)
 
            ;; Add DB object to Metabase DB
-           (let [db (ins Database
+           (let [db (db/ins Database
                       :name    database-name
                       :engine  (name engine)
                       :details (i/database->connection-details dataset-loader :db database-definition))]
@@ -193,7 +193,7 @@
                                             (throw (Exception. (format "Table '%s' not loaded from definiton:\n%s\nFound:\n%s"
                                                                        table-name
                                                                        (u/pprint-to-str (dissoc table-definition :rows))
-                                                                       (u/pprint-to-str (sel :many :fields [Table :schema :name], :db_id (:id db))))))))]
+                                                                       (u/pprint-to-str (db/sel :many :fields [Table :schema :name], :db_id (:id db))))))))]
                  (doseq [{:keys [field-name field-type visibility-type special-type], :as field-definition} (:field-definitions table-definition)]
                    (let [field (delay (or (i/metabase-instance field-definition @table)
                                           (throw (Exception. (format "Field '%s' not loaded from definition:\n"
@@ -201,13 +201,13 @@
                                                                      (u/pprint-to-str field-definition))))))]
                      (when field-type
                        (log/debug (format "SET FIELD TYPE %s.%s -> %s" table-name field-name field-type))
-                       (upd Field (:id @field) :field_type (name field-type)))
+                       (db/upd Field (:id @field) :field_type (name field-type)))
                      (when visibility-type
                        (log/debug (format "SET VISIBILITY TYPE %s.%s -> %s" table-name field-name visibility-type))
-                       (upd Field (:id @field) :visibility_type (name visibility-type)))
+                       (db/upd Field (:id @field) :visibility_type (name visibility-type)))
                      (when special-type
                        (log/debug (format "SET SPECIAL TYPE %s.%s -> %s" table-name field-name special-type))
-                       (upd Field (:id @field) :special_type (name special-type)))))))
+                       (db/upd Field (:id @field) :special_type (name special-type)))))))
              db))))))
 
 (defn remove-database!
@@ -218,7 +218,7 @@
    (remove-database! *data-loader* database-definition))
   ([dataset-loader ^DatabaseDefinition database-definition]
    ;; Delete the Metabase Database and associated objects
-   (cascade-delete Database :id (:id (i/metabase-instance database-definition (i/engine dataset-loader))))
+   (db/cascade-delete Database :id (:id (i/metabase-instance database-definition (i/engine dataset-loader))))
 
    ;; now delete the DBMS database
    (i/destroy-db! dataset-loader database-definition)))
@@ -231,7 +231,7 @@
   "Destroy all temporary databases created by `with-temp-db`."
   {:expectations-options :after-run}
   []
-  (binding [*sel-disable-logging* true]
+  (binding [db/*disable-db-logging* true]
     (doseq [[loader dbdef] @loader->loaded-db-def]
       (try
         (remove-database! loader dbdef)
@@ -244,10 +244,10 @@
   (let [loader *data-loader*
         dbdef  (i/map->DatabaseDefinition (assoc dbdef :short-lived? true))]
     (swap! loader->loaded-db-def conj [loader dbdef])
-    (binding [*sel-disable-logging* true]
+    (binding [db/*disable-db-logging* true]
       (let [db (get-or-create-database! loader dbdef)]
         (assert db)
-        (assert (exists? Database :id (:id db)))
+        (assert (db/exists? Database :id (:id db)))
         (with-db db
           (f db))))))
 

@@ -189,7 +189,7 @@
 ;; NOTE: we only handle active Tables/Fields and we skip any FK relationships (they can safely populate later)
 (defmigration create-raw-tables
   (when (= 0 (:cnt (first (k/select RawTable (k/aggregate (count :*) :cnt)))))
-    (binding [db/*sel-disable-logging* true]
+    (binding [db/*disable-db-logging* true]
       (kdb/transaction
         (doseq [{database-id :id, :keys [name engine]} (db/sel :many Database)]
           (when-let [tables (not-empty (db/sel :many Table :db_id database-id, :active true))]

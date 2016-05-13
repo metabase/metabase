@@ -47,6 +47,7 @@
                  [compojure "1.5.0"]                                  ; HTTP Routing library built on Ring
                  [environ "1.0.2"]                                    ; easy environment management
                  [hiccup "1.0.5"]                                     ; HTML templating
+                 [honeysql "0.6.3"]                                   ; Transform Clojure data structures to SQL
                  [korma "0.4.2"]                                      ; SQL generation
                  [log4j/log4j "1.2.17"                                ; logging framework
                   :exclusions [javax.mail/mail
