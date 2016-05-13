@@ -9,7 +9,7 @@
     "checkins"])
 
 ; # Build a cost dictionary, assuming Zipf's law and cost = -math.log(probability).
-(def ^:private words (concat special-words (s/split-lines (slurp (io/file (io/resource "words-by-frequency.txt"))))))
+(def ^:private words (concat special-words (s/split-lines (slurp (io/resource "words-by-frequency.txt")))))
 
 ; wordcost = dict((k, log((i+1)*log(len(words)))) for i,k in enumerate(words))
 (def ^:private word-cost
