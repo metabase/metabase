@@ -39,8 +39,8 @@
                            (k/order :max_ts :desc)
                            (k/limit 10))
         :let     [model-object (case (:model view-log)
-                                 "card"      (db/sel :one [Card :id :name :description :display], :id (:model_id view-log))
-                                 "dashboard" (db/sel :one [Dashboard :id :name :description],     :id (:model_id view-log))
+                                 "card"      (db/sel-1 [Card :id :name :description :display], :id (:model_id view-log))
+                                 "dashboard" (db/sel-1 [Dashboard :id :name :description],     :id (:model_id view-log))
                                  nil)]
         :when    model-object]
     (assoc view-log :model_object model-object)))

@@ -88,7 +88,7 @@
     (let [upd-cards! (fn [cards]
                        (update-pulse-cards {:id pulse-id} cards)
                        (doall (for [card-id (db/sel :many :field [PulseCard :card_id] :pulse_id pulse-id)]
-                                (db/sel :one :field [Card :name] :id card-id))))]
+                                (db/sel-1 :field [Card :name] :id card-id))))]
       [(upd-cards! [])
        (upd-cards! [card-id-1])
        (upd-cards! [card-id-2])
@@ -111,7 +111,7 @@
                                       :schedule_type :daily
                                       :schedule_hour 4
                                       :recipients    [{:email "foo@bar.com"} {:id (user->id :rasta)}]}])
-    (-> (db/sel :one PulseChannel :pulse_id id)
+    (-> (db/sel-1 PulseChannel :pulse_id id)
         (hydrate :recipients)
         (dissoc :id :pulse_id :created_at :updated_at)
         (m/dissoc-in [:details :emails]))))

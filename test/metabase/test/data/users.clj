@@ -124,7 +124,7 @@
       :or {superuser false
            active    true}}]
   {:pre [(string? email) (string? first) (string? last) (string? password) (m/boolean? superuser)]}
-  (or (db/sel :one User :email email)
+  (or (db/sel-1 User :email email)
       (db/insert! User
         :email        email
         :first_name   first

@@ -11,7 +11,7 @@
   (:import metabase.driver.h2.H2Driver))
 
 (def users-table
-  (delay (db/sel :one Table :name "USERS")))
+  (delay (db/sel-1 Table :name "USERS")))
 
 (def venues-table
   (delay (Table (id :venues))))

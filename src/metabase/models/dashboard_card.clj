@@ -39,7 +39,7 @@
   "Return the `Dashboard` associated with the `DashboardCard`."
   [{:keys [dashboard_id]}]
   {:pre [(integer? dashboard_id)]}
-  (db/sel :one 'metabase.models.dashboard/Dashboard :id dashboard_id))
+  (db/sel-1 'metabase.models.dashboard/Dashboard :id dashboard_id))
 
 
 (defn ^:hydrate series
@@ -60,7 +60,7 @@
   "Fetch a single `DashboardCard` by its ID value."
   [id]
   {:pre [(integer? id)]}
-  (-> (db/sel :one DashboardCard :id id)
+  (-> (db/sel-1 DashboardCard :id id)
       (hydrate :series)))
 
 (defn update-dashboard-card-series

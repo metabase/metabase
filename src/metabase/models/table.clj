@@ -57,7 +57,7 @@
   "Return the ID of the primary key `Field` for TABLE."
   {:hydrate :pk_field, :arglists '([table])}
   [{:keys [id]}]
-  (db/sel :one :id Field, :table_id id, :special_type "id", :visibility_type [not-in ["sensitive" "retired"]]))
+  (db/sel-1 :id Field, :table_id id, :special_type "id", :visibility_type [not-in ["sensitive" "retired"]]))
 
 (def ^{:arglists '([table])} database
   "Return the `Database` associated with this `Table`."
@@ -80,7 +80,7 @@
   "Retrieve the `Database` ID for the given table-id."
   [table-id]
   {:pre [(integer? table-id)]}
-  (db/sel :one :field [Table :db_id] :id table-id))
+  (db/sel-1 :field [Table :db_id] :id table-id))
 
 
 (defn retire-tables

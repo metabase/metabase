@@ -29,7 +29,7 @@
   (do
     (process-view-count-event {:topic :card-create
                                :item  card})
-    (-> (db/sel :one ViewLog :user_id user-id)
+    (-> (db/sel-1 ViewLog :user_id user-id)
         (select-keys [:user_id :model :model_id]))))
 
 ;; `:card-read` event
@@ -42,7 +42,7 @@
   (do
     (process-view-count-event {:topic :card-read
                                :item  card})
-    (-> (db/sel :one ViewLog :user_id user-id)
+    (-> (db/sel-1 ViewLog :user_id user-id)
         (select-keys [:user_id :model :model_id]))))
 
 ;; `:dashboard-read` event
@@ -55,5 +55,5 @@
   (do
     (process-view-count-event {:topic :dashboard-read
                                :item  dashboard})
-    (-> (db/sel :one ViewLog :user_id user-id)
+    (-> (db/sel-1 ViewLog :user_id user-id)
         (select-keys [:user_id :model :model_id]))))

@@ -82,7 +82,7 @@
   "Fetch a single `Segment` by its ID value."
   [id]
   {:pre [(integer? id)]}
-  (-> (db/sel :one Segment :id id)
+  (-> (db/sel-1 Segment :id id)
       (hydrate :creator)))
 
 (defn retrieve-segments

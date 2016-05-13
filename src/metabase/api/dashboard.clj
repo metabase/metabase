@@ -63,7 +63,7 @@
   [id]
   (write-check Dashboard id)
   ;; TODO - it would be much more natural if `cascade-delete!` returned the deleted entity instead of an api response
-  (let [dashboard (db/sel :one Dashboard :id id)
+  (let [dashboard (db/sel-1 Dashboard :id id)
         result    (db/cascade-delete! Dashboard :id id)]
     (events/publish-event :dashboard-delete (assoc dashboard :actor_id *current-user-id*))
     result))

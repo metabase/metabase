@@ -71,7 +71,7 @@
   (restore-cache-if-needed)
   (if (contains? @cached-setting->value k)
     (@cached-setting->value k)
-    (let [v (db/sel :one :field [Setting :value] :key (name k))]
+    (let [v (db/sel-1 :field [Setting :value] :key (name k))]
       (swap! cached-setting->value assoc k v)
       v)))
 

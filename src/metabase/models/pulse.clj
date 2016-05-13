@@ -113,7 +113,7 @@
   "Fetch a single `Pulse` by its ID value."
   [id]
   {:pre [(integer? id)]}
-  (-> (db/sel :one Pulse :id id)
+  (-> (db/sel-1 Pulse :id id)
       (hydrate :creator :cards [:channels :recipients])
       (m/dissoc-in [:details :emails])))
 

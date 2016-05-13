@@ -55,7 +55,7 @@
        ["venues"
         [{:field-name "address", :base-type {:native "json"}}]
         [[(k/raw "to_json('{\"street\": \"431 Natoma\", \"city\": \"San Francisco\", \"state\": \"CA\", \"zip\": 94103}'::text)")]]])]
-    (db/sel :one :field [Field :special_type] :id (data/id :venues :address))))
+    (db/sel-1 :field [Field :special_type] :id (data/id :venues :address))))
 
 
 ;;; # UUID Support

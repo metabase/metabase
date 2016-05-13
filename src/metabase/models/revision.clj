@@ -149,12 +149,12 @@
          (integer? user-id)
          (db/exists? User :id user-id)
          (integer? revision-id)]}
-  (let [serialized-instance (db/sel :one :field [Revision :object] :model (:name entity), :model_id id, :id revision-id)]
+  (let [serialized-instance (db/sel-1 :field [Revision :object] :model (:name entity), :model_id id, :id revision-id)]
     (kdb/transaction
       ;; Do the reversion of the object
       (revert-to-revision entity id user-id serialized-instance)
       ;; Push a new revision to record this change
-      (let [last-revision (db/sel :one Revision, :model (:name entity), :model_id id, (k/order :id :DESC))
+      (let [last-revision (db/sel-1 Revision, :model (:name entity), :model_id id, (k/order :id :DESC))
             new-revision  (db/insert! Revision
                             :model        (:name entity)
                             :model_id     id

@@ -22,4 +22,4 @@
   "Retrieves the first Session `:id` for a given user (if available), or nil otherwise."
   [user-id]
   {:pre [(integer? user-id)]}
-  (db/sel :one :field [Session :id], :user_id user-id, (k/order :created_at :ASC)))
+  (db/sel-1 :field [Session :id], :user_id user-id, (k/order :created_at :ASC)))

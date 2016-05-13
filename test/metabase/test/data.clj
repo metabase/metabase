@@ -97,7 +97,7 @@
   "Wrap inner QUERY with `:database` ID and other 'outer query' kvs. DB ID is fetched by looking up the Database for the query's `:source-table`."
   {:style/indent 0}
   [query :- qi/Query]
-  {:database (db/sel :one :field [Table :db_id], :id (:source-table query))
+  {:database (db/sel-1 :field [Table :db_id], :id (:source-table query))
    :type     :query
    :query    query})
 
@@ -120,13 +120,13 @@
 
 (defn- get-table-id-or-explode [db-id table-name]
   (let [table-name (format-name table-name)]
-    (or (db/sel :one :id Table, :db_id db-id, :name table-name)
+    (or (db/sel-1 :id Table, :db_id db-id, :name table-name)
         (throw (Exception. (format "No Table '%s' found for Database %d.\nFound: %s" table-name db-id
                                    (u/pprint-to-str (db/sel :many :id->field [Table :name], :db_id db-id, :active true))))))))
 
 (defn- get-field-id-or-explode [table-id field-name & {:keys [parent-id]}]
   (let [field-name (format-name field-name)]
-    (or (db/sel :one :id Field, :active true, :table_id table-id, :name field-name, :parent_id parent-id)
+    (or (db/sel-1 :id Field, :active true, :table_id table-id, :name field-name, :parent_id parent-id)
         (throw (Exception. (format "Couldn't find Field %s for Table %d.\nFound: %s"
                                    (str \' field-name \' (when parent-id
                                                            (format " (parent: %d)" parent-id)))

@@ -26,7 +26,7 @@
    last_name  [Required NonEmptyString]
    email      [Required Email]}
   (check-superuser)
-  (let [existing-user (db/sel :one [User :id :is_active] :email email)]
+  (let [existing-user (db/sel-1 [User :id :is_active] :email email)]
     (cond
       ;; new user account, so create it
       (nil? existing-user) (create-user! first_name last_name email :password password :send-welcome true :invitor @*current-user*)
@@ -52,7 +52,7 @@
   "Fetch a `User`. You must be fetching yourself *or* be a superuser."
   [id]
   (check-self-or-superuser id)
-  (check-404 (db/sel :one User :id id, :is_active true)))
+  (check-404 (db/sel-1 User :id id, :is_active true)))
 
 
 (defendpoint PUT "/:id"
@@ -79,7 +79,7 @@
   [id :as {{:keys [password old_password]} :body}]
   {password     [Required ComplexPassword]}
   (check-self-or-superuser id)
-  (let-404 [user (db/sel :one [User :password_salt :password], :id id, :is_active true)]
+  (let-404 [user (db/sel-1 [User :password_salt :password], :id id, :is_active true)]
     (when (= id (:id @*current-user*))
       (checkp (creds/bcrypt-verify (str (:password_salt user) old_password) (:password user)) "old_password" "Invalid password")))
   (set-user-password! id password)
@@ -98,7 +98,7 @@
   "Resend the user invite email for a given user."
   [id]
   (check-superuser)
-  (when-let [user (db/sel :one User :id id :is_active true)]
+  (when-let [user (db/sel-1 User :id id :is_active true)]
     (let [reset-token (set-user-password-reset-token! id)
           ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
           join-url    (str (form-password-reset-url reset-token) "#new")]

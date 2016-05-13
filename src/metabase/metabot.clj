@@ -83,7 +83,7 @@
 
 (defn- id-or-name->card [card-id-or-name]
   (cond
-    (integer? card-id-or-name)     (db/sel :one :fields ['Card :id :name], :id card-id-or-name)
+    (integer? card-id-or-name)     (db/sel-1 :fields ['Card :id :name], :id card-id-or-name)
     (or (string? card-id-or-name)
         (symbol? card-id-or-name)) (card-with-name card-id-or-name)
     :else                          (throw (Exception. (format "I don't know what Card `%s` is. Give me a Card ID or name.")))))

@@ -18,7 +18,7 @@
        (mapv tu/boolean-ids-and-timestamps)))
 
 (defn get-table [table-id]
-  (->> (hydrate/hydrate (db/sel :one RawTable :raw_table_id table-id) :columns)
+  (->> (hydrate/hydrate (db/sel-1 RawTable :raw_table_id table-id) :columns)
        (mapv tu/boolean-ids-and-timestamps)))
 
 ;; save-all-table-fks

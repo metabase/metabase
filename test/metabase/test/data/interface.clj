@@ -44,12 +44,12 @@
 (extend-protocol IMetabaseInstance
   FieldDefinition
   (metabase-instance [this table]
-    (db/sel :one Field :table_id (:id table), :name [in #{(s/lower-case (:field-name this)) ; HACKY!
+    (db/sel-1 Field :table_id (:id table), :name [in #{(s/lower-case (:field-name this)) ; HACKY!
                                                        (s/upper-case (:field-name this))}]))
 
   TableDefinition
   (metabase-instance [this database]
-    (db/sel :one Table :db_id (:id database), :name [in #{(s/lower-case (:table-name this))
+    (db/sel-1 Table :db_id (:id database), :name [in #{(s/lower-case (:table-name this))
                                                        (s/upper-case (:table-name this))}]))
 
   DatabaseDefinition
@@ -57,7 +57,7 @@
     (assert (string? database-name))
     (assert (keyword? engine-kw))
     (db/setup-db-if-needed :auto-migrate true)
-    (db/sel :one Database :name database-name, :engine (name engine-kw))))
+    (db/sel-1 Database :name database-name, :engine (name engine-kw))))
 
 
 ;; ## IDatasetLoader

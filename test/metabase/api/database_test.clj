@@ -79,7 +79,7 @@
 ;; Check that we can create a Database
 (let [db-name (random-name)]
   (expect-eval-actual-first
-      (match-$ (db/sel :one Database :name db-name)
+      (match-$ (db/sel-1 Database :name db-name)
         {:created_at      $
          :engine          "postgres" ; string because it's coming back from API instead of DB
          :id              $
@@ -97,7 +97,7 @@
 ;; Check that we can delete a Database
 (expect-let [db-name (random-name)
              {db-id :id} (create-db db-name)
-             sel-db-name (fn [] (db/sel :one :field [Database :name] :id db-id))]
+             sel-db-name (fn [] (db/sel-1 :field [Database :name] :id db-id))]
   [db-name
    nil]
   [(sel-db-name)
@@ -108,7 +108,7 @@
 ;; Check that we can update fields in a Database
 (expect-let [[old-name new-name] (repeatedly 2 random-name)
              {db-id :id} (create-db old-name)
-             sel-db (fn [] (db/sel :one :fields [Database :name :engine :details :is_full_sync] :id db-id))]
+             sel-db (fn [] (db/sel-1 :fields [Database :name :engine :details :is_full_sync] :id db-id))]
   [{:details      {:host "localhost", :port 5432, :dbname "fakedb", :user "cam", :ssl true}
     :engine       :postgres
     :name         old-name
@@ -146,7 +146,7 @@
                                          :description     nil
                                          :features        (mapv name (driver/features (driver/engine->driver engine)))})))
                                   ;; (?) I don't remember why we have to do this for postgres but not any other of the bonus drivers
-                                  (match-$ (db/sel :one Database :name db-name)
+                                  (match-$ (db/sel-1 Database :name db-name)
                                     {:created_at      $
                                      :engine          "postgres"
                                      :id              $
@@ -171,7 +171,7 @@
 ;; GET /api/databases (include tables)
 (let [db-name (str "A" (random-name))] ; make sure this name comes before "test-data"
   (expect-eval-actual-first
-    (set (concat [(match-$ (db/sel :one Database :name db-name)
+    (set (concat [(match-$ (db/sel-1 Database :name db-name)
                     {:created_at      $
                      :engine          "postgres"
                      :id              $

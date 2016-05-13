@@ -293,7 +293,7 @@
       ;; do a quick introspection to add the RawTables to the db
       (introspect/introspect-database-and-update-raw-tables! driver db)
       ;; stub out the Table we are going to sync for real below
-      (let [raw-table-id (db/sel :one :id RawTable, :database_id database-id, :name "transactions")
+      (let [raw-table-id (db/sel-1 :id RawTable, :database_id database-id, :name "transactions")
             tbl          (db/insert! Table
                            :db_id        database-id
                            :raw_table_id raw-table-id

@@ -104,7 +104,7 @@
 (defn- create-channel-then-select!
   [channel]
   (when-let [new-channel-id (create-pulse-channel channel)]
-    (-> (db/sel :one PulseChannel :id new-channel-id)
+    (-> (db/sel-1 PulseChannel :id new-channel-id)
         (hydrate :recipients)
         (update :recipients #(sort-by :email %))
         (dissoc :id :pulse_id :created_at :updated_at)
@@ -113,7 +113,7 @@
 (defn- update-channel-then-select!
   [{:keys [id] :as channel}]
   (update-pulse-channel channel)
-  (-> (db/sel :one PulseChannel :id id)
+  (-> (db/sel-1 PulseChannel :id id)
       (hydrate :recipients)
       (dissoc :id :pulse_id :created_at :updated_at)
       (m/dissoc-in [:details :emails])))

@@ -201,21 +201,15 @@
 (defn- invoke-entity
   "Fetch an object with a specific ID or all objects of type ENTITY from the DB.
 
-     (invoke-entity Database)   -> seq of all databases
-     (invoke-entity Database 1) -> Database w/ ID 1"
+     (invoke-entity Database)           -> seq of all databases
+     (invoke-entity Database 1)         -> Database w/ ID 1
+     (invoke-entity Database :id 1 ...) -> A single Database matching some key-value args"
   ([entity]
-   (for [obj (k/select (assoc entity :fields (default-fields entity)))]
-     (do-post-select entity obj)))
+   ((resolve 'metabase.db/sel) entity))
   ([entity id]
-   (when id
-     (when (and id
-                (config/config-bool :mb-db-logging)
-                (not @(resolve 'metabase.db/*sel-disable-logging*)))
-       (log/debug "DB CALL:" (:name entity) id))
-     (when-let [[obj] (seq (k/select (assoc entity :fields (default-fields entity))
-                                     (k/where {:id id})
-                                     (k/limit 1)))]
-       (do-post-select entity obj)))))
+   (invoke-entity entity :id id))
+  ([entity k v & more]
+   (apply (resolve 'metabase.db/sel-1) entity k v more)))
 
 (def ^:const ^{:arglists '([entity])} ^Boolean metabase-entity?
   "Is ENTITY a valid metabase model entity?"
@@ -244,7 +238,7 @@
 
      (defentity User :metabase_user)  ; creates class `UserInstance` and korma entity `User`
 
-     (metabase.db/sel :one User, ...) ; use with `metabase.db` functions. All results are instances of `UserInstance`
+     (metabase.db/sel-1 User, ...) ; use with `metabase.db` functions. All results are instances of `UserInstance`
      (korma.core/select User ...)     ; use with korma functions. Results will be regular maps
 
    The record type automatically extends `IEntity` with `IEntityDefaults`, but you may call `extend` again if you need to
@@ -258,7 +252,8 @@
    arg can be used to fetch a specific instance by its integer ID.
 
      (Database)                       ; return a seq of *all* Databases (as instances of `DatabaseInstance`)
-     (Database 1)                     ; return Database 1"
+     (Database 1)                     ; return Database 1
+     (Database :name \"cool db\")     ; return Database where :name is \"cool db\""
   {:arglist      '([entity table-name] [entity docstr? table-name & korma-forms])
    :style/indent 1}
   [entity & args]
@@ -267,9 +262,28 @@
         map->instance                       (symbol (str "map->" instance))]
     `(do
        (defrecord ~instance []
+         ;; Yes this is a bit silly but I don't think there's any other way to make an object handle varargs in clojure
          clojure.lang.IFn
-         (~'invoke [this#]     (invoke-entity-or-instance this#))
-         (~'invoke [this# id#] (invoke-entity-or-instance this# id#)))
+         (~'invoke [this#] (invoke-entity-or-instance this#))
+         (~'invoke [this# id#] (invoke-entity-or-instance this# id#))
+         (~'invoke [this# arg1# arg2#] (invoke-entity-or-instance this# arg1# arg2#))
+         (~'invoke [this# arg1# arg2# arg3#] (invoke-entity-or-instance this# arg1# arg2# arg3#))
+         (~'invoke [this# arg1# arg2# arg3# arg4#] (invoke-entity-or-instance this# arg1# arg2# arg3# arg4#))
+         (~'invoke [this# arg1# arg2# arg3# arg4# arg5#] (invoke-entity-or-instance this# arg1# arg2# arg3# arg4# arg5#))
+         (~'invoke [this# arg1# arg2# arg3# arg4# arg5# arg6#] (invoke-entity-or-instance this# arg1# arg2# arg3# arg4# arg5# arg6#))
+         (~'invoke [this# arg1# arg2# arg3# arg4# arg5# arg6# arg7#] (invoke-entity-or-instance this# arg1# arg2# arg3# arg4# arg5# arg6# arg7#))
+         (~'invoke [this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8#] (invoke-entity-or-instance this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8#))
+         (~'invoke [this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9#] (invoke-entity-or-instance this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9#))
+         (~'invoke [this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10#] (invoke-entity-or-instance this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10#))
+         (~'invoke [this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11#] (invoke-entity-or-instance this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11#))
+         (~'invoke [this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11# arg12#] (invoke-entity-or-instance this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11# arg12#))
+         (~'invoke [this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11# arg12# arg13#] (invoke-entity-or-instance this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11# arg12# arg13#))
+         (~'invoke [this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11# arg12# arg13# arg14#] (invoke-entity-or-instance this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11# arg12# arg13# arg14#))
+         (~'invoke [this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11# arg12# arg13# arg14# arg15#] (invoke-entity-or-instance this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11# arg12# arg13# arg14# arg15#))
+         (~'invoke [this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11# arg12# arg13# arg14# arg15# arg16#] (invoke-entity-or-instance this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11# arg12# arg13# arg14# arg15# arg16#))
+         (~'invoke [this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11# arg12# arg13# arg14# arg15# arg16# arg17#] (invoke-entity-or-instance this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11# arg12# arg13# arg14# arg15# arg16# arg17#))
+         (~'invoke [this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11# arg12# arg13# arg14# arg15# arg16# arg17# arg18#] (invoke-entity-or-instance this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11# arg12# arg13# arg14# arg15# arg16# arg17# arg18#))
+         (~'invoke [this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11# arg12# arg13# arg14# arg15# arg16# arg17# arg18# arg19#] (invoke-entity-or-instance this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11# arg12# arg13# arg14# arg15# arg16# arg17# arg18# arg19#)))
 
        (u/strict-extend ~instance
          IEntity        IEntityDefaults

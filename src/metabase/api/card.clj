@@ -143,7 +143,7 @@
     (checkp (integer? model_id) "id" (format "id is required parameter when filter mode is '%s'" (name f)))
     (case f
       :database (read-check Database model_id)
-      :table    (read-check Database (db/sel :one :field [Table :db_id] :id model_id))))
+      :table    (read-check Database (db/sel-1 :field [Table :db_id] :id model_id))))
   (cards-for-filter-option f model_id label))
 
 (defendpoint POST "/"
@@ -205,7 +205,7 @@
   "Delete a `Card`."
   [id]
   (write-check Card id)
-  (let-404 [card (db/sel :one Card :id id)]
+  (let-404 [card (db/sel-1 Card :id id)]
     (write-check card)
     (u/prog1 (db/cascade-delete! Card :id id)
       (events/publish-event :card-delete (assoc card :actor_id *current-user-id*)))))
@@ -224,7 +224,7 @@
 (defendpoint DELETE "/:card-id/favorite"
   "Unfavorite a Card."
   [card-id]
-  (let-404 [id (db/sel :one :id CardFavorite :card_id card-id, :owner_id *current-user-id*)]
+  (let-404 [id (db/sel-1 :id CardFavorite :card_id card-id, :owner_id *current-user-id*)]
     (delete-and-return-204! CardFavorite :id id)))
 
 (defendpoint POST "/:card-id/labels"

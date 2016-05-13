@@ -40,7 +40,7 @@
                          :model     "user"
                          :details   {}
                          :timestamp (u/->Timestamp "2015-09-10T05:33:43.641Z"))]
-  [(match-$ (db/sel :one Activity :id (:id activity2))
+  [(match-$ (db/sel-1 Activity :id (:id activity2))
      {:id           $
       :topic        "dashboard-create"
       :user_id      $
@@ -63,7 +63,7 @@
       :table        nil
       :custom_id    nil
       :details      $})
-   (match-$ (db/sel :one Activity :id (:id activity3))
+   (match-$ (db/sel-1 Activity :id (:id activity3))
      {:id           $
       :topic        "user-joined"
       :user_id      $
@@ -86,7 +86,7 @@
       :table        nil
       :custom_id    nil
       :details      $})
-   (match-$ (db/sel :one Activity :id (:id activity1))
+   (match-$ (db/sel-1 Activity :id (:id activity1))
      {:id           $
       :topic        "install"
       :user_id      nil

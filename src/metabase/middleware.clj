@@ -89,7 +89,7 @@
   (fn [request]
     (if-let [current-user-id (:metabase-user-id request)]
       (binding [*current-user-id* current-user-id
-                *current-user*    (delay (db/sel :one `[User ~@(models/default-fields User) :is_active :is_staff], :id current-user-id))]
+                *current-user*    (delay (db/sel-1 `[User ~@(models/default-fields User) :is_active :is_staff], :id current-user-id))]
         (handler request))
       (handler request))))
 

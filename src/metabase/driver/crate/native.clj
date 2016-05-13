@@ -10,7 +10,7 @@
 (defn process-and-run
   "Process and run a native (raw SQL) QUERY."
   [driver {{sql :query} :native, database-id :database, :as query}]
-  (try (let [database (db/sel :one :fields [Database :engine :details] :id database-id)
+  (try (let [database (db/sel-1 :fields [Database :engine :details] :id database-id)
              db-conn  (sql/db->jdbc-connection-spec database)]
          (jdbc/with-db-connection [t-conn db-conn]
            (let [^java.sql.Connection jdbc-connection (:connection t-conn)]

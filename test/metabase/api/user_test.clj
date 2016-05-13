@@ -70,7 +70,7 @@
 ;; Test that we can create a new User
 (let [rand-name (random-name)]
   (expect-eval-actual-first
-    (match-$ (db/sel :one User :first_name rand-name)
+    (match-$ (db/sel-1 User :first_name rand-name)
       {:id           $
        :email        $
        :first_name   rand-name
@@ -85,7 +85,7 @@
 ;; Test that reactivating a disabled account works
 (let [rand-name (random-name)]
   (expect-eval-actual-first
-    (match-$ (db/sel :one User :first_name rand-name :is_active true)
+    (match-$ (db/sel-1 User :first_name rand-name :is_active true)
       {:id           $
        :email        $
        :first_name   rand-name
@@ -186,7 +186,7 @@
 (expect-let [{old-first :first_name, last-name :last_name, old-email :email, id :id, :as user} (create-user!)
              new-first (random-name)
              new-email (.toLowerCase ^String (str new-first "@metabase.com"))
-             fetch-user (fn [] (db/sel :one :fields [User :first_name :last_name :is_superuser :email] :id id))]
+             fetch-user (fn [] (db/sel-1 :fields [User :first_name :last_name :is_superuser :email] :id id))]
   [{:email old-email
     :is_superuser false
     :last_name last-name
@@ -201,7 +201,7 @@
        (fetch-user))])
 
 ;; Test that a normal user cannot change the :is_superuser flag for themselves
-(expect-let [fetch-user (fn [] (db/sel :one :fields [User :first_name :last_name :is_superuser :email] :id (user->id :rasta)))]
+(expect-let [fetch-user (fn [] (db/sel-1 :fields [User :first_name :last_name :is_superuser :email] :id (user->id :rasta)))]
   [(fetch-user)]
   [(do ((user->client :rasta) :put 200 (str "user/" (user->id :rasta)) (-> (fetch-user)
                                                                            (assoc :is_superuser true)))
@@ -231,7 +231,7 @@
     (metabase.http-client/client creds :put 200 (format "user/%d/password" id) {:password     "abc123!!DEF"
                                                                                 :old_password (:password creds)})
     ;; now simply grab the lastest pass from the db and compare to the one we have from before reset
-    (not= password (db/sel :one :field [User :password] :email (:email creds)))))
+    (not= password (db/sel-1 :field [User :password] :email (:email creds)))))
 
 ;; Check that a non-superuser CANNOT update someone else's password
 (expect "You don't have permissions to do that."
@@ -260,7 +260,7 @@
     (let [creds {:email    "def@metabase.com"
                  :password "def123"}]
       [(metabase.http-client/client creds :put 200 (format "user/%d/qbnewb" id))
-       (db/sel :one :field [User :is_qbnewb] :id id)])))
+       (db/sel-1 :field [User :is_qbnewb] :id id)])))
 
 
 ;; Check that a non-superuser CANNOT update someone else's password

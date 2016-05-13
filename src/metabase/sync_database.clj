@@ -97,7 +97,7 @@
     (binding [qp/*disable-qp-logging*  true
               db/*sel-disable-logging* true]
       ;; if the Table has a RawTable backing it then do an introspection and sync
-      (when-let [raw-tbl (db/sel :one raw-table/RawTable :id (:raw_table_id table))]
+      (when-let [raw-tbl (db/sel-1 raw-table/RawTable :id (:raw_table_id table))]
         (introspect/introspect-raw-table-and-update! driver database raw-tbl)
         (sync/update-data-models-for-table! table))
 

@@ -110,7 +110,7 @@
   [{field-name :name, table-id :table_id, parent-id :parent_id}]
   (conj (if-let [parent (Field parent-id)]
           (qualified-name-components parent)
-          [(db/sel :one :field ['Table :name], :id table-id)])
+          [(db/sel-1 :field ['Table :name], :id table-id)])
         field-name))
 
 (defn qualified-name
@@ -122,7 +122,7 @@
   "Return the `Table` associated with this `Field`."
   {:arglists '([field])}
   [{:keys [table_id]}]
-  (db/sel :one 'Table, :id table_id))
+  (db/sel-1 'Table, :id table_id))
 
 (u/strict-extend (class Field)
   i/IEntity (merge i/IEntityDefaults

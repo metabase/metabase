@@ -95,7 +95,7 @@
   []
   (check-superuser)
   (sample-data/add-sample-dataset!)
-  (db/sel :one Database :is_sample true))
+  (db/sel-1 Database :is_sample true))
 
 (defendpoint GET "/:id"
   "Get `Database` with ID."

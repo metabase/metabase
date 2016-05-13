@@ -18,7 +18,7 @@
          form# (throw (Exception. (format ~(format "%s failed: invalid clause: %%s" fn-name) form#)))))))
 
 (defparser segment-parse-filter-subclause
-  ["SEGMENT" (segment-id :guard integer?)] (-> (db/sel :one :field [metabase.models.segment/Segment :definition] :id segment-id)
+  ["SEGMENT" (segment-id :guard integer?)] (-> (db/sel-1 :field [metabase.models.segment/Segment :definition] :id segment-id)
                                                :filter)
   subclause  subclause)
 
@@ -46,7 +46,7 @@
     query-dict
     ;; we have an aggregation clause, so lets see if we are using a METRIC
     (if-let [metric-def (match (get-in query-dict [:query :aggregation])
-                               ["METRIC" (metric-id :guard integer?)] (db/sel :one :field [metabase.models.metric/Metric :definition] :id metric-id)
+                               ["METRIC" (metric-id :guard integer?)] (db/sel-1 :field [metabase.models.metric/Metric :definition] :id metric-id)
                                _                                      nil)]
       ;; we have a metric, so merge its definition into the existing query-dict
       (-> query-dict

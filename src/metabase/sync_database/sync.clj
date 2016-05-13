@@ -21,8 +21,8 @@
          (every? map? fk-sources)]}
   (doseq [{fk-source-id :source-column, fk-target-id :target-column} fk-sources]
     ;; TODO: eventually limit this to just "core" schema tables
-    (when-let [source-field-id (db/sel :one :id Field, :raw_column_id fk-source-id, :visibility_type [not= "retired"])]
-      (when-let [target-field-id (db/sel :one :id Field, :raw_column_id fk-target-id, :visibility_type [not= "retired"])]
+    (when-let [source-field-id (db/sel-1 :id Field, :raw_column_id fk-source-id, :visibility_type [not= "retired"])]
+      (when-let [target-field-id (db/sel-1 :id Field, :raw_column_id fk-target-id, :visibility_type [not= "retired"])]
         (db/update! Field source-field-id
           :special_type       :fk
           :fk_target_field_id target-field-id)))))
@@ -118,7 +118,7 @@
   "Update the working `Table` and `Field` metadata for a given `Table` based on the latest raw schema information.
    This function uses the data in `RawTable` and `RawColumn` to update the working data models as needed."
   [{raw-table-id :raw_table_id, table-id :id, :as existing-table}]
-  (when-let [{database-id :database_id, :as raw-table} (db/sel :one RawTable :id raw-table-id)]
+  (when-let [{database-id :database_id, :as raw-table} (db/sel-1 RawTable :id raw-table-id)]
     (try
       (if-not (:active raw-table)
         ;; looks like the table has been deactivated, so lets retire this Table and its fields

@@ -61,7 +61,7 @@
 (defn scan-table-and-update-data-model!
   "Update the working `Table` and `Field` metadata for the given `Table`."
   [driver database {raw-table-id :raw_table_id, table-id :id, :as existing-table}]
-  (when-let [raw-tbl (db/sel :one raw-table/RawTable :id raw-table-id)]
+  (when-let [raw-tbl (db/sel-1 raw-table/RawTable :id raw-table-id)]
     (try
       (if-not (:active raw-tbl)
         ;; looks like table was deactivated, so lets retire this Table

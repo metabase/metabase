@@ -74,7 +74,7 @@
 
 (defn- process-native [{database-id :database, {query :query} :native, :as outer-query}]
   {:pre [(integer? database-id) query]}
-  (let-404 [details (db/sel :one :field [Database :details], :id database-id)]
+  (let-404 [details (db/sel-1 :field [Database :details], :id database-id)]
     (let [query (if (string? query)
                   (json/parse-string query keyword)
                   query)]

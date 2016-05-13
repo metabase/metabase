@@ -198,6 +198,8 @@
 
 ;; # ---------------------------------------- UTILITY FUNCTIONS ----------------------------------------
 
+(declare resolve-entity)
+
 (defn db-spec []
   @(:pool @korma.db/_default))
 
@@ -208,7 +210,6 @@
     :mysql    :mysql
     :postgres :ansi))
 
-;;; DB Primitives -- These replace the equivalent k0rma functions.
 (defn- honeysql->sql
   "Compile HONEYSQL-FROM to SQL."
   ^String [honeysql-form]
@@ -229,11 +230,12 @@
    (query (merge {:select [:*]} honeysql-form)))
 
   ([entity honeysql-form]
-   (let [entity (internal/resolve-entity entity)]
-     (select (merge {:select (or (models/default-fields entity)
-                                 [:*])
-                     :from   [(entity->name entity)]}
-                    honeysql-form)))))
+   (let [entity (resolve-entity entity)]
+     (vec (for [object (select (merge {:select (or (models/default-fields entity)
+                                                   [:*])
+                                       :from   [(entity->name entity)]}
+                                      honeysql-form))]
+            (models/do-post-select entity object))))))
 
 (defn select-1
   "Select a single object from the database.
@@ -294,14 +296,14 @@
   {:style/indent 2}
 
   ([entity honeysql-form]
-   (let [entity (internal/resolve-entity entity)]
+   (let [entity (resolve-entity entity)]
      (not= [0] (execute! (merge (h/update (entity->name entity))
                                 honeysql-form)
                          #_:transaction? #_false))))
 
   ([entity id kvs]
    {:pre [(integer? id) (map? kvs)]}
-   (let [entity (internal/resolve-entity entity)
+   (let [entity (resolve-entity entity)
          kvs    (-> (models/do-pre-update entity (assoc kvs :id id))
                     (dissoc :id))]
      (update! entity (-> (h/sset {} kvs)
@@ -332,96 +334,11 @@
   ([entity]
    (delete! entity {}))
   ([entity kvs]
-   (let [entity (internal/resolve-entity entity)]
+   (let [entity (resolve-entity entity)]
      (not= [0] (execute! (-> (h/delete-from (entity->name entity))
                              (where kvs))))))
   ([entity k v & more]
    (delete! entity (apply array-map k v more))))
-
-
-;;; ## SEL
-
-(def ^:dynamic *sel-disable-logging*
-  "Should we disable logging for the `sel` macro? Normally `false`, but bind this to `true` to keep logging from getting too noisy during
-   operations that require a lot of DB access, like the sync process."
-  false)
-
-(defmacro sel
-  "Wrapper for korma `select` that calls `post-select` on results and provides a few other conveniences.
-
-  ONE-OR-MANY tells `sel` how many objects to fetch and is either `:one` or `:many`.
-
-    (sel :one User :id 1)          -> returns the User (or nil) whose id is 1
-    (sel :many OrgPerm :user_id 1) -> returns sequence of OrgPerms whose user_id is 1
-
-  OPTION, if specified, is one of `:field`, `:fields`, `:id`, `:id->field`, `:field->id`, `:field->obj`, `:id->fields`,
-  `:field->field`, or `:field->fields`.
-
-    ;; Only return IDs of objects.
-    (sel :one :id User :email \"cam@metabase.com\") -> 120
-
-    ;; Only return the specified field.
-    (sel :many :field [User :first_name]) -> (\"Cam\" \"Sameer\" ...)
-
-    ;; Return map(s) that only contain the specified fields.
-    (sel :one :fields [User :id :first_name])
-      -> ({:id 1 :first_name \"Cam\"}, {:id 2 :first_name \"Sameer\"} ...)
-
-    ;; Return a map of ID -> field value
-    (sel :many :id->field [User :first_name])
-      -> {1 \"Cam\", 2 \"Sameer\", ...}
-
-    ;; Return a map of field value -> ID. Duplicates will be discarded!
-    (sel :many :field->id [User :first_name])
-      -> {\"Cam\" 1, \"Sameer\" 2}
-
-    ;; Return a map of field value -> field value.
-    (sel :many :field->field [User :first_name :last_name])
-      -> {\"Cam\" \"Saul\", \"Rasta\" \"Toucan\", ...}
-
-    ;; Return a map of field value -> *entire* object. Duplicates will be discarded!
-    (sel :many :field->obj [Table :name] :db_id 1)
-      -> {\"venues\" {:id 1, :name \"venues\", ...}
-          \"users\"  {:id 2, :name \"users\", ...}}
-
-    ;; Return a map of field value -> other fields.
-    (sel :many :field->fields [Table :name :id :db_id])
-      -> {\"venues\" {:id 1, :db_id 1}
-          \"users\"  {:id 2, :db_id 1}}
-
-    ;; Return a map of ID -> specified fields
-    (sel :many :id->fields [User :first_name :last_name])
-      -> {1 {:first_name \"Cam\", :last_name \"Saul\"},
-          2 {:first_Name \"Sameer\", :last_name ...}}
-
-  ENTITY may be either an entity like `User` or a vector like `[entity & field-keys]`.
-  If just an entity is passed, `sel` will return `default-fields` for ENTITY.
-  Otherwise, if a vector is passed `sel` will return the fields specified by FIELD-KEYS.
-
-    (sel :many [OrgPerm :admin :id] :user_id 1) -> return admin and id of OrgPerms whose user_id is 1
-
-  ENTITY may optionally be a fully-qualified symbol name of an entity; in this case, the symbol's namespace
-  will be required and the symbol itself resolved at runtime. This is sometimes neccesary to avoid circular
-  dependencies. This is slower, however, due to added runtime overhead.
-
-    ;; require/resolve metabase.models.table/Table. Then sel Table 1
-    (sel :one 'metabase.models.table/Table :id 1)
-
-  FORMS may be either keyword args, which will be added to a korma `where` clause, or [other korma
-  clauses](http://www.sqlkorma.com/docs#select) such as `order`, which are passed directly.
-
-    (sel :many Table :db_id 1)                    -> (select User (where {:id 1}))
-    (sel :many Table :db_id 1 (order :name :ASC)) -> (select User (where {:id 1}) (order :name ASC))"
-  {:arglists '([options? entity & forms])}
-  [& args]
-  (let [[option args] (u/optional keyword? args)]
-    `(~(if option
-         ;; if an option was specified, hand off to macro named metabase.db.internal/sel:OPTION
-         (symbol (format "metabase.db.internal/sel:%s" (name option)))
-         ;; otherwise just hand off to low-level sel* macro
-         'metabase.db.internal/sel*)
-      ~@args)))
-
 
 ;;; ## INSERT!
 
@@ -435,7 +352,7 @@
      (insert! 'Label :name \"Toucan Friendly\")"
   {:style/indent 1}
   ([entity object]
-   (let [entity (internal/resolve-entity entity)
+   (let [entity (resolve-entity entity)
          object (models/do-pre-insert entity object)
          id     (first (vals (first (jdbc/insert! (db-spec) (entity->name entity) object))))]
      (some-> id entity models/post-insert)))
@@ -457,20 +374,85 @@
 
 ;;; ## CASADE-DELETE
 
-(defn -cascade-delete!
-  "Internal implementation of `cascade-delete!`. Don't use this directly!"
-  [entity f]
-  (let [entity  (internal/resolve-entity entity)
-        results (internal/sel-exec entity f)]
-    (dorun (for [obj (map (partial models/do-post-select entity) results)]
-             (do (models/pre-cascade-delete obj)
-                 (delete! entity :id (:id obj))))))
-  {:status 204, :body nil})
+(declare sel)
 
-(defmacro cascade-delete!
+(defn cascade-delete!
   "Do a cascading delete of object(s). For each matching object, the `pre-cascade-delete` multimethod is called,
    which should delete any objects related the object about to be deleted.
 
-   Like `del`, this returns a 204/nil reponse so it can be used directly in an API endpoint."
-  [entity & kwargs]
-  `(-cascade-delete! ~entity (internal/sel-fn ~@kwargs)))
+   Returns a 204/nil reponse so it can be used directly in an API endpoint." ; TODO - do we want to do this still?
+  [entity & kvs]
+  (let [entity  (resolve-entity entity)]
+    (doseq [object (apply sel entity kvs)]
+      (models/pre-cascade-delete object)
+      (delete! entity :id (:id object))))
+  {:status 204, :body nil})
+
+;;; ## SEL
+
+(def ^:dynamic *sel-disable-logging*
+  "Should we disable logging for the `sel` macro? Normally `false`, but bind this to `true` to keep logging from getting too noisy during
+   operations that require a lot of DB access, like the sync process."
+  false)
+
+(defn resolve-entity
+  [entity]
+  {:post [:metabase.models.interface/entity]}
+  (cond
+    (:metabase.models.interface/entity entity) entity
+    (vector? entity)                           (resolve-entity (first entity))
+    (symbol? entity)                           (resolve-entity-from-symbol entity)
+    :else                                      (throw (Exception. (str "Invalid entity:" entity)))))
+
+(defn- entity->fields [entity]
+  (if (vector? entity)
+    (rest entity)
+    (models/default-fields (resolve-entity entity))))
+
+(defn where+ [honeysql-form options]
+  (loop [honeysql-form honeysql-form, [first-option & [second-option & more, :as butfirst]] options]
+    (cond
+      (keyword? first-option) (recur (where honeysql-form first-option second-option) more)
+      first-option            (recur (merge honeysql-form first-option)               butfirst)
+      :else                   (u/prog1 honeysql-form
+                                (println "where+:" <>)))))
+
+(defn sel-1 [entity & options]
+  (let [fields (entity->fields entity)]
+    (select-1 entity (where+ {:select (or fields [:*])} options))))
+
+(defn sel-1-field [field entity & options]
+  {:pre [(keyword? field)]}
+  (field (apply sel-1 [entity field] options)))
+
+(defn sel-1-id [entity & options]
+  (apply sel-1-field :id entity options))
+
+(defn sel [entity & options]
+  (let [fields (entity->fields entity)]
+    (select entity (where+ {:select (or fields [:*])} options))))
+
+(defn sel-field
+  "Returns a set."
+  [field entity & options]
+  {:pre [(keyword? field)]}
+  (set (map field (apply sel [entity field] options))))
+
+(defn sel-ids [entity & options]
+  (apply sel-field :id entity options))
+
+(defn sel-field->obj [field entity & options]
+  {:pre [(keyword? field)]}
+  (into {} (for [result (apply sel entity options)]
+             {(field result) result})))
+
+(defn sel-id->obj [entity & options]
+  (apply sel-field->obj :id entity options))
+
+(defn sel-field->field [k v entity & options]
+  {:pre [(keyword? k) (keyword? v)]}
+  (into {} (for [result (apply sel [entity k v] options)]
+             {(k result) (v result)})))
+
+(defn sel-field->id [field entity & options]
+  (apply sel-field->field field :id entity options))

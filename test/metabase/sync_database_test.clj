@@ -55,7 +55,7 @@
 
 (driver/register-driver! :sync-test (SyncTestDriver.))
 
-(def ^:private users-table       (delay (db/sel :one table/Table, :name "USERS")))
+(def ^:private users-table       (delay (db/sel-1 table/Table, :name "USERS")))
 (def ^:private venues-table      (delay (table/Table (id :venues))))
 (def ^:private korma-users-table (delay (korma-entity @users-table)))
 (def ^:private users-name-field  (delay (field/Field (id :users :name))))
@@ -273,7 +273,7 @@
                                         :schema "default"
                                         :db_id  (:id fake-db)}]]
     (sync-table! fake-table)
-    (table-details (db/sel :one Table, :id (:id fake-table)))))
+    (table-details (db/sel-1 Table, :id (:id fake-table)))))
 
 
 ;; test that we prevent running simultaneous syncs on the same database
@@ -320,14 +320,14 @@
   (tu/with-temp* [Database [fake-db {:engine :sync-test}]
                   raw-table/RawTable [fake-table {:database_id (:id fake-db), :name "movie", :schema "default"}]]
     (sync-database! fake-db)
-    (let [table-id (db/sel :one :id table/Table, :raw_table_id (:id fake-table))
-          field-id (db/sel :one :id field/Field, :table_id table-id, :name "title")]
+    (let [table-id (db/sel-1 :id table/Table, :raw_table_id (:id fake-table))
+          field-id (db/sel-1 :id field/Field, :table_id table-id, :name "title")]
       (tu/with-temp FieldValues [_ {:field_id field-id
                                     :values   "[1,2,3]"}]
-        (let [initial-field-values (db/sel :one :field [FieldValues :values], :field_id field-id)]
+        (let [initial-field-values (db/sel-1 :field [FieldValues :values], :field_id field-id)]
           (sync-database! fake-db)
           [initial-field-values
-           (db/sel :one :field [FieldValues :values], :field_id field-id)])))))
+           (db/sel-1 :field [FieldValues :values], :field_id field-id)])))))
 
 
 ;; ## Individual Helper Fns
@@ -338,7 +338,7 @@
          :id
          :latitude
          :id]
-  (let [get-special-type (fn [] (db/sel :one :field [field/Field :special_type] :id (id :venues :id)))]
+  (let [get-special-type (fn [] (db/sel-1 :field [field/Field :special_type] :id (id :venues :id)))]
     [;; Special type should be :id to begin with
      (get-special-type)
      ;; Clear out the special type
@@ -360,13 +360,13 @@
 ;; Check that Foreign Key relationships were created on sync as we expect
 
 (expect (id :venues :id)
-  (db/sel :one :field [field/Field :fk_target_field_id] :id (id :checkins :venue_id)))
+  (db/sel-1 :field [field/Field :fk_target_field_id] :id (id :checkins :venue_id)))
 
 (expect (id :users :id)
-  (db/sel :one :field [field/Field :fk_target_field_id] :id (id :checkins :user_id)))
+  (db/sel-1 :field [field/Field :fk_target_field_id] :id (id :checkins :user_id)))
 
 (expect (id :categories :id)
-  (db/sel :one :field [field/Field :fk_target_field_id] :id (id :venues :category_id)))
+  (db/sel-1 :field [field/Field :fk_target_field_id] :id (id :venues :category_id)))
 
 ;; Check that sync-table! causes FKs to be set like we'd expect
 (expect [{:special_type :fk, :fk_target_field_id true}
@@ -374,7 +374,7 @@
          {:special_type :fk, :fk_target_field_id true}]
   (let [field-id (id :checkins :user_id)
         get-special-type-and-fk-exists? (fn []
-                                          (-> (db/sel :one :fields [field/Field :special_type :fk_target_field_id] :id field-id)
+                                          (-> (db/sel-1 :fields [field/Field :special_type :fk_target_field_id] :id field-id)
                                               (update :fk_target_field_id #(db/exists? field/Field :id %))))]
     [ ;; FK should exist to start with
      (get-special-type-and-fk-exists?)
@@ -389,8 +389,8 @@
 
 ;;; ## FieldValues Syncing
 
-(let [get-field-values    (fn [] (db/sel :one :field [FieldValues :values] :field_id (id :venues :price)))
-      get-field-values-id (fn [] (db/sel :one :id FieldValues :field_id (id :venues :price)))]
+(let [get-field-values    (fn [] (db/sel-1 :field [FieldValues :values] :field_id (id :venues :price)))
+      get-field-values-id (fn [] (db/sel-1 :id FieldValues :field_id (id :venues :price)))]
   ;; Test that when we delete FieldValues syncing the Table again will cause them to be re-created
   (expect
     [[1 2 3 4]  ; 1

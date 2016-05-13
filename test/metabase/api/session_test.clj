@@ -13,7 +13,7 @@
 ;; ## POST /api/session
 ;; Test that we can login
 (expect-eval-actual-first
-    (db/sel :one :fields [Session :id] :user_id (user->id :rasta))
+    (db/sel-1 :fields [Session :id] :user_id (user->id :rasta))
   (do (db/delete! Session :user_id (user->id :rasta))                  ; delete all other sessions for the bird first
       (client :post 200 "session" (user->credentials :rasta))))
 
@@ -62,7 +62,7 @@
 (expect
     true
   (let [reset-fields-set? (fn []
-                            (let [{:keys [reset_token reset_triggered]} (db/sel :one :fields [User :reset_token :reset_triggered] :id (user->id :rasta))]
+                            (let [{:keys [reset_token reset_triggered]} (db/sel-1 :fields [User :reset_token :reset_triggered] :id (user->id :rasta))]
                               (boolean (and reset_token reset_triggered))))]
     ;; make sure user is starting with no values
     (db/update! User (user->id :rasta) :reset_token nil :reset_triggered nil)
@@ -108,13 +108,13 @@
     ;; New creds *should* work
     (client :post 200 "session" (:new creds))
     ;; Double check that reset token was cleared
-    (db/sel :one :fields [User :reset_token :reset_triggered] :id id)))
+    (db/sel-1 :fields [User :reset_token :reset_triggered] :id id)))
 
 ;; Check that password reset returns a valid session token
 (let [user-last-name (random-name)]
   (expect-eval-actual-first
-    (let [id         (db/sel :one :id User, :last_name user-last-name)
-          session-id (db/sel :one :id Session, :user_id id)]
+    (let [id         (db/sel-1 :id User, :last_name user-last-name)
+          session-id (db/sel-1 :id Session, :user_id id)]
       {:success    true
        :session_id session-id})
     (let [{:keys [email id]} (create-user! :password "password", :last_name user-last-name, :reset_triggered (System/currentTimeMillis))

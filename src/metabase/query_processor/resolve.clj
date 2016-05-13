@@ -202,7 +202,7 @@
 (defn- resolve-database
   "Resolve the `Database` in question for an EXPANDED-QUERY-DICT."
   [{database-id :database, :as expanded-query-dict}]
-  (assoc expanded-query-dict :database (db/sel :one :fields [Database :name :id :engine :details] :id database-id)))
+  (assoc expanded-query-dict :database (db/sel-1 :fields [Database :name :id :engine :details] :id database-id)))
 
 (defn- join-tables-fetch-field-info
   "Fetch info for PK/FK `Fields` for the JOIN-TABLES referenced in a Query."

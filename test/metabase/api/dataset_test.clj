@@ -85,7 +85,7 @@
                                                             (query checkins
                                                                    (ql/aggregation (ql/count)))))]
     [(format-response result)
-     (format-response (db/sel :one QueryExecution :uuid (:uuid result)))]))
+     (format-response (db/sel-1 QueryExecution :uuid (:uuid result)))]))
 
 ;; Even if a query fails we still expect a 200 response from the api
 (expect
@@ -117,7 +117,7 @@
                                                            :type     "native"
                                                            :native   {:query "foobar"}})]
     [(format-response result)
-     (format-response (db/sel :one QueryExecution :uuid (:uuid result)))]))
+     (format-response (db/sel-1 QueryExecution :uuid (:uuid result)))]))
 
 
 ;; GET /api/dataset/card/:id
@@ -181,4 +181,4 @@
       [(-> result
            (update :card remove-ids-and-boolean-timestamps)
            (update :result format-response))
-       (format-response (db/sel :one QueryExecution :uuid (get-in result [:result :uuid])))])))
+       (format-response (db/sel-1 QueryExecution :uuid (get-in result [:result :uuid])))])))

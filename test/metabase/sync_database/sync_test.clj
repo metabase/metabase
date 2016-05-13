@@ -76,13 +76,13 @@
   (tu/with-temp* [Database [{database-id :id, :as db} {:engine :moviedb}]]
     ;; setup a couple things we'll use in the test
     (introspect/introspect-database-and-update-raw-tables! (moviedb/->MovieDbDriver) db)
-    (let [raw-table-id (db/sel :one :id RawTable, :database_id database-id, :name "movies")
+    (let [raw-table-id (db/sel-1 :id RawTable, :database_id database-id, :name "movies")
           table        (db/insert! Table
                          :db_id        database-id
                          :raw_table_id raw-table-id
                          :name         "movies"
                          :active       true)
-          get-table    #(-> (db/sel :one :fields [Table :id :name :description] :id (:id table))
+          get-table    #(-> (db/sel-1 :fields [Table :id :name :description] :id (:id table))
                             (hydrate/hydrate :fields)
                             (update :fields (fn [fields]
                                               (for [f fields
@@ -340,7 +340,7 @@
       (introspect/introspect-database-and-update-raw-tables! driver db)
 
       ;; stub out the Table we are going to sync for real below
-      (let [raw-table-id (db/sel :one :id RawTable, :database_id database-id, :name "roles")
+      (let [raw-table-id (db/sel-1 :id RawTable, :database_id database-id, :name "roles")
             tbl          (db/insert! Table
                            :db_id        database-id
                            :raw_table_id raw-table-id
@@ -401,12 +401,12 @@
   "Convert :fk_target_[column|field]_id into more testable information with table/schema names."
   [m]
   (let [resolve-raw-column (fn [column-id]
-                             (when-let [{col-name :name, table :raw_table_id} (db/sel :one :fields [RawColumn :raw_table_id :name] :id column-id)]
-                               (-> (db/sel :one :fields [RawTable :schema :name] :id table)
+                             (when-let [{col-name :name, table :raw_table_id} (db/sel-1 :fields [RawColumn :raw_table_id :name] :id column-id)]
+                               (-> (db/sel-1 :fields [RawTable :schema :name] :id table)
                                    (assoc :col-name col-name))))
         resolve-field      (fn [field-id]
-                             (when-let [{col-name :name, table :table_id} (db/sel :one :fields [Field :table_id :name] :id field-id)]
-                               (-> (db/sel :one :fields [Table :schema :name] :id table)
+                             (when-let [{col-name :name, table :table_id} (db/sel-1 :fields [Field :table_id :name] :id field-id)]
+                               (-> (db/sel-1 :fields [Table :schema :name] :id table)
                                    (assoc :col-name col-name))))
         resolve-fk         (fn [m]
                              (cond
