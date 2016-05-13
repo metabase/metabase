@@ -701,8 +701,8 @@
   "Select fields K and V from objects in the database, and return them as a map from K to V.
 
      (select-field->field :id :name 'Database) -> {1 \"Sample Dataset\", 2 \"test-data\"}"
-  [k v entity & options]
   {:style/indent 3}
+  [k v entity & options]
   {:pre [(keyword? k) (keyword? v)]}
   (into {} (for [result (apply select [entity k v] options)]
              {(k result) (v result)})))
