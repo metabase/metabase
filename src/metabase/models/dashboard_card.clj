@@ -11,10 +11,11 @@
             [metabase.util :as u]))
 
 (i/defentity DashboardCard :report_dashboardcard
-             ;; This is implemented as a `transform` function instead of `post-select` because we want it to apply even
-             ;; when we use low-level korma primitives like `select`. Otherwise you can't `insert` what you `select`.
-             ;; TODO - The fact that we have to work around these names means we should probably just rename them
-             (k/transform (u/rpartial set/rename-keys {:sizex :sizeX, :sizey :sizeY})))
+  ;; TODO - This can be removed once we finish the transition from korma -> HoneySQL.
+  ;; This needs to be here for the time being because things that go through regular `korma.core/select` don't get ran
+  ;; through `post-select` (like they would if they went through a `metabase.db/` function) and we don't want to have to fix
+  ;; naming manually everywhere
+  (k/transform (u/rpartial set/rename-keys {:sizex :sizeX, :sizey :sizeY})))
 
 (defn- pre-insert [dashcard]
   (let [defaults {:sizeX 2
@@ -29,7 +30,8 @@
   (merge i/IEntityDefaults
          {:timestamped?       (constantly true)
           :pre-insert         pre-insert
-          :pre-cascade-delete pre-cascade-delete}))
+          :pre-cascade-delete pre-cascade-delete
+          :post-select        (u/rpartial set/rename-keys {:sizex :sizeX, :sizey :sizeY})}))
 
 
 ;;; ## ---------------------------------------- HYDRATION ----------------------------------------
