@@ -219,11 +219,11 @@
         [is-diff? _ _] (d/diff updated-field existing-field)]
     ;; if we have a different base-type or special-type, then update
     (when is-diff?
-      (db/upd Field id
-              :display_name (:display_name updated-field)
-              :base_type    base-type
-              :special_type (:special_type updated-field)
-              :parent_id    parent-id))
+      (db/update! Field id
+        :display_name (:display_name updated-field)
+        :base_type    base-type
+        :special_type (:special_type updated-field)
+        :parent_id    parent-id))
     ;; return the updated field when we are done
     updated-field))
 

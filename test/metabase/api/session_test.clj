@@ -65,7 +65,7 @@
                             (let [{:keys [reset_token reset_triggered]} (db/sel :one :fields [User :reset_token :reset_triggered] :id (user->id :rasta))]
                               (boolean (and reset_token reset_triggered))))]
     ;; make sure user is starting with no values
-    (db/upd User (user->id :rasta) :reset_token nil :reset_triggered nil)
+    (db/update! User (user->id :rasta) :reset_token nil :reset_triggered nil)
     (assert (not (reset-fields-set?)))
     ;; issue reset request (token & timestamp should be saved)
     ((user->client :rasta) :post 200 "session/forgot_password" {:email (:email (user->credentials :rasta))})
@@ -89,9 +89,9 @@
   (let [user-last-name     (random-name)
         password           {:old "password"
                             :new "whateverUP12!!"}
-        {:keys [email id]} (create-user :password (:old password), :last_name user-last-name, :reset_triggered (System/currentTimeMillis))
+        {:keys [email id]} (create-user! :password (:old password), :last_name user-last-name, :reset_triggered (System/currentTimeMillis))
         token              (str id "_" (java.util.UUID/randomUUID))
-        _                  (db/upd User id :reset_token token)
+        _                  (db/update! User id :reset_token token)
         creds              {:old {:password (:old password)
                                   :email    email}
                             :new {:password (:new password)
@@ -117,9 +117,9 @@
           session-id (db/sel :one :id Session, :user_id id)]
       {:success    true
        :session_id session-id})
-    (let [{:keys [email id]} (create-user :password "password", :last_name user-last-name, :reset_triggered (System/currentTimeMillis))
+    (let [{:keys [email id]} (create-user! :password "password", :last_name user-last-name, :reset_triggered (System/currentTimeMillis))
           token              (str id "_" (java.util.UUID/randomUUID))
-          _                  (db/upd User id :reset_token token)]
+          _                  (db/update! User id :reset_token token)]
       ;; run the password reset
       (client :post 200 "session/reset_password" {:token    token
                                                   :password "whateverUP12!!"}))))
@@ -144,7 +144,7 @@
 ;; Test that an expired token doesn't work
 (expect {:errors {:password "Invalid reset token"}}
   (let [token (str (user->id :rasta) "_" (java.util.UUID/randomUUID))]
-    (db/upd User (user->id :rasta) :reset_token token, :reset_triggered 0)
+    (db/update! User (user->id :rasta) :reset_token token, :reset_triggered 0)
     (client :post 400 "session/reset_password" {:token token
                                                 :password "whateverUP12!!"})))
 
@@ -154,7 +154,7 @@
 ;; Check that a valid, unexpired token returns true
 (expect {:valid true}
   (let [token (str (user->id :rasta) "_" (java.util.UUID/randomUUID))]
-    (db/upd User (user->id :rasta) :reset_token token, :reset_triggered (dec (System/currentTimeMillis)))
+    (db/update! User (user->id :rasta) :reset_token token, :reset_triggered (dec (System/currentTimeMillis)))
     (client :get 200 "session/password_reset_token_valid", :token token)))
 
 ;; Check than an made-up token returns false
@@ -164,7 +164,7 @@
 ;; Check that an expired but valid token returns false
 (expect {:valid false}
   (let [token (str (user->id :rasta) "_" (java.util.UUID/randomUUID))]
-    (db/upd User (user->id :rasta) :reset_token token, :reset_triggered 0)
+    (db/update! User (user->id :rasta) :reset_token token, :reset_triggered 0)
     (client :get 200 "session/password_reset_token_valid", :token token)))
 
 

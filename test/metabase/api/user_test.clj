@@ -97,7 +97,7 @@
        :is_qbnewb    true})
     (when-let [user (create-user-api rand-name)]
       ;; create a random user then set them to :inactive
-      (db/upd User (:id user)
+      (db/update! User (:id user)
         :is_active false
         :is_superuser true)
       ;; then try creating the same user again
@@ -183,7 +183,7 @@
 
 ;; ## PUT /api/user/:id
 ;; Test that we can edit a User
-(expect-let [{old-first :first_name, last-name :last_name, old-email :email, id :id, :as user} (create-user)
+(expect-let [{old-first :first_name, last-name :last_name, old-email :email, id :id, :as user} (create-user!)
              new-first (random-name)
              new-email (.toLowerCase ^String (str new-first "@metabase.com"))
              fetch-user (fn [] (db/sel :one :fields [User :first_name :last_name :is_superuser :email] :id id))]

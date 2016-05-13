@@ -206,7 +206,7 @@
          (coll? recipients)
          (every? map? recipients)]}
   (let [recipients-by-type (group-by integer? (filter identity (map #(or (:id %) (:email %)) recipients)))]
-    (db/upd PulseChannel id
+    (db/update! PulseChannel id
       :details        (cond-> details
                               (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
       :enabled        enabled

@@ -45,11 +45,11 @@
    entity_type     TableEntityType,
    visibility_type TableVisibilityType}
   (write-check Table id)
-  (check-500 (db/upd-non-nil-keys Table id
+  (check-500 (db/update-non-nil-keys! Table id
                :display_name display_name
                :entity_type  entity_type
                :description  description))
-  (check-500 (db/upd Table id :visibility_type visibility_type))
+  (check-500 (db/update! Table id :visibility_type visibility_type))
   (Table id))
 
 (defendpoint GET "/:id/fields"
@@ -115,7 +115,7 @@
           ;; actual `Field` value selected above in order to ensure people don't accidentally update fields they
           ;; aren't supposed to or aren't allowed to.  e.g. without this the caller could update any field-id they want
           (when-let [{:keys [id]} (first (filter #(= field-id (:id %)) table-fields))]
-            (db/upd Field id :position index)))
+            (db/update! Field id :position index)))
         new_order))
     {:result "success"}))
 

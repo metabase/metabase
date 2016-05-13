@@ -438,7 +438,7 @@
 (expect-eval-actual-first
     (match-$ (let [table (Table (id :users))]
                ;; reset Table back to its original state
-               (db/upd Table (id :users) :display_name "Users" :entity_type nil :visibility_type nil :description nil)
+               (db/update! Table (id :users) :display_name "Users" :entity_type nil :visibility_type nil :description nil)
                table)
       {:description     "What a nice table!"
        :entity_type     "person"
@@ -565,7 +565,7 @@
     (assert (= 0 (:position (db/sel :one :fields [Field :position] :id (:id categories-name-field)))))
     (assert (= 1 (:position (db/sel :one :fields [Field :position] :id (:id categories-id-field)))))
     ;; put the values back to their previous state
-    (db/upd Field (:id categories-name-field) :position 0)
-    (db/upd Field (:id categories-id-field) :position 0)
+    (db/update! Field (:id categories-name-field) :position 0)
+    (db/update! Field (:id categories-id-field) :position 0)
     ;; return our origin api response for validation
     api-response))

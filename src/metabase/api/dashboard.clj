@@ -53,7 +53,7 @@
   [id :as {{:keys [description name]} :body}]
   {name NonEmptyString}
   (write-check Dashboard id)
-  (check-500 (db/upd-non-nil-keys Dashboard id
+  (check-500 (db/update-non-nil-keys! Dashboard id
                :description description
                :name        name))
   (events/publish-event :dashboard-update (assoc (Dashboard id) :actor_id *current-user-id*)))

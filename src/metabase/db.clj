@@ -7,8 +7,7 @@
                      [walk :as walk])
             (honeysql [core :as hsql]
                       [helpers :as h])
-            (korma [core :as k]
-                   [db :as kdb])
+            [korma.db :as kdb]
             [medley.core :as m]
             [ring.util.codec :as codec]
             [metabase.config :as config]
@@ -24,7 +23,7 @@
            liquibase.exception.DatabaseException
            liquibase.resource.ClassLoaderResourceAccessor))
 
-;; ## DB FILE, JDBC/KORMA DEFINITONS
+;;; ## DB FILE, JDBC/KORMA DEFINITONS
 
 (def db-file
   "Path to our H2 DB file from env var or app config."
@@ -35,7 +34,7 @@
            ;; File-based DB
            (let [db-file-name (config/config-str :mb-db-file)
                  db-file      (clojure.java.io/file db-file-name)
-                 options      ";AUTO_SERVER=TRUE;MV_STORE=FALSE;DB_CLOSE_DELAY=-1"]
+                 options      ";AUTO_SERVER=TRUE;MV_STORE=FALSE;DB_CLOSE_DELAY=-1;MVCC=true"]
              (apply str "file:" (if (.isAbsolute db-file)
                                   ;; when an absolute path is given for the db file then don't mess with it
                                   [db-file-name options]
@@ -93,7 +92,7 @@
     :postgres (spec/postgres (assoc db-details :db (:dbname db-details)))))
 
 
-;; ## MIGRATE
+;;; ## MIGRATE
 
 (def ^:private ^:const changelog-file "migrations/liquibase.json")
 
@@ -125,7 +124,7 @@
       (throw (DatabaseException. e)))))
 
 
-;; ## SETUP-DB
+;;; ## SETUP-DB
 
 (def ^:private setup-db-has-been-called?
   (atom false))
@@ -230,7 +229,7 @@
    (query (merge {:select [:*]} honeysql-form)))
 
   ([entity honeysql-form]
-   (let [entity (internal/entity->korma entity)]
+   (let [entity (internal/resolve-entity entity)]
      (select (merge {:select (or (models/default-fields entity)
                                  [:*])
                      :from   [(entity->name entity)]}
@@ -246,27 +245,34 @@
    (first (select entity (h/limit honeysql-form 1)))))
 
 (defn execute!
-  "Compile HONEYSQL-FORM and call `jdbc/execute!` against the Metabase DB."
-  [honeysql-form]
-  (jdbc/execute! (db-spec) (honeysql->sql honeysql-form)))
+  "Compile HONEYSQL-FORM and call `jdbc/execute!` against the Metabase DB.
+   OPTIONS are passed directly to `jdbc/execute!` and can be things like `:multi?` (default `false`) or `:transaction?` (default `true`)."
+  [honeysql-form & options]
+  (apply jdbc/execute! (db-spec) (honeysql->sql honeysql-form) options))
 
 (defn where
   "Generate a HoneySQL `where` form using key-value args.
 
      (where {} :a :b)      -> (h/where {} [:= :a :b])
      (where {} :a [:!= b]) -> (h/where {} [:!= :a :b])"
+  {:style/indent 1}
+
   ([honeysql-form]
    honeysql-form) ; no-op
+
   ([honeysql-form m]
    (m/mapply where honeysql-form m))
+
   ([honeysql-form k v]
    (h/merge-where honeysql-form (if (vector? v)
                                   (let [[f v] v] ; e.g. :id [:!= 1] -> [:!= :id 1]
                                     (assert (keyword? f))
                                     [f k v])
                                   [:= k v])))
+
   ([honeysql-form k v & more]
    (apply where (where honeysql-form k v) more)))
+
 
 (defn select-1-where
   "Select a single object matching some conditions.
@@ -275,34 +281,46 @@
   [entity & kvs]
   (select-1 entity (apply where {} kvs)))
 
-;; ## UPD
+;;; ## UPDATE!
 
-(defn upd
-  "Wrapper around `korma.core/update` that updates a single row by its id value and
-   automatically passes &rest KWARGS to `korma.core/set-fields`.
+(defn update!
+  "Update a single row in the database. Returns `true` if a row was affected, `false` otherwise.
 
-     (db/upd User 123 :is_active false) ; updates user with id=123, setting is_active=false
+   Accepts either a single map of updates to make or kwargs. ENTITY is automatically resolved,
+   and `pre-update` is called on KVS before the object is inserted into the database.
 
-   Returns true if update modified rows, false otherwise."
-  [entity entity-id & {:as kwargs}]
-  {:pre [(integer? entity-id)]}
-  (let [obj           (models/do-pre-update entity (assoc kwargs :id entity-id))
-        rows-affected (k/update entity
-                                (k/set-fields (dissoc obj :id))
-                                (k/where {:id entity-id}))]
-    (when (> rows-affected 0)
-      (models/post-update obj))
-    (> rows-affected 0)))
-
-(defn upd-non-nil-keys
-  "Calls `upd`, but filters out KWARGS with `nil` values."
+     (db/update! 'Label 11 :name \"ToucanFriendly\")
+     (db/update! 'Label 11 {:name \"ToucanFriendly\"})"
   {:style/indent 2}
-  [entity entity-id & {:as kwargs}]
-  (->> (m/filter-vals (complement nil?) kwargs)
-       (m/mapply upd entity entity-id)))
+
+  ([entity honeysql-form]
+   (let [entity (internal/resolve-entity entity)]
+     (not= [0] (execute! (merge (h/update (entity->name entity))
+                                honeysql-form)
+                         #_:transaction? #_false))))
+
+  ([entity id kvs]
+   {:pre [(integer? id) (map? kvs)]}
+   (let [entity (internal/resolve-entity entity)
+         kvs    (-> (models/do-pre-update entity (assoc kvs :id id))
+                    (dissoc :id))]
+     (update! entity (-> (h/sset {} kvs)
+                         (where :id id)))))
+
+  ([entity id k v & more]
+   (update! entity id (apply array-map k v more))))
 
 
-;; ## DELETE!
+(defn update-non-nil-keys!
+  "Like `update!`, but filters out KVS with `nil` values."
+  {:style/indent 2}
+  ([entity id kvs]
+   (update! entity id (m/filter-vals (complement nil?) kvs)))
+  ([entity id k v & more]
+   (update-non-nil-keys! entity id (apply array-map k v more))))
+
+
+;;; ## DELETE!
 
 (defn delete!
   "Delete an object or objects from the Metabase DB matching certain constraints. Returns `true` if something was deleted, `false` otherwise.
@@ -314,14 +332,14 @@
   ([entity]
    (delete! entity {}))
   ([entity kvs]
-   (let [entity (internal/entity->korma entity)]
+   (let [entity (internal/resolve-entity entity)]
      (not= [0] (execute! (-> (h/delete-from (entity->name entity))
                              (where kvs))))))
   ([entity k v & more]
    (delete! entity (apply array-map k v more))))
 
 
-;; ## SEL
+;;; ## SEL
 
 (def ^:dynamic *sel-disable-logging*
   "Should we disable logging for the `sel` macro? Normally `false`, but bind this to `true` to keep logging from getting too noisy during
@@ -405,7 +423,7 @@
       ~@args)))
 
 
-;; ## INSERT!
+;;; ## INSERT!
 
 (defn insert!
   "Insert a new object into the Database. Resolves ENTITY, and calls its `pre-insert` method on OBJECT to prepare it before insertion;
@@ -417,7 +435,7 @@
      (insert! 'Label :name \"Toucan Friendly\")"
   {:style/indent 1}
   ([entity object]
-   (let [entity (internal/entity->korma entity)
+   (let [entity (internal/resolve-entity entity)
          object (models/do-pre-insert entity object)
          id     (first (vals (first (jdbc/insert! (db-spec) (entity->name entity) object))))]
      (some-> id entity models/post-insert)))
@@ -426,7 +444,7 @@
    (insert! entity (apply array-map k v more))))
 
 
-;; ## EXISTS?
+;;; ## EXISTS?
 
 (defn exists?
   "Easy way to see if something exists in the DB.
@@ -437,12 +455,12 @@
   [entity & kvs]
   (boolean (select-1 entity (apply where (h/select :id) kvs))))
 
-;; ## CASADE-DELETE
+;;; ## CASADE-DELETE
 
 (defn -cascade-delete!
   "Internal implementation of `cascade-delete!`. Don't use this directly!"
   [entity f]
-  (let [entity  (internal/entity->korma entity)
+  (let [entity  (internal/resolve-entity entity)
         results (internal/sel-exec entity f)]
     (dorun (for [obj (map (partial models/do-post-select entity) results)]
              (do (models/pre-cascade-delete obj)

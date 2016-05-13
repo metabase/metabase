@@ -2,13 +2,15 @@
   (:require [expectations :refer :all]
             [metabase.api.revision :refer :all]
             [metabase.db :as db]
-            (metabase.models [card :refer [Card serialize-instance]]
+            (metabase.models [card :refer [Card]]
                              [dashboard :refer [Dashboard]]
                              [dashboard-card :refer [DashboardCard]]
                              [revision :refer [Revision push-revision revert revisions]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [expect-eval-actual-first random-name expect-with-temp with-temp]]))
+            [metabase.test.util :refer [expect-eval-actual-first random-name expect-with-temp with-temp resolve-private-fns]]))
+
+(resolve-private-fns metabase.models.card serialize-instance)
 
 (def ^:private rasta-revision-info
   (delay {:id (user->id :rasta) :common_name "Rasta Toucan", :first_name "Rasta", :last_name "Toucan"}))

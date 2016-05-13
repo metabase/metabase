@@ -183,7 +183,7 @@
        :updated_at            $
        :created_at            $
        :id                    $})
-  (do (db/upd FieldValues (:id (field->field-values :venues :price)) :human_readable_values nil) ; clear out existing human_readable_values in case they're set
+  (do (db/update! FieldValues (:id (field->field-values :venues :price)) :human_readable_values nil) ; clear out existing human_readable_values in case they're set
       ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price)))))
 
 ;; Should return nothing for a field whose special_type is *not* :category
@@ -224,10 +224,10 @@
         :updated_at            $
         :created_at            $
         :id                    $})]
-  [(do (db/upd FieldValues (:id (field->field-values :venues :price)) :human_readable_values {:1 "$" ; make sure they're set
-                                                                                           :2 "$$"
-                                                                                           :3 "$$$"
-                                                                                           :4 "$$$$"})
+  [(do (db/update! FieldValues (:id (field->field-values :venues :price)) :human_readable_values {:1 "$" ; make sure they're set
+                                                                                                  :2 "$$"
+                                                                                                  :3 "$$$"
+                                                                                                  :4 "$$$$"})
        ((user->client :crowberto) :post 200 (format "field/%d/value_map_update" (id :venues :price))
         {:values_map {}}))
    ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price)))])

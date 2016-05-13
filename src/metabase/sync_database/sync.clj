@@ -23,7 +23,7 @@
     ;; TODO: eventually limit this to just "core" schema tables
     (when-let [source-field-id (db/sel :one :id Field, :raw_column_id fk-source-id, :visibility_type [not= "retired"])]
       (when-let [target-field-id (db/sel :one :id Field, :raw_column_id fk-target-id, :visibility_type [not= "retired"])]
-        (db/upd Field source-field-id
+        (db/update! Field source-field-id
           :special_type       :fk
           :fk_target_field_id target-field-id)))))
 

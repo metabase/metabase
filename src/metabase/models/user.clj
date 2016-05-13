@@ -65,12 +65,12 @@
 
 ;; ## Related Functions
 
-(declare create-user
+(declare create-user!
          form-password-reset-url
-         set-user-password
-         set-user-password-reset-token)
+         set-user-password!
+         set-user-password-reset-token!)
 
-(defn create-user
+(defn create-user!
   "Convenience function for creating a new `User` and sending out the welcome email."
   [first-name last-name email-address & {:keys [send-welcome invitor password]
                                          :or {send-welcome false}}]
@@ -85,33 +85,31 @@
                                     password
                                     (str (java.util.UUID/randomUUID))))]
     (when send-welcome
-      (let [reset-token (set-user-password-reset-token (:id new-user))
+      (let [reset-token (set-user-password-reset-token! (:id new-user))
             ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
             join-url    (str (form-password-reset-url reset-token) "#new")]
         (email/send-new-user-email new-user invitor join-url)))
     ;; return the newly created user
     new-user))
 
-(defn set-user-password
+(defn set-user-password!
   "Updates the stored password for a specified `User` by hashing the password with a random salt."
   [user-id password]
-  (let [salt (.toString (java.util.UUID/randomUUID))
+  (let [salt     (.toString (java.util.UUID/randomUUID))
         password (creds/hash-bcrypt (str salt password))]
     ;; NOTE: any password change expires the password reset token
-    (db/upd User user-id
-      :password_salt salt
-      :password password
-      :reset_token nil
-      :reset_triggered nil)))
+    (db/update! User user-id
+     :password_salt   salt
+     :password        password
+     :reset_token     nil
+     :reset_triggered nil)))
 
-(defn set-user-password-reset-token
+(defn set-user-password-reset-token!
   "Updates a given `User` and generates a password reset token for them to use.  Returns the url for password reset."
   [user-id]
   {:pre [(integer? user-id)]}
-  (let [reset-token (str user-id \_ (java.util.UUID/randomUUID))]
-    (db/upd User user-id, :reset_token reset-token, :reset_triggered (System/currentTimeMillis))
-    ;; return the token
-    reset-token))
+  (u/prog1 (str user-id \_ (java.util.UUID/randomUUID))
+    (db/update! User user-id, :reset_token <>, :reset_triggered (System/currentTimeMillis))))
 
 (defn form-password-reset-url
   "Generate a properly formed password reset url given a password reset token."

@@ -92,7 +92,7 @@
     (kdb/transaction
       ;; update the dashcard itself (positional attributes)
       (when (and sizeX sizeY row col)
-        (db/upd DashboardCard id :sizeX sizeX :sizeY sizeY :row row :col col))
+        (db/update! DashboardCard id, :sizeX sizeX, :sizeY sizeY, :row row, :col col))
       ;; update series (only if they changed)
       (when (not= series (db/sel :many :field [DashboardCardSeries :card_id] :dashboardcard_id id (k/order :position :asc)))
         (update-dashboard-card-series dashboard-card series))

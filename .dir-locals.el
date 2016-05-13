@@ -49,6 +49,5 @@
                               (select 1)
                               (subselect 1)
                               (sync-in-context 2)
-                              (upd 2)
                               (when-testing-engine 1)
                               (with-credentials 1)))))))

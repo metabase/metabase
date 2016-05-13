@@ -202,9 +202,7 @@
 
 (defn- table->qualified-kw [{table-name :name, schema :schema}]
   {:pre [table-name]}
-  (hsql/qualify (when schema
-                  (keyword (name schema)))
-                (keyword (name table-name))))
+  (hsql/qualify schema table-name))
 
 (defn- table-rows-seq [database table]
   (jdbc/query (db->spec database)

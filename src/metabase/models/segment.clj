@@ -109,7 +109,7 @@
          (integer? user-id)
          (string? revision_message)]}
   ;; update the segment itself
-  (db/upd Segment id
+  (db/update! Segment id
     :name        name
     :description description
     :definition  definition)
@@ -131,7 +131,7 @@
          (integer? user-id)
          (string? revision-message)]}
   ;; make Segment not active
-  (db/upd Segment id :is_active false)
+  (db/update! Segment id :is_active false)
   ;; retrieve the updated segment (now retired)
   (let [segment (retrieve-segment id)]
     ;; fire off an event

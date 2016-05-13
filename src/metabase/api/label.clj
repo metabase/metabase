@@ -25,7 +25,7 @@
   {name NonEmptyString
    icon NonEmptyString}
   (write-check Label id)
-  (m/mapply db/upd Label id body)
+  (db/update! Label id body)
   (Label id)) ; return the updated Label
 
 (defendpoint DELETE "/:id"

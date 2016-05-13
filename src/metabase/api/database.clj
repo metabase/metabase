@@ -122,7 +122,7 @@
         (do
           ;; TODO: is there really a reason to let someone change the engine on an existing database?
           ;;       that seems like the kind of thing that will almost never work in any practical way
-          (check-500 (db/upd-non-nil-keys Database id
+          (check-500 (db/update-non-nil-keys! Database id
                        :name         name
                        :engine       engine
                        :details      details

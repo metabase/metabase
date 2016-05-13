@@ -182,7 +182,7 @@
    archived               Boolean}
   (let-404 [card (Card id)]
     (write-check card)
-    (db/upd-non-nil-keys Card id
+    (db/update-non-nil-keys! Card id
       :dataset_query          dataset_query
       :description            description
       :display                display

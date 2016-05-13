@@ -596,7 +596,7 @@
   (if id
     ;; execution has already been saved, so update it
     (do
-      (m/mapply db/upd QueryExecution id query-execution)
+      (db/update! QueryExecution id query-execution)
       query-execution)
     ;; first time saving execution, so insert it
-    (m/mapply db/insert! QueryExecution query-execution)))
+    (db/insert! QueryExecution query-execution)))

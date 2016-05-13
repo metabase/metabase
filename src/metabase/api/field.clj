@@ -51,11 +51,11 @@
       (when fk_target_field_id
         (checkp (db/exists? Field :id fk_target_field_id) :fk_target_field_id "Invalid target field"))
       ;; update the Field.  start with keys that may be set to NULL then conditionally add other keys if they have values
-      (check-500 (m/mapply db/upd Field id (merge {:description        description
-                                                :special_type       special_type
-                                                :visibility_type    visibility_type
-                                                :fk_target_field_id fk_target_field_id}
-                                               (when display_name {:display_name display_name}))))
+      (check-500 (db/update! Field id (merge {:description        description
+                                              :special_type       special_type
+                                              :visibility_type    visibility_type
+                                              :fk_target_field_id fk_target_field_id}
+                                             (when display_name {:display_name display_name}))))
       (Field id))))
 
 (defendpoint GET "/:id/summary"
@@ -88,7 +88,7 @@
     (check (field-should-have-field-values? field)
       [400 "You can only update the mapped values of a Field whose 'special_type' is 'category'/'city'/'state'/'country' or whose 'base_type' is 'BooleanField'."])
     (if-let [field-values-id (db/sel :one :id FieldValues :field_id id)]
-      (check-500 (db/upd FieldValues field-values-id
+      (check-500 (db/update! FieldValues field-values-id
                    :human_readable_values values_map))
       (create-field-values-if-needed field values_map)))
   {:status :success})

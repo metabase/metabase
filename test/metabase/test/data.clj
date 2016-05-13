@@ -201,13 +201,13 @@
                                                                      (u/pprint-to-str field-definition))))))]
                      (when field-type
                        (log/debug (format "SET FIELD TYPE %s.%s -> %s" table-name field-name field-type))
-                       (db/upd Field (:id @field) :field_type (name field-type)))
+                       (db/update! Field (:id @field) :field_type (name field-type)))
                      (when visibility-type
                        (log/debug (format "SET VISIBILITY TYPE %s.%s -> %s" table-name field-name visibility-type))
-                       (db/upd Field (:id @field) :visibility_type (name visibility-type)))
+                       (db/update! Field (:id @field) :visibility_type (name visibility-type)))
                      (when special-type
                        (log/debug (format "SET SPECIAL TYPE %s.%s -> %s" table-name field-name special-type))
-                       (db/upd Field (:id @field) :special_type (name special-type)))))))
+                       (db/update! Field (:id @field) :special_type (name special-type)))))))
              db))))))
 
 (defn remove-database!

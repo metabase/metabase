@@ -67,7 +67,7 @@
     (doseq [{id :id {:keys [type] :as dataset-query} :dataset_query} (db/sel :many [Card :id :dataset_query])]
       (when type
         ;; simply resave the card with the dataset query which will automatically set the database, table, and type
-        (db/upd Card id :dataset_query dataset-query)))))
+        (db/update! Card id :dataset_query dataset-query)))))
 
 
 ;; Set the `:ssl` key in `details` to `false` for all existing MongoDB `Databases`.
@@ -75,7 +75,7 @@
 ;; Since Mongo did *not* support SSL, all existing Mongo DBs should actually have this key set to `false`.
 (defmigration set-mongodb-databases-ssl-false
   (doseq [{:keys [id details]} (db/sel :many :fields [Database :id :details] :engine "mongo")]
-    (db/upd Database id, :details (assoc details :ssl false))))
+    (db/update! Database id, :details (assoc details :ssl false))))
 
 
 ;; Set default values for :schema in existing tables now that we've added the column

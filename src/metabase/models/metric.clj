@@ -123,7 +123,7 @@
          (integer? user-id)
          (string? revision_message)]}
   ;; update the metric itself
-  (db/upd Metric id
+  (db/update! Metric id
     :name        name
     :description description
     :definition  definition)
@@ -142,7 +142,7 @@
          (integer? user-id)
          (string? revision-message)]}
   ;; make Metric not active
-  (db/upd Metric id :is_active false)
+  (db/update! Metric id :is_active false)
   ;; retrieve the updated metric (now retired)
   (u/prog1 (retrieve-metric id)
     (events/publish-event :metric-delete (assoc <> :actor_id user-id, :revision_message revision-message))))

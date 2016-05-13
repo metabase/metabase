@@ -280,13 +280,13 @@
          first-sync
          ;; now add another column and modify the first
          (do
-           (db/upd RawColumn raw-column-id1 :is_pk false, :details {:base-type "DecimalField"})
+           (db/update! RawColumn raw-column-id1 :is_pk false, :details {:base-type "DecimalField"})
            (save-table-fields! tbl)
            (get-fields))
          ;; now disable the first column
          (do
-           (db/upd RawColumn raw-column-id1 :active false)
-           (db/upd RawColumn raw-column-id3 :is_pk true)
+           (db/update! RawColumn raw-column-id1 :active false)
+           (db/update! RawColumn raw-column-id3 :is_pk true)
            (save-table-fields! tbl)
            (get-fields))]))))
 

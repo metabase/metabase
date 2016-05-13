@@ -149,7 +149,7 @@
           serialized-dashboard (serialize-dashboard dashboard)]
       ;; delete the dashcard and modify the dash attributes
       (dashboard-card/delete-dashboard-card dashboard-card (user->id :rasta))
-      (db/upd Dashboard dashboard-id
+      (db/update! Dashboard dashboard-id
         :name        "Revert Test"
         :description "something")
       ;; capture our updated dashboard state
