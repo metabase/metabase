@@ -38,9 +38,12 @@
 
 (defn format-response [m]
   (into {} (for [[k v] m]
-             (if (contains? #{:id :uuid :started_at :finished_at :running_time} k)
-               [k (boolean v)]
-               [k v]))))
+             (cond
+               (contains? #{:id :uuid :started_at :finished_at :running_time} k) [k (boolean v)]
+               (= :data k) [k (if-not (contains? v :native_form)
+                                v
+                                (update v :native_form boolean))]
+               :else [k v]))))
 
 ;;; ## POST /api/meta/dataset
 ;; Just a basic sanity check to make sure Query Processor endpoint is still working correctly.
@@ -50,7 +53,8 @@
   [{:data         {:rows    [[1000]]
                    :columns ["count"]
                    :cols    [{:base_type "IntegerField", :special_type "number", :name "count", :display_name "count", :id nil, :table_id nil,
-                              :description nil, :target nil, :extra_info {}}]}
+                              :description nil, :target nil, :extra_info {}}]
+                   :native_form true}
     :row_count    1
     :status       "completed"
     :id           true
@@ -142,7 +146,8 @@
     :result {:data         {:rows    [[1000]]
                             :columns ["count"]
                             :cols    [{:base_type "IntegerField", :special_type "number", :name "count", :display_name "count", :id nil, :table_id nil,
-                                       :description nil, :target nil, :extra_info {}}]}
+                                       :description nil, :target nil, :extra_info {}}]
+                            :native_form true}
              :row_count    1
              :status       "completed"
              :id           true

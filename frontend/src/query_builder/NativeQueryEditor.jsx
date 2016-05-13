@@ -23,7 +23,6 @@ export default class NativeQueryEditor extends Component {
         query: PropTypes.object.isRequired,
         setQueryFn: PropTypes.func.isRequired,
         setDatabaseFn: PropTypes.func.isRequired,
-        setTableFn: PropTypes.func.isRequired,
         autocompleteResultsFn: PropTypes.func.isRequired,
         /// This should return an object with information about the mode the ACE Editor should use to edit the query.
         /// This object should have 2 properties:
@@ -35,7 +34,7 @@ export default class NativeQueryEditor extends Component {
 
     componentWillMount() {
         // if the sql is empty then start with the editor showing, otherwise our default is to start out collapsed
-        if (!this.props.query.native.query) {
+        if (!this.props.query.native.query || this.props.query.query) {
             this.setState({
                 showEditor: true
             });
@@ -147,7 +146,15 @@ export default class NativeQueryEditor extends Component {
     }
 
     setTableID(tableID) {
-        this.props.setTableFn(tableID);
+        // translate the table id into the table name
+        let database = this.props.databases ? _.findWhere(this.props.databases, { id: this.props.query.database }) : null,
+            table = database ? _.findWhere(database.tables, { id: tableID }) : null;
+
+        if (table) {
+            let query = this.props.query;
+            query.native.collection = table.name;
+            this.setQuery(query);
+        }
     }
 
     render() {
@@ -158,7 +165,7 @@ export default class NativeQueryEditor extends Component {
         if (this.state.showEditor && this.props.databases && (this.props.databases.length > 1 || modeInfo.requiresTable)) {
             if (this.props.databases.length > 1) {
                 dataSelectors.push(
-                    <div className="GuiBuilder-section GuiBuilder-data flex align-center">
+                    <div key="db_selector" className="GuiBuilder-section GuiBuilder-data flex align-center">
                         <span className="GuiBuilder-section-label Query-label">Database</span>
                         <DataSelector
                             databases={this.props.databases}
@@ -172,17 +179,18 @@ export default class NativeQueryEditor extends Component {
                 let databases = this.props.databases,
                     dbId      = this.props.query.database,
                     database  = databases ? _.findWhere(databases, { id: dbId }) : null,
-                    tables    = database ? database.tables : [];
+                    tables    = database ? database.tables : [],
+                    selectedTable = this.props.query.native.collection ? _.findWhere(tables, { name: this.props.query.native.collection }) : null;
 
                 dataSelectors.push(
-                    <div className="GuiBuilder-section GuiBuilder-data flex align-center">
+                    <div key="table_selector" className="GuiBuilder-section GuiBuilder-data flex align-center">
                         <span className="GuiBuilder-section-label Query-label">Table</span>
                         <DataSelector
                             ref="dataSection"
                             includeTables={true}
                             query={{
                                 type: "query",
-                                query: { source_table: this.props.query.table },
+                                query: { source_table: selectedTable ? selectedTable.id : null },
                                 database: dbId
                             }}
                             databases={[database]}

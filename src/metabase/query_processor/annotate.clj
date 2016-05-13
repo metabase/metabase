@@ -259,12 +259,13 @@
   1.  Sorts the results according to the rules at the top of this page
   2.  Resolves the Fields returned in the results and adds information like `:columns` and `:cols`
       expected by the frontend."
-  [query results]
-  (let [result-keys (set (keys (first results)))
-        cols        (resolve-sort-and-format-columns (:query query) result-keys)
-        columns     (mapv :name cols)]
+  [query {:keys [columns rows]}]
+  (let [row-maps (for [row rows]
+                   (zipmap columns row))
+        cols    (resolve-sort-and-format-columns (:query query) (set columns))
+        columns (mapv :name cols)]
     {:cols    (vec (for [col cols]
                      (update col :name name)))
      :columns (mapv name columns)
-     :rows    (for [row results]
+     :rows    (for [row row-maps]
                 (mapv row columns))}))

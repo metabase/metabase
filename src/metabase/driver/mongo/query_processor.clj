@@ -7,7 +7,6 @@
             [cheshire.core :as json]
             (monger [collection :as mc]
                     [operators :refer :all])
-            [metabase.db :as db]
             [metabase.driver.mongo.util :refer [with-mongo-connection *mongo-connection* values->base-type]]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor :as qp]
@@ -39,27 +38,6 @@
                  (->> form
                       (walk/postwalk #(if (symbol? %) (symbol (name %)) %)) ; strip namespace qualifiers from Monger form
                       u/pprint-to-str) "\n"))))
-
-;; # NATIVE QUERY PROCESSOR
-
-(defn process-and-run-native
-  "Process and run a native MongoDB query."
-  [{{query :query} :native, database :database, table-id :table, :as outer-query}]
-  {:pre [query (map? database) (integer? table-id)]}
-  (let [query   (if (string? query)
-                  (json/parse-string query keyword)
-                  query)
-        results (mc/aggregate *mongo-connection* (db/sel :one :field [Table :name], :id table-id) query
-                              :allow-disk-use true)]
-    ;; As with Druid, we want to use `annotate` on the results of native queries.
-    ;; Because the Generic SQL driver was written in ancient times, it has its own internal implementation of `annotate`
-    ;; (which preserves the order of columns in the results) and as a result the `annotate` middleware isn't applied for `:native` queries.
-    ;; Thus we need to manually run it ourself here.
-    ;; TODO - it would be nice if we could let the middleware take care of `annotate` for us. This will likely require a new `IDriver` method
-    ;; returns whether or not `annotate` should be done to native query results.
-    (annotate/annotate outer-query (if (sequential? results)
-                                     results
-                                     [results]))))
 
 
 ;;; # STRUCTURED QUERY PROCESSOR
@@ -397,7 +375,8 @@
                     (u/->Timestamp (:___date v))
                     v)}))))
 
-(defn process-and-run-mbql
+
+(defn mbql->native
   "Process and run an MBQL query."
   [{database :database, {{source-table-name :name} :source-table} :query, :as query}]
   {:pre [(map? database)
@@ -405,7 +384,31 @@
   (binding [*query* query]
     (let [generated-pipeline (generate-aggregation-pipeline (:query query))]
       (log-monger-form generated-pipeline)
-      (->> (mc/aggregate *mongo-connection* source-table-name generated-pipeline
-                         :allow-disk-use true)
-           unescape-names
-           unstringify-dates))))
+      {:query      generated-pipeline
+       :collection source-table-name
+       :mbql?      true})))
+
+(defn execute-query
+  "Process and run a native MongoDB query."
+  [{{:keys [collection query mbql?]} :native, database :database}]
+  {:pre [query
+         (string? collection)
+         (map? database)]}
+  (let [query   (if (string? query)
+                  (json/parse-string query keyword)
+                  query)
+        results (mc/aggregate *mongo-connection* collection query
+                              :allow-disk-use true)
+        results (if (sequential? results)
+                  results
+                  [results])
+        ;; if we formed the query using MBQL then we apply a couple post processing functions
+        results (if-not mbql? results
+                              (-> results
+                                  unescape-names
+                                  unstringify-dates))
+        columns (vec (keys (first results)))]
+    {:columns   columns
+     :rows      (for [row results]
+                  (mapv row columns))
+     :annotate? true}))

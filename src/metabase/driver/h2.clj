@@ -6,7 +6,6 @@
             [metabase.db :as db]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
-            [metabase.models.database :refer [Database]]
             [metabase.util :as u]
             [metabase.util.korma-extensions :as kx]))
 
@@ -122,7 +121,7 @@
     ;; For :native queries check to make sure the DB in question has a (non-default) NAME property specified in the connection string.
     ;; We don't allow SQL execution on H2 databases for the default admin account for security reasons
     (when (= (keyword query-type) :native)
-      (let [{:keys [db]}   (db/sel :one :field [Database :details] :id (:database query))
+      (let [{:keys [db]}   (get-in query [:database :details])
             _              (assert db)
             [_ options]    (connection-string->file+options db)
             {:strs [USER]} options]

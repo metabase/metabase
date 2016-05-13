@@ -70,7 +70,18 @@ export default class QueryHeader extends Component {
     }
 
     onCreate(card, addToDash) {
-        // TODO: why are we not cleaning the card here?
+        // MBQL->NATIVE
+        // if we are a native query with an MBQL query definition, remove the old MBQL stuff (happens when going from mbql -> native)
+        // if (card.dataset_query.type === "native" && card.dataset_query.query) {
+        //     delete card.dataset_query.query;
+        // } else if (card.dataset_query.type === "query" && card.dataset_query.native) {
+        //     delete card.dataset_query.native;
+        // }
+
+        if (card.dataset_query.query) {
+            Query.cleanQuery(card.dataset_query.query);
+        }
+
         this.requesetPromise = cancelable(this.props.cardApi.create(card).$promise);
         return this.requesetPromise.then(newCard => {
             this.props.notifyCardCreatedFn(newCard);
@@ -83,6 +94,14 @@ export default class QueryHeader extends Component {
     }
 
     onSave(card, addToDash) {
+        // MBQL->NATIVE
+        // if we are a native query with an MBQL query definition, remove the old MBQL stuff (happens when going from mbql -> native)
+        // if (card.dataset_query.type === "native" && card.dataset_query.query) {
+        //     delete card.dataset_query.query;
+        // } else if (card.dataset_query.type === "query" && card.dataset_query.native) {
+        //     delete card.dataset_query.native;
+        // }
+
         if (card.dataset_query.query) {
             Query.cleanQuery(card.dataset_query.query);
         }
@@ -172,6 +191,7 @@ export default class QueryHeader extends Component {
                     </ModalWithTrigger>
                 ]);
             } else {
+                // MBQL->NATIVE
                 buttonSections.push([
                     <QueryModeToggle
                         key="queryModeToggle"
@@ -305,6 +325,18 @@ export default class QueryHeader extends Component {
                 <Icon name='reference' width="16px" height="16px" onClick={this.onToggleDataReference}></Icon>
             </a>
         ]);
+
+        // MBQL->NATIVE
+        // native mode toggle
+        // if (!this.props.cardIsDirtyFn()) {
+        //     buttonSections.push([
+        //         <QueryModeToggle
+        //             key="queryModeToggle"
+        //             currentQueryMode={this.props.card.dataset_query.type}
+        //             setQueryModeFn={this.props.setQueryModeFn}
+        //         />
+        //     ]);
+        // }
 
         return (
             <ButtonBar buttons={buttonSections} className="Header-buttonSection" />

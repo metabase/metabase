@@ -6,8 +6,7 @@
             [medley.core :as m]
             [schema.core :as s]
             [metabase.db :refer [sel]]
-            (metabase.models [database :refer [Database]]
-                             [field :as field]
+            (metabase.models [field :as field]
                              [table :refer [Table]])
             [metabase.query-processor.interface :refer :all]
             [metabase.util :as u])
@@ -198,11 +197,6 @@
            ;; Recurse in case any new (nested) unresolved fields were found.
            (recur (dec max-iterations))))))))
 
-(defn- resolve-database
-  "Resolve the `Database` in question for an EXPANDED-QUERY-DICT."
-  [{database-id :database, :as expanded-query-dict}]
-  (assoc expanded-query-dict :database (sel :one :fields [Database :name :id :engine :details] :id database-id)))
-
 (defn- join-tables-fetch-field-info
   "Fetch info for PK/FK `Fields` for the JOIN-TABLES referenced in a Query."
   [source-table-id join-tables fk-field-ids]
@@ -255,5 +249,4 @@
   (some-> expanded-query-dict
           record-fk-field-ids
           resolve-fields
-          resolve-database
           resolve-tables))

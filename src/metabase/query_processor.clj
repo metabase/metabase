@@ -9,6 +9,7 @@
             (metabase [config :as config]
                       [db :as db]
                       [driver :as driver])
+            [metabase.models.database :as database]
             (metabase.models [field :refer [Field]]
                              [query-execution :refer [QueryExecution]])
             (metabase.query-processor [annotate :as annotate]
@@ -144,13 +145,13 @@
   "Transforms an MBQL into an expanded form with more information and structure.  Also resolves references to fields, tables,
    etc, into their concrete details which are necessary for query formation by the executing driver."
   [qp]
-  (fn [query]
-    ;; if necessary, expand/resolve the query
-    (let [query (if-not (mbql-query? query)
-                  query
-                  ;; for MBQL queries we expand first, then resolve
-                  (resolve/resolve (expand/expand query)))]
-      (qp query))))
+  (fn [{database-id :database, :as query}]
+    (let [resolved-db (db/sel :one :fields [database/Database :name :id :engine :details] :id database-id)
+          query       (if-not (mbql-query? query)
+                        query
+                        ;; for MBQL queries we expand first, then resolve
+                        (resolve/resolve (expand/expand query)))]
+      (qp (assoc query :database resolved-db)))))
 
 
 (defn- post-add-row-count-and-status
@@ -375,18 +376,6 @@
                                               absolute-max-results))))))
 
 
-(defn post-annotate
-  "QP middleware that runs directly after the the query is run and adds metadata as appropriate."
-  [qp]
-  (fn [query]
-    (let [results (qp query)]
-      (if-not (mbql-query? query)
-        ;; non-MBQL queries are not affected
-        results
-        ;; for MBQL queries capture the results and annotate
-        (annotate/annotate query results)))))
-
-
 (defn- pre-log-query [qp]
   (fn [query]
     (when (and (mbql-query? query)
@@ -441,6 +430,33 @@
           (assert (every? u/string-or-keyword? (:columns <>))))))))
 
 
+(defn- run-query
+  "The end of the QP middleware which actually executes the query on the driver.
+
+   If this is an MBQL query then we first call `mbql->native` which builds a database dependent form for execution and
+   then we pass that form into the `execute-query` function for final execution.
+
+   If the query is already a *native* query then we simply pass it through to `execute-query` unmodified."
+  [query]
+  (let [native-form  (u/prog1 (if-not (mbql-query? query)
+                                (:native query)
+                                (driver/mbql->native (:driver query) query))
+                       (when-not *disable-qp-logging*
+                         (log/debug (u/format-color 'green "NATIVE FORM:\n%s\n" (u/pprint-to-str <>)))))
+        native-query (if-not (mbql-query? query)
+                       query
+                       (assoc query :native native-form))
+        raw-result   (driver/execute-query (:driver query) native-query)
+        query-result (if-not (or (mbql-query? query)
+                                 (:annotate? raw-result))
+                       (assoc raw-result :columns (mapv name (:columns raw-result))
+                                         :cols    (for [[column first-value] (partition 2 (interleave (:columns raw-result) (first (:rows raw-result))))]
+                                                    {:name      (name column)
+                                                     :base_type (driver/class->base-type (type first-value))}))
+                       (annotate/annotate query raw-result))]
+    (assoc query-result :native_form native-form)))
+
+
 ;;; +-------------------------------------------------------------------------------------------------------+
 ;;; |                                           QUERY PROCESSOR                                             |
 ;;; +-------------------------------------------------------------------------------------------------------+
@@ -480,10 +496,7 @@
   ;; TODO: it probably makes sense to throw an error or return a failure response here if we can't get a driver
   (let [driver (driver/database-id->driver (:database query))]
     (binding [*driver* driver]
-      (let [driver-process-in-context (partial driver/process-query-in-context driver)
-            driver-process-query      (partial (if (mbql-query? query)
-                                                 driver/process-mbql
-                                                 driver/process-native) driver)]
+      (let [driver-process-in-context (partial driver/process-query-in-context driver)]
         ((<<- wrap-catch-exceptions
               pre-add-settings
               pre-expand-macros
@@ -497,10 +510,9 @@
               cumulative-count
               limit
               post-check-results-format
-              post-annotate
               pre-log-query
               guard-multiple-calls
-              driver-process-query) (assoc query :driver driver))))))
+              run-query) (assoc query :driver driver))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------+

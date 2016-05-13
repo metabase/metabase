@@ -103,6 +103,39 @@ CardControllers.controller('CardDetail', [
                     MetabaseAnalytics.trackEvent('QueryBuilder', 'Query Started', type);
                 }
             },
+            // MBQL->NATVIE
+            // setQueryModeFn: function(type) {
+            //     if (!card.dataset_query.type || type !== card.dataset_query.type) {
+            //         let database = card.dataset_query.database,
+            //             datasetQuery = angular.copy(card.dataset_query);
+
+            //         // if we are going from MBQL -> Native then attempt to carry over the query
+            //         if (type === "native") {
+            //             let nativeQuery = createQuery("native", database).native;
+            //             if (queryResult && queryResult.data && queryResult.data.native_form) {
+            //                 // since we have the native form from the last execution of our query, just use that
+            //                 nativeQuery = _.pick(queryResult.data.native_form, "query", "collection");
+
+            //                 // when the driver requires JSON we need to stringify it because it's been parsed already
+            //                 if (_.contains(["mongo", "druid"], tableMetadata.db.engine)) {
+            //                     nativeQuery.query = JSON.stringify(queryResult.data.native_form.query);
+            //                 }
+            //             }
+
+            //             // NOTE: we purposely leave the MBQL query form on the query
+            //             datasetQuery.type = "native";
+            //             datasetQuery.native = nativeQuery;
+
+            //         // we are going from Native -> MQBL, which is only allowed if the query wasn't modified
+            //         } else {
+            //             datasetQuery.type = "query";
+            //             delete datasetQuery.native;
+            //         }
+
+            //         setQuery(datasetQuery);
+            //         MetabaseAnalytics.trackEvent('QueryBuilder', 'Query Started', type);
+            //     }
+            // },
             cloneCardFn: function() {
                 $scope.$apply(() => {
                     delete card.id;
@@ -142,7 +175,6 @@ CardControllers.controller('CardDetail', [
             query: null,
             setQueryFn: onQueryChanged,
             setDatabaseFn: setDatabase,
-            setTableFn: setTable,            // this is used for native queries, vs. setSourceTable, which is used for MBQL
             setSourceTableFn: setSourceTable,
             autocompleteResultsFn: function(prefix) {
                 var apiCall = Metabase.db_autocomplete_suggestions({
@@ -605,16 +637,16 @@ CardControllers.controller('CardDetail', [
                         newCard.dataset_query.native.query = existingQuery;
                     }
 
-                    setCard(newCard, {runQuery: false});
-
-                    // set the initial Table ID for the query if this is a native query
+                    // set the initial collection for the query if this is a native query
                     // this is only used for Mongo queries which need to be ran against a specific collection
                     if (newCard.dataset_query.type === 'native') {
                         let database = _.findWhere(databases, { id: databaseId }),
                             tables   = database ? database.tables : [],
                             table    = tables.length > 0 ? tables[0] : null;
-                        if (table) newCard.dataset_query.table = table.id;
+                        if (table) newCard.dataset_query.native.collection = table.name;
                     }
+
+                    setCard(newCard, {runQuery: false});
 
                 } else {
                     // if we are editing a saved query we don't want to replace the card, so just start a fresh query only
@@ -630,13 +662,6 @@ CardControllers.controller('CardDetail', [
                 }
             }
             return card.dataset_query;
-        }
-
-        /// Sets the table ID for a *native* query.
-        function setTable(tableID) {
-            let query = card.dataset_query;
-            query.table = tableID;
-            setQuery(query);
         }
 
         // This is for MBQL queries
@@ -671,6 +696,12 @@ CardControllers.controller('CardDetail', [
                 delete card.name;
                 delete card.description;
             }
+
+            // MBQL->NATIVE
+            // if (dataset_query.type === "native" && dataset_query.query) {
+            //     // if we have an old reference to an MBQL query then we can safely kill that now
+            //     delete dataset_query.query;
+            // }
 
             setQuery(dataset_query);
         }
@@ -908,6 +939,11 @@ CardControllers.controller('CardDetail', [
         }
 
         function cardIsDirty() {
+            // MBQL->NATVIE
+            // if (card.dataset_query.type === "native" && card.dataset_query.query) {
+            //     return false;
+            // }
+
             var newCardSerialized = serializeCardForUrl(card);
 
             return newCardSerialized !== savedCardSerialized;
