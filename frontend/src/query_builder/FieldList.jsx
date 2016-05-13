@@ -179,6 +179,11 @@ export default class FieldList extends Component {
     onChange(item) {
         if (item.segment) {
             this.props.onFilterChange(item.value);
+        } else if (this.itemIsSelected(item)) {
+            // ensure if we select the same item we don't reset datetime_field's unit
+            this.props.onFieldChange(this.props.field);
+        }  else if (this.props.enableTimeGrouping && isDate(item.field)) {
+            this.props.onFieldChange(["datetime_field", item.value, "as", "day"]);
         } else {
             this.props.onFieldChange(item.value);
         }
