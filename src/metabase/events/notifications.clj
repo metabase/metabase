@@ -42,19 +42,19 @@
     ;; otherwise pull out dependent card ids and add dashboard/pulse dependencies
     (let [card-ids (mapv :model_id (get deps-by-model "Card"))]
       (assoc deps-by-model
-        "Dashboard" (->> (db/sel :many :fields [DashboardCard :dashboard_id] :card_id [in card-ids])
+        "Dashboard" (->> (db/sel [DashboardCard :dashboard_id] :card_id [in card-ids])
                          (map #(clojure.set/rename-keys % {:dashboard_id :model_id})))
-        "Pulse"     (->> (db/sel :many :fields [PulseCard :pulse_id] :card_id [in card-ids])
+        "Pulse"     (->> (db/sel [PulseCard :pulse_id] :card_id [in card-ids])
                          (map #(clojure.set/rename-keys % {:pulse_id :model_id})))))))
 
 (defn- pull-dependencies [model model-id]
-  (when-let [deps (db/sel :many :fields [Dependency :model :model_id] :dependent_on_model model :dependent_on_id model-id)]
+  (when-let [deps (db/sel [Dependency :model :model_id] :dependent_on_model model :dependent_on_id model-id)]
     (let [deps-by-model     (-> (group-by :model deps)
                                 add-objects-dependent-on-cards)
           deps-with-details (for [model (keys deps-by-model)
                                   :let  [ids (mapv :model_id (get deps-by-model model))]]
                               ;; TODO: this is slightly dangerous because we assume :name and :creator_id are available
-                              (->> (db/sel :many :fields [(model->entity (keyword model)) :id :name :creator_id] :id [in ids])
+                              (->> (db/sel [(model->entity (keyword model)) :id :name :creator_id] :id [in ids])
                                    (map #(assoc % :model model))))]
       ;; we end up with a list of lists, so flatten before returning
       (flatten deps-with-details))))

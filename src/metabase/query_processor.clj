@@ -203,7 +203,7 @@
 (defn- fields-for-source-table
   "Return the all fields for SOURCE-TABLE, for use as an implicit `:fields` clause."
   [{source-table-id :id, :as source-table}]
-  (for [field (db/sel :many :fields [Field :name :display_name :base_type :special_type :visibility_type :display_name :table_id :id :position :description]
+  (for [field (db/sel [Field :name :display_name :base_type :special_type :visibility_type :display_name :table_id :id :position :description]
                       :table_id        source-table-id
                       :visibility_type [not-in ["sensitive" "retired"]]
                       :parent_id       nil

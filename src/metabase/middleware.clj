@@ -3,7 +3,6 @@
   (:require [clojure.tools.logging :as log]
             (cheshire factory
                       [generate :refer [add-encoder encode-str encode-nil]])
-            [korma.core :as k]
             [metabase.api.common :refer [*current-user* *current-user-id*]]
             (metabase [config :as config]
                       [db :as db])
@@ -59,12 +58,14 @@
   [handler]
   (fn [{:keys [metabase-session-id] :as request}]
     ;; TODO - what kind of validations can we do on the sessionid to make sure it's safe to handle?  str?  alphanumeric?
-    (handler (or (when (and metabase-session-id ((resolve 'metabase.core/initialized?)))
-                   (when-let [session (first (k/select Session
-                                                       ;; NOTE: we join with the User table and ensure user.is_active = true
-                                                       (k/with User (k/where {:is_active true}))
-                                                       (k/fields :created_at :user_id)
-                                                       (k/where {:id metabase-session-id})))]
+    (handler (or (when (and metabase-session-id
+                            ((resolve 'metabase.core/initialized?)))
+                   ;; join with the User table and ensure user.is_active = true
+                   (when-let [session (db/sel-1 [Session :created_at :user_id]
+                                        (db/qualify Session :id)     metabase-session-id
+                                        (db/qualify User :is_active) true
+                                        {:join [(db/entity->name User) [:= (db/qualify Session :user_id)
+                                                                           (db/qualify User :id)]]})]
                      (let [session-age-ms (- (System/currentTimeMillis) (.getTime ^java.util.Date (get session :created_at (java.util.Date. 0))))]
                        ;; If the session exists and is not expired (max-session-age > session-age) then validation is good
                        (when (and session (> (config/config-int :max-session-age) (quot session-age-ms 60000)))

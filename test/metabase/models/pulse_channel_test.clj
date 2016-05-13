@@ -265,7 +265,7 @@
                   PulseChannel [{channel-id :id} {:pulse_id pulse-id}]]
     (let [upd-recipients! (fn [recipients]
                             (update-recipients! channel-id recipients)
-                            (db/sel :many :field [PulseChannelRecipient :user_id] :pulse_channel_id channel-id))]
+                            (db/sel-field [PulseChannelRecipient :user_id] :pulse_channel_id channel-id))]
       [(upd-recipients! [])
        (upd-recipients! [(user->id :rasta)])
        (upd-recipients! [(user->id :crowberto)])

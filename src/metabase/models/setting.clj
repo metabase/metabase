@@ -71,7 +71,7 @@
   (restore-cache-if-needed)
   (if (contains? @cached-setting->value k)
     (@cached-setting->value k)
-    (let [v (db/sel-1 :field [Setting :value] :key (name k))]
+    (let [v (db/sel-1-field [Setting :value] :key (name k))]
       (swap! cached-setting->value assoc k v)
       v)))
 
@@ -254,7 +254,7 @@
 (defn- restore-cache-if-needed []
   (when-not @cached-setting->value
     (db/setup-db-if-needed)
-    (reset! cached-setting->value (into {} (for [{k :key, v :value} (db/sel :many Setting)]
+    (reset! cached-setting->value (into {} (for [{k :key, v :value} (db/sel Setting)]
                                              {(keyword k) v})))))
 
 (def ^:private cached-setting->value

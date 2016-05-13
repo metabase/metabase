@@ -87,8 +87,8 @@
                   Card  [{card-id-3 :id} {:name "card3"}]]
     (let [upd-cards! (fn [cards]
                        (update-pulse-cards {:id pulse-id} cards)
-                       (doall (for [card-id (db/sel :many :field [PulseCard :card_id] :pulse_id pulse-id)]
-                                (db/sel-1 :field [Card :name] :id card-id))))]
+                       (doseq [card-id (db/sel-field :card_id PulseCard, :pulse_id pulse-id)]
+                         (db/sel-1-field [Card :name] :id card-id)))]
       [(upd-cards! [])
        (upd-cards! [card-id-1])
        (upd-cards! [card-id-2])

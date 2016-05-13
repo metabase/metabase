@@ -562,8 +562,8 @@
         api-response          ((user->client :crowberto) :post 200 (format "table/%d/reorder" (id :categories))
                                {:new_order [(:id categories-name-field) (:id categories-id-field)]})]
     ;; check the modified values (have to do it here because the api response tells us nothing)
-    (assert (= 0 (:position (db/sel-1 :fields [Field :position] :id (:id categories-name-field)))))
-    (assert (= 1 (:position (db/sel-1 :fields [Field :position] :id (:id categories-id-field)))))
+    (assert (= 0 (:position (db/sel-1 [Field :position] :id (:id categories-name-field)))))
+    (assert (= 1 (:position (db/sel-1 [Field :position] :id (:id categories-id-field)))))
     ;; put the values back to their previous state
     (db/update! Field (:id categories-name-field) :position 0)
     (db/update! Field (:id categories-id-field) :position 0)

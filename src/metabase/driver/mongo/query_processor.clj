@@ -49,7 +49,7 @@
   (let [query   (if (string? query)
                   (json/parse-string query keyword)
                   query)
-        results (mc/aggregate *mongo-connection* (db/sel-1 :field [Table :name], :id table-id) query
+        results (mc/aggregate *mongo-connection* (db/sel-1-field [Table :name], :id table-id) query
                               :allow-disk-use true)]
     ;; As with Druid, we want to use `annotate` on the results of native queries.
     ;; Because the Generic SQL driver was written in ancient times, it has its own internal implementation of `annotate`

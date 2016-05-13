@@ -26,7 +26,7 @@
                                                        :filter       ["AND" [">" 4 "2014-10-19"] ["=" 5 "yes"] ["SEGMENT" 2] ["SEGMENT" 3]]}}}]
     (process-dependencies-event {:topic :card-create
                                  :item  card})
-    (set (db/sel :many :fields [Dependency :dependent_on_model :dependent_on_id], :model "Card", :model_id (:id card)))))
+    (set (db/sel [Dependency :dependent_on_model :dependent_on_id], :model "Card", :model_id (:id card)))))
 
 ;; `:card-update` event
 (expect
@@ -36,7 +36,7 @@
                                             :query    {:source_table (id :categories)}}}]
     (process-dependencies-event {:topic :card-create
                                  :item  card})
-    (db/sel :many :fields [Dependency :dependent_on_model :dependent_on_id], :model "Card", :model_id (:id card))))
+    (db/sel [Dependency :dependent_on_model :dependent_on_id], :model "Card", :model_id (:id card))))
 
 ;; `:metric-create` event
 (expect
@@ -51,7 +51,7 @@
                                                          :filter      ["AND" ["SEGMENT" 18] ["SEGMENT" 35]]}}]]
     (process-dependencies-event {:topic :metric-create
                                  :item  metric})
-    (set (db/sel :many :fields [Dependency :dependent_on_model :dependent_on_id], :model "Metric", :model_id (:id metric)))))
+    (set (db/sel [Dependency :dependent_on_model :dependent_on_id], :model "Metric", :model_id (:id metric)))))
 
 ;; `:card-update` event
 (expect
@@ -66,4 +66,4 @@
                                                          :filter      ["AND" ["SEGMENT" 18] ["SEGMENT" 35]]}}]]
     (process-dependencies-event {:topic :metric-update
                                  :item  metric})
-    (set (db/sel :many :fields [Dependency :dependent_on_model :dependent_on_id], :model "Metric", :model_id (:id metric)))))
+    (set (db/sel [Dependency :dependent_on_model :dependent_on_id], :model "Metric", :model_id (:id metric)))))

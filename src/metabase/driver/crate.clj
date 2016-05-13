@@ -41,7 +41,7 @@
    :geo_point_array :ArrayField})
 
 
-(def ^:private ^:const now (k/sqlfn :CURRENT_TIMESTAMP (k/raw 3)))
+(def ^:private ^:const now :%current_timestamp.3)
 
 (defn- crate-spec
   [{:keys [hosts]

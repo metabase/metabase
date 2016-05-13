@@ -1,7 +1,6 @@
 (ns metabase.api.activity-test
   "Tests for /api/activity endpoints."
   (:require [expectations :refer :all]
-            [korma.core :as k]
             [metabase.db :as db]
             [metabase.http-client :refer :all]
             (metabase.models [activity :refer [Activity]]
@@ -20,7 +19,7 @@
 ;  2. :user and :model_exists are hydrated
 
 ; NOTE: timestamp matching was being a real PITA so I cheated a bit.  ideally we'd fix that
-(expect-let [_         (k/delete Activity)
+(expect-let [_         (db/delete! Activity)
              activity1 (db/insert! Activity
                          :topic     "install"
                          :details   {}
@@ -153,9 +152,9 @@
                    :display     (name (:display card2))}}]
   (let [create-view (fn [user model model-id]
                       (db/insert! ViewLog
-                        :user_id  user
-                        :model    model
-                        :model_id model-id
+                        :user_id   user
+                        :model     model
+                        :model_id  model-id
                         :timestamp (u/new-sql-timestamp))
                       ;; we sleep a bit to ensure no events have the same timestamp
                       ;; sadly, MySQL doesn't support milliseconds so we have to wait a second

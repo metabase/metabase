@@ -103,14 +103,14 @@
 (defn ^:hydrate values
   "Return the `FieldValues` associated with this FIELD."
   [{:keys [id]}]
-  (db/sel :many [FieldValues :field_id :values], :field_id id))
+  (db/sel [FieldValues :field_id :values], :field_id id))
 
 (defn qualified-name-components
   "Return the pieces that represent a path to FIELD, of the form `[table-name parent-fields-name* field-name]`."
   [{field-name :name, table-id :table_id, parent-id :parent_id}]
   (conj (if-let [parent (Field parent-id)]
           (qualified-name-components parent)
-          [(db/sel-1 :field ['Table :name], :id table-id)])
+          [(db/sel-1-field ['Table :name], :id table-id)])
         field-name))
 
 (defn qualified-name

@@ -94,8 +94,8 @@
    {:pre [(integer? table-id)
           (keyword? state)]}
    (-> (if (= :all state)
-         (db/sel :many Segment :table_id table-id (k/order :name :ASC))
-         (db/sel :many Segment :table_id table-id :is_active (if (= :active state) true false) (k/order :name :ASC)))
+         (db/sel Segment :table_id table-id {:order-by [[:name :asc]]})
+         (db/sel Segment :table_id table-id :is_active (if (= :active state) true false) {:order-by [[:name :asc]]}))
        (hydrate :creator))))
 
 (defn update-segment

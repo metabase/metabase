@@ -14,7 +14,7 @@
   save-all-table-columns! save-all-table-fks! create-raw-table! update-raw-table! disable-raw-tables!)
 
 (defn get-tables [database-id]
-  (->> (hydrate/hydrate (db/sel :many RawTable :database_id database-id (k/order :id)) :columns)
+  (->> (hydrate/hydrate (db/sel RawTable :database_id database-id (k/order :id)) :columns)
        (mapv tu/boolean-ids-and-timestamps)))
 
 (defn get-table [table-id]
@@ -113,7 +113,7 @@
                   RawColumn [_                               {:raw_table_id raw-table-id2, :name "user_id"}]
                   RawTable  [{raw-table-id3 :id, :as table2} {:database_id database-id, :schema nil, :name "users"}]
                   RawColumn [_                               {:raw_table_id raw-table-id3, :name "id"}]]
-    (let [get-columns #(->> (db/sel :many RawColumn :raw_table_id raw-table-id1 (k/order :id))
+    (let [get-columns #(->> (db/sel RawColumn :raw_table_id raw-table-id1 (k/order :id))
                             (mapv tu/boolean-ids-and-timestamps))]
       ;; original list should not have any fks
       [(get-columns)
@@ -209,7 +209,7 @@
      :updated_at   true}]]
   (tu/with-temp* [Database [{database-id :id}]
                   RawTable [{raw-table-id :id, :as table} {:database_id database-id}]]
-    (let [get-columns #(->> (db/sel :many RawColumn :raw_table_id raw-table-id (k/order :id))
+    (let [get-columns #(->> (db/sel RawColumn :raw_table_id raw-table-id (k/order :id))
                             (mapv tu/boolean-ids-and-timestamps))]
       ;; original list should be empty
       [(get-columns)

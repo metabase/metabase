@@ -1,6 +1,5 @@
 (ns metabase.models.card
-  (:require [korma.core :as k]
-            [medley.core :as m]
+  (:require [medley.core :as m]
             [metabase.db :as db]
             (metabase.models [card-label :refer [CardLabel]]
                              [dependency :as dependency]
@@ -27,21 +26,14 @@
   "Return the number of Dashboards this Card is in."
   {:hydrate :dashboard_count}
   [{:keys [id]}]
-  (-> (k/select @(ns-resolve 'metabase.models.dashboard-card 'DashboardCard)
-                (k/aggregate (count :*) :dashboards)
-                (k/where {:card_id id}))
-      first
-      :dashboards))
+  (db/sel-1-count 'DashboardCard, :card_id id))
 
 (defn labels
   "Return `Labels` for CARD."
   {:hydrate :labels}
   [{:keys [id]}]
-  (if-let [label-ids (seq (db/sel :many :field [CardLabel :label_id] :card_id id))]
-    (db/sel :many Label
-            (k/where {:id [in label-ids]})
-            (k/order (k/sqlfn :LOWER :name)))
-    []))
+  (vec (when-let [label-ids (seq (db/sel-field :label_id CardLabel, :card_id id))]
+         (db/sel Label, :id [:in label-ids], {:order-by [:%lower.name]}))))
 
 (defn- pre-cascade-delete [{:keys [id]}]
   (db/cascade-delete! 'PulseCard :card_id id)

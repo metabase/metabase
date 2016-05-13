@@ -30,14 +30,14 @@
 (defn ^:hydrate columns
   "Return the `RawColumns` belonging to RAW-TABLE."
   [{:keys [id]}]
-  (db/sel :many RawColumn :raw_table_id id, (k/order :name :ASC)))
+  (db/sel RawColumn :raw_table_id id, {:order-by [[:name :asc]]}))
 
 (defn active-tables
   "Return the active `RawColumns` belonging to RAW-TABLE."
   [database-id]
-  (db/sel :many RawTable :database_id database-id, :active true, (k/order :schema :ASC), (k/order :name :ASC)))
+  (db/sel RawTable :database_id database-id, :active true, (k/order :schema :ASC), {:order-by [[:name :asc]]}))
 
 (defn active-columns
   "Return the active `RawColumns` belonging to RAW-TABLE."
   [{:keys [id]}]
-  (db/sel :many RawColumn :raw_table_id id, :active true, (k/order :name :ASC)))
+  (db/sel RawColumn :raw_table_id id, :active true, {:order-by [[:name :asc]]}))

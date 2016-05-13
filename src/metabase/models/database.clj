@@ -26,7 +26,7 @@
 (defn ^:hydrate tables
   "Return the `Tables` associated with this `Database`."
   [{:keys [id]}]
-  (db/sel :many 'Table :db_id id, :active true, (k/order :display_name :ASC)))
+  (db/sel 'Table :db_id id, :active true, (k/order :display_name :ASC)))
 
 (u/strict-extend (class Database)
   i/IEntity

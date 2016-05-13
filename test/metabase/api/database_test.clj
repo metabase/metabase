@@ -97,7 +97,7 @@
 ;; Check that we can delete a Database
 (expect-let [db-name (random-name)
              {db-id :id} (create-db db-name)
-             sel-db-name (fn [] (db/sel-1 :field [Database :name] :id db-id))]
+             sel-db-name (fn [] (db/sel-1-field [Database :name] :id db-id))]
   [db-name
    nil]
   [(sel-db-name)
@@ -108,7 +108,7 @@
 ;; Check that we can update fields in a Database
 (expect-let [[old-name new-name] (repeatedly 2 random-name)
              {db-id :id} (create-db old-name)
-             sel-db (fn [] (db/sel-1 :fields [Database :name :engine :details :is_full_sync] :id db-id))]
+             sel-db (fn [] (db/sel-1 [Database :name :engine :details :is_full_sync] :id db-id))]
   [{:details      {:host "localhost", :port 5432, :dbname "fakedb", :user "cam", :ssl true}
     :engine       :postgres
     :name         old-name
@@ -196,7 +196,7 @@
                                                                        :is_full_sync    true
                                                                        :organization_id nil
                                                                        :description     nil
-                                                                       :tables          (->> (db/sel :many Table :db_id (:id database))
+                                                                       :tables          (->> (db/sel Table :db_id (:id database))
                                                                                              (mapv table-details)
                                                                                              (sort-by :name))
                                                                        :features        (mapv name (driver/features (driver/engine->driver engine)))})))))))

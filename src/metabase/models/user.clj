@@ -120,4 +120,4 @@
 (defn instance-created-at
   "The date the instance was created.  We use the :date_joined of the first user to determine this."
   []
-  (db/sel-1 :field [User :date_joined] (k/order :date_joined :ASC) (k/limit 1)))
+  (db/sel-1-field [User :date_joined], {:order-by [[:date_joined :asc]]}))

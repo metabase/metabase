@@ -151,11 +151,11 @@
                                              :active      true
                                              :preview_display true
                                              :position    1}]
-          (let [original-val (boolean (db/sel-1 :field [Field :fk_target_field_id] :id field-id))]
+          (let [original-val (boolean (db/sel-1-field [Field :fk_target_field_id] :id field-id))]
             ;; unset the :fk special-type
             ((user->client :crowberto) :put 200 (format "field/%d" field-id) {:special_type :name})
             [original-val
-             (db/sel-1 :field [Field :fk_target_field_id] :id field-id)]))))))
+             (db/sel-1-field [Field :fk_target_field_id] :id field-id)]))))))
 
 ;; check that you can't set a field to :timestamp_seconds if it's not of a proper base_type
 (expect
@@ -165,7 +165,7 @@
                   Table    [{table-id :id} {:db_id database-id}]
                   Field    [{field-id :id} {:table_id table-id}]]
     [((user->client :crowberto) :put 400 (str "field/" field-id) {:special_type :timestamp_seconds})
-     (db/sel-1 :field [Field :special_type], :id field-id)]))
+     (db/sel-1-field [Field :special_type], :id field-id)]))
 
 
 (defn- field->field-values

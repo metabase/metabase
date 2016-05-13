@@ -198,7 +198,7 @@
     (process-revision-event {:topic :metric-create
                              :item  metric})
 
-    (let [revision (db/sel-1 :fields [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Metric", :model_id (:id metric))]
+    (let [revision (db/sel-1 [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Metric", :model_id (:id metric))]
       (assoc revision :object (dissoc (:object revision) :id :table_id)))))
 
 ;; :metric-update
@@ -220,7 +220,7 @@
                              :item  (assoc metric
                                            :actor_id         (user->id :crowberto)
                                            :revision_message "updated")})
-    (let [revision (db/sel-1 :fields [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Metric", :model_id (:id metric))]
+    (let [revision (db/sel-1 [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Metric", :model_id (:id metric))]
       (assoc revision :object (dissoc (:object revision) :id :table_id)))))
 
 ;; :metric-delete
@@ -240,7 +240,7 @@
                   Metric   [metric       {:table_id id, :definition {:a "b"}, :is_active false}]]
     (process-revision-event {:topic :metric-delete
                              :item  metric})
-    (let [revision (db/sel-1 :fields [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Metric", :model_id (:id metric))]
+    (let [revision (db/sel-1 [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Metric", :model_id (:id metric))]
       (assoc revision :object (dissoc (:object revision) :id :table_id)))))
 
 
@@ -286,7 +286,7 @@
                              :item  (assoc segment
                                            :actor_id         (user->id :crowberto)
                                            :revision_message "updated")})
-    (update (db/sel-1 :fields [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Segment", :model_id (:id segment))
+    (update (db/sel-1 [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Segment", :model_id (:id segment))
             :object (u/rpartial dissoc :id :table_id))))
 
 ;; :segment-delete
@@ -308,5 +308,5 @@
                                           :is_active  false}]]
     (process-revision-event {:topic :segment-delete
                              :item  segment})
-    (update (db/sel-1 :fields [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Segment", :model_id (:id segment))
+    (update (db/sel-1 [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Segment", :model_id (:id segment))
             :object (u/rpartial dissoc :id :table_id))))

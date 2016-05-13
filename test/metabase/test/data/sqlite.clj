@@ -1,6 +1,6 @@
 (ns metabase.test.data.sqlite
   (:require [clojure.string :as s]
-            [korma.core :as k]
+            [honeysql.core :as hsql]
             metabase.driver.sqlite
             (metabase.test.data [generic-sql :as generic]
                                 [interface :as i])
@@ -25,13 +25,13 @@
    :TimeField       "TIME"})
 
 (defn- load-data-stringify-dates
-  "Our SQLite JDBC driver doesn't seem to handle Dates/Timestamps correctly so just convert them to string before INSERTing them into the Database."
+  "Our SQLite JDBC driver doesn't seem to handle Dates/Timestamps correctly so just convert them to strings before INSERTing them into the Database."
   [insert!]
   (fn [rows]
     (insert! (for [row rows]
                (into {} (for [[k v] row]
                           [k (u/cond-as-> v v
-                               (instance? java.util.Date v) (k/raw (format "DATETIME('%s')" (u/date->iso-8601 v))))]))))))
+                               (instance? java.util.Date v) (hsql/raw (format "DATETIME('%s')" (u/date->iso-8601 v))))]))))))
 
 (u/strict-extend SQLiteDriver
   generic/IGenericSQLDatasetLoader

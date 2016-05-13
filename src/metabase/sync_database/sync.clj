@@ -21,8 +21,8 @@
          (every? map? fk-sources)]}
   (doseq [{fk-source-id :source-column, fk-target-id :target-column} fk-sources]
     ;; TODO: eventually limit this to just "core" schema tables
-    (when-let [source-field-id (db/sel-1 :id Field, :raw_column_id fk-source-id, :visibility_type [not= "retired"])]
-      (when-let [target-field-id (db/sel-1 :id Field, :raw_column_id fk-target-id, :visibility_type [not= "retired"])]
+    (when-let [source-field-id (db/sel-1-id Field, :raw_column_id fk-source-id, :visibility_type [not= "retired"])]
+      (when-let [target-field-id (db/sel-1-id Field, :raw_column_id fk-target-id, :visibility_type [not= "retired"])]
         (db/update! Field source-field-id
           :special_type       :fk
           :fk_target_field_id target-field-id)))))
@@ -72,7 +72,7 @@
   [{table-id :id, raw-table-id :raw_table_id}]
   (let [active-raw-columns  (raw-table/active-columns {:id raw-table-id})
         active-column-ids   (set (map :id active-raw-columns))
-        existing-fields     (into {} (for [{raw-column-id :raw_column_id, :as fld} (db/sel :many Field, :table_id table-id, :visibility_type [not= "retired"], :parent_id nil)]
+        existing-fields     (into {} (for [{raw-column-id :raw_column_id, :as fld} (db/sel Field, :table_id table-id, :visibility_type [not= "retired"], :parent_id nil)]
                                        {raw-column-id fld}))]
     ;; retire any fields which were disabled in the schema (including child nested fields)
     (doseq [[raw-column-id {field-id :id}] existing-fields]
@@ -229,7 +229,7 @@
   (retire-tables! database)
 
   (let [raw-tables      (raw-table/active-tables database-id)
-        existing-tables (into {} (for [{raw-table-id :raw_table_id, :as table} (db/sel :many Table, :db_id database-id, :active true)]
+        existing-tables (into {} (for [{raw-table-id :raw_table_id, :as table} (db/sel Table, :db_id database-id, :active true)]
                                    {raw-table-id table}))]
 
     (create-and-update-tables! database existing-tables raw-tables)

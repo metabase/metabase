@@ -16,7 +16,7 @@
   save-table-fields!)
 
 (defn- get-tables [database-id]
-  (->> (hydrate/hydrate (db/sel :many Table :db_id database-id (k/order :id)) :fields)
+  (->> (hydrate/hydrate (db/sel Table :db_id database-id (k/order :id)) :fields)
        (mapv tu/boolean-ids-and-timestamps)))
 
 
@@ -254,7 +254,7 @@
                   RawTable  [{raw-table-id :id, :as table} {:database_id database-id}]
                   Table     [{table-id :id, :as tbl}       {:db_id database-id, :raw_table_id raw-table-id}]]
     (let [get-fields (fn []
-                       (for [field (db/sel :many Field, :table_id table-id, (k/order :id))]
+                       (for [field (db/sel Field, :table_id table-id, (k/order :id))]
                          (dissoc (tu/boolean-ids-and-timestamps field)
                                  :active :field_type :position :preview_display)))]
       ;; start with no fields
@@ -293,7 +293,7 @@
       ;; do a quick introspection to add the RawTables to the db
       (introspect/introspect-database-and-update-raw-tables! driver db)
       ;; stub out the Table we are going to sync for real below
-      (let [raw-table-id (db/sel-1 :id RawTable, :database_id database-id, :name "transactions")
+      (let [raw-table-id (db/sel-1-id RawTable, :database_id database-id, :name "transactions")
             tbl          (db/insert! Table
                            :db_id        database-id
                            :raw_table_id raw-table-id
@@ -331,7 +331,7 @@
       (introspect/introspect-database-and-update-raw-tables! driver db)
 
       [;; first check that the raw tables stack up as expected, especially that fields were skipped because this is a :dynamic-schema db
-       (->> (hydrate/hydrate (db/sel :many RawTable :database_id database-id (k/order :id)) :columns)
+       (->> (hydrate/hydrate (db/sel RawTable :database_id database-id (k/order :id)) :columns)
             (mapv tu/boolean-ids-and-timestamps))
        ;; now lets run a sync and check what we got
        (do

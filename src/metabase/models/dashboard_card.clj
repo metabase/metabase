@@ -79,7 +79,7 @@
   (db/cascade-delete! DashboardCardSeries :dashboardcard_id id)
   ;; now just insert all of the series that were given to us
   (when-not (empty? card-ids)
-    (let [cards (map-indexed (fn [idx itm] {:dashboardcard_id id :card_id itm :position idx}) card-ids)]
+    (let [cards (map-indexed (fn [idx itm] {:dashboardcard_id id, :card_id itm, :position idx}) card-ids)]
       (k/insert DashboardCardSeries (k/values cards)))))
 
 (defn update-dashboard-card
@@ -94,7 +94,7 @@
       (when (and sizeX sizeY row col)
         (db/update! DashboardCard id, :sizeX sizeX, :sizeY sizeY, :row row, :col col))
       ;; update series (only if they changed)
-      (when (not= series (db/sel :many :field [DashboardCardSeries :card_id] :dashboardcard_id id (k/order :position :asc)))
+      (when (not= series (db/sel-field :card_id DashboardCardSeries, :dashboardcard_id id, {:order-by [[:position :asc]]}))
         (update-dashboard-card-series dashboard-card series))
       ;; fetch the fully updated dashboard card then return it (and fire off an event)
       (->> (retrieve-dashboard-card id)

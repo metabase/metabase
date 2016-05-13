@@ -221,8 +221,11 @@
   [honeysql-form]
   (jdbc/query (db-spec) (honeysql->sql honeysql-form)))
 
-(defn- entity->name [entity]
-  (keyword (:table entity)))
+(defn entity->name [entity]
+  (keyword (:table (resolve-entity entity))))
+
+(defn qualify [entity field]
+  (hsql/qualify (entity->name entity) field))
 
 (defn select
   "Select objects from the database."
@@ -381,11 +384,13 @@
    which should delete any objects related the object about to be deleted.
 
    Returns a 204/nil reponse so it can be used directly in an API endpoint." ; TODO - do we want to do this still?
-  [entity & kvs]
-  (let [entity  (resolve-entity entity)]
-    (doseq [object (apply sel entity kvs)]
-      (models/pre-cascade-delete object)
-      (delete! entity :id (:id object))))
+  ([entity id]
+   (cascade-delete! entity :id id))
+  ([entity k v & more]
+   (let [entity  (resolve-entity entity)]
+     (doseq [object (apply sel entity k v more)]
+       (models/pre-cascade-delete object)
+       (delete! entity :id (:id object)))))
   {:status 204, :body nil})
 
 ;;; ## SEL
@@ -417,7 +422,7 @@
       :else                   (u/prog1 honeysql-form
                                 (println "where+:" <>)))))
 
-(defn sel-1 [entity & options]
+(defn sel-1 {:style/indent 1} [entity & options]
   (let [fields (entity->fields entity)]
     (select-1 entity (where+ {:select (or fields [:*])} options))))
 
@@ -428,7 +433,12 @@
 (defn sel-1-id [entity & options]
   (apply sel-1-field :id entity options))
 
-(defn sel [entity & options]
+(defn sel-1-count [entity & options]
+  (:count (apply sel-1 [entity [:%count.* :count]] options)))
+
+(defn sel
+  {:style/indent 1}
+  [entity & options]
   (let [fields (entity->fields entity)]
     (select entity (where+ {:select (or fields [:*])} options))))
 

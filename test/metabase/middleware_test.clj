@@ -1,8 +1,8 @@
 (ns metabase.middleware-test
   (:require [cheshire.core :as json]
             [expectations :refer :all]
-            [korma.core :as k]
             [metabase.api.common :refer [*current-user-id* *current-user*]]
+            [metabase.db :as db]
             [metabase.middleware :refer :all]
             [metabase.models.session :refer [Session]]
             [metabase.test.data :refer :all]
@@ -64,9 +64,10 @@
   (.toString (java.util.UUID/randomUUID)))
 
 ;; valid session ID
-(expect (user->id :rasta)
+(expect
+  (user->id :rasta)
   (let [session-id (random-session-id)]
-    (k/insert Session (k/values {:id session-id, :user_id (user->id :rasta), :created_at (u/new-sql-timestamp)}))
+    (db/insert! Session {:id session-id, :user_id (user->id :rasta), :created_at (u/new-sql-timestamp)})
     (-> (auth-enforced-handler (request-with-session-id session-id))
         :metabase-user-id)))
 
@@ -76,7 +77,7 @@
 ;; should fail due to session expiration
 (expect response-unauthentic
   (let [session-id (random-session-id)]
-    (k/insert Session (k/values {:id session-id, :user_id (user->id :rasta), :created_at (java.sql.Timestamp. 0)}))
+    (db/insert! Session {:id session-id, :user_id (user->id :rasta), :created_at (java.sql.Timestamp. 0)})
     (auth-enforced-handler (request-with-session-id session-id))))
 
 
@@ -86,7 +87,7 @@
 ;; NOTE that :trashbird is our INACTIVE test user
 (expect response-unauthentic
   (let [session-id (random-session-id)]
-    (k/insert Session (k/values {:id session-id, :user_id (user->id :trashbird), :created_at (u/new-sql-timestamp)}))
+    (db/insert! Session {:id session-id, :user_id (user->id :trashbird), :created_at (u/new-sql-timestamp)})
     (auth-enforced-handler (request-with-session-id session-id))))
 
 

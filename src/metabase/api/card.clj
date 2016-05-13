@@ -1,7 +1,7 @@
 (ns metabase.api.card
   (:require [clojure.data :as data]
             [compojure.core :refer [GET POST DELETE PUT]]
-            [korma.core :as k]
+            [honeysql.helpers :as h]
             [metabase.api.common :refer :all]
             (metabase [db :as db]
                       [events :as events])
@@ -14,15 +14,14 @@
                              [label :refer [Label]]
                              [table :refer [Table]]
                              [view-log :refer [ViewLog]])
-            [metabase.util :as u]
-            [metabase.util.korma-extensions :as kx]))
+            [metabase.util :as u]))
 
 (defn- hydrate-labels
   "Efficiently hydrate the `Labels` for a large collection of `Cards`."
   [cards]
-  (let [card-labels          (db/sel :many :fields [CardLabel :card_id :label_id])
+  (let [card-labels          (db/sel [CardLabel :card_id :label_id])
         label-id->label      (when (seq card-labels)
-                               (db/sel :many :field->obj [Label :id] (k/where {:id [in (set (map :label_id card-labels))]})))
+                               (db/sel-id->obj Label :id [:in (map :label_id card-labels)]))
         card-id->card-labels (group-by :card_id card-labels)]
     (for [card cards]
       (assoc card :labels (for [card-label (card-id->card-labels (:id card))] ; TODO - do these need to be sorted ?
@@ -31,24 +30,24 @@
 (defn- hydrate-favorites
   "Efficiently add `favorite` status for a large collection of `Cards`."
   [cards]
-  (let [favorite-card-ids (set (db/sel :many :field [CardFavorite :card_id], :owner_id *current-user-id*, :card_id [in (map :id cards)]))]
+  (let [favorite-card-ids (set (db/sel-field :card_id CardFavorite, :owner_id *current-user-id*, :card_id [:in (map :id cards)]))]
     (for [card cards]
       (assoc card :favorite (contains? favorite-card-ids (:id card))))))
 
 (defn- cards:all
   "Return all `Cards`."
   []
-  (db/sel :many Card, :archived false, (k/order :name :ASC)))
+  (db/sel Card :archived false, {:order-by [[:name :ASC]]}))
 
 (defn- cards:mine
   "Return all `Cards` created by current user."
   []
-  (db/sel :many Card, :creator_id *current-user-id*, :archived false, (k/order :name :ASC)))
+  (db/sel Card, :creator_id *current-user-id*, :archived false, {:order-by [[:name :ASC]]}))
 
 (defn- cards:fav
   "Return all `Cards` favorited by the current user."
   []
-  (->> (hydrate (db/sel :many [CardFavorite :card_id], :owner_id *current-user-id*)
+  (->> (hydrate (db/sel [CardFavorite :card_id], :owner_id *current-user-id*)
                 :card)
        (map :card)
        (filter (complement :archived))
@@ -57,47 +56,44 @@
 (defn- cards:database
   "Return all `Cards` belonging to `Database` with DATABASE-ID."
   [database-id]
-  (db/sel :many Card (k/order :name :ASC), :database_id database-id, :archived false))
+  (db/sel Card, :database_id database-id, :archived false, {:order-by [[:name :ASC]]}))
 
 (defn- cards:table
   "Return all `Cards` belonging to `Table` with TABLE-ID."
   [table-id]
-  (db/sel :many Card (k/order :name :ASC), :table_id table-id, :archived false))
+  (db/sel Card, :table_id table-id, :archived false, {:order-by [[:name :ASC]]}))
 
 (defn- cards-with-ids
   "Return unarchived `Cards` with CARD-IDS.
    Make sure cards are returned in the same order as CARD-IDS`; `[in card-ids]` won't preserve the order."
   [card-ids]
   {:pre [(every? integer? card-ids)]}
-  (let [card-id->card (db/sel :many :field->obj [Card :id], :id [in card-ids], :archived false)]
+  (let [card-id->card (db/sel-id->obj Card, :id [:in card-ids], :archived false)]
     (filter identity (map card-id->card card-ids))))
 
 (defn- cards:recent
   "Return the 10 `Cards` most recently viewed by the current user, sorted by how recently they were viewed."
   []
-  (cards-with-ids (map :model_id (k/select ViewLog
-                                   (k/aggregate (max :timestamp) :max)
-                                   (k/group :model_id)
-                                   (k/fields :model_id)
-                                   (k/where {:model (kx/literal "card"), :user_id *current-user-id*})
-                                   (k/order :max :DESC)
-                                   (k/limit 10)))))
+  (cards-with-ids (map :model_id (db/sel [ViewLog :model_id [:%max.timestamp :max]]
+                                   :model   "card"
+                                   :user_id *current-user-id*
+                                   (-> (h/group :model_id)
+                                       (h/order-by [:max :desc])
+                                       (h/limit 10))))))
 
 (defn- cards:popular
   "All `Cards`, sorted by popularity (the total number of times they are viewed in `ViewLogs`).
    (yes, this isn't actually filtering anything, but for the sake of simplicitiy it is included amongst the filter options for the time being)."
   []
-  (cards-with-ids (map :model_id (k/select ViewLog
-                                   (k/aggregate (count (k/raw "*")) :count)
-                                   (k/group :model_id)
-                                   (k/fields :model_id)
-                                   (k/where {:model (kx/literal "card")})
-                                   (k/order :count :DESC)))))
+  (cards-with-ids (map :model_id (db/sel [ViewLog :model_id [:%count.* :count]]
+                                   :model "card"
+                                   (-> (h/group :model_id)
+                                       (h/order-by [:count :desc]))))))
 
 (defn- cards:archived
   "`Cards` that have been archived."
   []
-  (db/sel :many Card, :archived true, (k/order :name :ASC)))
+  (db/sel Card, :archived true, {:order-by [[:name :ASC]]}))
 
 (def ^:private filter-option->fn
   "Functions that should be used to return cards for a given filter option. These functions are all be called with `model-id` as the sole paramenter;
@@ -143,7 +139,7 @@
     (checkp (integer? model_id) "id" (format "id is required parameter when filter mode is '%s'" (name f)))
     (case f
       :database (read-check Database model_id)
-      :table    (read-check Database (db/sel-1 :field [Table :db_id] :id model_id))))
+      :table    (read-check Database (db/sel-1-field :db_id Table, :id model_id))))
   (cards-for-filter-option f model_id label))
 
 (defendpoint POST "/"
@@ -205,16 +201,16 @@
   "Delete a `Card`."
   [id]
   (write-check Card id)
-  (let-404 [card (db/sel-1 Card :id id)]
+  (let-404 [card (Card id)]
     (write-check card)
-    (u/prog1 (db/cascade-delete! Card :id id)
+    (u/prog1 (db/cascade-delete! Card id)
       (events/publish-event :card-delete (assoc card :actor_id *current-user-id*)))))
 
 (defendpoint GET "/:id/favorite"
   "Has current user favorited this `Card`?"
   [id]
   {:favorite (boolean (when *current-user-id*
-                        (db/exists? CardFavorite :card_id, id :owner_id *current-user-id*)))})
+                        (db/exists? CardFavorite :card_id id, :owner_id *current-user-id*)))})
 
 (defendpoint POST "/:card-id/favorite"
   "Favorite a Card."
@@ -224,7 +220,7 @@
 (defendpoint DELETE "/:card-id/favorite"
   "Unfavorite a Card."
   [card-id]
-  (let-404 [id (db/sel-1 :id CardFavorite :card_id card-id, :owner_id *current-user-id*)]
+  (let-404 [id (db/sel-1-id CardFavorite :card_id card-id, :owner_id *current-user-id*)]
     (delete-and-return-204! CardFavorite :id id)))
 
 (defendpoint POST "/:card-id/labels"
@@ -232,7 +228,7 @@
   [card-id :as {{:keys [label_ids]} :body}]
   {label_ids [Required ArrayOfIntegers]}
   (write-check Card card-id)
-  (let [[labels-to-remove labels-to-add] (data/diff (set (db/sel :many :field [CardLabel :label_id] :card_id card-id))
+  (let [[labels-to-remove labels-to-add] (data/diff (set (db/sel-field [CardLabel :label_id] :card_id card-id))
                                                     (set label_ids))]
     (doseq [label-id labels-to-remove]
       (db/cascade-delete! CardLabel :label_id label-id, :card_id card-id))

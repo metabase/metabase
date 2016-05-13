@@ -16,7 +16,7 @@
 (defn process-and-run
   "Process and run a native (raw SQL) QUERY."
   [driver {{sql :query} :native, database-id :database, settings :settings}]
-  (try (let [database (db/sel-1 :fields [Database :id :engine :details] :id database-id)
+  (try (let [database (db/sel-1 [Database :id :engine :details] :id database-id)
              db-conn  (sql/db->jdbc-connection-spec database)]
 
          (jdbc/with-db-transaction [t-conn db-conn]

@@ -82,9 +82,9 @@
                   Card          [{card-id3 :id} {:name "card3"}]]
     (let [upd-series (fn [series]
                        (update-dashboard-card-series {:id dashcard-id} series)
-                       (->> (db/sel :many :field [DashboardCardSeries :card_id] :dashboardcard_id dashcard-id)
+                       (->> (db/sel-field [DashboardCardSeries :card_id] :dashboardcard_id dashcard-id)
                             (mapv (fn [card_id]
-                                    (db/sel-1 :field [Card :name] :id card_id)))))]
+                                    (db/sel-1-field [Card :name] :id card_id)))))]
       [(upd-series [])
        (upd-series [card-id-1])
        (upd-series [card-id-2])

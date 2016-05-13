@@ -51,6 +51,6 @@
                   Table       [{table-id :id} {:db_id database-id}]
                   Field       [{field-id :id} {:table_id table-id}]
                   FieldValues [_              {:field_id field-id, :values "[1,2,3]"}]]
-    [(db/sel-1 :field [FieldValues :values] :field_id field-id)
+    [(db/sel-1-field [FieldValues :values] :field_id field-id)
      (clear-field-values field-id)
-     (db/sel-1 :field [FieldValues :values] :field_id field-id)]))
+     (db/sel-1-field [FieldValues :values] :field_id field-id)]))

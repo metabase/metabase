@@ -38,7 +38,7 @@
   Since `:user` is a hydration key for `User`, a single `sel` will used to
   fetch `Users`:
 
-    (db/sel :many User :id [in #{100 101}])
+    (db/sel User :id [in #{100 101}])
 
   The corresponding `Users` are then added under the key `:user`.
 
@@ -180,7 +180,7 @@
          ids        (set (for [result results
                                :when  (not (get result dest-key))]
                            (source-key result)))
-         objs       (into {} (for [obj (db/sel :many entity :id [in ids])]
+         objs       (into {} (for [obj (db/sel entity :id [in ids])]
                                {(:id obj) obj}))]
      (for [{source-id source-key :as result} results]
        (if (get result dest-key)

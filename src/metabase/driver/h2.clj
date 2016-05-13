@@ -124,7 +124,7 @@
     ;; For :native queries check to make sure the DB in question has a (non-default) NAME property specified in the connection string.
     ;; We don't allow SQL execution on H2 databases for the default admin account for security reasons
     (when (= (keyword query-type) :native)
-      (let [db          (u/prog1 (:db (db/sel-1 :field [Database :details] :id (:database query)))
+      (let [db          (u/prog1 (:db (db/sel-1-field [Database :details] :id (:database query)))
                           (assert <>))
             [_ options] (connection-string->file+options db)
             {:strs [USER]} options]

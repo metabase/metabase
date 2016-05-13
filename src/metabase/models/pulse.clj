@@ -22,7 +22,7 @@
 (defn ^:hydrate channels
   "Return the `PulseChannels` associated with this PULSE."
   [{:keys [id]}]
-  (db/sel :many PulseChannel, :pulse_id id))
+  (db/sel PulseChannel, :pulse_id id))
 
 (defn- pre-cascade-delete [{:keys [id]}]
   (db/cascade-delete! PulseCard :pulse_id id)
@@ -103,7 +103,7 @@
          (coll? channels)
          (every? map? channels)]}
   (let [new-channels   (group-by (comp keyword :channel_type) channels)
-        old-channels   (group-by (comp keyword :channel_type) (db/sel :many PulseChannel :pulse_id id))
+        old-channels   (group-by (comp keyword :channel_type) (db/sel PulseChannel :pulse_id id))
         handle-channel #(create-update-delete-channel id (first (get new-channels %)) (first (get old-channels %)))]
     (assert (= 0 (count (get new-channels nil))) "Cannot have channels without a :channel_type attribute")
     ;; for each of our possible channel types call our handler function
@@ -120,7 +120,7 @@
 (defn retrieve-pulses
   "Fetch all `Pulses`."
   []
-  (for [pulse (-> (db/sel :many Pulse (k/order :name :ASC))
+  (for [pulse (-> (db/sel Pulse {:order-by [[:name :asc]]})
                   (hydrate :creator :cards [:channels :recipients]))]
     (m/dissoc-in pulse [:details :emails])))
 
@@ -140,7 +140,7 @@
     ;; update the pulse itself
     (db/update! Pulse id :name name)
     ;; update cards (only if they changed)
-    (when (not= cards (db/sel :many :field [PulseCard :card_id] :pulse_id id (k/order :position :asc)))
+    (when (not= cards (db/sel-field [PulseCard :card_id] :pulse_id id (k/order :position :asc)))
       (update-pulse-cards pulse cards))
     ;; update channels
     (update-pulse-channels pulse channels)

@@ -114,7 +114,7 @@
   "Return the `PulseChannelRecipients` associated with this PULSE-CHANNEL."
   [{:keys [id details]}]
   (into (mapv (partial array-map :email) (:emails details))
-        (db/sel :many [User :id :email :first_name :last_name]
+        (db/sel [User :id :email :first_name :last_name]
                 (k/where {:id [in (k/subselect PulseChannelRecipient (k/fields :user_id) (k/where {:pulse_channel_id id}))]}))))
 
 (defn- pre-cascade-delete [{:keys [id]}]
@@ -183,7 +183,7 @@
   {:pre [(integer? id)
          (coll? user-ids)
          (every? integer? user-ids)]}
-  (let [recipients-old (set (db/sel :many :field [PulseChannelRecipient :user_id] :pulse_channel_id id))
+  (let [recipients-old (set (db/sel-field [PulseChannelRecipient :user_id] :pulse_channel_id id))
         recipients-new (set user-ids)
         recipients+    (set/difference recipients-new recipients-old)
         recipients-    (set/difference recipients-old recipients-new)]

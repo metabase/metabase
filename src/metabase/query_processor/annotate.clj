@@ -197,13 +197,13 @@
   ;; Fetch the ForeignKey objects whose origin is in the returned Fields, create a map of origin-field-id->destination-field-id
   ([fields fk-ids]
    (when (seq fk-ids)
-     (fk-field->dest-fn fields fk-ids (db/sel :many :field->field [Field :id :fk_target_field_id]
+     (fk-field->dest-fn fields fk-ids (db/sel-field->field [Field :id :fk_target_field_id]
                                            :id                 [in fk-ids]
                                            :fk_target_field_id [not= nil]))))
   ;; Fetch the destination Fields referenced by the ForeignKeys
   ([fields fk-ids id->dest-id]
    (when (seq id->dest-id)
-     (fk-field->dest-fn fields fk-ids id->dest-id (db/sel :many :id->fields [Field :id :name :display_name :table_id :description :base_type :special_type :visibility_type]
+     (fk-field->dest-fn fields fk-ids id->dest-id (db/sel :id->fields [Field :id :name :display_name :table_id :description :base_type :special_type :visibility_type]
                                                        :id [in (vals id->dest-id)]))))
   ;; Return a function that will return the corresponding destination Field for a given Field
   ([fields fk-ids id->dest-id dest-id->field]

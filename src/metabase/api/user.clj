@@ -16,7 +16,7 @@
 (defendpoint GET "/"
   "Fetch a list of all active `Users`. You must be a superuser to do this."
   []
-  (db/sel :many User :is_active true))
+  (db/sel User :is_active true))
 
 
 (defendpoint POST "/"

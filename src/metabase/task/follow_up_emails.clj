@@ -1,19 +1,18 @@
 (ns metabase.task.follow-up-emails
   "Tasks which follow up with Metabase users."
-  (:require [clj-time.coerce :as c]
-            [clj-time.core :as t]
+  (:require (clj-time [coerce :as c]
+                      [core :as t])
             [clojure.tools.logging :as log]
             (clojurewerkz.quartzite [jobs :as jobs]
                                     [triggers :as triggers])
             [clojurewerkz.quartzite.schedule.cron :as cron]
-            [korma.core :as k]
-            [metabase.db :as db]
-            [metabase.email :as email]
+            (metabase [db :as db]
+                      [email :as email])
             [metabase.email.messages :as messages]
-            [metabase.models.activity :as activity]
-            [metabase.models.setting :as setting]
-            [metabase.models.user :as user]
-            [metabase.models.view-log :as view-log]
+            (metabase.models [activity :refer [Activity]]
+                             [setting :as setting]
+                             [user :refer [User], :as user]
+                             [view-log :refer [ViewLog]])
             [metabase.task :as task]))
 
 
@@ -39,31 +38,31 @@
 
 ;; this sends out a general 2 week email follow up email
 (jobs/defjob FollowUpEmail
-             [ctx]
-             ;; if we've already sent the follow-up email then we are done
-             (when-not (= "true" (follow-up-email-sent))
-               ;; figure out when we consider the instance created
-               (when-let [instance-created (user/instance-created-at)]
-                 ;; we need to be 2+ weeks (14 days) from creation to send the follow up
-                 (when (< (* 14 24 60 60 1000)
-                          (- (System/currentTimeMillis) (.getTime ^java.sql.Timestamp instance-created)))
-                   (send-follow-up-email!)))))
+  [ctx]
+  ;; if we've already sent the follow-up email then we are done
+  (when-not (= "true" (follow-up-email-sent))
+    ;; figure out when we consider the instance created
+    (when-let [instance-created (user/instance-created-at)]
+      ;; we need to be 2+ weeks (14 days) from creation to send the follow up
+      (when (< (* 14 24 60 60 1000)
+               (- (System/currentTimeMillis) (.getTime ^java.sql.Timestamp instance-created)))
+        (send-follow-up-email!)))))
 
 ;; this sends out an email any time after 30 days if the instance has stopped being used for 14 days
 (jobs/defjob AbandonmentEmail
-             [ctx]
-             ;; if we've already sent the abandonment email then we are done
-             (when-not (= "true" (abandonment-email-sent))
-               ;; figure out when we consider the instance created
-               (when-let [instance-created (user/instance-created-at)]
-                 ;; we need to be 4+ weeks (30 days) from creation to send the follow up
-                 (when (< (* 30 24 60 60 1000)
-                          (- (System/currentTimeMillis) (.getTime ^java.sql.Timestamp instance-created)))
-                   ;; we need access to email AND the instance must be opted into anonymous tracking
-                   (when (and (email/email-configured?)
-                              (let [tracking? (setting/get :anon-tracking-enabled)]
-                                (or (nil? tracking?) (= "true" tracking?))))
-                     (send-abandonment-email!))))))
+  [ctx]
+  ;; if we've already sent the abandonment email then we are done
+  (when-not (= "true" (abandonment-email-sent))
+    ;; figure out when we consider the instance created
+    (when-let [instance-created (user/instance-created-at)]
+      ;; we need to be 4+ weeks (30 days) from creation to send the follow up
+      (when (< (* 30 24 60 60 1000)
+               (- (System/currentTimeMillis) (.getTime ^java.sql.Timestamp instance-created)))
+        ;; we need access to email AND the instance must be opted into anonymous tracking
+        (when (and (email/email-configured?)
+                   (let [tracking? (setting/get :anon-tracking-enabled)]
+                     (or (nil? tracking?) (= "true" tracking?))))
+          (send-abandonment-email!))))))
 
 (defn task-init
   "Automatically called during startup; start the job for sending follow up emails."
@@ -104,7 +103,7 @@
                (let [tracking? (setting/get :anon-tracking-enabled)]
                  (or (nil? tracking?) (= "true" tracking?))))
       ;; grab the oldest admins email address, that's who we'll send to
-      (when-let [admin (db/sel-1 user/User :is_superuser true (k/order :date_joined))]
+      (when-let [admin (db/sel-1 User :is_superuser true (k/order :date_joined))]
         (messages/send-follow-up-email (:email admin) "follow-up")))
     (catch Throwable t
       (log/error "Problem sending follow-up email" t))
@@ -115,11 +114,11 @@
   "Send an email to the instance admin about why Metabase usage has died down."
   []
   ;; grab the oldest admins email address, that's who we'll send to
-  (when-let [admin (db/sel-1 user/User :is_superuser true (k/order :date_joined))]
+  (when-let [admin (db/sel-1 User, :is_superuser true (k/order :date_joined))]
     ;; inactive = no users created, no activity created, no dash/card views (past 7 days)
-    (let [last-user      (c/from-sql-time (db/sel-1 :field [user/User :date_joined] (k/order :date_joined :DESC) (k/limit 1)))
-          last-activity  (c/from-sql-time (db/sel-1 :field [activity/Activity :timestamp] (k/order :timestamp :DESC) (k/limit 1)))
-          last-view      (c/from-sql-time (db/sel-1 :field [view-log/ViewLog :timestamp] (k/order :timestamp :DESC) (k/limit 1)))
+    (let [last-user      (c/from-sql-time (db/sel-1-field :date_joined User     {:order-by [[:date_joined :desc]], :limit 1}))
+          last-activity  (c/from-sql-time (db/sel-1-field :timestamp   Activity {:order-by [[:timestamp :desc]],   :limit 1}))
+          last-view      (c/from-sql-time (db/sel-1-field :timestamp   ViewLog  {:order-by [[:timestamp :desc]],   :limit 1}))
           two-weeks-ago  (t/minus (t/now) (t/days 14))]
       (when (and (t/before? last-user two-weeks-ago)
                  (t/before? last-activity two-weeks-ago)

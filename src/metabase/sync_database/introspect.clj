@@ -31,9 +31,9 @@
 
     ;; now lookup column-ids and set the fks on this table as needed
     (doseq [{:keys [fk-column-name dest-column-name dest-table]} fks]
-      (when-let [source-column-id (db/sel-1 :field [RawColumn :id], :raw_table_id table-id, :name fk-column-name)]
-        (when-let [dest-table-id (db/sel-1 :field [RawTable :id], :database_id database-id, :schema (:schema dest-table), :name (:name dest-table))]
-          (when-let [dest-column-id (db/sel-1 :id RawColumn, :raw_table_id dest-table-id, :name dest-column-name)]
+      (when-let [source-column-id (db/sel-1-field [RawColumn :id], :raw_table_id table-id, :name fk-column-name)]
+        (when-let [dest-table-id (db/sel-1-field [RawTable :id], :database_id database-id, :schema (:schema dest-table), :name (:name dest-table))]
+          (when-let [dest-column-id (db/sel-1-id RawColumn, :raw_table_id dest-table-id, :name dest-column-name)]
             (log/debug (u/format-color 'cyan "Marking foreign key '%s.%s' -> '%s.%s'." (named-table table) fk-column-name (named-table dest-table) dest-column-name))
             (db/update! RawColumn source-column-id
               :fk_target_column_id dest-column-id)))))))
@@ -44,7 +44,7 @@
   [{:keys [id]} columns]
   {:pre [(integer? id) (coll? columns) (every? map? columns)]}
   (kdb/transaction
-    (let [existing-columns (into {} (for [{:keys [name] :as column} (db/sel :many :fields [RawColumn :id :name] :raw_table_id id)]
+    (let [existing-columns (into {} (for [{:keys [name] :as column} (db/sel [RawColumn :id :name] :raw_table_id id)]
                                       {name column}))]
 
       ;; deactivate any columns which were removed
@@ -195,7 +195,7 @@
     (map (u/rpartial update :schema identity) tables)))
 
 (defn- db->existing-tables [database]
-  (into {} (for [{:keys [name schema] :as table} (db/sel :many :fields [RawTable :id :schema :name] :database_id (:id database))]
+  (into {} (for [{:keys [name schema] :as table} (db/sel [RawTable :id :schema :name] :database_id (:id database))]
              {{:name name, :schema schema} table})))
 
 

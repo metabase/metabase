@@ -1,7 +1,6 @@
 (ns metabase.api.pulse-test
   "Tests for /api/pulse endpoints."
   (:require [expectations :refer :all]
-            [korma.core :as k]
             [metabase.db :as db]
             (metabase [http-client :as http]
                       [middleware :as middleware])
@@ -35,20 +34,20 @@
     (pulse/create-pulse name (user->id :crowberto) card-ids [])))
 
 (defn- delete-existing-pulses! []
-  (doseq [pulse-id (db/sel :many :id Pulse)]
-    (db/cascade-delete! Pulse :id pulse-id)))
+  (doseq [pulse-id (db/sel-ids Pulse)]
+    (db/cascade-delete! Pulse pulse-id)))
 
 (defn- user-details [user]
   (match-$ user
-    {:id $
-     :email $
-     :date_joined $
-     :first_name $
-     :last_name $
-     :last_login $
+    {:id           $
+     :email        $
+     :date_joined  $
+     :first_name   $
+     :last_name    $
+     :last_login   $
      :is_superuser $
-     :is_qbnewb $
-     :common_name $}))
+     :is_qbnewb    $
+     :common_name  $}))
 
 (defn- pulse-card-details [card]
   (-> (select-keys card [:id :name :description])
