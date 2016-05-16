@@ -929,6 +929,26 @@ CardControllers.controller('CardDetail', [
                     isEditing = true;
                 }
 
+                if (!_.isEmpty($location.search()) && 
+                        card.dataset_query && 
+                        card.dataset_query.parameters && 
+                        card.dataset_query.parameters.length > 0) {
+                    let parameters = card.dataset_query.parameters;
+
+                    console.log("trying to map params");
+
+                    // try mapping any parameters from the url onto our card query
+                    let queryParameters = _.keys($location.search());
+                    for (let i=0; i < queryParameters.length; i++) {
+                        let key = queryParameters[i];
+                        let parameter = _.find(parameters, (p) => p.name === key);
+                        if (parameter) {
+                            console.log("found parameter", parameter);
+                            parameter.value = $location.search()[key];
+                        }
+                    }
+                }
+
                 // HACK: dirty status passed in the object itself, delete it
                 let isDirty = !!card.isDirty;
                 delete card.isDirty;
