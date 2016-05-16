@@ -43,7 +43,7 @@
   [{field-id :id, field-name :name, :as field} & [human-readable-values]]
   {:pre [(integer? field-id)]}
   (log/debug (format "Creating FieldValues for Field %s..." (or field-name field-id))) ; use field name if available
-  (db/ins FieldValues
+  (db/insert! FieldValues
     :field_id              field-id
     :values                ((resolve 'metabase.db.metadata-queries/field-distinct-values) field)
     :human_readable_values human-readable-values))
@@ -76,7 +76,7 @@
          (coll? values)]}
   (if-let [field-values (db/sel :one FieldValues :field_id field-id)]
     (db/update! FieldValues (:id field-values), :values values)
-    (db/ins FieldValues :field_id field-id, :values values)))
+    (db/insert! FieldValues :field_id field-id, :values values)))
 
 (defn clear-field-values
   "Remove the `FieldValues` for FIELD-ID."

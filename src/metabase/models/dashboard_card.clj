@@ -112,13 +112,13 @@
   (let [{:keys [sizeX sizeY row col series]} (merge {:sizeX 2, :sizeY 2, :series []}
                                                     dashboard-card)]
     (kdb/transaction
-      (let [{:keys [id] :as dashboard-card} (db/ins DashboardCard
-                                                    :dashboard_id dashboard_id
-                                                    :card_id      card_id
-                                                    :sizeX        sizeX
-                                                    :sizeY        sizeY
-                                                    :row          row
-                                                    :col          col)]
+      (let [{:keys [id] :as dashboard-card} (db/insert! DashboardCard
+                                              :dashboard_id dashboard_id
+                                              :card_id      card_id
+                                              :sizeX        sizeX
+                                              :sizeY        sizeY
+                                              :row          row
+                                              :col          col)]
         ;; add series to the DashboardCard
         (update-dashboard-card-series dashboard-card series)
         ;; return the full DashboardCard (and record our create event)

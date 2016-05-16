@@ -284,22 +284,6 @@
       ~@args)))
 
 
-;; ## INS
-
-(defn ^:deprecated ins
-  "Wrapper around `korma.core/insert` that renames the `:scope_identity()` keyword in output to `:id`
-   and automatically passes &rest KWARGS to `korma.core/values`.
-
-   Returns a newly created object by calling `sel`."
-  [entity & {:as kwargs}]
-  (let [vals         (models/do-pre-insert entity kwargs)
-        ;; take database-specific keys returned from a jdbc insert and map them to :id
-        {:keys [id]} (set/rename-keys (k/insert entity (k/values vals))
-                                      {(keyword "scope_identity()") :id
-                                       :generated_key               :id})]
-    (some-> id entity models/post-insert)))
-
-
 
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 ;;; |                                         NEW HONEY-SQL BASED DB UTIL FUNCTIONS                                          |

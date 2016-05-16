@@ -178,7 +178,7 @@
            (i/create-db! dataset-loader database-definition)
 
            ;; Add DB object to Metabase DB
-           (let [db (db/ins Database
+           (let [db (db/insert! Database
                       :name    database-name
                       :engine  (name engine)
                       :details (i/database->connection-details dataset-loader :db database-definition))]

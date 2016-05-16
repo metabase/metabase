@@ -17,7 +17,7 @@
 ;; ## Helper Fns
 
 (defn- new-card! []
-  (db/ins Card
+  (db/insert! Card
     :name                   (random-name)
     :creator_id             (user->id :crowberto)
     :public_perms           common/perms-readwrite

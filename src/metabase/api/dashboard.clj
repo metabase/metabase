@@ -30,7 +30,7 @@
   [:as {{:keys [name description public_perms]} :body}]
   {name         [Required NonEmptyString]
    public_perms [Required PublicPerms]}
-  (->> (db/ins Dashboard
+  (->> (db/insert! Dashboard
          :name         name
          :description  description
          :public_perms public_perms

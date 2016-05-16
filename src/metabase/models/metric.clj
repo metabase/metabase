@@ -75,13 +75,13 @@
          (string? metric-name)
          (integer? creator-id)
          (map? definition)]}
-  (let [metric (db/ins Metric
-                  :table_id    table-id
-                  :creator_id  creator-id
-                  :name        metric-name
-                  :description description
-                  :is_active   true
-                  :definition  definition)]
+  (let [metric (db/insert! Metric
+                 :table_id    table-id
+                 :creator_id  creator-id
+                 :name        metric-name
+                 :description description
+                 :is_active   true
+                 :definition  definition)]
     (-> (events/publish-event :metric-create metric)
         (hydrate :creator))))
 

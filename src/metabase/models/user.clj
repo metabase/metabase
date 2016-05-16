@@ -75,13 +75,13 @@
   {:pre [(string? first-name)
          (string? last-name)
          (string? email-address)]}
-  (when-let [new-user (db/ins User
-                        :email email-address
+  (when-let [new-user (db/insert! User
+                        :email      email-address
                         :first_name first-name
-                        :last_name last-name
-                        :password (if (not (nil? password))
-                                    password
-                                    (str (java.util.UUID/randomUUID))))]
+                        :last_name  last-name
+                        :password   (if (not (nil? password))
+                                      password
+                                      (str (java.util.UUID/randomUUID))))]
     (when send-welcome
       (let [reset-token (set-user-password-reset-token (:id new-user))
             ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user

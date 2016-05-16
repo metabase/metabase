@@ -53,7 +53,7 @@
                     :last_name  (random-name)
                     :email      (.toLowerCase ^String (str first-name "@metabase.com"))
                     :password   first-name}]
-    (m/mapply db/ins User (merge defaults kwargs))))
+    (db/insert! User (merge defaults kwargs))))
 
 (defn fetch-user
   "Fetch the User object associated with USERNAME.
@@ -125,7 +125,7 @@
            active    true}}]
   {:pre [(string? email) (string? first) (string? last) (string? password) (m/boolean? superuser)]}
   (or (db/sel :one User :email email)
-      (db/ins User
+      (db/insert! User
         :email        email
         :first_name   first
         :last_name    last

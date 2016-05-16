@@ -114,7 +114,7 @@
 (defn create-table
   "Create `Table` with the data from TABLE-DEF."
   [database-id {schema-name :schema, table-name :name, raw-table-id :raw-table-id, visibility-type :visibility-type}]
-  (db/ins Table
+  (db/insert! Table
     :db_id           database-id
     :raw_table_id    raw-table-id
     :schema          schema-name

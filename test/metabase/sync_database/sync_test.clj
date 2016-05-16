@@ -77,7 +77,7 @@
     ;; setup a couple things we'll use in the test
     (introspect/introspect-database-and-update-raw-tables! (moviedb/->MovieDbDriver) db)
     (let [raw-table-id (db/sel :one :id RawTable, :database_id database-id, :name "movies")
-          table        (db/ins Table
+          table        (db/insert! Table
                          :db_id        database-id
                          :raw_table_id raw-table-id
                          :name         "movies"
@@ -341,7 +341,7 @@
 
       ;; stub out the Table we are going to sync for real below
       (let [raw-table-id (db/sel :one :id RawTable, :database_id database-id, :name "roles")
-            tbl          (db/ins Table
+            tbl          (db/insert! Table
                            :db_id        database-id
                            :raw_table_id raw-table-id
                            :name         "roles"

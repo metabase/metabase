@@ -129,7 +129,7 @@
         object (serialize-instance entity id object)]
     ;; make sure we still have a map after calling out serialization function
     (assert (map? object))
-    (db/ins Revision
+    (db/insert! Revision
       :model        (:name entity)
       :model_id     id
       :user_id      user-id
@@ -155,7 +155,7 @@
       (revert-to-revision entity id user-id serialized-instance)
       ;; Push a new revision to record this change
       (let [last-revision (db/sel :one Revision, :model (:name entity), :model_id id, (k/order :id :DESC))
-            new-revision  (db/ins Revision
+            new-revision  (db/insert! Revision
                             :model        (:name entity)
                             :model_id     id
                             :user_id      user-id

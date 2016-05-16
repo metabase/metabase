@@ -234,7 +234,7 @@
   {:pre [(integer? table-id)
          (string? field-name)
          (contains? base-types base-type)]}
-  (db/ins Field
+  (db/insert! Field
     :table_id      table-id
     :raw_column_id raw-column-id
     :name          field-name

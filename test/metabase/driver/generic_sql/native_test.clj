@@ -47,7 +47,7 @@
 (expect "Running SQL queries against H2 databases using the default (admin) database user is forbidden."
   ;; Insert a fake Database. It doesn't matter that it doesn't actually exist since query processing should
   ;; fail immediately when it realizes this DB doesn't have a USER
-  (let [db (db/ins Database, :name "Fake-H2-DB", :engine "h2", :details {:db "mem:fake-h2-db"})]
+  (let [db (db/insert! Database, :name "Fake-H2-DB", :engine "h2", :details {:db "mem:fake-h2-db"})]
     (try (:error (qp/process-query {:database (:id db)
                                     :type     :native
                                     :native   {:query "SELECT 1;"}}))

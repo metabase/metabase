@@ -84,7 +84,7 @@
                            (boolean is_full_sync))]
     (if-not (false? (:valid details-or-error))
       ;; no error, proceed with creation
-      (let-500 [new-db (db/ins Database, :name name, :engine engine, :details details-or-error, :is_full_sync is_full_sync)]
+      (let-500 [new-db (db/insert! Database, :name name, :engine engine, :details details-or-error, :is_full_sync is_full_sync)]
         (events/publish-event :database-create new-db))
       ;; failed to connect, return error
       {:status 400

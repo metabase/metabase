@@ -220,7 +220,7 @@
 ;; Test that a User can change their password
 (expect-let [creds                 {:email    "abc@metabase.com"
                                     :password "def"}
-             {:keys [id password]} (db/ins User
+             {:keys [id password]} (db/insert! User
                                      :first_name "test"
                                      :last_name  "user"
                                      :email      "abc@metabase.com"

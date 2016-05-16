@@ -162,7 +162,7 @@
          (coll? channels)
          (every? map? channels)]}
   (kdb/transaction
-    (let [{:keys [id] :as pulse} (db/ins Pulse
+    (let [{:keys [id] :as pulse} (db/insert! Pulse
                                    :creator_id creator-id
                                    :name pulse-name)]
       ;; add card-ids to the Pulse

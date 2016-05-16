@@ -84,7 +84,7 @@
   (do
     (create-card-revision card true)
     (create-card-revision (assoc card :name "something else") false)
-    (db/ins Revision
+    (db/insert! Revision
       :model        (:name Card)
       :model_id     id
       :user_id      (user->id :rasta)
@@ -132,7 +132,7 @@
     :description  nil}]
   (do
     (create-dashboard-revision dash true)
-    (let [dashcard (db/ins DashboardCard :dashboard_id id :card_id (:id card))]
+    (let [dashcard (db/insert! DashboardCard :dashboard_id id :card_id (:id card))]
       (create-dashboard-revision dash false)
       (db/delete! DashboardCard, :id (:id dashcard)))
     (create-dashboard-revision dash false)

@@ -16,7 +16,7 @@
   [:as {{:keys [name icon]} :body}]
   {name [Required NonEmptyString]
    icon NonEmptyString}
-  (db/ins Label, :name name, :icon icon))
+  (db/insert! Label, :name name, :icon icon))
 
 (defendpoint PUT "/:id"
   "Update a `Label`. :label:"

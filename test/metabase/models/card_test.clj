@@ -18,9 +18,9 @@
     (let [get-dashboard-count (fn [] (dashboard-count (Card card-id)))]
 
       [(get-dashboard-count)
-       (do (db/ins DashboardCard :card_id card-id, :dashboard_id (:id (create-dash (random-name))))
+       (do (db/insert! DashboardCard :card_id card-id, :dashboard_id (:id (create-dash (random-name))))
            (get-dashboard-count))
-       (do (db/ins DashboardCard :card_id card-id, :dashboard_id (:id (create-dash (random-name))))
+       (do (db/insert! DashboardCard :card_id card-id, :dashboard_id (:id (create-dash (random-name))))
            (get-dashboard-count))])))
 
 

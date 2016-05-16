@@ -12,7 +12,7 @@
 
 (defn- create-test-user []
   (let [rand-name (random-name)]
-    (db/ins User
+    (db/insert! User
       :email      (str rand-name "@metabase.com")
       :first_name rand-name
       :last_name  rand-name

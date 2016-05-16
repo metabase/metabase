@@ -611,4 +611,4 @@
       (db/update! QueryExecution id query-execution)
       query-execution)
     ;; first time saving execution, so insert it
-    (m/mapply db/ins QueryExecution query-execution)))
+    (db/insert! QueryExecution query-execution)))

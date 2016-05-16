@@ -20,7 +20,7 @@
   "Generate a new `Session` for a given `User`.  Returns the newly generated session id value."
   [user-id]
   (u/prog1 (str (java.util.UUID/randomUUID))
-    (db/ins Session
+    (db/insert! Session
       :id      <>
       :user_id user-id)))
 

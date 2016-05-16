@@ -67,7 +67,7 @@
               :details details
               :active  true)
             ;; must be a new column, insert it
-            (db/ins RawColumn
+            (db/insert! RawColumn
               :raw_table_id id
               :name         column-name
               :is_pk        is_pk
@@ -79,7 +79,7 @@
   [database-id {table-name :name, table-schema :schema, :keys [details fields]}]
   {:pre [(integer? database-id) (string? table-name)]}
   (log/debug (u/format-color 'cyan "Found new table: %s" (named-table table-schema table-name)))
-  (let [table (db/ins RawTable
+  (let [table (db/insert! RawTable
                 :database_id  database-id
                 :schema       table-schema
                 :name         table-name

@@ -97,7 +97,7 @@
      :dependent_on_model "test"
      :dependent_on_id    2}}
   (do
-    (db/ins Dependency
+    (db/insert! Dependency
       :model              "Mock"
       :model_id           1
       :dependent_on_model "test"
