@@ -4,7 +4,7 @@
             [clojure.tools.logging :as log]
             [clojure.tools.namespace.find :as ns-find]
             [medley.core :as m]
-            [metabase.db :refer [ins sel upd]]
+            [metabase.db :as db]
             (metabase.models [database :refer [Database]]
                              [query-execution :refer [QueryExecution]]
                              [setting :refer [defsetting]])
@@ -328,7 +328,7 @@
    (Databases aren't expected to change their types, and this optimization makes things a lot faster).
 
    This loads the corresponding driver if needed."
-  (let [db-id->engine (memoize (fn [db-id] (sel :one :field [Database :engine] :id db-id)))]
+  (let [db-id->engine (memoize (fn [db-id] (db/sel :one :field [Database :engine] :id db-id)))]
     (fn [db-id]
       (engine->driver (db-id->engine db-id)))))
 

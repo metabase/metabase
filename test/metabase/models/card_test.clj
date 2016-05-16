@@ -1,6 +1,6 @@
 (ns metabase.models.card-test
   (:require [expectations :refer :all]
-            [metabase.db :refer [ins]]
+            [metabase.db :as db]
             (metabase.models [card :refer :all]
                              [dashboard-card :refer [DashboardCard]])
             [metabase.test.data.users :refer :all]
@@ -18,9 +18,9 @@
     (let [get-dashboard-count (fn [] (dashboard-count (Card card-id)))]
 
       [(get-dashboard-count)
-       (do (ins DashboardCard :card_id card-id, :dashboard_id (:id (create-dash (random-name))))
+       (do (db/ins DashboardCard :card_id card-id, :dashboard_id (:id (create-dash (random-name))))
            (get-dashboard-count))
-       (do (ins DashboardCard :card_id card-id, :dashboard_id (:id (create-dash (random-name))))
+       (do (db/ins DashboardCard :card_id card-id, :dashboard_id (:id (create-dash (random-name))))
            (get-dashboard-count))])))
 
 

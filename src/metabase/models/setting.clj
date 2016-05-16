@@ -4,7 +4,7 @@
             [environ.core :as env]
             [korma.core :as k]
             [metabase.config :as config]
-            [metabase.db :refer [exists? sel del], :as db]
+            [metabase.db :as db]
             [metabase.events :as events]
             [metabase.models [common :as common]
                              [interface :as i]]
@@ -71,7 +71,7 @@
   (restore-cache-if-needed)
   (if (contains? @cached-setting->value k)
     (@cached-setting->value k)
-    (let [v (sel :one :field [Setting :value] :key (name k))]
+    (let [v (db/sel :one :field [Setting :value] :key (name k))]
       (swap! cached-setting->value assoc k v)
       v)))
 
@@ -117,7 +117,7 @@
   {:pre [(keyword? k)]}
   (restore-cache-if-needed)
   (swap! cached-setting->value dissoc k)
-  (del Setting :key (name k)))
+  (db/del Setting :key (name k)))
 
 (defn set-all
   "Set the value of several `Settings` at once.
@@ -246,7 +246,7 @@
    :admin_email           (get :admin-email)
    :report_timezone       (get :report-timezone)
    :timezone_short        (short-timezone-name (get :report-timezone))
-   :has_sample_dataset    (exists? 'Database, :is_sample true)})
+   :has_sample_dataset    (db/exists? 'Database, :is_sample true)})
 
 
 ;;; # IMPLEMENTATION
@@ -254,7 +254,7 @@
 (defn- restore-cache-if-needed []
   (when-not @cached-setting->value
     (db/setup-db-if-needed)
-    (reset! cached-setting->value (into {} (for [{k :key, v :value} (sel :many Setting)]
+    (reset! cached-setting->value (into {} (for [{k :key, v :value} (db/sel :many Setting)]
                                              {(keyword k) v})))))
 
 (def ^:private cached-setting->value
