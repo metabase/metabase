@@ -139,7 +139,7 @@
 (expect-let [{dashboard-id :id :as dashboard} (create-test-dashboard)
              {card-id :id}                    (create-test-card)
              dashcard                         (db/ins DashboardCard :card_id card-id :dashboard_id dashboard-id)
-             _                                (db/del DashboardCard :id (:id dashcard))]
+             _                                (db/delete! DashboardCard, :id (:id dashcard))]
   {:model        "Dashboard"
    :model_id     dashboard-id
    :user_id      (user->id :crowberto)

@@ -113,7 +113,7 @@
       (when (< 1 (count fks))
         (log/debug "Removing duplicate FK entries for" k)
         (doseq [duplicate-fk (drop-last fks)]
-          (db/del ForeignKey :id (:id duplicate-fk)))))))
+          (db/delete! ForeignKey, :id (:id duplicate-fk)))))))
 
 
 ;; Migrate dashboards to the new grid

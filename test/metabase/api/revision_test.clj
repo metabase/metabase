@@ -134,7 +134,7 @@
     (create-dashboard-revision dash true)
     (let [dashcard (db/ins DashboardCard :dashboard_id id :card_id (:id card))]
       (create-dashboard-revision dash false)
-      (db/del DashboardCard :id (:id dashcard)))
+      (db/delete! DashboardCard, :id (:id dashcard)))
     (create-dashboard-revision dash false)
     (let [[_ {previous-revision-id :id}] (revisions Dashboard id)]
       ;; Revert to the previous revision

@@ -14,7 +14,7 @@
 ;; Test that we can login
 (expect-eval-actual-first
     (db/sel :one :fields [Session :id] :user_id (user->id :rasta))
-  (do (db/del Session :user_id (user->id :rasta))                  ; delete all other sessions for the bird first
+  (do (db/delete! Session, :user_id (user->id :rasta))             ; delete all other sessions for the bird first
       (client :post 200 "session" (user->credentials :rasta))))
 
 ;; Test for required params

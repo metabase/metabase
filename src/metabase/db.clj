@@ -220,17 +220,6 @@
     (> rows-affected 0)))
 
 
-;; ## DEL
-
-(defn ^:deprecated del
-  "Wrapper around `korma.core/delete` that makes it easier to delete a row given a single PK value.
-   Returns a `204 (No Content)` response dictionary."
-  [entity & {:as kwargs}]
-  (k/delete entity (k/where kwargs))
-  {:status 204
-   :body nil})
-
-
 ;; ## SEL
 
 (def ^:dynamic *disable-db-logging*
@@ -534,7 +523,9 @@
 
      (delete! 'Label)                ; delete all Labels
      (delete! Label :name \"Cam\")   ; delete labels where :name == \"Cam\"
-     (delete! Label {:name \"Cam\"}) ; for flexibility either a single map or kwargs are accepted"
+     (delete! Label {:name \"Cam\"}) ; for flexibility either a single map or kwargs are accepted
+
+   Most the time, you should use `cascade-delete!` instead, handles deletion of dependent objects via the entity's implementation of `pre-cascade-delete`."
   {:style/indent 1}
   ([entity]
    (delete! entity {}))
@@ -690,10 +681,12 @@
    which should delete any objects related the object about to be deleted.
    Returns a 204/nil reponse so it can be used directly in an API endpoint.
 
-     (cascade-delete! Database :id 1)"
+     (cascade-delete! Database :id 1)
+
+   TODO - this depends on objects having an `:id` column; consider a way to fix this for models like `Setting` that do not have one."
   {:style/indent 1}
   [entity & kvs]
-  (let [entity  (resolve-entity entity)]
+  (let [entity (resolve-entity entity)]
     (doseq [object (apply select entity kvs)]
       (models/pre-cascade-delete object)
       (delete! entity :id (:id object))))

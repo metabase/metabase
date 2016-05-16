@@ -54,7 +54,7 @@
   [session_id]
   {session_id [Required NonEmptyString]}
   (check-exists? Session session_id)
-  (db/del Session, :id session_id))
+  (db/cascade-delete! Session, :id session_id))
 
 ;; Reset tokens:
 ;; We need some way to match a plaintext token with the a user since the token stored in the DB is hashed.

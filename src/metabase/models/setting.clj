@@ -99,25 +99,26 @@
 
      (mandrill-api-key \"xyz123\")"
   [k v]
-  {:pre [(keyword? k)
-         (string? v)]}
-  (if (get k) (k/update Setting
-                        (k/set-fields {:value v})
-                        (k/where {:key (name k)}))
-      (k/insert Setting
-                (k/values {:key   (name k)
-                           :value v})))
+  {:pre [(keyword? k) (string? v)]}
+  (if (get k)
+    (k/update Setting
+              (k/set-fields {:value v})
+              (k/where {:key (name k)}))
+    (k/insert Setting
+              (k/values {:key   (name k)
+                         :value v})))
   (restore-cache-if-needed)
   (swap! cached-setting->value assoc k v)
   v)
 
 (defn delete
-  "Delete a `Setting`."
+  "Clear the value of a `Setting`."
   [k]
   {:pre [(keyword? k)]}
   (restore-cache-if-needed)
   (swap! cached-setting->value dissoc k)
-  (db/del Setting :key (name k)))
+  (db/delete! Setting, :key (name k))
+  {:status 204, :body nil})
 
 (defn set-all
   "Set the value of several `Settings` at once.
@@ -217,7 +218,7 @@
                        :value (k settings))))
          (sort-by :key))))
 
-(def ^:private short-timezone-name
+(def ^:private ^{:arglists '([timezone-name])} short-timezone-name
   "Get a short display name (e.g. `PST`) for `report-timezone`, or fall back to the System default if it's not set."
   (memoize (fn [^String timezone-name]
              (let [^TimeZone timezone (or (when (seq timezone-name)
