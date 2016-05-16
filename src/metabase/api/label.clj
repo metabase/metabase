@@ -32,6 +32,6 @@
   "Delete a `Label`. :label:"
   [id]
   (write-check Label id)
-  (db/cascade-delete Label :id id))
+  (db/cascade-delete! Label :id id))
 
 (define-routes)

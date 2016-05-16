@@ -61,7 +61,7 @@
   (do
     ;; Delete all the other random Users we've created so far
     (let [user-ids (set (map user->id [:crowberto :rasta :lucky :trashbird]))]
-      (db/cascade-delete User :id [not-in user-ids]))
+      (db/cascade-delete! User :id [:not-in user-ids]))
     ;; Now do the request
     (set ((user->client :rasta) :get 200 "user")))) ; as a set since we don't know what order the results will come back in
 

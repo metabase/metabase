@@ -17,8 +17,8 @@
   (sel :many DashboardCard, :dashboard_id id, (k/order :created_at :asc)))
 
 (defn- pre-cascade-delete [{:keys [id]}]
-  (cascade-delete 'Revision :model "Dashboard" :model_id id)
-  (cascade-delete DashboardCard :dashboard_id id))
+  (cascade-delete! 'Revision :model "Dashboard" :model_id id)
+  (cascade-delete! DashboardCard :dashboard_id id))
 
 
 (i/defentity Dashboard :report_dashboard)

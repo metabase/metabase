@@ -77,7 +77,7 @@
      The output of this function is ignored.
 
         (pre-cascade-delete [_ {database-id :id :as database}]
-          (cascade-delete Card :database_id database-id)
+          (cascade-delete! Card :database_id database-id)
           ...)")
 
   (^{:hydrate :can_read} can-read? ^Boolean [instance], ^Boolean [entity, ^Integer id]

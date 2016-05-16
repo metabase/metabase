@@ -1,6 +1,6 @@
 (ns metabase.driver.generic-sql.native-test
   (:require [expectations :refer :all]
-            [metabase.db :refer [ins cascade-delete]]
+            [metabase.db :as db]
             [metabase.models.database :refer [Database]]
             [metabase.query-processor :as qp]
             [metabase.test.data :refer :all]))
@@ -47,8 +47,8 @@
 (expect "Running SQL queries against H2 databases using the default (admin) database user is forbidden."
   ;; Insert a fake Database. It doesn't matter that it doesn't actually exist since query processing should
   ;; fail immediately when it realizes this DB doesn't have a USER
-  (let [db (ins Database :name "Fake-H2-DB", :engine "h2", :details {:db "mem:fake-h2-db"})]
+  (let [db (db/ins Database, :name "Fake-H2-DB", :engine "h2", :details {:db "mem:fake-h2-db"})]
     (try (:error (qp/process-query {:database (:id db)
                                     :type     :native
                                     :native   {:query "SELECT 1;"}}))
-         (finally (cascade-delete Database :name "Fake-H2-DB")))))
+         (finally (db/cascade-delete! Database :name "Fake-H2-DB")))))

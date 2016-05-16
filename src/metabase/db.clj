@@ -1,5 +1,5 @@
 (ns metabase.db
-  "Korma database definition and helper functions for interacting with the database."
+  "Database definition and helper functions for interacting with the database."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             (clojure [set :as set]
@@ -336,27 +336,6 @@
                                       {(keyword "scope_identity()") :id
                                        :generated_key               :id})]
     (some-> id entity models/post-insert)))
-
-
-;; ## CASADE-DELETE
-
-(defn ^:deprecated -cascade-delete
-  "Internal implementation of `cascade-delete`. Don't use this directly!"
-  [entity f]
-  (let [entity  (i/entity->korma entity)
-        results (i/sel-exec entity f)]
-    (dorun (for [obj (map (partial models/do-post-select entity) results)]
-             (do (models/pre-cascade-delete obj)
-                 (del entity :id (:id obj))))))
-  {:status 204, :body nil})
-
-(defmacro ^:deprecated cascade-delete
-  "Do a cascading delete of object(s). For each matching object, the `pre-cascade-delete` multimethod is called,
-   which should delete any objects related the object about to be deleted.
-
-   Like `del`, this returns a 204/nil reponse so it can be used directly in an API endpoint."
-  [entity & kwargs]
-  `(-cascade-delete ~entity (i/sel-fn ~@kwargs)))
 
 
 
@@ -716,13 +695,13 @@
 (defn cascade-delete!
   "Do a cascading delete of object(s). For each matching object, the `pre-cascade-delete` multimethod is called,
    which should delete any objects related the object about to be deleted.
-   Returns a 204/nil reponse so it can be used directly in an API endpoint."
+   Returns a 204/nil reponse so it can be used directly in an API endpoint.
+
+     (cascade-delete! Database :id 1)"
   {:style/indent 1}
-  ([entity id]
-   (cascade-delete! entity :id id))
-  ([entity k v & more]
-   (let [entity  (resolve-entity entity)]
-     (doseq [object (apply select entity k v more)]
-       (models/pre-cascade-delete object)
-       (delete! entity :id (:id object))))
-   {:status 204, :body nil}))
+  [entity & kvs]
+  (let [entity  (resolve-entity entity)]
+    (doseq [object (apply select entity kvs)]
+      (models/pre-cascade-delete object)
+      (delete! entity :id (:id object))))
+  {:status 204, :body nil})

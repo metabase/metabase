@@ -2,7 +2,7 @@
   (:require [cheshire.generate :refer [add-encoder encode-map]]
             [korma.core :as k]
             [metabase.api.common :refer [*current-user*]]
-            [metabase.db :refer [cascade-delete sel]]
+            [metabase.db :refer [cascade-delete! sel]]
             [metabase.models.interface :as i]
             [metabase.util :as u]))
 
@@ -19,9 +19,9 @@
                                         []))))
 
 (defn- pre-cascade-delete [{:keys [id]}]
-  (cascade-delete 'Card  :database_id id)
-  (cascade-delete 'Table :db_id id)
-  (cascade-delete 'RawTable :database_id id))
+  (cascade-delete! 'Card  :database_id id)
+  (cascade-delete! 'Table :db_id id)
+  (cascade-delete! 'RawTable :database_id id))
 
 (defn ^:hydrate tables
   "Return the `Tables` associated with this `Database`."

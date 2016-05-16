@@ -118,7 +118,7 @@
                 (k/where {:id [in (k/subselect PulseChannelRecipient (k/fields :user_id) (k/where {:pulse_channel_id id}))]}))))
 
 (defn- pre-cascade-delete [{:keys [id]}]
-  (db/cascade-delete PulseChannelRecipient :pulse_channel_id id))
+  (db/cascade-delete! PulseChannelRecipient :pulse_channel_id id))
 
 (u/strict-extend (class PulseChannel)
   i/IEntity (merge i/IEntityDefaults

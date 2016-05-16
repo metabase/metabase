@@ -203,7 +203,7 @@
   (write-check Card id)
   (let-404 [card (Card id)]
     (write-check card)
-    (u/prog1 (db/cascade-delete! Card id)
+    (u/prog1 (db/cascade-delete! Card,:id id)
       (events/publish-event :card-delete (assoc card :actor_id *current-user-id*)))))
 
 (defendpoint GET "/:id/favorite"
@@ -221,7 +221,7 @@
   "Unfavorite a Card."
   [card-id]
   (let-404 [id (db/select-one-id CardFavorite :card_id card-id, :owner_id *current-user-id*)]
-    (db/cascade-delete! CardFavorite id)))
+    (db/cascade-delete! CardFavorite, :id id)))
 
 (defendpoint POST "/:card-id/labels"
   "Update the set of `Labels` that apply to a `Card`."
@@ -231,7 +231,7 @@
   (let [[labels-to-remove labels-to-add] (data/diff (set (db/select-field :label_id CardLabel :card_id card-id))
                                                     (set label_ids))]
     (when (seq labels-to-remove)
-      (db/cascade-delete! CardLabel :label_id [:in labels-to-remove], :card_id card-id))
+      (db/cascade-delete! CardLabel, :label_id [:in labels-to-remove], :card_id card-id))
     (doseq [label-id labels-to-add]
       (db/insert! CardLabel :label_id label-id, :card_id card-id)))
   ;; TODO - Should this endpoint return something more useful instead ?

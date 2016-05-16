@@ -73,6 +73,7 @@
 
 (defmacro expect-eval-actual-first
   "Identical to `expect` but evaluates `actual` first (instead of evaluating `expected` first)."
+  {:style/indent 0}
   [expected actual]
   (let [fn-name (gensym)]
     `(def ~(vary-meta fn-name assoc :expectation true)
@@ -199,7 +200,7 @@
     (try
       (f temp-object)
       (finally
-        (db/cascade-delete entity :id (:id temp-object))))))
+        (db/cascade-delete! entity :id (:id temp-object))))))
 
 
 ;;; # with-temp

@@ -1,7 +1,7 @@
 (ns metabase.api.label-test
   "Tests for `/api/label` endpoints."
   (:require [expectations :refer [expect]]
-            [metabase.db :refer [cascade-delete]]
+            [metabase.db :as db]
             [metabase.models.label :refer [Label]]
             [metabase.test.data.users :refer [user->client]]
             [metabase.test.util :refer [expect-with-temp]]
@@ -19,7 +19,7 @@
   {:name "Warning: May Contain Toucans!!", :slug "warning__may_contain_toucans__", :icon nil}
   (u/prog1 (dissoc ((user->client :rasta) :post 200 "label", {:name "Warning: May Contain Toucans!!"})
                    :id)
-    (cascade-delete Label :slug (:slug <>))))
+    (db/cascade-delete! Label :slug (:slug <>))))
 
 ;;; PUT /api/label/:id -- update a label. Make sure new slug is generated
 (expect-with-temp [Label [{label-id :id} {:name "Toucan-Approved"}]]

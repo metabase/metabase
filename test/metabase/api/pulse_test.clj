@@ -36,7 +36,7 @@
 
 (defn- delete-existing-pulses! []
   (doseq [pulse-id (db/sel :many :id Pulse)]
-    (db/cascade-delete Pulse :id pulse-id)))
+    (db/cascade-delete! Pulse :id pulse-id)))
 
 (defn- user-details [user]
   (match-$ user

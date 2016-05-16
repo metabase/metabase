@@ -44,12 +44,12 @@
     []))
 
 (defn- pre-cascade-delete [{:keys [id]}]
-  (db/cascade-delete 'PulseCard :card_id id)
-  (db/cascade-delete 'Revision :model "Card", :model_id id)
-  (db/cascade-delete 'DashboardCardSeries :card_id id)
-  (db/cascade-delete 'DashboardCard :card_id id)
-  (db/cascade-delete 'CardFavorite :card_id id)
-  (db/cascade-delete 'CardLabel :card_id id))
+  (db/cascade-delete! 'PulseCard :card_id id)
+  (db/cascade-delete! 'Revision :model "Card", :model_id id)
+  (db/cascade-delete! 'DashboardCardSeries :card_id id)
+  (db/cascade-delete! 'DashboardCard :card_id id)
+  (db/cascade-delete! 'CardFavorite :card_id id)
+  (db/cascade-delete! 'CardLabel :card_id id))
 
 
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------

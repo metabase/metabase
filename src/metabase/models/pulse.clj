@@ -25,8 +25,8 @@
   (db/sel :many PulseChannel, :pulse_id id))
 
 (defn- pre-cascade-delete [{:keys [id]}]
-  (db/cascade-delete PulseCard :pulse_id id)
-  (db/cascade-delete PulseChannel :pulse_id id))
+  (db/cascade-delete! PulseCard :pulse_id id)
+  (db/cascade-delete! PulseChannel :pulse_id id))
 
 (defn ^:hydrate cards
   "Return the `Cards` assoicated with this PULSE."
@@ -63,7 +63,7 @@
          (sequential? card-ids)
          (every? integer? card-ids)]}
   ;; first off, just delete any cards associated with this pulse (we add them again below)
-  (db/cascade-delete PulseCard :pulse_id id)
+  (db/cascade-delete! PulseCard :pulse_id id)
   ;; now just insert all of the cards that were given to us
   (when-not (empty? card-ids)
     (let [cards (map-indexed (fn [idx itm] {:pulse_id id :card_id itm :position idx}) card-ids)]
@@ -84,7 +84,7 @@
       ;; 1. in channels, NOT in db-channels = CREATE
       (and channel (not existing-channel))  (pulse-channel/create-pulse-channel channel)
       ;; 2. NOT in channels, in db-channels = DELETE
-      (and (nil? channel) existing-channel) (db/cascade-delete PulseChannel :id (:id existing-channel))
+      (and (nil? channel) existing-channel) (db/cascade-delete! PulseChannel :id (:id existing-channel))
       ;; 3. in channels, in db-channels = UPDATE
       (and channel existing-channel)        (pulse-channel/update-pulse-channel channel)
       ;; 4. NOT in channels, NOT in db-channels = NO-OP

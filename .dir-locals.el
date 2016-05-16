@@ -21,7 +21,6 @@
                               (execute-query 1)
                               (execute-sql! 2)
                               (expect 0)
-                              (expect-eval-actual-first 1)
                               (expect-expansion 0)
                               (expect-let 1)
                               (expect-when-testing-engine 1)

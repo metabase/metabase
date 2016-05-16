@@ -218,7 +218,7 @@
    (remove-database! *data-loader* database-definition))
   ([dataset-loader ^DatabaseDefinition database-definition]
    ;; Delete the Metabase Database and associated objects
-   (db/cascade-delete Database :id (:id (i/metabase-instance database-definition (i/engine dataset-loader))))
+   (db/cascade-delete! Database :id (:id (i/metabase-instance database-definition (i/engine dataset-loader))))
 
    ;; now delete the DBMS database
    (i/destroy-db! dataset-loader database-definition)))

@@ -22,7 +22,7 @@
                              (assert-unique-slug <>))))))         ; otherwise check to make sure the new slug is unique
 
 (defn- pre-cascade-delete [{:keys [id]}]
-  (db/cascade-delete 'CardLabel :label_id id))
+  (db/cascade-delete! 'CardLabel :label_id id))
 
 (u/strict-extend (class Label)
   i/IEntity

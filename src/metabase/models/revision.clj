@@ -111,7 +111,7 @@
   [entity id]
   {:pre [(i/metabase-entity? entity) (integer? id)]}
   (when-let [old-revisions (seq (drop max-revisions (db/sel :many :id Revision, :model (:name entity), :model_id id, (k/order :timestamp :DESC))))]
-    (db/cascade-delete Revision :id [in old-revisions])))
+    (db/cascade-delete! Revision :id [:in old-revisions])))
 
 (defn push-revision
   "Record a new `Revision` for ENTITY with ID.
