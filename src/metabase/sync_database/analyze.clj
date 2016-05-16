@@ -174,15 +174,15 @@
 
 (defn analyze-table-data-shape!
   "Analyze the data shape for a single `Table`."
-  [driver {table-id :id, :as tbl}]
+  [driver {table-id :id, :as table}]
   (let [new-field-ids (set (db/sel :many :id field/Field, :table_id table-id, :visibility_type [not= "retired"], :last_analyzed nil))]
     ;; TODO: this call should include the database
-    (when-let [table-stats (u/prog1 (driver/analyze-table driver tbl new-field-ids)
+    (when-let [table-stats (u/prog1 (driver/analyze-table driver table new-field-ids)
                              (when <>
                                (schema/validate i/AnalyzeTable <>)))]
       ;; update table row count
       (when (:row_count table-stats)
-        (db/upd table/Table table-id :rows (:row_count table-stats)))
+        (db/update! table/Table table-id, :rows (:row_count table-stats)))
 
       ;; update individual fields
       (doseq [{:keys [id preview-display special-type values]} (:fields table-stats)]

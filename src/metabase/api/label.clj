@@ -2,7 +2,6 @@
   "`/api/label` endpoints."
   (:require [compojure.core :refer [GET POST DELETE PUT]]
             [korma.core :as k]
-            [medley.core :as m]
             [metabase.api.common :refer [defendpoint define-routes write-check]]
             [metabase.db :as db]
             [metabase.models.label :refer [Label]]))
@@ -25,7 +24,7 @@
   {name NonEmptyString
    icon NonEmptyString}
   (write-check Label id)
-  (m/mapply db/upd Label id body)
+  (db/update! Label id body)
   (Label id)) ; return the updated Label
 
 (defendpoint DELETE "/:id"

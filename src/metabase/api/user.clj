@@ -6,7 +6,7 @@
             [metabase.email.messages :as email]
             [metabase.models.user :refer [User create-user set-user-password set-user-password-reset-token form-password-reset-url]]))
 
-(defn ^:private check-self-or-superuser
+(defn- check-self-or-superuser
   "Check that USER-ID is `*current-user-id*` or that `*current-user*` is a superuser, or throw a 403."
   [user-id]
   {:pre [(integer? user-id)]}
@@ -26,20 +26,18 @@
    last_name  [Required NonEmptyString]
    email      [Required Email]}
   (check-superuser)
-  (let [existing-user (db/sel :one [User :id :is_active] :email email)]
-    (cond
-      ;; new user account, so create it
-      (nil? existing-user) (create-user first_name last_name email :password password :send-welcome true :invitor @*current-user*)
-      ;; this user already exists but is inactive, so simply reactivate the account
-      (not (:is_active existing-user)) (do
-                                         (db/upd User (:id existing-user)
-                                           :first_name first_name
-                                           :last_name last_name
-                                           :is_active true
-                                           :is_superuser false)
-                                         (User (:id existing-user)))
-      ;; account already exists and is active, so do nothing and just return the account
-      :else (User (:id existing-user)))))
+  (if-let [existing-user (db/sel :one [User :id :is_active], :email email)]
+    (do (when-not (:is_active existing-user)
+          ;; this user already exists but is inactive, so simply reactivate the account
+          (db/update! User (:id existing-user)
+            :first_name    first_name
+            :last_name     last_name
+            :is_active     true
+            :is_superuser  false))
+        ;; now return the existing user whether they were originally active or not
+        (User (:id existing-user)))
+    ;; new user account, so create it
+    (create-user first_name last_name email, :password password, :send-welcome true, :invitor @*current-user*)))
 
 
 (defendpoint GET "/current"
@@ -90,7 +88,7 @@
   "Indicate that a user has been informed about the vast intricacies of 'the' QueryBuilder."
   [id]
   (check-self-or-superuser id)
-  (check-500 (db/upd User id :is_qbnewb false))
+  (check-500 (db/update! User id, :is_qbnewb false))
   {:success true})
 
 
@@ -109,7 +107,7 @@
   "Disable a `User`.  This does not remove the `User` from the db and instead disables their account."
   [id]
   (check-superuser)
-  (check-500 (db/upd User id
+  (check-500 (db/update! User id
                :is_active false))
   {:success true})
 

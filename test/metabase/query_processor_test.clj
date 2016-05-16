@@ -943,9 +943,9 @@
                                    (ql/limit 1))
                                  :data :cols set))]
     [(get-col-names)
-     (do (db/upd Field (id :venues :price) :visibility_type :details-only)
+     (do (db/update! Field (id :venues :price), :visibility_type :details-only)
          (get-col-names))
-     (do (db/upd Field (id :venues :price) :visibility_type :normal)
+     (do (db/update! Field (id :venues :price), :visibility_type :normal)
          (get-col-names))]))
 
 

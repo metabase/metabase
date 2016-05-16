@@ -84,7 +84,7 @@
     (let [details (-> (merge details (fetch-access-and-refresh-tokens client-id client-secret auth-code))
                       (dissoc :auth-code))]
       (when id
-        (db/upd Database id :details details))
+        (db/update! Database id, :details details))
       (recur (assoc db :details details)))
     ;; Otherwise return credential as normal
     (doto (.build (doto (GoogleCredential$Builder.)

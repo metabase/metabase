@@ -604,11 +604,11 @@
 
 (defn save-query-execution
   "Save (or update) a `QueryExecution`."
-  [{:keys [id] :as query-execution}]
+  [{:keys [id], :as query-execution}]
   (if id
     ;; execution has already been saved, so update it
     (do
-      (m/mapply db/upd QueryExecution id query-execution)
+      (db/update! QueryExecution id query-execution)
       query-execution)
     ;; first time saving execution, so insert it
     (m/mapply db/ins QueryExecution query-execution)))

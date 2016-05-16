@@ -54,7 +54,7 @@
   {:pre [(integer? field-id)
          (field-should-have-field-values? field)]}
   (if-let [field-values (db/sel :one FieldValues :field_id field-id)]
-    (db/upd FieldValues (:id field-values)
+    (db/update! FieldValues (:id field-values)
       :values ((resolve 'metabase.db.metadata-queries/field-distinct-values) field))
     (create-field-values field)))
 
@@ -75,7 +75,7 @@
   {:pre [(integer? field-id)
          (coll? values)]}
   (if-let [field-values (db/sel :one FieldValues :field_id field-id)]
-    (db/upd FieldValues (:id field-values) :values values)
+    (db/update! FieldValues (:id field-values), :values values)
     (db/ins FieldValues :field_id field-id, :values values)))
 
 (defn clear-field-values

@@ -1,7 +1,6 @@
 (ns metabase.models.dashboard
   (:require [clojure.data :refer [diff]]
             [korma.core :as k]
-            [medley.core :as m]
             [metabase.db :as db]
             (metabase.models [dashboard-card :refer [DashboardCard] :as dashboard-card]
                              [interface :as i]
@@ -49,7 +48,7 @@
   "Revert a `Dashboard` to the state defined by SERIALIZED-DASHBOARD."
   [dashboard-id user-id serialized-dashboard]
   ;; Update the dashboard description / name / permissions
-  (m/mapply db/upd Dashboard dashboard-id (dissoc serialized-dashboard :cards))
+  (db/update! Dashboard dashboard-id, (dissoc serialized-dashboard :cards))
   ;; Now update the cards as needed
   (let [serialized-cards    (:cards serialized-dashboard)
         id->serialized-card (zipmap (map :id serialized-cards) serialized-cards)

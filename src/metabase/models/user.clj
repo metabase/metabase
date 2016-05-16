@@ -65,9 +65,7 @@
 
 ;; ## Related Functions
 
-(declare create-user
-         form-password-reset-url
-         set-user-password
+(declare form-password-reset-url
          set-user-password-reset-token)
 
 (defn create-user
@@ -98,20 +96,20 @@
   (let [salt (.toString (java.util.UUID/randomUUID))
         password (creds/hash-bcrypt (str salt password))]
     ;; NOTE: any password change expires the password reset token
-    (db/upd User user-id
-      :password_salt salt
-      :password password
-      :reset_token nil
+    (db/update! User user-id
+      :password_salt   salt
+      :password        password
+      :reset_token     nil
       :reset_triggered nil)))
 
 (defn set-user-password-reset-token
   "Updates a given `User` and generates a password reset token for them to use.  Returns the url for password reset."
   [user-id]
   {:pre [(integer? user-id)]}
-  (let [reset-token (str user-id \_ (java.util.UUID/randomUUID))]
-    (db/upd User user-id, :reset_token reset-token, :reset_triggered (System/currentTimeMillis))
-    ;; return the token
-    reset-token))
+  (u/prog1 (str user-id \_ (java.util.UUID/randomUUID))
+    (db/update! User user-id
+      :reset_token     <>
+      :reset_triggered (System/currentTimeMillis))))
 
 (defn form-password-reset-url
   "Generate a properly formed password reset url given a password reset token."

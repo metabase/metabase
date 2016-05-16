@@ -206,9 +206,9 @@
          (coll? recipients)
          (every? map? recipients)]}
   (let [recipients-by-type (group-by integer? (filter identity (map #(or (:id %) (:email %)) recipients)))]
-    (db/upd PulseChannel id
+    (db/update! PulseChannel id
       :details        (cond-> details
-                              (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
+                        (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
       :enabled        enabled
       :schedule_type  schedule_type
       :schedule_hour  (when (not= schedule_type :hourly)

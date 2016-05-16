@@ -105,7 +105,7 @@
                         :display_name (or display_name (common/name->human-readable-name table-name)))]
     ;; the only thing we need to update on a table is the :display_name, if it never got set
     (when (nil? display_name)
-      (db/upd Table id
+      (db/update! Table id
         :display_name (:display_name updated-table)))
     ;; always return the table when we are done
     updated-table))

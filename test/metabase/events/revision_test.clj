@@ -157,8 +157,8 @@
 ;; :dashboard-reposition-cards
 (expect-let [{dashboard-id :id :as dashboard} (create-test-dashboard)
              {card-id :id}                    (create-test-card)
-             dashcard                         (db/ins DashboardCard :card_id card-id :dashboard_id dashboard-id)
-             _                                (db/upd DashboardCard (:id dashcard) :sizeX 4)]
+             dashcard                         (u/prog1 (db/ins DashboardCard :card_id card-id :dashboard_id dashboard-id)
+                                                (db/update! DashboardCard (:id <>), :sizeX 4))]
   {:model        "Dashboard"
    :model_id     dashboard-id
    :user_id      (user->id :crowberto)

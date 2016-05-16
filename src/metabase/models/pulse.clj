@@ -138,7 +138,7 @@
          (every? map? channels)]}
   (kdb/transaction
     ;; update the pulse itself
-    (db/upd Pulse id :name name)
+    (db/update! Pulse id, :name name)
     ;; update cards (only if they changed)
     (when (not= cards (db/sel :many :field [PulseCard :card_id] :pulse_id id (k/order :position :asc)))
       (update-pulse-cards pulse cards))

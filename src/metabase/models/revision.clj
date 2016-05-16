@@ -1,7 +1,6 @@
 (ns metabase.models.revision
   (:require [clojure.data :as data]
             [korma.core :as k]
-            [medley.core :as m]
             [metabase.db :as db]
             (metabase.models [hydrate :refer [hydrate]]
                              [interface :as i]
@@ -36,7 +35,7 @@
 (defn default-revert-to-revision
   "Default implementation of `revert-to-revision` which simply does an update using the values from `serialized-instance`."
   [entity id user-id serialized-instance]
-  (m/mapply db/upd entity id serialized-instance))
+  (db/update! entity id, serialized-instance))
 
 (defn default-diff-map
   "Default implementation of `diff-map` which simply uses clojures `data/diff` function and sets the keys `:before` and `:after`."

@@ -40,7 +40,7 @@
                :password "birdseed"
                :active   false}})
 
-(def ^:private usernames
+(def ^:private ^:const usernames
   (set (keys user->info)))
 
 ;; ## Public functions for working with Users

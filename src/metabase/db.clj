@@ -200,30 +200,10 @@
 
 ;; # ---------------------------------------- OLD UTILITY FUNCTIONS ----------------------------------------
 
-;; ## UPD
-
-(defn ^:deprecated upd
-  "Wrapper around `korma.core/update` that updates a single row by its id value and
-   automatically passes &rest KWARGS to `korma.core/set-fields`.
-
-     (upd User 123 :is_active false) ; updates user with id=123, setting is_active=false
-
-   Returns true if update modified rows, false otherwise."
-  [entity entity-id & {:as kwargs}]
-  {:pre [(integer? entity-id)]}
-  (let [obj           (models/do-pre-update entity (assoc kwargs :id entity-id))
-        rows-affected (k/update entity
-                                (k/set-fields (dissoc obj :id))
-                                (k/where {:id entity-id}))]
-    (when (> rows-affected 0)
-      (models/post-update obj))
-    (> rows-affected 0)))
-
-
 ;; ## SEL
 
-(def ^:dynamic *disable-db-logging*
-  "Should we disable logging for the `sel` macro? Normally `false`, but bind this to `true` to keep logging from getting too noisy during
+(def ^:dynamic ^Boolean *disable-db-logging*
+  "Should we disable logging for database queries? Normally `false`, but bind this to `true` to keep logging from getting too noisy during
    operations that require a lot of DB access, like the sync process."
   false)
 

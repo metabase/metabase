@@ -97,7 +97,7 @@
        :is_qbnewb    true})
     (when-let [user (create-user-api rand-name)]
       ;; create a random user then set them to :inactive
-      (db/upd User (:id user)
+      (db/update! User (:id user)
         :is_active false
         :is_superuser true)
       ;; then try creating the same user again
