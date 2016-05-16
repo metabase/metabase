@@ -10,6 +10,10 @@ var SettingsAdminControllers = angular.module('metabase.admin.settings.controlle
 
 const SECTIONS = [
     {
+        name: "Setup",
+        settings: []
+    },
+    {
         name: "General",
         settings: [
             {
