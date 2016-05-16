@@ -62,8 +62,8 @@
    first_name NonEmptyString
    last_name  NonEmptyString}
   (check-self-or-superuser id)
-  (check-404 (exists? User :id id :is_active true))           ; only allow updates if the specified account is active
-  (check-400 (not (exists? User :email email :id [not= id]))) ; can't change email if it's already taken BY ANOTHER ACCOUNT
+  (check-404 (exists? User, :id id, :is_active true))            ; only allow updates if the specified account is active
+  (check-400 (not (exists? User, :email email, :id [:not= id]))) ; can't change email if it's already taken BY ANOTHER ACCOUNT
   (check-500 (upd-non-nil-keys User id
               :email        email
               :first_name   first_name

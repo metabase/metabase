@@ -338,18 +338,6 @@
     (some-> id entity models/post-insert)))
 
 
-;; ## EXISTS?
-
-(defmacro exists?
-  "Easy way to see if something exists in the db.
-
-    (exists? User :id 100)"
-  [entity & {:as kwargs}]
-  `(boolean (seq (k/select (i/entity->korma ~entity)
-                           (k/fields [:id])
-                           (k/where ~(if (seq kwargs) kwargs {}))
-                           (k/limit 1)))))
-
 ;; ## CASADE-DELETE
 
 (defn ^:deprecated -cascade-delete
@@ -605,17 +593,6 @@
    (insert! entity (apply array-map k v more))))
 
 
-;;; ## EXISTS?
-
-;; The new implementation of exists? is commented out for the time being until we re-work existing uses
-#_(defn exists?
-  "Easy way to see if something exists in the DB.
-    (db/exists? User :id 100)
-   NOTE: This only works for objects that have an `:id` field."
-  [entity & kvs]
-  (boolean (select-one entity (apply where (h/select :id) kvs))))
-
-
 ;;; ## SELECT
 
 ;; All of the following functions are based off of the old `sel` macro and can do things like select certain fields by wrapping ENTITY in a vector
@@ -722,6 +699,16 @@
   {:style/indent 2}
   [field entity & options]
   (apply select-field->field :id field entity options))
+
+
+;;; ## EXISTS?
+
+(defn exists?
+  "Easy way to see if something exists in the DB.
+    (db/exists? User :id 100)
+   NOTE: This only works for objects that have an `:id` field."
+  [entity & kvs]
+  (boolean (select-one entity (apply where (h/select :id) kvs))))
 
 
 ;;; ## CASADE-DELETE

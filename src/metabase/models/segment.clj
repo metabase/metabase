@@ -76,7 +76,7 @@
    Returns true if `Segment` exists and is active, false otherwise."
   [id]
   {:pre [(integer? id)]}
-  (db/exists? Segment :id id :is_active true))
+  (db/exists? Segment, :id id, :is_active true))
 
 (defn retrieve-segment
   "Fetch a single `Segment` by its ID value."
