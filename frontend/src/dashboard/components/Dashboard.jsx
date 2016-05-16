@@ -6,6 +6,8 @@ import DashboardGrid from "../components/DashboardGrid.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
+import ParameterPicker from "metabase/query_builder/parameters/ParameterPicker.jsx";
+
 import screenfull from "screenfull";
 
 import _ from "underscore";
@@ -167,6 +169,33 @@ export default class Dashboard extends Component {
         this.props.setEditingDashboard(isEditing);
     }
 
+    setParameterValue(parameter, value) {
+        console.log("setting dash param", parameter, value);
+
+        let parameters = this.props.dashboard.parameters || [],
+            param = _.find(parameters, (p) => p.name === parameter.name);
+
+        // ick.  mutability
+        param.value = value;
+
+        this.props.setDashboardAttributes({
+            id: this.props.dashboard.id,
+            attributes: { "parameters": parameters }
+        });
+
+        // now refresh all the cards
+        let cards = {};
+        for (let dashcard of this.props.dashboard.ordered_cards) {
+            cards[dashcard.card.id] = dashcard.card;
+            for (let card of dashcard.series) {
+                cards[card.id] = card;
+            }
+        }
+        for (let card of Object.values(cards)) {
+            this.props.fetchCardData(card);
+        }
+    }
+
     async tickRefreshClock() {
         let refreshElapsed = (this.state.refreshElapsed || 0) + TICK_PERIOD;
         if (refreshElapsed >= this.state.refreshPeriod) {
@@ -191,6 +220,7 @@ export default class Dashboard extends Component {
         let { dashboard } = this.props;
         let { error, isFullscreen, isNightMode } = this.state;
         isNightMode = isNightMode && isFullscreen;
+
         return (
             <LoadingAndErrorWrapper style={{ minHeight: "100%" }} className={cx("Dashboard absolute top left right", { "Dashboard--fullscreen": isFullscreen, "Dashboard--night": isNightMode})} loading={!dashboard} error={error}>
             {() =>
@@ -208,7 +238,19 @@ export default class Dashboard extends Component {
                             onEditingChange={this.setEditing}
                         />
                     </header>
+                    {this.props.dashboard.parameters && this.props.dashboard.parameters.length > 0 &&
+                        <div className="wrapper">
+                            <div className="flex flex-row" ref="parameters">
+                                {this.props.dashboard.parameters.map(parameter =>
+                                    <ParameterPicker
+                                        parameter={parameter}
+                                        onChange={(value) => this.setParameterValue(parameter, value)} />
+                                )}
+                            </div>
+                        </div>
+                    }
                     <div className="wrapper">
+
                         { dashboard.ordered_cards.length === 0 ?
                             <div className="absolute z1 top bottom left right flex flex-column layout-centered">
                                 <span className="QuestionCircle">?</span>

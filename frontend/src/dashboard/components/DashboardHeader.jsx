@@ -12,9 +12,24 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import NightModeIcon from "metabase/components/icons/NightModeIcon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 
+import ParametersPopover from "./parameters/ParametersPopover.jsx";
+import Popover from "metabase/components/Popover.jsx";
+
+import MetabaseAnalytics from "metabase/lib/analytics";
+
 import cx from "classnames";
+import _ from "underscore";
 
 export default class DashboardHeader extends Component {
+
+    constructor(props, context) {
+        super(props, context);
+
+        this.state = {
+            modal: null,
+        };
+    }
+
     static propTypes = {
         dashboard: PropTypes.object.isRequired,
         revisions: PropTypes.object.isRequired,
@@ -73,6 +88,37 @@ export default class DashboardHeader extends Component {
         await this.props.deleteDashboard(this.props.dashboard.id);
         this.props.onDashboardDeleted(this.props.dashboard.id)
         this.props.onChangeLocation("/")
+    }
+
+    setParameter(parameter, previousName) {
+        console.log("setting parameter", parameter, previousName);
+        
+        let parameters = this.props.dashboard && this.props.dashboard.parameters || [];
+        
+        if (!_.isEmpty(previousName)) {
+            // remove old expression using original name.  this accounts for case where parameter is renamed.
+            parameters = _.reject(parameters, (p) => p.name === previousName);
+        }
+
+        // now add the new parameter
+        parameters = [...parameters, parameter];
+        this.onAttributeChange("parameters", parameters);
+
+        console.log("parameters", parameters);
+
+        MetabaseAnalytics.trackEvent("Dashboard", "Set Parameter", !_.isEmpty(previousName));
+    }
+
+    removeParameter(parameter) {
+        console.log("remove parameter", parameter);
+
+        let parameters = this.props.dashboard && this.props.dashboard.parameters || [];
+        parameters = _.reject(parameters, (p) => p.name === parameter.name);
+        this.onAttributeChange("parameters", parameters);
+
+        console.log("parameters", parameters);
+
+        MetabaseAnalytics.trackEvent("Dashboard", "Remove Parameter");
     }
 
     // 1. fetch revisions
@@ -151,6 +197,29 @@ export default class DashboardHeader extends Component {
                     />
                 </ModalWithTrigger>
             );
+
+            // Parameters
+            buttons.push(
+                <span>
+                    <Tooltip tooltip="Parameters">
+                        <a key="parameters" title="Parameters">
+                            <Icon name='filter' width="16px" height="16px" onClick={() => this.setState({ modal: "parameters" })}></Icon>
+                        </a>
+                    </Tooltip>
+
+                    {this.state.modal && this.state.modal === "parameters" &&
+                        <Popover onClose={() => this.setState({modal: false})}>
+                            <ParametersPopover
+                                parameters={dashboard.parameters}
+                                cards={this.props.cards}
+                                onSetParameter={(newParameter) => this.setParameter(newParameter, name)}
+                                onRemoveParameter={(parameter) => this.removeParameter(parameter)}
+                                onClose={() => this.setState({modal: false})}
+                            />
+                        </Popover>
+                    }
+                </span>
+            );
         }
 
         if (!isFullscreen && !isEditing && canEdit) {
@@ -220,6 +289,7 @@ export default class DashboardHeader extends Component {
 
     render() {
         var { dashboard } = this.props;
+        console.log(dashboard);
 
         return (
             <Header

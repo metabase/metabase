@@ -106,7 +106,28 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card) {
                 dispatch(fetchCardDuration(card));
             }
         }, DATASET_SLOW_TIMEOUT);
-        result = await MetabaseApi.dataset(card.dataset_query);
+
+        // if we have a parameter, apply it to the card query before we execute
+        // ick!  are we being mutable here?
+        let { dashboards, selectedDashboard } = getState();
+        let dashboard = dashboards[selectedDashboard];
+        let query = card.dataset_query;
+        if (dashboard.parameters && dashboard.parameters.length > 0) {
+            for (var i=0; i < dashboard.parameters.length; i++) {
+                let parameter = dashboard.parameters[i];
+                let cardParameter = _.find(card.dataset_query.parameters || [], (p) => p.name === parameter.name);
+                if (cardParameter) {
+                    if (!parameter.value || _.isEmpty(parameter.value)) {
+                        delete cardParameter.value;
+                    } else {
+                        cardParameter.value = parameter.value;
+                    }
+                    console.log("card parameter", cardParameter);
+                }
+            }
+        }
+
+        result = await MetabaseApi.dataset(query);
         clearTimeout(slowCardTimer);
         return { id: card.id, result };
     };
@@ -165,8 +186,11 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
 
         // update the dashboard itself
         if (dashboard.isDirty) {
-            let { id, name, description, public_perms } = dashboard;
+            let { id, name, description, public_perms, parameters } = dashboard;
+            console.log("saving", parameters);
             dashboard = await DashboardApi.update({ id, name, description, public_perms });
+            // HACK!
+            dashboard.parameters = parameters;
         }
 
         // reposition the cards
@@ -179,7 +203,7 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
         }
 
         // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
-        dispatch(fetchDashboard(dashId));
+        //dispatch(fetchDashboard(dashId));
 
         MetabaseAnalytics.trackEvent("Dashboard", "Update");
 
