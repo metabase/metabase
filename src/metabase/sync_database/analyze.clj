@@ -188,7 +188,7 @@
       (doseq [{:keys [id preview-display special-type values]} (:fields table-stats)]
         ;; set Field metadata we may have detected
         (when (and id (or preview-display special-type))
-          (db/upd-non-nil-keys field/Field id
+          (db/update-non-nil-keys! field/Field id
             ;; if a field marked `preview-display` as false then set the visibility type to `:details-only` (see models.field/visibility-types)
             :visibility_type (when (false? preview-display) :details-only)
             :special_type    special-type))

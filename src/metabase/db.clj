@@ -219,13 +219,6 @@
       (models/post-update obj))
     (> rows-affected 0)))
 
-(defn ^:deprecated upd-non-nil-keys
-  "Calls `upd`, but filters out KWARGS with `nil` values."
-  {:style/indent 2}
-  [entity entity-id & {:as kwargs}]
-  (->> (m/filter-vals (complement nil?) kwargs)
-       (m/mapply upd entity entity-id)))
-
 
 ;; ## DEL
 

@@ -21,7 +21,7 @@
   {f FilterOptionAllOrMine}
   (-> (case (or f :all)
         :all  (db/sel :many Dashboard (k/where (or {:creator_id *current-user-id*}
-                                                {:public_perms [> common/perms-none]})))
+                                                   {:public_perms [> common/perms-none]})))
         :mine (db/sel :many Dashboard :creator_id *current-user-id*))
       (hydrate :creator :can_read :can_write)))
 
@@ -31,10 +31,10 @@
   {name         [Required NonEmptyString]
    public_perms [Required PublicPerms]}
   (->> (db/ins Dashboard
-               :name name
-               :description description
-               :public_perms public_perms
-               :creator_id *current-user-id*)
+         :name         name
+         :description  description
+         :public_perms public_perms
+         :creator_id   *current-user-id*)
        (events/publish-event :dashboard-create)))
 
 (defendpoint GET "/:id"
@@ -53,7 +53,7 @@
   [id :as {{:keys [description name]} :body}]
   {name NonEmptyString}
   (write-check Dashboard id)
-  (check-500 (db/upd-non-nil-keys Dashboard id
+  (check-500 (db/update-non-nil-keys! Dashboard id
                :description description
                :name        name))
   (events/publish-event :dashboard-update (assoc (Dashboard id) :actor_id *current-user-id*)))
