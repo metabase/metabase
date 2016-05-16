@@ -2,9 +2,9 @@
   "Unit tests for /api/dataset endpoints."
   (:require [expectations :refer :all]
             [metabase.api.dataset :refer [dataset-query-api-constraints]]
-            [metabase.db :refer :all]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.query-execution :refer [QueryExecution]]
+            [metabase.db :as db]
+            (metabase.models [card :refer [Card]]
+                             [query-execution :refer [QueryExecution]])
             [metabase.query-processor.expand :as ql]
             [metabase.test.data.users :refer :all]
             [metabase.test.data :refer :all]
@@ -89,7 +89,7 @@
                                                             (query checkins
                                                                    (ql/aggregation (ql/count)))))]
     [(format-response result)
-     (format-response (sel :one QueryExecution :uuid (:uuid result)))]))
+     (format-response (db/sel :one QueryExecution :uuid (:uuid result)))]))
 
 ;; Even if a query fails we still expect a 200 response from the api
 (expect
@@ -121,7 +121,7 @@
                                                            :type     "native"
                                                            :native   {:query "foobar"}})]
     [(format-response result)
-     (format-response (sel :one QueryExecution :uuid (:uuid result)))]))
+     (format-response (db/sel :one QueryExecution :uuid (:uuid result)))]))
 
 
 ;; GET /api/dataset/card/:id
@@ -186,4 +186,4 @@
       [(-> result
            (update :card remove-ids-and-boolean-timestamps)
            (update :result format-response))
-       (format-response (sel :one QueryExecution :uuid (get-in result [:result :uuid])))])))
+       (format-response (db/sel :one QueryExecution :uuid (get-in result [:result :uuid])))])))
