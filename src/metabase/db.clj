@@ -6,6 +6,7 @@
                      [string :as s]
                      [walk :as walk])
             (honeysql [core :as hsql]
+                      [format :as hformat]
                       [helpers :as h])
             (korma [core :as k]
                    [db :as kdb])
@@ -342,7 +343,10 @@
   "Compile HONEYSQL-FORM to SQL.
   This returns a vector with the SQL string as its first item and prepared statement params as the remaining items."
   [honeysql-form]
-  (u/prog1 (hsql/format honeysql-form :quoting quoting-style)
+  {:pre [(map? honeysql-form)]}
+  ;; Not sure *why* but without setting this binding on *rare* occasion HoneySQL will unwantedly generate SQL for a subquery and wrap the query in parens like "(UPDATE ...)" which is invalid
+  (u/prog1 (binding [hformat/*subquery?* false]
+             (hsql/format honeysql-form :quoting quoting-style))
     (when-not *disable-db-logging*
       (log/debug (str "DB Call: " (first <>))))))
 
@@ -460,7 +464,7 @@
                                 honeysql-form)))))
 
   ([entity id kvs]
-   {:pre [(integer? id) (map? kvs)]}
+   {:pre [(integer? id) (map? kvs) (every? keyword? (keys kvs))]}
    (let [entity (resolve-entity entity)
          kvs    (-> (models/do-pre-update entity (assoc kvs :id id))
                     (dissoc :id))]
@@ -494,6 +498,7 @@
   ([entity]
    (delete! entity {}))
   ([entity kvs]
+   {:pre [(map? kvs) (every? keyword? (keys kvs))]}
    (let [entity (resolve-entity entity)]
      (not= [0] (execute! (-> (h/delete-from (entity->table-name entity))
                              (where kvs))))))
@@ -511,6 +516,7 @@
      (insert! 'Label :name \"Toucan Friendly\")"
   {:style/indent 1}
   ([entity object]
+   {:pre [(map? object) (every? keyword? (keys object))]}
    (let [entity (resolve-entity entity)
          object (models/do-pre-insert entity object)
          id     (first (vals (first (jdbc/insert! (db-connection) (entity->table-name entity) object))))]

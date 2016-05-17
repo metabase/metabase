@@ -42,7 +42,7 @@
   "Methods model classes should implement; all except for `can-read?` and `can-write?` have default implementations in `IEntityDefaults`.
    Internal models that don't participate in permissions checking don't need to implement `can-read?`/`can-write?`."
   (pre-insert [this]
-    "Gets called by `ins` immediately before inserting a new object immediately before the korma `insert` call.
+    "Gets called by `insert!` immediately before inserting a new object immediately before the SQL `INSERT` call.
      This provides an opportunity to do things like encode JSON or provide default values for certain fields.
 
          (pre-insert [_ query]
@@ -50,29 +50,21 @@
              (merge defaults query))) ; set some default values")
 
   (post-insert [this]
-    "Gets called by `ins` after an object is inserted into the DB. (This object is fetched via `sel`).
+    "Gets called by `insert!` after an object is inserted into the DB. (This object is fetched via `select`).
      A good place to do asynchronous tasks such as creating related objects.
      Implementations should return the newly created object.")
 
   (pre-update [this]
-    "Called by `upd` before DB operations happen. A good place to set updated values for fields like `updated_at`, or serialize maps into JSON.")
-
-  (post-update [this]
-    "Called by `upd` after a SQL `UPDATE` *succeeds*. (This gets called with whatever the output of `pre-update` was).
-
-     A good place to schedule asynchronous tasks, such as creating a `FieldValues` object for a `Field`
-     when it is marked with `special_type` `:category`.
-
-     The output of this function is ignored.")
+    "Called by `update!` before DB operations happen. A good place to set updated values for fields like `updated_at`.")
 
   (post-select [this]
-    "Called on the results from a call to `sel`. Default implementation doesn't do anything, but
+    "Called on the results from a call to `select`. Default implementation doesn't do anything, but
      you can provide custom implementations to do things like add hydrateable keys or remove sensitive fields.")
 
   (pre-cascade-delete [this]
-    "Called by `cascade-delete` for each matching object that is about to be deleted.
+    "Called by `cascade-delete!` for each matching object that is about to be deleted.
      Implementations should delete any objects related to this object by recursively
-     calling `cascade-delete`.
+     calling `cascade-delete!`.
 
      The output of this function is ignored.
 
@@ -95,10 +87,10 @@
      *  `publicly-writeable?`")
 
   (default-fields ^clojure.lang.Sequential [this]
-    "Return a sequence of keyword field names that should be fetched by default when calling `sel` or invoking the entity (e.g., `(Database 1)`).")
+    "Return a sequence of keyword field names that should be fetched by default when calling `select` or invoking the entity (e.g., `(Database 1)`).")
 
   (timestamped? ^Boolean [this]
-    "Should `:created_at` and `:updated_at` be updated when calling `ins`, and `:updated_at` when calling `upd`? Default is `false`.")
+    "Should `:created_at` and `:updated_at` be updated when calling `insert!`, and `:updated_at` when calling `update!`? Default is `false`.")
 
   (hydration-keys ^clojure.lang.Sequential [this]
     "Return a sequence of keyword field names that should be hydrated to this model. For example, `User` might inclide `:creator`, which means `hydrate`
@@ -194,7 +186,6 @@
    :pre-insert         identity
    :post-insert        identity
    :pre-update         identity
-   :post-update        (constantly nil)
    :post-select        identity
    :pre-cascade-delete (constantly nil)})
 

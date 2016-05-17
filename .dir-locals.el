@@ -38,7 +38,6 @@
                               (org-perms-case 1)
                               (post-insert 1)
                               (post-select 1)
-                              (post-update 1)
                               (pre-cascade-delete 1)
                               (pre-insert 1)
                               (pre-update 1)
