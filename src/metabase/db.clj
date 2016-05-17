@@ -13,7 +13,6 @@
             [medley.core :as m]
             [ring.util.codec :as codec]
             [metabase.config :as config]
-            [metabase.db.internal :as i]
             [metabase.models.interface :as models]
             [metabase.util :as u]
             metabase.util.honeysql-extensions) ; this needs to be loaded so the `:h2` quoting style gets added
@@ -200,98 +199,15 @@
     (apply setup-db args)))
 
 
-;; # ---------------------------------------- OLD UTILITY FUNCTIONS ----------------------------------------
-
-;; ## SEL
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                         NEW HONEY-SQL BASED DB UTIL FUNCTIONS                                          |
+;;; +------------------------------------------------------------------------------------------------------------------------+
 
 (def ^:dynamic ^Boolean *disable-db-logging*
   "Should we disable logging for database queries? Normally `false`, but bind this to `true` to keep logging from getting too noisy during
    operations that require a lot of DB access, like the sync process."
   false)
 
-(defmacro ^:deprecated sel
-  "Wrapper for korma `select` that calls `post-select` on results and provides a few other conveniences.
-
-  ONE-OR-MANY tells `sel` how many objects to fetch and is either `:one` or `:many`.
-
-    (sel :one User :id 1)          -> returns the User (or nil) whose id is 1
-    (sel :many OrgPerm :user_id 1) -> returns sequence of OrgPerms whose user_id is 1
-
-  OPTION, if specified, is one of `:field`, `:fields`, `:id`, `:id->field`, `:field->id`, `:field->obj`, `:id->fields`,
-  `:field->field`, or `:field->fields`.
-
-    ;; Only return IDs of objects.
-    (sel :one :id User :email \"cam@metabase.com\") -> 120
-
-    ;; Only return the specified field.
-    (sel :many :field [User :first_name]) -> (\"Cam\" \"Sameer\" ...)
-
-    ;; Return map(s) that only contain the specified fields.
-    (sel :one :fields [User :id :first_name])
-      -> ({:id 1 :first_name \"Cam\"}, {:id 2 :first_name \"Sameer\"} ...)
-
-    ;; Return a map of ID -> field value
-    (sel :many :id->field [User :first_name])
-      -> {1 \"Cam\", 2 \"Sameer\", ...}
-
-    ;; Return a map of field value -> ID. Duplicates will be discarded!
-    (sel :many :field->id [User :first_name])
-      -> {\"Cam\" 1, \"Sameer\" 2}
-
-    ;; Return a map of field value -> field value.
-    (sel :many :field->field [User :first_name :last_name])
-      -> {\"Cam\" \"Saul\", \"Rasta\" \"Toucan\", ...}
-
-    ;; Return a map of field value -> *entire* object. Duplicates will be discarded!
-    (sel :many :field->obj [Table :name] :db_id 1)
-      -> {\"venues\" {:id 1, :name \"venues\", ...}
-          \"users\"  {:id 2, :name \"users\", ...}}
-
-    ;; Return a map of field value -> other fields.
-    (sel :many :field->fields [Table :name :id :db_id])
-      -> {\"venues\" {:id 1, :db_id 1}
-          \"users\"  {:id 2, :db_id 1}}
-
-    ;; Return a map of ID -> specified fields
-    (sel :many :id->fields [User :first_name :last_name])
-      -> {1 {:first_name \"Cam\", :last_name \"Saul\"},
-          2 {:first_Name \"Sameer\", :last_name ...}}
-
-  ENTITY may be either an entity like `User` or a vector like `[entity & field-keys]`.
-  If just an entity is passed, `sel` will return `default-fields` for ENTITY.
-  Otherwise, if a vector is passed `sel` will return the fields specified by FIELD-KEYS.
-
-    (sel :many [OrgPerm :admin :id] :user_id 1) -> return admin and id of OrgPerms whose user_id is 1
-
-  ENTITY may optionally be a fully-qualified symbol name of an entity; in this case, the symbol's namespace
-  will be required and the symbol itself resolved at runtime. This is sometimes neccesary to avoid circular
-  dependencies. This is slower, however, due to added runtime overhead.
-
-    ;; require/resolve metabase.models.table/Table. Then sel Table 1
-    (sel :one 'metabase.models.table/Table :id 1)
-
-  FORMS may be either keyword args, which will be added to a korma `where` clause, or [other korma
-  clauses](http://www.sqlkorma.com/docs#select) such as `order`, which are passed directly.
-
-    (sel :many Table :db_id 1)                    -> (select User (where {:id 1}))
-    (sel :many Table :db_id 1 (order :name :ASC)) -> (select User (where {:id 1}) (order :name ASC))"
-  {:arglists '([options? entity & forms])}
-  [& args]
-  (let [[option args] (u/optional keyword? args)]
-    `(~(if option
-         ;; if an option was specified, hand off to macro named metabase.db.internal/sel:OPTION
-         (symbol (format "metabase.db.internal/sel:%s" (name option)))
-         ;; otherwise just hand off to low-level sel* macro
-         'metabase.db.internal/sel*)
-      ~@args)))
-
-
-
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                         NEW HONEY-SQL BASED DB UTIL FUNCTIONS                                          |
-;;; +------------------------------------------------------------------------------------------------------------------------+
-
-;; THIS DEPRECATES THE *ENTIRE* `metabase.db.internal` namespace. Yay!
 
 (defn- entity-symb->ns
   "Return the namespace symbol where we'd expect to find an entity symbol.
@@ -617,22 +533,33 @@
   [entity & options]
   (apply select-field :id entity options))
 
-(defn select-field->obj
+(defn select-field->object
   "Select objects from the database, and return them as a map of FIELD to the objects themselves.
 
-     (select-field->obj :name 'Database) -> {\"Sample Dataset\" {...}, \"test-data\" {...}}"
+     (db/select-field->object :name 'Database) -> {\"Sample Dataset\" {...}, \"test-data\" {...}}"
   {:style/indent 2}
   [field entity & options]
   {:pre [(keyword? field)]}
   (into {} (for [result (apply select entity options)]
              {(field result) result})))
 
-(defn select-id->obj
+(defn select-field->objects
+  "Select objects from the database, and return a map of distinct values of FIELD to objects having that value.
+
+     ;; get a map of database ID -> tables with that database ID
+     (db/select-field->objects :db_id 'Table) -> 1 [...], 2 [...]}"
+  {:style/indent 2}
+  [field entity & options]
+  {:pre [(keyword? field)]}
+  (group-by field (apply select entity options)))
+
+(defn select-id->object
   "Select objects from the database, and return them as a map of their `:id` to the objects themselves.
 
-     (select-id->obj 'Database) -> {1 {...}, 2 {...}}"
+     (db/select-id->object 'Database) -> {1 {...}, 2 {...}}"
+  {:style/indent 1}
   [entity & options]
-  (apply select-field->obj :id entity options))
+  (apply select-field->object :id entity options))
 
 (defn select-field->field
   "Select fields K and V from objects in the database, and return them as a map from K to V.

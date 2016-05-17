@@ -1,6 +1,5 @@
 (ns metabase.api.database-test
   (:require [expectations :refer :all]
-            [korma.core :as k]
             (metabase [db :as db]
                       [driver :as driver])
             (metabase.models [database :refer [Database]]
@@ -79,7 +78,7 @@
 ;; Check that we can create a Database
 (let [db-name (random-name)]
   (expect-eval-actual-first
-      (match-$ (db/sel :one Database :name db-name)
+      (match-$ (Database :name db-name)
         {:created_at      $
          :engine          "postgres" ; string because it's coming back from API instead of DB
          :id              $
@@ -97,7 +96,7 @@
 ;; Check that we can delete a Database
 (expect-let [db-name (random-name)
              {db-id :id} (create-db db-name)
-             sel-db-name (fn [] (db/sel :one :field [Database :name] :id db-id))]
+             sel-db-name (fn [] (db/select-one-field :name Database, :id db-id))]
   [db-name
    nil]
   [(sel-db-name)
@@ -107,8 +106,9 @@
 ;; ## PUT /api/database/:id
 ;; Check that we can update fields in a Database
 (expect-let [[old-name new-name] (repeatedly 2 random-name)
-             {db-id :id} (create-db old-name)
-             sel-db (fn [] (db/sel :one :fields [Database :name :engine :details :is_full_sync] :id db-id))]
+             {db-id :id}         (create-db old-name)
+             sel-db              (fn [] (dissoc (into {} (db/select-one [Database :name :engine :details :is_full_sync], :id db-id))
+                                                :features))]
   [{:details      {:host "localhost", :port 5432, :dbname "fakedb", :user "cam", :ssl true}
     :engine       :postgres
     :name         old-name
@@ -146,7 +146,7 @@
                                          :description     nil
                                          :features        (mapv name (driver/features (driver/engine->driver engine)))})))
                                   ;; (?) I don't remember why we have to do this for postgres but not any other of the bonus drivers
-                                  (match-$ (db/sel :one Database :name db-name)
+                                  (match-$ (Database :name db-name)
                                     {:created_at      $
                                      :engine          "postgres"
                                      :id              $
@@ -171,7 +171,7 @@
 ;; GET /api/databases (include tables)
 (let [db-name (str "A" (random-name))] ; make sure this name comes before "test-data"
   (expect-eval-actual-first
-    (set (concat [(match-$ (db/sel :one Database :name db-name)
+    (set (concat [(match-$ (Database :name db-name)
                     {:created_at      $
                      :engine          "postgres"
                      :id              $
@@ -196,7 +196,7 @@
                                            :is_full_sync    true
                                            :organization_id nil
                                            :description     nil
-                                           :tables          (->> (db/sel :many Table :db_id (:id database))
+                                           :tables          (->> (db/select Table, :db_id (:id database))
                                                                  (mapv table-details)
                                                                  (sort-by :name))
                                            :features        (mapv name (driver/features (driver/engine->driver engine)))})))))))

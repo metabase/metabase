@@ -2,7 +2,6 @@
   "Preprocessor that does simple transformations to all incoming queries, simplifing the driver-specific implementations."
   (:require [clojure.walk :as walk]
             [clojure.tools.logging :as log]
-            [korma.core :as k]
             [medley.core :as m]
             schema.utils
             [swiss.arrows :refer [<<-]]
@@ -146,7 +145,7 @@
    etc, into their concrete details which are necessary for query formation by the executing driver."
   [qp]
   (fn [{database-id :database, :as query}]
-    (let [resolved-db (db/sel :one :fields [database/Database :name :id :engine :details] :id database-id)
+    (let [resolved-db (db/select-one [database/Database :name :id :engine :details], :id database-id)
           query       (if-not (mbql-query? query)
                         query
                         ;; for MBQL queries we expand first, then resolve
@@ -204,12 +203,12 @@
 (defn- fields-for-source-table
   "Return the all fields for SOURCE-TABLE, for use as an implicit `:fields` clause."
   [{source-table-id :id, :as source-table}]
-  (for [field (db/sel :many :fields [Field :name :display_name :base_type :special_type :visibility_type :display_name :table_id :id :position :description]
-                      :table_id        source-table-id
-                      :visibility_type [not-in ["sensitive" "retired"]]
-                      :parent_id       nil
-                      (k/order :position :asc)
-                      (k/order :id :desc))]
+  (for [field (db/select [Field :name :display_name :base_type :special_type :visibility_type :table_id :id :position :description]
+                :table_id        source-table-id
+                :visibility_type [:not-in ["sensitive" "retired"]]
+                :parent_id       nil
+                {:order-by [[:position :asc]
+                            [:id :desc]]})]
     (let [field (resolve/resolve-table (map->Field (resolve/rename-mb-field-keys field))
                                        {source-table-id source-table})]
       (if (datetime-field? field)

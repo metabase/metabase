@@ -1,6 +1,5 @@
 (ns metabase.models.table
-  (:require [korma.core :as k]
-            [metabase.db :as db]
+  (:require [metabase.db :as db]
             (metabase.models [common :as common]
                              [database :refer [Database]]
                              [field :refer [Field]]
@@ -32,7 +31,7 @@
 (defn ^:hydrate fields
   "Return the `FIELDS` belonging to TABLE."
   [{:keys [id]}]
-  (db/sel :many Field :table_id id, :visibility_type [not= "retired"], (k/order :position :ASC) (k/order :name :ASC)))
+  (db/select Field, :table_id id, :visibility_type [:not= "retired"], {:order-by [[:position :asc] [:name :asc]]}))
 
 (defn ^:hydrate metrics
   "Retrieve the metrics for TABLE."
@@ -48,16 +47,17 @@
   "Return the `FieldValues` for all `Fields` belonging to TABLE."
   {:hydrate :field_values, :arglists '([table])}
   [{:keys [id]}]
-  (let [field-ids (db/sel :many :id Field, :table_id id, :visibility_type "normal"
-                          (k/order :position :asc)
-                          (k/order :name :asc))]
-    (db/sel :many :field->field [FieldValues :field_id :values] :field_id [in field-ids])))
+  (let [field-ids (db/select-ids Field
+                    :table_id        id
+                    :visibility_type "normal"
+                    {:order-by [[:position :asc] [:name :asc]]})]
+    (db/select-field->field :field_id :values FieldValues, :field_id [:in field-ids])))
 
 (defn pk-field-id
   "Return the ID of the primary key `Field` for TABLE."
   {:hydrate :pk_field, :arglists '([table])}
   [{:keys [id]}]
-  (db/sel :one :id Field, :table_id id, :special_type "id", :visibility_type [not-in ["sensitive" "retired"]]))
+  (db/select-one-id Field, :table_id id, :special_type "id", :visibility_type [:not-in ["sensitive" "retired"]]))
 
 (def ^{:arglists '([table])} database
   "Return the `Database` associated with this `Table`."
@@ -80,22 +80,20 @@
   "Retrieve the `Database` ID for the given table-id."
   [table-id]
   {:pre [(integer? table-id)]}
-  (db/sel :one :field [Table :db_id] :id table-id))
+  (db/select-one-field :db_id Table, :id table-id))
 
 
 (defn retire-tables
   "Retire all `Tables` in the list of TABLE-IDs along with all of each tables `Fields`."
   [table-ids]
-  {:pre [(set? table-ids)
-         (every? integer? table-ids)]}
-  ;; retire the tables
-  (k/update Table
-    (k/where {:id [in table-ids]})
-    (k/set-fields {:active false}))
-  ;; retire the fields of retired tables
-  (k/update Field
-    (k/where {:table_id [in table-ids]})
-    (k/set-fields {:visibility_type "retired"})))
+  {:pre [(set? table-ids) (every? integer? table-ids)]}
+  (when (seq table-ids)
+    ;; retire the tables
+    (db/update! Table {:where [:in :id table-ids]
+                       :set   {:active false}})
+    ;; retire the fields of retired tables
+    (db/update! Field {:where [:in :table_id table-ids]
+                       :set   {:visibility_type "retired"}})))
 
 (defn update-table
   "Update `Table` with the data from TABLE-DEF."

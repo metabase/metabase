@@ -175,7 +175,7 @@
 (defn analyze-table-data-shape!
   "Analyze the data shape for a single `Table`."
   [driver {table-id :id, :as table}]
-  (let [new-field-ids (set (db/sel :many :id field/Field, :table_id table-id, :visibility_type [not= "retired"], :last_analyzed nil))]
+  (let [new-field-ids (db/select-ids field/Field, :table_id table-id, :visibility_type [:not= "retired"], :last_analyzed nil)]
     ;; TODO: this call should include the database
     (when-let [table-stats (u/prog1 (driver/analyze-table driver table new-field-ids)
                              (when <>
@@ -211,7 +211,7 @@
   (log/info (u/format-color 'blue "Analyzing data in %s database '%s' (this may take a while) ..." (name driver) (:name database)))
 
   (let [start-time-ns         (System/nanoTime)
-        tables                (db/sel :many table/Table :db_id database-id, :active true)
+        tables                (db/select table/Table, :db_id database-id, :active true)
         tables-count          (count tables)
         finished-tables-count (atom 0)]
     (doseq [{table-name :name, :as table} tables]

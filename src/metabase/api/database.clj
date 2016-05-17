@@ -1,7 +1,6 @@
 (ns metabase.api.database
   "/api/database endpoints."
   (:require [compojure.core :refer [GET POST PUT DELETE]]
-            [korma.core :as k]
             [metabase.api.common :refer :all]
             (metabase [config :as config]
                       [db :as db]
@@ -53,10 +52,10 @@
 (defendpoint GET "/"
   "Fetch all `Databases`."
   [include_tables]
-  (let [dbs (db/sel :many Database (k/order (k/sqlfn :LOWER :name)))]
+  (let [dbs (db/select Database {:order-by [:%lower.name]})]
     (if-not include_tables
       dbs
-      (let [db-id->tables (group-by :db_id (db/sel :many Table, :active true))]
+      (let [db-id->tables (db/select-field->objects :db_id Table, :active true)]
         (for [db dbs]
           (assoc db :tables (sort-by :name (get db-id->tables (:id db) []))))))))
 
@@ -95,7 +94,7 @@
   []
   (check-superuser)
   (sample-data/add-sample-dataset!)
-  (db/sel :one Database :is_sample true))
+  (Database :is_sample true))
 
 (defendpoint GET "/:id"
   "Get `Database` with ID."
@@ -105,9 +104,9 @@
 (defendpoint PUT "/:id"
   "Update a `Database`."
   [id :as {{:keys [name engine details is_full_sync]} :body}]
-  {name         [Required NonEmptyString]
-   engine       [Required DBEngine]
-   details      [Required Dict]}
+  {name    [Required NonEmptyString]
+   engine  [Required DBEngine]
+   details [Required Dict]}
   (check-superuser)
   (let-404 [database (Database id)]
     (let [details      (if-not (= protected-password (:password details))
@@ -155,22 +154,19 @@
    Suggestions include matching `Tables` and `Fields` in this `Database`."
   [id prefix] ; TODO - should prefix be Required/NonEmptyString ?
   (read-check Database id)
-  (let [prefix-len (count prefix)
-        table-id->name (->> (db/sel :many [Table :id :name] :db_id id :active true)                                             ; fetch all name + ID of all Tables for this DB
-                            (map (fn [{:keys [id name]}]                                                         ; make a map of Table ID -> Table Name
-                                   {id name}))
-                            (into {}))
+  (let [prefix-len      (count prefix)
+        table-id->name  (db/select-id->field :name Table, :db_id id, :active true)
         matching-tables (->> (vals table-id->name)                                                              ; get all Table names that start with PREFIX
                              (filter (fn [^String table-name]
                                        (and (>= (count table-name) prefix-len)
                                             (= prefix (.substring table-name 0 prefix-len)))))
-                             (map (fn [table-name]                                                               ; return them in the format [table_name "Table"]
+                             (map (fn [table-name]                                                              ; return them in the format [table_name "Table"]
                                     [table-name "Table"])))
-        fields (->> (db/sel :many [Field :name :base_type :special_type :table_id]                                 ; get all Fields with names that start with PREFIX
-                         :table_id [in (keys table-id->name)]                                                   ; whose Table is in this DB
-                         :name [like (str prefix "%")]
-                         :visibility_type [not-in ["sensitive" "retired"]])
-                    (map (fn [{:keys [name base_type special_type table_id]}]                                    ; return them in the format
+        fields (->> (db/select [Field :name :base_type :special_type :table_id]                                 ; get all Fields with names that start with PREFIX
+                      :table_id        [:in (keys table-id->name)]                                              ; whose Table is in this DB
+                      :name            [:like (str prefix "%")]
+                      :visibility_type [:not-in ["sensitive" "retired"]])
+                    (map (fn [{:keys [name base_type special_type table_id]}]                                   ; return them in the format
                            [name (str (table-id->name table_id) " " base_type (when special_type                ; [field_name "table_name base_type special_type"]
                                                                                 (str " " special_type)))])))]
     (concat matching-tables fields)))                                                                           ; return combined seq of Fields + Tables
@@ -179,14 +175,14 @@
   "Get a list of all `Tables` in `Database`."
   [id]
   (read-check Database id)
-  (db/sel :many Table :db_id id :active true (k/order :name)))
+  (db/select Table, :db_id id, :active true, {:order-by [:name]})) ; TODO - should this be case-insensitive -- {:order-by [:%lower.name]} -- instead?
 
 (defendpoint GET "/:id/idfields"
   "Get a list of all primary key `Fields` for `Database`."
   [id]
   (read-check Database id)
-  (let [table_ids (db/sel :many :id Table :db_id id :active true)]
-    (sort-by #(:name (:table %)) (-> (db/sel :many Field :table_id [in table_ids] :special_type "id")
+  (let [table_ids (db/select-ids Table, :db_id id, :active true)]
+    (sort-by #(:name (:table %)) (-> (db/select Field, :table_id [:in table_ids], :special_type "id")
                                      (hydrate :table)))))
 
 (defendpoint POST "/:id/sync"

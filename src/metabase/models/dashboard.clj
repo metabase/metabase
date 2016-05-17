@@ -1,6 +1,5 @@
 (ns metabase.models.dashboard
   (:require [clojure.data :refer [diff]]
-            [korma.core :as k]
             [metabase.db :as db]
             (metabase.models [dashboard-card :refer [DashboardCard] :as dashboard-card]
                              [interface :as i]
@@ -13,7 +12,7 @@
   "Return the `DashboardCards` associated with DASHBOARD, in the order they were created."
   {:hydrate :ordered_cards, :arglists '([dashboard])}
   [{:keys [id]}]
-  (db/sel :many DashboardCard, :dashboard_id id, (k/order :created_at :asc)))
+  (db/select DashboardCard, :dashboard_id id, {:order-by [[:created_at :asc]]}))
 
 (defn- pre-cascade-delete [{:keys [id]}]
   (db/cascade-delete! 'Revision :model "Dashboard" :model_id id)
@@ -52,7 +51,7 @@
   ;; Now update the cards as needed
   (let [serialized-cards    (:cards serialized-dashboard)
         id->serialized-card (zipmap (map :id serialized-cards) serialized-cards)
-        current-cards       (db/sel :many :fields [DashboardCard :sizeX :sizeY :row :col :id :card_id], :dashboard_id dashboard-id)
+        current-cards       (db/select [DashboardCard :sizeX :sizeY :row :col :id :card_id], :dashboard_id dashboard-id)
         id->current-card    (zipmap (map :id current-cards) current-cards)
         all-dashcard-ids    (concat (map :id serialized-cards)
                                     (map :id current-cards))]

@@ -5,8 +5,7 @@
                              [user :refer [User]])
             [metabase.util :as u]))
 
-(i/defentity Session :core_session
-  (k/belongs-to User {:fk :user_id}))
+(i/defentity Session :core_session)
 
 (defn- pre-insert [session]
   (assoc session :created_at (u/new-sql-timestamp)))
@@ -20,6 +19,6 @@
 
 (defn first-session-for-user
   "Retrieves the first Session `:id` for a given user (if available), or nil otherwise."
-  [user-id]
+  ^String [user-id]
   {:pre [(integer? user-id)]}
-  (db/sel :one :field [Session :id], :user_id user-id, (k/order :created_at :ASC)))
+  (db/select-one-id Session, :user_id user-id, {:order-by [[:created_at :asc]]}))

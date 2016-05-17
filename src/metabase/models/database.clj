@@ -1,6 +1,5 @@
 (ns metabase.models.database
   (:require [cheshire.generate :refer [add-encoder encode-map]]
-            [korma.core :as k]
             [metabase.api.common :refer [*current-user*]]
             [metabase.db :as db]
             [metabase.models.interface :as i]
@@ -26,7 +25,7 @@
 (defn ^:hydrate tables
   "Return the `Tables` associated with this `Database`."
   [{:keys [id]}]
-  (db/sel :many 'Table :db_id id, :active true, (k/order :display_name :ASC)))
+  (db/select 'Table, :db_id id, :active true, {:order-by [[:display_name :asc]]}))
 
 (u/strict-extend (class Database)
   i/IEntity

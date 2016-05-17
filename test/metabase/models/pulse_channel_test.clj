@@ -104,7 +104,7 @@
 (defn- create-channel-then-select!
   [channel]
   (when-let [new-channel-id (create-pulse-channel channel)]
-    (-> (db/sel :one PulseChannel :id new-channel-id)
+    (-> (PulseChannel new-channel-id)
         (hydrate :recipients)
         (update :recipients #(sort-by :email %))
         (dissoc :id :pulse_id :created_at :updated_at)
@@ -113,7 +113,7 @@
 (defn- update-channel-then-select!
   [{:keys [id] :as channel}]
   (update-pulse-channel channel)
-  (-> (db/sel :one PulseChannel :id id)
+  (-> (PulseChannel id)
       (hydrate :recipients)
       (dissoc :id :pulse_id :created_at :updated_at)
       (m/dissoc-in [:details :emails])))
@@ -256,16 +256,16 @@
 
 ;; update-recipients!
 (expect
-  [[]
-   [(user->id :rasta)]
-   [(user->id :crowberto)]
-   [(user->id :crowberto) (user->id :rasta)]
-   [(user->id :rasta) (user->id :trashbird)]]
+  [#{}
+   #{(user->id :rasta)}
+   #{(user->id :crowberto)}
+   #{(user->id :crowberto) (user->id :rasta)}
+   #{(user->id :rasta) (user->id :trashbird)}]
   (tu/with-temp* [Pulse        [{pulse-id :id}]
                   PulseChannel [{channel-id :id} {:pulse_id pulse-id}]]
     (let [upd-recipients! (fn [recipients]
                             (update-recipients! channel-id recipients)
-                            (db/sel :many :field [PulseChannelRecipient :user_id] :pulse_channel_id channel-id))]
+                            (db/select-field :user_id PulseChannelRecipient, :pulse_channel_id channel-id))]
       [(upd-recipients! [])
        (upd-recipients! [(user->id :rasta)])
        (upd-recipients! [(user->id :crowberto)])
@@ -276,19 +276,19 @@
 ;; retrieve-scheduled-channels
 ;; test a simple scenario with a single Pulse and 2 channels on hourly/daily schedules
 (expect
-  [[{:schedule_type "hourly", :channel_type "slack"}]
-   [{:schedule_type "hourly", :channel_type "slack"}]
-   [{:schedule_type "daily",  :channel_type "email"}
-    {:schedule_type "hourly", :channel_type "slack"}]
-   [{:schedule_type "daily",  :channel_type "email"}
-    {:schedule_type "hourly", :channel_type "slack"}]]
+  [[{:schedule_type :hourly, :channel_type :slack}]
+   [{:schedule_type :hourly, :channel_type :slack}]
+   [{:schedule_type :daily,  :channel_type :email}
+    {:schedule_type :hourly, :channel_type :slack}]
+   [{:schedule_type :daily,  :channel_type :email}
+    {:schedule_type :hourly, :channel_type :slack}]]
   (tu/with-temp* [Pulse        [{pulse-id :id}]
                   PulseChannel [_ {:pulse_id pulse-id}]
                   PulseChannel [_ {:pulse_id pulse-id, :channel_type :slack, :schedule_type :hourly}]
                   PulseChannel [_ {:pulse_id pulse-id, :channel_type :email, :schedule_type :hourly, :enabled false}]]
     (let [retrieve-channels (fn [hour day]
                               (for [channel (retrieve-scheduled-channels hour day :other :other)]
-                                (dissoc channel :id :pulse_id)))]
+                                (dissoc (into {} channel) :id :pulse_id)))]
       [(retrieve-channels nil nil)
        (retrieve-channels 12  nil)
        (retrieve-channels 15  nil)
@@ -296,13 +296,13 @@
 
 ;; more complex scenario with 2 Pulses, including weekly scheduling
 (expect
-  [[{:schedule_type "hourly", :channel_type "slack"}]
-   [{:schedule_type "hourly", :channel_type "slack"}
-    {:schedule_type "daily",  :channel_type "slack"}]
-   [{:schedule_type "daily",  :channel_type "email"}
-    {:schedule_type "hourly", :channel_type "slack"}]
-   [{:schedule_type "hourly", :channel_type "slack"}
-    {:schedule_type "weekly", :channel_type "email"}]]
+  [[{:schedule_type :hourly, :channel_type :slack}]
+   [{:schedule_type :hourly, :channel_type :slack}
+    {:schedule_type :daily,  :channel_type :slack}]
+   [{:schedule_type :daily,  :channel_type :email}
+    {:schedule_type :hourly, :channel_type :slack}]
+   [{:schedule_type :hourly, :channel_type :slack}
+    {:schedule_type :weekly, :channel_type :email}]]
   (tu/with-temp* [Pulse        [{pulse-1-id :id}]
                   Pulse        [{pulse-2-id :id}]
                   PulseChannel [_ {:pulse_id pulse-1-id, :enabled true, :channel_type :email, :schedule_type :daily}]
@@ -311,7 +311,7 @@
                   PulseChannel [_ {:pulse_id pulse-2-id, :enabled true, :channel_type :email, :schedule_type :weekly, :schedule_hour 8, :schedule_day "mon"}]]
     (let [retrieve-channels (fn [hour day]
                               (for [channel (retrieve-scheduled-channels hour day :other :other)]
-                                (dissoc channel :id :pulse_id)))]
+                                (dissoc (into {} channel) :id :pulse_id)))]
       [(retrieve-channels nil nil)
        (retrieve-channels 10  nil)
        (retrieve-channels 15  nil)
@@ -320,12 +320,12 @@
 ;; specific test for various monthly scheduling permutations
 (expect
   [[]
-   [{:schedule_type "monthly", :channel_type "email"}
-    {:schedule_type "monthly", :channel_type "slack"}]
-   [{:schedule_type "monthly", :channel_type "slack"}]
+   [{:schedule_type :monthly, :channel_type :email}
+    {:schedule_type :monthly, :channel_type :slack}]
+   [{:schedule_type :monthly, :channel_type :slack}]
    []
-   [{:schedule_type "monthly", :channel_type "slack"}]
-   [{:schedule_type "monthly", :channel_type "email"}]]
+   [{:schedule_type :monthly, :channel_type :slack}]
+   [{:schedule_type :monthly, :channel_type :email}]]
   (tu/with-temp* [Pulse        [{pulse-1-id :id}]
                   Pulse        [{pulse-2-id :id}]
                   PulseChannel [_ {:pulse_id pulse-1-id, :channel_type :email, :schedule_type :monthly, :schedule_hour 12, :schedule_frame :first}]
@@ -334,7 +334,7 @@
                   PulseChannel [_ {:pulse_id pulse-2-id, :channel_type :email, :schedule_type :monthly, :schedule_hour 8,  :schedule_day "fri", :schedule_frame :last}]]
     (let [retrieve-channels (fn [hour weekday monthday monthweek]
                               (for [channel (retrieve-scheduled-channels hour weekday monthday monthweek)]
-                                (dissoc channel :id :pulse_id)))]
+                                (dissoc (into {} channel) :id :pulse_id)))]
       ;; simple starter which should be empty
       [(retrieve-channels nil nil :other :other)
        ;; this should capture BOTH first absolute day of month + first monday of month schedules

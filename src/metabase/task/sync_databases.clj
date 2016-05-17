@@ -17,20 +17,18 @@
 (defonce ^:private sync-databases-trigger (atom nil))
 
 ;; simple job which looks up all databases and runs a sync on them
-(jobs/defjob SyncDatabases
-  [ctx]
-  (dorun
-    (for [database (db/sel :many Database :is_sample false)] ; skip Sample Dataset DB
-      (try
-        ;; NOTE: this happens synchronously for now to avoid excessive load if there are lots of databases
-        (if-not (and (= 0 (t/hour (t/now)))
-                     (driver/driver-supports? (driver/engine->driver (:engine database)) :dynamic-schema))
-          ;; most of the time we do a quick sync and avoid the lengthy analysis process
-          (sync-database/sync-database! database :full-sync? false)
-          ;; at midnight we run the full sync
-          (sync-database/sync-database! database :full-sync? true))
-        (catch Throwable e
-          (log/error "Error syncing database: " (:id database) e))))))
+(jobs/defjob SyncDatabases [_]
+  (doseq [database (db/select Database, :is_sample false)] ; skip Sample Dataset DB
+    (try
+      ;; NOTE: this happens synchronously for now to avoid excessive load if there are lots of databases
+      (if-not (and (= 0 (t/hour (t/now)))
+                   (driver/driver-supports? (driver/engine->driver (:engine database)) :dynamic-schema))
+        ;; most of the time we do a quick sync and avoid the lengthy analysis process
+        (sync-database/sync-database! database :full-sync? false)
+        ;; at midnight we run the full sync
+        (sync-database/sync-database! database :full-sync? true))
+      (catch Throwable e
+        (log/error "Error syncing database: " (:id database) e)))))
 
 (defn task-init
   "Automatically called during startup; start the job for syncing databases."

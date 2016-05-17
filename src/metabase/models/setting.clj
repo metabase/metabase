@@ -1,6 +1,7 @@
 (ns metabase.models.setting
   (:refer-clojure :exclude [get set])
-  (:require [clojure.string :as s]
+  (:require (clojure [string :as s]
+                     [walk :as walk])
             [environ.core :as env]
             [korma.core :as k]
             [metabase.config :as config]
@@ -71,7 +72,7 @@
   (restore-cache-if-needed)
   (if (contains? @cached-setting->value k)
     (@cached-setting->value k)
-    (let [v (db/sel :one :field [Setting :value] :key (name k))]
+    (let [v (db/select-one-field :value Setting, :key (name k))]
       (swap! cached-setting->value assoc k v)
       v)))
 
@@ -255,8 +256,7 @@
 (defn- restore-cache-if-needed []
   (when-not @cached-setting->value
     (db/setup-db-if-needed)
-    (reset! cached-setting->value (into {} (for [{k :key, v :value} (db/sel :many Setting)]
-                                             {(keyword k) v})))))
+    (reset! cached-setting->value (walk/keywordize-keys (db/select-field->field :key :value Setting)))))
 
 (def ^:private cached-setting->value
   "Map of setting name (keyword) -> string value, as they exist in the DB."

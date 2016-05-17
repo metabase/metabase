@@ -3,7 +3,6 @@
   (:require [clojure.tools.logging :as log]
             (cheshire factory
                       [generate :refer [add-encoder encode-str encode-nil]])
-            [korma.core :as k]
             [metabase.api.common :refer [*current-user* *current-user-id*]]
             [metabase.config :as config]
             [metabase.db :as db]
@@ -60,12 +59,11 @@
   (fn [{:keys [metabase-session-id] :as request}]
     ;; TODO - what kind of validations can we do on the sessionid to make sure it's safe to handle?  str?  alphanumeric?
     (handler (or (when (and metabase-session-id ((resolve 'metabase.core/initialized?)))
-                   (when-let [session (first (k/select Session
-                                                       ;; NOTE: we join with the User table and ensure user.is_active = true
-                                                       (k/with User (k/where {:is_active true}))
-                                                       (k/fields :created_at :user_id)
-                                                       (k/where {:id metabase-session-id})))]
-                     (let [session-age-ms (- (System/currentTimeMillis) (.getTime ^java.util.Date (get session :created_at (java.util.Date. 0))))]
+                   (when-let [session (db/select-one [Session :created_at :user_id]
+                                        {:left-join [(db/entity->table-name User) [:= (db/qualify User :id) :user_id]]
+                                         :where     [:and [:= (db/qualify User :is_active) true]
+                                                          [:= (db/qualify Session :id) metabase-session-id]]})]
+                     (let [session-age-ms (- (System/currentTimeMillis) (.getTime ^java.util.Date (get session :created_at (u/->Date 0))))]
                        ;; If the session exists and is not expired (max-session-age > session-age) then validation is good
                        (when (and session (> (config/config-int :max-session-age) (quot session-age-ms 60000)))
                          (assoc request :metabase-user-id (:user_id session))))))
@@ -89,7 +87,9 @@
   (fn [request]
     (if-let [current-user-id (:metabase-user-id request)]
       (binding [*current-user-id* current-user-id
-                *current-user*    (delay (db/sel :one `[User ~@(models/default-fields User) :is_active :is_staff], :id current-user-id))]
+                *current-user*    (delay (db/select-one (vec (concat [User :is_active :is_staff]
+                                                                     (models/default-fields User)))
+                                           :id current-user-id))]
         (handler request))
       (handler request))))
 

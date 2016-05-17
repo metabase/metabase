@@ -1,7 +1,6 @@
 (ns metabase.api.activity-test
   "Tests for /api/activity endpoints."
   (:require [expectations :refer :all]
-            [korma.core :as k]
             [metabase.db :as db]
             [metabase.http-client :refer :all]
             (metabase.models [activity :refer [Activity]]
@@ -20,7 +19,7 @@
 ;  2. :user and :model_exists are hydrated
 
 ; NOTE: timestamp matching was being a real PITA so I cheated a bit.  ideally we'd fix that
-(expect-let [_         (k/delete Activity)
+(expect-let [_         (db/cascade-delete! Activity)
              activity1 (db/insert! Activity
                          :topic     "install"
                          :details   {}
@@ -40,7 +39,7 @@
                          :model     "user"
                          :details   {}
                          :timestamp (u/->Timestamp "2015-09-10T05:33:43.641Z"))]
-  [(match-$ (db/sel :one Activity :id (:id activity2))
+  [(match-$ (Activity (:id activity2))
      {:id           $
       :topic        "dashboard-create"
       :user_id      $
@@ -63,7 +62,7 @@
       :table        nil
       :custom_id    nil
       :details      $})
-   (match-$ (db/sel :one Activity :id (:id activity3))
+   (match-$ (Activity (:id activity3))
      {:id           $
       :topic        "user-joined"
       :user_id      $
@@ -86,7 +85,7 @@
       :table        nil
       :custom_id    nil
       :details      $})
-   (match-$ (db/sel :one Activity :id (:id activity1))
+   (match-$ (Activity (:id activity1))
      {:id           $
       :topic        "install"
       :user_id      nil
