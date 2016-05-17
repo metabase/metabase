@@ -442,7 +442,7 @@
 
 (defn simple-insert!
   "Do a raw JDBC `insert!` for a single row. Insert map M into the table named by keyword TABLE-KW. Returns ID of the inserted row (if applicable).
-   Normally, you shouldn't call this directly; use `insert!` instead, which handles entity resolution and calls `pre-insert` and `post-insert`.
+   Normally, you shouldn't call this directly; use `insert!` instead, which handles entity resolution and calls `pre-insert`.
 
      (simple-insert! :label {:name \"Cam\", :slug \"cam\"}) -> 1"
   [table-kw m]
@@ -451,19 +451,18 @@
 
 (defn insert!
   "Insert a new object into the Database. Resolves ENTITY, and calls its `pre-insert` method on OBJECT to prepare it before insertion;
-   after insertion, it calls `post-insert` on the newly created object and returns it.
+   after insert, it fetches and returns the newly created object.
    For flexibility, `insert!` OBJECT can be either a single map or individual kwargs:
 
      (insert! Label {:name \"Toucan Unfriendly\"})
-     (insert! 'Label :name \"Toucan Friendly\")
-
-   This fetches the newly created object from the database and passes it to the entity's `post-insert` method, ultimately returning the object."
+     (insert! 'Label :name \"Toucan Friendly\")"
   {:style/indent 1}
   ([entity object]
    {:pre [(map? object)]}
    (let [entity (resolve-entity entity)
          id     (simple-insert! (entity->table-name entity) (models/do-pre-insert entity object))]
-     (some-> id entity models/post-insert)))
+     (when id
+       (entity id))))
 
   ([entity k v & more]
    (insert! entity (apply array-map k v more))))

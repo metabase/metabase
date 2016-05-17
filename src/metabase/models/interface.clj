@@ -49,11 +49,6 @@
            (let [defaults {:version 1}]
              (merge defaults query))) ; set some default values")
 
-  (post-insert [this]
-    "Gets called by `insert!` after an object is inserted into the DB. (This object is fetched via `select`).
-     A good place to do asynchronous tasks such as creating related objects.
-     Implementations should return the newly created object.")
-
   (pre-update [this]
     "Called by `update!` before DB operations happen. A good place to set updated values for fields like `updated_at`.")
 
@@ -184,7 +179,6 @@
    :can-read?          (fn [this & _] (throw (UnsupportedOperationException. (format "No implementation of can-read? for %s; please provide one."  (class this)))))
    :can-write?         (fn [this & _] (throw (UnsupportedOperationException. (format "No implementation of can-write? for %s; please provide one." (class this)))))
    :pre-insert         identity
-   :post-insert        identity
    :pre-update         identity
    :post-select        identity
    :pre-cascade-delete (constantly nil)})

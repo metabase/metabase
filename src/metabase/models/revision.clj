@@ -60,16 +60,12 @@
 
 ;;; # Revision Entity
 
-(defn- post-select [{:keys [message] :as revision}]
-  (assoc revision :message (u/jdbc-clob->str message)))
-
 (i/defentity Revision :revision)
 
 (u/strict-extend (class Revision)
   i/IEntity
   (merge i/IEntityDefaults
-         {:types        (constantly {:object :json})
-          :post-select  post-select
+         {:types        (constantly {:object :json, :message :clob})
           :pre-insert   (u/rpartial assoc :timestamp (u/new-sql-timestamp))
           :pre-update   (fn [& _] (throw (Exception. "You cannot update a Revision!")))}))
 
