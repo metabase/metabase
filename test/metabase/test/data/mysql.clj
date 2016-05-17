@@ -36,7 +36,7 @@
 (u/strict-extend MySQLDriver
   generic/IGenericSQLDatasetLoader
   (merge generic/DefaultsMixin
-         {:execute-sql!              generic/sequentially-execute-sql!                  ; TODO - we might be able to do SQL all at once by setting `allowMultiQueries=true` on the connection string
+         {:execute-sql!              generic/sequentially-execute-sql!              ; TODO - we might be able to do SQL all at once by setting `allowMultiQueries=true` on the connection string
           :field-base-type->sql-type (u/drop-first-arg field-base-type->sql-type)
           :load-data!                generic/load-data-all-at-once!
           :pk-sql-type               (constantly "INTEGER NOT NULL AUTO_INCREMENT")

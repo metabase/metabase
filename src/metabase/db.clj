@@ -339,6 +339,10 @@
     :mysql    :mysql
     :postgres :ansi))
 
+(def ^:private quote-fn
+  "The function that JDBC should use to quote identifiers for our database. This is passed as the `:entities` option to functions like `jdbc/insert!`."
+  (quoting-style @(resolve 'hformat/quote-fns)))
+
 (defn- honeysql->sql
   "Compile HONEYSQL-FORM to SQL.
   This returns a vector with the SQL string as its first item and prepared statement params as the remaining items."
@@ -361,6 +365,7 @@
 
      (entity->table-name 'CardFavorite) -> :report_cardfavorite"
   ^clojure.lang.Keyword [entity]
+  {:post [(keyword? %)]}
   (keyword (:table (resolve-entity entity))))
 
 (defn- entity->fields
@@ -505,6 +510,7 @@
   ([entity k v & more]
    (delete! entity (apply array-map k v more))))
 
+
 ;;; ## INSERT!
 
 (defn insert!
@@ -513,13 +519,16 @@
    For flexibility, `insert!` OBJECT can be either a single map or individual kwargs:
 
      (insert! Label {:name \"Toucan Unfriendly\"})
-     (insert! 'Label :name \"Toucan Friendly\")"
+     (insert! 'Label :name \"Toucan Friendly\")
+
+   This fetches the newly created object from the database and passes it to the entity's `post-insert` method, ultimately returning the object."
   {:style/indent 1}
   ([entity object]
    {:pre [(map? object) (every? keyword? (keys object))]}
    (let [entity (resolve-entity entity)
          object (models/do-pre-insert entity object)
-         id     (first (vals (first (jdbc/insert! (db-connection) (entity->table-name entity) object))))]
+         id     (first (vals (first (jdbc/insert! (db-connection) (entity->table-name entity) object
+                                      :entities quote-fn))))]
      (some-> id entity models/post-insert)))
 
   ([entity k v & more]
@@ -641,7 +650,7 @@
     (db/exists? User :id 100)
    NOTE: This only works for objects that have an `:id` field."
   ^Boolean [entity & kvs]
-  (boolean (select-one entity (apply where (h/select :id) kvs))))
+  (boolean (select-one entity (apply where (h/select {} :id) kvs))))
 
 
 ;;; ## CASADE-DELETE
