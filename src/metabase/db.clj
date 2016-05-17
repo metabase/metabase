@@ -513,6 +513,22 @@
 
 ;;; ## INSERT!
 
+(def ^:private ^:const ^clojure.lang.Keyword insert-id-key
+  "The keyword name of the ID column of a newly inserted row returned by `jdbc/insert!`."
+  (case db-type
+    :postgres :id
+    :mysql    :generated_key
+    :h2       (keyword "scope_identity()")))
+
+(defn simple-insert!
+  "Do a raw JDBC `insert!` for a single row. Insert map M into the table named by keyword TABLE-KW. Returns ID of the inserted row (if applicable).
+   Normally, you shouldn't call this directly; use `insert!` instead, which handles entity resolution and calls `pre-insert` and `post-insert`.
+
+     (simple-insert! :label {:name \"Cam\", :slug \"cam\"}) -> 1"
+  [table-kw m]
+  {:pre  [(keyword? table-kw) (map? m) (every? keyword? (keys m))]}
+  (insert-id-key (first (jdbc/insert! (db-connection) table-kw m, :entities quote-fn))))
+
 (defn insert!
   "Insert a new object into the Database. Resolves ENTITY, and calls its `pre-insert` method on OBJECT to prepare it before insertion;
    after insertion, it calls `post-insert` on the newly created object and returns it.
@@ -524,11 +540,9 @@
    This fetches the newly created object from the database and passes it to the entity's `post-insert` method, ultimately returning the object."
   {:style/indent 1}
   ([entity object]
-   {:pre [(map? object) (every? keyword? (keys object))]}
+   {:pre [(map? object)]}
    (let [entity (resolve-entity entity)
-         object (models/do-pre-insert entity object)
-         id     (first (vals (first (jdbc/insert! (db-connection) (entity->table-name entity) object
-                                      :entities quote-fn))))]
+         id     (simple-insert! (entity->table-name entity) (models/do-pre-insert entity object))]
      (some-> id entity models/post-insert)))
 
   ([entity k v & more]
