@@ -328,7 +328,7 @@
    (Databases aren't expected to change their types, and this optimization makes things a lot faster).
 
    This loads the corresponding driver if needed."
-  (let [db-id->engine (memoize (fn [db-id] (db/sel :one :field [Database :engine] :id db-id)))]
+  (let [db-id->engine (memoize (fn [db-id] (db/select-one-field :engine Database, :id db-id)))]
     (fn [db-id]
       (engine->driver (db-id->engine db-id)))))
 

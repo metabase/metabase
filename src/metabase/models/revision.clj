@@ -93,7 +93,7 @@
   [entity id]
   {:pre [(i/metabase-entity? entity)
          (integer? id)]}
-  (db/sel :many Revision :model (:name entity), :model_id id, (k/order :id :DESC)))
+  (db/select Revision, :model (:name entity), :model_id id, {:order-by [[:id :desc]]}))
 
 (defn revisions+details
   "Fetch `revisions` for ENTITY with ID and add details."
@@ -109,7 +109,7 @@
   "Delete old revisions of ENTITY with ID when there are more than `max-revisions` in the DB."
   [entity id]
   {:pre [(i/metabase-entity? entity) (integer? id)]}
-  (when-let [old-revisions (seq (drop max-revisions (db/sel :many :id Revision, :model (:name entity), :model_id id, (k/order :timestamp :DESC))))]
+  (when-let [old-revisions (seq (drop max-revisions (map :id (db/select [Revision :id], :model (:name entity), :model_id id, {:order-by [[:timestamp :desc]]}))))]
     (db/cascade-delete! Revision :id [:in old-revisions])))
 
 (defn push-revision
@@ -149,12 +149,12 @@
          (integer? user-id)
          (db/exists? User :id user-id)
          (integer? revision-id)]}
-  (let [serialized-instance (db/sel :one :field [Revision :object] :model (:name entity), :model_id id, :id revision-id)]
+  (let [serialized-instance (db/select-one-field :object Revision, :model (:name entity), :model_id id, :id revision-id)]
     (kdb/transaction
       ;; Do the reversion of the object
       (revert-to-revision entity id user-id serialized-instance)
       ;; Push a new revision to record this change
-      (let [last-revision (db/sel :one Revision, :model (:name entity), :model_id id, (k/order :id :DESC))
+      (let [last-revision (Revision :model (:name entity), :model_id id, {:order-by [[:id :desc]]})
             new-revision  (db/insert! Revision
                             :model        (:name entity)
                             :model_id     id

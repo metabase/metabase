@@ -223,14 +223,13 @@
    and have their own unique record type.
 
    `defentity` defines a backing record type following the format `<entity>Instance`. For example, the class associated with
-   `User` is `metabase.models.user/UserInstance`. This class is used for both the titular korma entity (e.g. `User`) and
+   `User` is `metabase.models.user/UserInstance`. This class is used for both the titular entity (e.g. `User`) and
    for objects that are fetched from the DB. This means they can share the `IEntity` protocol and simplifies the interface
    somewhat; functions like `types` work on either the entity or instances fetched from the DB.
 
-     (defentity User :metabase_user)  ; creates class `UserInstance` and korma entity `User`
+     (defentity User :metabase_user) ; creates class `UserInstance` and DB entity `User`
 
-     (metabase.db/sel :one User, ...) ; use with `metabase.db` functions. All results are instances of `UserInstance`
-     (korma.core/select User ...)     ; use with korma functions. Results will be regular maps
+     (metabase.db/select User, ...)  ; use with `metabase.db` functions. All results are instances of `UserInstance`
 
    The record type automatically extends `IEntity` with `IEntityDefaults`, but you may call `extend` again if you need to
    override default behaviors:
@@ -244,12 +243,12 @@
 
      (Database)                       ; return a seq of *all* Databases (as instances of `DatabaseInstance`)
      (Database 1)                     ; return Database 1"
-  {:arglist      '([entity table-name] [entity docstr? table-name & korma-forms])
+  {:arglist      '([entity table-name] [entity docstr? table-name])
    :style/indent 2}
   [entity & args]
-  (let [[docstr [table-name & korma-forms]] (u/optional string? args)
-        instance                            (symbol (str entity "Instance"))
-        map->instance                       (symbol (str "map->" instance))]
+  (let [[docstr [table-name]] (u/optional string? args)
+        instance              (symbol (str entity "Instance"))
+        map->instance         (symbol (str "map->" instance))]
     `(do
        (defrecord ~instance []
          clojure.lang.IFn
@@ -305,6 +304,5 @@
                                       (format "Korma entity for '%s' table; instance of %s." (name table-name) instance)))
          (-> (k/create-entity ~(name entity))
              (k/table ~table-name)
-             ~@korma-forms
              (assoc ::entity true)
              ~map->instance)))))

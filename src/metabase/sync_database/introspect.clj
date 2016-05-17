@@ -31,9 +31,9 @@
 
     ;; now lookup column-ids and set the fks on this table as needed
     (doseq [{:keys [fk-column-name dest-column-name dest-table]} fks]
-      (when-let [source-column-id (db/sel :one :field [RawColumn :id], :raw_table_id table-id, :name fk-column-name)]
-        (when-let [dest-table-id (db/sel :one :field [RawTable :id], :database_id database-id, :schema (:schema dest-table), :name (:name dest-table))]
-          (when-let [dest-column-id (db/sel :one :id RawColumn, :raw_table_id dest-table-id, :name dest-column-name)]
+      (when-let [source-column-id (db/select-one-id RawColumn, :raw_table_id table-id, :name fk-column-name)]
+        (when-let [dest-table-id (db/select-one-id RawTable, :database_id database-id, :schema (:schema dest-table), :name (:name dest-table))]
+          (when-let [dest-column-id (db/select-one-id RawColumn, :raw_table_id dest-table-id, :name dest-column-name)]
             (log/debug (u/format-color 'cyan "Marking foreign key '%s.%s' -> '%s.%s'." (named-table table) fk-column-name (named-table dest-table) dest-column-name))
             (db/update! RawColumn source-column-id
               :fk_target_column_id dest-column-id)))))))
@@ -44,11 +44,10 @@
   [{:keys [id]} columns]
   {:pre [(integer? id) (coll? columns) (every? map? columns)]}
   (kdb/transaction
-    (let [existing-columns (into {} (for [{:keys [name] :as column} (db/sel :many :fields [RawColumn :id :name] :raw_table_id id)]
-                                      {name column}))]
+    (let [raw-column-name->id (db/select-field->id :name RawColumn, :raw_table_id id)]
 
       ;; deactivate any columns which were removed
-      (doseq [[column-name {column-id :id}] (sort-by :name existing-columns)]
+      (doseq [[column-name column-id] (sort-by first raw-column-name->id)]
         (when-not (some #(= column-name (:name %)) columns)
           (log/debug (u/format-color 'cyan "Marked column %s as inactive." column-name))
           (db/update! RawColumn column-id, :active false)))
@@ -59,7 +58,7 @@
                              {:base-type base-type}
                              (when special-type {:special-type special-type}))
               is_pk   (true? pk?)]
-          (if-let [{column-id :id} (get existing-columns column-name)]
+          (if-let [column-id (get raw-column-name->id column-name)]
             ;; column already exists, update it
             (db/update! RawColumn column-id
               :name    column-name
@@ -118,8 +117,8 @@
 (defn introspect-raw-table-and-update!
   "Introspect a single `RawTable` and persist the results as `RawTables` and `RawColumns`.
    Uses the various `describe-*` functions on the IDriver protocol to gather information."
-  [driver database raw-tbl]
-  (let [table-def (select-keys raw-tbl [:schema :name])
+  [driver database raw-table]
+  (let [table-def (select-keys raw-table [:schema :name])
         table-def (if (contains? (driver/features driver) :dynamic-schema)
                     ;; dynamic schemas are handled differently, we'll handle them elsewhere
                     (assoc table-def :fields [])
@@ -129,16 +128,16 @@
 
     ;; save the latest updates from the introspection
     (if table-def
-      (update-raw-table! raw-tbl table-def)
+      (update-raw-table! raw-table table-def)
       ;; if we didn't get back a table-def then this table must not exist anymore
-      (disable-raw-tables! [(:id raw-tbl)]))
+      (disable-raw-tables! [(:id raw-table)]))
 
     ;; if we support FKs then try updating those as well
     (when (and table-def
                (contains? (driver/features driver) :foreign-keys))
       (when-let [table-fks (u/prog1 (driver/describe-table-fks driver database table-def)
                              (schema/validate i/DescribeTableFKs <>))]
-        (save-all-table-fks! raw-tbl table-fks)))))
+        (save-all-table-fks! raw-table table-fks)))))
 
 
 ;;; ------------------------------------------------------------ INTROSPECT-DATABASE-AND-UPDATE-RAW-TABLES! ------------------------------------------------------------
@@ -156,8 +155,8 @@
                           ;; static schema databases get introspected now
                           (u/prog1 (driver/describe-table driver database table-def)
                             (schema/validate i/DescribeTable <>)))]
-          (if-let [raw-tbl (get existing-tables (select-keys table-def [:schema :name]))]
-            (update-raw-table! raw-tbl table-def)
+          (if-let [raw-table (get existing-tables (select-keys table-def [:schema :name]))]
+            (update-raw-table! raw-table table-def)
             (create-raw-table! (:id database) table-def)))
         (catch Throwable t
           (log/error (u/format-color 'red "Unexpected error introspecting table schema: %s" (named-table table-schema table-name)) t))
@@ -183,8 +182,8 @@
       (try
         (when-let [table-fks (u/prog1 (driver/describe-table-fks driver database table-def)
                                (schema/validate i/DescribeTableFKs <>))]
-          (when-let [raw-tbl (db/sel :one RawTable :database_id (:id database), :schema table-schema, :name table-name)]
-            (save-all-table-fks! raw-tbl table-fks)))
+          (when-let [raw-table (RawTable :database_id (:id database), :schema table-schema, :name table-name)]
+            (save-all-table-fks! raw-table table-fks)))
         (catch Throwable t
           (log/error (u/format-color 'red "Unexpected error introspecting table fks: %s" (named-table table-schema table-name)) t))))))
 
@@ -194,8 +193,8 @@
     ;; This is a protection against cases where the returned table-def has no :schema key
     (map (u/rpartial update :schema identity) tables)))
 
-(defn- db->existing-tables [database]
-  (into {} (for [{:keys [name schema] :as table} (db/sel :many :fields [RawTable :id :schema :name] :database_id (:id database))]
+(defn- db->name+schema->table [database]
+  (into {} (for [{:keys [name schema] :as table} (db/select [RawTable :id :schema :name], :database_id (:id database))]
              {{:name name, :schema schema} table})))
 
 
@@ -204,12 +203,12 @@
    Uses the various `describe-*` functions on the IDriver protocol to gather information."
   [driver database]
   (log/info (u/format-color 'magenta "Introspecting schema on %s database '%s' ..." (name driver) (:name database)))
-  (let [start-time-ns    (System/nanoTime)
-        tables           (db->tables driver database)
-        existing-tables  (db->existing-tables database)]
+  (let [start-time-ns      (System/nanoTime)
+        tables             (db->tables driver database)
+        name+schema->table (db->name+schema->table database)]
 
-    (introspect-tables! driver database tables existing-tables)
-    (disable-old-tables! tables existing-tables)
+    (introspect-tables! driver database tables name+schema->table)
+    (disable-old-tables! tables name+schema->table)
     (sync-fks! driver database tables)
 
     (log/info (u/format-color 'magenta "Introspection completed on %s database '%s' (%s)" (name driver) (:name database) (u/format-nanoseconds (- (System/nanoTime) start-time-ns))))))

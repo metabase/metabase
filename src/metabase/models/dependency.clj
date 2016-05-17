@@ -30,7 +30,7 @@
   [entity id]
   {:pre [(i/metabase-entity? entity)
          (integer? id)]}
-  (db/sel :many Dependency :model (:name entity) :model_id id))
+  (db/select Dependency, :model (:name entity), :model_id id))
 
 (defn update-dependencies
   "Update the set of `Dependency` objects for a given entity."
@@ -44,7 +44,7 @@
                            (when (every? integer? (k deps))
                              (for [val (k deps)]
                                {:dependent_on_model (name k), :dependent_on_id val})))
-        dependencies-old (set (db/sel :many :fields [Dependency :dependent_on_model :dependent_on_id] :model entity-name :model_id id))
+        dependencies-old (set (db/select [Dependency :dependent_on_model :dependent_on_id], :model entity-name, :model_id id))
         dependencies-new (->> (mapv dependency-set (keys deps))
                               (filter identity)
                               flatten

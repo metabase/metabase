@@ -21,7 +21,7 @@
   [cards]
   (let [card-labels          (db/select [CardLabel :card_id :label_id])
         label-id->label      (when (seq card-labels)
-                               (db/select-id->obj Label :id [:in (map :label_id card-labels)]))
+                               (db/select-id->object Label :id [:in (map :label_id card-labels)]))
         card-id->card-labels (group-by :card_id card-labels)]
     (for [card cards]
       (assoc card :labels (for [card-label (card-id->card-labels (:id card))] ; TODO - do these need to be sorted ?
@@ -68,7 +68,7 @@
    Make sure cards are returned in the same order as CARD-IDS`; `[in card-ids]` won't preserve the order."
   [card-ids]
   {:pre [(every? integer? card-ids)]}
-  (let [card-id->card (db/select-id->obj Card, :id [:in card-ids], :archived false)]
+  (let [card-id->card (db/select-id->object Card, :id [:in card-ids], :archived false)]
     (filter identity (map card-id->card card-ids))))
 
 (defn- cards:recent

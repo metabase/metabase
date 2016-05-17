@@ -82,7 +82,7 @@
   "Fetch a single `Segment` by its ID value."
   [id]
   {:pre [(integer? id)]}
-  (-> (db/sel :one Segment :id id)
+  (-> (Segment id)
       (hydrate :creator)))
 
 (defn retrieve-segments
@@ -93,8 +93,8 @@
   ([table-id state]
    {:pre [(integer? table-id) (keyword? state)]}
    (-> (if (= :all state)
-         (db/sel :many Segment :table_id table-id (k/order :name :ASC))
-         (db/sel :many Segment :table_id table-id :is_active (if (= :active state) true false) (k/order :name :ASC)))
+         (db/select Segment, :table_id table-id, {:order-by [[:name :asc]]})
+         (db/select Segment, :table_id table-id, :is_active (= :active state), {:order-by [[:name :asc]]}))
        (hydrate :creator))))
 
 (defn update-segment

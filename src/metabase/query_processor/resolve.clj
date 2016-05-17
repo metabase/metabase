@@ -25,14 +25,14 @@
 (defn rename-mb-field-keys
   "Rename the keys in a Metabase `Field` to match the format of those in Query Expander `Fields`."
   [field]
-  (set/rename-keys field {:id              :field-id
-                          :name            :field-name
-                          :display_name    :field-display-name
-                          :special_type    :special-type
-                          :visibility_type :visibility-type
-                          :base_type       :base-type
-                          :table_id        :table-id
-                          :parent_id       :parent-id}))
+  (set/rename-keys (into {} field) {:id              :field-id
+                                    :name            :field-name
+                                    :display_name    :field-display-name
+                                    :special_type    :special-type
+                                    :visibility_type :visibility-type
+                                    :base_type       :base-type
+                                    :table_id        :table-id
+                                    :parent_id       :parent-id}))
 
 ;;; # ------------------------------------------------------------ IRESOLVE PROTOCOL ------------------------------------------------------------
 
@@ -183,8 +183,8 @@
         ;; If there are no more Field IDs to resolve we're done.
         expanded-query-dict
         ;; Otherwise fetch + resolve the Fields in question
-        (let [fields (->> (db/sel :many :id->fields [field/Field :name :display_name :base_type :special_type :visibility_type :table_id :parent_id :description]
-                                  :id [in field-ids])
+        (let [fields (->> (db/select-id->object [field/Field :name :display_name :base_type :special_type :visibility_type :table_id :parent_id :description :id]
+                            :id [:in field-ids])
                           (m/map-vals rename-mb-field-keys)
                           (m/map-vals #(assoc % :parent (when-let [parent-id (:parent-id %)]
                                                           (map->FieldPlaceholder {:field-id parent-id})))))]
@@ -204,15 +204,19 @@
     (when-not (seq fk-field-ids)
       (throw (Exception. "You must use the fk-> form to reference Fields that are not part of the source_table.")))
     (let [ ;; Build a map of source table FK field IDs -> field names
-          fk-field-id->field-name      (db/sel :many :id->field [field/Field :name], :id [in fk-field-ids], :table_id source-table-id, :special_type "fk")
+          fk-field-id->field-name      (db/select-id->field :name field/Field
+                                         :id           [:in fk-field-ids]
+                                         :table_id     source-table-id
+                                         :special_type "fk")
 
           ;; Build a map of join table PK field IDs -> source table FK field IDs
-          pk-field-id->fk-field-id     (db/sel :many :field->field [field/Field :fk_target_field_id :id],
-                                               :id                 [in (set (keys fk-field-id->field-name))]
-                                               :fk_target_field_id [not= nil])
+          pk-field-id->fk-field-id     (db/select-field->id :fk_target_field_id field/Field
+                                         :id                 [:in (keys fk-field-id->field-name)]
+                                         :fk_target_field_id [:not= nil])
 
           ;; Build a map of join table ID -> PK field info
-          join-table-id->pk-field      (let [pk-fields (db/sel :many :fields [field/Field :id :table_id :name], :id [in (set (keys pk-field-id->fk-field-id))])]
+          join-table-id->pk-field      (let [pk-fields (db/select [field/Field :id :table_id :name]
+                                                         :id [:in (keys pk-field-id->fk-field-id)])]
                                          (zipmap (map :table_id pk-fields) pk-fields))]
 
       ;; Now build the :join-tables clause
@@ -232,7 +236,8 @@
   [{{source-table-id :source-table} :query, :keys [table-ids fk-field-ids], :as expanded-query-dict}]
   {:pre [(integer? source-table-id)]}
   (let [table-ids       (conj table-ids source-table-id)
-        table-id->table (db/sel :many :id->fields [Table :schema :name :id], :id [in table-ids])
+        table-id->table (db/select-id->object [Table :schema :name :id]
+                          :id [:in table-ids])
         join-tables     (vals (dissoc table-id->table source-table-id))]
     (as-> expanded-query-dict <>
       (assoc-in <> [:query :source-table] (or (table-id->table source-table-id)

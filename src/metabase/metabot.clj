@@ -6,7 +6,6 @@
             [clojure.tools.logging :as log]
             [aleph.http :as aleph]
             [cheshire.core :as json]
-            [korma.core :as k]
             (manifold [bus :as bus]
                       [deferred :as d]
                       [stream :as s])
@@ -72,18 +71,18 @@
 (defn ^:metabot list
   "Implementation of the `metabot list cards` command."
   [& _]
-  (let [cards (db/sel :many :fields ['Card :id :name] (k/order :id :DESC) (k/limit 20))]
+  (let [cards (db/select ['Card :id :name], {:order-by [[:id :desc]], :limit 20})]
     (str "Here's your " (count cards) " most recent cards:\n" (format-cards cards))))
 
 (defn- card-with-name [card-name]
-  (first (u/prog1 (db/sel :many :fields ['Card :id :name], (k/where {(k/sqlfn :LOWER :name) [like (str \% (str/lower-case card-name) \%)]}))
+  (first (u/prog1 (db/select ['Card :id :name], :%lower.name [:like (str \% (str/lower-case card-name) \%)])
            (when (> (count <>) 1)
              (throw (Exception. (str "Could you be a little more specific? I found these cards with names that matched:\n"
                                      (format-cards <>))))))))
 
 (defn- id-or-name->card [card-id-or-name]
   (cond
-    (integer? card-id-or-name)     (db/sel :one :fields ['Card :id :name], :id card-id-or-name)
+    (integer? card-id-or-name)     (db/select-one ['Card :id :name], :id card-id-or-name)
     (or (string? card-id-or-name)
         (symbol? card-id-or-name)) (card-with-name card-id-or-name)
     :else                          (throw (Exception. (format "I don't know what Card `%s` is. Give me a Card ID or name.")))))
