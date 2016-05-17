@@ -17,6 +17,7 @@ import moment from "moment";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import * as DataGrid from "metabase/lib/data_grid";
+import { formatSQL } from "metabase/lib/formatting";
 import Query from "metabase/lib/query";
 import { createQuery } from "metabase/lib/query";
 import { createCard, serializeCardForUrl, deserializeCardFromUrl, cleanCopyCard, urlForCardState } from "metabase/lib/card";
@@ -107,6 +108,8 @@ CardControllers.controller('CardDetail', [
                         // when the driver requires JSON we need to stringify it because it's been parsed already
                         if (_.contains(["mongo", "druid"], tableMetadata.db.engine)) {
                             nativeQuery.query = JSON.stringify(queryResult.data.native_form.query);
+                        } else {
+                            nativeQuery.query = formatSQL(nativeQuery.query);
                         }
 
                         datasetQuery.type = "native";

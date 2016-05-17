@@ -1,7 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
 import cx from "classnames";
-
+import { formatSQL } from "metabase/lib/formatting";
 import Icon from "metabase/components/Icon.jsx";
 import Modal from "metabase/components/Modal.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
@@ -59,9 +59,10 @@ export default class QueryModeButton extends Component {
                             <h2>SQL for this question</h2>
                             <span className="cursor-pointer" onClick={() => this.setState({isOpen: false})}><Icon name="close" width="16px" height="16px" /></span>
                         </div>
-                        <div className="mb3 p2 bordered rounded border-dark bg-grey-0">
-                            {nativeForm && nativeForm.query}
-                        </div>
+
+                        <pre className="mb3 p2 bordered rounded border-dark bg-grey-0 sql-code">
+                            {nativeForm && nativeForm.query && formatSQL(nativeForm.query)}
+                        </pre>
 
                         <div className="text-centered">
                             <a className="Button Button--primary" onClick={() => {
