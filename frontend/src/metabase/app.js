@@ -33,6 +33,8 @@ import "./admin/people/people.module";
 import "./admin/settings/settings.module";
 import "./admin/datamodel/datamodel.module";
 
+import "metabase/meta/demo";
+
 import Routes from "./Routes.jsx";
 
 import { createStoreWithAngularScope, combineReducers } from "metabase/lib/redux";
