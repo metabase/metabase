@@ -7,15 +7,12 @@ import _ from "underscore";
 import DataSelector from './DataSelector.jsx';
 import Icon from "metabase/components/Icon.jsx";
 
+
 export default class NativeQueryEditor extends Component {
     constructor(props, context) {
         super(props, context);
 
         _.bindAll(this, 'onChange', 'toggleEditor', 'updateEditorMode', 'setDatabaseID', 'setTableID');
-
-        this.state = {
-            showEditor: false
-        };
     }
 
     static propTypes = {
@@ -29,16 +26,18 @@ export default class NativeQueryEditor extends Component {
         /// *  `mode` :         the ACE Editor mode name, e.g. 'ace/mode/json'
         /// *  `description`:   name used to describe the text written in that mode, e.g. 'JSON'. Used to fill in the blank in 'This question is written in _______'.
         /// *  `requiresTable`: whether the DB selector should be a DB + Table selector. Mongo needs both DB + Table.
-        getModeInfo: PropTypes.func.isRequired
+        getModeInfo: PropTypes.func.isRequired,
+        isOpen: PropTypes.bool
     };
 
+    static defaultProps = {
+        isOpen: false
+    }
+
     componentWillMount() {
-        // if the sql is empty then start with the editor showing, otherwise our default is to start out collapsed
-        if (!this.props.query.native.query || this.props.query.query) {
-            this.setState({
-                showEditor: true
-            });
-        }
+        this.setState({
+            showEditor: this.props.isOpen
+        });
     }
 
     componentDidMount() {

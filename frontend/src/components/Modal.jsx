@@ -12,6 +12,7 @@ export default class Modal extends Component {
 
     static defaultProps = {
         className: "Modal",
+        backdropClassName: "Modal-backdrop",
         isOpen: true
     };
 
@@ -57,7 +58,7 @@ export default class Modal extends Component {
         ReactDOM.render(
             <ReactCSSTransitionGroup transitionName="Modal" transitionAppear={true} transitionAppearTimeout={250} transitionEnterTimeout={250} transitionLeaveTimeout={250}>
                 { this.props.isOpen &&
-                    <div key="modal" className="Modal-backdrop" style={this.props.style}>
+                    <div key="modal" className={this.props.backdropClassName} style={this.props.style}>
                         {this._modalComponent()}
                     </div>
                 }

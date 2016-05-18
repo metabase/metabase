@@ -1,5 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
+import QueryModeButton from "./QueryModeButton.jsx";
+
 import ActionButton from 'metabase/components/ActionButton.jsx';
 import AddToDashSelectDashModal from 'metabase/components/AddToDashSelectDashModal.jsx';
 import ButtonBar from "metabase/components/ButtonBar.jsx";
@@ -9,9 +11,9 @@ import HistoryModal from "metabase/components/HistoryModal.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import Modal from "metabase/components/Modal.jsx";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
-import QueryModeToggle from './QueryModeToggle.jsx';
 import QuestionSavedModal from 'metabase/components/QuestionSavedModal.jsx';
 import SaveQuestionModal from 'metabase/components/SaveQuestionModal.jsx';
+import Tooltip from "metabase/components/Tooltip.jsx";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import Query from "metabase/lib/query";
@@ -170,36 +172,25 @@ export default class QueryHeader extends Component {
         var buttonSections = [];
 
         // NEW card
-        if (this.props.cardIsNewFn()) {
-            if (this.props.cardIsDirtyFn()) {
-                buttonSections.push([
-                    <ModalWithTrigger
-                        key="save"
-                        ref="saveModal"
-                        triggerClasses="h4 px1 text-grey-4 text-brand-hover text-uppercase"
-                        triggerElement="Save"
-                    >
-                        <SaveQuestionModal
-                            card={this.props.card}
-                            originalCard={this.props.originalCard}
-                            tableMetadata={this.props.tableMetadata}
-                            addToDashboard={false}
-                            saveFn={this.onSave}
-                            createFn={this.onCreate}
-                            closeFn={() => this.refs.saveModal.toggle()}
-                        />
-                    </ModalWithTrigger>
-                ]);
-            } else {
-                // MBQL->NATIVE
-                buttonSections.push([
-                    <QueryModeToggle
-                        key="queryModeToggle"
-                        currentQueryMode={this.props.card.dataset_query.type}
-                        setQueryModeFn={this.props.setQueryModeFn}
+        if (this.props.cardIsNewFn() && this.props.cardIsDirtyFn()) {
+            buttonSections.push([
+                <ModalWithTrigger
+                    key="save"
+                    ref="saveModal"
+                    triggerClasses="h4 px1 text-grey-4 text-brand-hover text-uppercase"
+                    triggerElement="Save"
+                >
+                    <SaveQuestionModal
+                        card={this.props.card}
+                        originalCard={this.props.originalCard}
+                        tableMetadata={this.props.tableMetadata}
+                        addToDashboard={false}
+                        saveFn={this.onSave}
+                        createFn={this.onCreate}
+                        closeFn={() => this.refs.saveModal.toggle()}
                     />
-                ]);
-            }
+                </ModalWithTrigger>
+            ]);
         }
 
         // persistence buttons on saved cards
@@ -219,9 +210,11 @@ export default class QueryHeader extends Component {
                 } else {
                     // edit button
                     buttonSections.push([
-                        <a key="edit" className="cursor-pointer text-brand-hover" onClick={this.onBeginEditing}>
-                            <Icon name="pencil" width="16px" height="16px" />
-                        </a>
+                        <Tooltip key="edit" tooltip="Edit question">
+                            <a className="cursor-pointer text-brand-hover" onClick={this.onBeginEditing}>
+                                <Icon name="pencil" width="16px" height="16px" />
+                            </a>
+                        </Tooltip>
                     ]);
                 }
 
@@ -248,17 +241,18 @@ export default class QueryHeader extends Component {
 
                 // delete button
                 buttonSections.push([
-                    <ModalWithTrigger
-                        key="delete"
-                        ref="deleteModal"
-                        triggerElement={<span className="text-brand-hover"><Icon name="trash" width="16px" height="16px" /></span>}
-                    >
-                        <DeleteQuestionModal
-                            card={this.props.card}
-                            deleteCardFn={this.onDelete}
-                            closeFn={() => this.refs.deleteModal.toggle()}
-                        />
-                    </ModalWithTrigger>
+                    <Tooltip key="delete" tooltip="Delete">
+                        <ModalWithTrigger
+                            ref="deleteModal"
+                            triggerElement={<span className="text-brand-hover"><Icon name="trash" width="16px" height="16px" /></span>}
+                        >
+                            <DeleteQuestionModal
+                                card={this.props.card}
+                                deleteCardFn={this.onDelete}
+                                closeFn={() => this.refs.deleteModal.toggle()}
+                            />
+                        </ModalWithTrigger>
+                    </Tooltip>
                 ]);
             }
         }
@@ -267,76 +261,80 @@ export default class QueryHeader extends Component {
         if (!this.props.cardIsNewFn() && !this.props.isEditing) {
             // simply adding an existing saved card to a dashboard, so show the modal to do so
             buttonSections.push([
-                <span data-metabase-event={"QueryBuilder;AddToDash Modal;normal"} className="cursor-pointer text-brand-hover" onClick={() => this.setState({ modal: "add-to-dashboard" })}>
-                    <Icon name="addtodash" width="16px" height="16px" />
-                </span>
+                <Tooltip key="addtodash" tooltip="Add to dashboard">
+                    <span data-metabase-event={"QueryBuilder;AddToDash Modal;normal"} className="cursor-pointer text-brand-hover" onClick={() => this.setState({ modal: "add-to-dashboard" })}>
+                        <Icon name="addtodash" width="16px" height="16px" />
+                    </span>
+                </Tooltip>
             ]);
         } else if (this.props.cardIsNewFn() && this.props.cardIsDirtyFn()) {
             // this is a new card, so we need the user to save first then they can add to dash
             buttonSections.push([
-                <ModalWithTrigger
-                    key="addtodashsave"
-                    ref="addToDashSaveModal"
-                    triggerClasses="h4 px1 text-grey-4 text-brand-hover text-uppercase"
-                    triggerElement={<span data-metabase-event={"QueryBuilder;AddToDash Modal;pre-save"} className="text-brand-hover"><Icon name="addtodash" width="16px" height="16px" /></span>}
-                >
-                    <SaveQuestionModal
-                        card={this.props.card}
-                        originalCard={this.props.originalCard}
-                        tableMetadata={this.props.tableMetadata}
-                        addToDashboard={true}
-                        saveFn={this.onSave}
-                        createFn={this.onCreate}
-                        closeFn={() => this.refs.addToDashSaveModal.toggle()}
-                    />
-                </ModalWithTrigger>
+                <Tooltip key="addtodashsave" tooltip="Add to dashboard">
+                    <ModalWithTrigger
+                        ref="addToDashSaveModal"
+                        triggerClasses="h4 px1 text-grey-4 text-brand-hover text-uppercase"
+                        triggerElement={<span data-metabase-event={"QueryBuilder;AddToDash Modal;pre-save"} className="text-brand-hover"><Icon name="addtodash" width="16px" height="16px" /></span>}
+                    >
+                        <SaveQuestionModal
+                            card={this.props.card}
+                            originalCard={this.props.originalCard}
+                            tableMetadata={this.props.tableMetadata}
+                            addToDashboard={true}
+                            saveFn={this.onSave}
+                            createFn={this.onCreate}
+                            closeFn={() => this.refs.addToDashSaveModal.toggle()}
+                        />
+                    </ModalWithTrigger>
+                </Tooltip>
             ]);
         }
 
         // history icon on saved cards
         if (!this.props.cardIsNewFn()) {
             buttonSections.push([
-                <ModalWithTrigger
-                    key="history"
-                    ref="cardHistory"
-                    triggerElement={<span className="text-brand-hover"><Icon name="history" width="16px" height="16px" /></span>}
-                >
-                    <HistoryModal
-                        revisions={this.state.revisions}
-                        entityType="card"
-                        entityId={this.props.card.id}
-                        onFetchRevisions={this.onFetchRevisions}
-                        onRevertToRevision={this.onRevertToRevision}
-                        onClose={() => this.refs.cardHistory.toggle()}
-                        onReverted={this.onRevertedRevision}
-                    />
-                </ModalWithTrigger>
+                <Tooltip key="history" tooltip="Revision history">
+                    <ModalWithTrigger
+                        ref="cardHistory"
+                        triggerElement={<span className="text-brand-hover"><Icon name="history" width="18px" height="17px" /></span>}
+                    >
+                        <HistoryModal
+                            revisions={this.state.revisions}
+                            entityType="card"
+                            entityId={this.props.card.id}
+                            onFetchRevisions={this.onFetchRevisions}
+                            onRevertToRevision={this.onRevertToRevision}
+                            onClose={() => this.refs.cardHistory.toggle()}
+                            onReverted={this.onRevertedRevision}
+                        />
+                    </ModalWithTrigger>
+                </Tooltip>
             ]);
         }
 
+        // query mode toggle
+        buttonSections.push([
+            <QueryModeButton
+                key="queryModeToggle"
+                mode={this.props.card.dataset_query.type}
+                allowNativeToQuery={this.props.cardIsNewFn() && !this.props.cardIsDirtyFn()}
+                nativeForm={this.props.result && this.props.result.data && this.props.result.data.native_form}
+                onSetMode={this.props.setQueryModeFn}
+            />
+        ]);
+
         // data reference button
-        var dataReferenceButtonClasses = cx('mx1 transition-color', {
-            'text-grey-4': !this.props.isShowingDataReference,
+        var dataReferenceButtonClasses = cx('mr1 transition-color', {
             'text-brand': this.props.isShowingDataReference,
             'text-brand-hover': !this.state.isShowingDataReference
         });
         buttonSections.push([
-            <a key="dataReference" className={dataReferenceButtonClasses} title="Get help on what data means">
-                <Icon name='reference' width="16px" height="16px" onClick={this.onToggleDataReference}></Icon>
-            </a>
+            <Tooltip key="dataReference" tooltip="Learn about your data">
+                <a className={dataReferenceButtonClasses}>
+                    <Icon name='reference' width="16px" height="16px" onClick={this.onToggleDataReference}></Icon>
+                </a>
+            </Tooltip>
         ]);
-
-        // MBQL->NATIVE
-        // native mode toggle
-        // if (!this.props.cardIsDirtyFn()) {
-        //     buttonSections.push([
-        //         <QueryModeToggle
-        //             key="queryModeToggle"
-        //             currentQueryMode={this.props.card.dataset_query.type}
-        //             setQueryModeFn={this.props.setQueryModeFn}
-        //         />
-        //     ]);
-        // }
 
         return (
             <ButtonBar buttons={buttonSections} className="Header-buttonSection" />
