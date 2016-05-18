@@ -11,6 +11,8 @@ export default class Table extends Base {
         fields: [Field]
     };
 
+    db_id: number;
+
     database() {
         return this._entity(Database, this.db_id);
     }

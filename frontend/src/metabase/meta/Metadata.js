@@ -9,7 +9,7 @@ export default class Metadata extends Base {
     static type = "metadata";
     static schema = { databases: [Database] };
 
-    constructor(databases) {
+    constructor(databases: Array<Object>) {
         super({ databases, id: 0 });
     }
 

@@ -4,15 +4,20 @@ import memoize from "./memoize";
 
 import { Schema, arrayOf, normalize } from "normalizr";
 
+type MetaSchemaClass = { type: string, schema: MetaSchema }
+type MetaSchemaArrayOf = Array<MetaSchemaClass>
+type MetaSchemaType = MetaSchemaClass | MetaSchemaArrayOf;
+type MetaSchema = { [key: string]: MetaSchemaType };
+
 export default class Base {
     static type: string;
-    static schema: object;
+    static schema: MetaSchema;
 
     _metadata: Base;
     _object: Object;
-    _entities: Object;
+    _entityMaps: Object;
 
-    constructor(object: Object, metadata: Base|null) {
+    constructor(object: Object, metadata: ?Base) {
         // if metadata is provided assume "object" has been normalized
         if (metadata) {
             this._metadata = metadata
@@ -26,7 +31,9 @@ export default class Base {
 
         if (this._object && !Array.isArray(this._object)) {
             for (const name in this._object) {
+                // $FlowFixMe
                 if (this[name] === undefined) {
+                    // $FlowFixMe
                     this[name] = this._object[name];
                 }
             }
@@ -35,7 +42,7 @@ export default class Base {
 
     // return the wrapped entity
     @memoize
-    _entity<T: Base>(Klass: Class<T>, id: number): T {
+    _entity<T: Base>(Klass: Class<T>, id: number): ?T {
         if (this !== this._metadata) {
             return this._metadata._entity(...arguments);
         }
@@ -53,7 +60,7 @@ export default class Base {
 
     // return an array of wrapped entities
     @memoize
-    _entities<T: Base>(Klass: Class<T>, ids: Array<number>): Array<T> {
+    _entities<T: Base>(Klass: Class<T>, ids: Array<number>): Array<?T> {
         if (this !== this._metadata) {
             return this._metadata._entities(...arguments);
         }
@@ -62,16 +69,18 @@ export default class Base {
     }
 }
 
+
 // transform our schema to a normalizr schema
-function toNormalizrSchema(Klass) {
+function toNormalizrSchema(Klass: MetaSchemaClass) {
     if (Array.isArray(Klass.schema)) {
         return arrayOf(toNormalizrSchema(Klass.schema[0]));
     } else {
-        const schema = new Schema(Klass.type);
-        schema.define(Object.entries(Klass.schema).reduce((properties, [name, schema]) => {
-            properties[name] = Array.isArray(schema) ? arrayOf(toNormalizrSchema(schema[0])) : toNormalizrSchema(schema);
-            return properties;
-        }, {}));
+        const schema : any = new Schema(Klass.type);
+        const properties = {}
+        for (const name in Klass.schema) {
+            properties[name] = Array.isArray(Klass.schema[name]) ? arrayOf(toNormalizrSchema(Klass.schema[name][0])) : toNormalizrSchema(Klass.schema[name]);
+        }
+        schema.define(properties);
         return schema;
     }
 }

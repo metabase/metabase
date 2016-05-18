@@ -12,5 +12,7 @@
 [options]
 module.system.node.resolve_dirname=node_modules
 module.system.node.resolve_dirname=frontend/src
+esproposal.decorators=ignore
 esproposal.class_static_fields=enable
 esproposal.class_instance_fields=enable
+suppress_comment= \\(.\\|\n\\)*\\$FlowFixMe
