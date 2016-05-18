@@ -178,7 +178,6 @@ export function assignUserColors(userIds, currentUserId, colorClasses = ['bg-bra
 }
 
 export function formatSQL(sql) {
-    console.log("formatting");
     if (sql) {
         sql = sql.replace(/\sFROM/, "\nFROM");
         sql = sql.replace(/\sLEFT JOIN/, "\nLEFT JOIN");
