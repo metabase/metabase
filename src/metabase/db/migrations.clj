@@ -64,7 +64,7 @@
 (defmigration set-card-database-and-table-ids
   ;; only execute when `:database_id` column on all cards is `nil`
   (when (= 0 (:cnt (first (k/select Card (k/aggregate (count :*) :cnt) (k/where (not= :database_id nil))))))
-    (doseq [{id :id {:keys [type] :as dataset-query} :dataset_query} (db/sel :many [Card :id :dataset_query])]
+    (doseq [{id :id {:keys [type] :as dataset-query} :dataset_query} (db/select [Card :id :dataset_query])]
       (when type
         ;; simply resave the card with the dataset query which will automatically set the database, table, and type
         (db/update! Card id, :dataset_query dataset-query)))))
@@ -74,7 +74,7 @@
 ;; UI was automatically setting `:ssl` to `true` for every database added as part of the auto-SSL detection.
 ;; Since Mongo did *not* support SSL, all existing Mongo DBs should actually have this key set to `false`.
 (defmigration set-mongodb-databases-ssl-false
-  (doseq [{:keys [id details]} (db/sel :many :fields [Database :id :details] :engine "mongo")]
+  (doseq [{:keys [id details]} (db/select [Database :id :details], :engine "mongo")]
     (db/update! Database id, :details (assoc details :ssl false))))
 
 
@@ -94,7 +94,9 @@
 ;; Populate the initial value for the `:admin-email` setting for anyone who hasn't done it yet
 (defmigration set-admin-email
   (when-not (setting/get :admin-email)
-    (when-let [email (db/sel :one :field ['User :email] (k/where {:is_superuser true :is_active true}))]
+    (when-let [email (db/select-one-field :email 'User
+                       :is_superuser true
+                       :is_active    true)]
       (setting/set :admin-email email))))
 
 
@@ -107,7 +109,7 @@
 
 ;; Clean up duplicate FK entries
 (defmigration remove-duplicate-fk-entries
-  (let [existing-fks (db/sel :many ForeignKey)
+  (let [existing-fks (db/select ForeignKey)
         grouped-fks  (group-by #(str (:origin_id %) "_" (:destination_id %)) existing-fks)]
     (doseq [[k fks] grouped-fks]
       (when (< 1 (count fks))
@@ -119,7 +121,7 @@
 ;; Migrate dashboards to the new grid
 ;; NOTE: this scales the dashboards by 4x in the Y-scale and 3x in the X-scale
 (defmigration update-dashboards-to-new-grid
-  (doseq [{:keys [id row col sizeX sizeY]} (db/sel :many DashboardCard)]
+  (doseq [{:keys [id row col sizeX sizeY]} (db/select DashboardCard)]
     (k/update DashboardCard
       (k/set-fields {:row   (when row (* row 4))
                      :col   (when col (* col 3))
@@ -178,7 +180,7 @@
 ;; migrate FK information from old ForeignKey model to Field.fk_target_field_id
 (defmigration migrate-fk-metadata
   (when (> 1 (:cnt (first (k/select Field (k/aggregate (count :*) :cnt) (k/where (not= :fk_target_field_id nil))))))
-    (when-let [fks (not-empty (db/sel :many ForeignKey))]
+    (when-let [fks (not-empty (db/select ForeignKey))]
       (doseq [{:keys [origin_id destination_id]} fks]
         (k/update Field
           (k/set-fields {:fk_target_field_id destination_id})
@@ -191,8 +193,8 @@
   (when (= 0 (:cnt (first (k/select RawTable (k/aggregate (count :*) :cnt)))))
     (binding [db/*disable-db-logging* true]
       (kdb/transaction
-        (doseq [{database-id :id, :keys [name engine]} (db/sel :many Database)]
-          (when-let [tables (not-empty (db/sel :many Table :db_id database-id, :active true))]
+        (doseq [{database-id :id, :keys [name engine]} (db/select Database)]
+          (when-let [tables (not-empty (db/select Table, :db_id database-id, :active true))]
             (log/info (format "Migrating raw schema information for %s database '%s'" engine name))
             (let [processed-tables (atom #{})]
               (doseq [{table-id :id, table-schema :schema, table-name :name} tables]
@@ -218,7 +220,7 @@
                       ;; migrate all Fields in the Table (skipping :dynamic-schema dbs)
                       (when-not (driver/driver-supports? (driver/engine->driver engine) :dynamic-schema)
                         (let [processed-fields (atom #{})]
-                          (doseq [{field-id :id, column-name :name, :as field} (db/sel :many Field :table_id table-id, :visibility_type [not= "retired"])]
+                          (doseq [{field-id :id, column-name :name, :as field} (db/select Field, :table_id table-id, :visibility_type [:not= "retired"])]
                             ;; guard against duplicate fields with the same name
                             (if (contains? @processed-fields column-name)
                               ;; this is a dupe, disable it

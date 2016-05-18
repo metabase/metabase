@@ -6,7 +6,7 @@
             [metabase.test.data :refer :all]))
 
 (defn- fetch-field [table-kw field-kw]
-  (db/sel :one Field :id (id table-kw field-kw)))
+  (Field :id (id table-kw field-kw)))
 
 ;; ### FIELD-DISTINCT-COUNT
 (expect 100

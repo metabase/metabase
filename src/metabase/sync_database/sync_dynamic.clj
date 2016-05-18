@@ -19,8 +19,7 @@
    All field-defs provided are assumed to be children of the given FIELD."
   [{parent-id :id, table-id :table_id, :as parent-field} nested-field-defs]
   ;; NOTE: remember that we never retire any fields in dynamic-schema tables
-  (let [existing-field-name->field (into {} (for [{table-name :name, :as tbl} (db/sel :many field/Field, :parent_id parent-id)]
-                                              {table-name tbl}))]
+  (let [existing-field-name->field (db/select-field->object :name field/Field, :parent_id parent-id)]
     (u/prog1 (set/difference (set (map :name nested-field-defs)) (set (keys existing-field-name->field)))
       (when (seq <>)
         (log/debug (u/format-color 'blue "Found new nested fields for field '%s': %s" (:name parent-field) <>))))
@@ -44,8 +43,7 @@
   {:pre [(integer? table-id)
          (coll? field-defs)
          (every? map? field-defs)]}
-  (let [field-name->field (into {} (for [{field-name :name, :as fld} (db/sel :many field/Field, :table_id table-id, :parent_id nil)]
-                                     {field-name fld}))]
+  (let [field-name->field (db/select-field->object :name field/Field, :table_id table-id, :parent_id nil)]
     ;; NOTE: with dynamic schemas we never disable fields
     ;; create/update the fields
     (doseq [{field-name :name, :keys [nested-fields], :as field-def} field-defs]
@@ -61,15 +59,15 @@
 (defn scan-table-and-update-data-model!
   "Update the working `Table` and `Field` metadata for the given `Table`."
   [driver database {raw-table-id :raw_table_id, table-id :id, :as existing-table}]
-  (when-let [raw-tbl (db/sel :one raw-table/RawTable :id raw-table-id)]
+  (when-let [raw-table (raw-table/RawTable raw-table-id)]
     (try
-      (if-not (:active raw-tbl)
+      (if-not (:active raw-table)
         ;; looks like table was deactivated, so lets retire this Table
         (table/retire-tables #{table-id})
         ;; otherwise we ask the driver for an updated table description and save that info
         (let [table-def (u/prog1 (driver/describe-table driver database (select-keys existing-table [:name :schema]))
                           (schema/validate i/DescribeTable <>))]
-          (-> (table/update-table existing-table raw-tbl)
+          (-> (table/update-table existing-table raw-table)
               (save-table-fields! (:fields table-def)))))
       ;; NOTE: dynamic schemas don't have FKs
       (catch Throwable t
@@ -88,16 +86,15 @@
   ;; retire any tables which are no longer with us
   (sync/retire-tables! database)
 
-  (let [raw-tables      (raw-table/active-tables database-id)
-        existing-tables (into {} (for [{raw-table-id :raw_table_id, :as table} (db/sel :many table/Table, :db_id database-id, :active true)]
-                                   {raw-table-id table}))]
+  (let [raw-tables          (raw-table/active-tables database-id)
+        raw-table-id->table (db/select-field->object :raw_table_id table/Table, :db_id database-id, :active true)]
     ;; create/update tables (and their fields)
     ;; NOTE: we make sure to skip the _metabase_metadata table here.  it's not a normal table.
     (doseq [{raw-table-id :id, :as raw-tbl} (filter #(not= "_metabase_metadata" (s/lower-case (:name %))) raw-tables)]
       (try
         (let [table-def (u/prog1 (driver/describe-table driver database (select-keys raw-tbl [:name :schema]))
                           (schema/validate i/DescribeTable <>))]
-          (if-let [existing-table (get existing-tables raw-table-id)]
+          (if-let [existing-table (get raw-table-id->table raw-table-id)]
             ;; table already exists, update it
             (-> (table/update-table existing-table raw-tbl)
                 (save-table-fields! (:fields table-def)))

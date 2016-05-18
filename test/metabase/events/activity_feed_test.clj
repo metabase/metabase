@@ -101,7 +101,7 @@
     (k/delete Activity)
     (process-activity-event {:topic :card-create
                              :item  card})
-    (-> (db/sel :one Activity :topic "card-create")
+    (-> (Activity :topic "card-create")
         (select-keys [:topic :user_id :model :model_id :database_id :table_id :details]))))
 
 ;; `:card-update` event
@@ -119,7 +119,7 @@
     (k/delete Activity)
     (process-activity-event {:topic :card-update
                              :item  card})
-    (-> (db/sel :one Activity :topic "card-update")
+    (-> (Activity :topic "card-update")
         (select-keys [:topic :user_id :model :model_id :database_id :table_id :details]))))
 
 ;; `:card-delete` event
@@ -137,7 +137,7 @@
     (k/delete Activity)
     (process-activity-event {:topic :card-delete
                              :item  card})
-    (-> (db/sel :one Activity :topic "card-delete")
+    (-> (Activity :topic "card-delete")
         (select-keys [:topic :user_id :model :model_id :database_id :table_id :details]))))
 
 ;; `:dashboard-create` event
@@ -153,7 +153,7 @@
     (k/delete Activity)
     (process-activity-event {:topic :dashboard-create
                              :item  dashboard})
-    (-> (db/sel :one Activity :topic "dashboard-create")
+    (-> (Activity :topic "dashboard-create")
         (select-keys [:topic :user_id :model :model_id :details]))))
 
 ;; `:dashboard-delete` event
@@ -169,7 +169,7 @@
     (k/delete Activity)
     (process-activity-event {:topic :dashboard-delete
                              :item  dashboard})
-    (-> (db/sel :one Activity :topic "dashboard-delete")
+    (-> (Activity :topic "dashboard-delete")
         (select-keys [:topic :user_id :model :model_id :details]))))
 
 ;; `:dashboard-add-cards` event
@@ -190,7 +190,7 @@
     (k/delete Activity)
     (process-activity-event {:topic :dashboard-add-cards
                              :item  {:id (:id dashboard) :actor_id (:id user) :dashcards [dashcard]}})
-    (-> (db/sel :one Activity :topic "dashboard-add-cards")
+    (-> (Activity :topic "dashboard-add-cards")
         (select-keys [:topic :user_id :model :model_id :details]))))
 
 ;; `:dashboard-remove-cards` event
@@ -211,7 +211,7 @@
     (k/delete Activity)
     (process-activity-event {:topic :dashboard-remove-cards
                              :item  {:id (:id dashboard) :actor_id (:id user) :dashcards [dashcard]}})
-    (-> (db/sel :one Activity :topic "dashboard-remove-cards")
+    (-> (Activity :topic "dashboard-remove-cards")
         (select-keys [:topic :user_id :model :model_id :details]))))
 
 ;; `:database-sync-*` events
@@ -242,11 +242,11 @@
 ;    (k/delete Activity)
 ;    (let [_            (process-activity-event {:topic :database-sync-begin
 ;                                                :item  {:database_id (id) :custom_id "abc"}})
-;          activity1    (-> (db/sel :one Activity :topic "database-sync")
+;          activity1    (-> (Activity :topic "database-sync")
 ;                           (select-keys [:topic :user_id :model :model_id :database_id :custom_id :details]))
 ;          _            (process-activity-event {:topic :database-sync-end
 ;                                                :item  {:database_id (id) :custom_id "abc"}})
-;          activity2    (-> (db/sel :one Activity :topic "database-sync")
+;          activity2    (-> (Activity :topic "database-sync")
 ;                           (select-keys [:topic :user_id :model :model_id :database_id :custom_id :details])
 ;                           (assoc-in [:details :running_time] 0))
 ;          activity-cnt (:cnt (first (k/select Activity (k/aggregate (count :*) :cnt) (k/where {:topic "database-sync"}))))]
@@ -265,7 +265,7 @@
     (k/delete Activity)
     (process-activity-event {:topic :install
                              :item  {}})
-    (-> (db/sel :one Activity :topic "install")
+    (-> (Activity :topic "install")
         (select-keys [:topic :user_id :model :model_id :details]))))
 
 ;; `:metric-create`
@@ -282,7 +282,7 @@
     (k/delete Activity)
     (process-activity-event {:topic :metric-create
                              :item  metric})
-    (-> (db/sel :one Activity :topic "metric-create")
+    (-> (Activity :topic "metric-create")
         (select-keys [:topic :user_id :model :model_id :database_id :table_id :details]))))
 
 ;; `:metric-update`
@@ -304,7 +304,7 @@
                                                :revision_message "update this mofo")
                                         ;; doing this specifically to ensure :actor_id is utilized
                                         (dissoc :creator_id))})
-    (-> (db/sel :one Activity :topic "metric-update")
+    (-> (Activity :topic "metric-update")
         (select-keys [:topic :user_id :model :model_id :database_id :table_id :details]))))
 
 ;; `:metric-delete`
@@ -323,7 +323,7 @@
     (process-activity-event {:topic :metric-delete
                              :item  (assoc metric :actor_id         (:id user)
                                                    :revision_message "deleted")})
-    (-> (db/sel :one Activity :topic "metric-delete")
+    (-> (Activity :topic "metric-delete")
         (select-keys [:topic :user_id :model :model_id :database_id :table_id :details]))))
 
 ;; `:pulse-create` event
@@ -340,7 +340,7 @@
     (k/delete Activity)
     (process-activity-event {:topic :pulse-create
                              :item  pulse})
-    (-> (db/sel :one Activity :topic "pulse-create")
+    (-> (Activity :topic "pulse-create")
         (select-keys [:topic :user_id :model :model_id :database_id :table_id :details]))))
 
 ;; `:pulse-delete` event
@@ -357,7 +357,7 @@
     (k/delete Activity)
     (process-activity-event {:topic :pulse-delete
                              :item  pulse})
-    (-> (db/sel :one Activity :topic "pulse-delete")
+    (-> (Activity :topic "pulse-delete")
         (select-keys [:topic :user_id :model :model_id :database_id :table_id :details]))))
 
 ;; `:segment-create`
@@ -374,7 +374,7 @@
     (k/delete Activity)
     (process-activity-event {:topic :segment-create
                              :item  segment})
-    (-> (db/sel :one Activity :topic "segment-create")
+    (-> (Activity :topic "segment-create")
         (select-keys [:topic :user_id :model :model_id :database_id :table_id :details]))))
 
 ;; `:segment-update`
@@ -396,7 +396,7 @@
                                                :revision_message "update this mofo")
                                         ;; doing this specifically to ensure :actor_id is utilized
                                         (dissoc :creator_id))})
-    (-> (db/sel :one Activity :topic "segment-update")
+    (-> (Activity :topic "segment-update")
         (select-keys [:topic :user_id :model :model_id :database_id :table_id :details]))))
 
 ;; `:segment-delete`
@@ -415,7 +415,7 @@
     (process-activity-event {:topic :segment-delete
                              :item  (assoc segment :actor_id         (:id user)
                                                    :revision_message "deleted")})
-    (-> (db/sel :one Activity :topic "segment-delete")
+    (-> (Activity :topic "segment-delete")
         (select-keys [:topic :user_id :model :model_id :database_id :table_id :details]))))
 
 ;; `:user-login` event
@@ -431,5 +431,5 @@
                              :item  {:user_id     user-id
                                      :session_id  session-id
                                      :first_login true}})
-    (-> (db/sel :one Activity :topic "user-joined")
+    (-> (Activity :topic "user-joined")
         (select-keys [:topic :user_id :model :model_id :details]))))

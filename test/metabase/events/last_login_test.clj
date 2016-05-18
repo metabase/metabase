@@ -25,6 +25,6 @@
     (process-last-login-event {:topic :user-login
                                :item  {:user_id    user-id
                                        :session_id "doesntmatter"}})
-    (let [user (db/sel :one User :id user-id)]
+    (let [user (User :id user-id)]
       {:orig-last-login last-login
        :upd-last-login  (nil? (:last_login user))})))

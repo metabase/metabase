@@ -67,11 +67,11 @@
 
 ;; update-dashboard-card-series
 (expect
-  [[]
-   ["card1"]
-   ["card2"]
-   ["card2" "card1"]
-   ["card1" "card3"]]
+  [#{}
+   #{"card1"}
+   #{"card2"}
+   #{"card2" "card1"}
+   #{"card1" "card3"}]
   (tu/with-temp* [Dashboard     [{dashboard-id :id} {:name         "Test Dashboard"
                                                      :public_perms 0
                                                      :creator_id   (user->id :rasta)}]
@@ -82,9 +82,8 @@
                   Card          [{card-id3 :id} {:name "card3"}]]
     (let [upd-series (fn [series]
                        (update-dashboard-card-series {:id dashcard-id} series)
-                       (->> (db/sel :many :field [DashboardCardSeries :card_id] :dashboardcard_id dashcard-id)
-                            (mapv (fn [card_id]
-                                    (db/sel :one :field [Card :name] :id card_id)))))]
+                       (set (for [card-id (db/select-field :card_id DashboardCardSeries, :dashboardcard_id dashcard-id)]
+                              (db/select-one-field :name Card, :id card-id))))]
       [(upd-series [])
        (upd-series [card-id-1])
        (upd-series [card-id-2])

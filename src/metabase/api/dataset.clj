@@ -70,7 +70,7 @@
   "Execute the MQL query for a given `Card` and retrieve both the `Card` and the execution results as JSON.
    This is a convenience endpoint which simplifies the normal 2 api calls to fetch the `Card` then execute its query."
   [id]
-  (let-404 [{:keys [dataset_query] :as card} (db/sel :one Card :id id)]
+  (let-404 [{:keys [dataset_query] :as card} (Card id)]
     (read-check card)
     (read-check Database (:database dataset_query))
     ;; add sensible constraints for results limits on our query

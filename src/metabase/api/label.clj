@@ -1,7 +1,6 @@
 (ns metabase.api.label
   "`/api/label` endpoints."
   (:require [compojure.core :refer [GET POST DELETE PUT]]
-            [korma.core :as k]
             [metabase.api.common :refer [defendpoint define-routes write-check]]
             [metabase.db :as db]
             [metabase.models.label :refer [Label]]))
@@ -9,7 +8,7 @@
 (defendpoint GET "/"
   "List all `Labels`. :label:"
   []
-  (db/sel :many Label (k/order (k/sqlfn :LOWER :name))))
+  (db/select Label {:order-by [:%lower.name]}))
 
 (defendpoint POST "/"
   "Create a new `Label`. :label: "

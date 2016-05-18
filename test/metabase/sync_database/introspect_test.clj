@@ -1,6 +1,5 @@
 (ns metabase.sync-database.introspect-test
   (:require [expectations :refer :all]
-            [korma.core :as k]
             [metabase.db :as db]
             [metabase.mock.moviedb :as moviedb]
             (metabase.models [database :refer [Database]]
@@ -14,11 +13,11 @@
   save-all-table-columns! save-all-table-fks! create-raw-table! update-raw-table! disable-raw-tables!)
 
 (defn get-tables [database-id]
-  (->> (hydrate/hydrate (db/sel :many RawTable :database_id database-id (k/order :id)) :columns)
+  (->> (hydrate/hydrate (db/select RawTable, :database_id database-id, {:order-by [:id]}) :columns)
        (mapv tu/boolean-ids-and-timestamps)))
 
 (defn get-table [table-id]
-  (->> (hydrate/hydrate (db/sel :one RawTable :raw_table_id table-id) :columns)
+  (->> (hydrate/hydrate (RawTable :raw_table_id table-id) :columns)
        (mapv tu/boolean-ids-and-timestamps)))
 
 ;; save-all-table-fks
@@ -113,7 +112,7 @@
                   RawColumn [_                               {:raw_table_id raw-table-id2, :name "user_id"}]
                   RawTable  [{raw-table-id3 :id, :as table2} {:database_id database-id, :schema nil, :name "users"}]
                   RawColumn [_                               {:raw_table_id raw-table-id3, :name "id"}]]
-    (let [get-columns #(->> (db/sel :many RawColumn :raw_table_id raw-table-id1 (k/order :id))
+    (let [get-columns #(->> (db/select RawColumn, :raw_table_id raw-table-id1, {:order-by [:id]})
                             (mapv tu/boolean-ids-and-timestamps))]
       ;; original list should not have any fks
       [(get-columns)
@@ -209,7 +208,7 @@
      :updated_at   true}]]
   (tu/with-temp* [Database [{database-id :id}]
                   RawTable [{raw-table-id :id, :as table} {:database_id database-id}]]
-    (let [get-columns #(->> (db/sel :many RawColumn :raw_table_id raw-table-id (k/order :id))
+    (let [get-columns #(->> (db/select RawColumn, :raw_table_id raw-table-id, {:order-by [:id]})
                             (mapv tu/boolean-ids-and-timestamps))]
       ;; original list should be empty
       [(get-columns)

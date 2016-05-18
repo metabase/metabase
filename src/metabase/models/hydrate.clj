@@ -180,8 +180,8 @@
          ids        (set (for [result results
                                :when  (not (get result dest-key))]
                            (source-key result)))
-         objs       (into {} (for [obj (db/sel :many entity :id [in ids])]
-                               {(:id obj) obj}))]
+         objs       (when (seq ids)
+                      (db/select-id->object entity, :id [:in ids]))]
      (for [{source-id source-key :as result} results]
        (if (get result dest-key)
          result
