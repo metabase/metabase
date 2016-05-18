@@ -60,7 +60,7 @@ export default class QueryModeButton extends Component {
                             <span className="cursor-pointer" onClick={() => this.setState({isOpen: false})}><Icon name="close" width="16px" height="16px" /></span>
                         </div>
 
-                        <pre className="mb3 p2 bordered rounded border-dark bg-grey-0 sql-code">
+                        <pre className="mb3 p2 sql-code">
                             {nativeForm && nativeForm.query && formatSQL(nativeForm.query)}
                         </pre>
 
