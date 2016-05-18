@@ -191,7 +191,7 @@
 ;; ### Helper Fns
 
 (def ^:private hydration-key->entity
-  "Delay that returns map of `hydration-key` -> korma entity.
+  "Delay that returns map of `hydration-key` -> model entity.
    e.g. `:user -> User`.
 
    This is built pulling the `hydration-keys` set from all of our entities."

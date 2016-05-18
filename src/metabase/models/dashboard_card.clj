@@ -1,6 +1,5 @@
 (ns metabase.models.dashboard-card
   (:require [clojure.set :as set]
-            [korma.core :as k]
             [korma.db :as kdb]
             [metabase.db :as db]
             [metabase.events :as events]
@@ -42,12 +41,10 @@
 (defn ^:hydrate series
   "Return the `Cards` associated as additional series on this `DashboardCard`."
   [{:keys [id]}]
-  (db/select [Card (db/qualify Card :id) :name :description :display :dataset_query :visualization_settings]
-    {:left-join [(db/entity->table-name DashboardCardSeries) [:= (db/qualify DashboardCardSeries :card_id)
-                                                                 (db/qualify Card :id)]]
-     :where     [:= (db/qualify DashboardCardSeries :dashboardcard_id)
-                    id]
-     :order-by  [[(db/qualify DashboardCardSeries :position) :asc]]}))
+  (db/select [Card :id :name :description :display :dataset_query :visualization_settings]
+    (db/join [Card :id] [DashboardCardSeries :card_id])
+    (db/qualify DashboardCardSeries :dashboardcard_id) id
+    {:order-by [[(db/qualify DashboardCardSeries :position) :asc]]}))
 
 
 ;;; ## ---------------------------------------- CRUD FNS ----------------------------------------
@@ -76,8 +73,10 @@
   (db/cascade-delete! DashboardCardSeries :dashboardcard_id id)
   ;; now just insert all of the series that were given to us
   (when-not (empty? card-ids)
-    (let [cards (map-indexed (fn [idx itm] {:dashboardcard_id id :card_id itm :position idx}) card-ids)]
-      (k/insert DashboardCardSeries (k/values cards)))))
+    (let [cards (map-indexed (fn [i card-id]
+                               {:dashboardcard_id id, :card_id card-id, :position i})
+                             card-ids)]
+      (db/insert-many! DashboardCardSeries cards))))
 
 (defn update-dashboard-card
   "Update an existing `DashboardCard`, including all `DashboardCardSeries`.

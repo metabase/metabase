@@ -1,7 +1,6 @@
 (ns metabase.models.pulse-channel
   (:require [clojure.set :as set]
             [cheshire.generate :refer [add-encoder encode-map]]
-            [korma.core :as k]
             [medley.core :as m]
             [metabase.db :as db]
             (metabase.models [pulse-channel-recipient :refer [PulseChannelRecipient]]
@@ -189,9 +188,11 @@
         recipients-    (set/difference recipients-old recipients-new)]
     (when (seq recipients+)
       (let [vs (map #(assoc {:pulse_channel_id id} :user_id %) recipients+)]
-        (k/insert PulseChannelRecipient (k/values vs))))
+        (db/insert-many! PulseChannelRecipient vs)))
     (when (seq recipients-)
-      (k/delete PulseChannelRecipient (k/where {:pulse_channel_id id :user_id [in recipients-]})))))
+      (db/delete! PulseChannelRecipient
+        :pulse_channel_id id
+        :user_id          [:in recipients-]))))
 
 ;; TODO - rename -> `update-pulse-channel!`
 (defn update-pulse-channel

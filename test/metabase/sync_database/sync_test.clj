@@ -309,9 +309,9 @@
       [(get-tables)
        (do
          ;; disable the table
-         (db/update! RawTable {:where [:and [:= :database_id database-id]
-                                            [:= :name        "movies"]]
-                               :set   {:active false}})
+         (db/update-where! RawTable {:database_id database-id
+                                     :name        "movies"}
+           :active false)
          ;; run our retires function
          (retire-tables! db)
          ;; now we should see the table and its fields disabled
@@ -355,9 +355,9 @@
            (get-tables database-id))
          ;; one more time, but lets disable the table this time and ensure that's handled properly
          (do
-           (db/update! RawTable {:where [:and [:= :database_id database-id]
-                                              [:= :name        "roles"]]
-                                 :set   {:active false}})
+           (db/update-where! RawTable {:database_id database-id
+                                       :name        "roles"}
+             :active false)
            (update-data-models-for-table! tbl)
            (get-tables database-id))]))))
 
@@ -389,9 +389,9 @@
          (get-tables database-id))
        ;; one more time, but lets disable a table this time and ensure that's handled properly
        (do
-         (db/update! RawTable {:where [:and [:= :database_id database-id]
-                                            [:= :name        "roles"]]
-                               :set   {:active false}})
+         (db/update-where! RawTable {:database_id database-id
+                                     :name        "roles"}
+           :active false)
          (update-data-models-from-raw-tables! db)
          (get-tables database-id))])))
 

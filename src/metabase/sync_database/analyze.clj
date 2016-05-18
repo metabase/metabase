@@ -4,7 +4,6 @@
             [clojure.string :as s]
             [clojure.tools.logging :as log]
             [cheshire.core :as json]
-            [korma.core :as k]
             [schema.core :as schema]
             [metabase.db :as db]
             [metabase.db.metadata-queries :as queries]
@@ -198,10 +197,9 @@
           (field-values/clear-field-values id))))
 
     ;; update :last_analyzed for all fields in the table
-    (k/update field/Field
-      (k/set-fields {:last_analyzed (u/new-sql-timestamp)})
-      (k/where {:table_id        table-id
-                :visibility_type [not= "retired"]}))))
+    (db/update-where! field/Field {:table_id        table-id
+                                   :visibility_type [:not= "retired"]}
+      :last_analyzed (u/new-sql-timestamp))))
 
 (defn analyze-data-shape-for-tables!
   "Perform in-depth analysis on the data shape for all `Tables` in a given DATABASE.

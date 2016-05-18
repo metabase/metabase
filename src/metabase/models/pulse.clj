@@ -1,6 +1,5 @@
 (ns metabase.models.pulse
-  (:require (korma [core :as k]
-                   [db :as kdb])
+  (:require [korma.db :as kdb]
             [medley.core :as m]
             [metabase.db :as db]
             [metabase.events :as events]
@@ -29,14 +28,12 @@
   (db/cascade-delete! PulseChannel :pulse_id id))
 
 (defn ^:hydrate cards
-  "Return the `Cards` assoicated with this PULSE."
+  "Return the `Cards` associated with this PULSE."
   [{:keys [id]}]
-  (db/select [Card (db/qualify Card :id) :name :description :display]
-    {:left-join [(db/entity->table-name PulseCard) [:= (db/qualify PulseCard :card_id)
-                                                       (db/qualify Card :id)]]
-     :where     [:= (db/qualify PulseCard :pulse_id)
-                    id]
-     :order-by  [[(db/qualify PulseCard :position) :asc]]}))
+  (db/select [Card :id :name :description :display]
+    (db/join [Card :id] [PulseCard :card_id])
+    (db/qualify PulseCard :pulse_id) id
+    {:order-by [[(db/qualify PulseCard :position) :asc]]}))
 
 (u/strict-extend (class Pulse)
   i/IEntity
@@ -69,7 +66,7 @@
   ;; now just insert all of the cards that were given to us
   (when-not (empty? card-ids)
     (let [cards (map-indexed (fn [idx itm] {:pulse_id id :card_id itm :position idx}) card-ids)]
-      (k/insert PulseCard (k/values cards)))))
+      (db/insert-many! PulseCard cards))))
 
 ;; TODO - Rename to `create-update-delete-channel!`
 (defn- create-update-delete-channel

@@ -3,7 +3,6 @@
   (:require (clojure [string :as s]
                      [walk :as walk])
             [environ.core :as env]
-            [korma.core :as k]
             [metabase.config :as config]
             [metabase.db :as db]
             [metabase.events :as events]
@@ -102,12 +101,11 @@
   [k v]
   {:pre [(keyword? k) (string? v)]}
   (if (get k)
-    (k/update Setting
-              (k/set-fields {:value v})
-              (k/where {:key (name k)}))
-    (k/insert Setting
-              (k/values {:key   (name k)
-                         :value v})))
+    (db/update-where! Setting {:key (name k)}
+      :value v)
+    (db/insert! Setting
+      :key   (name k)
+      :value v))
   (restore-cache-if-needed)
   (swap! cached-setting->value assoc k v)
   v)

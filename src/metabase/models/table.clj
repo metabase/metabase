@@ -89,11 +89,11 @@
   {:pre [(set? table-ids) (every? integer? table-ids)]}
   (when (seq table-ids)
     ;; retire the tables
-    (db/update! Table {:where [:in :id table-ids]
-                       :set   {:active false}})
+    (db/update-where! Table {:id [:in table-ids]}
+      :active false)
     ;; retire the fields of retired tables
-    (db/update! Field {:where [:in :table_id table-ids]
-                       :set   {:visibility_type "retired"}})))
+    (db/update-where! Field {:table_id [:in table-ids]}
+      :visibility_type "retired")))
 
 (defn update-table
   "Update `Table` with the data from TABLE-DEF."

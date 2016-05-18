@@ -364,7 +364,7 @@
 (defn korma-entity
   "Return a Korma entity for [DB and] TABLE.
 
-    (-> (sel :one Table :id 100)
+    (-> (Table :id 100)
         korma-entity
         (select (aggregate (count :*) :count)))"
   ([table]    (korma-entity (table/database table) table))

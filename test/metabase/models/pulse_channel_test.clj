@@ -256,7 +256,7 @@
 
 ;; update-recipients!
 (expect
-  [#{}
+  [nil
    #{(user->id :rasta)}
    #{(user->id :crowberto)}
    #{(user->id :crowberto) (user->id :rasta)}

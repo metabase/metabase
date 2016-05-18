@@ -1,6 +1,5 @@
 (ns metabase.models.session
-  (:require [korma.core :as k]
-            [metabase.db :as db]
+  (:require [metabase.db :as db]
             (metabase.models [interface :as i]
                              [user :refer [User]])
             [metabase.util :as u]))

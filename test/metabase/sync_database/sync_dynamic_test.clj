@@ -308,9 +308,9 @@
            (get-tables database-id))
          ;; one more time, but lets disable the table this time and ensure that's handled properly
          (do
-           (db/update! RawTable {:where [:and [:= :database_id database-id]
-                                              [:= :name "transactions"]]
-                                 :set   {:active false}})
+           (db/update-where! RawTable {:database_id database-id
+                                       :name        "transactions"}
+             :active false)
            (scan-table-and-update-data-model! driver db tbl)
            (get-tables database-id))]))))
 
@@ -342,8 +342,8 @@
          (get-tables database-id))
        ;; one more time, but lets disable a table this time and ensure that's handled properly
        (do
-         (db/update! RawTable {:where [:and [:= :database_id database-id]
-                                            [:= :name "transactions"]]
-                                 :set   {:active false}})
+         (db/update-where! RawTable {:database_id database-id
+                                     :name        "transactions"}
+           :active false)
          (scan-database-and-update-data-model! driver db)
          (get-tables database-id))])))

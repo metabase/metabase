@@ -1,6 +1,5 @@
 (ns metabase.models.dependency
   (:require [clojure.set :as set]
-            [korma.core :as k]
             [metabase.db :as db]
             [metabase.models.interface :as i]
             [metabase.util :as u]))
@@ -53,11 +52,12 @@
         dependencies-    (set/difference dependencies-old dependencies-new)]
     (when (seq dependencies+)
       (let [vs (map #(merge % {:model entity-name, :model_id id, :created_at (u/new-sql-timestamp)}) dependencies+)]
-        (k/insert Dependency (k/values vs))))
+        (db/insert-many! Dependency vs)))
     (when (seq dependencies-)
       (doseq [{:keys [dependent_on_model dependent_on_id]} dependencies-]
         ;; batch delete would be nice here, but it's tougher with multiple conditions
-        (k/delete Dependency (k/where {:model              entity-name
-                                       :model_id           id
-                                       :dependent_on_model dependent_on_model
-                                       :dependent_on_id    dependent_on_id}))))))
+        (db/delete! Dependency
+          :model              entity-name
+          :model_id           id
+          :dependent_on_model dependent_on_model
+          :dependent_on_id    dependent_on_id)))))

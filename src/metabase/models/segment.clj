@@ -1,6 +1,5 @@
 (ns metabase.models.segment
-  (:require [korma.core :as k]
-            [medley.core :as m]
+  (:require [medley.core :as m]
             [metabase.db :as db]
             [metabase.events :as events]
             (metabase.models [hydrate :refer [hydrate]]

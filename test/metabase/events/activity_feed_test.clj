@@ -1,6 +1,5 @@
 (ns metabase.events.activity-feed-test
   (:require [expectations :refer :all]
-            [korma.core :as k]
             [metabase.db :as db]
             [metabase.events.activity-feed :refer :all]
             (metabase.models [activity :refer [Activity]]
@@ -98,7 +97,7 @@
                  :name         (:name card)
                  :public_perms (:public_perms card)}}
   (do
-    (k/delete Activity)
+    (db/cascade-delete! Activity)
     (process-activity-event {:topic :card-create
                              :item  card})
     (-> (Activity :topic "card-create")
@@ -116,7 +115,7 @@
                  :name         (:name card)
                  :public_perms (:public_perms card)}}
   (do
-    (k/delete Activity)
+    (db/cascade-delete! Activity)
     (process-activity-event {:topic :card-update
                              :item  card})
     (-> (Activity :topic "card-update")
@@ -134,7 +133,7 @@
                  :name         (:name card)
                  :public_perms (:public_perms card)}}
   (do
-    (k/delete Activity)
+    (db/cascade-delete! Activity)
     (process-activity-event {:topic :card-delete
                              :item  card})
     (-> (Activity :topic "card-delete")
@@ -150,7 +149,7 @@
                  :name         (:name dashboard)
                  :public_perms (:public_perms dashboard)}}
   (do
-    (k/delete Activity)
+    (db/cascade-delete! Activity)
     (process-activity-event {:topic :dashboard-create
                              :item  dashboard})
     (-> (Activity :topic "dashboard-create")
@@ -166,7 +165,7 @@
                  :name         (:name dashboard)
                  :public_perms (:public_perms dashboard)}}
   (do
-    (k/delete Activity)
+    (db/cascade-delete! Activity)
     (process-activity-event {:topic :dashboard-delete
                              :item  dashboard})
     (-> (Activity :topic "dashboard-delete")
@@ -187,7 +186,7 @@
                                  :id           (:id dashcard)
                                  :card_id      (:id card)}]}}
   (do
-    (k/delete Activity)
+    (db/cascade-delete! Activity)
     (process-activity-event {:topic :dashboard-add-cards
                              :item  {:id (:id dashboard) :actor_id (:id user) :dashcards [dashcard]}})
     (-> (Activity :topic "dashboard-add-cards")
@@ -208,7 +207,7 @@
                                  :id           (:id dashcard)
                                  :card_id      (:id card)}]}}
   (do
-    (k/delete Activity)
+    (db/cascade-delete! Activity)
     (process-activity-event {:topic :dashboard-remove-cards
                              :item  {:id (:id dashboard) :actor_id (:id user) :dashcards [dashcard]}})
     (-> (Activity :topic "dashboard-remove-cards")
@@ -239,7 +238,7 @@
 ;                  :description  (:description (db))
 ;                  :engine       (name (:engine (db)))}}]
 ;  (do
-;    (k/delete Activity)
+;    (db/cascade-delete! Activity
 ;    (let [_            (process-activity-event {:topic :database-sync-begin
 ;                                                :item  {:database_id (id) :custom_id "abc"}})
 ;          activity1    (-> (Activity :topic "database-sync")
@@ -262,7 +261,7 @@
    :model_id    nil
    :details     {}}
   (do
-    (k/delete Activity)
+    (db/cascade-delete! Activity)
     (process-activity-event {:topic :install
                              :item  {}})
     (-> (Activity :topic "install")
@@ -279,7 +278,7 @@
    :details     {:name        (:name metric)
                  :description (:description metric)}}
   (do
-    (k/delete Activity)
+    (db/cascade-delete! Activity)
     (process-activity-event {:topic :metric-create
                              :item  metric})
     (-> (Activity :topic "metric-create")
@@ -297,7 +296,7 @@
                  :description      (:description metric)
                  :revision_message "update this mofo"}}
   (do
-    (k/delete Activity)
+    (db/cascade-delete! Activity)
     (process-activity-event {:topic :metric-update
                              :item  (-> metric
                                         (assoc :actor_id         (:id user)
@@ -319,7 +318,7 @@
                  :description      (:description metric)
                  :revision_message "deleted"}}
   (do
-    (k/delete Activity)
+    (db/cascade-delete! Activity)
     (process-activity-event {:topic :metric-delete
                              :item  (assoc metric :actor_id         (:id user)
                                                    :revision_message "deleted")})
@@ -337,7 +336,7 @@
    :details     {:name         (:name pulse)
                  :public_perms (:public_perms pulse)}}
   (do
-    (k/delete Activity)
+    (db/cascade-delete! Activity)
     (process-activity-event {:topic :pulse-create
                              :item  pulse})
     (-> (Activity :topic "pulse-create")
@@ -354,7 +353,7 @@
    :details     {:name         (:name pulse)
                  :public_perms (:public_perms pulse)}}
   (do
-    (k/delete Activity)
+    (db/cascade-delete! Activity)
     (process-activity-event {:topic :pulse-delete
                              :item  pulse})
     (-> (Activity :topic "pulse-delete")
@@ -371,7 +370,7 @@
    :details     {:name        (:name segment)
                  :description (:description segment)}}
   (do
-    (k/delete Activity)
+    (db/cascade-delete! Activity)
     (process-activity-event {:topic :segment-create
                              :item  segment})
     (-> (Activity :topic "segment-create")
@@ -389,7 +388,7 @@
                  :description      (:description segment)
                  :revision_message "update this mofo"}}
   (do
-    (k/delete Activity)
+    (db/cascade-delete! Activity)
     (process-activity-event {:topic :segment-update
                              :item  (-> segment
                                         (assoc :actor_id         (:id user)
@@ -411,7 +410,7 @@
                  :description      (:description segment)
                  :revision_message "deleted"}}
   (do
-    (k/delete Activity)
+    (db/cascade-delete! Activity)
     (process-activity-event {:topic :segment-delete
                              :item  (assoc segment :actor_id         (:id user)
                                                    :revision_message "deleted")})
@@ -426,7 +425,7 @@
    :model_id    user-id
    :details     {}}
   (do
-    (k/delete Activity)
+    (db/cascade-delete! Activity)
     (process-activity-event {:topic :user-login
                              :item  {:user_id     user-id
                                      :session_id  session-id

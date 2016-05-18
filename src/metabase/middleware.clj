@@ -60,9 +60,9 @@
     ;; TODO - what kind of validations can we do on the sessionid to make sure it's safe to handle?  str?  alphanumeric?
     (handler (or (when (and metabase-session-id ((resolve 'metabase.core/initialized?)))
                    (when-let [session (db/select-one [Session :created_at :user_id]
-                                        {:left-join [(db/entity->table-name User) [:= (db/qualify User :id) :user_id]]
-                                         :where     [:and [:= (db/qualify User :is_active) true]
-                                                          [:= (db/qualify Session :id) metabase-session-id]]})]
+                                        (db/join [Session :user_id] [User :id])
+                                        (db/qualify User :is_active) true
+                                        (db/qualify Session :id) metabase-session-id)]
                      (let [session-age-ms (- (System/currentTimeMillis) (.getTime ^java.util.Date (get session :created_at (u/->Date 0))))]
                        ;; If the session exists and is not expired (max-session-age > session-age) then validation is good
                        (when (and session (> (config/config-int :max-session-age) (quot session-age-ms 60000)))

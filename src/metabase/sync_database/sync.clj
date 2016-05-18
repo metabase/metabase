@@ -2,7 +2,6 @@
   (:require (clojure [set :as set]
                      [string :as s])
             [clojure.tools.logging :as log]
-            [korma.core :as k]
             (metabase [db :as db]
                       [driver :as driver])
             (metabase.models [field :refer [Field], :as field]
@@ -47,17 +46,19 @@
   (doseq [{:keys [keypath value]} (driver/table-rows-seq driver database _metabase_metadata)]
     ;; TODO: this does not support schemas in dbs :(
     (let [[_ table-name field-name k] (re-matches #"^([^.]+)\.(?:([^.]+)\.)?([^.]+)$" keypath)]
-      (try (when (not= 1 (if field-name
-                           (k/update Field
-                             (k/where {:name field-name, :table_id (k/subselect Table
-                                                                                (k/fields :id)
-                                                                                ;; TODO: this needs to support schemas
-                                                                                ;; TODO: eventually limit this to "core" schema tables
-                                                                                (k/where {:db_id (:id database), :name table-name, :active true}))})
-                             (k/set-fields {(keyword k) value}))
-                           (k/update Table
-                             (k/where {:name table-name, :db_id (:id database)})
-                             (k/set-fields {(keyword k) value}))))
+      (try (when-not (if field-name
+                       (when-let [table-id (db/select-one-id Table
+                                             ;; TODO: this needs to support schemas
+                                             ;; TODO: eventually limit this to "core" schema tables
+                                             :db_id  (:id database)
+                                             :name   table-name
+                                             :active true)]
+                         (db/update-where! Field {:name     field-name
+                                                  :table_id table-id}
+                           (keyword k) value))
+                       (db/update-where! Table {:name  table-name
+                                                :db_id (:id database)}
+                         (keyword k) value))
              (log/error (u/format-color "Error syncing _metabase_metadata: no matching keypath: %s" keypath)))
            (catch Throwable e
              (log/error (u/format-color 'red "Error in _metabase_metadata: %s" (.getMessage e))))))))
@@ -76,10 +77,9 @@
     ;; retire any fields which were disabled in the schema (including child nested fields)
     (doseq [[raw-column-id {field-id :id}] raw-column-id->field]
       (when-not (contains? active-column-ids raw-column-id)
-        (k/update Field
-          (k/where (or {:id field-id}
-                       {:parent_id field-id}))
-          (k/set-fields {:visibility_type "retired"}))))
+        (db/update! Field {:where [:or [:= :id field-id]
+                                       [:= :parent_id field-id]]
+                           :set   {:visibility_type "retired"}})))
 
     ;; create/update the active columns
     (doseq [{raw-column-id :id, :keys [details], :as column} active-raw-columns]
@@ -101,16 +101,12 @@
   [{database-id :id}]
   {:pre [(integer? database-id)]}
   ;; retire tables (and their fields) as needed
-  (let [tables-to-remove (set (map :id (k/select Table
-                                         (k/fields :id)
-                                         ;; NOTE: something really wrong happening with SQLKorma here which requires us
-                                         ;;       to be explicit about :metabase_table.raw_table_id in the join condition
-                                         ;;       without this it seems to want to join against metabase_field !?
-                                         (k/join RawTable (= :raw_table.id :metabase_table.raw_table_id))
-                                         (k/where {:db_id            database-id
-                                                   :active           true
-                                                   :raw_table.active false}))))]
-    (table/retire-tables tables-to-remove)))
+  (when-let [table-ids-to-remove (db/select-ids Table
+                                   (db/join [Table :raw_table_id] [RawTable :id])
+                                   :db_id database-id
+                                   (db/qualify Table :active) true
+                                   (db/qualify RawTable :active) false)]
+    (table/retire-tables table-ids-to-remove)))
 
 
 (defn update-data-models-for-table!
@@ -127,16 +123,11 @@
           (save-table-fields! (table/update-table existing-table raw-table))
 
           ;; handle setting any fk relationships
-          (when-let [table-fks (k/select RawColumn
-                                 (k/fields [:id :source-column]
-                                           [:fk_target_column_id :target-column])
-                                 ;; NOTE: something really wrong happening with SQLKorma here which requires us
-                                 ;;       to be explicit about :metabase_table.raw_table_id in the join condition
-                                 ;;       without this it seems to want to join against metabase_field !?
-                                 (k/join RawTable (= :raw_table.id :raw_column.raw_table_id))
-                                 (k/where {:raw_table.database_id database-id
-                                           :raw_table.id raw-table-id})
-                                 (k/where (not= :raw_column.fk_target_column_id nil)))]
+          (when-let [table-fks (db/select [RawColumn [:id :source-column] [:fk_target_column_id :target-column]]
+                                 (db/join [RawColumn :raw_table_id] [RawTable :id])
+                                 (db/qualify RawTable :database_id) database-id
+                                 (db/qualify RawTable :id) raw-table-id
+                                 (db/qualify RawColumn :fk_target_column_id) [:not= nil])]
             (save-fks! table-fks))))
 
       (catch Throwable t
@@ -196,15 +187,10 @@
 (defn- set-fk-relationships!
   "Handle setting any FK relationships. This must be done after fully syncing the tables/fields because we need all tables/fields in place."
   [database]
-  (when-let [db-fks (k/select RawColumn
-                      (k/fields [:id :source-column]
-                                [:fk_target_column_id :target-column])
-                      ;; NOTE: something really wrong happening with SQLKorma here which requires us
-                      ;;       to be explicit about :metabase_table.raw_table_id in the join condition
-                      ;;       without this it seems to want to join against metabase_field !?
-                      (k/join RawTable (= :raw_table.id :raw_column.raw_table_id))
-                      (k/where {:raw_table.database_id (:id database)})
-                      (k/where (not= :raw_column.fk_target_column_id nil)))]
+  (when-let [db-fks (db/select [RawColumn [:id :source-column] [:fk_target_column_id :target-column]]
+                      (db/join [RawColumn :raw_table_id] [RawTable :id])
+                      (db/qualify RawTable :database_id) (:id database)
+                      (db/qualify RawColumn :fk_target_column_id) [:not= nil])]
     (save-fks! db-fks)))
 
 (defn- maybe-sync-metabase-metadata-table!

@@ -1,13 +1,12 @@
 (ns metabase.models.revision
   (:require [clojure.data :as data]
-            [korma.core :as k]
+            [korma.db :as kdb]
             [metabase.db :as db]
             (metabase.models [hydrate :refer [hydrate]]
                              [interface :as i]
                              [user :refer [User]])
             [metabase.models.revision.diff :refer [diff-string]]
-            [metabase.util :as u]
-            [korma.db :as kdb]))
+            [metabase.util :as u]))
 
 (def ^:const max-revisions
   "Maximum number of revisions to keep for each individual object. After this limit is surpassed, the oldest revisions will be deleted."
