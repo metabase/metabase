@@ -1,7 +1,6 @@
 (ns metabase.models.revision
   (:require [clojure.data :as data]
             [korma.core :as k]
-            [medley.core :as m]
             [metabase.db :as db]
             (metabase.models [hydrate :refer [hydrate]]
                              [interface :as i]
@@ -36,7 +35,7 @@
 (defn default-revert-to-revision
   "Default implementation of `revert-to-revision` which simply does an update using the values from `serialized-instance`."
   [entity id user-id serialized-instance]
-  (m/mapply db/upd entity id serialized-instance))
+  (db/update! entity id, serialized-instance))
 
 (defn default-diff-map
   "Default implementation of `diff-map` which simply uses clojures `data/diff` function and sets the keys `:before` and `:after`."
@@ -111,7 +110,7 @@
   [entity id]
   {:pre [(i/metabase-entity? entity) (integer? id)]}
   (when-let [old-revisions (seq (drop max-revisions (db/sel :many :id Revision, :model (:name entity), :model_id id, (k/order :timestamp :DESC))))]
-    (db/cascade-delete Revision :id [in old-revisions])))
+    (db/cascade-delete! Revision :id [:in old-revisions])))
 
 (defn push-revision
   "Record a new `Revision` for ENTITY with ID.
@@ -130,7 +129,7 @@
         object (serialize-instance entity id object)]
     ;; make sure we still have a map after calling out serialization function
     (assert (map? object))
-    (db/ins Revision
+    (db/insert! Revision
       :model        (:name entity)
       :model_id     id
       :user_id      user-id
@@ -156,7 +155,7 @@
       (revert-to-revision entity id user-id serialized-instance)
       ;; Push a new revision to record this change
       (let [last-revision (db/sel :one Revision, :model (:name entity), :model_id id, (k/order :id :DESC))
-            new-revision  (db/ins Revision
+            new-revision  (db/insert! Revision
                             :model        (:name entity)
                             :model_id     id
                             :user_id      user-id

@@ -1,11 +1,12 @@
 (ns metabase.db
-  "Korma database definition and helper functions for interacting with the database."
+  "Database definition and helper functions for interacting with the database."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             (clojure [set :as set]
                      [string :as s]
                      [walk :as walk])
             (honeysql [core :as hsql]
+                      [format :as hformat]
                       [helpers :as h])
             (korma [core :as k]
                    [db :as kdb])
@@ -200,48 +201,10 @@
 
 ;; # ---------------------------------------- OLD UTILITY FUNCTIONS ----------------------------------------
 
-;; ## UPD
-
-(defn ^:deprecated upd
-  "Wrapper around `korma.core/update` that updates a single row by its id value and
-   automatically passes &rest KWARGS to `korma.core/set-fields`.
-
-     (upd User 123 :is_active false) ; updates user with id=123, setting is_active=false
-
-   Returns true if update modified rows, false otherwise."
-  [entity entity-id & {:as kwargs}]
-  {:pre [(integer? entity-id)]}
-  (let [obj           (models/do-pre-update entity (assoc kwargs :id entity-id))
-        rows-affected (k/update entity
-                                (k/set-fields (dissoc obj :id))
-                                (k/where {:id entity-id}))]
-    (when (> rows-affected 0)
-      (models/post-update obj))
-    (> rows-affected 0)))
-
-(defn ^:deprecated upd-non-nil-keys
-  "Calls `upd`, but filters out KWARGS with `nil` values."
-  {:style/indent 2}
-  [entity entity-id & {:as kwargs}]
-  (->> (m/filter-vals (complement nil?) kwargs)
-       (m/mapply upd entity entity-id)))
-
-
-;; ## DEL
-
-(defn ^:deprecated del
-  "Wrapper around `korma.core/delete` that makes it easier to delete a row given a single PK value.
-   Returns a `204 (No Content)` response dictionary."
-  [entity & {:as kwargs}]
-  (k/delete entity (k/where kwargs))
-  {:status 204
-   :body nil})
-
-
 ;; ## SEL
 
-(def ^:dynamic *disable-db-logging*
-  "Should we disable logging for the `sel` macro? Normally `false`, but bind this to `true` to keep logging from getting too noisy during
+(def ^:dynamic ^Boolean *disable-db-logging*
+  "Should we disable logging for database queries? Normally `false`, but bind this to `true` to keep logging from getting too noisy during
    operations that require a lot of DB access, like the sync process."
   false)
 
@@ -322,55 +285,6 @@
       ~@args)))
 
 
-;; ## INS
-
-(defn ^:deprecated ins
-  "Wrapper around `korma.core/insert` that renames the `:scope_identity()` keyword in output to `:id`
-   and automatically passes &rest KWARGS to `korma.core/values`.
-
-   Returns a newly created object by calling `sel`."
-  [entity & {:as kwargs}]
-  (let [vals         (models/do-pre-insert entity kwargs)
-        ;; take database-specific keys returned from a jdbc insert and map them to :id
-        {:keys [id]} (set/rename-keys (k/insert entity (k/values vals))
-                                      {(keyword "scope_identity()") :id
-                                       :generated_key               :id})]
-    (some-> id entity models/post-insert)))
-
-
-;; ## EXISTS?
-
-(defmacro exists?
-  "Easy way to see if something exists in the db.
-
-    (exists? User :id 100)"
-  [entity & {:as kwargs}]
-  `(boolean (seq (k/select (i/entity->korma ~entity)
-                           (k/fields [:id])
-                           (k/where ~(if (seq kwargs) kwargs {}))
-                           (k/limit 1)))))
-
-;; ## CASADE-DELETE
-
-(defn ^:deprecated -cascade-delete
-  "Internal implementation of `cascade-delete`. Don't use this directly!"
-  [entity f]
-  (let [entity  (i/entity->korma entity)
-        results (i/sel-exec entity f)]
-    (dorun (for [obj (map (partial models/do-post-select entity) results)]
-             (do (models/pre-cascade-delete obj)
-                 (del entity :id (:id obj))))))
-  {:status 204, :body nil})
-
-(defmacro ^:deprecated cascade-delete
-  "Do a cascading delete of object(s). For each matching object, the `pre-cascade-delete` multimethod is called,
-   which should delete any objects related the object about to be deleted.
-
-   Like `del`, this returns a 204/nil reponse so it can be used directly in an API endpoint."
-  [entity & kwargs]
-  `(-cascade-delete ~entity (i/sel-fn ~@kwargs)))
-
-
 
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 ;;; |                                         NEW HONEY-SQL BASED DB UTIL FUNCTIONS                                          |
@@ -425,11 +339,18 @@
     :mysql    :mysql
     :postgres :ansi))
 
+(def ^:private quote-fn
+  "The function that JDBC should use to quote identifiers for our database. This is passed as the `:entities` option to functions like `jdbc/insert!`."
+  (quoting-style @(resolve 'hformat/quote-fns)))
+
 (defn- honeysql->sql
   "Compile HONEYSQL-FORM to SQL.
   This returns a vector with the SQL string as its first item and prepared statement params as the remaining items."
   [honeysql-form]
-  (u/prog1 (hsql/format honeysql-form :quoting quoting-style)
+  {:pre [(map? honeysql-form)]}
+  ;; Not sure *why* but without setting this binding on *rare* occasion HoneySQL will unwantedly generate SQL for a subquery and wrap the query in parens like "(UPDATE ...)" which is invalid
+  (u/prog1 (binding [hformat/*subquery?* false]
+             (hsql/format honeysql-form :quoting quoting-style))
     (when-not *disable-db-logging*
       (log/debug (str "DB Call: " (first <>))))))
 
@@ -444,6 +365,7 @@
 
      (entity->table-name 'CardFavorite) -> :report_cardfavorite"
   ^clojure.lang.Keyword [entity]
+  {:post [(keyword? %)]}
   (keyword (:table (resolve-entity entity))))
 
 (defn- entity->fields
@@ -547,7 +469,7 @@
                                 honeysql-form)))))
 
   ([entity id kvs]
-   {:pre [(integer? id) (map? kvs)]}
+   {:pre [(integer? id) (map? kvs) (every? keyword? (keys kvs))]}
    (let [entity (resolve-entity entity)
          kvs    (-> (models/do-pre-update entity (assoc kvs :id id))
                     (dissoc :id))]
@@ -574,18 +496,38 @@
 
      (delete! 'Label)                ; delete all Labels
      (delete! Label :name \"Cam\")   ; delete labels where :name == \"Cam\"
-     (delete! Label {:name \"Cam\"}) ; for flexibility either a single map or kwargs are accepted"
+     (delete! Label {:name \"Cam\"}) ; for flexibility either a single map or kwargs are accepted
+
+   Most the time, you should use `cascade-delete!` instead, handles deletion of dependent objects via the entity's implementation of `pre-cascade-delete`."
   {:style/indent 1}
   ([entity]
    (delete! entity {}))
   ([entity kvs]
+   {:pre [(map? kvs) (every? keyword? (keys kvs))]}
    (let [entity (resolve-entity entity)]
      (not= [0] (execute! (-> (h/delete-from (entity->table-name entity))
                              (where kvs))))))
   ([entity k v & more]
    (delete! entity (apply array-map k v more))))
 
+
 ;;; ## INSERT!
+
+(def ^:private ^:const ^clojure.lang.Keyword insert-id-key
+  "The keyword name of the ID column of a newly inserted row returned by `jdbc/insert!`."
+  (case db-type
+    :postgres :id
+    :mysql    :generated_key
+    :h2       (keyword "scope_identity()")))
+
+(defn simple-insert!
+  "Do a raw JDBC `insert!` for a single row. Insert map M into the table named by keyword TABLE-KW. Returns ID of the inserted row (if applicable).
+   Normally, you shouldn't call this directly; use `insert!` instead, which handles entity resolution and calls `pre-insert` and `post-insert`.
+
+     (simple-insert! :label {:name \"Cam\", :slug \"cam\"}) -> 1"
+  [table-kw m]
+  {:pre  [(keyword? table-kw) (map? m) (every? keyword? (keys m))]}
+  (insert-id-key (first (jdbc/insert! (db-connection) table-kw m, :entities quote-fn))))
 
 (defn insert!
   "Insert a new object into the Database. Resolves ENTITY, and calls its `pre-insert` method on OBJECT to prepare it before insertion;
@@ -593,27 +535,18 @@
    For flexibility, `insert!` OBJECT can be either a single map or individual kwargs:
 
      (insert! Label {:name \"Toucan Unfriendly\"})
-     (insert! 'Label :name \"Toucan Friendly\")"
+     (insert! 'Label :name \"Toucan Friendly\")
+
+   This fetches the newly created object from the database and passes it to the entity's `post-insert` method, ultimately returning the object."
   {:style/indent 1}
   ([entity object]
+   {:pre [(map? object)]}
    (let [entity (resolve-entity entity)
-         object (models/do-pre-insert entity object)
-         id     (first (vals (first (jdbc/insert! (db-connection) (entity->table-name entity) object))))]
+         id     (simple-insert! (entity->table-name entity) (models/do-pre-insert entity object))]
      (some-> id entity models/post-insert)))
 
   ([entity k v & more]
    (insert! entity (apply array-map k v more))))
-
-
-;;; ## EXISTS?
-
-;; The new implementation of exists? is commented out for the time being until we re-work existing uses
-#_(defn exists?
-  "Easy way to see if something exists in the DB.
-    (db/exists? User :id 100)
-   NOTE: This only works for objects that have an `:id` field."
-  [entity & kvs]
-  (boolean (select-one entity (apply where (h/select :id) kvs))))
 
 
 ;;; ## SELECT
@@ -724,18 +657,30 @@
   (apply select-field->field :id field entity options))
 
 
+;;; ## EXISTS?
+
+(defn exists?
+  "Easy way to see if something exists in the DB.
+    (db/exists? User :id 100)
+   NOTE: This only works for objects that have an `:id` field."
+  ^Boolean [entity & kvs]
+  (boolean (select-one entity (apply where (h/select {} :id) kvs))))
+
+
 ;;; ## CASADE-DELETE
 
 (defn cascade-delete!
   "Do a cascading delete of object(s). For each matching object, the `pre-cascade-delete` multimethod is called,
    which should delete any objects related the object about to be deleted.
-   Returns a 204/nil reponse so it can be used directly in an API endpoint."
+   Returns a 204/nil reponse so it can be used directly in an API endpoint.
+
+     (cascade-delete! Database :id 1)
+
+   TODO - this depends on objects having an `:id` column; consider a way to fix this for models like `Setting` that do not have one."
   {:style/indent 1}
-  ([entity id]
-   (cascade-delete! entity :id id))
-  ([entity k v & more]
-   (let [entity  (resolve-entity entity)]
-     (doseq [object (apply select entity k v more)]
-       (models/pre-cascade-delete object)
-       (delete! entity :id (:id object))))
-   {:status 204, :body nil}))
+  [entity & kvs]
+  (let [entity (resolve-entity entity)]
+    (doseq [object (apply select entity kvs)]
+      (models/pre-cascade-delete object)
+      (delete! entity :id (:id object))))
+  {:status 204, :body nil})

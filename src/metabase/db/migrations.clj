@@ -67,7 +67,7 @@
     (doseq [{id :id {:keys [type] :as dataset-query} :dataset_query} (db/sel :many [Card :id :dataset_query])]
       (when type
         ;; simply resave the card with the dataset query which will automatically set the database, table, and type
-        (db/upd Card id :dataset_query dataset-query)))))
+        (db/update! Card id, :dataset_query dataset-query)))))
 
 
 ;; Set the `:ssl` key in `details` to `false` for all existing MongoDB `Databases`.
@@ -75,7 +75,7 @@
 ;; Since Mongo did *not* support SSL, all existing Mongo DBs should actually have this key set to `false`.
 (defmigration set-mongodb-databases-ssl-false
   (doseq [{:keys [id details]} (db/sel :many :fields [Database :id :details] :engine "mongo")]
-    (db/upd Database id, :details (assoc details :ssl false))))
+    (db/update! Database id, :details (assoc details :ssl false))))
 
 
 ;; Set default values for :schema in existing tables now that we've added the column
@@ -113,7 +113,7 @@
       (when (< 1 (count fks))
         (log/debug "Removing duplicate FK entries for" k)
         (doseq [duplicate-fk (drop-last fks)]
-          (db/del ForeignKey :id (:id duplicate-fk)))))))
+          (db/delete! ForeignKey, :id (:id duplicate-fk)))))))
 
 
 ;; Migrate dashboards to the new grid
@@ -205,12 +205,12 @@
                     ;; add this table to the set of tables we've processed
                     (swap! processed-tables conj {:schema table-schema, :name table-name})
                     ;; create the RawTable
-                    (let [{raw-table-id :id} (db/ins RawTable
-                                               :database_id  database-id
-                                               :schema       table-schema
-                                               :name         table-name
-                                               :details      {}
-                                               :active       true)]
+                    (let [{raw-table-id :id} (db/insert! RawTable
+                                               :database_id database-id
+                                               :schema      table-schema
+                                               :name        table-name
+                                               :details     {}
+                                               :active      true)]
                       ;; update the Table and link it with the RawTable
                       (k/update Table
                         (k/set-fields {:raw_table_id raw-table-id})
@@ -226,12 +226,12 @@
                                 (k/set-fields {:visibility_type "retired"})
                                 (k/where      {:id field-id}))
                               ;; normal unmigrated field, so lets use it
-                              (let [{raw-column-id :id} (db/ins RawColumn
-                                                          :raw_table_id  raw-table-id
-                                                          :name          column-name
-                                                          :is_pk         (= :id (:special_type field))
-                                                          :details       {:base-type (:base_type field)}
-                                                          :active        true)]
+                              (let [{raw-column-id :id} (db/insert! RawColumn
+                                                          :raw_table_id raw-table-id
+                                                          :name         column-name
+                                                          :is_pk        (= :id (:special_type field))
+                                                          :details      {:base-type (:base_type field)}
+                                                          :active       true)]
                                 ;; update the Field and link it with the RawColumn
                                 (k/update Field
                                   (k/set-fields {:raw_column_id raw-column-id

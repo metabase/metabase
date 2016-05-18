@@ -77,7 +77,7 @@
     ;; setup a couple things we'll use in the test
     (introspect/introspect-database-and-update-raw-tables! (moviedb/->MovieDbDriver) db)
     (let [raw-table-id (db/sel :one :id RawTable, :database_id database-id, :name "movies")
-          table        (db/ins Table
+          table        (db/insert! Table
                          :db_id        database-id
                          :raw_table_id raw-table-id
                          :name         "movies"
@@ -259,12 +259,12 @@
      :last_analyzed      false
      :created_at         true
      :updated_at         true}]]
-  (tu/with-temp* [Database    [{database-id :id}]
-                  RawTable   [{raw-table-id :id, :as table} {:database_id database-id}]
+  (tu/with-temp* [Database  [{database-id :id}]
+                  RawTable  [{raw-table-id :id, :as table} {:database_id database-id}]
                   RawColumn [{raw-column-id1 :id} {:raw_table_id raw-table-id, :name "First", :is_pk true, :details {:base-type "IntegerField"}}]
                   RawColumn [{raw-column-id2 :id} {:raw_table_id raw-table-id, :name "Second", :details {:special-type :category, :base-type "TextField"}}]
                   RawColumn [{raw-column-id3 :id} {:raw_table_id raw-table-id, :name "Third", :details {:base-type "BooleanField"}}]
-                  Table          [{table-id :id, :as tbl} {:db_id database-id, :raw_table_id raw-table-id}]]
+                  Table     [{table-id :id, :as tbl} {:db_id database-id, :raw_table_id raw-table-id}]]
     (let [get-fields #(->> (db/sel :many Field :table_id table-id (k/order :id))
                            (mapv tu/boolean-ids-and-timestamps)
                            (mapv (fn [m]
@@ -280,13 +280,13 @@
          first-sync
          ;; now add another column and modify the first
          (do
-           (db/upd RawColumn raw-column-id1 :is_pk false, :details {:base-type "DecimalField"})
+           (db/update! RawColumn, raw-column-id1 :is_pk false, :details {:base-type "DecimalField"})
            (save-table-fields! tbl)
            (get-fields))
          ;; now disable the first column
          (do
-           (db/upd RawColumn raw-column-id1 :active false)
-           (db/upd RawColumn raw-column-id3 :is_pk true)
+           (db/update! RawColumn raw-column-id1, :active false)
+           (db/update! RawColumn raw-column-id3, :is_pk true)
            (save-table-fields! tbl)
            (get-fields))]))))
 
@@ -341,7 +341,7 @@
 
       ;; stub out the Table we are going to sync for real below
       (let [raw-table-id (db/sel :one :id RawTable, :database_id database-id, :name "roles")
-            tbl          (db/ins Table
+            tbl          (db/insert! Table
                            :db_id        database-id
                            :raw_table_id raw-table-id
                            :name         "roles"

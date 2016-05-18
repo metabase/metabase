@@ -8,13 +8,12 @@
             [korma.core :as k]
             [medley.core :as m]
             [metabase.api.common.internal :refer :all]
-            [metabase.db :refer :all]
+            [metabase.db :as db]
             [metabase.models.interface :as models]
             [metabase.util :as u]
             [metabase.util.password :as password]))
 
-(declare check-403
-         check-404)
+(declare check-403 check-404)
 
 ;;; ## DYNAMIC VARIABLES
 ;; These get bound by middleware for each HTTP request.
@@ -61,7 +60,7 @@
 (defn check-exists?
   "Check that object with ID exists in the DB, or throw a 404."
   [entity id]
-  (check-404 (exists? entity :id id)))
+  (check-404 (db/exists? entity, :id id)))
 
 (defn check-superuser
   "Check that `*current-user*` is a superuser or throw a 403."

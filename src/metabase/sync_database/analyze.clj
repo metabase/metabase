@@ -174,21 +174,21 @@
 
 (defn analyze-table-data-shape!
   "Analyze the data shape for a single `Table`."
-  [driver {table-id :id, :as tbl}]
+  [driver {table-id :id, :as table}]
   (let [new-field-ids (set (db/sel :many :id field/Field, :table_id table-id, :visibility_type [not= "retired"], :last_analyzed nil))]
     ;; TODO: this call should include the database
-    (when-let [table-stats (u/prog1 (driver/analyze-table driver tbl new-field-ids)
+    (when-let [table-stats (u/prog1 (driver/analyze-table driver table new-field-ids)
                              (when <>
                                (schema/validate i/AnalyzeTable <>)))]
       ;; update table row count
       (when (:row_count table-stats)
-        (db/upd table/Table table-id :rows (:row_count table-stats)))
+        (db/update! table/Table table-id, :rows (:row_count table-stats)))
 
       ;; update individual fields
       (doseq [{:keys [id preview-display special-type values]} (:fields table-stats)]
         ;; set Field metadata we may have detected
         (when (and id (or preview-display special-type))
-          (db/upd-non-nil-keys field/Field id
+          (db/update-non-nil-keys! field/Field id
             ;; if a field marked `preview-display` as false then set the visibility type to `:details-only` (see models.field/visibility-types)
             :visibility_type (when (false? preview-display) :details-only)
             :special_type    special-type))

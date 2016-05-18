@@ -30,10 +30,10 @@
         ;; NOTE: this recursively creates fields until we hit the end of the nesting
         (if-let [existing-field (existing-field-name->field (:name nested-field-def))]
           ;; field already exists, so we UPDATE it
-          (cond-> (field/update-field existing-field nested-field-def)
+          (cond-> (field/update-field! existing-field nested-field-def)
                   nested-fields (save-nested-fields! nested-fields))
           ;; looks like a new field, so we CREATE it
-          (cond-> (field/create-field table-id nested-field-def)
+          (cond-> (field/create-field! table-id nested-field-def)
                   nested-fields (save-nested-fields! nested-fields)))))))
 
 
@@ -51,10 +51,10 @@
     (doseq [{field-name :name, :keys [nested-fields], :as field-def} field-defs]
       (if-let [existing-field (get field-name->field field-name)]
         ;; field already exists, so we UPDATE it
-        (cond-> (field/update-field existing-field field-def)
+        (cond-> (field/update-field! existing-field field-def)
                 nested-fields (save-nested-fields! nested-fields))
         ;; looks like a new field, so we CREATE it
-        (cond-> (field/create-field table-id field-def)
+        (cond-> (field/create-field! table-id field-def)
                 nested-fields (save-nested-fields! nested-fields))))))
 
 

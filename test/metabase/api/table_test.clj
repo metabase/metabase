@@ -11,7 +11,8 @@
             (metabase.test.data [dataset-definitions :as defs]
                                 [datasets :as datasets]
                                 [users :refer :all])
-            [metabase.test.util :refer [match-$ expect-eval-actual-first resolve-private-fns]]))
+            [metabase.test.util :refer [match-$ expect-eval-actual-first resolve-private-fns]]
+            [metabase.util :as u]))
 
 (resolve-private-fns metabase.models.table pk-field-id)
 
@@ -437,10 +438,9 @@
 
 ;; ## PUT /api/table/:id
 (expect-eval-actual-first
-    (match-$ (let [table (Table (id :users))]
+    (match-$ (u/prog1 (Table (id :users))
                ;; reset Table back to its original state
-               (db/upd Table (id :users) :display_name "Users" :entity_type nil :visibility_type nil :description nil)
-               table)
+               (db/update! Table (id :users), :display_name "Users", :entity_type nil, :visibility_type nil, :description nil))
       {:description     "What a nice table!"
        :entity_type     "person"
        :visibility_type "hidden"
@@ -566,7 +566,7 @@
     (assert (= 0 (:position (db/sel :one :fields [Field :position] :id (:id categories-name-field)))))
     (assert (= 1 (:position (db/sel :one :fields [Field :position] :id (:id categories-id-field)))))
     ;; put the values back to their previous state
-    (db/upd Field (:id categories-name-field) :position 0)
-    (db/upd Field (:id categories-id-field) :position 0)
+    (db/update! Field (:id categories-name-field), :position 0)
+    (db/update! Field (:id categories-id-field),   :position 0)
     ;; return our origin api response for validation
     api-response))

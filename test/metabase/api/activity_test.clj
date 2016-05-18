@@ -21,11 +21,11 @@
 
 ; NOTE: timestamp matching was being a real PITA so I cheated a bit.  ideally we'd fix that
 (expect-let [_         (k/delete Activity)
-             activity1 (db/ins Activity
+             activity1 (db/insert! Activity
                          :topic     "install"
                          :details   {}
                          :timestamp (u/->Timestamp "2015-09-09T12:13:14.888Z"))
-             activity2 (db/ins Activity
+             activity2 (db/insert! Activity
                          :topic     "dashboard-create"
                          :user_id   (user->id :crowberto)
                          :model     "dashboard"
@@ -34,7 +34,7 @@
                                      :name         "Bwahahaha"
                                      :public_perms 2}
                          :timestamp (u/->Timestamp "2015-09-10T18:53:01.632Z"))
-             activity3 (db/ins Activity
+             activity3 (db/insert! Activity
                          :topic     "user-joined"
                          :user_id   (user->id :rasta)
                          :model     "user"
@@ -152,7 +152,7 @@
                    :description (:description card2)
                    :display     (name (:display card2))}}]
   (let [create-view (fn [user model model-id]
-                      (db/ins ViewLog
+                      (db/insert! ViewLog
                         :user_id  user
                         :model    model
                         :model_id model-id

@@ -61,7 +61,7 @@
   (do
     ;; Delete all the other random Users we've created so far
     (let [user-ids (set (map user->id [:crowberto :rasta :lucky :trashbird]))]
-      (db/cascade-delete User :id [not-in user-ids]))
+      (db/cascade-delete! User :id [:not-in user-ids]))
     ;; Now do the request
     (set ((user->client :rasta) :get 200 "user")))) ; as a set since we don't know what order the results will come back in
 
@@ -97,7 +97,7 @@
        :is_qbnewb    true})
     (when-let [user (create-user-api rand-name)]
       ;; create a random user then set them to :inactive
-      (db/upd User (:id user)
+      (db/update! User (:id user)
         :is_active false
         :is_superuser true)
       ;; then try creating the same user again
@@ -220,7 +220,7 @@
 ;; Test that a User can change their password
 (expect-let [creds                 {:email    "abc@metabase.com"
                                     :password "def"}
-             {:keys [id password]} (db/ins User
+             {:keys [id password]} (db/insert! User
                                      :first_name "test"
                                      :last_name  "user"
                                      :email      "abc@metabase.com"

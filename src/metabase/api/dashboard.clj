@@ -21,7 +21,7 @@
   {f FilterOptionAllOrMine}
   (-> (case (or f :all)
         :all  (db/sel :many Dashboard (k/where (or {:creator_id *current-user-id*}
-                                                {:public_perms [> common/perms-none]})))
+                                                   {:public_perms [> common/perms-none]})))
         :mine (db/sel :many Dashboard :creator_id *current-user-id*))
       (hydrate :creator :can_read :can_write)))
 
@@ -30,11 +30,11 @@
   [:as {{:keys [name description public_perms]} :body}]
   {name         [Required NonEmptyString]
    public_perms [Required PublicPerms]}
-  (->> (db/ins Dashboard
-               :name name
-               :description description
-               :public_perms public_perms
-               :creator_id *current-user-id*)
+  (->> (db/insert! Dashboard
+         :name         name
+         :description  description
+         :public_perms public_perms
+         :creator_id   *current-user-id*)
        (events/publish-event :dashboard-create)))
 
 (defendpoint GET "/:id"
@@ -53,7 +53,7 @@
   [id :as {{:keys [description name]} :body}]
   {name NonEmptyString}
   (write-check Dashboard id)
-  (check-500 (db/upd-non-nil-keys Dashboard id
+  (check-500 (db/update-non-nil-keys! Dashboard id
                :description description
                :name        name))
   (events/publish-event :dashboard-update (assoc (Dashboard id) :actor_id *current-user-id*)))
@@ -64,7 +64,7 @@
   (write-check Dashboard id)
   ;; TODO - it would be much more natural if `cascade-delete` returned the deleted entity instead of an api response
   (let [dashboard (db/sel :one Dashboard :id id)
-        result    (db/cascade-delete Dashboard :id id)]
+        result    (db/cascade-delete! Dashboard :id id)]
     (events/publish-event :dashboard-delete (assoc dashboard :actor_id *current-user-id*))
     result))
 

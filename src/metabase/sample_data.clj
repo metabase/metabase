@@ -22,11 +22,11 @@
                             (s/replace #"^file:" "zip:")        ; to connect to an H2 DB inside a JAR just replace file: with zip:
                             (s/replace #"\.mv\.db$" "")         ; strip the .mv.db suffix from the path
                             (str ";USER=GUEST;PASSWORD=guest")) ; specify the GUEST user account created for the DB
-                db      (db/ins Database
-                                :name      sample-dataset-name
-                                :details   {:db h2-file}
-                                :engine    :h2
-                                :is_sample true)]
+                db      (db/insert! Database
+                          :name      sample-dataset-name
+                          :details   {:db h2-file}
+                          :engine    :h2
+                          :is_sample true)]
             (sync-database/sync-database! db))))
       (catch Throwable e
         (log/error (u/format-color 'red "Failed to load sample dataset: %s" (.getMessage e)))))))

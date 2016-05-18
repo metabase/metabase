@@ -2,7 +2,6 @@
   "Helper functions and macros for writing unit tests."
   (:require [cheshire.core :as json]
             [expectations :refer :all]
-            [medley.core :as m]
             [metabase.db :as db]
             (metabase.models [card :refer [Card]]
                              [common :as common]
@@ -73,6 +72,7 @@
 
 (defmacro expect-eval-actual-first
   "Identical to `expect` but evaluates `actual` first (instead of evaluating `expected` first)."
+  {:style/indent 0}
   [expected actual]
   (let [fn-name (gensym)]
     `(def ~(vary-meta fn-name assoc :expectation true)
@@ -194,12 +194,12 @@
 (defn do-with-temp
   "Internal implementation of `with-temp` (don't call this directly)."
   [entity attributes f]
-  (let [temp-object (m/mapply db/ins entity (merge (with-temp-defaults entity)
-                                                   attributes))]
+  (let [temp-object (db/insert! entity (merge (with-temp-defaults entity)
+                                              attributes))]
     (try
       (f temp-object)
       (finally
-        (db/cascade-delete entity :id (:id temp-object))))))
+        (db/cascade-delete! entity :id (:id temp-object))))))
 
 
 ;;; # with-temp

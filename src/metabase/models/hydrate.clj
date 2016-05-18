@@ -3,7 +3,7 @@
   (:require [clojure.java.classpath :as classpath]
             [clojure.tools.namespace.find :as ns-find]
             [medley.core :as m]
-            [metabase.db :refer [sel]]
+            [metabase.db :as db]
             [metabase.models.interface :as i]
             [metabase.util :as u]))
 
@@ -180,7 +180,7 @@
          ids        (set (for [result results
                                :when  (not (get result dest-key))]
                            (source-key result)))
-         objs       (into {} (for [obj (sel :many entity :id [in ids])]
+         objs       (into {} (for [obj (db/sel :many entity :id [in ids])]
                                {(:id obj) obj}))]
      (for [{source-id source-key :as result} results]
        (if (get result dest-key)

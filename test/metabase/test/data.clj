@@ -178,7 +178,7 @@
            (i/create-db! dataset-loader database-definition)
 
            ;; Add DB object to Metabase DB
-           (let [db (db/ins Database
+           (let [db (db/insert! Database
                       :name    database-name
                       :engine  (name engine)
                       :details (i/database->connection-details dataset-loader :db database-definition))]
@@ -201,13 +201,13 @@
                                                                      (u/pprint-to-str field-definition))))))]
                      (when field-type
                        (log/debug (format "SET FIELD TYPE %s.%s -> %s" table-name field-name field-type))
-                       (db/upd Field (:id @field) :field_type (name field-type)))
+                       (db/update! Field (:id @field) :field_type (name field-type)))
                      (when visibility-type
                        (log/debug (format "SET VISIBILITY TYPE %s.%s -> %s" table-name field-name visibility-type))
-                       (db/upd Field (:id @field) :visibility_type (name visibility-type)))
+                       (db/update! Field (:id @field) :visibility_type (name visibility-type)))
                      (when special-type
                        (log/debug (format "SET SPECIAL TYPE %s.%s -> %s" table-name field-name special-type))
-                       (db/upd Field (:id @field) :special_type (name special-type)))))))
+                       (db/update! Field (:id @field) :special_type (name special-type)))))))
              db))))))
 
 (defn remove-database!
@@ -218,7 +218,7 @@
    (remove-database! *data-loader* database-definition))
   ([dataset-loader ^DatabaseDefinition database-definition]
    ;; Delete the Metabase Database and associated objects
-   (db/cascade-delete Database :id (:id (i/metabase-instance database-definition (i/engine dataset-loader))))
+   (db/cascade-delete! Database :id (:id (i/metabase-instance database-definition (i/engine dataset-loader))))
 
    ;; now delete the DBMS database
    (i/destroy-db! dataset-loader database-definition)))

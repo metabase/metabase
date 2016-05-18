@@ -159,10 +159,10 @@
                                      :features        (mapv name (driver/features (driver/engine->driver :postgres)))}))))
       (do
         ;; Delete all the randomly created Databases we've made so far
-        (db/cascade-delete Database :id [not-in (set (filter identity
-                                                             (for [engine datasets/all-valid-engines]
-                                                               (datasets/when-testing-engine engine
-                                                                 (:id (get-or-create-test-data-db! (driver/engine->driver engine)))))))])
+        (db/cascade-delete! Database :id [:not-in (filter identity
+                                                          (for [engine datasets/all-valid-engines]
+                                                            (datasets/when-testing-engine engine
+                                                              (:id (get-or-create-test-data-db! (driver/engine->driver engine))))))])
         ;; Add an extra DB so we have something to fetch besides the Test DB
         (create-db db-name)
         ;; Now hit the endpoint
@@ -185,27 +185,27 @@
                      :features        (mapv name (driver/features (driver/engine->driver :postgres)))})]
                  (filter identity (for [engine datasets/all-valid-engines]
                                     (datasets/when-testing-engine engine
-                                                                  (let [database (get-or-create-test-data-db! (driver/engine->driver engine))]
-                                                                    (match-$ database
-                                                                      {:created_at      $
-                                                                       :engine          (name $engine)
-                                                                       :id              $
-                                                                       :updated_at      $
-                                                                       :name            "test-data"
-                                                                       :is_sample       false
-                                                                       :is_full_sync    true
-                                                                       :organization_id nil
-                                                                       :description     nil
-                                                                       :tables          (->> (db/sel :many Table :db_id (:id database))
-                                                                                             (mapv table-details)
-                                                                                             (sort-by :name))
-                                                                       :features        (mapv name (driver/features (driver/engine->driver engine)))})))))))
+                                      (let [database (get-or-create-test-data-db! (driver/engine->driver engine))]
+                                        (match-$ database
+                                          {:created_at      $
+                                           :engine          (name $engine)
+                                           :id              $
+                                           :updated_at      $
+                                           :name            "test-data"
+                                           :is_sample       false
+                                           :is_full_sync    true
+                                           :organization_id nil
+                                           :description     nil
+                                           :tables          (->> (db/sel :many Table :db_id (:id database))
+                                                                 (mapv table-details)
+                                                                 (sort-by :name))
+                                           :features        (mapv name (driver/features (driver/engine->driver engine)))})))))))
     (do
       ;; Delete all the randomly created Databases we've made so far
-      (db/cascade-delete Database :id [not-in (set (filter identity
-                                                        (for [engine datasets/all-valid-engines]
-                                                          (datasets/when-testing-engine engine
-                                                                                        (:id (get-or-create-test-data-db! (driver/engine->driver engine)))))))])
+      (db/cascade-delete! Database :id [:not-in (set (filter identity
+                                                             (for [engine datasets/all-valid-engines]
+                                                               (datasets/when-testing-engine engine
+                                                                 (:id (get-or-create-test-data-db! (driver/engine->driver engine)))))))])
       ;; Add an extra DB so we have something to fetch besides the Test DB
       (create-db db-name)
       ;; Now hit the endpoint
