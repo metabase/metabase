@@ -296,7 +296,7 @@ export default class QueryHeader extends Component {
                 <Tooltip key="history" tooltip="Revision history">
                     <ModalWithTrigger
                         ref="cardHistory"
-                        triggerElement={<span className="text-brand-hover"><Icon name="history" width="16px" height="16px" /></span>}
+                        triggerElement={<span className="text-brand-hover"><Icon name="history" width="18px" height="17px" /></span>}
                     >
                         <HistoryModal
                             revisions={this.state.revisions}
@@ -324,14 +324,13 @@ export default class QueryHeader extends Component {
         ]);
 
         // data reference button
-        var dataReferenceButtonClasses = cx('mx1 transition-color', {
-            'text-grey-4': !this.props.isShowingDataReference,
+        var dataReferenceButtonClasses = cx('mr1 transition-color', {
             'text-brand': this.props.isShowingDataReference,
             'text-brand-hover': !this.state.isShowingDataReference
         });
         buttonSections.push([
             <Tooltip key="dataReference" tooltip="Learn about your data">
-                <a className={dataReferenceButtonClasses} title="Get help on what data means">
+                <a className={dataReferenceButtonClasses}>
                     <Icon name='reference' width="16px" height="16px" onClick={this.onToggleDataReference}></Icon>
                 </a>
             </Tooltip>
