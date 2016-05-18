@@ -177,7 +177,7 @@ export default class QueryHeader extends Component {
                 <ModalWithTrigger
                     key="save"
                     ref="saveModal"
-                    triggerClasses="h4 px1 text-grey-4 text-brand-hover text-uppercase"
+                    triggerClasses="h4 text-grey-4 text-brand-hover text-uppercase"
                     triggerElement="Save"
                 >
                     <SaveQuestionModal
@@ -273,7 +273,7 @@ export default class QueryHeader extends Component {
                 <Tooltip key="addtodashsave" tooltip="Add to dashboard">
                     <ModalWithTrigger
                         ref="addToDashSaveModal"
-                        triggerClasses="h4 px1 text-grey-4 text-brand-hover text-uppercase"
+                        triggerClasses="h4 text-brand-hover text-uppercase"
                         triggerElement={<span data-metabase-event={"QueryBuilder;AddToDash Modal;pre-save"} className="text-brand-hover"><Icon name="addtodash" width="16px" height="16px" /></span>}
                     >
                         <SaveQuestionModal
@@ -337,7 +337,7 @@ export default class QueryHeader extends Component {
         ]);
 
         return (
-            <ButtonBar buttons={buttonSections} className="Header-buttonSection" />
+            <ButtonBar buttons={buttonSections} className="Header-buttonSection borderless" />
         );
     }
 
