@@ -135,8 +135,9 @@ function tokenizeExpression(expressionString) {
     }
     
     // Replace operators in expressionString making sure the operators have exactly one space before and after
-    VALID_OPERATORS.forEach(function(value){
-        expressionString.replace(new RegExp("/\s*[\\" + value + "]\s*/"),' '+value+' ')
+    VALID_OPERATORS.forEach(function(operator){
+        let regex = new RegExp("\\s*[\\"+operator+"]\\s*");
+        expressionString = expressionString.replace(regex,' '+operator+' ')
     });
 
     for (; i < expressionString.length; i++) {
