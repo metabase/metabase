@@ -1,5 +1,3 @@
-/*eslint-env jasmine */
-
 import { pivot } from "metabase/lib/data_grid";
 
 function makeData(rows) {
