@@ -133,6 +133,11 @@ function tokenizeExpression(expressionString) {
         };
         currentToken.value += c;
     }
+    
+    // Replace operators in expressionString making sure the operators have exactly one space before and after
+    VALID_OPERATORS.forEach(function(value){
+        expressionString.replace(new RegExp("/\s*[\\" + value + "]\s*/"),' '+value+' ')
+    });
 
     for (; i < expressionString.length; i++) {
         let c = expressionString.charAt(i);
