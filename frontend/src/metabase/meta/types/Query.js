@@ -1,7 +1,7 @@
 /* @flow */
 
-export type DatabaseId = number;
-export type TableId = number;
+import type { TableId } from "./base";
+
 export type FieldId = number;
 export type SegmentId = number;
 export type MetricId = number;
@@ -17,19 +17,15 @@ export type RelativeDatetimePeriodType = "current" | "last" | "next" | number;
 export type RelativeDatetimeUnitType = "minute" | "hour" | "day" | "week" | "month" | "quarter" | "year";
 export type DatetimeUnitType = "default" | "minute" | "minute-of-hour" | "hour" | "hour-of-day" | "day" | "day-of-week" | "day-of-month" | "day-of-year" | "week" | "week-of-year" | "month" | "month-of-year" | "quarter" | "quarter-of-year" | "year";
 
-export type DatasetQueryType =
-    { database: DatabaseId, type: "query",  query: StructuredQueryType } |
-    { database: DatabaseId, type: "native", query: NativeQueryType };
-
-export type NativeQueryType = {
+export type NativeQueryObject = {
     query: string
 };
 
-export type StructuredQueryType = {
-    source_table: TableId,
+export type StructuredQueryObject = {
+    source_table: ?TableId,
     aggregation?: AggregationClauseType,
     breakout?:    BreakoutClauseType,
-    filter?:      FilterClauseType,
+    filter?:      FilterClause,
     order_by?:    OrderByClauseType,
     limit?:       number,
     expressions?: { [key: string]: ExpressionType }
@@ -49,10 +45,10 @@ export type AggregationClauseType =
     ["metric", MetricId];
 
 export type BreakoutClauseType = Array<ConcreteFieldType>;
-export type FilterClauseType =
-    ["and",                 FilterClauseType] |
-    ["or",                  FilterClauseType] |
-    ["not",                 FilterClauseType] |
+export type FilterClause =
+    ["and",                 FilterClause] |
+    ["or",                  FilterClause] |
+    ["not",                 FilterClause] |
     ["=",                   ConcreteFieldType, ValueType] |
     ["!=",                  ConcreteFieldType, ValueType] |
     ["<",                   ConcreteFieldType, OrderableValueType] |
@@ -103,13 +99,3 @@ export type ExpressionArgumentType = ConcreteFieldType | NumericLiteralType;
 
 export type ExpressionType =
     [ExpressionBinaryOperatorType, ExpressionArgumentType, ExpressionArgumentType];
-
-export const DatasetQuery = {
-    isStructured(dataset_query : DatasetQueryType) : boolean {
-        return dataset_query && dataset_query.type === "query";
-    },
-
-    isNative(dataset_query : DatasetQueryType) : boolean {
-        return dataset_query && dataset_query.type === "native";
-    },
-};
