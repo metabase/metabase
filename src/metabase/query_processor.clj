@@ -142,17 +142,14 @@
       (qp query))))
 
 (defn- pre-substitute-parameters
-  "Looks for macros in a structured (unexpanded) query and substitutes the macros for their contents."
+  "If any parameters were supplied then substitute them into the query."
   [qp]
   (fn [query]
     ;; if necessary, handle parameters substitution
-    (let [query (if-not (mbql-query? query)
-                  query
-                  ;; for MBQL queries run our macro expansion
-                  (u/prog1 (params/expand-parameters query)
-                    (when (and (not *disable-qp-logging*)
-                               (not= <> query))
-                      (log/debug (u/format-color 'cyan "\n\nMACRO/SUBSTITUTED: 😻\n%s" (u/pprint-to-str <>))))))]
+    (let [query (u/prog1 (params/expand-parameters query)
+                  (when (and (not *disable-qp-logging*)
+                             (not= <> query))
+                    (log/debug (u/format-color 'cyan "\n\nPARAMS/SUBSTITUTED: 😻\n%s" (u/pprint-to-str <>)))))]
       (qp query))))
 
 (defn- pre-expand-resolve

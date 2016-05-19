@@ -3,9 +3,12 @@
 import React, { Component, PropTypes } from "react";
 
 import _ from "underscore";
+import cx from "classnames";
 
 import DataSelector from './DataSelector.jsx';
 import Icon from "metabase/components/Icon.jsx";
+import ParameterPicker from "./parameters/ParameterPicker.jsx";
+
 
 
 export default class NativeQueryEditor extends Component {
@@ -156,6 +159,25 @@ export default class NativeQueryEditor extends Component {
         }
     }
 
+    setParameterValue(parameter, value) {
+        let parameters = this.props.query.parameters,
+            param = _.find(parameters, (p) => p.name === parameter.name);
+
+        // ick, mutability :(
+        if (value && !_.isEmpty(value)) {
+            param.value = value;
+        } else {
+            delete param.value;
+        }
+
+        this.setQuery(this.props.query);
+
+        console.log("set parameter value", parameter, value);
+        console.log("parameters", this.props.query.parameters);
+
+        //MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Parameter Value');  // parameter type?
+    }
+
     render() {
         let modeInfo = this.props.getModeInfo();
 
@@ -218,7 +240,7 @@ export default class NativeQueryEditor extends Component {
 
         return (
             <div className="wrapper">
-                <div className="NativeQueryEditor bordered rounded shadowed">
+                <div className={cx("NativeQueryEditor bordered rounded shadowed", {"hide": !this.props.isShowingQueryBar})}>
                     <div className="flex">
                         {dataSelectors}
                         <a className="Query-label no-decoration flex-align-right flex align-center px2" onClick={this.toggleEditor}>
@@ -230,6 +252,16 @@ export default class NativeQueryEditor extends Component {
                         <div id="id_sql"></div>
                     </div>
                 </div>
+
+                {this.props.query.parameters && this.props.query.parameters.length > 0 &&
+                    <div className="flex flex-row" ref="parameters">
+                        {this.props.query.parameters.map(parameter =>
+                            <ParameterPicker
+                                parameter={parameter}
+                                onChange={(value) => this.setParameterValue(parameter, value)} />
+                        )}
+                    </div>
+                }
             </div>
         );
     }
