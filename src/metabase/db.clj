@@ -43,8 +43,9 @@
                                   ;; if we don't have an absolute path then make sure we start from "user.dir"
                                   [(System/getProperty "user.dir") "/" db-file-name options]))))))
 
-(def ^:const ^clojure.lang.Keyword db-type
+(defn- db-type
   "The type of backing DB used to run Metabase. `:h2`, `:mysql`, or `:postgres`."
+  ^clojure.lang.Keyword []
   (config/config-kw :mb-db-type))
 
 (defn parse-connection-string
@@ -66,8 +67,8 @@
    (e.g., to use the Generic SQL driver functions on the Metabase DB itself)."
   (delay (or (when-let [uri (config/config-str :mb-db-connection-uri)]
                (parse-connection-string uri))
-             (case db-type
-               :h2       {:type     :h2
+             (case (db-type)
+               :h2       {:type     :h2                               ; TODO - we probably don't need to specifc `:type` here since we can just call (db-type)
                           :db       @db-file}
                :mysql    {:type     :mysql
                           :host     (config/config-str :mb-db-host)
@@ -332,16 +333,18 @@
   (or korma.db/*current-conn*
       (korma.db/get-connection (or korma.db/*current-db* @korma.db/_default))))
 
-(def ^:private ^:const quoting-style
+(defn- quoting-style
   "Style of `:quoting` that should be passed to HoneySQL `format`."
-  (case db-type
+  ^clojure.lang.Keyword []
+  (case (db-type)
     :h2       :h2
     :mysql    :mysql
     :postgres :ansi))
 
-(def ^:private quote-fn
+(defn- quote-fn
   "The function that JDBC should use to quote identifiers for our database. This is passed as the `:entities` option to functions like `jdbc/insert!`."
-  (quoting-style @(resolve 'hformat/quote-fns)))
+  []
+  ((quoting-style) @(resolve 'honeysql.format/quote-fns)))
 
 (defn- honeysql->sql
   "Compile HONEYSQL-FORM to SQL.
@@ -350,7 +353,7 @@
   {:pre [(map? honeysql-form)]}
   ;; Not sure *why* but without setting this binding on *rare* occasion HoneySQL will unwantedly generate SQL for a subquery and wrap the query in parens like "(UPDATE ...)" which is invalid
   (u/prog1 (binding [hformat/*subquery?* false]
-             (hsql/format honeysql-form :quoting quoting-style))
+             (hsql/format honeysql-form :quoting (quoting-style)))
     (when-not *disable-db-logging*
       (log/debug (str "DB Call: " (first <>))))))
 
@@ -513,9 +516,10 @@
 
 ;;; ## INSERT!
 
-(def ^:private ^:const ^clojure.lang.Keyword insert-id-key
+(defn- insert-id-key
   "The keyword name of the ID column of a newly inserted row returned by `jdbc/insert!`."
-  (case db-type
+  ^clojure.lang.Keyword []
+  (case (db-type)
     :postgres :id
     :mysql    :generated_key
     :h2       (keyword "scope_identity()")))
@@ -527,7 +531,7 @@
      (simple-insert! :label {:name \"Cam\", :slug \"cam\"}) -> 1"
   [table-kw m]
   {:pre  [(keyword? table-kw) (map? m) (every? keyword? (keys m))]}
-  (insert-id-key (first (jdbc/insert! (db-connection) table-kw m, :entities quote-fn))))
+  ((insert-id-key) (first (jdbc/insert! (db-connection) table-kw m, :entities (quote-fn)))))
 
 (defn insert!
   "Insert a new object into the Database. Resolves ENTITY, and calls its `pre-insert` method on OBJECT to prepare it before insertion;
