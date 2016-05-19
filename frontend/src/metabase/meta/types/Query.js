@@ -6,16 +6,18 @@ export type FieldId = number;
 export type SegmentId = number;
 export type MetricId = number;
 
-export type StringLiteralType = string;
-export type NumericLiteralType = number;
-export type DatetimeLiteralType = string;
+export type ExpressionName = string;
 
-export type ValueType = null | boolean | StringLiteralType | NumericLiteralType | DatetimeLiteralType;
-export type OrderableValueType = NumericLiteralType | DatetimeLiteralType;
+export type StringLiteral = string;
+export type NumericLiteral = number;
+export type DatetimeLiteral = string;
 
-export type RelativeDatetimePeriodType = "current" | "last" | "next" | number;
-export type RelativeDatetimeUnitType = "minute" | "hour" | "day" | "week" | "month" | "quarter" | "year";
-export type DatetimeUnitType = "default" | "minute" | "minute-of-hour" | "hour" | "hour-of-day" | "day" | "day-of-week" | "day-of-month" | "day-of-year" | "week" | "week-of-year" | "month" | "month-of-year" | "quarter" | "quarter-of-year" | "year";
+export type Value = null | boolean | StringLiteral | NumericLiteral | DatetimeLiteral;
+export type OrderableValue = NumericLiteral | DatetimeLiteral;
+
+export type RelativeDatetimePeriod = "current" | "last" | "next" | number;
+export type RelativeDatetimeUnit = "minute" | "hour" | "day" | "week" | "month" | "quarter" | "year";
+export type DatetimeUnit = "default" | "minute" | "minute-of-hour" | "hour" | "hour-of-day" | "day" | "day-of-week" | "day-of-month" | "day-of-year" | "week" | "week-of-year" | "month" | "month-of-year" | "quarter" | "quarter-of-year" | "year";
 
 export type NativeQueryObject = {
     query: string
@@ -23,79 +25,67 @@ export type NativeQueryObject = {
 
 export type StructuredQueryObject = {
     source_table: ?TableId,
-    aggregation?: AggregationClauseType,
-    breakout?:    BreakoutClauseType,
+    aggregation?: AggregationClause,
+    breakout?:    BreakoutClause,
     filter?:      FilterClause,
-    order_by?:    OrderByClauseType,
-    limit?:       number,
-    expressions?: { [key: string]: ExpressionType }
+    order_by?:    OrderByClause,
+    limit?:       LimitClause,
+    expressions?: { [key: ExpressionName]: Expression }
 };
 
-export type AggregationClauseType =
+export type AggregationClause =
     ["rows"] | // deprecated
-    ["avg", ConcreteFieldType] |
     ["count"] |
-    ["count", ConcreteFieldType] |
-    ["cum_sum", ConcreteFieldType] |
-    ["distinct", ConcreteFieldType] |
-    ["stddev", ConcreteFieldType] |
-    ["sum", ConcreteFieldType] |
-    ["min", ConcreteFieldType] |
-    ["max", ConcreteFieldType] |
+    ["count"|"avg"|"cum_sum"|"distinct"|"stddev"|"sum"|"min"|"max", ConcreteField] |
     ["metric", MetricId];
 
-export type BreakoutClauseType = Array<ConcreteFieldType>;
+export type BreakoutClause = Array<ConcreteField>;
 export type FilterClause =
-    ["and",                 FilterClause] |
-    ["or",                  FilterClause] |
+    ["and"|"or",            FilterClause, FilterClause] |
     ["not",                 FilterClause] |
-    ["=",                   ConcreteFieldType, ValueType] |
-    ["!=",                  ConcreteFieldType, ValueType] |
-    ["<",                   ConcreteFieldType, OrderableValueType] |
-    [">",                   ConcreteFieldType, OrderableValueType] |
-    ["<=",                  ConcreteFieldType, OrderableValueType] |
-    [">=",                  ConcreteFieldType, OrderableValueType] |
-    ["is-null",             ConcreteFieldType] |
-    ["not-null",            ConcreteFieldType] |
-    ["between",             ConcreteFieldType, OrderableValueType, OrderableValueType] |
-    ["inside",              ConcreteFieldType, ConcreteFieldType, NumericLiteralType, NumericLiteralType, NumericLiteralType, NumericLiteralType] |
-    ["starts-with",         ConcreteFieldType, StringLiteralType] |
-    ["contains",            ConcreteFieldType, StringLiteralType] |
-    ["does-not-contain",    ConcreteFieldType, StringLiteralType] |
-    ["ends-with",           ConcreteFieldType, StringLiteralType] |
-    ["time-interval",       ConcreteFieldType, RelativeDatetimePeriodType, RelativeDatetimeUnitType] |
+    ["="|"!=",              ConcreteField, Value] |
+    ["<"|">"|"<="|">=",     ConcreteField, OrderableValue] |
+    ["is-null"|"not-null",  ConcreteField] |
+    ["between",             ConcreteField, OrderableValue, OrderableValue] |
+    ["inside",              ConcreteField, ConcreteField, NumericLiteral, NumericLiteral, NumericLiteral, NumericLiteral] |
+    ["starts-with"|"contains"|"does-not-contain"|"ends-with",
+                            ConcreteField, StringLiteral] |
+    ["time-interval",       ConcreteField, RelativeDatetimePeriod, RelativeDatetimeUnit] |
     ["segment",             SegmentId];
 
-export type OrderByClauseType = Array<OrderByType>;
-export type OrderByType = ["asc" | "desc", FieldType];
+export type OrderByClause = Array<OrderBy>;
+export type OrderBy = ["asc"|"desc", Field];
 
-export type FieldType =
-    ConcreteFieldType |
-    ExpressionReferenceType |
-    AggregateFieldType;
+export type LimitClause = number;
 
-export type ConcreteFieldType =
-    LocalFieldReferenceType |
-    ForeignFieldReferenceType |
-    DatetimeFieldType;
+export type Field =
+    ConcreteField |
+    AggregateField;
 
-export type LocalFieldReferenceType =
+export type ConcreteField =
+    LocalFieldReference |
+    ForeignFieldReference |
+    ExpressionReference |
+    DatetimeField;
+
+export type LocalFieldReference =
     ["field-id", FieldId] |
     FieldId; // deprecated
 
-export type ForeignFieldReferenceType =
+export type ForeignFieldReference =
     ["fk->", FieldId, FieldId];
 
-export type DatetimeFieldType =
-    ["datetime-field", LocalFieldReferenceType | ForeignFieldReferenceType, DatetimeUnitType] |
-    ["datetime-field", LocalFieldReferenceType | ForeignFieldReferenceType, "as", DatetimeUnitType]; // deprecated
+export type ExpressionReference =
+    ["expression", ExpressionName];
 
-export type ExpressionReferenceType = ["expression", string];
+export type DatetimeField =
+    ["datetime-field", LocalFieldReference | ForeignFieldReference, DatetimeUnit] |
+    ["datetime-field", LocalFieldReference | ForeignFieldReference, "as", DatetimeUnit]; // deprecated
 
-export type AggregateFieldType = ["aggregation", number];
+export type AggregateField = ["aggregation", number];
 
-export type ExpressionBinaryOperatorType = "+" | "-" | "*" | "/";
-export type ExpressionArgumentType = ConcreteFieldType | NumericLiteralType;
+export type ExpressionOperator = "+" | "-" | "*" | "/";
+export type ExpressionOperand = ConcreteField | NumericLiteral | Expression;
 
-export type ExpressionType =
-    [ExpressionBinaryOperatorType, ExpressionArgumentType, ExpressionArgumentType];
+export type Expression =
+    [ExpressionOperator, ExpressionOperand, ExpressionOperand];
