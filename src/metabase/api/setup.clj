@@ -142,7 +142,7 @@
 
 (defn- add-next-step-info
   "Add `is_next_step` key to all the STEPS from `admin-checklist`.
-  The next step if the *first* step where `:triggered` is `true` and `:completed` is `false`."
+  The next step is the *first* step where `:triggered` is `true` and `:completed` is `false`."
   [steps]
   (loop [acc [], found-next-step? false, [step & more] steps]
     (if-not step
