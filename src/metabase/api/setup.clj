@@ -150,7 +150,8 @@
       (let [is-next-step? (boolean (and (not found-next-step?)
                                         (:triggered step)
                                         (not (:completed step))))
-            step          (assoc step :is_next_step is-next-step?)]
+            step          (-> (assoc step :is_next_step is-next-step?)
+                              (update :triggered boolean))]
         (recur (conj acc step)
                (or found-next-step? is-next-step?)
                more)))))
