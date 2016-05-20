@@ -1,10 +1,12 @@
 (ns metabase.api.setup
-  (:require [compojure.core :refer [defroutes POST]]
+  (:require [compojure.core :refer [defroutes GET POST]]
             (metabase.api [common :refer :all]
                           [database :refer [annotation:DBEngine]])
             (metabase [db :as db]
                       [driver :as driver]
+                      [email :as email]
                       [events :as events])
+            [metabase.integrations.slack :as slack]
             (metabase.models [database :refer [Database]]
                              [session :refer [Session]]
                              [setting :as setting]
@@ -85,5 +87,79 @@
         :else                                                                 (response-invalid :general "Unable to connect to database."))
       (catch Throwable e
         (response-invalid :general (.getMessage e))))))
+
+
+(defn- admin-checklist []
+  (let [has-dbs?           (db/exists? Database)
+        has-dashboards?    (db/exists? 'Dashboard)
+        has-pulses?        (db/exists? 'Pulse)
+        has-labels?        (db/exists? 'Label)
+        has-hidden-tables? (db/exists? 'Table, :visibility_type [:in ["hidden" "technical" "cruft"]])
+        has-metrics?       (db/exists? 'Metric)
+        has-segments?      (db/exists? 'Segment)
+        num-tables         (db/select-one-count 'Table)
+        num-cards          (db/select-one-count 'Card)
+        num-users          (db/select-one-count 'User)]
+    [{:name        "Add a database"
+      :description "TODO - Write something good here"
+      :completed   has-dbs?
+      :triggered   :always}
+     {:name        "Set email credentials"
+      :description "TODO - Write something good here"
+      :completed   (email/email-configured?)
+      :triggered   :always}
+     {:name        "Set slack credentials"
+      :description "TODO - Write something good here"
+      :completed   (slack/slack-configured?)
+      :triggered   :always}
+     {:name        "Invite other users"
+      :description "TODO - Write something good here"
+      :completed   (> num-users 1)
+      :triggered   (or has-dashboards?
+                       has-pulses?
+                       (> num-cards 5))}
+     {:name        "Hide tables"
+      :description "TODO - Write something good here"
+      :completed   has-hidden-tables?
+      :triggered   (> num-tables 20)}
+     {:name        "Organize questions"
+      :description "TODO - Write something good here"
+      :completed   (not has-labels?)
+      :triggered   (> num-cards 30)}
+     {:name        "Create metrics"
+      :description "TODO - Write something good here"
+      :completed   has-metrics?
+      :triggered   (> num-cards 30)}
+     {:name        "Create segments"
+      :description "TODO - Write something good here"
+      :completed   has-segments?
+      :triggered   (> num-cards 30)}
+     {:name        "Create getting started guide"
+      :description "TODO - Write something good here"
+      :completed   false                               ; TODO - how do we determine this?
+      :triggered   (and (> num-cards 10)
+                        (> num-users 5))}]))
+
+(defn- add-next-step-info
+  "Add `is_next_step` key to all the STEPS from `admin-checklist`.
+  The next step if the *first* step where `:triggered` is `true` and `:completed` is `false`."
+  [steps]
+  (loop [acc [], found-next-step? false, [step & more] steps]
+    (if-not step
+      acc
+      (let [is-next-step? (boolean (and (not found-next-step?)
+                                        (:triggered step)
+                                        (not (:completed step))))
+            step          (assoc step :is_next_step is-next-step?)]
+        (recur (conj acc step)
+               (or found-next-step? is-next-step?)
+               more)))))
+
+(defendpoint GET "/admin_checklist"
+  "Return a map of various \"admin checklist\" steps and whether they've been completed. You must be a superuser to see this!"
+  []
+  (check-superuser)
+  (add-next-step-info (admin-checklist)))
+
 
 (define-routes)
