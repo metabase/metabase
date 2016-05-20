@@ -94,7 +94,7 @@
         has-dashboards?    (db/exists? 'Dashboard)
         has-pulses?        (db/exists? 'Pulse)
         has-labels?        (db/exists? 'Label)
-        has-hidden-tables? (db/exists? 'Table, :visibility_type [:in ["hidden" "technical" "cruft"]])
+        has-hidden-tables? (db/exists? 'Table, :visibility_type [:not= nil])
         has-metrics?       (db/exists? 'Metric)
         has-segments?      (db/exists? 'Segment)
         num-tables         (db/select-one-count 'Table)
