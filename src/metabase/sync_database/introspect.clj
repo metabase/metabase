@@ -35,7 +35,7 @@
         (when-let [dest-table-id (db/sel :one :field [RawTable :id], :database_id database-id, :schema (:schema dest-table), :name (:name dest-table))]
           (when-let [dest-column-id (db/sel :one :id RawColumn, :raw_table_id dest-table-id, :name dest-column-name)]
             (log/debug (u/format-color 'cyan "Marking foreign key '%s.%s' -> '%s.%s'." (named-table table) fk-column-name (named-table dest-table) dest-column-name))
-            (db/upd RawColumn source-column-id
+            (db/update! RawColumn source-column-id
               :fk_target_column_id dest-column-id)))))))
 
 (defn- save-all-table-columns!
@@ -51,7 +51,7 @@
       (doseq [[column-name {column-id :id}] (sort-by :name existing-columns)]
         (when-not (some #(= column-name (:name %)) columns)
           (log/debug (u/format-color 'cyan "Marked column %s as inactive." column-name))
-          (db/upd RawColumn column-id :active false)))
+          (db/update! RawColumn column-id, :active false)))
 
       ;; insert or update the remaining columns
       (doseq [{column-name :name, :keys [base-type pk? special-type details]} (sort-by :name columns)]
@@ -61,25 +61,25 @@
               is_pk   (true? pk?)]
           (if-let [{column-id :id} (get existing-columns column-name)]
             ;; column already exists, update it
-            (db/upd RawColumn column-id
-              :name      column-name
-              :is_pk     is_pk
-              :details   details
-              :active    true)
+            (db/update! RawColumn column-id
+              :name    column-name
+              :is_pk   is_pk
+              :details details
+              :active  true)
             ;; must be a new column, insert it
-            (db/ins RawColumn
-              :raw_table_id  id
-              :name          column-name
-              :is_pk         is_pk
-              :details       details
-              :active        true)))))))
+            (db/insert! RawColumn
+              :raw_table_id id
+              :name         column-name
+              :is_pk        is_pk
+              :details      details
+              :active       true)))))))
 
 (defn- create-raw-table!
   "Create a new `RawTable`, includes saving all specified `:columns`."
   [database-id {table-name :name, table-schema :schema, :keys [details fields]}]
   {:pre [(integer? database-id) (string? table-name)]}
   (log/debug (u/format-color 'cyan "Found new table: %s" (named-table table-schema table-name)))
-  (let [table (db/ins RawTable
+  (let [table (db/insert! RawTable
                 :database_id  database-id
                 :schema       table-schema
                 :name         table-name
@@ -93,9 +93,9 @@
   [{table-id :id, :as table} {:keys [details fields]}]
   ;; NOTE: the schema+name of a table makes up the natural key and cannot be modified on update
   ;;       if they were to be different we'd simply assume that's a new table instead
-  (db/upd RawTable table-id
-    :details  (or details {})
-    :active   true)
+  (db/update! RawTable table-id
+    :details (or details {})
+    :active  true)
   ;; save columns
   (save-all-table-columns! table fields))
 

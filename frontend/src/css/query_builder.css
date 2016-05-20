@@ -760,3 +760,16 @@
 #react_qb_viz .ScalarValue {
   font-size: 5em;
 }
+
+.sql-code {
+  font-size: 90%;
+  line-height: 1.2em;
+  font-family: "Courier 10 Pitch", Courier, monospace;
+  white-space: pre;
+  white-space: pre-wrap;
+  white-space: -moz-pre-wrap;
+  white-space: -o-pre-wrap;
+  background-color: #F9FBFC;
+  border: 1px solid #D5DBE3;
+  border-radius: 4px;
+}

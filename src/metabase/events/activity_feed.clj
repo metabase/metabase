@@ -117,7 +117,7 @@
         "card"      (process-card-activity topic object)
         "dashboard" (process-dashboard-activity topic object)
         "install"   (when-not (db/exists? Activity)
-                      (db/ins Activity, :topic "install", :model "install"))
+                      (db/insert! Activity, :topic "install", :model "install"))
         "metric"    (process-metric-activity topic object)
         "pulse"     (process-pulse-activity topic object)
         "segment"   (process-segment-activity topic object)

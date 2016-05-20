@@ -342,16 +342,16 @@
     [;; Special type should be :id to begin with
      (get-special-type)
      ;; Clear out the special type
-     (do (db/upd field/Field (id :venues :id) :special_type nil)
+     (do (db/update! field/Field (id :venues :id), :special_type nil)
          (get-special-type))
      ;; Calling sync-table! should set the special type again
      (do (sync-table! @venues-table)
          (get-special-type))
      ;; sync-table! should *not* change the special type of fields that are marked with a different type
-     (do (db/upd field/Field (id :venues :id) :special_type :latitude)
+     (do (db/update! field/Field (id :venues :id), :special_type :latitude)
          (get-special-type))
      ;; Make sure that sync-table runs set-table-pks-if-needed!
-     (do (db/upd field/Field (id :venues :id) :special_type nil)
+     (do (db/update! field/Field (id :venues :id), :special_type nil)
          (sync-table! @venues-table)
          (get-special-type))]))
 
@@ -379,7 +379,7 @@
     [ ;; FK should exist to start with
      (get-special-type-and-fk-exists?)
      ;; Clear out FK / special_type
-     (do (db/upd field/Field field-id :special_type nil, :fk_target_field_id nil)
+     (do (db/update! field/Field field-id, :special_type nil, :fk_target_field_id nil)
          (get-special-type-and-fk-exists?))
      ;; Run sync-table and they should be set again
      (let [table (table/Table (id :checkins))]
@@ -399,7 +399,7 @@
     [ ;; 1. Check that we have expected field values to start with
      (get-field-values)
      ;; 2. Delete the Field values, make sure they're gone
-     (do (db/cascade-delete FieldValues :id (get-field-values-id))
+     (do (db/cascade-delete! FieldValues :id (get-field-values-id))
          (get-field-values))
      ;; 3. Now re-sync the table and make sure they're back
      (do (sync-table! @venues-table)
@@ -413,7 +413,7 @@
     [ ;; 1. Check that we have expected field values to start with
      (get-field-values)
      ;; 2. Update the FieldValues, remove one of the values that should be there
-     (do (db/upd FieldValues (get-field-values-id) :values [1 2 3])
+     (do (db/update! FieldValues (get-field-values-id), :values [1 2 3])
          (get-field-values))
      ;; 3. Now re-sync the table and make sure the value is back
      (do (sync-table! @venues-table)

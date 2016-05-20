@@ -6,7 +6,7 @@
             [korma.core :as k]
             [metabase.api.common :refer [*current-user* *current-user-id*]]
             [metabase.config :as config]
-            [metabase.db :refer [sel]]
+            [metabase.db :as db]
             (metabase.models [interface :as models]
                              [session :refer [Session]]
                              [setting :refer [defsetting]]
@@ -89,7 +89,7 @@
   (fn [request]
     (if-let [current-user-id (:metabase-user-id request)]
       (binding [*current-user-id* current-user-id
-                *current-user*    (delay (sel :one `[User ~@(models/default-fields User) :is_active :is_staff], :id current-user-id))]
+                *current-user*    (delay (db/sel :one `[User ~@(models/default-fields User) :is_active :is_staff], :id current-user-id))]
         (handler request))
       (handler request))))
 

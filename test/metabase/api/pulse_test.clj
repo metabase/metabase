@@ -17,7 +17,7 @@
 ;; ## Helper Fns
 
 (defn- new-card! []
-  (db/ins Card
+  (db/insert! Card
     :name                   (random-name)
     :creator_id             (user->id :crowberto)
     :public_perms           common/perms-readwrite
@@ -36,7 +36,7 @@
 
 (defn- delete-existing-pulses! []
   (doseq [pulse-id (db/sel :many :id Pulse)]
-    (db/cascade-delete Pulse :id pulse-id)))
+    (db/cascade-delete! Pulse :id pulse-id)))
 
 (defn- user-details [user]
   (match-$ user

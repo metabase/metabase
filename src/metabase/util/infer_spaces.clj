@@ -5,8 +5,7 @@
 
 ; ported from https://stackoverflow.com/questions/8870261/how-to-split-text-without-spaces-into-list-of-words/11642687#11642687
 
-(def ^:const ^:private special-words [
-    "checkins"])
+(def ^:const ^:private special-words ["checkins"])
 
 ; # Build a cost dictionary, assuming Zipf's law and cost = -math.log(probability).
 (def ^:private words (concat special-words (s/split-lines (slurp (io/resource "words-by-frequency.txt")))))

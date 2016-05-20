@@ -31,7 +31,7 @@
   ;; if this database is already being synced then bail now
   (when-not (contains? @currently-syncing-dbs database-id)
     (binding [qp/*disable-qp-logging*  true
-              db/*sel-disable-logging* true]
+              db/*disable-db-logging* true]
       (let [db-driver  (driver/engine->driver (:engine database))
             full-sync? (if-not (nil? full-sync?)
                          full-sync?
@@ -72,7 +72,7 @@
     (events/publish-event :database-sync-begin {:database_id (:id database) :custom_id tracking-hash})
 
     (binding [qp/*disable-qp-logging*  true
-              db/*sel-disable-logging* true]
+              db/*disable-db-logging* true]
       ;; start with capturing a full introspection of the database
       (introspect/introspect-database-and-update-raw-tables! driver database)
 
@@ -95,7 +95,7 @@
     (log/info (u/format-color 'magenta "Syncing table '%s' from %s database '%s'..." (:display_name table) (name driver) (:name database)))
 
     (binding [qp/*disable-qp-logging*  true
-              db/*sel-disable-logging* true]
+              db/*disable-db-logging* true]
       ;; if the Table has a RawTable backing it then do an introspection and sync
       (when-let [raw-tbl (db/sel :one raw-table/RawTable :id (:raw_table_id table))]
         (introspect/introspect-raw-table-and-update! driver database raw-tbl)

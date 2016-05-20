@@ -25,9 +25,9 @@
     (merge defaults table)))
 
 (defn- pre-cascade-delete [{:keys [id]}]
-  (db/cascade-delete Segment :table_id id)
-  (db/cascade-delete Metric :table_id id)
-  (db/cascade-delete Field :table_id id))
+  (db/cascade-delete! Segment :table_id id)
+  (db/cascade-delete! Metric :table_id id)
+  (db/cascade-delete! Field :table_id id))
 
 (defn ^:hydrate fields
   "Return the `FIELDS` belonging to TABLE."
@@ -105,7 +105,7 @@
                         :display_name (or display_name (common/name->human-readable-name table-name)))]
     ;; the only thing we need to update on a table is the :display_name, if it never got set
     (when (nil? display_name)
-      (db/upd Table id
+      (db/update! Table id
         :display_name (:display_name updated-table)))
     ;; always return the table when we are done
     updated-table))
@@ -114,7 +114,7 @@
 (defn create-table
   "Create `Table` with the data from TABLE-DEF."
   [database-id {schema-name :schema, table-name :name, raw-table-id :raw-table-id, visibility-type :visibility-type}]
-  (db/ins Table
+  (db/insert! Table
     :db_id           database-id
     :raw_table_id    raw-table-id
     :schema          schema-name

@@ -3,7 +3,6 @@
   (:require [clojure.tools.logging :as log]
             [clj-http.client :as http]
             [cheshire.core :as json]
-            [metabase.db :refer [sel]]
             [metabase.driver :as driver]
             [metabase.driver.druid.query-processor :as qp]
             (metabase.models [field :as field]

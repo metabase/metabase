@@ -85,7 +85,7 @@
       (core/initialization-complete!)
       ;; If test setup fails exit right away
       (catch Throwable e
-        (log/error (u/format-color 'red "Test setup failed: %s\n%s" e (u/pprint-to-str (.getStackTrace e))))
+        (log/error (u/format-color 'red "Test setup failed: %s\n%s" e (u/pprint-to-str (vec (.getStackTrace e)))))
         (System/exit -1)))
 
     @start-jetty!))

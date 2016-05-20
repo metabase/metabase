@@ -1,6 +1,5 @@
 (ns metabase.models.common-test
   (:require [expectations :refer :all]
-            [metabase.db :refer :all]
             [metabase.models.common :refer [name->human-readable-name]]
             [metabase.test.data :refer :all]))
 

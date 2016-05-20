@@ -47,6 +47,7 @@
                  [compojure "1.5.0"]                                  ; HTTP Routing library built on Ring
                  [environ "1.0.2"]                                    ; easy environment management
                  [hiccup "1.0.5"]                                     ; HTML templating
+                 [honeysql "0.6.3"]                                   ; Transform Clojure data structures to SQL
                  [korma "0.4.2"]                                      ; SQL generation
                  [log4j/log4j "1.2.17"                                ; logging framework
                   :exclusions [javax.mail/mail
@@ -93,7 +94,8 @@
                            ;; and re-enable them if they ever get resolved
                            #_:unused-locals
                            #_:unused-namespaces]
-             :exclude-linters [:constant-test]}                       ; gives us false positives with forms like (when config/is-test? ...)
+             :exclude-linters [:constant-test                         ; gives us false positives with forms like (when config/is-test? ...)
+                               :deprecations]}                        ; Turn this off temporarily until we finish removing self-deprecated DB functions & macros like `upd`, `del`, and `sel`
   :docstring-checker {:include [#"^metabase"]
                       :exclude [#"test"
                                 #"^metabase\.sample-data$"
