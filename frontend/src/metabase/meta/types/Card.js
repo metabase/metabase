@@ -3,7 +3,10 @@
 import type { DatabaseId } from "./base";
 import type { StructuredQueryObject, NativeQueryObject } from "./Query";
 
+export type CardId = number;
+
 export type CardObject = {
+    id: CardId,
     dataset_query: DatasetQueryObject
 };
 
