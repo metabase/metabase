@@ -1,5 +1,3 @@
-/*eslint-env jasmine */
-
 import _ from "underscore";
 import { formatExpression, parseExpressionString, tokenAtPosition, tokensToExpression } from "metabase/lib/expressions";
 
