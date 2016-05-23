@@ -54,9 +54,14 @@
   (u/auto-retry 2
     (execute-no-auto-retry request)))
 
+;; This specific format was request by Google themselves -- see #2627
+(def ^:private ^:const ^String application-name
+  (let [{:keys [tag hash branch]} config/mb-version-info]
+    (format "Metabase/%s (GPN:Metabse; %s %s)" tag hash branch)))
+
 (defn- ^Bigquery credential->client [^GoogleCredential credential]
   (.build (doto (Bigquery$Builder. http-transport json-factory credential)
-            (.setApplicationName (str "Metabase " config/mb-version-string)))))
+            (.setApplicationName application-name))))
 
 (defn- fetch-access-and-refresh-tokens* [^String client-id, ^String client-secret, ^String auth-code]
   {:pre  [(seq client-id) (seq client-secret) (seq auth-code)]
