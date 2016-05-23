@@ -2,6 +2,9 @@ import React, { Component, PropTypes } from 'react';
 import cx from "classnames";
 import _ from 'underscore';
 
+import ParameterDateRangePicker from "./ParameterDateRangePicker.jsx";
+import ParameterTextInputPicker from "./ParameterTextInputPicker.jsx";
+
 
 export default class ParameterPicker extends Component {
 
@@ -10,20 +13,21 @@ export default class ParameterPicker extends Component {
         onChange: PropTypes.func.isRequired
     };
 
+    determinePickerComponent(type) {
+        switch(type) {
+            case "date": return ParameterDateRangePicker;
+            default:     return ParameterTextInputPicker;
+        }
+    }
+
     render() {
         const { parameter } = this.props;
 
+        // determine the correct Picker to render based on the parameter data type
+        const PickerComponent = this.determinePickerComponent(parameter.type);
+
         return (
-            <div className="pt1">
-                <span className="mt3 h5 text-uppercase text-grey-3 text-bold">{parameter.name}:</span>
-                <input
-                    className="m1 p1 input h4 text-dark"
-                    type="text"
-                    value={parameter.value}
-                    placeholder=""
-                    onChange={(event) => this.props.onChange(event.target.value)}
-                />
-            </div>
+            <PickerComponent {...this.props} />
         );
     }
 }

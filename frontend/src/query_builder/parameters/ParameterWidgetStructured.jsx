@@ -34,7 +34,13 @@ export default class ParameterWidgetStructured extends Component {
 
         let fieldDef = Query.getFieldTarget(field, this.props.tableMetadata);
         if (fieldDef && fieldDef.field) {
-            this.props.onSetParameter({...parameter, name: fieldDef.field.display_name, field: field});
+            // determine the right parameter data type
+            let dataType = "text";
+            if (fieldDef.field.base_type === "DateTimeField") {
+                dataType = "date";
+            }
+
+            this.props.onSetParameter({...parameter, name: fieldDef.field.display_name, type: dataType, field: field});
         } else {
             throw new Error("Unable to find fieldDef for field: "+field);
         }
