@@ -49,6 +49,7 @@
     :NUMERIC    :DecimalField
     :REAL       :FloatField
     :SET        :UnknownField
+    :SMALLINT   :IntegerField
     :TEXT       :TextField
     :TIME       :TimeField
     :TIMESTAMP  :DateTimeField
