@@ -65,7 +65,7 @@
 (defn check-superuser
   "Check that `*current-user*` is a superuser or throw a 403."
   []
-  (check-403 (db/exists? 'User, :id *current-user-id*, :is_superuser true)))
+  (check-403 (db/select-one-field :is_superuser 'User, :id *current-user-id*)))
 
 
 ;;; #### checkp- functions: as in "check param". These functions expect that you pass a symbol so they can throw exceptions w/ relevant error messages.

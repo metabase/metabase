@@ -492,6 +492,32 @@
    (update-non-nil-keys! entity id (apply array-map k v more))))
 
 
+;;; Object count caching <3
+;; To avoid slamming the Database with simple count operations like `SELECT COUNT(*) FROM LABEL` (the new `GET /api/setup/admin_checklist` endpoint does 10 of these, for example)
+;; We'll cache their values for each entity until it changes (via an `insert!` or `delete!`)
+;; This caching also extends to simple calls to `db/exists?` (with no args) -- a call like `(db/exists? Label)` can simply check whether the object count for `Label` is > 0.
+
+(def ^:private entity-name->object-count
+  (atom {}))
+
+(defn- invalidate-count! [entity]
+  (let [{entity-name :name, :as entity} (resolve-entity entity)]
+    (log/debug (u/format-color 'yellow "Invalidating object counts for: %s" entity-name))
+    (swap! entity-name->object-count dissoc entity-name)))
+
+(declare select-one)
+
+(defn- entity-count
+  "Get the number of instances of `Entity` in the database, returing a cached value if possible."
+  [entity]
+  (let [{entity-name :name, :as entity} (resolve-entity entity)]
+    (or (u/prog1 (@entity-name->object-count entity-name)
+          (when <>
+            (log/debug (u/format-color 'green "Used cached value for (entity-count %s)" entity-name))))
+        (u/prog1 (:count (select-one [entity [:%count.* :count]]))
+          (swap! entity-name->object-count assoc entity-name <>)))))
+
+
 ;;; ## DELETE!
 
 (defn delete!
@@ -508,6 +534,7 @@
   ([entity kvs]
    {:pre [(map? kvs) (every? keyword? (keys kvs))]}
    (let [entity (resolve-entity entity)]
+     (invalidate-count! entity)
      (not= [0] (execute! (-> (h/delete-from (entity->table-name entity))
                              (where kvs))))))
   ([entity k v & more]
@@ -547,6 +574,7 @@
    {:pre [(map? object)]}
    (let [entity (resolve-entity entity)
          id     (simple-insert! (entity->table-name entity) (models/do-pre-insert entity object))]
+     (invalidate-count! entity)
      (some-> id entity models/post-insert)))
 
   ([entity k v & more]
@@ -587,9 +615,13 @@
   "Select the count of objects matching some condition.
 
      ;; Get all Databases whose name is non-nil
-     (select-one-count 'Database :name [:not= nil]) -> 12"
+     (select-one-count 'Database :name [:not= nil]) -> 12
+
+   This function avoids making a database call and instead returns a cached value when no OPTIONS are used (see documentation for `entity-count` for further information)."
   [entity & options]
-  (:count (apply select-one [entity [:%count.* :count]] options)))
+  (if-not (seq options)
+    (entity-count entity)
+    (:count (apply select-one [entity [:%count.* :count]] options))))
 
 (defn select
   "Select objects from the database.
@@ -665,10 +697,16 @@
 
 (defn exists?
   "Easy way to see if something exists in the DB.
+
     (db/exists? User :id 100)
+
+   This function avoids making a database call and instead returns a cached value when no KVS are used (see documentation for `entity-count` for further information).
+
    NOTE: This only works for objects that have an `:id` field."
   ^Boolean [entity & kvs]
-  (boolean (select-one entity (apply where (h/select {} :id) kvs))))
+  (if-not (seq kvs)
+    (> (entity-count entity) 0)
+    (boolean (select-one entity (apply where (h/select {} :id) kvs)))))
 
 
 ;;; ## CASADE-DELETE
