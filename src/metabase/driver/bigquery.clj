@@ -54,9 +54,14 @@
   (u/auto-retry 2
     (execute-no-auto-retry request)))
 
+;; This specific format was request by Google themselves -- see #2627
+(def ^:private ^:const ^String application-name
+  (let [{:keys [tag hash branch]} config/mb-version-info]
+    (format "Metabase/%s (GPN:Metabse; %s %s)" tag hash branch)))
+
 (defn- ^Bigquery credential->client [^GoogleCredential credential]
   (.build (doto (Bigquery$Builder. http-transport json-factory credential)
-            (.setApplicationName (str "Metabase " config/mb-version-string)))))
+            (.setApplicationName application-name))))
 
 (defn- fetch-access-and-refresh-tokens* [^String client-id, ^String client-secret, ^String auth-code]
   {:pre  [(seq client-id) (seq client-secret) (seq auth-code)]
@@ -84,7 +89,7 @@
     (let [details (-> (merge details (fetch-access-and-refresh-tokens client-id client-secret auth-code))
                       (dissoc :auth-code))]
       (when id
-        (db/upd Database id :details details))
+        (db/update! Database id, :details details))
       (recur (assoc db :details details)))
     ;; Otherwise return credential as normal
     (doto (.build (doto (GoogleCredential$Builder.)
@@ -155,9 +160,9 @@
    :fields (set (table-schema->metabase-field-info (.getSchema (get-table database table-name))))})
 
 
-(defn- ^QueryResponse execute-query
+(defn- ^QueryResponse execute-bigquery
   ([{{:keys [project-id]} :details, :as database} query-string]
-   (execute-query (database->client database) project-id query-string))
+   (execute-bigquery (database->client database) project-id query-string))
 
   ([^Bigquery client, ^String project-id, ^String query-string]
    {:pre [client (seq project-id) (seq query-string)]}
@@ -224,10 +229,7 @@
   ;; automatically retry the query if it times out or otherwise fails. This is on top of the auto-retry added by `execute` so operations going through `process-native*` may be
   ;; retried up to 3 times.
   (u/auto-retry 1
-    (post-process-native (execute-query database query-string))))
-
-(defn- process-native [{database-id :database, {native-query :query} :native}]
-  (process-native* (Database database-id) native-query))
+    (post-process-native (execute-bigquery database query-string))))
 
 
 (defn- field-values-lazy-seq [{field-name :name, :as field-instance}]
@@ -342,12 +344,25 @@
     (for [row rows]
       (zipmap columns row))))
 
-(defn- process-mbql [{{{:keys [dataset-id]} :details, :as database} :database, {{table-name :name} :source-table} :query, :as query}]
+(defn- mbql->native [{{{:keys [dataset-id]} :details, :as database} :database, {{table-name :name} :source-table} :query, :as query}]
   {:pre [(map? database) (seq dataset-id) (seq table-name)]}
   (let [korma-form (korma-form query (entity dataset-id table-name))
         sql        (korma-form->sql korma-form)]
     (sqlqp/log-korma-form korma-form sql)
-    (post-process-mbql dataset-id table-name (process-native* database sql))))
+    {:query      sql
+     :table-name table-name
+     :mbql?      true}))
+
+(defn- execute-query [{{{:keys [dataset-id]} :details, :as database} :database, {sql :query, :keys [table-name mbql?]} :native}]
+  (let [results (process-native* database sql)
+        results (if mbql?
+                  (post-process-mbql dataset-id table-name results)
+                  results)
+        columns (vec (keys (first results)))]
+    {:columns   columns
+     :rows      (for [row results]
+                  (mapv row columns))
+     :annotate? true}))
 
 ;; This provides an implementation of `prepare-value` that prevents korma from converting forms to prepared statement parameters (`?`)
 ;; TODO - Move this into `metabase.driver.generic-sql` and document it as an alternate implementation for `prepare-value` (?)
@@ -446,6 +461,7 @@
                                                :display-name "Auth Code"
                                                :placeholder  "4/HSk-KtxkSzTt61j5zcbee2Rmm5JHkRFbL5gD5lgkXek"
                                                :required     true}])
+          :execute-query         (u/drop-first-arg execute-query)
           ;; Don't enable foreign keys when testing because BigQuery *doesn't* have a notion of foreign keys. Joins are still allowed, which puts us in a weird position, however;
           ;; people can manually specifiy "foreign key" relationships in admin and everything should work correctly.
           ;; Since we can't infer any "FK" relationships during sync our normal FK tests are not appropriate for BigQuery, so they're disabled for the time being.
@@ -453,7 +469,6 @@
           :features              (constantly (when-not config/is-test?
                                                #{:foreign-keys}))
           :field-values-lazy-seq (u/drop-first-arg field-values-lazy-seq)
-          :process-native        (u/drop-first-arg process-native)
-          :process-mbql          (u/drop-first-arg process-mbql)}))
+          :mbql->native          (u/drop-first-arg mbql->native)}))
 
 (driver/register-driver! :bigquery (BigQueryDriver.))

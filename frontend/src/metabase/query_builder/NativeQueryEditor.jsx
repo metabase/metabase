@@ -7,15 +7,12 @@ import _ from "underscore";
 import DataSelector from './DataSelector.jsx';
 import Icon from "metabase/components/Icon.jsx";
 
+
 export default class NativeQueryEditor extends Component {
     constructor(props, context) {
         super(props, context);
 
         _.bindAll(this, 'onChange', 'toggleEditor', 'updateEditorMode', 'setDatabaseID', 'setTableID');
-
-        this.state = {
-            showEditor: false
-        };
     }
 
     static propTypes = {
@@ -23,23 +20,24 @@ export default class NativeQueryEditor extends Component {
         query: PropTypes.object.isRequired,
         setQueryFn: PropTypes.func.isRequired,
         setDatabaseFn: PropTypes.func.isRequired,
-        setTableFn: PropTypes.func.isRequired,
         autocompleteResultsFn: PropTypes.func.isRequired,
         /// This should return an object with information about the mode the ACE Editor should use to edit the query.
         /// This object should have 2 properties:
         /// *  `mode` :         the ACE Editor mode name, e.g. 'ace/mode/json'
         /// *  `description`:   name used to describe the text written in that mode, e.g. 'JSON'. Used to fill in the blank in 'This question is written in _______'.
         /// *  `requiresTable`: whether the DB selector should be a DB + Table selector. Mongo needs both DB + Table.
-        getModeInfo: PropTypes.func.isRequired
+        getModeInfo: PropTypes.func.isRequired,
+        isOpen: PropTypes.bool
     };
 
+    static defaultProps = {
+        isOpen: false
+    }
+
     componentWillMount() {
-        // if the sql is empty then start with the editor showing, otherwise our default is to start out collapsed
-        if (!this.props.query.native.query) {
-            this.setState({
-                showEditor: true
-            });
-        }
+        this.setState({
+            showEditor: this.props.isOpen
+        });
     }
 
     componentDidMount() {
@@ -147,7 +145,15 @@ export default class NativeQueryEditor extends Component {
     }
 
     setTableID(tableID) {
-        this.props.setTableFn(tableID);
+        // translate the table id into the table name
+        let database = this.props.databases ? _.findWhere(this.props.databases, { id: this.props.query.database }) : null,
+            table = database ? _.findWhere(database.tables, { id: tableID }) : null;
+
+        if (table) {
+            let query = this.props.query;
+            query.native.collection = table.name;
+            this.setQuery(query);
+        }
     }
 
     render() {
@@ -158,7 +164,7 @@ export default class NativeQueryEditor extends Component {
         if (this.state.showEditor && this.props.databases && (this.props.databases.length > 1 || modeInfo.requiresTable)) {
             if (this.props.databases.length > 1) {
                 dataSelectors.push(
-                    <div className="GuiBuilder-section GuiBuilder-data flex align-center">
+                    <div key="db_selector" className="GuiBuilder-section GuiBuilder-data flex align-center">
                         <span className="GuiBuilder-section-label Query-label">Database</span>
                         <DataSelector
                             databases={this.props.databases}
@@ -172,17 +178,18 @@ export default class NativeQueryEditor extends Component {
                 let databases = this.props.databases,
                     dbId      = this.props.query.database,
                     database  = databases ? _.findWhere(databases, { id: dbId }) : null,
-                    tables    = database ? database.tables : [];
+                    tables    = database ? database.tables : [],
+                    selectedTable = this.props.query.native.collection ? _.findWhere(tables, { name: this.props.query.native.collection }) : null;
 
                 dataSelectors.push(
-                    <div className="GuiBuilder-section GuiBuilder-data flex align-center">
+                    <div key="table_selector" className="GuiBuilder-section GuiBuilder-data flex align-center">
                         <span className="GuiBuilder-section-label Query-label">Table</span>
                         <DataSelector
                             ref="dataSection"
                             includeTables={true}
                             query={{
                                 type: "query",
-                                query: { source_table: this.props.query.table },
+                                query: { source_table: selectedTable ? selectedTable.id : null },
                                 database: dbId
                             }}
                             databases={[database]}

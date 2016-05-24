@@ -268,7 +268,7 @@
               :position 0
               :visibility_type :normal
               :preview_display true
-              :display_name "Id"
+              :display_name "ID"
               :created_at true
               :base_type :IntegerField}
              {:description nil
@@ -336,7 +336,7 @@
               :position 0
               :visibility_type :normal
               :preview_display true
-              :display_name "Id"
+              :display_name "ID"
               :created_at true
               :base_type :IntegerField}
              {:description nil
@@ -386,7 +386,7 @@
               :position 0
               :visibility_type :normal
               :preview_display true
-              :display_name "Id"
+              :display_name "ID"
               :created_at true
               :base_type :IntegerField}
              {:description nil
@@ -404,7 +404,7 @@
               :position 0
               :visibility_type :normal
               :preview_display true
-              :display_name "Movie Id"
+              :display_name "Movie ID"
               :created_at true
               :base_type :IntegerField}
              {:description nil
@@ -454,7 +454,7 @@
               :position 0
               :visibility_type :normal
               :preview_display true
-              :display_name "Actor Id"
+              :display_name "Actor ID"
               :created_at true
               :base_type :IntegerField}
              {:description nil
@@ -490,7 +490,7 @@
               :position 0
               :visibility_type :normal
               :preview_display true
-              :display_name "Id"
+              :display_name "ID"
               :created_at true
               :base_type :IntegerField}
              {:description nil
@@ -508,7 +508,7 @@
               :position 0
               :visibility_type :normal
               :preview_display true
-              :display_name "Movie Id"
+              :display_name "Movie ID"
               :created_at true
               :base_type :IntegerField}
              {:description nil

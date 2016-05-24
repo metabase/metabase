@@ -61,7 +61,7 @@
          (string? segment-name)
          (integer? creator-id)
          (map? definition)]}
-  (let [segment (db/ins Segment
+  (let [segment (db/insert! Segment
                   :table_id    table-id
                   :creator_id  creator-id
                   :name        segment-name
@@ -76,7 +76,7 @@
    Returns true if `Segment` exists and is active, false otherwise."
   [id]
   {:pre [(integer? id)]}
-  (db/exists? Segment :id id :is_active true))
+  (db/exists? Segment, :id id, :is_active true))
 
 (defn retrieve-segment
   "Fetch a single `Segment` by its ID value."
@@ -91,8 +91,7 @@
   ([table-id]
     (retrieve-segments table-id :active))
   ([table-id state]
-   {:pre [(integer? table-id)
-          (keyword? state)]}
+   {:pre [(integer? table-id) (keyword? state)]}
    (-> (if (= :all state)
          (db/sel :many Segment :table_id table-id (k/order :name :ASC))
          (db/sel :many Segment :table_id table-id :is_active (if (= :active state) true false) (k/order :name :ASC)))
@@ -109,15 +108,12 @@
          (integer? user-id)
          (string? revision_message)]}
   ;; update the segment itself
-  (db/upd Segment id
+  (db/update! Segment id
     :name        name
     :description description
     :definition  definition)
-  (let [segment (retrieve-segment id)]
-    ;; fire off an event
-    (events/publish-event :segment-update (assoc segment :actor_id user-id :revision_message revision_message))
-    ;; return the updated segment
-    segment))
+  (u/prog1 (retrieve-segment id)
+    (events/publish-event :segment-update (assoc <> :actor_id user-id, :revision_message revision_message))))
 
 (defn delete-segment
   "Delete a `Segment`.
@@ -131,10 +127,7 @@
          (integer? user-id)
          (string? revision-message)]}
   ;; make Segment not active
-  (db/upd Segment id :is_active false)
+  (db/update! Segment id, :is_active false)
   ;; retrieve the updated segment (now retired)
-  (let [segment (retrieve-segment id)]
-    ;; fire off an event
-    (events/publish-event :segment-delete (assoc segment :actor_id user-id :revision_message revision-message))
-    ;; return the updated segment
-    segment))
+  (u/prog1 (retrieve-segment id)
+    (events/publish-event :segment-delete (assoc <> :actor_id user-id, :revision_message revision-message))))

@@ -5,9 +5,8 @@
                      [walk :as walk])
             [medley.core :as m]
             [schema.core :as s]
-            [metabase.db :refer [sel]]
-            (metabase.models [database :refer [Database]]
-                             [field :as field]
+            [metabase.db :as db]
+            (metabase.models [field :as field]
                              [table :refer [Table]])
             [metabase.query-processor.interface :refer :all]
             [metabase.util :as u])
@@ -184,8 +183,8 @@
         ;; If there are no more Field IDs to resolve we're done.
         expanded-query-dict
         ;; Otherwise fetch + resolve the Fields in question
-        (let [fields (->> (sel :many :id->fields [field/Field :name :display_name :base_type :special_type :visibility_type :table_id :parent_id :description]
-                               :id [in field-ids])
+        (let [fields (->> (db/sel :many :id->fields [field/Field :name :display_name :base_type :special_type :visibility_type :table_id :parent_id :description]
+                                  :id [in field-ids])
                           (m/map-vals rename-mb-field-keys)
                           (m/map-vals #(assoc % :parent (when-let [parent-id (:parent-id %)]
                                                           (map->FieldPlaceholder {:field-id parent-id})))))]
@@ -198,11 +197,6 @@
            ;; Recurse in case any new (nested) unresolved fields were found.
            (recur (dec max-iterations))))))))
 
-(defn- resolve-database
-  "Resolve the `Database` in question for an EXPANDED-QUERY-DICT."
-  [{database-id :database, :as expanded-query-dict}]
-  (assoc expanded-query-dict :database (sel :one :fields [Database :name :id :engine :details] :id database-id)))
-
 (defn- join-tables-fetch-field-info
   "Fetch info for PK/FK `Fields` for the JOIN-TABLES referenced in a Query."
   [source-table-id join-tables fk-field-ids]
@@ -210,15 +204,15 @@
     (when-not (seq fk-field-ids)
       (throw (Exception. "You must use the fk-> form to reference Fields that are not part of the source_table.")))
     (let [ ;; Build a map of source table FK field IDs -> field names
-          fk-field-id->field-name      (sel :many :id->field [field/Field :name], :id [in fk-field-ids], :table_id source-table-id, :special_type "fk")
+          fk-field-id->field-name      (db/sel :many :id->field [field/Field :name], :id [in fk-field-ids], :table_id source-table-id, :special_type "fk")
 
           ;; Build a map of join table PK field IDs -> source table FK field IDs
-          pk-field-id->fk-field-id     (sel :many :field->field [field/Field :fk_target_field_id :id],
-                                            :id                 [in (set (keys fk-field-id->field-name))]
-                                            :fk_target_field_id [not= nil])
+          pk-field-id->fk-field-id     (db/sel :many :field->field [field/Field :fk_target_field_id :id],
+                                               :id                 [in (set (keys fk-field-id->field-name))]
+                                               :fk_target_field_id [not= nil])
 
           ;; Build a map of join table ID -> PK field info
-          join-table-id->pk-field      (let [pk-fields (sel :many :fields [field/Field :id :table_id :name], :id [in (set (keys pk-field-id->fk-field-id))])]
+          join-table-id->pk-field      (let [pk-fields (db/sel :many :fields [field/Field :id :table_id :name], :id [in (set (keys pk-field-id->fk-field-id))])]
                                          (zipmap (map :table_id pk-fields) pk-fields))]
 
       ;; Now build the :join-tables clause
@@ -238,7 +232,7 @@
   [{{source-table-id :source-table} :query, :keys [table-ids fk-field-ids], :as expanded-query-dict}]
   {:pre [(integer? source-table-id)]}
   (let [table-ids       (conj table-ids source-table-id)
-        table-id->table (sel :many :id->fields [Table :schema :name :id], :id [in table-ids])
+        table-id->table (db/sel :many :id->fields [Table :schema :name :id], :id [in table-ids])
         join-tables     (vals (dissoc table-id->table source-table-id))]
     (as-> expanded-query-dict <>
       (assoc-in <> [:query :source-table] (or (table-id->table source-table-id)
@@ -255,5 +249,4 @@
   (some-> expanded-query-dict
           record-fk-field-ids
           resolve-fields
-          resolve-database
           resolve-tables))

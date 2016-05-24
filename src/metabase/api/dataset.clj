@@ -1,12 +1,15 @@
 (ns metabase.api.dataset
   "/api/dataset endpoints."
   (:require [clojure.data.csv :as csv]
+            [cheshire.core :as json]
             [compojure.core :refer [GET POST]]
+            [korma.core :as k]
             [metabase.api.common :refer :all]
             [metabase.db :as db]
             (metabase.models [card :refer [Card]]
                              [database :refer [Database]]
-                             [hydrate :refer [hydrate]])
+                             [hydrate :refer [hydrate]]
+                             [query-execution :refer [QueryExecution]])
             [metabase.query-processor :as qp]
             [metabase.util :as u]))
 
@@ -31,6 +34,18 @@
   (let [query (assoc body :constraints dataset-query-api-constraints)]
     (qp/dataset-query query {:executed_by *current-user-id*})))
 
+ (defendpoint POST "/duration"
+   "Get historical query execution duration."
+   [:as {{:keys [database] :as body} :body}]
+   (read-check Database database)
+   ;; add sensible constraints for results limits on our query
+   (let [query (assoc body :constraints dataset-query-api-constraints)]
+     (first (k/select [(k/subselect QueryExecution
+                        (k/fields :running_time)
+                        (k/where {:json_query (json/generate-string query)})
+                        (k/order :started_at :desc)
+                        (k/limit 10)) :_]
+              (k/aggregate (avg :running_time) :average)))))
 
 (defendpoint POST "/csv"
   "Execute an MQL query and download the result data as a CSV file."

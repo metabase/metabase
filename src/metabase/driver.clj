@@ -4,7 +4,7 @@
             [clojure.tools.logging :as log]
             [clojure.tools.namespace.find :as ns-find]
             [medley.core :as m]
-            [metabase.db :refer [ins sel upd]]
+            [metabase.db :as db]
             (metabase.models [database :refer [Database]]
                              [query-execution :refer [QueryExecution]]
                              [setting :refer [defsetting]])
@@ -107,6 +107,22 @@
 
           Is this property required? Defaults to `false`.")
 
+  (execute-query ^java.util.Map [this, ^Map query]
+    "Execute a query against the database and return the results.
+
+  The query passed in will contain:
+
+         {:database ^DatabaseInstance
+          :native   {... driver specific query form such as one returned from a call to `mbql->native` ...}
+          :settings {:report-timezone \"US/Pacific\"
+                     :other-setting   \"and its value\"}}
+
+  Results should look like:
+
+         {:columns [\"id\", \"name\"]
+          :rows    [[1 \"Lucky Bird\"]
+                    [2 \"Rasta Can\"]]}")
+
   (features ^java.util.Set [this]
     "*OPTIONAL*. A set of keyword names of optional features supported by this driver, such as `:foreign-keys`. Valid features are:
 
@@ -128,29 +144,21 @@
     "*OPTIONAL*. Return a humanized (user-facing) version of an connection error message string.
      Generic error messages are provided in the constant `connection-error-messages`; return one of these whenever possible.")
 
+  (mbql->native ^java.util.Map [this, ^Map query]
+    "Transpile an MBQL structured query into the appropriate native query form.
+
+  The input query will be a fully expanded MBQL query (https://github.com/metabase/metabase/wiki/Expanded-Queries) with
+  all the necessary pieces of information to build a properly formatted native query for the given database.
+
+  The result of this function will be passed directly into calls to `execute-query`.
+
+  For example, a driver like Postgres would build a valid SQL expression and return a map such as:
+
+       {:query \"SELECT * FROM my_table\"}")
+
   (notify-database-updated [this, ^DatabaseInstance database]
     "*OPTIONAL*. Notify the driver that the attributes of the DATABASE have changed.  This is specifically relevant in
      the event that the driver was doing some caching or connection pooling.")
-
-  (process-native [this, {^Integer database-id :database, {^String native-query :query} :native, :as ^Map query}]
-    "Process a native QUERY. This function is called by `metabase.driver/process-query`.
-
- Results should look something like:
-
-       {:columns [\"id\", \"bird_name\"]
-        :cols    [{:name \"id\", :base_type :IntegerField}
-                  {:name \"bird_name\", :base_type :TextField}]
-        :rows    [[1 \"Lucky Bird\"]
-                  [2 \"Rasta Can\"]]}")
-
-  (process-mbql [this, ^Map query]
-    "Process a native or structured QUERY. This function is called by `metabase.driver/process-query` after performing various driver-unspecific
-     steps like Query Expansion and other preprocessing.
-
- Results should look something like:
-
-       [{:id 1, :name \"Lucky Bird\"}
-        {:id 2, :name \"Rasta Can\"}]")
 
   (process-query-in-context [this, ^IFn qp]
     "*OPTIONAL*. Similar to `sync-in-context`, but for running queries rather than syncing. This should be used to do things like open DB connections
@@ -320,7 +328,7 @@
    (Databases aren't expected to change their types, and this optimization makes things a lot faster).
 
    This loads the corresponding driver if needed."
-  (let [db-id->engine (memoize (fn [db-id] (sel :one :field [Database :engine] :id db-id)))]
+  (let [db-id->engine (memoize (fn [db-id] (db/sel :one :field [Database :engine] :id db-id)))]
     (fn [db-id]
       (engine->driver (db-id->engine db-id)))))
 

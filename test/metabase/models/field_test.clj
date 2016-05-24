@@ -1,6 +1,5 @@
 (ns metabase.models.field-test
   (:require [expectations :refer :all]
-            [metabase.db :refer :all]
             (metabase.models [field :refer :all]
                              [field-values :refer :all])
             [metabase.test.data :refer :all]))

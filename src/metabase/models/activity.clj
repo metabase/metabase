@@ -62,7 +62,7 @@
   [& {:keys [topic object details-fn database-id table-id user-id model model-id]}]
   {:pre [(keyword? topic)]}
   (let [object (or object {})]
-    (db/ins Activity
+    (db/insert! Activity
       :topic       topic
       :user_id     (or user-id (events/object->user-id object))
       :model       (or model (events/topic->model topic))

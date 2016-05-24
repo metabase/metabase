@@ -20,7 +20,7 @@
 
 (defn- create-test-card []
   (let [rand-name (random-name)]
-    (db/ins Card
+    (db/insert! Card
       :name                   rand-name
       :description            rand-name
       :public_perms           2
@@ -49,7 +49,7 @@
 
 (defn- create-test-dashboard []
   (let [rand-name (random-name)]
-    (db/ins Dashboard
+    (db/insert! Dashboard
       :name                   rand-name
       :description            rand-name
       :public_perms           2
@@ -120,7 +120,7 @@
 ;; :dashboard-add-cards
 (expect-let [{dashboard-id :id :as dashboard} (create-test-dashboard)
              {card-id :id}                    (create-test-card)
-             dashcard                         (db/ins DashboardCard :card_id card-id :dashboard_id dashboard-id)]
+             dashcard                         (db/insert! DashboardCard :card_id card-id :dashboard_id dashboard-id)]
   {:model        "Dashboard"
    :model_id     dashboard-id
    :user_id      (user->id :crowberto)
@@ -138,8 +138,8 @@
 ;; :dashboard-remove-cards
 (expect-let [{dashboard-id :id :as dashboard} (create-test-dashboard)
              {card-id :id}                    (create-test-card)
-             dashcard                         (db/ins DashboardCard :card_id card-id :dashboard_id dashboard-id)
-             _                                (db/del DashboardCard :id (:id dashcard))]
+             dashcard                         (db/insert! DashboardCard :card_id card-id :dashboard_id dashboard-id)
+             _                                (db/delete! DashboardCard, :id (:id dashcard))]
   {:model        "Dashboard"
    :model_id     dashboard-id
    :user_id      (user->id :crowberto)
@@ -157,8 +157,8 @@
 ;; :dashboard-reposition-cards
 (expect-let [{dashboard-id :id :as dashboard} (create-test-dashboard)
              {card-id :id}                    (create-test-card)
-             dashcard                         (db/ins DashboardCard :card_id card-id :dashboard_id dashboard-id)
-             _                                (db/upd DashboardCard (:id dashcard) :sizeX 4)]
+             dashcard                         (u/prog1 (db/insert! DashboardCard :card_id card-id :dashboard_id dashboard-id)
+                                                (db/update! DashboardCard (:id <>), :sizeX 4))]
   {:model        "Dashboard"
    :model_id     dashboard-id
    :user_id      (user->id :crowberto)

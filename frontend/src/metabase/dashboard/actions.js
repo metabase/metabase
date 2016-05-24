@@ -6,12 +6,12 @@ import { normalize, Schema, arrayOf } from "normalizr";
 
 import moment from "moment";
 import { augmentDatabase } from "metabase/lib/table";
-import { delay } from "metabase/lib/promise";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
 
-const DATASET_TIMEOUT = 60;
+const DATASET_SLOW_TIMEOUT   = 15 * 1000;
+const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
 
 // normalizr schemas
 const dashcard = new Schema('dashcard');
@@ -40,6 +40,7 @@ export const SET_DASHCARD_ATTRIBUTES = 'SET_DASHCARD_ATTRIBUTES';
 export const SAVE_DASHCARD = 'SAVE_DASHCARD';
 
 export const FETCH_CARD_DATA = 'FETCH_CARD_DATA';
+export const FETCH_CARD_DURATION = 'FETCH_CARD_DURATION';
 export const FETCH_REVISIONS = 'FETCH_REVISIONS';
 export const REVERT_TO_REVISION = 'REVERT_TO_REVISION';
 
@@ -49,7 +50,7 @@ export const FETCH_DATABASE_METADATA = 'FETCH_DATABASE_METADATA';
 
 // resource wrappers
 const DashboardApi = new AngularResourceProxy("Dashboard", ["get", "update", "delete", "reposition_cards", "addcard", "removecard"]);
-const MetabaseApi = new AngularResourceProxy("Metabase", ["dataset", "db_metadata"]);
+const MetabaseApi = new AngularResourceProxy("Metabase", ["dataset", "dataset_duration", "db_metadata"]);
 const CardApi = new AngularResourceProxy("Card", ["list", "update", "delete"]);
 const RevisionApi = new AngularResourceProxy("Revision", ["list", "revert"]);
 
@@ -99,17 +100,28 @@ export const removeCardFromDashboard = createAction(REMOVE_CARD_FROM_DASH);
 
 export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card) {
     return async function(dispatch, getState) {
-        let timeout = delay(DATASET_TIMEOUT * 1000);
-        try {
-            let result = await MetabaseApi.dataset({ timeout }, card.dataset_query);
-            return { id: card.id, result };
-        } catch (error) {
-            if (error && error.status === 0) {
-                throw "Card took longer than " + DATASET_TIMEOUT + " seconds to load.";
-            } else {
-                throw error;
+        let result = null;
+        let slowCardTimer = setTimeout(() => {
+            if (result === null) {
+                dispatch(fetchCardDuration(card));
             }
-        }
+        }, DATASET_SLOW_TIMEOUT);
+        result = await MetabaseApi.dataset(card.dataset_query);
+        clearTimeout(slowCardTimer);
+        return { id: card.id, result };
+    };
+});
+
+export const fetchCardDuration = createThunkAction(FETCH_CARD_DURATION, function(card) {
+    return async function(dispatch, getState) {
+        let result = await MetabaseApi.dataset_duration(card.dataset_query);
+        return {
+            id: card.id,
+            result: {
+                fast_threshold: DATASET_USUALLY_FAST_THRESHOLD,
+                ...result
+            }
+        };
     };
 });
 

@@ -6,6 +6,8 @@ import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 
+import { duration } from "metabase/lib/formatting";
+
 import visualizations from "metabase/visualizations";
 
 import i from "icepick";
@@ -67,7 +69,7 @@ export default class Visualization extends Component {
     }
 
     render() {
-        const { series, actionButtons, className, isDashboard, width } = this.props;
+        const { series, actionButtons, className, isDashboard, width, isSlow, expectedDuration } = this.props;
         const CardVisualization = visualizations.get(series[0].card.display);
         const small = width < 330;
 
@@ -88,13 +90,20 @@ export default class Visualization extends Component {
             }
         }
 
+        let extra;
+        if (!loading) {
+            extra = actionButtons;
+        } else if (isSlow) {
+            extra = <LoadingSpinner className={isSlow === "usually-slow" ? "text-gold" : "text-slate"} size={18} />
+        }
+
         return (
             <div className={cx(className, "flex flex-column")}>
                 { isDashboard && (loading || error || !CardVisualization.noHeader) ?
                     <div className="p1 flex-no-shrink">
                         <LegendHeader
                             series={series}
-                            actionButtons={actionButtons}
+                            actionButtons={extra}
                         />
                     </div>
                 : null
@@ -112,10 +121,24 @@ export default class Visualization extends Component {
                     </div>
                 : loading ?
                     <div className="flex-full p1 text-centered text-brand flex flex-column layout-centered">
-                        <LoadingSpinner />
-                        <span className="h4 text-bold ml1 text-slate-light">
-                            Loading...
-                        </span>
+                        { isSlow ?
+                            <div className="text-slate">
+                                <div className="h4 text-bold mb1">Still Waiting...</div>
+                                { isSlow === "usually-slow" ?
+                                    <div>
+                                        This usually takes an average of <span style={{whiteSpace: "nowrap"}}>{duration(expectedDuration)}</span>.
+                                        <br />
+                                        (This is a bit long for a dashboard)
+                                    </div>
+                                :
+                                    <div>
+                                        This is usually pretty fast, but seems to be taking awhile right now.
+                                    </div>
+                                }
+                            </div>
+                        :
+                            <LoadingSpinner className="text-slate" />
+                        }
                     </div>
                 :
                     <CardVisualization

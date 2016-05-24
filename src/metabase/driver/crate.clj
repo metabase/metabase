@@ -3,7 +3,6 @@
             [korma.core :as k]
             [metabase.driver :as driver]
             (metabase.driver.crate [analyze :as analyze]
-                                   [native :as native]
                                    [query-processor :as qp]
                                    [util :as crate-util])
             [metabase.driver.generic-sql :as sql]
@@ -67,13 +66,13 @@
 (u/strict-extend CrateDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {:details-fields (constantly [{:name         "hosts"
-                                        :display-name "Hosts"
-                                        :default      "//localhost:4300"}])
+         {:analyze-table  analyze/analyze-table
           :can-connect?   (u/drop-first-arg can-connect?)
           :date-interval  crate-util/date-interval
-          :analyze-table  analyze/analyze-table
-          :process-native native/process-and-run
+          :details-fields (constantly [{:name         "hosts"
+                                        :display-name "Hosts"
+                                        :default      "//localhost:4300"}])
+          :execute-query  qp/execute-query
           :features       (fn [this]
                             (set/difference (sql/features this)
                                             #{:foreign-keys}))})

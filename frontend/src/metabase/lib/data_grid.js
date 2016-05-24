@@ -27,7 +27,8 @@ export function filterOnPreviewDisplay(data) {
         cols: _.filter(data.cols, function(col) { return col.visibility_type !== "details-only"; }),
         columns: _.map(data.cols, function(col) { return col.display_name; }),
         rows: filteredRows,
-        rows_truncated: data.rows_truncated
+        rows_truncated: data.rows_truncated,
+        native_form: data.native_form
     };
 }
 

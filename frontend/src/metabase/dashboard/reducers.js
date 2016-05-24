@@ -8,6 +8,7 @@ import {
     SET_EDITING_DASHBOARD,
     FETCH_DASHBOARD,
     FETCH_CARD_DATA,
+    FETCH_CARD_DURATION,
     SET_DASHBOARD_ATTRIBUTES,
     SET_DASHCARD_ATTRIBUTES,
     SET_DASHCARD_VISUALIZATION_SETTING,
@@ -84,6 +85,10 @@ export const revisions = handleActions({
 
 export const cardData = handleActions({
     [FETCH_CARD_DATA]: { next: (state, { payload: { id, result }}) => ({ ...state, [id]: result }) }
+}, {});
+
+export const cardDurations = handleActions({
+    [FETCH_CARD_DURATION]: { next: (state, { payload: { id, result }}) => ({ ...state, [id]: result }) }
 }, {});
 
 const databases = handleActions({

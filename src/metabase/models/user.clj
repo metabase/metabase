@@ -43,14 +43,14 @@
     (or first_name last_name) (assoc :common_name (str first_name " " last_name))))
 
 (defn- pre-cascade-delete [{:keys [id]}]
-  (db/cascade-delete 'Session :user_id id)
-  (db/cascade-delete 'Dashboard :creator_id id)
-  (db/cascade-delete 'Card :creator_id id)
-  (db/cascade-delete 'Pulse :creator_id id)
-  (db/cascade-delete 'Activity :user_id id)
-  (db/cascade-delete 'ViewLog :user_id id)
-  (db/cascade-delete 'Segment :creator_id id)
-  (db/cascade-delete 'Metric :creator_id id))
+  (db/cascade-delete! 'Session :user_id id)
+  (db/cascade-delete! 'Dashboard :creator_id id)
+  (db/cascade-delete! 'Card :creator_id id)
+  (db/cascade-delete! 'Pulse :creator_id id)
+  (db/cascade-delete! 'Activity :user_id id)
+  (db/cascade-delete! 'ViewLog :user_id id)
+  (db/cascade-delete! 'Segment :creator_id id)
+  (db/cascade-delete! 'Metric :creator_id id))
 
 (u/strict-extend (class User)
   i/IEntity
@@ -65,9 +65,7 @@
 
 ;; ## Related Functions
 
-(declare create-user
-         form-password-reset-url
-         set-user-password
+(declare form-password-reset-url
          set-user-password-reset-token)
 
 (defn create-user
@@ -77,13 +75,13 @@
   {:pre [(string? first-name)
          (string? last-name)
          (string? email-address)]}
-  (when-let [new-user (db/ins User
-                        :email email-address
+  (when-let [new-user (db/insert! User
+                        :email      email-address
                         :first_name first-name
-                        :last_name last-name
-                        :password (if (not (nil? password))
-                                    password
-                                    (str (java.util.UUID/randomUUID))))]
+                        :last_name  last-name
+                        :password   (if (not (nil? password))
+                                      password
+                                      (str (java.util.UUID/randomUUID))))]
     (when send-welcome
       (let [reset-token (set-user-password-reset-token (:id new-user))
             ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
@@ -98,20 +96,20 @@
   (let [salt (.toString (java.util.UUID/randomUUID))
         password (creds/hash-bcrypt (str salt password))]
     ;; NOTE: any password change expires the password reset token
-    (db/upd User user-id
-      :password_salt salt
-      :password password
-      :reset_token nil
+    (db/update! User user-id
+      :password_salt   salt
+      :password        password
+      :reset_token     nil
       :reset_triggered nil)))
 
 (defn set-user-password-reset-token
   "Updates a given `User` and generates a password reset token for them to use.  Returns the url for password reset."
   [user-id]
   {:pre [(integer? user-id)]}
-  (let [reset-token (str user-id \_ (java.util.UUID/randomUUID))]
-    (db/upd User user-id, :reset_token reset-token, :reset_triggered (System/currentTimeMillis))
-    ;; return the token
-    reset-token))
+  (u/prog1 (str user-id \_ (java.util.UUID/randomUUID))
+    (db/update! User user-id
+      :reset_token     <>
+      :reset_triggered (System/currentTimeMillis))))
 
 (defn form-password-reset-url
   "Generate a properly formed password reset url given a password reset token."

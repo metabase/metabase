@@ -4,7 +4,7 @@
             [environ.core :as env]
             [korma.core :as k]
             [metabase.config :as config]
-            [metabase.db :refer [exists? sel del], :as db]
+            [metabase.db :as db]
             [metabase.events :as events]
             [metabase.models [common :as common]
                              [interface :as i]]
@@ -71,7 +71,7 @@
   (restore-cache-if-needed)
   (if (contains? @cached-setting->value k)
     (@cached-setting->value k)
-    (let [v (sel :one :field [Setting :value] :key (name k))]
+    (let [v (db/sel :one :field [Setting :value] :key (name k))]
       (swap! cached-setting->value assoc k v)
       v)))
 
@@ -99,25 +99,26 @@
 
      (mandrill-api-key \"xyz123\")"
   [k v]
-  {:pre [(keyword? k)
-         (string? v)]}
-  (if (get k) (k/update Setting
-                        (k/set-fields {:value v})
-                        (k/where {:key (name k)}))
-      (k/insert Setting
-                (k/values {:key   (name k)
-                           :value v})))
+  {:pre [(keyword? k) (string? v)]}
+  (if (get k)
+    (k/update Setting
+              (k/set-fields {:value v})
+              (k/where {:key (name k)}))
+    (k/insert Setting
+              (k/values {:key   (name k)
+                         :value v})))
   (restore-cache-if-needed)
   (swap! cached-setting->value assoc k v)
   v)
 
 (defn delete
-  "Delete a `Setting`."
+  "Clear the value of a `Setting`."
   [k]
   {:pre [(keyword? k)]}
   (restore-cache-if-needed)
   (swap! cached-setting->value dissoc k)
-  (del Setting :key (name k)))
+  (db/delete! Setting, :key (name k))
+  {:status 204, :body nil})
 
 (defn set-all
   "Set the value of several `Settings` at once.
@@ -217,7 +218,7 @@
                        :value (k settings))))
          (sort-by :key))))
 
-(def ^:private short-timezone-name
+(def ^:private ^{:arglists '([timezone-name])} short-timezone-name
   "Get a short display name (e.g. `PST`) for `report-timezone`, or fall back to the System default if it's not set."
   (memoize (fn [^String timezone-name]
              (let [^TimeZone timezone (or (when (seq timezone-name)
@@ -246,7 +247,7 @@
    :admin_email           (get :admin-email)
    :report_timezone       (get :report-timezone)
    :timezone_short        (short-timezone-name (get :report-timezone))
-   :has_sample_dataset    (exists? 'Database, :is_sample true)})
+   :has_sample_dataset    (db/exists? 'Database, :is_sample true)})
 
 
 ;;; # IMPLEMENTATION
@@ -254,7 +255,7 @@
 (defn- restore-cache-if-needed []
   (when-not @cached-setting->value
     (db/setup-db-if-needed)
-    (reset! cached-setting->value (into {} (for [{k :key, v :value} (sel :many Setting)]
+    (reset! cached-setting->value (into {} (for [{k :key, v :value} (db/sel :many Setting)]
                                              {(keyword k) v})))))
 
 (def ^:private cached-setting->value

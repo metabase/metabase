@@ -3,14 +3,10 @@
   (:require [clojure.tools.logging :as log]
             [clj-http.client :as http]
             [cheshire.core :as json]
-            [metabase.api.common :refer [let-404]]
-            [metabase.db :refer [sel]]
             [metabase.driver :as driver]
             [metabase.driver.druid.query-processor :as qp]
-            (metabase.models [database :refer [Database]]
-                             [field :as field]
+            (metabase.models [field :as field]
                              [table :as table])
-            [metabase.query-processor.annotate :as annotate]
             [metabase.util :as u]))
 
 ;;; ### Request helper fns
@@ -64,24 +60,6 @@
            (log/error (u/format-color 'red "Error running query:\n%s" message))
            ;; Re-throw a new exception with `message` set to the extracted message
            (throw (Exception. message e))))))
-
-
-(defn- process-mbql [query]
-  ;; Merge `:settings` into the inner query dict so the QP has access to it
-  (qp/process-mbql-query (partial do-query (get-in query [:database :details]))
-                         (assoc (:query query)
-                                :settings (:settings query))))
-
-(defn- process-native [{database-id :database, {query :query} :native, :as outer-query}]
-  {:pre [(integer? database-id) query]}
-  (let-404 [details (sel :one :field [Database :details], :id database-id)]
-    (let [query (if (string? query)
-                  (json/parse-string query keyword)
-                  query)]
-      ;; `annotate` happens automatically as part of the QP middleware for MBQL queries but not for native ones.
-      ;; This behavior was originally so we could preserve column order for raw SQL queries.
-      ;; Since Druid results come back as maps for each row there is no order to preserve so we can go ahead and re-use the MBQL-QP annotation code here.
-      (annotate/annotate outer-query (qp/post-process-native query (do-query details query))))))
 
 
 ;;; ### Sync
@@ -180,9 +158,9 @@
                                                :display-name "Broker node port"
                                                :type         :integer
                                                :default      8082}])
+          :execute-query         (fn [_ query] (qp/execute-query do-query query))
           :features              (constantly #{:set-timezone})
           :field-values-lazy-seq (u/drop-first-arg field-values-lazy-seq)
-          :process-native        (u/drop-first-arg process-native)
-          :process-mbql          (u/drop-first-arg process-mbql)}))
+          :mbql->native          (u/drop-first-arg qp/mbql->native)}))
 
 (driver/register-driver! :druid (DruidDriver.))

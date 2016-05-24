@@ -1,8 +1,8 @@
 (ns metabase.api.database-test
   (:require [expectations :refer :all]
             [korma.core :as k]
-            [metabase.db :refer :all]
-            [metabase.driver :as driver]
+            (metabase [db :as db]
+                      [driver :as driver])
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [table :refer [Table]])
@@ -79,7 +79,7 @@
 ;; Check that we can create a Database
 (let [db-name (random-name)]
   (expect-eval-actual-first
-      (match-$ (sel :one Database :name db-name)
+      (match-$ (db/sel :one Database :name db-name)
         {:created_at      $
          :engine          "postgres" ; string because it's coming back from API instead of DB
          :id              $
@@ -97,7 +97,7 @@
 ;; Check that we can delete a Database
 (expect-let [db-name (random-name)
              {db-id :id} (create-db db-name)
-             sel-db-name (fn [] (sel :one :field [Database :name] :id db-id))]
+             sel-db-name (fn [] (db/sel :one :field [Database :name] :id db-id))]
   [db-name
    nil]
   [(sel-db-name)
@@ -108,7 +108,7 @@
 ;; Check that we can update fields in a Database
 (expect-let [[old-name new-name] (repeatedly 2 random-name)
              {db-id :id} (create-db old-name)
-             sel-db (fn [] (sel :one :fields [Database :name :engine :details :is_full_sync] :id db-id))]
+             sel-db (fn [] (db/sel :one :fields [Database :name :engine :details :is_full_sync] :id db-id))]
   [{:details      {:host "localhost", :port 5432, :dbname "fakedb", :user "cam", :ssl true}
     :engine       :postgres
     :name         old-name
@@ -146,7 +146,7 @@
                                          :description     nil
                                          :features        (mapv name (driver/features (driver/engine->driver engine)))})))
                                   ;; (?) I don't remember why we have to do this for postgres but not any other of the bonus drivers
-                                  (match-$ (sel :one Database :name db-name)
+                                  (match-$ (db/sel :one Database :name db-name)
                                     {:created_at      $
                                      :engine          "postgres"
                                      :id              $
@@ -159,10 +159,10 @@
                                      :features        (mapv name (driver/features (driver/engine->driver :postgres)))}))))
       (do
         ;; Delete all the randomly created Databases we've made so far
-        (cascade-delete Database :id [not-in (set (filter identity
+        (db/cascade-delete! Database :id [:not-in (filter identity
                                                           (for [engine datasets/all-valid-engines]
                                                             (datasets/when-testing-engine engine
-                                                              (:id (get-or-create-test-data-db! (driver/engine->driver engine)))))))])
+                                                              (:id (get-or-create-test-data-db! (driver/engine->driver engine))))))])
         ;; Add an extra DB so we have something to fetch besides the Test DB
         (create-db db-name)
         ;; Now hit the endpoint
@@ -171,7 +171,7 @@
 ;; GET /api/databases (include tables)
 (let [db-name (str "A" (random-name))] ; make sure this name comes before "test-data"
   (expect-eval-actual-first
-    (set (concat [(match-$ (sel :one Database :name db-name)
+    (set (concat [(match-$ (db/sel :one Database :name db-name)
                     {:created_at      $
                      :engine          "postgres"
                      :id              $
@@ -185,27 +185,27 @@
                      :features        (mapv name (driver/features (driver/engine->driver :postgres)))})]
                  (filter identity (for [engine datasets/all-valid-engines]
                                     (datasets/when-testing-engine engine
-                                                                  (let [database (get-or-create-test-data-db! (driver/engine->driver engine))]
-                                                                    (match-$ database
-                                                                      {:created_at      $
-                                                                       :engine          (name $engine)
-                                                                       :id              $
-                                                                       :updated_at      $
-                                                                       :name            "test-data"
-                                                                       :is_sample       false
-                                                                       :is_full_sync    true
-                                                                       :organization_id nil
-                                                                       :description     nil
-                                                                       :tables          (->> (sel :many Table :db_id (:id database))
-                                                                                             (mapv table-details)
-                                                                                             (sort-by :name))
-                                                                       :features        (mapv name (driver/features (driver/engine->driver engine)))})))))))
+                                      (let [database (get-or-create-test-data-db! (driver/engine->driver engine))]
+                                        (match-$ database
+                                          {:created_at      $
+                                           :engine          (name $engine)
+                                           :id              $
+                                           :updated_at      $
+                                           :name            "test-data"
+                                           :is_sample       false
+                                           :is_full_sync    true
+                                           :organization_id nil
+                                           :description     nil
+                                           :tables          (->> (db/sel :many Table :db_id (:id database))
+                                                                 (mapv table-details)
+                                                                 (sort-by :name))
+                                           :features        (mapv name (driver/features (driver/engine->driver engine)))})))))))
     (do
       ;; Delete all the randomly created Databases we've made so far
-      (cascade-delete Database :id [not-in (set (filter identity
-                                                        (for [engine datasets/all-valid-engines]
-                                                          (datasets/when-testing-engine engine
-                                                                                        (:id (get-or-create-test-data-db! (driver/engine->driver engine)))))))])
+      (db/cascade-delete! Database :id [:not-in (set (filter identity
+                                                             (for [engine datasets/all-valid-engines]
+                                                               (datasets/when-testing-engine engine
+                                                                 (:id (get-or-create-test-data-db! (driver/engine->driver engine)))))))])
       ;; Add an extra DB so we have something to fetch besides the Test DB
       (create-db db-name)
       ;; Now hit the endpoint
@@ -237,7 +237,7 @@
                                                  :table_id           (id :categories)
                                                  :special_type       "id"
                                                  :name               "ID"
-                                                 :display_name       "Id"
+                                                 :display_name       "ID"
                                                  :updated_at         $
                                                  :active             true
                                                  :id                 $

@@ -11,8 +11,7 @@
             [metabase.driver :as driver]
             (metabase.driver.mongo [query-processor :as qp]
                                    [util :refer [*mongo-connection* with-mongo-connection values->base-type]])
-            (metabase.models [database :refer [Database]]
-                             [field :as field]
+            (metabase.models [field :as field]
                              [table :as table])
             [metabase.sync-database.analyze :as analyze]
             [metabase.util :as u])
@@ -42,13 +41,9 @@
     message))
 
 (defn- process-query-in-context [qp]
-  (fn [query]
-    (let [{:keys [database], :as query} (update query :database (fn [database]
-                                                                  (if (integer? database)
-                                                                    (Database database)
-                                                                    database)))]
-      (with-mongo-connection [^DB conn, database]
-        (qp query)))))
+  (fn [{:keys [database], :as query}]
+    (with-mongo-connection [^DB conn, database]
+      (qp query))))
 
 
 ;;; ### Syncing
@@ -196,11 +191,11 @@
                                                            :display-name "Use a secure connection (SSL)?"
                                                            :type         :boolean
                                                            :default      false}])
+          :execute-query                     (u/drop-first-arg qp/execute-query)
           :features                          (constantly #{:dynamic-schema :nested-fields})
           :field-values-lazy-seq             (u/drop-first-arg field-values-lazy-seq)
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
-          :process-native                    (u/drop-first-arg qp/process-and-run-native)
-          :process-mbql                      (u/drop-first-arg qp/process-and-run-mbql)
+          :mbql->native                      (u/drop-first-arg qp/mbql->native)
           :process-query-in-context          (u/drop-first-arg process-query-in-context)
           :sync-in-context                   (u/drop-first-arg sync-in-context)}))
 

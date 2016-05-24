@@ -210,6 +210,7 @@ export default class DashboardGrid extends Component {
                         <DashCard
                             dashcard={dc}
                             cardData={this.props.cardData}
+                            cardDurations={this.props.cardDurations}
                             fetchCardData={this.props.fetchCardData}
                             markNewCardSeen={this.props.markNewCardSeen}
                             isEditing={isEditing}
@@ -246,6 +247,7 @@ export default class DashboardGrid extends Component {
                         <DashCard
                             dashcard={dc}
                             cardData={this.props.cardData}
+                            cardDurations={this.props.cardDurations}
                             fetchCardData={this.props.fetchCardData}
                             markNewCardSeen={this.props.markNewCardSeen}
                             isEditing={isEditing}

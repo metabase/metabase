@@ -138,6 +138,16 @@ export function humanize(...args) {
     return inflection.humanize(...args);
 }
 
+export function duration(milliseconds) {
+    if (milliseconds < 60000) {
+        let seconds = Math.round(milliseconds / 1000);
+        return seconds + " " + inflect("second", seconds);
+    } else {
+        let minutes = Math.round(milliseconds / 1000 / 60);
+        return minutes + " " + inflect("minute", minutes);
+    }
+}
+
 // Removes trailing "id" from field names
 export function stripId(name) {
     return name && name.replace(/ id$/i, "");
@@ -165,4 +175,19 @@ export function assignUserColors(userIds, currentUserId, colorClasses = ['bg-bra
     }
 
     return assignments;
+}
+
+export function formatSQL(sql) {
+    if (sql) {
+        sql = sql.replace(/\sFROM/, "\nFROM");
+        sql = sql.replace(/\sLEFT JOIN/, "\nLEFT JOIN");
+        sql = sql.replace(/\sWHERE/, "\nWHERE");
+        sql = sql.replace(/\sGROUP BY/, "\nGROUP BY");
+        sql = sql.replace(/\sORDER BY/, "\nORDER BY");
+        sql = sql.replace(/\sLIMIT/, "\nLIMIT");
+        sql = sql.replace(/\sAND\s/, "\n   AND ");
+        sql = sql.replace(/\sOR\s/, "\n    OR ");
+
+        return sql;
+    }
 }

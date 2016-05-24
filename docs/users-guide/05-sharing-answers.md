@@ -1,6 +1,7 @@
 
 ## Sharing Your Questions and Answers
 ---
+
 ### How to Save a Question
 Whenever you’ve arrived at an answer that you want to save for later, click the **SAVE** button in the top right of the screen. This will also save the visualization option you’ve chosen for your answer.
 

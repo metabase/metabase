@@ -4,6 +4,9 @@
             (clojure [string :as s]
                      [walk :as walk])
             [clojure.tools.logging :as log]
+            [clj-time.coerce :as tc]
+            [clj-time.core :as t]
+            [clj-time.format :as tf]
             (korma [core :as k]
                    [db :as kdb])
             (korma.sql [engine :as kengine]
@@ -288,45 +291,51 @@
         (recur korma-form more)
         korma-form))))
 
-(defn- do-with-timezone [driver timezone f]
-  (log/debug (u/format-color 'blue (sql/set-timezone-sql driver)))
-  (try (kdb/transaction (k/exec-raw [(sql/set-timezone-sql driver) [timezone]])
-                        (f))
-       (catch Throwable e
-         (log/error (u/format-color 'red "Failed to set timezone:\n%s"
-                      (with-out-str (jdbc/print-sql-exception-chain e))))
-         (f))))
-
-(defn- exception->nice-error-message ^String [^java.sql.SQLException e]
-  (or (->> (.getMessage e)                       ; error message comes back like "Error message ... [status-code]" sometimes
-           (re-find  #"(?s)(^.*)\s+\[[\d-]+\]$") ; status code isn't useful and makes unit tests hard to write so strip it off
-           second)                               ; (?s) = Pattern.DOTALL - tell regex `.` to match newline characters as well
-      (.getMessage e)))
-
-(defn- do-with-try-catch [f]
-  (try
-    (f)
-    (catch java.sql.SQLException e
-      (jdbc/print-sql-exception-chain e)
-      (throw (Exception. (exception->nice-error-message e))))))
-
 (defn build-korma-form
   "Build the korma form we will call `k/exec` on."
   [driver {inner-query :query :as outer-query} entity]
   (binding [*query* outer-query]
     (apply-clauses driver (k/select* entity) inner-query)))
 
-(defn process-mbql
-  "Convert QUERY into a korma `select` form, execute it, and annotate the results."
-  [driver {{:keys [source-table]} :query, database :database, settings :settings, :as outer-query}]
-  (let [timezone   (:report-timezone settings)
-        entity     ((resolve 'metabase.driver.generic-sql/korma-entity) database source-table)
-        korma-form (build-korma-form driver outer-query entity)
-        f          (partial k/exec korma-form)
-        f          (fn []
-                     (kdb/with-db (:db entity)
-                       (if (seq timezone)
-                         (do-with-timezone driver timezone f)
-                         (f))))]
-    (log-korma-form korma-form)
-    (do-with-try-catch f)))
+
+(defn mbql->native
+  "Transpile MBQL query into a native SQL statement."
+  [driver {{:keys [source-table]} :query, database :database, :as outer-query}]
+  (let [entity        ((resolve 'metabase.driver.generic-sql/korma-entity) database source-table)
+        korma-form    (build-korma-form driver outer-query entity)
+        form-with-sql (kengine/bind-query korma-form (kengine/->sql korma-form))]
+    {:query  (:sql-str form-with-sql)
+     :params (:params form-with-sql)}))
+
+(defn execute-query
+  "Process and run a native (raw SQL) QUERY."
+  [driver {:keys [database settings], {sql :query, params :params} :native}]
+  (try (let [db-conn (sql/db->jdbc-connection-spec database)]
+         (jdbc/with-db-transaction [t-conn db-conn]
+           (let [^java.sql.Connection jdbc-connection (:connection t-conn)]
+             ;; Disable auto-commit for this transaction, that way shady queries are unable to modify the database
+             (.setAutoCommit jdbc-connection false)
+             (try
+               ;; Set the timezone if applicable
+               (when-let [timezone (:report-timezone settings)]
+                 (log/debug (u/format-color 'green "%s" (sql/set-timezone-sql driver)))
+                 (try (jdbc/db-do-prepared t-conn (sql/set-timezone-sql driver) [timezone])
+                      (catch Throwable e
+                        (log/error (u/format-color 'red "Failed to set timezone: %s" (.getMessage e))))))
+
+               ;; Now run the query itself
+               (let [statement (if params
+                                 (into [sql] params)
+                                 sql)]
+                 (let [[columns & rows] (jdbc/query t-conn statement, :identifiers identity, :as-arrays? true)]
+                   {:rows    rows
+                    :columns columns}))
+
+               ;; Rollback any changes made during this transaction just to be extra-double-sure JDBC doesn't try to commit them automatically for us
+               (finally (.rollback jdbc-connection))))))
+       (catch java.sql.SQLException e
+         (let [^String message (or (->> (.getMessage e)     ; error message comes back like 'Column "ZID" not found; SQL statement: ... [error-code]' sometimes
+                                        (re-find #"^(.*);") ; the user already knows the SQL, and error code is meaningless
+                                        second)             ; so just return the part of the exception that is relevant
+                                   (.getMessage e))]
+           (throw (Exception. message))))))

@@ -1,17 +1,16 @@
 (ns metabase.driver.generic-sql-test
   (:require [expectations :refer :all]
-            [metabase.db :refer :all]
-            [metabase.driver :as driver]
+            (metabase [db :as db]
+                      [driver :as driver])
             [metabase.driver.generic-sql :refer :all]
             (metabase.models [field :refer [Field]]
-                             [table :refer [Table]])
+                             [table :refer [Table], :as table])
             [metabase.test.data :refer :all]
-            [metabase.test.util :refer [resolve-private-fns]]
-            [metabase.models.table :as table])
+            [metabase.test.util :refer [resolve-private-fns]])
   (:import metabase.driver.h2.H2Driver))
 
 (def users-table
-  (delay (sel :one Table :name "USERS")))
+  (delay (db/sel :one Table :name "USERS")))
 
 (def venues-table
   (delay (Table (id :venues))))
