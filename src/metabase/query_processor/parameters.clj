@@ -1,14 +1,38 @@
 (ns metabase.query-processor.parameters
   (:require [clojure.core.match :refer [match]]
             [clojure.string :as s]
-            [clojure.tools.logging :as log]
-            [metabase.util :as u]))
+            [clj-time.core :as t]
+            [clj-time.format :as tf]
+            [medley.core :as m]))
+
+
+(def ^:private ^:const relative-dates
+  #{"today"
+    "yesterday"
+    "past7days"
+    "past30days"})
 
 
 ;;; +-------------------------------------------------------------------------------------------------------+
 ;;; |                                           MBQL QUERIES                                             |
 ;;; +-------------------------------------------------------------------------------------------------------+
 
+
+(defn- build-filter-clause [{param-type :type, :keys [field value]}]
+  (if-not (= param-type "date")
+    ;; default behavior is to use a simple equals filter
+    ["=" field value]
+    ;; otherwise we need to handle date filtering
+    (if-not (contains? relative-dates value)
+      ;; absolute date range such as: "2014-05-10,2014-05-16"
+      (let [[start end] (s/split value #"," 2)]
+        ["BETWEEN" field start end])
+      ;; relative date range, so build appropriate MBQL clause
+      (condp = value
+        "past7days"  ["TIME_INTERVAL" field -7 "day"]
+        "past30days" ["TIME_INTERVAL" field -30 "day"]
+        "yesterday"  ["=" field ["relative_datetime" -1 "day"]]
+        "today"      ["=" field ["relative_datetime" "current"]]))))
 
 (defn- merge-filter-clauses [base addtl]
   (cond
@@ -20,10 +44,8 @@
 
 (defn- expand-params-mbql [query-dict [{:keys [field value], :as param} & rest]]
   (if param
-    ;; NOTE: we always use a simple equals filter for parameters
     (if (and param field value)
-      (let [filter-subclause ["=" field value]
-            _                (log/info "adding parameter clause: " filter-subclause)
+      (let [filter-subclause (build-filter-clause param)
             query            (assoc-in query-dict [:query :filter] (merge-filter-clauses (get-in query-dict [:query :filter]) filter-subclause))]
         (expand-params-mbql query rest))
       (expand-params-mbql query-dict rest))
@@ -35,25 +57,44 @@
 ;;; +-------------------------------------------------------------------------------------------------------+
 
 
+(defn- extract-dates [value report-timezone]
+  (if-not (contains? relative-dates value)
+    ;; absolute date range such as: "2014-05-10,2014-05-16"
+    ;; TODO: other absolute options?  year-quarter?  year-month?
+    (zipmap [:start :end] (s/split value #"," 2))
+    ;; relative date range
+    (let [tz        (t/time-zone-for-id report-timezone)
+          formatter (tf/formatter "YYYY-MM-dd" tz)
+          today     (t/today-at-midnight tz)]
+      (->> (condp = value
+             "past7days"  {:end   (t/minus today (t/days 1))
+                           :start (t/minus today (t/days 7))}
+             "past30days" {:end   (t/minus today (t/days 1))
+                           :start (t/minus today (t/days 30))}
+             "yesterday"  {:end   (t/minus today (t/days 1))
+                           :start (t/minus today (t/days 1))}
+             "today"      {:end   today
+                           :start today})
+           ;; the above values are JodaTime objects, so unparse them to iso8601 strings
+           (m/map-vals (partial tf/unparse formatter))))))
+
+(defn- expand-date-range-param [report-timezone {param-name :name, param-type :type, param-value :value, :as param}]
+  (if-not (= param-type "date")
+    param
+    (let [{:keys [start end]} (extract-dates param-value report-timezone)]
+      [(assoc param :name (str param-name ":start"), :value start)
+       (assoc param :name (str param-name ":end"),   :value end)])))
+
 (defn- substitute-param [param-name value query]
   ;; TODO: escaping and protection against SQL injection!
   (s/replace query (re-pattern (str "\\{\\{" param-name "\\}\\}")) value))
 
-;; extract any double squares [[ ]] as clauses, find the independent clauses [ ], and within that find the actual params {{}}
-
-;; substitute any variables
-;; if any double bracket clauses exist with {{}} then pull it out
-;; if any single bracket clauses exist with {{}} then pull it out
-
-;; TODO: delegate this to drivers?
-;; TODO: feature = :parameter-substitution
 (defn- substitute-all-params [query-dict [{:keys [value], param-name :name, :as param} & rest]]
   (if param
-    ;; NOTE: we always use a simple equals filter for parameters
-    (if (and param param-name value)
+    (if-not (and param param-name value)
+      (substitute-all-params query-dict rest)
       (let [query (update-in query-dict [:native :query] (partial substitute-param param-name value))]
-        (substitute-all-params query rest))
-      (substitute-all-params query-dict rest))
+        (substitute-all-params query rest)))
     query-dict))
 
 (def ^:private ^:const outer-clause #"\[\[.*?\]\]")
@@ -87,7 +128,7 @@
 (defn- process-single-clauses [query-dict]
   (if-let [single-clauses (re-seq inner-clause (get-in query-dict [:native :query]))]
     (update-in query-dict [:native :query] (fn [q]
-                                             (loop [sql                   q
+                                             (loop [sql                      q
                                                     [[orig stripped] & rest] single-clauses]
                                                (if orig
                                                  (recur (s/replace-first sql orig stripped) rest)
@@ -95,21 +136,24 @@
     query-dict))
 
 (defn- expand-params-native [query-dict params]
-  (if (and params (not (empty? params)))
-    (-> query-dict
-        (substitute-all-params params)
+  (let [report-timezone (get-in query-dict [:settings :report-timezone])
+        params          (flatten (map (partial expand-date-range-param report-timezone) params))]
+    (-> (substitute-all-params query-dict params)
         remove-incomplete-clauses
         process-multi-clauses
-        process-single-clauses)
-    query-dict))
+        process-single-clauses)))
 
 
+;;; +-------------------------------------------------------------------------------------------------------+
+;;; |                                           PUBLIC API                                             |
+;;; +-------------------------------------------------------------------------------------------------------+
+
+
+;; TODO: feature = :parameter-substitution (at least for native queries)
 (defn expand-parameters
   "Expand any :parameters set on the QUERY-DICT."
   [{:keys [parameters], :as query-dict}]
   (let [query (dissoc query-dict :parameters)]
-    (if-not parameters
-      query
-      (if (= :query (keyword (:type query)))
-        (expand-params-mbql query parameters)
-        (expand-params-native query parameters)))))
+    (if (= :query (keyword (:type query)))
+      (expand-params-mbql query parameters)
+      (expand-params-native query parameters))))
