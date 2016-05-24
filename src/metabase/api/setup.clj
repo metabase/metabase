@@ -89,7 +89,9 @@
         (response-invalid :general (.getMessage e))))))
 
 
-(defn- admin-checklist []
+;;; Admin Checklist
+
+(defn- admin-checklist-values []
   (let [has-dbs?           (db/exists? Database)
         has-dashboards?    (db/exists? 'Dashboard)
         has-pulses?        (db/exists? 'Pulse)
@@ -101,44 +103,53 @@
         num-cards          (db/select-one-count 'Card)
         num-users          (db/select-one-count 'User)]
     [{:name        "Add a database"
+      :group       "Get connected"
       :description "TODO - Write something good here"
       :completed   has-dbs?
       :triggered   :always}
      {:name        "Set email credentials"
+      :group       "Get connected"
       :description "TODO - Write something good here"
       :completed   (email/email-configured?)
       :triggered   :always}
      {:name        "Set slack credentials"
+      :group       "Get connected"
       :description "TODO - Write something good here"
       :completed   (slack/slack-configured?)
       :triggered   :always}
      {:name        "Invite other users"
+      :group       "Get connected"
       :description "TODO - Write something good here"
-      :completed   (> num-users 1)
+      :completed   (>= num-users 1)
       :triggered   (or has-dashboards?
                        has-pulses?
-                       (> num-cards 5))}
+                       (>= num-cards 5))}
      {:name        "Hide tables"
+      :group       "Curate your data"
       :description "TODO - Write something good here"
       :completed   has-hidden-tables?
-      :triggered   (> num-tables 20)}
+      :triggered   (>= num-tables 20)}
      {:name        "Organize questions"
+      :group       "Curate your data"
       :description "TODO - Write something good here"
       :completed   (not has-labels?)
-      :triggered   (> num-cards 30)}
+      :triggered   (>= num-cards 30)}
      {:name        "Create metrics"
+      :group       "Curate your data"
       :description "TODO - Write something good here"
       :completed   has-metrics?
-      :triggered   (> num-cards 30)}
+      :triggered   (>= num-cards 30)}
      {:name        "Create segments"
+      :group       "Curate your data"
       :description "TODO - Write something good here"
       :completed   has-segments?
-      :triggered   (> num-cards 30)}
+      :triggered   (>= num-cards 30)}
      {:name        "Create getting started guide"
+      :group       "Curate your data"
       :description "TODO - Write something good here"
       :completed   false                               ; TODO - how do we determine this?
-      :triggered   (and (> num-cards 10)
-                        (> num-users 5))}]))
+      :triggered   (and (>= num-cards 10)
+                        (>= num-users 5))}]))
 
 (defn- add-next-step-info
   "Add `is_next_step` key to all the STEPS from `admin-checklist`.
@@ -156,11 +167,21 @@
                (or found-next-step? is-next-step?)
                more)))))
 
+(defn- partition-steps-into-groups
+  "Partition the admin checklist steps into a sequence of groups."
+  [steps]
+  (for [[{group-name :group}, :as tasks] (partition-by :group steps)]
+    {:name  group-name
+     :tasks tasks}))
+
+(defn- admin-checklist []
+  (partition-steps-into-groups (add-next-step-info (admin-checklist-values))))
+
 (defendpoint GET "/admin_checklist"
-  "Return a map of various \"admin checklist\" steps and whether they've been completed. You must be a superuser to see this!"
+  "Return various \"admin checklist\" steps and whether they've been completed. You must be a superuser to see this!"
   []
   (check-superuser)
-  (add-next-step-info (admin-checklist)))
+  (admin-checklist))
 
 
 (define-routes)
