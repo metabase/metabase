@@ -1,5 +1,3 @@
-/*eslint-env jasmine */
-
 import {
     getFieldType,
     DATE_TIME,

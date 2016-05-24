@@ -7,8 +7,8 @@ var webpackPostcssTools = require('webpack-postcss-tools');
 var CommonsChunkPlugin = webpack.optimize.CommonsChunkPlugin;
 var ExtractTextPlugin = require('extract-text-webpack-plugin');
 var HtmlWebpackPlugin = require('html-webpack-plugin');
-
 var UnusedFilesWebpackPlugin = require("unused-files-webpack-plugin").default;
+var FlowStatusWebpackPlugin = require('flow-status-webpack-plugin');
 
 var _ = require('underscore');
 var glob = require('glob');
@@ -19,7 +19,7 @@ function hasArg(arg) {
     return process.argv.filter(regex.test.bind(regex)).length > 0;
 }
 
-var SRC_PATH = __dirname + '/frontend/src';
+var SRC_PATH = __dirname + '/frontend/src/metabase';
 var BUILD_PATH = __dirname + '/resources/frontend_client';
 
 
@@ -161,7 +161,13 @@ var config = module.exports = {
     },
 
     plugins: [
-        new UnusedFilesWebpackPlugin(),
+        new UnusedFilesWebpackPlugin({
+            globOptions: {
+                ignore: [
+                    "**/types/*.js"
+                ]
+            }
+        }),
         // Separates out modules common to multiple entry points into a single common file that should be loaded first.
         // Not currently useful but necessary for code-splitting
         new CommonsChunkPlugin({
@@ -180,7 +186,8 @@ var config = module.exports = {
             'process.env': {
                 NODE_ENV: JSON.stringify(NODE_ENV)
             }
-        })
+        }),
+        new FlowStatusWebpackPlugin()
     ],
 
     postcss: function (webpack) {
