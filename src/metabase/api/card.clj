@@ -68,7 +68,7 @@
    Make sure cards are returned in the same order as CARD-IDS`; `[in card-ids]` won't preserve the order."
   [card-ids]
   {:pre [(every? integer? card-ids)]}
-  (let [card-id->card (db/select-id->obj Card, :id [:in card-ids], :archived false)]
+  (let [card-id->card (db/select-id->obj Card, :id [:in (set card-ids)], :archived false)]
     (filter identity (map card-id->card card-ids))))
 
 (defn- cards:recent
