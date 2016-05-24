@@ -1917,3 +1917,17 @@
             (ql/expressions {:x (ql/* $price 2.0)})
             (ql/aggregation (ql/count))
             (ql/breakout (ql/expression :x))))))
+
+
+;;; CAN WE JOIN AGAINST THE SAME TABLE TWICE (MULTIPLE FKS TO A SINGLE TABLE!?)
+(datasets/expect-with-engines (engines-that-support :foreign-keys)
+  [[2 "Bob the Sea Gull"]
+   [2 "Brenda Blackbird"]
+   [2 "Lucky Pigeon"]
+   [5 "Peter Pelican"]
+   [1 "Ronald Raven"]]
+  (dataset avian-singles
+    (rows (run-query messages
+            (ql/aggregation (ql/count))
+            (ql/breakout $sender_id->users.name)
+            (ql/filter (ql/= $reciever_id->users.name "Rasta Toucan"))))))

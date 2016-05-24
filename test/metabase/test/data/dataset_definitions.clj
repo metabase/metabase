@@ -11,7 +11,7 @@
 ;; TODO - move this to interface
 ;; TODO - make rows be lazily loadable for DB definitions from a file
 (defmacro ^:private def-database-definition-edn [dbname]
-  `(def-database-definition ~(vary-meta dbname assoc :const true)
+  `(def-database-definition ~dbname
      ~@(edn/read-string (slurp (str edn-definitions-dir (name dbname) ".edn")))))
 
 ;; The O.G. "Test Database" dataset
@@ -27,3 +27,7 @@
 
 ;; A very tiny dataset with a list of places and a booleans
 (def-database-definition-edn places-cam-likes)
+
+;; A small dataset with users and a set of messages between them. Each message has *2* foreign keys to user --
+;; sender and reciever -- allowing us to test situations where multiple joins for a *single* table should occur.
+(def-database-definition-edn avian-singles)
