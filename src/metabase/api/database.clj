@@ -55,7 +55,7 @@
   (let [dbs (db/select Database {:order-by [:%lower.name]})]
     (if-not include_tables
       dbs
-      (let [db-id->tables (db/select-field->objects :db_id Table, :active true)]
+      (let [db-id->tables (group-by :db_id (db/select Table, :active true))]
         (for [db dbs]
           (assoc db :tables (sort-by :name (get db-id->tables (:id db) []))))))))
 

@@ -183,8 +183,8 @@
         ;; If there are no more Field IDs to resolve we're done.
         expanded-query-dict
         ;; Otherwise fetch + resolve the Fields in question
-        (let [fields (->> (db/select-id->object [field/Field :name :display_name :base_type :special_type :visibility_type :table_id :parent_id :description :id]
-                            :id [:in field-ids])
+        (let [fields (->> (u/key-by :id (db/select [field/Field :name :display_name :base_type :special_type :visibility_type :table_id :parent_id :description :id]
+                                          :id [:in field-ids]))
                           (m/map-vals rename-mb-field-keys)
                           (m/map-vals #(assoc % :parent (when-let [parent-id (:parent-id %)]
                                                           (map->FieldPlaceholder {:field-id parent-id})))))]
@@ -236,8 +236,8 @@
   [{{source-table-id :source-table} :query, :keys [table-ids fk-field-ids], :as expanded-query-dict}]
   {:pre [(integer? source-table-id)]}
   (let [table-ids       (conj table-ids source-table-id)
-        table-id->table (db/select-id->object [Table :schema :name :id]
-                          :id [:in table-ids])
+        table-id->table (u/key-by :id (db/select [Table :schema :name :id]
+                                        :id [:in table-ids]))
         join-tables     (vals (dissoc table-id->table source-table-id))]
     (as-> expanded-query-dict <>
       (assoc-in <> [:query :source-table] (or (table-id->table source-table-id)

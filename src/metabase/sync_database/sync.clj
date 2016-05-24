@@ -73,7 +73,7 @@
   [{table-id :id, raw-table-id :raw_table_id}]
   (let [active-raw-columns   (raw-table/active-columns {:id raw-table-id})
         active-column-ids    (set (map :id active-raw-columns))
-        raw-column-id->field (db/select-field->object :raw_column_id Field, :table_id table-id, :visibility_type [:not= "retired"], :parent_id nil)]
+        raw-column-id->field (u/key-by :raw_column_id (db/select Field, :table_id table-id, :visibility_type [:not= "retired"], :parent_id nil))]
     ;; retire any fields which were disabled in the schema (including child nested fields)
     (doseq [[raw-column-id {field-id :id}] raw-column-id->field]
       (when-not (contains? active-column-ids raw-column-id)
@@ -214,7 +214,7 @@
   (retire-tables! database)
 
   (let [raw-tables          (raw-table/active-tables database-id)
-        raw-table-id->table (db/select-field->object :raw_table_id Table, :db_id database-id, :active true)]
+        raw-table-id->table (u/key-by :raw_table_id (db/select Table, :db_id database-id, :active true))]
     (create-and-update-tables! database raw-table-id->table raw-tables)
     (set-fk-relationships! database)
     (maybe-sync-metabase-metadata-table! database raw-tables)))

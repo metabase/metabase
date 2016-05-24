@@ -19,7 +19,7 @@
    All field-defs provided are assumed to be children of the given FIELD."
   [{parent-id :id, table-id :table_id, :as parent-field} nested-field-defs]
   ;; NOTE: remember that we never retire any fields in dynamic-schema tables
-  (let [existing-field-name->field (db/select-field->object :name field/Field, :parent_id parent-id)]
+  (let [existing-field-name->field (u/key-by :name (db/select field/Field, :parent_id parent-id))]
     (u/prog1 (set/difference (set (map :name nested-field-defs)) (set (keys existing-field-name->field)))
       (when (seq <>)
         (log/debug (u/format-color 'blue "Found new nested fields for field '%s': %s" (:name parent-field) <>))))
@@ -43,7 +43,7 @@
   {:pre [(integer? table-id)
          (coll? field-defs)
          (every? map? field-defs)]}
-  (let [field-name->field (db/select-field->object :name field/Field, :table_id table-id, :parent_id nil)]
+  (let [field-name->field (u/key-by :name (db/select field/Field, :table_id table-id, :parent_id nil))]
     ;; NOTE: with dynamic schemas we never disable fields
     ;; create/update the fields
     (doseq [{field-name :name, :keys [nested-fields], :as field-def} field-defs]
@@ -87,7 +87,7 @@
   (sync/retire-tables! database)
 
   (let [raw-tables          (raw-table/active-tables database-id)
-        raw-table-id->table (db/select-field->object :raw_table_id table/Table, :db_id database-id, :active true)]
+        raw-table-id->table (u/key-by :raw_table_id (db/select table/Table, :db_id database-id, :active true))]
     ;; create/update tables (and their fields)
     ;; NOTE: we make sure to skip the _metabase_metadata table here.  it's not a normal table.
     (doseq [{raw-table-id :id, :as raw-tbl} (filter #(not= "_metabase_metadata" (s/lower-case (:name %))) raw-tables)]

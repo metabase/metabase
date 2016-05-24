@@ -219,8 +219,8 @@
   ;; Fetch the destination Fields referenced by the ForeignKeys
   ([fields fk-ids id->dest-id]
    (when (seq id->dest-id)
-     (fk-field->dest-fn fields fk-ids id->dest-id (db/select-id->object [Field :id :name :display_name :table_id :description :base_type :special_type :visibility_type]
-                                                    :id [:in (vals id->dest-id)]))))
+     (fk-field->dest-fn fields fk-ids id->dest-id (u/key-by :id (db/select [Field :id :name :display_name :table_id :description :base_type :special_type :visibility_type]
+                                                                  :id [:in (vals id->dest-id)])))))
   ;; Return a function that will return the corresponding destination Field for a given Field
   ([fields fk-ids id->dest-id dest-id->field]
    (fn [{:keys [id]}]

@@ -181,7 +181,7 @@
                                :when  (not (get result dest-key))]
                            (source-key result)))
          objs       (when (seq ids)
-                      (db/select-id->object entity, :id [:in ids]))]
+                      (u/key-by :id (db/select entity, :id [:in ids])))]
      (for [{source-id source-key :as result} results]
        (if (get result dest-key)
          result

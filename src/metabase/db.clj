@@ -601,34 +601,6 @@
   [entity & options]
   (apply select-field :id entity options))
 
-(defn select-field->object
-  "Select objects from the database, and return them as a map of FIELD to the objects themselves.
-
-     (db/select-field->object :name 'Database) -> {\"Sample Dataset\" {...}, \"test-data\" {...}}"
-  {:style/indent 2}
-  [field entity & options]
-  {:pre [(keyword? field)]}
-  (into {} (for [result (apply select entity options)]
-             {(field result) result})))
-
-(defn select-field->objects
-  "Select objects from the database, and return a map of distinct values of FIELD to objects having that value.
-
-     ;; get a map of database ID -> tables with that database ID
-     (db/select-field->objects :db_id 'Table) -> 1 [...], 2 [...]}"
-  {:style/indent 2}
-  [field entity & options]
-  {:pre [(keyword? field)]}
-  (group-by field (apply select entity options)))
-
-(defn select-id->object
-  "Select objects from the database, and return them as a map of their `:id` to the objects themselves.
-
-     (db/select-id->object 'Database) -> {1 {...}, 2 {...}}"
-  {:style/indent 1}
-  [entity & options]
-  (apply select-field->object :id entity options))
-
 (defn select-field->field
   "Select fields K and V from objects in the database, and return them as a map from K to V.
 
