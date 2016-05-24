@@ -112,11 +112,11 @@
 
 (defn- ag:doubleMax [field]
   (case (dimension-or-metric? field)
-    :metric    {:type      :doubleMin
-                :name      :min
+    :metric    {:type      :doubleMax
+                :name      :max
                 :fieldName (->rvalue field)}
     :dimension {:type        :javascript
-                :name        :min
+                :name        :max
                 :fieldNames  [(->rvalue field)]
                 :fnReset     "function() { return Number.MIN_VALUE ; }"
                 :fnAggregate "function(current, x) { return Math.max(current, (parseFloat(x) || Number.MIN_VALUE)); }"
