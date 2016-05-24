@@ -3,7 +3,6 @@
   (:require [clojure.data.csv :as csv]
             [cheshire.core :as json]
             [compojure.core :refer [GET POST]]
-            [korma.core :as k]
             [metabase.api.common :refer :all]
             [metabase.db :as db]
             (metabase.models [card :refer [Card]]
@@ -39,13 +38,13 @@
    [:as {{:keys [database] :as body} :body}]
    (read-check Database database)
    ;; add sensible constraints for results limits on our query
-   (let [query (assoc body :constraints dataset-query-api-constraints)]
-     (first (k/select [(k/subselect QueryExecution
-                        (k/fields :running_time)
-                        (k/where {:json_query (json/generate-string query)})
-                        (k/order :started_at :desc)
-                        (k/limit 10)) :_]
-              (k/aggregate (avg :running_time) :average)))))
+   (let [query         (assoc body :constraints dataset-query-api-constraints)
+         running-times (db/select-field :running_time QueryExecution
+                         :json_query (json/generate-string query)
+                         {:order-by [[:started_at :desc]]
+                          :limit    10})]
+     {:average (float (/ (reduce + running-times)
+                         (count running-times)))}))
 
 (defendpoint POST "/csv"
   "Execute an MQL query and download the result data as a CSV file."
@@ -70,7 +69,7 @@
   "Execute the MQL query for a given `Card` and retrieve both the `Card` and the execution results as JSON.
    This is a convenience endpoint which simplifies the normal 2 api calls to fetch the `Card` then execute its query."
   [id]
-  (let-404 [{:keys [dataset_query] :as card} (db/sel :one Card :id id)]
+  (let-404 [{:keys [dataset_query] :as card} (Card id)]
     (read-check card)
     (read-check Database (:database dataset_query))
     ;; add sensible constraints for results limits on our query

@@ -1,7 +1,6 @@
 (ns metabase.models.field
   (:require [clojure.data :as d]
             [clojure.string :as s]
-            [korma.core :as k]
             [medley.core :as m]
             [metabase.db :as db]
             (metabase.models [common :as common]
@@ -103,14 +102,14 @@
 (defn ^:hydrate values
   "Return the `FieldValues` associated with this FIELD."
   [{:keys [id]}]
-  (db/sel :many [FieldValues :field_id :values], :field_id id))
+  (db/select [FieldValues :field_id :values], :field_id id))
 
 (defn qualified-name-components
   "Return the pieces that represent a path to FIELD, of the form `[table-name parent-fields-name* field-name]`."
   [{field-name :name, table-id :table_id, parent-id :parent_id}]
   (conj (if-let [parent (Field parent-id)]
           (qualified-name-components parent)
-          [(db/sel :one :field ['Table :name], :id table-id)])
+          [(db/select-one-field :name 'Table, :id table-id)])
         field-name))
 
 (defn qualified-name
@@ -122,7 +121,7 @@
   "Return the `Table` associated with this `Field`."
   {:arglists '([field])}
   [{:keys [table_id]}]
-  (db/sel :one 'Table, :id table_id))
+  (db/select-one 'Table, :id table_id))
 
 (u/strict-extend (class Field)
   i/IEntity (merge i/IEntityDefaults

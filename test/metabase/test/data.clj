@@ -97,7 +97,7 @@
   "Wrap inner QUERY with `:database` ID and other 'outer query' kvs. DB ID is fetched by looking up the Database for the query's `:source-table`."
   {:style/indent 0}
   [query :- qi/Query]
-  {:database (db/sel :one :field [Table :db_id], :id (:source-table query))
+  {:database (db/select-one-field :db_id Table, :id (:source-table query))
    :type     :query
    :query    query})
 
@@ -120,18 +120,18 @@
 
 (defn- get-table-id-or-explode [db-id table-name]
   (let [table-name (format-name table-name)]
-    (or (db/sel :one :id Table, :db_id db-id, :name table-name)
+    (or (db/select-one-id Table, :db_id db-id, :name table-name)
         (throw (Exception. (format "No Table '%s' found for Database %d.\nFound: %s" table-name db-id
-                                   (u/pprint-to-str (db/sel :many :id->field [Table :name], :db_id db-id, :active true))))))))
+                                   (u/pprint-to-str (db/select-id->field :name Table, :db_id db-id, :active true))))))))
 
 (defn- get-field-id-or-explode [table-id field-name & {:keys [parent-id]}]
   (let [field-name (format-name field-name)]
-    (or (db/sel :one :id Field, :active true, :table_id table-id, :name field-name, :parent_id parent-id)
+    (or (db/select-one-id Field, :active true, :table_id table-id, :name field-name, :parent_id parent-id)
         (throw (Exception. (format "Couldn't find Field %s for Table %d.\nFound: %s"
                                    (str \' field-name \' (when parent-id
                                                            (format " (parent: %d)" parent-id)))
                                    table-id
-                                   (u/pprint-to-str (db/sel :many :id->field [Field :name], :active true, :table_id table-id))))))))
+                                   (u/pprint-to-str (db/select-id->field :name Field, :active true, :table_id table-id))))))))
 
 (defn id
   "Get the ID of the current database or one of its `Tables` or `Fields`.
@@ -193,7 +193,7 @@
                                             (throw (Exception. (format "Table '%s' not loaded from definiton:\n%s\nFound:\n%s"
                                                                        table-name
                                                                        (u/pprint-to-str (dissoc table-definition :rows))
-                                                                       (u/pprint-to-str (db/sel :many :fields [Table :schema :name], :db_id (:id db))))))))]
+                                                                       (u/pprint-to-str (db/select [Table :schema :name], :db_id (:id db))))))))]
                  (doseq [{:keys [field-name field-type visibility-type special-type], :as field-definition} (:field-definitions table-definition)]
                    (let [field (delay (or (i/metabase-instance field-definition @table)
                                           (throw (Exception. (format "Field '%s' not loaded from definition:\n"

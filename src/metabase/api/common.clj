@@ -5,7 +5,6 @@
                      [walk :as walk])
             [cheshire.core :as json]
             [compojure.core :refer [defroutes]]
-            [korma.core :as k]
             [medley.core :as m]
             [metabase.api.common.internal :refer :all]
             [metabase.db :as db]

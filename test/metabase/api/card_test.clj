@@ -207,9 +207,9 @@
   (expect-with-temp [Card [{card-id :id, original-name :name}]]
     [original-name
      updated-name]
-    [(db/sel :one :field [Card :name] :id card-id)
+    [(db/select-one-field :name Card, :id card-id)
      (do ((user->client :rasta) :put 200 (str "card/" card-id) {:name updated-name})
-         (db/sel :one :field [Card :name] :id card-id))]))
+         (db/select-one-field :name Card, :id card-id))]))
 
 
 (defmacro ^:private with-temp-card {:style/indent 1} [binding & body]
