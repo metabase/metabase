@@ -161,7 +161,13 @@ var config = module.exports = {
     },
 
     plugins: [
-        new UnusedFilesWebpackPlugin(),
+        new UnusedFilesWebpackPlugin({
+            globOptions: {
+                ignore: [
+                    "**/types/*.js"
+                ]
+            }
+        }),
         // Separates out modules common to multiple entry points into a single common file that should be loaded first.
         // Not currently useful but necessary for code-splitting
         new CommonsChunkPlugin({
