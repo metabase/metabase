@@ -270,21 +270,12 @@
   {:pre [(map? inner-query)]}
   (apply-clauses driverr {} inner-query))
 
-(defn honeysql-form->sql+args
-  "Convert HONEYSQL-FORM to a vector of SQL string and params, like you'd pass to JDBC."
-  [honeysql-form]
-  {:pre [(map? honeysql-form)]}
-  (binding [hformat/*subquery?* false]
-    (hsql/format honeysql-form
-      :quoting             (sql/quote-style (driver))
-      :allow-dashed-names? true)))
-
 (defn mbql->native
   "Transpile MBQL query into a native SQL statement."
   [driver {inner-query :query, database :database, :as outer-query}]
   (binding [*query* outer-query]
     (let [honeysql-form (build-honeysql-form driver outer-query)
-          [sql & args]  (honeysql-form->sql+args honeysql-form)]
+          [sql & args]  (sql/honeysql-form->sql+args driver honeysql-form)]
       {:query  sql
        :params args})))
 

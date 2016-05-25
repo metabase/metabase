@@ -317,7 +317,7 @@
 (defn- honeysql-form->sql ^String [honeysql-form]
   {:pre [(map? honeysql-form)]}
   ;; replace identifiers like [shakespeare].[word] with ones like [shakespeare.word] since that's hat BigQuery expects
-  (let [[sql & args] (sqlqp/honeysql-form->sql+args honeysql-form)
+  (let [[sql & args] (sql/honeysql-form->sql+args honeysql-form)
         sql          (s/replace (hx/unescape-dots sql) #"\]\.\[" ".")]
     (assert (empty? args)
       "BigQuery statements can't be parameterized!")

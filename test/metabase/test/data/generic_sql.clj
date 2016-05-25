@@ -14,8 +14,7 @@
             (metabase.test.data [datasets :as datasets]
                                 [interface :as i])
             [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.korma-extensions :as kx])
+            [metabase.util.honeysql-extensions :as hx])
   (:import clojure.lang.Keyword
            (metabase.test.data.interface DatabaseDefinition
                                          FieldDefinition
@@ -158,8 +157,8 @@
     (assoc spec :make-pool? (not (:short-lived? spec)))))
 
 (defn default-korma-entity [driver {:keys [database-name], :as dbdef} {:keys [table-name]}]
-  (k/database (kx/create-entity (qualified-name-components driver database-name table-name))
-              (kx/create-db (database->spec driver :db dbdef))))
+  (k/database (sql/create-entity (qualified-name-components driver database-name table-name))
+              (sql/create-db (database->spec driver :db dbdef))))
 
 ;;; Loading Table Data
 ;; Since different DBs have constraints on how we can do this, the logic is broken out into a few different functions

@@ -1,7 +1,10 @@
 (ns metabase.driver.generic-sql
   (:require [clojure.java.jdbc :as jdbc]
+            [clojure.math.numeric-tower :as math]
             [clojure.set :as set]
             [clojure.tools.logging :as log]
+            (honeysql [core :as hsql]
+                      [format :as hformat])
             (korma [core :as k]
                    [db :as kdb])
             [metabase.driver :as driver]
@@ -10,16 +13,13 @@
             (metabase.models [field :as field]
                              [table :as table])
             [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.korma-extensions :as kx])
+            [metabase.util.honeysql-extensions :as hx])
   (:import java.sql.DatabaseMetaData
            java.util.Map
            clojure.lang.Keyword
            com.mchange.v2.c3p0.ComboPooledDataSource
            (metabase.query_processor.interface Field Value)
            (clojure.lang PersistentVector)))
-
-(declare korma-entity)
 
 (defprotocol ISQLDriver
   "Methods SQL-based drivers should implement in order to use `IDriverSQLDefaultsMixin`.
@@ -175,57 +175,85 @@
           (re-find pattern column-type) base-type
           (seq more)                    (recur more))))))
 
-(defn- field-values-lazy-seq [driver field]
-  (let [table           (field/table field)
-        name-components (field/qualified-name-components field)
-        transform-fn    (if (contains? #{:TextField :CharField} (:base_type field))
-                          u/jdbc-clob->str
-                          identity)
 
-        field-k         (keyword (:name field))
-        select*         (-> (k/select* (korma-entity table))
-                            (k/fields (escape-field-name field-k)))
-        fetch-one-page  (fn [page-num]
-                          (for [row (k/exec (apply-page driver select* {:page {:items driver/field-values-lazy-seq-chunk-size, :page page-num}}))]
-                            (transform-fn (row field-k))))
+(defn honeysql-form->sql+args
+  "Convert HONEYSQL-FORM to a vector of SQL string and params, like you'd pass to JDBC."
+  [driver honeysql-form]
+  {:pre [(map? honeysql-form)]}
+  (binding [hformat/*subquery?* false]
+    (hsql/format honeysql-form
+                 :quoting             (quote-style driver)
+                 :allow-dashed-names? true)))
+
+(defn- qualify+escape ^clojure.lang.Keyword
+  ([table]
+   (hx/qualify-and-escape-dots (:schema table) (:name table)))
+  ([table field]
+   (hx/qualify-and-escape-dots (:schema table) (:name table) (:name field))))
+
+(defn- query
+  "Execute a HONEYSQL-FROM query against DATABASE, DRIVER, and optionally TABLE."
+  ([driver database honeysql-form]
+   (jdbc/query (db->jdbc-connection-spec database)
+               (u/prog1 (honeysql-form->sql+args driver honeysql-form)
+                 (println "SQL:" <>))))
+  ([driver database table honeysql-form]
+   (query driver database (merge {:from [(qualify+escape table)]}
+                                 honeysql-form))))
+
+
+(defn- field-values-lazy-seq [driver field]
+  (let [table          (field/table field)
+        db             (table/database table)
+        field-k        (qualify+escape table field)
+        transform-fn   (if (contains? #{:TextField :CharField} (:base_type field))
+                         u/jdbc-clob->str
+                         identity)
+        select*        {:select [[field-k :field]]}
+        fetch-one-page (fn [page-num]
+                         (for [{v :field} (query driver db table (apply-page driver select* {:page {:items driver/field-values-lazy-seq-chunk-size
+                                                                                                    :page (inc page-num)}}))]
+                           (transform-fn v)))
 
         ;; This function returns a chunked lazy seq that will fetch some range of results, e.g. 0 - 500, then concat that chunk of results
         ;; with a recursive call to (lazily) fetch the next chunk of results, until we run out of results or hit the limit.
-        fetch-page      (fn -fetch-page [page-num]
-                          (lazy-seq
-                           (let [results             (fetch-one-page page-num)
-                                 total-items-fetched (* (inc page-num) driver/field-values-lazy-seq-chunk-size)]
-                             (concat results (when (and (seq results)
-                                                        (< total-items-fetched driver/max-sync-lazy-seq-results)
-                                                        (= (count results) driver/field-values-lazy-seq-chunk-size))
-                                               (-fetch-page (inc page-num)))))))]
+        fetch-page     (fn -fetch-page [page-num]
+                         (lazy-seq
+                          (let [results             (fetch-one-page page-num)
+                                total-items-fetched (* (inc page-num) driver/field-values-lazy-seq-chunk-size)]
+                            (concat results (when (and (seq results)
+                                                       (< total-items-fetched driver/max-sync-lazy-seq-results)
+                                                       (= (count results) driver/field-values-lazy-seq-chunk-size))
+                                              (-fetch-page (inc page-num)))))))]
     (fetch-page 0)))
 
-(defn- table-rows-seq [_ database table]
-  (k/select (korma-entity database table)))
+
+(defn- table-rows-seq [driver database table]
+  (query driver database table {:select [:*]}))
 
 (defn- field-avg-length [driver field]
-  (or (some-> (korma-entity (field/table field))
-              (k/select (k/aggregate (avg (k/sqlfn* (string-length-fn driver)
-                                                    ;; TODO: multi-byte data on postgres causes exception
-                                                    (kx/cast :CHAR (escape-field-name (:name field)))))
-                                     :len))
-              first
-              :len
-              int)
-      0))
+  (let [table (field/table field)
+        db    (table/database table)]
+    (or (some-> (query driver db table {:select [[(hsql/call :avg (hsql/call (string-length-fn driver) (qualify+escape table field))) :len]]})
+                first
+                :len
+                math/round
+                int)
+        0)))
 
-(defn- field-percent-urls [_ field]
-  (or (let [korma-table (korma-entity (field/table field))]
-        (when-let [total-non-null-count (:count (first (k/select korma-table
-                                                                 (k/aggregate (count (k/raw "*")) :count)
-                                                                 (k/where {(escape-field-name (:name field)) [not= nil]}))))]
-          (when (> total-non-null-count 0)
-            (when-let [url-count (:count (first (k/select korma-table
-                                                          (k/aggregate (count (k/raw "*")) :count)
-                                                          (k/where {(escape-field-name (:name field)) [like "http%://_%.__%"]}))))]
-              (float (/ url-count total-non-null-count))))))
-      0.0))
+(defn- field-percent-urls [driver field]
+  (let [table       (field/table field)
+        db          (table/database table)
+        field-k     (qualify+escape table field)
+        total-count (:count (first (query driver db table {:select [(hsql/call :count field-k)]
+                                                           :where  [:not= field-k nil]})))
+        url-count   (:count (first (query driver db table {:select [(hsql/call :count field-k)]
+                                                           :where  [:like field-k (hx/literal "http%://_%.__%")]})))]
+    (if (and (> total-count 0)
+             url-count)
+      (float (/ url-count total-count))
+      0.0)))
+
 
 (defn features
   "Default implementation of `IDriver` `features` for SQL drivers."
@@ -369,12 +397,25 @@
 
 ;;; ### Util Fns
 
+(defn create-db
+  "Like `korma.db/create-db`, but adds a fn to unescape escaped dots when generating SQL."
+  [spec]
+  (update-in (kdb/create-db spec) [:options :naming :fields] comp hx/unescape-dots))
+
+
 (defn- db->korma-db
   "Return a Korma DB spec for Metabase DATABASE."
   [{:keys [details engine], :as database}]
   (let [spec (connection-details->spec (driver/engine->driver engine) details)]
-    (assoc (kx/create-db spec)
+    (assoc (create-db spec)
       :pool (db->jdbc-connection-spec database))))
+
+(defn create-entity
+  "Like `korma.db/create-entity`, but takes a sequence of name components instead; escapes dots in names as well."
+  [name-components]
+  (k/create-entity (apply str (interpose "." (for [s     name-components
+                                                   :when (seq s)]
+                                               (name (hx/escape-dots (name s))))))))
 
 (defn korma-entity
   "Return a Korma entity for [DB and] TABLE.
@@ -385,5 +426,5 @@
   ([table]    (korma-entity (table/database table) table))
   ([db table] (let [{schema :schema, table-name :name} table]
                 (k/database
-                  (kx/create-entity [schema table-name])
+                  (create-entity [schema table-name])
                   (db->korma-db db)))))
