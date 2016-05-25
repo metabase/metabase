@@ -1,5 +1,6 @@
 (ns metabase.test.data.h2
   "Code for creating / destroying an H2 database from a `DatabaseDefinition`."
+  ;; TODO - rework this namespace to use `u/drop-first-arg` where appropriate
   (:require [clojure.core.reducers :as r]
             [clojure.string :as s]
             (korma [core :as k]
@@ -77,12 +78,12 @@
                                          ;; we always want to use 'server' context when execute-sql! is called
                                          ;; (never try connect as GUEST, since we're not giving them priviledges to create tables / etc)
                                          (execute-sql! this :server dbdef sql))
-            :field-base-type->sql-type (fn [_ base-type]
-                                         (field-base-type->sql-type base-type))
+            :field-base-type->sql-type (u/drop-first-arg field-base-type->sql-type)
             :korma-entity              korma-entity
             :load-data!                generic/load-data-all-at-once!
             :pk-field-name             (constantly "ID")
             :pk-sql-type               (constantly "BIGINT AUTO_INCREMENT")
+            :prepare-identifier        (u/drop-first-arg s/upper-case)
             :quote-name                quote-name}))
 
   i/IDatasetLoader
@@ -90,7 +91,6 @@
          {:database->connection-details       database->connection-details
           :default-schema                     (constantly "PUBLIC")
           :engine                             (constantly :h2)
-          :format-name                        (fn [_ table-or-field-name]
-                                                (s/upper-case table-or-field-name))
+          :format-name                        (u/drop-first-arg s/upper-case)
           :has-questionable-timezone-support? (constantly true)
           :id-field-type                      (constantly :BigIntegerField)}))

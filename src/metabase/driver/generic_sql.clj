@@ -72,12 +72,6 @@
 
      Return `nil` to prevent FIELD from being aliased.")
 
-  ;; TODO This is only used by unit tests, I think; confirm this and move to `metabase.test.data.generic-sql`
-  (prepare-identifier [this, ^String identifier]
-    "*OPTIONAL*. Prepare an identifier, such as a Table or Field name, when it is used in a SQL query.
-     This is used by drivers like H2 to transform names to upper-case.
-     The default implementation is `identity`.")
-
   (prepare-value [this, ^Value value]
     "*OPTIONAL*. Prepare a value (e.g. a `String` or `Integer`) that will be used in a korma form. By default, this returns VALUE's `:value` as-is, which
      is eventually passed as a parameter in a prepared statement. Drivers such as BigQuery that don't support prepared statements can skip this
@@ -406,7 +400,6 @@
    :excluded-schemas        (constantly nil)
    :field->alias            (u/drop-first-arg name)
    :field-percent-urls      fast-field-percent-urls
-   :prepare-identifier      (u/drop-first-arg identity)
    :prepare-value           (u/drop-first-arg :value)
    :quote-style             (constantly :ansi)
    :set-timezone-sql        (constantly nil)

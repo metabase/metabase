@@ -54,6 +54,11 @@
   (korma-entity [this, ^DatabaseDefinition dbdef, ^TableDefinition tabledef]
     "*Optional* Return a korma-entity for TABLEDEF.")
 
+  (prepare-identifier [this, ^String identifier]
+    "*OPTIONAL*. Prepare an identifier, such as a Table or Field name, when it is used in a SQL query.
+     This is used by drivers like H2 to transform names to upper-case.
+     The default implementation is `identity`.")
+
   (pk-field-name ^String [this]
     "*Optional* Name of a PK field. Defaults to `\"id\"`.")
 
@@ -208,7 +213,7 @@
 (defn- do-insert!
   "Insert ROWS-OR-ROWS into TABLE-NAME for the DRIVER database defined by SPEC."
   [driver spec table-name row-or-rows]
-  (let [prepare-key (comp keyword (partial sql/prepare-identifier driver) name)
+  (let [prepare-key (comp keyword (partial prepare-identifier driver) name)
         rows        (if (sequential? row-or-rows)
                       row-or-rows
                       [row-or-rows])
@@ -280,6 +285,7 @@
    :korma-entity              default-korma-entity
    :load-data!                load-data-chunked!
    :pk-field-name             (constantly "id")
+   :prepare-identifier        (u/drop-first-arg identity)
    :qualified-name-components default-qualified-name-components
    :qualify+quote-name        default-qualify+quote-name
    :quote-name                default-quote-name})

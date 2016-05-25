@@ -217,7 +217,6 @@
           :column->base-type         column->base-type
           :connection-details->spec  connection-details->spec
           :date                      date
-          :prepare-identifier        (u/drop-first-arg s/upper-case)
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp unix-timestamp->timestamp}))
 

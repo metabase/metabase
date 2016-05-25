@@ -17,12 +17,12 @@
 (def ^:private users-name-field (delay (Field (id :users :name))))
 
 (def ^:private generic-sql-engines
-  (set (for [engine datasets/all-valid-engines
-             :let   [driver (driver/engine->driver engine)]
-             :when  (not= engine :bigquery)                                       ; bigquery doesn't use the generic sql implementations of things like `field-avg-length`
-             :when  (extends? ISQLDriver (class driver))]
-         (do (require (symbol (str "metabase.test.data." (name engine))) :reload) ; otherwise it gets all snippy if you try to do `lein test metabase.driver.generic-sql-test`
-             engine))))
+  (delay (set (for [engine datasets/all-valid-engines
+                    :let   [driver (driver/engine->driver engine)]
+                    :when  (not= engine :bigquery)                                       ; bigquery doesn't use the generic sql implementations of things like `field-avg-length`
+                    :when  (extends? ISQLDriver (class driver))]
+                (do (require (symbol (str "metabase.test.data." (name engine))) :reload) ; otherwise it gets all snippy if you try to do `lein test metabase.driver.generic-sql-test`
+                    engine)))))
 
 
 ;; DESCRIBE-DATABASE
@@ -82,7 +82,7 @@
 (resolve-private-fns metabase.driver.generic-sql field-avg-length field-values-lazy-seq table-rows-seq)
 
 ;;; FIELD-AVG-LENGTH
-(datasets/expect-with-engines generic-sql-engines
+(datasets/expect-with-engines @generic-sql-engines
   ;; Not sure why some databases give different values for this but they're close enough that I'll allow them
   (if (contains? #{:redshift :sqlserver} datasets/*engine*)
     15
@@ -90,7 +90,7 @@
   (field-avg-length datasets/*driver* (db/select-one 'Field :id (id :venues :name))))
 
 ;;; FIELD-VALUES-LAZY-SEQ
-(datasets/expect-with-engines generic-sql-engines
+(datasets/expect-with-engines @generic-sql-engines
   ["Red Medicine"
    "Stout Burgers & Beers"
    "The Apple Pan"
@@ -100,7 +100,7 @@
 
 
 ;;; TABLE-ROWS-SEQ
-(datasets/expect-with-engines generic-sql-engines
+(datasets/expect-with-engines @generic-sql-engines
   [{:name "Red Medicine",                 :price 3, :category_id  4, :id 1}
    {:name "Stout Burgers & Beers",        :price 2, :category_id 11, :id 2}
    {:name "The Apple Pan",                :price 2, :category_id 11, :id 3}
@@ -112,7 +112,7 @@
     (dissoc row :latitude :longitude))) ; different DBs use different precisions for these
 
 ;;; FIELD-PERCENT-URLS
-(datasets/expect-with-engines generic-sql-engines
+(datasets/expect-with-engines @generic-sql-engines
   0.5
   (dataset half-valid-urls
     (field-percent-urls datasets/*driver* (db/select-one 'Field :id (id :urls :url)))))
