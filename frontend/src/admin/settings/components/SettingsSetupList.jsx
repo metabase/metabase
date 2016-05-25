@@ -8,7 +8,7 @@ const TaskList = ({tasks}) =>
   </ol>
 
 const TaskSectionHeader = ({name}) =>
-  <h4 className="text-grey-4 text-bold text-uppercase pb1">{name}</h4>
+  <h4 className="text-grey-4 text-bold text-uppercase pb2">{name}</h4>
 
 const TaskSection = ({name, tasks}) =>
   <div className="mb4">
@@ -36,7 +36,7 @@ const CompletionBadge = ({completed}) =>
 
 
 export const Task = ({title, description, completed, link}) =>
-  <a className="bordered rounded flex align-center p2 no-decoration" href={link}>
+  <a className="bordered border-brand-hover rounded transition-border flex align-center p2 no-decoration" href={link}>
     <CompletionBadge completed={completed} />
     <div>
       <TaskTitle title={title} titleClassName={
@@ -81,7 +81,7 @@ export default class SettingsSetupList extends Component {
         return (
             <div className="px2">
               <h2>Getting set up</h2>
-              <p>A few things you can do to get the most out of Metabase.</p>
+              <p className="mt1">A few things you can do to get the most out of Metabase.</p>
               <LoadingAndErrorWrapper loading={!this.state.tasks} error={this.state.error} >
               { () =>
                   <div style={{maxWidth: 468}}>
