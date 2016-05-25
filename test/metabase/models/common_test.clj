@@ -18,3 +18,4 @@
 (expect "Foo Bar" (name->human-readable-name "foo bar"))
 (expect "Dashboard Card Subscription" (name->human-readable-name "dashboardcardsubscription"))
 (expect "Foo ID" (name->human-readable-name "foo_id"))
+(expect "Receiver ID" (name->human-readable-name "receiver_id"))
