@@ -261,9 +261,9 @@
   (let [table       (field/table field)
         db          (table/database table)
         field-k     (qualify+escape table field)
-        total-count (:count (first (query driver db table {:select [[(hsql/call :count :*) :count]]
+        total-count (:count (first (query driver db table {:select [[:%count.* :count]]
                                                            :where  [:not= field-k nil]})))
-        url-count   (:count (first (query driver db table {:select [[(hsql/call :count :*) :count]]
+        url-count   (:count (first (query driver db table {:select [[:%count.* :count]]
                                                            :where  [:like field-k (hx/literal "http%://_%.__%")]})))]
     (url-percentage url-count total-count)))
 
