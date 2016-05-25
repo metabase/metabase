@@ -415,6 +415,9 @@
         (recur honeysql-form more)
         honeysql-form))))
 
+(defn- string-length-fn [field-key]
+  (hsql/call :length field-key))
+
 
 (defrecord BigQueryDriver []
   clojure.lang.Named
@@ -434,7 +437,7 @@
           :field->alias              (u/drop-first-arg field->alias)
           :prepare-value             (u/drop-first-arg prepare-value)
           :quote-style               (constantly :sqlserver)                    ; we want identifiers quoted [like].[this]
-          :string-length-fn          (constantly :length)
+          :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)})
 
   driver/IDriver

@@ -56,6 +56,9 @@
   (let [connection-spec (crate-spec details)]
     (= 1 (first (vals (first (jdbc/query connection-spec ["select 1 from sys.cluster"])))))))
 
+(defn- string-length-fn [field-key]
+  (hsql/call :char_length field-key))
+
 
 (defrecord CrateDriver []
   clojure.lang.Named
@@ -78,7 +81,7 @@
   (merge (sql/ISQLDriverDefaultsMixin)
          {:connection-details->spec  (u/drop-first-arg crate-spec)
           :column->base-type         (u/drop-first-arg column->base-type)
-          :string-length-fn          (constantly :char_length)
+          :string-length-fn          (u/drop-first-arg string-length-fn)
           :apply-filter              qp/apply-filter
           :date                      crate-util/date
           :unix-timestamp->timestamp crate-util/unix-timestamp->timestamp

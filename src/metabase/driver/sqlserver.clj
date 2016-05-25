@@ -136,6 +136,9 @@
     (false? value) 0
     :else          value))
 
+(defn- string-length-fn [field-key]
+  (hsql/call :len (hx/cast :VARCHAR field-key)))
+
 
 (defrecord SQLServerDriver []
   clojure.lang.Named
@@ -186,7 +189,7 @@
           :excluded-schemas          (constantly #{"sys" "INFORMATION_SCHEMA"})
           :prepare-value             (u/drop-first-arg prepare-value)
           :stddev-fn                 (constantly :stdev)
-          :string-length-fn          (constantly :len)
+          :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
 (driver/register-driver! :sqlserver (SQLServerDriver.))

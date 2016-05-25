@@ -188,6 +188,9 @@
   [driver database]
   (update (sql/describe-database driver database) :tables (u/rpartial set/union (materialized-views database))))
 
+(defn- string-length-fn [field-key]
+  (hsql/call :char_length (hx/cast :VARCHAR field-key)))
+
 
 (defrecord PostgresDriver []
   clojure.lang.Named
@@ -202,7 +205,7 @@
           :date                      (u/drop-first-arg date)
           :prepare-value             (u/drop-first-arg prepare-value)
           :set-timezone-sql          (constantly "UPDATE pg_settings SET setting = ? WHERE name ILIKE 'timezone';")
-          :string-length-fn          (constantly :CHAR_LENGTH)
+          :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
 (u/strict-extend PostgresDriver

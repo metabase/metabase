@@ -192,6 +192,10 @@
     #".*" ; default
     message))
 
+(defn- string-length-fn [field-key]
+  (hsql/call :length field-key))
+
+
 (defrecord H2Driver []
   clojure.lang.Named
   (getName [_] "H2"))
@@ -214,7 +218,7 @@
           :connection-details->spec  connection-details->spec
           :date                      date
           :prepare-identifier        (u/drop-first-arg s/upper-case)
-          :string-length-fn          (constantly :LENGTH)
+          :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp unix-timestamp->timestamp}))
 
 (driver/register-driver! :h2 (H2Driver.))

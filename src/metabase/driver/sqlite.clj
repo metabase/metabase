@@ -115,6 +115,10 @@
     (false? value) 0
     :else          value))
 
+(defn- string-length-fn [field-key]
+  (hsql/call :length field-key))
+
+
 (defrecord SQLiteDriver []
   clojure.lang.Named
   (getName [_] "SQLite"))
@@ -143,7 +147,7 @@
           :current-datetime-fn       (constantly (hsql/raw "datetime('now')"))
           :date                      (u/drop-first-arg date)
           :prepare-value             (u/drop-first-arg prepare-value)
-          :string-length-fn          (constantly :LENGTH)
+          :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
 (driver/register-driver! :sqlite (SQLiteDriver.))

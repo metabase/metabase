@@ -93,8 +93,11 @@
   (stddev-fn ^clojure.lang.Keyword [this]
     "*OPTIONAL*. Keyword name of the SQL function that should be used to do a standard deviation aggregation. Defaults to `:STDDEV`.")
 
-  (string-length-fn ^clojure.lang.Keyword [this]
-    "Keyword name of the SQL function that should be used to get the length of a string, e.g. `:LENGTH`.")
+  (string-length-fn ^clojure.lang.Keyword [this, ^Keyword field-key]
+    "Return a HoneySQL form appropriate for getting the length of a `Field` identified by fully-qualified FIELD-KEY.
+     An implementation should return something like:
+
+      (hsql/call :length (hx/cast :VARCHAR field-key))")
 
   (unix-timestamp->timestamp [this, field-or-value, ^Keyword seconds-or-milliseconds]
     "Return a korma form appropriate for converting a Unix timestamp integer field or value to an proper SQL `Timestamp`.
@@ -204,13 +207,17 @@
   (let [table          (field/table field)
         db             (table/database table)
         field-k        (qualify+escape table field)
+        pk-field       (field/Field (table/pk-field-id table))
+        pk-field-k     (when pk-field
+                         (qualify+escape table pk-field))
         transform-fn   (if (contains? #{:TextField :CharField} (:base_type field))
                          u/jdbc-clob->str
                          identity)
-        select*        {:select [[field-k :field]]}
+        select*        {:select   [[field-k :field]]                ; if we don't specify an explicit ORDER BY some DBs like Redshift will return them in a (seemingly) random order
+                        :order-by [[(or pk-field-k field-k) :asc]]} ; try to order by the table's Primary Key to avoid doing full table scans
         fetch-one-page (fn [page-num]
                          (for [{v :field} (query driver db table (apply-page driver select* {:page {:items driver/field-values-lazy-seq-chunk-size
-                                                                                                    :page (inc page-num)}}))]
+                                                                                                    :page  (inc page-num)}}))]
                            (transform-fn v)))
 
         ;; This function returns a chunked lazy seq that will fetch some range of results, e.g. 0 - 500, then concat that chunk of results
@@ -227,12 +234,15 @@
 
 
 (defn- table-rows-seq [driver database table]
-  (query driver database table {:select [:*]}))
+  (let [pk-field (field/Field (table/pk-field-id table))]
+    (query driver database table {:select   [:*]
+                                  :order-by (when pk-field
+                                              [[(qualify+escape table pk-field) :asc]])})))
 
 (defn- field-avg-length [driver field]
   (let [table (field/table field)
         db    (table/database table)]
-    (or (some-> (query driver db table {:select [[(hsql/call :avg (hsql/call (string-length-fn driver) (qualify+escape table field))) :len]]})
+    (or (some-> (query driver db table {:select [[(hsql/call :avg (string-length-fn driver (qualify+escape table field))) :len]]})
                 first
                 :len
                 math/round
@@ -243,10 +253,10 @@
   (let [table       (field/table field)
         db          (table/database table)
         field-k     (qualify+escape table field)
-        total-count (:count (first (query driver db table {:select [[(hsql/call :count field-k) :count]]
+        total-count (:count (first (query driver db table {:select [[(hsql/call :count :*) :count]]
                                                            :where  [:not= field-k nil]})))
-        url-count   (:count (first (query driver db table {:select [[(hsql/call :count field-k) :count]]
-                                                           :where  [:like field-k (hx/literal "http%://_%.__%")]})))]
+        url-count   (:count (first (query driver db table {:select [[(hsql/call :count :*) :count]]
+                                                           :where  [:like field-k (hx/literal "http%://_%.__%")]})))] ; IN MOST CASES THIS HAS TO DO A FULL TABLE SCAN (!)
     (if (and total-count
              (> total-count 0)
              url-count)

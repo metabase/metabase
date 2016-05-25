@@ -131,6 +131,9 @@
         #".*" ; default
         message))
 
+(defn- string-length-fn [field-key]
+  (hsql/call :char_length field-key))
+
 
 (defrecord MySQLDriver []
   clojure.lang.Named
@@ -169,7 +172,7 @@
           :date                      (u/drop-first-arg date)
           :excluded-schemas          (constantly #{"INFORMATION_SCHEMA"})
           :quote-style               (constantly :mysql)
-          :string-length-fn          (constantly :CHAR_LENGTH)
+          :string-length-fn          (u/drop-first-arg string-length-fn)
           ;; If this fails you need to load the timezone definitions from your system into MySQL;
           ;; run the command `mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root mysql`
           ;; See https://dev.mysql.com/doc/refman/5.7/en/time-zone-support.html for details
