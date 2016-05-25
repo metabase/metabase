@@ -85,7 +85,6 @@
 
         (hsql/format ... :quoting (quote-style driver))")
 
-
   (set-timezone-sql ^String [this]
     "*OPTIONAL*. This should be a prepared JDBC SQL statement string to be used to set the timezone for the current transaction.
 
@@ -195,8 +194,7 @@
   "Execute a HONEYSQL-FROM query against DATABASE, DRIVER, and optionally TABLE."
   ([driver database honeysql-form]
    (jdbc/query (db->jdbc-connection-spec database)
-               (u/prog1 (honeysql-form->sql+args driver honeysql-form)
-                 (println "SQL:" <>))))
+               (honeysql-form->sql+args driver honeysql-form)))
   ([driver database table honeysql-form]
    (query driver database (merge {:from [(qualify+escape table)]}
                                  honeysql-form))))
@@ -245,11 +243,12 @@
   (let [table       (field/table field)
         db          (table/database table)
         field-k     (qualify+escape table field)
-        total-count (:count (first (query driver db table {:select [(hsql/call :count field-k)]
+        total-count (:count (first (query driver db table {:select [[(hsql/call :count field-k) :count]]
                                                            :where  [:not= field-k nil]})))
-        url-count   (:count (first (query driver db table {:select [(hsql/call :count field-k)]
+        url-count   (:count (first (query driver db table {:select [[(hsql/call :count field-k) :count]]
                                                            :where  [:like field-k (hx/literal "http%://_%.__%")]})))]
-    (if (and (> total-count 0)
+    (if (and total-count
+             (> total-count 0)
              url-count)
       (float (/ url-count total-count))
       0.0)))

@@ -289,7 +289,7 @@
          (catch Throwable e
            (log/error (u/format-color 'red "Failed to set timezone: %s" (.getMessage e)))))))
 
-(defn- query!
+(defn- run-query
   "Run the query itself."
   [{sql :query, params :params} connection]
   (let [sql              (hx/unescape-dots sql)
@@ -318,7 +318,6 @@
   (try (f)
        (finally (.rollback connection))))
 
-;; TODO - maybe this should be called `execute-query!` ?
 (defn execute-query
   "Process and run a native (raw SQL) QUERY."
   [driver {:keys [database settings], query :native}]
@@ -329,4 +328,4 @@
           (do-with-auto-commit-disabled transaction-connection
             (fn []
               (maybe-set-timezone! driver settings transaction-connection)
-              (query! query transaction-connection))))))))
+              (run-query query transaction-connection))))))))
