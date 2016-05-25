@@ -79,7 +79,7 @@
                {:id (id :venues :price), :values [1 2 3 4]}]}
   (driver/analyze-table (H2Driver.) @venues-table (set (mapv :id (table/fields @venues-table)))))
 
-(resolve-private-fns metabase.driver.generic-sql field-avg-length field-values-lazy-seq table-rows-seq field-percent-urls)
+(resolve-private-fns metabase.driver.generic-sql field-avg-length field-values-lazy-seq table-rows-seq)
 
 ;;; FIELD-AVG-LENGTH
 (datasets/expect-with-engines generic-sql-engines

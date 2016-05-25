@@ -317,7 +317,7 @@
 (defn- honeysql-form->sql ^String [honeysql-form]
   {:pre [(map? honeysql-form)]}
   ;; replace identifiers like [shakespeare].[word] with ones like [shakespeare.word] since that's hat BigQuery expects
-  (let [[sql & args] (sql/honeysql-form->sql+args honeysql-form)
+  (let [[sql & args] (sql/honeysql-form->sql+args driver honeysql-form)
         sql          (s/replace (hx/unescape-dots sql) #"\]\.\[" ".")]
     (assert (empty? args)
       "BigQuery statements can't be parameterized!")
@@ -477,4 +477,4 @@
           :field-values-lazy-seq (u/drop-first-arg field-values-lazy-seq)
           :mbql->native          (u/drop-first-arg mbql->native)}))
 
-(driver/register-driver! :bigquery (BigQueryDriver.))
+(driver/register-driver! :bigquery driver)

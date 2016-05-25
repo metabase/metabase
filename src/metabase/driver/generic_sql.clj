@@ -61,6 +61,11 @@
   (excluded-schemas ^java.util.Set [this]
     "*OPTIONAL*. Set of string names of schemas to skip syncing tables from.")
 
+  (field-percent-urls [this field]
+    "*OPTIONAL*. Implementation of the `:field-percent-urls-fn` to be passed to `make-analyze-table`.
+     The default implementation is `fast-field-percent-urls`, which avoids a full table scan. Substitue this with `slow-field-percent-urls` for databases
+     where this doesn't work, such as SQL Server")
+
   (field->alias ^String [this, ^Field field]
     "*OPTIONAL*. Return the alias that should be used to for FIELD, i.e. in an `AS` clause. The default implementation calls `name`, which
      returns the *unqualified* name of `Field`.
@@ -239,7 +244,8 @@
                                   :order-by (when pk-field
                                               [[(qualify+escape table pk-field) :asc]])})))
 
-(defn- field-avg-length [driver field]
+(defn- field-avg-length
+  [driver field]
   (let [table (field/table field)
         db    (table/database table)]
     (or (some-> (query driver db table {:select [[(hsql/call :avg (string-length-fn driver (qualify+escape table field))) :len]]})
@@ -249,19 +255,40 @@
                 int)
         0)))
 
-(defn- field-percent-urls [driver field]
+(defn- url-percentage [url-count total-count]
+  (if (and total-count (> total-count 0) url-count)
+    (float (/ url-count total-count))
+    0.0))
+
+(defn slow-field-percent-urls
+  "Slow implementation of `field-percent-urls` that (probably) requires a full table scan.
+   Only use this for DBs where `fast-field-percent-urls` doesn't work correctly, like SQLServer."
+  [driver field]
   (let [table       (field/table field)
         db          (table/database table)
         field-k     (qualify+escape table field)
         total-count (:count (first (query driver db table {:select [[(hsql/call :count :*) :count]]
                                                            :where  [:not= field-k nil]})))
         url-count   (:count (first (query driver db table {:select [[(hsql/call :count :*) :count]]
-                                                           :where  [:like field-k (hx/literal "http%://_%.__%")]})))] ; IN MOST CASES THIS HAS TO DO A FULL TABLE SCAN (!)
-    (if (and total-count
-             (> total-count 0)
-             url-count)
-      (float (/ url-count total-count))
-      0.0)))
+                                                           :where  [:like field-k (hx/literal "http%://_%.__%")]})))]
+    (url-percentage url-count total-count)))
+
+
+(defn fast-field-percent-urls
+  "Fast, default implementation of `field-percent-urls` that avoids a full table scan."
+  [driver field]
+  (let [table       (field/table field)
+        db          (table/database table)
+        field-k     (qualify+escape table field)
+        pk-field    (field/Field (table/pk-field-id table))
+        results     (map :is_url (query driver db table {:select   [[(hsql/call :like field-k (hx/literal "http%://_%.__%")) :is_url]]
+                                                         :where    [:not= field-k nil]
+                                                         :order-by (when pk-field
+                                                                     [[(qualify+escape table pk-field) :asc]])
+                                                         :limit    driver/max-sync-lazy-seq-results}))
+        total-count (count results)
+        url-count   (count (filter #(or (true? %) (= % 1)) results))]
+    (url-percentage url-count total-count)))
 
 
 (defn features
@@ -354,8 +381,8 @@
   "Default implementation of `analyze-table` for SQL drivers."
   [driver table new-table-ids]
   ((analyze/make-analyze-table driver
-                            :field-avg-length-fn   (partial field-avg-length driver)
-                            :field-percent-urls-fn (partial field-percent-urls driver))
+     :field-avg-length-fn   (partial field-avg-length driver)
+     :field-percent-urls-fn (partial field-percent-urls driver))
    driver
    table
    new-table-ids))
@@ -378,6 +405,7 @@
    :current-datetime-fn     (constantly :%now)
    :excluded-schemas        (constantly nil)
    :field->alias            (u/drop-first-arg name)
+   :field-percent-urls      fast-field-percent-urls
    :prepare-identifier      (u/drop-first-arg identity)
    :prepare-value           (u/drop-first-arg :value)
    :quote-style             (constantly :ansi)
