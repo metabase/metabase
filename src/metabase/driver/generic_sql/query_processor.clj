@@ -1,23 +1,19 @@
 (ns metabase.driver.generic-sql.query-processor
-  "The Query Processor is responsible for translating the Metabase Query Language into korma SQL forms."
+  "The Query Processor is responsible for translating the Metabase Query Language into HoneySQL SQL forms."
   (:require [clojure.java.jdbc :as jdbc]
             (clojure [string :as s]
                      [walk :as walk])
             [clojure.tools.logging :as log]
-            [clj-time.coerce :as tc]
-            [clj-time.core :as t]
-            [clj-time.format :as tf]
-            (korma [core :as k]
-                   [db :as kdb])
-            (korma.sql [engine :as kengine]
-                       [fns :as kfns])
+            (honeysql [core :as hsql]
+                      [format :as hformat]
+                      [helpers :as h])
             (metabase [config :as config]
                       [driver :as driver])
             [metabase.driver.generic-sql :as sql]
             [metabase.query-processor :as qp]
             metabase.query-processor.interface
             [metabase.util :as u]
-            [metabase.util.korma-extensions :as kx])
+            [metabase.util.honeysql-extensions :as hx])
   (:import java.sql.Timestamp
            java.util.Date
            (metabase.query_processor.interface AgFieldRef
@@ -33,7 +29,12 @@
   "The outer query currently being processed."
   nil)
 
-(defn- driver [] (:driver *query*))
+(defn- driver [] {:pre [(map? *query*)]} (:driver *query*))
+
+;; register the function "distinct-count" with HoneySQL
+;; (hsql/format :%distinct-count.x) -> "count(distinct x)"
+(defmethod hformat/fn-handler "distinct-count" [_ field]
+  (str "count(distinct " (hformat/to-sql field) ")"))
 
 
 ;;; ## Formatting
@@ -42,7 +43,7 @@
   "Generate a FORM `AS` FIELD alias using the name information of FIELD."
   [form field]
   (if-let [alias (sql/field->alias (driver) field)]
-    [form alias]
+    [form (hx/qualify-and-escape-dots alias)]
     form))
 
 ;; TODO - Consider moving this into query processor interface and making it a method on `ExpressionRef` instead ?
@@ -54,7 +55,7 @@
 
 (defprotocol ^:private IGenericSQLFormattable
   (formatted [this]
-    "Return an appropriate korma form for an object."))
+    "Return an appropriate HoneySQL form for an object."))
 
 (extend-protocol IGenericSQLFormattable
   nil    (formatted [_] nil)
@@ -63,12 +64,7 @@
 
   Expression
   (formatted [{:keys [operator args]}]
-    (apply (case    operator
-             :+     kx/+
-             :-     kx/-
-             :*     kx/*
-             :/     kx//
-             :lower (partial k/sqlfn* :LOWER))
+    (apply (partial hsql/call operator)
            (map formatted args)))
 
   ExpressionRef
@@ -78,7 +74,7 @@
 
   Field
   (formatted [{:keys [schema-name table-name special-type field-name]}]
-    (let [field (keyword (kx/combine+escape-name-components [schema-name table-name field-name]))]
+    (let [field (keyword (hx/qualify-and-escape-dots schema-name table-name field-name))]
       (case special-type
         :timestamp_seconds      (sql/unix-timestamp->timestamp (driver) field :seconds)
         :timestamp_milliseconds (sql/unix-timestamp->timestamp (driver) field :milliseconds)
@@ -117,130 +113,114 @@
 ;;; ## Clause Handlers
 
 (defn apply-aggregation
-  "Apply an `aggregation` clause to KORMA-FORM. Default implementation of `apply-aggregation` for SQL drivers."
-  ([driver korma-form {{:keys [aggregation-type field]} :aggregation}]
-   (apply-aggregation driver korma-form aggregation-type (formatted field)))
+  "Apply an `aggregation` clause to HONEYSQL-FORM. Default implementation of `apply-aggregation` for SQL drivers."
+  ([driver honeysql-form {{:keys [aggregation-type field]} :aggregation}]
+   (apply-aggregation driver honeysql-form aggregation-type (formatted field)))
 
-  ([driver korma-form aggregation-type field]
-   (if-not field
-     ;; aggregation clauses w/o a Field
-     (do (assert (= aggregation-type :count))
-         (k/aggregate korma-form (count (k/raw "*")) :count))
-     ;; aggregation clauses with a Field
-     (case aggregation-type
-       :avg      (k/aggregate korma-form (avg field)                              :avg)
-       :count    (k/aggregate korma-form (count field)                            :count)
-       :distinct (k/aggregate korma-form (count (k/sqlfn :DISTINCT field))        :count)   ; why not call it :distinct? This complicates things
-       :stddev   (k/fields    korma-form [(k/sqlfn* (sql/stddev-fn driver) field) :stddev])
-       :sum      (k/aggregate korma-form (sum field)                              :sum)
-       :min      (k/aggregate korma-form (min field)                              :min)
-       :max      (k/aggregate korma-form (max field)                              :max)))))
+  ([driver honeysql-form aggregation-type field]
+   (h/merge-select honeysql-form [(if-not field
+                                    ;; aggregation clauses w/o a field
+                                    (do (assert (= aggregation-type :count))
+                                        :%count.*)
+                                    ;; aggregation clauses w/ a Field
+                                    (hsql/call (case  aggregation-type
+                                                 :avg      :avg
+                                                 :count    :count
+                                                 :distinct :distinct-count
+                                                 :stddev   (sql/stddev-fn driver)
+                                                 :sum      :sum
+                                                 :min      :min
+                                                 :max      :max)
+                                               field))
+                                  (if (= aggregation-type :distinct)
+                                    :count
+                                    aggregation-type)])))
 
 (defn apply-breakout
-  "Apply a `breakout` clause to KORMA-FORM. Default implementation of `apply-breakout` for SQL drivers."
-  [_ korma-form {breakout-fields :breakout, fields-fields :fields}]
-  (-> korma-form
+  "Apply a `breakout` clause to HONEYSQL-FORM. Default implementation of `apply-breakout` for SQL drivers."
+  [_ honeysql-form {breakout-fields :breakout, fields-fields :fields}]
+  (-> honeysql-form
       ;; Group by all the breakout fields
-      ((partial apply k/group) (map formatted breakout-fields))
-      ;; Add fields form only for fields that weren't specified in :fields clause -- we don't want to include it twice, or korma will barf
-      ((partial apply k/fields) (for [field breakout-fields
-                                      :when (not (contains? (set fields-fields) field))]
-                                  (as (formatted field) field)))))
+      ((partial apply h/group) (map formatted breakout-fields))
+      ;; Add fields form only for fields that weren't specified in :fields clause -- we don't want to include it twice, or HoneySQL will barf
+      ((partial apply h/merge-select) (for [field breakout-fields
+                                            :when (not (contains? (set fields-fields) field))]
+                                        (as (formatted field) field)))))
 
 (defn apply-fields
-  "Apply a `fields` clause to KORMA-FORM. Default implementation of `apply-fields` for SQL drivers."
-  [_ korma-form {fields :fields}]
-  (apply k/fields korma-form (for [field fields]
-                                (as (formatted field) field))))
+  "Apply a `fields` clause to HONEYSQL-FORM. Default implementation of `apply-fields` for SQL drivers."
+  [_ honeysql-form {fields :fields}]
+  (apply h/merge-select honeysql-form (for [field fields]
+                                        (as (formatted field) field))))
 
 (defn filter-subclause->predicate
-  "Given a filter SUBCLAUSE, return a Korma filter predicate form for use in korma `where`."
+  "Given a filter SUBCLAUSE, return a HoneySQL filter predicate form for use in HoneySQL `where`."
   [{:keys [filter-type field value], :as filter}]
   {:pre [(map? filter) field]}
   (let [field (formatted field)]
-    {field (case          filter-type
-             :between     ['between [(formatted (:min-val filter)) (formatted (:max-val filter))]]
-             :starts-with ['like (formatted (update value :value (fn [s] (str    s \%)))) ]
-             :contains    ['like (formatted (update value :value (fn [s] (str \% s \%))))]
-             :ends-with   ['like (formatted (update value :value (fn [s] (str \% s))))]
-             :>           ['>    (formatted value)]
-             :<           ['<    (formatted value)]
-             :>=          ['>=   (formatted value)]
-             :<=          ['<=   (formatted value)]
-             :=           ['=    (formatted value)]
-             :!=          ['not= (formatted value)])}))
+    (case          filter-type
+      :between     [:between field (formatted (:min-val filter)) (formatted (:max-val filter))]
+      :starts-with [:like    field (formatted (update value :value (fn [s] (str    s \%)))) ]
+      :contains    [:like    field (formatted (update value :value (fn [s] (str \% s \%))))]
+      :ends-with   [:like    field (formatted (update value :value (fn [s] (str \% s))))]
+      :>           [:>       field (formatted value)]
+      :<           [:<       field (formatted value)]
+      :>=          [:>=      field (formatted value)]
+      :<=          [:<=      field (formatted value)]
+      :=           [:=       field (formatted value)]
+      :!=          [:not=    field (formatted value)])))
 
 (defn filter-clause->predicate
-  "Given a filter CLAUSE, return a Korma filter predicate form for use in korma `where`.  If this is a compound
-   clause then we call `filter-subclause->predicate` on all of the subclauses."
+  "Given a filter CLAUSE, return a HoneySQL filter predicate form for use in HoneySQL `where`.
+   If this is a compound clause then we call `filter-subclause->predicate` on all of the subclauses."
   [{:keys [compound-type subclause subclauses], :as clause}]
   (case compound-type
-    :and (apply kfns/pred-and (map filter-clause->predicate subclauses))
-    :or  (apply kfns/pred-or  (map filter-clause->predicate subclauses))
-    :not (kfns/pred-not (kengine/pred-map (filter-subclause->predicate subclause)))
+    :and (apply vector :and (map filter-clause->predicate subclauses))
+    :or  (apply vector :or  (map filter-clause->predicate subclauses))
+    :not [:not (filter-subclause->predicate subclause)]
     nil  (filter-subclause->predicate clause)))
 
 (defn apply-filter
-  "Apply a `filter` clause to KORMA-FORM. Default implementation of `apply-filter` for SQL drivers."
-  [_ korma-form {clause :filter}]
-  (k/where korma-form (filter-clause->predicate clause)))
+  "Apply a `filter` clause to HONEYSQL-FORM. Default implementation of `apply-filter` for SQL drivers."
+  [_ honeysql-form {clause :filter}]
+  (h/where honeysql-form (filter-clause->predicate clause)))
 
 (defn apply-join-tables
-  "Apply expanded query `join-tables` clause to KORMA-FORM. Default implementation of `apply-join-tables` for SQL drivers."
-  [_ korma-form {join-tables :join-tables, {source-table-name :name, source-schema :schema} :source-table}]
-  (loop [korma-form korma-form, [{:keys [table-name pk-field source-field schema]} & more] join-tables]
-    (let [table-name        (if (seq schema)
-                              (str schema \. table-name)
-                              table-name)
-          source-table-name (if (seq source-schema)
-                              (str source-schema \. source-table-name)
-                              source-table-name)
-          korma-form       (k/join korma-form table-name
-                                    (= (keyword (str source-table-name \. (:field-name source-field)))
-                                       (keyword (str table-name        \. (:field-name pk-field)))))]
+  "Apply expanded query `join-tables` clause to HONEYSQL-FORM. Default implementation of `apply-join-tables` for SQL drivers."
+  [_ honeysql-form {join-tables :join-tables, {source-table-name :name, source-schema :schema} :source-table}]
+  (loop [honeysql-form honeysql-form, [{:keys [table-name pk-field source-field schema]} & more] join-tables]
+    (let [honeysql-form (h/merge-left-join honeysql-form
+                          (hx/qualify-and-escape-dots schema table-name)
+                          [:= (hx/qualify-and-escape-dots source-schema source-table-name (:field-name source-field))
+                              (hx/qualify-and-escape-dots schema        table-name        (:field-name pk-field))])]
       (if (seq more)
-        (recur korma-form more)
-        korma-form))))
+        (recur honeysql-form more)
+        honeysql-form))))
 
 (defn apply-limit
-  "Apply `limit` clause to KORMA-FORM. Default implementation of `apply-limit` for SQL drivers."
-  [_ korma-form {value :limit}]
-  (k/limit korma-form value))
+  "Apply `limit` clause to HONEYSQL-FORM. Default implementation of `apply-limit` for SQL drivers."
+  [_ honeysql-form {value :limit}]
+  (h/limit honeysql-form value))
 
 (defn apply-order-by
-  "Apply `order-by` clause to KORMA-FORM. Default implementation of `apply-order-by` for SQL drivers."
-  [_ korma-form {subclauses :order-by}]
-  (loop [korma-form korma-form, [{:keys [field direction]} & more] subclauses]
-    (let [korma-form (k/order korma-form (formatted field) (case direction
-                                                               :ascending  :ASC
-                                                               :descending :DESC))]
+  "Apply `order-by` clause to HONEYSQL-FORM. Default implementation of `apply-order-by` for SQL drivers."
+  [_ honeysql-form {subclauses :order-by}]
+  (loop [honeysql-form honeysql-form, [{:keys [field direction]} & more] subclauses]
+    (let [honeysql-form (h/merge-order-by honeysql-form [(formatted field) (case direction
+                                                                             :ascending  :asc
+                                                                             :descending :desc)])]
       (if (seq more)
-        (recur korma-form more)
-        korma-form))))
+        (recur honeysql-form more)
+        honeysql-form))))
 
 (defn apply-page
-  "Apply `page` clause to KORMA-FORM. Default implementation of `apply-page` for SQL drivers."
-  [_ korma-form {{:keys [items page]} :page}]
-  (-> korma-form
-      (k/limit items)
-      (k/offset (* items (dec page)))))
+  "Apply `page` clause to HONEYSQL-FORM. Default implementation of `apply-page` for SQL drivers."
+  [_ honeysql-form {{:keys [items page]} :page}]
+  (-> honeysql-form
+      (h/limit items)
+      (h/offset (* items (dec page)))))
 
-(defn- should-log-korma-form? []
-  (and (config/config-bool :mb-db-logging)
-       (not qp/*disable-qp-logging*)))
-
-(defn pprint-korma-form
-  "Removing empty/`nil` kv pairs from KORMA-FORM and strip ns qualifiers (e.g. `(keyword (name :korma.sql.utils/func))` -> `:func`)."
-  [korma-form]
-  (u/pprint-to-str (walk/postwalk (fn [x] (cond
-                                            (keyword? x) (keyword (name x)) ; strip off ns qualifiers from keywords
-                                            (fn? x)      (class x)
-                                            :else        x))
-                                  (into {} (for [[k v] (dissoc korma-form :db :ent :from :options :aliases :results :type :alias)
-                                                 :when (or (not (sequential? v))
-                                                           (seq v))]
-                                             {k v})))))
-
+;; TODO - not sure "pprint" is an appropriate name for this since this function doesn't print anything
 (defn pprint-sql
   "Add newlines to the SQL to make it more readable."
   [sql]
@@ -255,87 +235,107 @@
         (s/replace #"\sAND\s" "\n   AND ")
         (s/replace #"\sOR\s" "\n    OR "))))
 
-(defn log-korma-form
-  "Log a korma form and the SQL it corresponds to logging is enabled."
-  ([korma-form]
-   (when (should-log-korma-form?)
-     (log-korma-form korma-form (try (k/as-sql korma-form)
-                                     (catch Throwable e
-                                       (log/error (u/format-color 'red "Invalid korma form: %s" (.getMessage e))))))))
 
-  ([korma-form, ^String sql]
-   (when (should-log-korma-form?)
-     (log/debug (u/format-color 'green "\nKORMA FORM: 😋\n%s" (pprint-korma-form korma-form))
-                (u/format-color 'blue "\nSQL: 😈\n%s\n"  (pprint-sql sql))))))
-
-
+;; TODO - make this a protocol method ?
+(defn- apply-source-table [_ honeysql-form {{table-name :name, schema :schema} :source-table}]
+  {:pre [table-name]}
+  (h/from honeysql-form (hx/qualify-and-escape-dots schema table-name)))
 
 (def ^:private clause-handlers
-  {:aggregation #'sql/apply-aggregation ; use the vars rather than the functions themselves because them implementation
-   :breakout    #'sql/apply-breakout    ; will get swapped around and  we'll be left with old version of the function that nobody implements
-   :fields      #'sql/apply-fields
-   :filter      #'sql/apply-filter
-   :join-tables #'sql/apply-join-tables
-   :limit       #'sql/apply-limit
-   :order-by    #'sql/apply-order-by
-   :page        #'sql/apply-page})
+  {:aggregation  #'sql/apply-aggregation ; use the vars rather than the functions themselves because them implementation
+   :breakout     #'sql/apply-breakout    ; will get swapped around and  we'll be left with old version of the function that nobody implements
+   :fields       #'sql/apply-fields
+   :filter       #'sql/apply-filter
+   :join-tables  #'sql/apply-join-tables
+   :limit        #'sql/apply-limit
+   :order-by     #'sql/apply-order-by
+   :page         #'sql/apply-page
+   :source-table apply-source-table})
 
 (defn- apply-clauses
   "Loop through all the `clause->handler` entries; if the query contains a given clause, apply the handler fn."
-  [driver korma-form query]
-  (loop [korma-form korma-form, [[clause f] & more] (seq clause-handlers)]
-    (let [korma-form (if (clause query)
-                        (f driver korma-form query)
-                        korma-form)]
+  [driver honeysql-form query]
+  (loop [honeysql-form honeysql-form, [[clause f] & more] (seq clause-handlers)]
+    (let [honeysql-form (if (clause query)
+                          (f driver honeysql-form query)
+                          honeysql-form)]
       (if (seq more)
-        (recur korma-form more)
-        korma-form))))
+        (recur honeysql-form more)
+        honeysql-form))))
 
-(defn build-korma-form
-  "Build the korma form we will call `k/exec` on."
-  [driver {inner-query :query :as outer-query} entity]
-  (binding [*query* outer-query]
-    (apply-clauses driver (k/select* entity) inner-query)))
 
+(defn build-honeysql-form
+  "Build the HoneySQL form we will compile to SQL and execute."
+  [driverr {inner-query :query}]
+  {:pre [(map? inner-query)]}
+  (apply-clauses driverr {} inner-query))
+
+(defn honeysql-form->sql+args
+  "Convert HONEYSQL-FORM to a vector of SQL string and params, like you'd pass to JDBC."
+  [honeysql-form]
+  {:pre [(map? honeysql-form)]}
+  (binding [hformat/*subquery?* false]
+    (hsql/format honeysql-form
+      :quoting             (sql/quote-style (driver))
+      :allow-dashed-names? true)))
 
 (defn mbql->native
   "Transpile MBQL query into a native SQL statement."
-  [driver {{:keys [source-table]} :query, database :database, :as outer-query}]
-  (let [entity        ((resolve 'metabase.driver.generic-sql/korma-entity) database source-table)
-        korma-form    (build-korma-form driver outer-query entity)
-        form-with-sql (kengine/bind-query korma-form (kengine/->sql korma-form))]
-    {:query  (:sql-str form-with-sql)
-     :params (:params form-with-sql)}))
+  [driver {inner-query :query, database :database, :as outer-query}]
+  (binding [*query* outer-query]
+    (let [honeysql-form (build-honeysql-form driver outer-query)
+          [sql & args]  (honeysql-form->sql+args honeysql-form)]
+      {:query  sql
+       :params args})))
 
+
+(defn- maybe-set-timezone!
+  "Set the timezone if applicable, catching exceptions if it fails."
+  [driver settings connection]
+  (when-let [timezone (:report-timezone settings)]
+    (log/debug (u/format-color 'green "%s" (sql/set-timezone-sql driver)))
+    (try (jdbc/db-do-prepared connection (sql/set-timezone-sql driver) [timezone])
+         (catch Throwable e
+           (log/error (u/format-color 'red "Failed to set timezone: %s" (.getMessage e)))))))
+
+(defn- query!
+  "Run the query itself."
+  [{sql :query, params :params} connection]
+  (let [sql              (hx/unescape-dots sql)
+        statement        (into [sql] params)
+        [columns & rows] (jdbc/query connection statement, :identifiers identity, :as-arrays? true)]
+    {:rows    rows
+     :columns columns}))
+
+(defn- exception->nice-error-message ^String [^java.sql.SQLException e]
+  (or (->> (.getMessage e)     ; error message comes back like 'Column "ZID" not found; SQL statement: ... [error-code]' sometimes
+           (re-find #"^(.*);") ; the user already knows the SQL, and error code is meaningless
+           second)             ; so just return the part of the exception that is relevant
+      (.getMessage e)))
+
+(defn- do-with-try-catch {:style/indent 0} [f]
+  (try (f)
+       (catch java.sql.SQLException e
+         (throw (Exception. (exception->nice-error-message e))))))
+
+(defn- do-with-auto-commit-disabled
+  "Disable auto-commit for this transaction, that way shady queries are unable to modify the database; execute F in a try-finally block.
+   In the `finally`, rollback any changes made during this transaction just to be extra-double-sure JDBC doesn't try to commit them automatically for us."
+  {:style/indent 1}
+  [{^java.sql.Connection connection :connection}, f]
+  (.setAutoCommit connection false)
+  (try (f)
+       (finally (.rollback connection))))
+
+;; TODO - maybe this should be called `execute-query!` ?
 (defn execute-query
   "Process and run a native (raw SQL) QUERY."
-  [driver {:keys [database settings], {sql :query, params :params} :native}]
-  (try (let [db-conn (sql/db->jdbc-connection-spec database)]
-         (jdbc/with-db-transaction [t-conn db-conn]
-           (let [^java.sql.Connection jdbc-connection (:connection t-conn)]
-             ;; Disable auto-commit for this transaction, that way shady queries are unable to modify the database
-             (.setAutoCommit jdbc-connection false)
-             (try
-               ;; Set the timezone if applicable
-               (when-let [timezone (:report-timezone settings)]
-                 (log/debug (u/format-color 'green "%s" (sql/set-timezone-sql driver)))
-                 (try (jdbc/db-do-prepared t-conn (sql/set-timezone-sql driver) [timezone])
-                      (catch Throwable e
-                        (log/error (u/format-color 'red "Failed to set timezone: %s" (.getMessage e))))))
-
-               ;; Now run the query itself
-               (let [statement (if params
-                                 (into [sql] params)
-                                 sql)]
-                 (let [[columns & rows] (jdbc/query t-conn statement, :identifiers identity, :as-arrays? true)]
-                   {:rows    rows
-                    :columns columns}))
-
-               ;; Rollback any changes made during this transaction just to be extra-double-sure JDBC doesn't try to commit them automatically for us
-               (finally (.rollback jdbc-connection))))))
-       (catch java.sql.SQLException e
-         (let [^String message (or (->> (.getMessage e)     ; error message comes back like 'Column "ZID" not found; SQL statement: ... [error-code]' sometimes
-                                        (re-find #"^(.*);") ; the user already knows the SQL, and error code is meaningless
-                                        second)             ; so just return the part of the exception that is relevant
-                                   (.getMessage e))]
-           (throw (Exception. message))))))
+  [driver {:keys [database settings], query :native}]
+  (do-with-try-catch
+    (fn []
+      (let [db-connection (sql/db->jdbc-connection-spec database)]
+        (jdbc/with-db-transaction [transaction-connection db-connection]
+          (do-with-auto-commit-disabled transaction-connection
+            (fn []
+              (maybe-set-timezone! driver settings transaction-connection)
+              (query! query transaction-connection))))))))

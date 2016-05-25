@@ -3,6 +3,9 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as s]
             [clojure.tools.logging :as log]
+            (honeysql [core :as hsql]
+                      [format :as hformat]
+                      [helpers :as h])
             (korma [core :as k]
                    [db :as kdb])
             [medley.core :as m]
@@ -11,6 +14,7 @@
             (metabase.test.data [datasets :as datasets]
                                 [interface :as i])
             [metabase.util :as u]
+            [metabase.util.honeysql-extensions :as hx]
             [metabase.util.korma-extensions :as kx])
   (:import clojure.lang.Keyword
            (metabase.test.data.interface DatabaseDefinition
@@ -80,7 +84,7 @@
      Uses `sql/connection-details->spec` by default.")
 
   (load-data! [this, ^DatabaseDefinition dbdef, ^TableDefinition tabledef]
-    "*Optional*. Load the rows for a specific table into a DB.")
+    "*Optional*. Load the rows for a specific table into a DB. `load-data-chunked` is the default implementation.")
 
   (execute-sql! [driver ^Keyword context, ^DatabaseDefinition dbdef, ^String sql]
     "Execute a string of raw SQL. Context is either `:server` or `:db`."))
@@ -138,10 +142,8 @@
   (str \" nm \"))
 
 (defn- quote+combine-names [driver names]
-  (->> names
-       (map (partial quote-name driver))
-       (interpose \.)
-       (apply str)))
+  (apply str (interpose \. (for [n names]
+                             (name (hx/qualify-and-escape-dots (quote-name driver n)))))))
 
 (defn- default-qualify+quote-name
   ([driver db-name]
@@ -180,12 +182,8 @@
   "Add IDs to each row, presumabily for doing a parallel insert. This arg should go before `load-data-chunked` or `load-data-one-at-a-time`."
   [insert!]
   (fn [rows]
-    (insert! (pmap (fn [[i row]]
-                     (assoc row :id (inc i)))
-                   (m/indexed rows)))
-    ;; (insert! (vec (for [[i row] (m/indexed rows)]
-    ;;                 (assoc row :id (inc i)))))
-    ))
+    (insert! (vec (for [[i row] (m/indexed rows)]
+                    (assoc row :id (inc i)))))))
 
 (defn load-data-chunked
   "Insert rows in chunks, which default to 200 rows each."
@@ -208,16 +206,29 @@
     (into {} (for [[k v] row-or-rows]
                {(sql/escape-field-name k) v}))))
 
-(defn load-data-with-debug-logging
-  "Add debug logging to the data loading fn. This should passed as the first arg to `make-load-data-fn`."
-  [insert!]
-  (fn [rows]
-    (println (u/format-color 'blue "Inserting %d rows like:\n%s" (count rows) (s/replace (k/sql-only (k/insert :some-table (k/values (escape-field-names (first rows)))))
-                                                                                         #"\"SOME-TABLE\""
-                                                                                         "[table]")))
-    (let [start-time (System/currentTimeMillis)]
-      (insert! rows)
-      (println (u/format-color 'green "Inserting %d rows took %d ms." (count rows) (- (System/currentTimeMillis) start-time))))))
+(defn- do-insert!
+  "Insert ROWS-OR-ROWS into TABLE-NAME for the DRIVER database defined by SPEC."
+  [driver spec table-name row-or-rows]
+  (let [prepare-key (comp keyword (partial sql/prepare-identifier driver) name)
+        rows        (if (sequential? row-or-rows)
+                      row-or-rows
+                      [row-or-rows])
+        columns     (keys (first rows))
+        values      (for [row rows]
+                      (for [value (map row columns)]
+                        (sql/prepare-value driver {:value value})))
+        hsql-form   (-> (apply h/columns (for [column columns]
+                                           (hx/qualify-and-escape-dots (prepare-key column))))
+                        (h/insert-into (prepare-key table-name))
+                        (h/values values))
+        sql+args    (hx/unescape-dots (binding [hformat/*subquery?* false]
+                                        (hsql/format hsql-form
+                                          :quoting             (sql/quote-style driver)
+                                          :allow-dashed-names? true)))]
+    (try (jdbc/execute! spec sql+args)
+         (catch java.sql.SQLException e
+           (println (u/format-color 'red "INSERT FAILED: \n%s\n" sql+args))
+           (jdbc/print-sql-exception-chain e)))))
 
 (defn make-load-data-fn
   "Create a `load-data!` function. This creates a function to actually insert a row or rows, wraps it with any WRAP-INSERT-FNS,
@@ -225,13 +236,8 @@
   [& wrap-insert-fns]
   (fn [driver dbdef tabledef]
     (let [entity  (korma-entity driver dbdef tabledef)
-          ;; _       (assert (or (delay? (:pool (:db entity)))
-          ;;                     (println "Expected pooled connection:" (u/pprint-to-str 'cyan entity))))
-          insert! ((apply comp wrap-insert-fns) (fn [row-or-rows]
-                                                  ;; (let [id (:id row-or-rows)]
-                                                  ;;   (when (zero? (mod id 50))
-                                                  ;;     (println id)))
-                                                  (k/insert entity (k/values (escape-field-names row-or-rows)))))
+          spec    (database->spec driver :db dbdef)
+          insert! ((apply comp wrap-insert-fns) (partial do-insert! driver spec (:table entity)))
           rows    (load-data-get-rows driver dbdef tabledef)]
       (insert! rows))))
 
@@ -249,7 +255,6 @@
                (not (s/blank? (s/replace sql #";" ""))))
       ;; Remove excess semicolons, otherwise snippy DBs like Oracle will barf
       (let [sql (s/replace sql #";+" ";")]
-        ;; (println (u/format-color 'blue "[SQL] <<<%s>>>" sql))
         (try
           (jdbc/execute! (database->spec driver context dbdef) [sql] :transaction? false, :multi? true)
           (catch java.sql.SQLException e
@@ -261,9 +266,7 @@
             (println "Error executing SQL:" sql)
             (println (format "Caught Exception: %s %s\n%s" (class e) (.getMessage e)
                              (with-out-str (.printStackTrace e))))
-            (throw e)))
-        ;; (println (u/format-color 'blue "[OK]"))
-        ))))
+            (throw e)))))))
 
 
 (def DefaultsMixin
@@ -317,7 +320,7 @@
           (swap! statements conj (add-fk-sql driver dbdef tabledef fielddef)))))
 
     ;; exec the combined statement
-    (execute-sql! driver :db dbdef (apply str (interpose ";\n" @statements))))
+    (execute-sql! driver :db dbdef (apply str (interpose ";\n" (map hx/unescape-dots @statements)))))
 
   ;; Now load the data for each Table
   (doseq [tabledef table-definitions]
@@ -338,8 +341,19 @@
 (defn execute-when-testing!
   "Execute a prepared SQL-AND-ARGS against Database with spec returned by GET-CONNECTION-SPEC only when running tests against ENGINE.
    Useful for doing engine-specific setup or teardown."
+  {:style/indent 2}
   [engine get-connection-spec & sql-and-args]
   (datasets/when-testing-engine engine
     (println (u/format-color 'blue "[%s] %s" (name engine) (first sql-and-args)))
     (jdbc/execute! (get-connection-spec) sql-and-args)
     (println (u/format-color 'blue "[OK]"))))
+
+(defn query-when-testing!
+  "Execute a prepared SQL-AND-ARGS **query** against Database with spec returned by GET-CONNECTION-SPEC only when running tests against ENGINE.
+   Useful for doing engine-specific setup or teardown where `execute-when-testing!` won't work because the query returns results."
+  {:style/indent 2}
+  [engine get-connection-spec & sql-and-args]
+  (datasets/when-testing-engine engine
+    (println (u/format-color 'blue "[%s] %s" (name engine) (first sql-and-args)))
+    (u/prog1 (jdbc/query (get-connection-spec) sql-and-args)
+      (println (u/format-color 'blue "[OK] -> %s" (vec <>))))))

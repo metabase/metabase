@@ -1,6 +1,7 @@
 (ns metabase.driver.crate
-  (:require [clojure.set :as set]
-            [korma.core :as k]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.set :as set]
+            [honeysql.core :as hsql]
             [metabase.driver :as driver]
             (metabase.driver.crate [analyze :as analyze]
                                    [query-processor :as qp]
@@ -40,7 +41,7 @@
    :geo_point_array :ArrayField})
 
 
-(def ^:private ^:const now (k/sqlfn :CURRENT_TIMESTAMP (k/raw 3)))
+(def ^:private ^:const now (hsql/call :current_timestamp 3))
 
 (defn- crate-spec
   [{:keys [hosts]
@@ -53,10 +54,7 @@
 
 (defn- can-connect? [details]
   (let [connection-spec (crate-spec details)]
-    (= 1 (-> (k/exec-raw connection-spec "select 1 from sys.cluster" :results)
-             first
-             vals
-             first))))
+    (= 1 (first (vals (first (jdbc/query connection-spec ["select 1 from sys.cluster"])))))))
 
 
 (defrecord CrateDriver []
@@ -80,7 +78,7 @@
   (merge (sql/ISQLDriverDefaultsMixin)
          {:connection-details->spec  (u/drop-first-arg crate-spec)
           :column->base-type         (u/drop-first-arg column->base-type)
-          :string-length-fn          (constantly :CHAR_LENGTH)
+          :string-length-fn          (constantly :char_length)
           :apply-filter              qp/apply-filter
           :date                      crate-util/date
           :unix-timestamp->timestamp crate-util/unix-timestamp->timestamp

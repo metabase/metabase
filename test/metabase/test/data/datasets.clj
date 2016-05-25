@@ -10,6 +10,7 @@
             [metabase.test.data.interface :as i]))
 
 (driver/find-and-load-drivers!)
+
 (def ^:const all-valid-engines (set (keys (driver/available-drivers))))
 
 
@@ -60,6 +61,7 @@
          (require (symbol (str "metabase.test.data." (name engine))) :reload)))
   (driver/engine->driver engine))
 
+;; TODO - give this a better name like `*driver*` or `*test-driver*`
 (def ^:dynamic *data-loader*
   "The dataset we're currently testing against, bound by `with-engine`.
    This is just a regular driver, e.g. `MySQLDriver`, with an extra promise keyed by `:dbpromise`

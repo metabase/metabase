@@ -10,6 +10,7 @@
             (metabase.models [field :as field]
                              [table :as table])
             [metabase.util :as u]
+            [metabase.util.honeysql-extensions :as hx]
             [metabase.util.korma-extensions :as kx])
   (:import java.sql.DatabaseMetaData
            java.util.Map
@@ -32,14 +33,14 @@
   ;; The following apply-* methods define how the SQL Query Processor handles given query clauses. Each method is called when a matching clause is present
   ;; in QUERY, and should return an appropriately modified version of KORMA-QUERY. Most drivers can use the default implementations for all of these methods,
   ;; but some may need to override one or more (e.g. SQL Server needs to override the behavior of `apply-limit`, since T-SQL uses `TOP` instead of `LIMIT`).
-  (apply-aggregation [this korma-query, ^Map query] "*OPTIONAL*.")
-  (apply-breakout    [this korma-query, ^Map query] "*OPTIONAL*.")
-  (apply-fields      [this korma-query, ^Map query] "*OPTIONAL*.")
-  (apply-filter      [this korma-query, ^Map query] "*OPTIONAL*.")
-  (apply-join-tables [this korma-query, ^Map query] "*OPTIONAL*.")
-  (apply-limit       [this korma-query, ^Map query] "*OPTIONAL*.")
-  (apply-order-by    [this korma-query, ^Map query] "*OPTIONAL*.")
-  (apply-page        [this korma-query, ^Map query] "*OPTIONAL*.")
+  (apply-aggregation [this honeysql-form, ^Map query] "*OPTIONAL*.")
+  (apply-breakout    [this honeysql-form, ^Map query] "*OPTIONAL*.")
+  (apply-fields      [this honeysql-form, ^Map query] "*OPTIONAL*.")
+  (apply-filter      [this honeysql-form, ^Map query] "*OPTIONAL*.")
+  (apply-join-tables [this honeysql-form, ^Map query] "*OPTIONAL*.")
+  (apply-limit       [this honeysql-form, ^Map query] "*OPTIONAL*.")
+  (apply-order-by    [this honeysql-form, ^Map query] "*OPTIONAL*.")
+  (apply-page        [this honeysql-form, ^Map query] "*OPTIONAL*.")
 
   (column->base-type ^clojure.lang.Keyword [this, ^Keyword column-type]
     "Given a native DB column type, return the corresponding `Field` `base-type`.")
@@ -52,7 +53,7 @@
     "Given a `Database` DETAILS-MAP, return a JDBC connection spec.")
 
   (current-datetime-fn [this]
-    "*OPTIONAL*. Korma form that should be used to get the current `DATETIME` (or equivalent). Defaults to `(k/sqlfn* :NOW)`.")
+    "*OPTIONAL*. Korma form that should be used to get the current `DATETIME` (or equivalent). Defaults to `:%now`.")
 
   (date [this, ^Keyword unit, field-or-value]
     "Return a korma form for truncating a date or timestamp field or value to a given resolution, or extracting a date component.")
@@ -66,10 +67,24 @@
 
      Return `nil` to prevent FIELD from being aliased.")
 
+  ;; TODO This is only used by unit tests, I think; confirm this and move to `metabase.test.data.generic-sql`
+  (prepare-identifier [this, ^String identifier]
+    "*OPTIONAL*. Prepare an identifier, such as a Table or Field name, when it is used in a SQL query.
+     This is used by drivers like H2 to transform names to upper-case.
+     The default implementation is `identity`.")
+
   (prepare-value [this, ^Value value]
     "*OPTIONAL*. Prepare a value (e.g. a `String` or `Integer`) that will be used in a korma form. By default, this returns VALUE's `:value` as-is, which
      is eventually passed as a parameter in a prepared statement. Drivers such as BigQuery that don't support prepared statements can skip this
      behavior by returning a korma `raw` form instead, or other drivers can perform custom type conversion as appropriate.")
+
+  (quote-style ^clojure.lang.Keyword [this]
+    "*OPTIONAL*. Return the quoting style that should be used by [HoneySQL](https://github.com/jkk/honeysql) when building a SQL statement.
+      Defaults to `:ansi`, but other valid options are `:mysql`, `:sqlserver`, `:oracle`, and `:h2` (added in `metabase.util.honeysql-extensions`;
+      like `:ansi`, but uppercases the result).
+
+        (hsql/format ... :quoting (quote-style driver))")
+
 
   (set-timezone-sql ^String [this]
     "*OPTIONAL*. This should be a prepared JDBC SQL statement string to be used to set the timezone for the current transaction.
@@ -86,6 +101,7 @@
     "Return a korma form appropriate for converting a Unix timestamp integer field or value to an proper SQL `Timestamp`.
      SECONDS-OR-MILLISECONDS refers to the resolution of the int in question and with be either `:seconds` or `:milliseconds`."))
 
+;; This does something important for the Crate driver, apparently (what?)
 (extend-protocol jdbc/IResultSetReadColumn
   (class (object-array []))
   (result-set-read-column [x _ _] (PersistentVector/adopt x)))
@@ -142,15 +158,12 @@
 (defn escape-field-name
   "Escape dots in a field name so Korma doesn't get confused and separate them. Returns a keyword."
   ^clojure.lang.Keyword [k]
-  (keyword (kx/escape-name (name k))))
+  (keyword (hx/escape-dots (name k))))
 
 
 (defn- can-connect? [driver details]
   (let [connection (connection-details->spec driver details)]
-    (= 1 (-> (k/exec-raw connection "SELECT 1" :results)
-             first
-             vals
-             first))))
+    (= 1 (first (vals (first (jdbc/query connection ["SELECT 1"])))))))
 
 (defn pattern-based-column->base-type
   "Return a `column->base-type` function that matches types based on a sequence of pattern / base-type pairs."
@@ -325,10 +338,12 @@
    :apply-order-by          (resolve 'metabase.driver.generic-sql.query-processor/apply-order-by)
    :apply-page              (resolve 'metabase.driver.generic-sql.query-processor/apply-page)
    :column->special-type    (constantly nil)
-   :current-datetime-fn     (constantly (k/sqlfn* :NOW))
+   :current-datetime-fn     (constantly :%now)
    :excluded-schemas        (constantly nil)
    :field->alias            (u/drop-first-arg name)
+   :prepare-identifier      (u/drop-first-arg identity)
    :prepare-value           (u/drop-first-arg :value)
+   :quote-style             (constantly :ansi)
    :set-timezone-sql        (constantly nil)
    :stddev-fn               (constantly :STDDEV)})
 

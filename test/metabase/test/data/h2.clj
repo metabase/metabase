@@ -44,7 +44,7 @@
                                                 :naming {:keys   s/lower-case
                                                          :fields s/upper-case}))))))
 
-(defn create-db-sql [_ {:keys [short-lived?]}]
+(def ^:private ^:const ^String create-db-sql
   (str
    ;; We don't need to actually do anything to create a database here. Just disable the undo
    ;; log (i.e., transactions) for this DB session because the bulk operations to load data don't need to be atomic
@@ -54,10 +54,8 @@
    "CREATE USER IF NOT EXISTS GUEST PASSWORD 'guest';\n"
 
    ;; Set DB_CLOSE_DELAY here because only admins are allowed to do it, so we can't set it via the connection string.
-   ;; Set it to to -1 (no automatic closing) if the DB isn't "short-lived",
-   ;; otherwise set it to 1 (close after idling for 1 sec) so things like inserting rows persist long enough for us to
-   ;; run queries without us needing to start a connection pool
-   (format "SET DB_CLOSE_DELAY %d;" (if short-lived? 1 -1))))
+   ;; Set it to to -1 (no automatic closing)
+   "SET DB_CLOSE_DELAY -1;"))
 
 (defn- create-table-sql [this dbdef {:keys [table-name], :as tabledef}]
   (str
@@ -71,11 +69,9 @@
   generic/IGenericSQLDatasetLoader
   (let [{:keys [execute-sql!], :as mixin} generic/DefaultsMixin]
     (merge mixin
-           {:create-db-sql             create-db-sql
+           {:create-db-sql             (constantly create-db-sql)
             :create-table-sql          create-table-sql
-            :database->spec            (fn [this context dbdef]
-                                         ;; Don't use the h2 driver implementation, which makes the connection string read-only & if-exists only
-                                         (kdb/h2 (i/database->connection-details this context dbdef)))
+            :database->spec            (comp kdb/h2 i/database->connection-details) ; Don't use the h2 driver implementation, which makes the connection string read-only & if-exists only
             :drop-db-if-exists-sql     (constantly nil)
             :execute-sql!              (fn [this _ dbdef sql]
                                          ;; we always want to use 'server' context when execute-sql! is called

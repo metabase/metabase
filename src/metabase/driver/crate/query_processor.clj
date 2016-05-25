@@ -1,8 +1,6 @@
 (ns metabase.driver.crate.query-processor
   (:require [clojure.java.jdbc :as jdbc]
-            [korma.core :as k]
-            [korma.sql.engine :as kengine]
-            [korma.sql.fns :as kfns]
+            [honeysql.helpers :as h]
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.query-processor :as qp]
             [metabase.query-processor.interface :as i])
@@ -19,22 +17,21 @@
                                                                                   :field       (:field clause)
                                                                                   :value       (:max-val clause)})]}))
 
-(defn resolve-subclauses
+(defn- filter-clause->predicate
   "resolve filters recursively"
-  [clause]
-  (if (= (count (:subclauses clause)) 0)
-    (case (:filter-type clause)
-           :between (qp/filter-clause->predicate (rewrite-between clause))
-           (qp/filter-clause->predicate clause))
-    (case (:compound-type clause)
-      :and (apply kfns/pred-and (map resolve-subclauses (:subclauses clause)))
-      :or  (apply kfns/pred-or  (map resolve-subclauses (:subclauses clause)))
-      :not (kfns/pred-not (kengine/pred-map (qp/filter-subclause->predicate clause))))))
+  [{:keys [compound-type filter-type subclause subclauses], :as clause}]
+  (case compound-type
+    :and (apply vector :and (map filter-clause->predicate subclauses))
+    :or  (apply vector :or  (map filter-clause->predicate subclauses))
+    :not [:not (filter-clause->predicate subclause)]
+    nil  (qp/filter-clause->predicate (if (= filter-type :between)
+                                        (rewrite-between clause)
+                                        clause))))
 
 (defn apply-filter
   "Apply custom generic SQL filter. This is the place to perform query rewrites."
-  [_ korma-form {clause :filter}]
-  (k/where korma-form (resolve-subclauses clause)))
+  [_ honeysql-form {clause :filter}]
+  (h/where honeysql-form (filter-clause->predicate clause)))
 
 (defn execute-query
   "Execute a query against Crate database.

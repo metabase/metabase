@@ -1,11 +1,11 @@
 (ns metabase.driver.sqlserver
   (:require [clojure.string :as s]
-            (korma [core :as k]
-                   [db :as kdb])
+            [honeysql.core :as hsql]
+            [korma.db :as kdb]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
             [metabase.util :as u]
-            [metabase.util.korma-extensions :as kx])
+            [metabase.util.honeysql-extensions :as hx])
   (:import net.sourceforge.jtds.jdbc.Driver)) ; need to import this in order to load JDBC driver
 
 (defn- column->base-type
@@ -71,63 +71,71 @@
                            ssl (str ";ssl=require"))))))
 
 (defn- date-part [unit expr]
-  (k/sqlfn :DATEPART (k/raw (name unit)) expr))
+  (hsql/call :datepart (hsql/raw (name unit)) expr))
 
 (defn- date-add [unit & exprs]
-  (apply k/sqlfn* :DATEADD (k/raw (name unit)) exprs))
+  (apply hsql/call :dateadd (hsql/raw (name unit)) exprs))
 
 (defn- date
   "See also the [jTDS SQL <-> Java types table](http://jtds.sourceforge.net/typemap.html)"
   [unit expr]
   (case unit
     :default         expr
-    :minute          (kx/cast :SMALLDATETIME expr)
+    :minute          (hx/cast :smalldatetime expr)
     :minute-of-hour  (date-part :minute expr)
-    :hour            (kx/->datetime (kx/format "yyyy-MM-dd HH:00:00" expr))
+    :hour            (hx/->datetime (hx/format "yyyy-MM-dd HH:00:00" expr))
     :hour-of-day     (date-part :hour expr)
     ;; jTDS is retarded; I sense an ongoing theme here. It returns DATEs as strings instead of as java.sql.Dates
     ;; like every other SQL DB we support. Work around that by casting to DATE for truncation then back to DATETIME so we get the type we want
-    :day             (kx/->datetime (kx/->date expr))
+    :day             (hx/->datetime (hx/->date expr))
     :day-of-week     (date-part :weekday expr)
     :day-of-month    (date-part :day expr)
     :day-of-year     (date-part :dayofyear expr)
     ;; Subtract the number of days needed to bring us to the first day of the week, then convert to date
     ;; The equivalent SQL looks like:
     ;;     CAST(DATEADD(day, 1 - DATEPART(weekday, %s), CAST(%s AS DATE)) AS DATETIME)
-    :week            (kx/->datetime
+    :week            (hx/->datetime
                       (date-add :day
-                                (kx/- 1 (date-part :weekday expr))
-                                (kx/->date expr)))
+                                (hx/- 1 (date-part :weekday expr))
+                                (hx/->date expr)))
     :week-of-year    (date-part :iso_week expr)
-    :month           (kx/->datetime (kx/format "yyyy-MM-01" expr))
+    :month           (hx/->datetime (hx/format "yyyy-MM-01" expr))
     :month-of-year   (date-part :month expr)
     ;; Format date as yyyy-01-01 then add the appropriate number of quarter
     ;; Equivalent SQL:
     ;;     DATEADD(quarter, DATEPART(quarter, %s) - 1, FORMAT(%s, 'yyyy-01-01'))
     :quarter         (date-add :quarter
-                               (kx/dec (date-part :quarter expr))
-                               (kx/format "yyyy-01-01" expr))
+                               (hx/dec (date-part :quarter expr))
+                               (hx/format "yyyy-01-01" expr))
     :quarter-of-year (date-part :quarter expr)
     :year            (date-part :year expr)))
 
 (defn- date-interval [unit amount]
-  (date-add unit amount (k/sqlfn :GETUTCDATE)))
+  (date-add unit amount :%getutcdate))
 
 (defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
   (case seconds-or-milliseconds
     ;; The second argument to DATEADD() gets casted to a 32-bit integer. BIGINT is 64 bites, so we tend to run into
     ;; integer overflow errors (especially for millisecond timestamps).
     ;; Work around this by converting the timestamps to minutes instead before calling DATEADD().
-    :seconds      (date-add :minute (kx// expr 60) (kx/literal "1970-01-01"))
-    :milliseconds (recur (kx// expr 1000) :seconds)))
+    :seconds      (date-add :minute (hx// expr 60) (hx/literal "1970-01-01"))
+    :milliseconds (recur (hx// expr 1000) :seconds)))
 
-(defn- apply-limit [korma-query {value :limit}]
-  (k/modifier korma-query (format "TOP %d" value)))
+(defn- apply-limit [honeysql-form {value :limit}]
+  (assoc honeysql-form :modifiers [(format "TOP %d" value)]))
 
-(defn- apply-page [korma-query {{:keys [items page]} :page}]
-  (k/offset korma-query (format "%d ROWS FETCH NEXT %d ROWS ONLY"
-                                (* items (dec page))
-                                items)))
+(defn- apply-page [honeysql-form {{:keys [items page]} :page}]
+  (assoc honeysql-form :offset (hsql/raw (format "%d ROWS FETCH NEXT %d ROWS ONLY"
+                                                 (* items (dec page))
+                                                 items))))
+
+;; SQLServer doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively; convert these booleans to numbers.
+(defn- prepare-value [{value :value}]
+  (cond
+    (true? value)  1
+    (false? value) 0
+    :else          value))
+
 
 (defrecord SQLServerDriver []
   clojure.lang.Named
@@ -173,11 +181,12 @@
           :apply-page                (u/drop-first-arg apply-page)
           :column->base-type         (u/drop-first-arg column->base-type)
           :connection-details->spec  (u/drop-first-arg connection-details->spec)
-          :current-datetime-fn       (constantly (k/sqlfn* :GETUTCDATE))
+          :current-datetime-fn       (constantly :%getutcdate)
           :date                      (u/drop-first-arg date)
           :excluded-schemas          (constantly #{"sys" "INFORMATION_SCHEMA"})
-          :stddev-fn                 (constantly :STDEV)
-          :string-length-fn          (constantly :LEN)
+          :prepare-value             (u/drop-first-arg prepare-value)
+          :stddev-fn                 (constantly :stdev)
+          :string-length-fn          (constantly :len)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
 (driver/register-driver! :sqlserver (SQLServerDriver.))
