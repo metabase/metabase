@@ -102,49 +102,57 @@
         num-tables         (db/select-one-count 'Table)
         num-cards          (db/select-one-count 'Card)
         num-users          (db/select-one-count 'User)]
-    [{:name        "Add a database"
+    [{:title       "Add a database"
       :group       "Get connected"
       :description "TODO - Write something good here"
+      :link        "/admin/databases/create"
       :completed   has-dbs?
       :triggered   :always}
-     {:name        "Set email credentials"
+     {:title       "Set email credentials"
       :group       "Get connected"
       :description "TODO - Write something good here"
+      :link        "/admin/settings/?section=Email"
       :completed   (email/email-configured?)
       :triggered   :always}
-     {:name        "Set slack credentials"
+     {:title       "Set Slack credentials"
       :group       "Get connected"
-      :description "TODO - Write something good here"
+      :description "Does your team use Slack?  If so, you can send automated updates via pulses and ask questions with Metabot."
+      :link        "/admin/settings/?section=Slack"
       :completed   (slack/slack-configured?)
       :triggered   :always}
-     {:name        "Invite other users"
+     {:title       "Invite other users"
       :group       "Get connected"
       :description "TODO - Write something good here"
+      :link        "/admin/people/"
       :completed   (>= num-users 1)
       :triggered   (or has-dashboards?
                        has-pulses?
                        (>= num-cards 5))}
-     {:name        "Hide tables"
+     {:title       "Hide tables"
       :group       "Curate your data"
       :description "TODO - Write something good here"
+      :link        "/admin/datamodel/database"
       :completed   has-hidden-tables?
       :triggered   (>= num-tables 20)}
-     {:name        "Organize questions"
+     {:title       "Organize questions"
       :group       "Curate your data"
       :description "TODO - Write something good here"
+      :link        "/questions/all"
       :completed   (not has-labels?)
       :triggered   (>= num-cards 30)}
-     {:name        "Create metrics"
+     {:title       "Create metrics"
       :group       "Curate your data"
       :description "TODO - Write something good here"
+      :link        "/admin/datamodel/database"
       :completed   has-metrics?
       :triggered   (>= num-cards 30)}
-     {:name        "Create segments"
+     {:title       "Create segments"
       :group       "Curate your data"
-      :description "TODO - Write something good here"
+      :description "Keep everyone on the same page by creating canonnical sets of filters anyone can use while asking questions."
+      :link        "/admin/datamodel/database"
       :completed   has-segments?
       :triggered   (>= num-cards 30)}
-     {:name        "Create getting started guide"
+     {:title       "Create getting started guide"
       :group       "Curate your data"
       :description "TODO - Write something good here"
       :completed   false                               ; TODO - how do we determine this?

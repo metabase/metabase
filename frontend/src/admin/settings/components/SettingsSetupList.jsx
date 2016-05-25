@@ -1,48 +1,6 @@
 import React, { Component, PropTypes } from "react";
 import Icon from "metabase/components/Icon.jsx";
-
-const TASK_LIST = [
-  {
-    name: 'Get connected',
-    tasks: [
-      {
-        title: 'Connect to a database',
-        description: 'test description',
-        completed: true,
-        link: ''
-      },
-      {
-        title: 'Set up Slack',
-        description: 'Does your team use Slack?  If so, you can send automated updates via pulses and  ask questions with Metabot',
-        completed: false,
-        link: ''
-      },
-      {
-        title: 'Invite team members',
-        description: 'test description',
-        completed: true,
-        link: ''
-      }
-    ]
-  },
-  {
-    name: 'Curate data',
-    tasks: [
-      {
-        title: 'Hide some irrelevant or technical tables',
-        description: 'test description',
-        completed: true,
-        link: ''
-      },
-      {
-        title: 'Create metrics',
-        description: 'Keep everyone on the same page by creating canonnical sets of filters anyone can use  while  asking questions.',
-        completed: false,
-        link: ''
-      }
-    ]
-  }
-]
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
 const TaskList = ({tasks}) =>
   <ol>
@@ -61,7 +19,7 @@ const TaskSection = ({name, tasks}) =>
 const TaskTitle = ({title, titleClassName}) =>
   <h3 className={titleClassName}>{title}</h3>
 
-const TaskDescription = ({description}) => <p className="m0">{description}</p>
+const TaskDescription = ({description}) => <p className="m0 mt1">{description}</p>
 
 const CompletionBadge = ({completed}) =>
     <div className="mr2 flex align-center justify-center flex-no-shrink" style={{
@@ -77,8 +35,8 @@ const CompletionBadge = ({completed}) =>
     </div>
 
 
-const Task = ({title, description, completed}) =>
-  <div className="bordered rounded flex align-center p2">
+export const Task = ({title, description, completed, link}) =>
+  <a className="bordered rounded flex align-center p2 no-decoration" href={link}>
     <CompletionBadge completed={completed} />
     <div>
       <TaskTitle title={title} titleClassName={
@@ -86,30 +44,57 @@ const Task = ({title, description, completed}) =>
         } />
       { !completed ? <TaskDescription description={description} /> : null }
     </div>
-  </div>
+  </a>
 
-const SettingsSetupList = () =>
-    <div className="px2">
-      <h2>Getting set up</h2>
-      <p>A few things you can do to get the most out of Metabase.</p>
-      <div style={{maxWidth: 468}}>
-          <TaskSection
-            name="Recommended next step"
-            tasks={[
-              {
-                title: 'Test 3',
-                description: 'Do the 3rd test thing',
-                completed: false,
-                link: 'derp'
+export default class SettingsSetupList extends Component {
+    constructor(props, context) {
+        super(props, context);
+        this.state = {
+            tasks: null,
+            error: null
+        };
+    }
+
+    async componentWillMount() {
+        let response = await fetch("/api/setup/admin_checklist", { credentials: 'same-origin' });
+        if (response.status !== 200) {
+            this.setState({ error: await response.json() })
+        } else {
+            this.setState({ tasks: await response.json() });
+        }
+    }
+
+    render() {
+        let tasks, nextTask;
+        if (this.state.tasks) {
+            tasks = this.state.tasks.map(section => ({
+                ...section,
+                tasks: section.tasks.filter(task => {
+                    if (task.is_next_step) {
+                        nextTask = task;
+                    }
+                    return !task.is_next_step;
+                })
+            }))
+        }
+
+        return (
+            <div className="px2">
+              <h2>Getting set up</h2>
+              <p>A few things you can do to get the most out of Metabase.</p>
+              <LoadingAndErrorWrapper loading={!this.state.tasks} error={this.state.error} >
+              { () =>
+                  <div style={{maxWidth: 468}}>
+                      <TaskSection name="Recommended next step" tasks={[nextTask]} />
+                      {
+                        tasks.map((section, index) =>
+                          <TaskSection {...section} key={index} />
+                        )
+                      }
+                  </div>
               }
-            ]}
-          />
-          {
-            TASK_LIST.map((section, index) =>
-              <TaskSection {...section} key={index} />
-            )
-          }
-      </div>
-    </div>
-
-export default SettingsSetupList
+              </LoadingAndErrorWrapper>
+            </div>
+        );
+    }
+}
