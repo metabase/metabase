@@ -76,16 +76,23 @@
 (expect {:errors {:name "field is a required param."}}
   ((user->client :rasta) :post 400 "dashboard" {}))
 
+(expect {:errors {:parameters "Invalid value 'abc' for 'parameters': value must be an array."}}
+  ((user->client :crowberto) :post 400 "dashboard" {:name         "Test"
+                                                    :public_perms 0
+                                                    :parameters   "abc"}))
+
 (expect
   {:name            "Test Create Dashboard"
    :description     nil
    :creator_id      (user->id :rasta)
+   :parameters      [{:hash "abc123", :name "test", :type "date"}]
    :public_perms    0
    :updated_at      true
    :created_at      true
    :organization_id nil}
   (-> ((user->client :rasta) :post 200 "dashboard" {:name         "Test Create Dashboard"
-                                                    :public_perms 0})
+                                                    :public_perms 0
+                                                    :parameters   [{:hash "abc123", :name "test", :type "date"}]})
       dashboard-response))
 
 
@@ -137,7 +144,6 @@
     :organization_id nil}
    {:name            "My Cool Dashboard"
     :description     "Some awesome description"
-    :actor_id        (user->id :rasta)
     :creator_id      (user->id :rasta)
     :public_perms    0
     :updated_at      true

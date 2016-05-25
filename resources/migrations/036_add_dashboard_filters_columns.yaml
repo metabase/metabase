@@ -1,0 +1,23 @@
+databaseChangeLog:
+  - changeSet:
+      id: 36
+      author: agilliland
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: parameters
+                  type: text
+                  defaultValue: {}
+                  constraints:
+                    nullable: false
+        - addColumn:
+            tableName: report_dashboardcard
+            columns:
+              - column:
+                  name: parameter_mappings
+                  type: text
+                  defaultValue: []
+                  constraints:
+                    nullable: false

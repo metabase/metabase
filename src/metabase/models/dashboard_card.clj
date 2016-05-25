@@ -12,8 +12,9 @@
 (i/defentity DashboardCard :report_dashboardcard)
 
 (defn- pre-insert [dashcard]
-  (let [defaults {:sizeX 2
-                  :sizeY 2}]
+  (let [defaults {:sizeX              2
+                  :sizeY              2
+                  :parameter_mappings []}]
     (merge defaults dashcard)))
 
 (defn- pre-cascade-delete [{:keys [id]}]
@@ -23,6 +24,7 @@
   i/IEntity
   (merge i/IEntityDefaults
          {:timestamped?       (constantly true)
+          :types              (constantly {:parameter_mappings :json})
           :pre-insert         pre-insert
           :pre-cascade-delete pre-cascade-delete
           :post-select        (u/rpartial set/rename-keys {:sizex :sizeX, :sizey :sizeY})}))
