@@ -108,9 +108,9 @@
       :link        "/admin/databases/create"
       :completed   has-dbs?
       :triggered   :always}
-     {:title       "Set email credentials"
+     {:title       "Set up email"
       :group       "Get connected"
-      :description "TODO - Write something good here"
+      :description "Add email credentials so you can more easily invite team members and get updates via Pulses."
       :link        "/admin/settings/?section=Email"
       :completed   (email/email-configured?)
       :triggered   :always}
@@ -120,29 +120,29 @@
       :link        "/admin/settings/?section=Slack"
       :completed   (slack/slack-configured?)
       :triggered   :always}
-     {:title       "Invite other users"
+     {:title       "Invite team members"
       :group       "Get connected"
-      :description "TODO - Write something good here"
+      :description "Share answers and data with the rest of your team."
       :link        "/admin/people/"
       :completed   (>= num-users 1)
       :triggered   (or has-dashboards?
                        has-pulses?
                        (>= num-cards 5))}
-     {:title       "Hide tables"
+     {:title       "Hide irrelevant tables"
       :group       "Curate your data"
-      :description "TODO - Write something good here"
+      :description "If your data contains technical or irrelevant info you can hide it."
       :link        "/admin/datamodel/database"
       :completed   has-hidden-tables?
       :triggered   (>= num-tables 20)}
      {:title       "Organize questions"
       :group       "Curate your data"
-      :description "TODO - Write something good here"
+      :description "Have a lot of saved questions in Metabase? Create labels to help manage them and add context."
       :link        "/questions/all"
       :completed   (not has-labels?)
       :triggered   (>= num-cards 30)}
      {:title       "Create metrics"
       :group       "Curate your data"
-      :description "TODO - Write something good here"
+      :description "Define canonical metrics to make it easier for the rest of your team to get the right answers."
       :link        "/admin/datamodel/database"
       :completed   has-metrics?
       :triggered   (>= num-cards 30)}
@@ -152,9 +152,9 @@
       :link        "/admin/datamodel/database"
       :completed   has-segments?
       :triggered   (>= num-cards 30)}
-     {:title       "Create getting started guide"
+     {:title       "Create a getting started guide"
       :group       "Curate your data"
-      :description "TODO - Write something good here"
+      :description "Have a lot of data in Metabase? A getting started guide can help your team find their way around."
       :completed   false                               ; TODO - how do we determine this?
       :triggered   (and (>= num-cards 10)
                         (>= num-users 5))}]))
