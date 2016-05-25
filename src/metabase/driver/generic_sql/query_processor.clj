@@ -295,7 +295,7 @@
   (let [sql              (hx/unescape-dots sql)
         statement        (into [sql] params)
         [columns & rows] (jdbc/query connection statement, :identifiers identity, :as-arrays? true)]
-    {:rows    rows
+    {:rows    (or rows [])
      :columns columns}))
 
 (defn- exception->nice-error-message ^String [^java.sql.SQLException e]
