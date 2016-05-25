@@ -1,6 +1,5 @@
 (ns metabase.models.revision-test
   (:require [expectations :refer :all]
-            [korma.core :refer [table]]
             [medley.core :as m]
             [metabase.db :as db]
             (metabase.models [card :refer [Card]]

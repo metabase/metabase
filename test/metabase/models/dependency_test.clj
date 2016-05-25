@@ -1,6 +1,5 @@
 (ns metabase.models.dependency-test
   (:require [expectations :refer :all]
-            [korma.core :as k]
             [metabase.db :as db]
             (metabase.models [dependency :refer :all]
                              [interface :as i])
@@ -66,7 +65,7 @@
   #{}
   (do
     (update-dependencies Mock 2 {:test ["a" "b" "c"]})
-    (set (db/sel :many Dependency :model "Mock" :model_id 2))))
+    (set (db/select Dependency, :model "Mock", :model_id 2))))
 
 ;; valid working dependencies list
 (expect
@@ -84,7 +83,7 @@
      :dependent_on_id    3}}
   (do
     (update-dependencies Mock 7 {:test [1 2 3]})
-    (format-dependencies (db/sel :many Dependency :model "Mock" :model_id 7))))
+    (format-dependencies (db/select Dependency, :model "Mock", :model_id 7))))
 
 ;; delete dependencies that are no longer in the list
 (expect
@@ -104,4 +103,4 @@
       :dependent_on_id    5
       :created_at         (u/new-sql-timestamp))
     (update-dependencies Mock 1 {:test [1 2]})
-    (format-dependencies (db/sel :many Dependency :model "Mock" :model_id 1))))
+    (format-dependencies (db/select Dependency, :model "Mock", :model_id 1))))

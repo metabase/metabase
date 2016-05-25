@@ -192,7 +192,8 @@
          (dissoc :id :dashboard_id :card_id)
          (update :created_at #(not (nil? %)))
          (update :updated_at #(not (nil? %))))
-     (db/sel :many :fields [DashboardCard :sizeX :sizeY :col :row] :dashboard_id dashboard-id)]))
+     (map (partial into {})
+          (db/select [DashboardCard :sizeX :sizeY :col :row], :dashboard_id dashboard-id))]))
 
 ;; new dashboard card w/ additional series
 (expect
@@ -211,7 +212,7 @@
      :sizeY        2
      :col          4
      :row          4}]
-   [0]]
+   #{0}]
   (tu/with-temp* [Dashboard [{dashboard-id :id}]
                   Card      [{card-id :id}]
                   Card      [{series-id-1 :id} {:name "Series Card"}]]
@@ -220,8 +221,9 @@
                                                                                                       :col    4
                                                                                                       :series [{:id series-id-1}]})]
       [(remove-ids-and-boolean-timestamps dashboard-card)
-       (db/sel :many :fields [DashboardCard :sizeX :sizeY :col :row] :dashboard_id dashboard-id)
-       (db/sel :many :field [DashboardCardSeries :position] :dashboardcard_id (:id dashboard-card))])))
+       (map (partial into {})
+            (db/select [DashboardCard :sizeX :sizeY :col :row], :dashboard_id dashboard-id))
+       (db/select-field :position DashboardCardSeries, :dashboardcard_id (:id dashboard-card))])))
 
 
 ;; ## DELETE /api/dashboard/:id/cards
@@ -237,9 +239,9 @@
                   DashboardCard       [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
                   DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}]
                   DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]]
-    [(count (db/sel :many :id DashboardCard, :dashboard_id dashboard-id))
+    [(count (db/select-ids DashboardCard, :dashboard_id dashboard-id))
      ((user->client :rasta) :delete 200 (format "dashboard/%d/cards" dashboard-id) :dashcardId dashcard-id)
-     (count (db/sel :many :id DashboardCard, :dashboard_id dashboard-id))]))
+     (count (db/select-ids DashboardCard, :dashboard_id dashboard-id))]))
 
 
 ;; ## PUT /api/dashboard/:id/cards
