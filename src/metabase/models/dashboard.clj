@@ -43,9 +43,7 @@
   "Create a `Dashboard`"
   [{:keys [name description parameters public_perms], :as dashboard} user-id]
   {:pre [(map? dashboard)
-         (or (nil? parameters)
-             (and (sequential? parameters)
-                  (every? map? parameters)))
+         (u/nil-or-maplist? parameters)
          (integer? user-id)]}
   (->> (db/insert! Dashboard
                    :name         name
@@ -60,9 +58,7 @@
   [{:keys [id name description parameters], :as dashboard} user-id]
   {:pre [(map? dashboard)
          (integer? id)
-         (or (nil? parameters)
-             (and (sequential? parameters)
-                  (every? map? parameters)))
+         (u/nil-or-maplist? parameters)
          (integer? user-id)]}
   (db/update-non-nil-keys! Dashboard id
     :description description

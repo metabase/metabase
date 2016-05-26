@@ -107,12 +107,14 @@
    :can_write       true
    :updated_at      true
    :created_at      true
+   :parameters      []
    :ordered_cards   [{:sizeX        2
                       :sizeY        2
                       :col          nil
                       :row          nil
                       :updated_at   true
                       :created_at   true
+                      :parameter_mappings []
                       :card         {:name                   "Dashboard Test Card"
                                      :description            nil
                                      :public_perms           0
@@ -141,21 +143,24 @@
     :public_perms    0
     :updated_at      true
     :created_at      true
-    :organization_id nil}
+    :organization_id nil
+    :parameters      []}
    {:name            "My Cool Dashboard"
     :description     "Some awesome description"
     :creator_id      (user->id :rasta)
     :public_perms    0
     :updated_at      true
     :created_at      true
-    :organization_id nil}
+    :organization_id nil
+    :parameters      []}
    {:name            "My Cool Dashboard"
     :description     "Some awesome description"
     :creator_id      (user->id :rasta)
     :public_perms    0
     :updated_at      true
     :created_at      true
-    :organization_id nil}]
+    :organization_id nil
+    :parameters      []}]
   (tu/with-temp Dashboard [{dashboard-id :id} {:name "Test Dashboard"}]
     (mapv dashboard-response [(Dashboard dashboard-id)
                               ((user->client :rasta) :put 200 (str "dashboard/" dashboard-id) {:name         "My Cool Dashboard"
@@ -184,22 +189,25 @@
     :col          4
     :row          4
     :series       []
+    :parameter_mappings [{:card-id 123, :hash "abc", :target "foo"}]
     :created_at   true
     :updated_at   true}
    [{:sizeX        2
      :sizeY        2
      :col          4
-     :row          4}]]
+     :row          4
+     :parameter_mappings [{:card-id 123, :hash "abc", :target "foo"}]}]]
   (tu/with-temp* [Dashboard [{dashboard-id :id}]
                   Card      [{card-id :id}]]
-    [(-> ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dashboard-id) {:cardId card-id
-                                                                                      :row    4
-                                                                                      :col    4})
+    [(-> ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dashboard-id) {:cardId             card-id
+                                                                                      :row                4
+                                                                                      :col                4
+                                                                                      :parameter_mappings [{:card-id 123, :hash "abc", :target "foo"}]})
          (dissoc :id :dashboard_id :card_id)
          (update :created_at #(not (nil? %)))
          (update :updated_at #(not (nil? %))))
      (map (partial into {})
-          (db/select [DashboardCard :sizeX :sizeY :col :row], :dashboard_id dashboard-id))]))
+          (db/select [DashboardCard :sizeX :sizeY :col :row :parameter_mappings], :dashboard_id dashboard-id))]))
 
 ;; new dashboard card w/ additional series
 (expect
@@ -207,6 +215,7 @@
     :sizeY        2
     :col          4
     :row          4
+    :parameter_mappings []
     :series       [{:name                   "Series Card"
                     :description            nil
                     :display                "table"
@@ -257,12 +266,14 @@
      :col          nil
      :row          nil
      :series       []
+     :parameter_mappings []
      :created_at   true
      :updated_at   true}
     {:sizeX        2
      :sizeY        2
      :col          nil
      :row          nil
+     :parameter_mappings []
      :series       []
      :created_at   true
      :updated_at   true}]
@@ -271,6 +282,7 @@
      :sizeY        2
      :col          0
      :row          0
+     :parameter_mappings []
      :series       [{:name                   "Series Card"
                      :description            nil
 
@@ -283,6 +295,7 @@
      :sizeY        1
      :col          1
      :row          3
+     :parameter_mappings []
      :series       []
      :created_at   true
      :updated_at   true}]]

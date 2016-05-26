@@ -64,8 +64,9 @@
 
 (defendpoint POST "/:id/cards"
   "Add a `Card` to a `Dashboard`."
-  [id :as {{:keys [cardId series] :as dashboard-card} :body}]
-  {cardId [Required Integer]}
+  [id :as {{:keys [cardId parameter_mappings series] :as dashboard-card} :body}]
+  {cardId             [Required Integer]
+   parameter_mappings [ArrayOfMaps]}
   (write-check Dashboard id)
   (check-400 (db/exists? Card :id cardId))
   (let [defaults       {:dashboard_id id
@@ -79,7 +80,7 @@
       result)))
 
 (defendpoint PUT "/:id/cards"
-  "Reposition `Cards` on a `Dashboard`. Request body should have the form:
+  "Update `Cards` on a `Dashboard`. Request body should have the form:
 
     {:cards [{:id ...
               :sizeX ...

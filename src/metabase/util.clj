@@ -325,6 +325,13 @@
                  (and (re-matches #"^https?$" (.getProtocol url))           ; these are both automatically downcased
                       (re-matches #"^.+\..{2,}$" (.getAuthority url)))))))) ; this is the part like 'google.com'. Make sure it contains at least one period and 2+ letter TLD
 
+(defn nil-or-maplist?
+  "Is VALUE either nil or sequential? such that every item is a map?"
+  [v]
+  (or (nil? v)
+      (and (sequential? v)
+           (every? map? v))))
+
 (def ^:private ^:const host-up-timeout
   "Timeout (in ms) for checking if a host is available with `host-up?` and `host-port-up?`."
   5000)
