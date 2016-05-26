@@ -10,6 +10,8 @@ import { augmentDatabase } from "metabase/lib/table";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
 
+import { createParameter } from "metabase/meta/Dashboard";
+
 const DATASET_SLOW_TIMEOUT   = 15 * 1000;
 const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
 
@@ -47,6 +49,9 @@ export const REVERT_TO_REVISION = 'REVERT_TO_REVISION';
 export const MARK_NEW_CARD_SEEN = 'MARK_NEW_CARD_SEEN';
 
 export const FETCH_DATABASE_METADATA = 'FETCH_DATABASE_METADATA';
+
+export const SET_EDITING_PARAMETER = 'SET_EDITING_PARAMETER';
+export const ADD_PARAMETER = 'ADD_PARAMETER';
 
 // resource wrappers
 const DashboardApi = new AngularResourceProxy("Dashboard", ["get", "update", "delete", "reposition_cards", "addcard", "removecard"]);
@@ -188,7 +193,7 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
         if (dashboard.isDirty) {
             let { id, name, description, public_perms, parameters } = dashboard;
             console.log("saving", parameters);
-            dashboard = await DashboardApi.update({ id, name, description, public_perms });
+            dashboard = await DashboardApi.update({ id, name, description, public_perms, parameters });
             // HACK!
             dashboard.parameters = parameters;
         }
@@ -241,3 +246,5 @@ export const fetchDatabaseMetadata = createThunkAction(FETCH_DATABASE_METADATA, 
 });
 
 export const setDashCardVisualizationSetting = createAction(SET_DASHCARD_VISUALIZATION_SETTING);
+
+export const setEditingParameter = createAction(SET_EDITING_PARAMETER);

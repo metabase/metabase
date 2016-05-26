@@ -1,34 +1,36 @@
+/* @flow-weak */
+
 import _ from "underscore";
 
 import { createSelector } from 'reselect';
 
-const selectedDashboardSelector = state => state.selectedDashboard
-const isEditingSelector         = state => state.isEditing;
-const cardsSelector             = state => state.cards;
-const dashboardsSelector        = state => state.dashboards;
-const dashcardsSelector         = state => state.dashcards;
-const cardDataSelector          = state => state.cardData;
-const cardDurationsSelector     = state => state.cardDurations;
-const cardIdListSelector        = state => state.cardList;
-const revisionsSelector         = state => state.revisions;
+export const getSelectedDashboard = state => state.selectedDashboard
+export const getIsEditing         = state => state.isEditing;
+export const getCards             = state => state.cards;
+export const getDashboards        = state => state.dashboards;
+export const getDashcards         = state => state.dashcards;
+export const getCardData          = state => state.cardData;
+export const getCardDurations     = state => state.cardDurations;
+export const getCardIdList        = state => state.cardList;
+export const getRevisions         = state => state.revisions;
 
-const databasesSelector         = state => state.metadata.databases;
+export const getDatabases         = state => state.metadata.databases;
 
-const dashboardSelector = createSelector(
-    [selectedDashboardSelector, dashboardsSelector],
+export const getDashboard = createSelector(
+    [getSelectedDashboard, getDashboards],
     (selectedDashboard, dashboards) => dashboards[selectedDashboard]
 );
 
-const dashboardCompleteSelector = createSelector(
-    [dashboardSelector, dashcardsSelector],
+export const getDashboardComplete = createSelector(
+    [getDashboard, getDashcards],
     (dashboard, dashcards) => (dashboard && {
         ...dashboard,
         ordered_cards: dashboard.ordered_cards.map(id => dashcards[id]).filter(dc => !dc.isRemoved)
     })
 );
 
-const isDirtySelector = createSelector(
-    [dashboardSelector, dashcardsSelector],
+export const getIsDirty = createSelector(
+    [getDashboard, getDashcards],
     (dashboard, dashcards) => !!(
         dashboard && (
             dashboard.isDirty ||
@@ -40,12 +42,11 @@ const isDirtySelector = createSelector(
     )
 );
 
-const cardListSelector = createSelector(
-    [cardIdListSelector, cardsSelector],
+export const getCardList = createSelector(
+    [getCardIdList, getCards],
     (cardIdList, cards) => cardIdList && cardIdList.map(id => cards[id])
 );
 
-export const dashboardSelectors = createSelector(
-    [isEditingSelector, isDirtySelector, selectedDashboardSelector, dashboardCompleteSelector, cardListSelector, revisionsSelector, cardDataSelector, cardDurationsSelector, databasesSelector],
-    (isEditing, isDirty, selectedDashboard, dashboard, cards, revisions, cardData, cardDurations, databases) => ({ isEditing, isDirty, selectedDashboard, dashboard, cards, revisions, cardData, cardDurations, databases })
-);
+export const getEditingParameter = (state) => state.editingParameter;
+
+export const getIsEditingParameter = (state) => state.editingParameter != null;
