@@ -4,7 +4,6 @@
             [clojure.string :as s]
             [clojure.tools.logging :as log]
             [cheshire.core :as json]
-            [korma.core :as k]
             [schema.core :as schema]
             [metabase.db :as db]
             [metabase.db.metadata-queries :as queries]
@@ -175,7 +174,7 @@
 (defn analyze-table-data-shape!
   "Analyze the data shape for a single `Table`."
   [driver {table-id :id, :as table}]
-  (let [new-field-ids (set (db/sel :many :id field/Field, :table_id table-id, :visibility_type [not= "retired"], :last_analyzed nil))]
+  (let [new-field-ids (db/select-ids field/Field, :table_id table-id, :visibility_type [:not= "retired"], :last_analyzed nil)]
     ;; TODO: this call should include the database
     (when-let [table-stats (u/prog1 (driver/analyze-table driver table new-field-ids)
                              (when <>
@@ -198,10 +197,9 @@
           (field-values/clear-field-values id))))
 
     ;; update :last_analyzed for all fields in the table
-    (k/update field/Field
-      (k/set-fields {:last_analyzed (u/new-sql-timestamp)})
-      (k/where {:table_id        table-id
-                :visibility_type [not= "retired"]}))))
+    (db/update-where! field/Field {:table_id        table-id
+                                   :visibility_type [:not= "retired"]}
+      :last_analyzed (u/new-sql-timestamp))))
 
 (defn analyze-data-shape-for-tables!
   "Perform in-depth analysis on the data shape for all `Tables` in a given DATABASE.
@@ -211,7 +209,7 @@
   (log/info (u/format-color 'blue "Analyzing data in %s database '%s' (this may take a while) ..." (name driver) (:name database)))
 
   (let [start-time-ns         (System/nanoTime)
-        tables                (db/sel :many table/Table :db_id database-id, :active true)
+        tables                (db/select table/Table, :db_id database-id, :active true)
         tables-count          (count tables)
         finished-tables-count (atom 0)]
     (doseq [{table-name :name, :as table} tables]

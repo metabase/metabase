@@ -328,7 +328,7 @@
                                  (into [sql] params)
                                  sql)]
                  (let [[columns & rows] (jdbc/query t-conn statement, :identifiers identity, :as-arrays? true)]
-                   {:rows    rows
+                   {:rows    (or rows [])
                     :columns columns}))
 
                ;; Rollback any changes made during this transaction just to be extra-double-sure JDBC doesn't try to commit them automatically for us

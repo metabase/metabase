@@ -1,5 +1,6 @@
 (ns metabase.events.notifications
   (:require [clojure.core.async :as async]
+            [clojure.set :as set]
             [clojure.tools.logging :as log]
             [metabase.db :as db]
             [metabase.email.messages :as messages]
@@ -42,20 +43,23 @@
     ;; otherwise pull out dependent card ids and add dashboard/pulse dependencies
     (let [card-ids (mapv :model_id (get deps-by-model "Card"))]
       (assoc deps-by-model
-        "Dashboard" (->> (db/sel :many :fields [DashboardCard :dashboard_id] :card_id [in card-ids])
-                         (map #(clojure.set/rename-keys % {:dashboard_id :model_id})))
-        "Pulse"     (->> (db/sel :many :fields [PulseCard :pulse_id] :card_id [in card-ids])
-                         (map #(clojure.set/rename-keys % {:pulse_id :model_id})))))))
+        "Dashboard" (for [dashcard (db/select [DashboardCard :dashboard_id], :card_id [:in card-ids])]
+                      (set/rename-keys dashcard {:dashboard_id :model_id}))
+        "Pulse"     (for [pulsecard (db/select [PulseCard :pulse_id], :card_id [:in card-ids])]
+                      (set/rename-keys pulsecard {:pulse_id :model_id}))))))
 
 (defn- pull-dependencies [model model-id]
-  (when-let [deps (db/sel :many :fields [Dependency :model :model_id] :dependent_on_model model :dependent_on_id model-id)]
+  (when-let [deps (db/select [Dependency :model :model_id]
+                    :dependent_on_model model
+                    :dependent_on_id    model-id)]
     (let [deps-by-model     (-> (group-by :model deps)
                                 add-objects-dependent-on-cards)
           deps-with-details (for [model (keys deps-by-model)
                                   :let  [ids (mapv :model_id (get deps-by-model model))]]
                               ;; TODO: this is slightly dangerous because we assume :name and :creator_id are available
-                              (->> (db/sel :many :fields [(model->entity (keyword model)) :id :name :creator_id] :id [in ids])
-                                   (map #(assoc % :model model))))]
+                              (for [object (db/select [(model->entity (keyword model)) :id :name :creator_id]
+                                             :id [:in ids])]
+                                (assoc object :model model)))]
       ;; we end up with a list of lists, so flatten before returning
       (flatten deps-with-details))))
 

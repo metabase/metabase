@@ -44,30 +44,30 @@
 ;; ## GET /api/table
 ;; These should come back in alphabetical order and include relevant metadata
 (expect
-  #{{:name                (format-name "categories")
-     :display_name        "Categories"
-     :db_id               (id)
-     :active              true
-     :rows                75
-     :id                  (id :categories)}
-    {:name                (format-name "checkins")
-     :display_name        "Checkins"
-     :db_id               (id)
-     :active              true
-     :rows                1000
-     :id                  (id :checkins)}
-    {:name                (format-name "users")
-     :display_name        "Users"
-     :db_id               (id)
-     :active              true
-     :rows                15
-     :id                  (id :users)}
-    {:name                (format-name "venues")
-     :display_name        "Venues"
-     :db_id               (id)
-     :active              true
-     :rows                100
-     :id                  (id :venues)}}
+  #{{:name         (format-name "categories")
+     :display_name "Categories"
+     :db_id        (id)
+     :active       true
+     :rows         75
+     :id           (id :categories)}
+    {:name         (format-name "checkins")
+     :display_name "Checkins"
+     :db_id        (id)
+     :active       true
+     :rows         1000
+     :id           (id :checkins)}
+    {:name         (format-name "users")
+     :display_name "Users"
+     :db_id        (id)
+     :active       true
+     :rows         15
+     :id           (id :users)}
+    {:name         (format-name "venues")
+     :display_name "Venues"
+     :db_id        (id)
+     :active       true
+     :rows         100
+     :id           (id :venues)}}
   (->> ((user->client :rasta) :get 200 "table")
        (filter #(= (:db_id %) (id)))                        ; prevent stray tables from affecting unit test results
        (map #(dissoc % :raw_table_id :db :created_at :updated_at :schema :entity_name :description :entity_type :visibility_type))
@@ -220,7 +220,7 @@
 ;;; GET api/table/:id/query_metadata?include_sensitive_fields
 ;;; Make sure that getting the User table *does* include info about the password field, but not actual values themselves
 (expect
-    (match-$ (db/sel :one Table :id (id :users))
+    (match-$ (Table (id :users))
       {:description     nil
        :entity_type     nil
        :visibility_type nil
@@ -228,7 +228,7 @@
        :schema          "PUBLIC"
        :name            "USERS"
        :display_name    "Users"
-       :fields          [(match-$ (db/sel :one Field :id (id :users :id))
+       :fields          [(match-$ (Field (id :users :id))
                            {:description     nil
                             :table_id        (id :users)
                             :special_type    "id"
@@ -248,7 +248,7 @@
                             :parent_id       nil
                             :raw_column_id   $
                             :last_analyzed   $})
-                         (match-$ (db/sel :one Field :id (id :users :last_login))
+                         (match-$ (Field (id :users :last_login))
                            {:description     nil
                             :table_id        (id :users)
                             :special_type    nil
@@ -268,7 +268,7 @@
                             :parent_id       nil
                             :raw_column_id   $
                             :last_analyzed   $})
-                         (match-$ (db/sel :one Field :id (id :users :name))
+                         (match-$ (Field (id :users :name))
                            {:description     nil
                             :table_id        (id :users)
                             :special_type    "name"
@@ -288,7 +288,7 @@
                             :parent_id       nil
                             :raw_column_id   $
                             :last_analyzed   $})
-                         (match-$ (db/sel :one Field :table_id (id :users) :name "PASSWORD")
+                         (match-$ (Field :table_id (id :users), :name "PASSWORD")
                            {:description     nil
                             :table_id        (id :users)
                             :special_type    "category"
@@ -478,8 +478,8 @@
 ;; ## GET /api/table/:id/fks
 ;; We expect a single FK from CHECKINS.USER_ID -> USERS.ID
 (expect
-  (let [checkins-user-field (db/sel :one Field :table_id (id :checkins) :name "USER_ID")
-        users-id-field (db/sel :one Field :table_id (id :users) :name "ID")]
+  (let [checkins-user-field (Field :table_id (id :checkins), :name "USER_ID")
+        users-id-field (Field :table_id (id :users), :name "ID")]
     [{:origin_id      (:id checkins-user-field)
       :destination_id (:id users-id-field)
       :relationship   "Mt1"
@@ -558,13 +558,13 @@
 ;; ## POST /api/table/:id/reorder
 (expect-eval-actual-first
     {:result "success"}
-  (let [categories-id-field   (db/sel :one Field :table_id (id :categories) :name "ID")
-        categories-name-field (db/sel :one Field :table_id (id :categories) :name "NAME")
+  (let [categories-id-field   (Field :table_id (id :categories), :name "ID")
+        categories-name-field (Field :table_id (id :categories), :name "NAME")
         api-response          ((user->client :crowberto) :post 200 (format "table/%d/reorder" (id :categories))
                                {:new_order [(:id categories-name-field) (:id categories-id-field)]})]
     ;; check the modified values (have to do it here because the api response tells us nothing)
-    (assert (= 0 (:position (db/sel :one :fields [Field :position] :id (:id categories-name-field)))))
-    (assert (= 1 (:position (db/sel :one :fields [Field :position] :id (:id categories-id-field)))))
+    (assert (= 0 (db/select-one-field :position Field, :id (:id categories-name-field))))
+    (assert (= 1 (db/select-one-field :position Field, :id (:id categories-id-field))))
     ;; put the values back to their previous state
     (db/update! Field (:id categories-name-field), :position 0)
     (db/update! Field (:id categories-id-field),   :position 0)

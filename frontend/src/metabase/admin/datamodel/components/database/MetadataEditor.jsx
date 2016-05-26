@@ -93,13 +93,13 @@ export default class MetadataEditor extends Component {
             }
         } else {
             content = (
-                <div className="flex flex-full layout-centered">
+                <div style={{paddingTop: "10rem"}} className="full text-centered">
                     <h2 className="text-grey-3">Select any table to see its schema and add or edit metadata.</h2>
                 </div>
             );
         }
         return (
-            <div className="MetadataEditor full-height p3">
+            <div className="p3">
                 <MetadataHeader
                     ref="header"
                     databaseId={this.props.databaseId}
@@ -108,7 +108,7 @@ export default class MetadataEditor extends Component {
                     isShowingSchema={this.state.isShowingSchema}
                     toggleShowSchema={this.toggleShowSchema}
                 />
-              <div className="MetadataEditor-main flex flex-row flex-full mt2 full-height">
+              <div style={{minHeight: "60vh"}} className="flex flex-row flex-full mt2 full-height">
                     <MetadataTablePicker
                         tableId={this.props.tableId}
                         tables={(this.props.databaseMetadata) ? this.props.databaseMetadata.tables : []}

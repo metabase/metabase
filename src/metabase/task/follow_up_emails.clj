@@ -6,7 +6,6 @@
             (clojurewerkz.quartzite [jobs :as jobs]
                                     [triggers :as triggers])
             [clojurewerkz.quartzite.schedule.cron :as cron]
-            [korma.core :as k]
             [metabase.db :as db]
             [metabase.email :as email]
             [metabase.email.messages :as messages]
@@ -104,7 +103,7 @@
                (let [tracking? (setting/get :anon-tracking-enabled)]
                  (or (nil? tracking?) (= "true" tracking?))))
       ;; grab the oldest admins email address, that's who we'll send to
-      (when-let [admin (db/sel :one user/User :is_superuser true (k/order :date_joined))]
+      (when-let [admin (user/User :is_superuser true, {:order-by [:date_joined]})]
         (messages/send-follow-up-email (:email admin) "follow-up")))
     (catch Throwable t
       (log/error "Problem sending follow-up email" t))
@@ -115,11 +114,11 @@
   "Send an email to the instance admin about why Metabase usage has died down."
   []
   ;; grab the oldest admins email address, that's who we'll send to
-  (when-let [admin (db/sel :one user/User :is_superuser true (k/order :date_joined))]
+  (when-let [admin (user/User :is_superuser true, {:order-by [:date_joined]})]
     ;; inactive = no users created, no activity created, no dash/card views (past 7 days)
-    (let [last-user      (c/from-sql-time (db/sel :one :field [user/User :date_joined] (k/order :date_joined :DESC) (k/limit 1)))
-          last-activity  (c/from-sql-time (db/sel :one :field [activity/Activity :timestamp] (k/order :timestamp :DESC) (k/limit 1)))
-          last-view      (c/from-sql-time (db/sel :one :field [view-log/ViewLog :timestamp] (k/order :timestamp :DESC) (k/limit 1)))
+    (let [last-user      (c/from-sql-time (db/select-one-field :date_joined user/User,       {:order-by [[:date_joined :desc]]}))
+          last-activity  (c/from-sql-time (db/select-one-field :timestamp activity/Activity, {:order-by [[:timestamp :desc]]}))
+          last-view      (c/from-sql-time (db/select-one-field :timestamp view-log/ViewLog,  {:order-by [[:timestamp :desc]]}))
           two-weeks-ago  (t/minus (t/now) (t/days 14))]
       (when (and (t/before? last-user two-weeks-ago)
                  (t/before? last-activity two-weeks-ago)

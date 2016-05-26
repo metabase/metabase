@@ -12,7 +12,7 @@
 (def ^:private ^:const sample-dataset-filename "sample-dataset.db.mv.db")
 
 (defn add-sample-dataset! []
-  (when-not (db/sel :one Database :is_sample true)
+  (when-not (db/exists? Database :is_sample true)
     (try
       (log/info "Loading sample dataset...")
       (let [resource (io/resource sample-dataset-filename)]
@@ -33,7 +33,7 @@
 
 (defn update-sample-dataset-if-needed! []
   ;; TODO - it would be a bit nicer if we skipped this when the data hasn't changed
-  (when-let [db (db/sel :one Database :is_sample true)]
+  (when-let [db (Database :is_sample true)]
     (try
       (sync-database/sync-database! db)
       (catch Throwable e

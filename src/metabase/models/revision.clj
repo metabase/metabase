@@ -1,13 +1,12 @@
 (ns metabase.models.revision
   (:require [clojure.data :as data]
-            [korma.core :as k]
+            [korma.db :as kdb]
             [metabase.db :as db]
             (metabase.models [hydrate :refer [hydrate]]
                              [interface :as i]
                              [user :refer [User]])
             [metabase.models.revision.diff :refer [diff-string]]
-            [metabase.util :as u]
-            [korma.db :as kdb]))
+            [metabase.util :as u]))
 
 (def ^:const max-revisions
   "Maximum number of revisions to keep for each individual object. After this limit is surpassed, the oldest revisions will be deleted."
@@ -60,16 +59,12 @@
 
 ;;; # Revision Entity
 
-(defn- post-select [{:keys [message] :as revision}]
-  (assoc revision :message (u/jdbc-clob->str message)))
-
 (i/defentity Revision :revision)
 
 (u/strict-extend (class Revision)
   i/IEntity
   (merge i/IEntityDefaults
-         {:types        (constantly {:object :json})
-          :post-select  post-select
+         {:types        (constantly {:object :json, :message :clob})
           :pre-insert   (u/rpartial assoc :timestamp (u/new-sql-timestamp))
           :pre-update   (fn [& _] (throw (Exception. "You cannot update a Revision!")))}))
 
@@ -93,7 +88,7 @@
   [entity id]
   {:pre [(i/metabase-entity? entity)
          (integer? id)]}
-  (db/sel :many Revision :model (:name entity), :model_id id, (k/order :id :DESC)))
+  (db/select Revision, :model (:name entity), :model_id id, {:order-by [[:id :desc]]}))
 
 (defn revisions+details
   "Fetch `revisions` for ENTITY with ID and add details."
@@ -109,7 +104,7 @@
   "Delete old revisions of ENTITY with ID when there are more than `max-revisions` in the DB."
   [entity id]
   {:pre [(i/metabase-entity? entity) (integer? id)]}
-  (when-let [old-revisions (seq (drop max-revisions (db/sel :many :id Revision, :model (:name entity), :model_id id, (k/order :timestamp :DESC))))]
+  (when-let [old-revisions (seq (drop max-revisions (map :id (db/select [Revision :id], :model (:name entity), :model_id id, {:order-by [[:timestamp :desc]]}))))]
     (db/cascade-delete! Revision :id [:in old-revisions])))
 
 (defn push-revision
@@ -149,12 +144,12 @@
          (integer? user-id)
          (db/exists? User :id user-id)
          (integer? revision-id)]}
-  (let [serialized-instance (db/sel :one :field [Revision :object] :model (:name entity), :model_id id, :id revision-id)]
+  (let [serialized-instance (db/select-one-field :object Revision, :model (:name entity), :model_id id, :id revision-id)]
     (kdb/transaction
       ;; Do the reversion of the object
       (revert-to-revision entity id user-id serialized-instance)
       ;; Push a new revision to record this change
-      (let [last-revision (db/sel :one Revision, :model (:name entity), :model_id id, (k/order :id :DESC))
+      (let [last-revision (Revision :model (:name entity), :model_id id, {:order-by [[:id :desc]]})
             new-revision  (db/insert! Revision
                             :model        (:name entity)
                             :model_id     id
