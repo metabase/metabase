@@ -69,7 +69,7 @@
 
 ;; date range substitution
 (expect
-  (let [yesterday "2016-05-23"]
+  (let [yesterday (tf/unparse (tf/formatters :year-month-day) (t/yesterday))]
     {:database   1
      :type       :native
      :native     {:query (str "SELECT * FROM table WHERE date BETWEEN '" yesterday "' AND '" yesterday "'")}})

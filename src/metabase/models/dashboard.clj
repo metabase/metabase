@@ -48,7 +48,7 @@
   (->> (db/insert! Dashboard
                    :name         name
                    :description  description
-                   :parameters   parameters
+                   :parameters   (or parameters [])
                    :public_perms public_perms
                    :creator_id   user-id)
        (events/publish-event :dashboard-create)))
