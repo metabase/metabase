@@ -9,15 +9,15 @@ databaseChangeLog:
               - column:
                   name: parameters
                   type: text
-                  defaultValue: {}
+                  value: []
                   constraints:
-                    nullable: false
+                    nullable: true
         - addColumn:
             tableName: report_dashboardcard
             columns:
               - column:
                   name: parameter_mappings
                   type: text
-                  defaultValue: []
+                  value: []
                   constraints:
-                    nullable: false
+                    nullable: true
