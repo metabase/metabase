@@ -4,39 +4,39 @@ import type { CardObject, CardId } from "./Card";
 import type { ConcreteField } from "./Query";
 
 
-type DashboardObject = {
+export type DashboardObject = {
     id: number,
     ordered_cards: Array<DashCardObject>,
     // incomplete
     parameters: Array<ParameterObject>
 };
 
-type DashCardObject = {
+export type DashCardObject = {
     id: number,
     series: Array<CardObject>,
     // incomplete
     parameter_mappings: Array<ParameterMappingObject>;
 };
 
-type ParameterId = string;
+export type ParameterId = string;
 
-type ParameterType =
+export type ParameterType =
     "date-range" |
     "category" |
     "id";
 
-type ParameterObject = {
+export type ParameterObject = {
     id: ParameterId,
     name: string,
     type: ParameterType,
     default: any
 };
 
-type ParameterMappingTarget =
+export type ParameterMappingTarget =
     ["parameter", string] |
     ["dimension", ConcreteField];
 
-type ParameterMappingObject = {
+export type ParameterMappingObject = {
     card_id: CardId,
     parameter_id: ParameterId,
     target: ParameterMappingTarget
