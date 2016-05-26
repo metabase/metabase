@@ -1,0 +1,30 @@
+:local(.parameter) {
+    float: right;
+    font-size: 16px;
+    font-weight: bold;
+    border: 2px solid var(--grey-1);
+    border-radius: 2px;
+    min-height: 36px;
+    min-width: 200px;
+    background-color: white;
+    display: flex;
+    align-items: center;
+    padding: 0.25em;
+    color: var(--grey-4);
+}
+
+:local(.parameter) input {
+    color: var(--grey-4);
+    flex: 1;
+    font-size: 16px;
+    border: none;
+    background-color: trasparent;
+}
+
+:local(.parameter) input:focus {
+    outline: none;
+}
+
+:local(.parameter.selected) {
+    border-color: var(--brand-color);
+}

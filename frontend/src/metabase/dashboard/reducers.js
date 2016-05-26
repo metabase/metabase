@@ -17,7 +17,8 @@ import {
     DELETE_CARD,
     FETCH_REVISIONS,
     MARK_NEW_CARD_SEEN,
-    FETCH_DATABASE_METADATA
+    FETCH_DATABASE_METADATA,
+    SET_EDITING_PARAMETER
 } from './actions';
 
 export const selectedDashboard = handleActions({
@@ -78,6 +79,10 @@ export const dashcards = handleActions({
         [dashcardId]: { ...state[dashcardId], justAdded: false }
     })
 }, {});
+
+export const editingParameter = handleActions({
+    [SET_EDITING_PARAMETER]: { next: (state, { payload }) => payload }
+}, null);
 
 export const revisions = handleActions({
     [FETCH_REVISIONS]: { next: (state, { payload: { entity, id, revisions } }) => ({ ...state, [entity+'-'+id]: revisions })}

@@ -47,7 +47,7 @@ export default class DashboardHeader extends Component {
         fetchRevisions: PropTypes.func.isRequired,
         revertToRevision: PropTypes.func.isRequired,
         saveDashboard: PropTypes.func.isRequired,
-        setDashboardAttributes: PropTypes.func.isRequired,
+        setDashboardAttribute: PropTypes.func.isRequired,
         onEditingChange: PropTypes.func.isRequired,
         setRefreshPeriod: PropTypes.func.isRequired,
 
@@ -67,13 +67,6 @@ export default class DashboardHeader extends Component {
         this.props.fetchDashboard(this.props.dashboard.id);
     }
 
-    onAttributeChange(attribute, value) {
-        this.props.setDashboardAttributes({
-            id: this.props.dashboard.id,
-            attributes: { [attribute]: value }
-        });
-    }
-
     async onSave() {
         await this.props.saveDashboard(this.props.dashboard.id);
         this.onDoneEditing();
@@ -88,37 +81,6 @@ export default class DashboardHeader extends Component {
         await this.props.deleteDashboard(this.props.dashboard.id);
         this.props.onDashboardDeleted(this.props.dashboard.id)
         this.props.onChangeLocation("/")
-    }
-
-    setParameter(parameter, previousName) {
-        console.log("setting parameter", parameter, previousName);
-        
-        let parameters = this.props.dashboard && this.props.dashboard.parameters || [];
-        
-        if (!_.isEmpty(previousName)) {
-            // remove old expression using original name.  this accounts for case where parameter is renamed.
-            parameters = _.reject(parameters, (p) => p.name === previousName);
-        }
-
-        // now add the new parameter
-        parameters = [...parameters, parameter];
-        this.onAttributeChange("parameters", parameters);
-
-        console.log("parameters", parameters);
-
-        MetabaseAnalytics.trackEvent("Dashboard", "Set Parameter", !_.isEmpty(previousName));
-    }
-
-    removeParameter(parameter) {
-        console.log("remove parameter", parameter);
-
-        let parameters = this.props.dashboard && this.props.dashboard.parameters || [];
-        parameters = _.reject(parameters, (p) => p.name === parameter.name);
-        this.onAttributeChange("parameters", parameters);
-
-        console.log("parameters", parameters);
-
-        MetabaseAnalytics.trackEvent("Dashboard", "Remove Parameter");
     }
 
     // 1. fetch revisions
@@ -210,10 +172,7 @@ export default class DashboardHeader extends Component {
                     {this.state.modal && this.state.modal === "parameters" &&
                         <Popover onClose={() => this.setState({modal: false})}>
                             <ParametersPopover
-                                parameters={dashboard.parameters}
-                                cards={this.props.cards}
-                                onSetParameter={(newParameter) => this.setParameter(newParameter, name)}
-                                onRemoveParameter={(parameter) => this.removeParameter(parameter)}
+                                onAddParameter={this.props.addParameter}
                                 onClose={() => this.setState({modal: false})}
                             />
                         </Popover>
@@ -300,7 +259,10 @@ export default class DashboardHeader extends Component {
                 headerButtons={this.getHeaderButtons()}
                 editingTitle="You are editing a dashboard"
                 editingButtons={this.getEditingButtons()}
-                setItemAttributeFn={this.onAttributeChange.bind(this)}
+                setItemAttributeFn={this.props.setDashboardAttribute}
+                headerModalMessage={this.props.isEditingParameter ?
+                    "Select the field that should be filtered for each card" : null}
+                onHeaderModalDone={() => this.props.setEditingParameter(null)}
             >
             </Header>
         );
