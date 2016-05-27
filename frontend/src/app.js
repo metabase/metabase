@@ -159,6 +159,28 @@ Metabase.run(["AppState", function(AppState) {
     // initialize app state
     AppState.init();
 
+    document.body.ondragover = function () {
+        this.className = "drophover";
+        return false;
+    };
+    document.body.ondragleave =
+    document.body.ondragend = function () {
+        this.className = "";
+        return false;
+    };
+    document.body.ondrop = function (e) {
+        this.className = "";
+        e.preventDefault();
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/upload/upload_table');
+        xhr.onload = function() {
+            let result = JSON.parse(xhr.responseText);
+            window.location = "/q?db=" + result.db + "&table=" + result.table;
+        };
+        xhr.send(e.dataTransfer.files[0]);
+    }
+
     // start our analytics click listener
     registerAnalyticsClickListener();
 }]);

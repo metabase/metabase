@@ -20,6 +20,7 @@
                           [slack :as slack]
                           [table :as table]
                           [tiles :as tiles]
+                          [upload :as upload]
                           [user :as user]
                           [util :as util])
             [metabase.middleware :as middleware]))
@@ -55,6 +56,7 @@
   (context "/slack"        [] (+auth slack/routes))
   (context "/table"        [] (+auth table/routes))
   (context "/tiles"        [] (+auth tiles/routes))
+  (context "/upload"         [] (+auth upload/routes))
   (context "/user"         [] (+auth user/routes))
   (context "/util"         [] util/routes)
   (route/not-found (fn [{:keys [request-method uri]}]

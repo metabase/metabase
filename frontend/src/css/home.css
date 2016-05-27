@@ -199,3 +199,18 @@
     line-height: 1;
     text-transform: uppercase;
 }
+
+.drophover:after {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  background-color: rgba(255,255,255,0.5);
+  z-index: 999999;
+  border: 5px dashed var(--brand-color);
+  margin: 5px;
+  border-radius: 25px;
+}
