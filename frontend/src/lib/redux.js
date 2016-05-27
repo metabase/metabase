@@ -25,13 +25,15 @@ if (DEBUG) {
 // common createStore with middleware applied
 export const createStore = compose(
   applyMiddleware(...middleware),
-  reduxReactRouter({ createHistory })
+  reduxReactRouter({ createHistory }),
+  window.devToolsExtension ? window.devToolsExtension() : f => f
 )(originalCreateStore);
 
 export const createStoreWithAngularScope = ($scope, $location, ...args) => {
     return compose(
         applyMiddleware(...middleware),
-        reduxReactRouter({ createHistory: createAngularHistory.bind(null, $scope, $location) })
+        reduxReactRouter({ createHistory: createAngularHistory.bind(null, $scope, $location) }),
+        window.devToolsExtension ? window.devToolsExtension() : f => f
     )(originalCreateStore)(...args);
 }
 
