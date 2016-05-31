@@ -6,7 +6,7 @@ import Visualization from "metabase/visualizations/components/Visualization.jsx"
 
 import Icon from "metabase/components/Icon.jsx";
 
-import DashCardParameterMapping from "../containers/DashCardParameterMapping.jsx";
+import DashCardParameterMapper from "../components/DashCardParameterMapper.jsx";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -117,7 +117,7 @@ export default class DashCard extends Component {
                     gridSize={this.props.isMobile ? undefined : { width: dashcard.sizeX, height: dashcard.sizeY }}
                     actionButtons={isEditing ? <DashCardActionButtons series={series} visualization={CardVisualization} onRemove={onRemove} onAddSeries={onAddSeries} /> : undefined}
                     onUpdateVisualizationSetting={this.props.onUpdateVisualizationSetting}
-                    replacementContent={isEditingParameter && <DashCardParameterMapping dashcard={dashcard} />}
+                    replacementContent={isEditingParameter && <DashCardParameterMapper dashcard={dashcard} />}
                 />
             </div>
         );

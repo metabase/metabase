@@ -6,7 +6,8 @@ import { connect } from "react-redux";
 import Dashboard from "../components/Dashboard.jsx";
 
 import { getIsEditing, getIsEditingParameter, getIsDirty, getSelectedDashboard, getDashboardComplete, getCardList, getRevisions, getCardData, getCardDurations, getDatabases, getEditingParameter } from "../selectors";
-import * as mapDispatchToProps from "../actions";
+import * as dashboardActions from "../dashboard";
+import { fetchDatabaseMetadata } from "../metadata";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -22,6 +23,11 @@ const mapStateToProps = (state, props) => {
       databases:            getDatabases(state),
       editingParameter:     getEditingParameter(state)
   }
+}
+
+const mapDispatchToProps = {
+    ...dashboardActions,
+    fetchDatabaseMetadata
 }
 
 @connect(mapStateToProps, mapDispatchToProps)

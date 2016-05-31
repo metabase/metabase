@@ -14,7 +14,7 @@ export default class ParameterWidget extends Component {
     }
 
     render() {
-        const { className, parameter, isEditing, isSelected, onNameChange, setEditingParameter } = this.props;
+        const { className, parameter, isEditing, isSelected, onNameChange, setEditingParameterId } = this.props;
         return (
             <div className={className}>
                 { isEditing && isSelected && <div className="mb1">Give your filter a label</div>}
@@ -28,7 +28,7 @@ export default class ParameterWidget extends Component {
                         />
                     </div>
                 : isEditing && !isSelected ?
-                    <div className={S.parameter} onClick={() => setEditingParameter(parameter.id)}>
+                    <div className={S.parameter} onClick={() => setEditingParameterId(parameter.id)}>
                         {parameter.name}
                     </div>
                 :

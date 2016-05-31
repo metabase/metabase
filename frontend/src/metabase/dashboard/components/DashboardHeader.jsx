@@ -262,7 +262,7 @@ export default class DashboardHeader extends Component {
                 setItemAttributeFn={this.props.setDashboardAttribute}
                 headerModalMessage={this.props.isEditingParameter ?
                     "Select the field that should be filtered for each card" : null}
-                onHeaderModalDone={() => this.props.setEditingParameter(null)}
+                onHeaderModalDone={() => this.props.setEditingParameterId(null)}
             >
             </Header>
         );

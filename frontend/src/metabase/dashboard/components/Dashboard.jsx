@@ -192,7 +192,7 @@ export default class Dashboard extends Component {
 
 
         this.setDashboardAttribute("parameters", [...parameters, parameter]);
-        this.props.setEditingParameter(parameter.id);
+        this.props.setEditingParameterId(parameter.id);
     }
 
     removeParameter(parameterId) {
@@ -297,10 +297,10 @@ export default class Dashboard extends Component {
                                         className="ml1"
                                         parameter={parameter}
                                         isEditing={isEditing}
-                                        isSelected={editingParameter === parameter.id}
+                                        isSelected={editingParameter && editingParameter.id === parameter.id}
                                         onNameChange={(name) => this.setParameterName(parameter, name)}
                                         onChange={(value) => this.setParameterValue(parameter, value)}
-                                        setEditingParameter={this.props.setEditingParameter}
+                                        setEditingParameterId={this.props.setEditingParameterId}
                                     />
                                 )}
                             </div>

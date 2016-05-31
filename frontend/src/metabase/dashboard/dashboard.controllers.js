@@ -1,9 +1,14 @@
 import { createStore, combineReducers } from "metabase/lib/redux";
 
 import DashboardApp from './containers/DashboardApp.jsx';
-import * as reducers from './reducers';
 
-const reducer = combineReducers(reducers);
+import metadata from './metadata';
+import dashboard from './dashboard';
+
+const reducer = combineReducers({
+    metadata,
+    dashboard
+});
 
 //  Dashboard Controllers
 var DashboardControllers = angular.module('metabase.dashboard.controllers', []);
@@ -19,7 +24,7 @@ DashboardControllers.controller('Dashboard', ['$scope', '$rootScope', '$routePar
             $scope.$apply(() => $rootScope.$broadcast("dashboard:delete", id));
         }
     };
-    $scope.store = createStore(reducer, { selectedDashboard: $routeParams.dashId });
+    $scope.store = createStore(reducer, { dashboard: { selectedDashboard: $routeParams.dashId }});
     // $scope.monitor = LogMonitor;
 
     // this simply clears the query param so the url is tidy and the user doesn't accidentally reload and get the edit page again

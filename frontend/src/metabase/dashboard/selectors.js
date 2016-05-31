@@ -4,15 +4,15 @@ import _ from "underscore";
 
 import { createSelector } from 'reselect';
 
-export const getSelectedDashboard = state => state.selectedDashboard
-export const getIsEditing         = state => state.isEditing;
-export const getCards             = state => state.cards;
-export const getDashboards        = state => state.dashboards;
-export const getDashcards         = state => state.dashcards;
-export const getCardData          = state => state.cardData;
-export const getCardDurations     = state => state.cardDurations;
-export const getCardIdList        = state => state.cardList;
-export const getRevisions         = state => state.revisions;
+export const getSelectedDashboard = state => state.dashboard.selectedDashboard
+export const getIsEditing         = state => state.dashboard.isEditing;
+export const getCards             = state => state.dashboard.cards;
+export const getDashboards        = state => state.dashboard.dashboards;
+export const getDashcards         = state => state.dashboard.dashcards;
+export const getCardData          = state => state.dashboard.cardData;
+export const getCardDurations     = state => state.dashboard.cardDurations;
+export const getCardIdList        = state => state.dashboard.cardList;
+export const getRevisions         = state => state.dashboard.revisions;
 
 export const getDatabases         = state => state.metadata.databases;
 
@@ -47,6 +47,50 @@ export const getCardList = createSelector(
     (cardIdList, cards) => cardIdList && cardIdList.map(id => cards[id])
 );
 
-export const getEditingParameter = (state) => state.editingParameter;
+export const getEditingParameterId = (state) => state.dashboard.editingParameterId;
 
-export const getIsEditingParameter = (state) => state.editingParameter != null;
+export const getEditingParameter = createSelector(
+    [getDashboard, getEditingParameterId],
+    (dashboard, editingParameterId) => editingParameterId != null ? _.findWhere(dashboard.parameters, { id: editingParameterId }) : null
+);
+
+export const getIsEditingParameter = (state) => state.dashboard.editingParameterId != null;
+
+const getDatabase = (state, props) => state.metadata.databases[props.card.dataset_query.database];
+const getCard = (state, props) => props.card;
+const getDashCard = (state, props) => props.dashcard;
+
+export const getParameterTarget = createSelector(
+    [getEditingParameter, getCard, getDashCard],
+    (parameter, card, dashcard) => {
+        const mapping = _.findWhere(dashcard.parameter_mappings, { card_id: card.id, parameter_id: parameter.id });
+        return mapping && mapping.target;
+    }
+);
+
+export const makeGetParameterMappingOptions = () => {
+
+    const getParameterMappingOptions = createSelector(
+        [getEditingParameter, getDatabase, getCard, getDashCard],
+        (parameter, database, card, dashcard) => {
+            if (card.dataset_query.type === "query") {
+                const table = database && database.tables_lookup[card.dataset_query.query.source_table];
+                if (table) {
+                    return table.fields.map(field => {
+                        const target = ["dimension", ["field", field.id]];
+                        return {
+                            name: field.display_name,
+                            value: target
+                        };
+                    });
+                }
+            } else {
+                return [
+                    { name: "FIXME: SQL parameter options not yet implemented" }
+                ];
+            }
+            return [];
+        }
+    );
+    return getParameterMappingOptions;
+}

@@ -1,16 +1,13 @@
+import i from "icepick";
 import _ from "underscore";
+import moment from "moment";
 
 import { createAction } from "redux-actions";
-import { AngularResourceProxy, createThunkAction } from "metabase/lib/redux";
+import { handleActions, combineReducers, AngularResourceProxy, createThunkAction } from "metabase/lib/redux";
 import { normalize, Schema, arrayOf } from "normalizr";
-
-import moment from "moment";
-import { augmentDatabase } from "metabase/lib/table";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
-
-import { createParameter } from "metabase/meta/Dashboard";
 
 const DATASET_SLOW_TIMEOUT   = 15 * 1000;
 const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
@@ -50,8 +47,9 @@ export const MARK_NEW_CARD_SEEN = 'MARK_NEW_CARD_SEEN';
 
 export const FETCH_DATABASE_METADATA = 'FETCH_DATABASE_METADATA';
 
-export const SET_EDITING_PARAMETER = 'SET_EDITING_PARAMETER';
+export const SET_EDITING_PARAMETER_ID = 'SET_EDITING_PARAMETER_ID';
 export const ADD_PARAMETER = 'ADD_PARAMETER';
+export const SET_PARAMETER_MAPPING = 'SET_PARAMETER_MAPPING';
 
 // resource wrappers
 const DashboardApi = new AngularResourceProxy("Dashboard", ["get", "update", "delete", "reposition_cards", "addcard", "removecard"]);
@@ -88,14 +86,14 @@ export const deleteCard = createThunkAction(DELETE_CARD, function(cardId) {
 
 export const addCardToDashboard = function({ dashId, cardId }) {
     return function(dispatch, getState) {
-        var state = getState();
-        var existingCards = state.dashboards[dashId].ordered_cards.map(id => state.dashcards[id]).filter(dc => !dc.isRemoved);
-        let id = Math.random(); // temporary id
+        const { dashboards, dashcards, cards } = getState().dashboard;
+        const existingCards = dashboards[dashId].ordered_cards.map(id => dashcards[id]).filter(dc => !dc.isRemoved);
+        const id = Math.random(); // temporary id
         dispatch(createAction(ADD_CARD_TO_DASH)({
             id: id,
             dashboard_id: dashId,
             card_id: cardId,
-            card: state.cards[cardId],
+            card: cards[cardId],
             ...getPositionForNewDashCard(existingCards)
         }));
     };
@@ -114,7 +112,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card) {
 
         // if we have a parameter, apply it to the card query before we execute
         // ick!  are we being mutable here?
-        let { dashboards, selectedDashboard } = getState();
+        let { dashboards, selectedDashboard } = getState().dashboard;
         let dashboard = dashboards[selectedDashboard];
         let query = card.dataset_query;
         if (dashboard.parameters && dashboard.parameters.length > 0) {
@@ -127,7 +125,6 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card) {
                     } else {
                         cardParameter.value = parameter.value;
                     }
-                    console.log("card parameter", cardParameter);
                 }
             }
         }
@@ -160,7 +157,7 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(id) {
 
 export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) {
     return async function(dispatch, getState) {
-        let { dashboards, dashcards } = getState();
+        let { dashboards, dashcards } = getState().dashboard;
         let dashboard = {
             ...dashboards[dashId],
             ordered_cards: dashboards[dashId].ordered_cards.map(dashcardId => dashcards[dashcardId])
@@ -178,7 +175,7 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
                 if (dc.isAdded) {
                     let result = await DashboardApi.addcard({ dashId, cardId: dc.card_id })
                     // mark isAdded because addcard doesn't record the position
-                    return { ...result, col: dc.col, row: dc.row, sizeX: dc.sizeX, sizeY: dc.sizeY, series: dc.series, isAdded: true }
+                    return { ...result, col: dc.col, row: dc.row, sizeX: dc.sizeX, sizeY: dc.sizeY, series: dc.series, parameter_mappings: dc.parameter_mappings, isAdded: true }
                 } else {
                     return dc;
                 }
@@ -192,7 +189,6 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
         // update the dashboard itself
         if (dashboard.isDirty) {
             let { id, name, description, public_perms, parameters } = dashboard;
-            console.log("saving", parameters);
             dashboard = await DashboardApi.update({ id, name, description, public_perms, parameters });
             // HACK!
             dashboard.parameters = parameters;
@@ -200,7 +196,7 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
 
         // reposition the cards
         if (_.some(updatedDashcards, (dc) => dc.isDirty || dc.isAdded)) {
-            let cards = updatedDashcards.map(({ id, row, col, sizeX, sizeY, series }) => ({ id, row, col, sizeX, sizeY, series }));
+            let cards = updatedDashcards.map(({ id, row, col, sizeX, sizeY, series, parameter_mappings }) => ({ id, row, col, sizeX, sizeY, series, parameter_mappings }));
             var result = await DashboardApi.reposition_cards({ dashId, cards });
             if (result.status !== "ok") {
                 throw new Error(result.status);
@@ -237,14 +233,106 @@ export const revertToRevision = createThunkAction(REVERT_TO_REVISION, function({
     };
 });
 
-export const fetchDatabaseMetadata = createThunkAction(FETCH_DATABASE_METADATA, function(dbId) {
-    return async function(dispatch, getState) {
-        let databaseMetadata = await MetabaseApi.db_metadata({ dbId });
-        augmentDatabase(databaseMetadata);
-        return databaseMetadata;
-    };
-});
-
 export const setDashCardVisualizationSetting = createAction(SET_DASHCARD_VISUALIZATION_SETTING);
 
-export const setEditingParameter = createAction(SET_EDITING_PARAMETER);
+export const setEditingParameterId = createAction(SET_EDITING_PARAMETER_ID);
+export const setParameterMapping = createThunkAction(SET_PARAMETER_MAPPING, (parameter_id, dashcard_id, card_id, target) =>
+    (dispatch, getState) => {
+        let { parameter_mappings } = getState().dashboard.dashcards[dashcard_id];
+        parameter_mappings = parameter_mappings.filter(m => m.card_id !== card_id || m.parameter_id !== parameter_id);
+        if (target) {
+            parameter_mappings = parameter_mappings.concat({ parameter_id, card_id, target })
+        }
+        dispatch(setDashCardAttributes({ id: dashcard_id, attributes: { parameter_mappings }}));
+    }
+);
+
+// reducers
+
+const selectedDashboard = handleActions({
+    [SELECT_DASHBOARD]: { next: (state, { payload }) => payload }
+}, null);
+
+const isEditing = handleActions({
+    [SET_EDITING_DASHBOARD]: { next: (state, { payload }) => payload }
+}, false);
+
+const cards = handleActions({
+    [FETCH_CARDS]: { next: (state, { payload }) => ({ ...payload.entities.card }) }
+}, {});
+
+const cardList = handleActions({
+    [FETCH_CARDS]: { next: (state, { payload }) => payload.result },
+    [DELETE_CARD]: { next: (state, { payload }) => state }
+}, null);
+
+const dashboards = handleActions({
+    [FETCH_DASHBOARD]: { next: (state, { payload }) => ({ ...state, ...payload.entities.dashboard }) },
+    [SET_DASHBOARD_ATTRIBUTES]: {
+        next: (state, { payload: { id, attributes } }) => ({
+            ...state,
+            [id]: { ...state[id], ...attributes, isDirty: true }
+        })
+    },
+    [ADD_CARD_TO_DASH]: (state, { payload: dashcard }) => ({
+        ...state, [dashcard.dashboard_id]: { ...state[dashcard.dashboard_id], ordered_cards: [...state[dashcard.dashboard_id].ordered_cards, dashcard.id] }
+    }),
+}, {});
+
+const dashcards = handleActions({
+    [FETCH_DASHBOARD]:  { next: (state, { payload }) => ({ ...state, ...payload.entities.dashcard }) },
+    [SET_DASHCARD_ATTRIBUTES]: {
+        next: (state, { payload: { id, attributes } }) => ({
+            ...state,
+            [id]: { ...state[id], ...attributes, isDirty: true }
+        })
+    },
+    [SET_DASHCARD_VISUALIZATION_SETTING]: {
+        next: (state, { payload: { id, setting, value } }) =>
+            i.chain(state)
+                .assocIn([id, "card", "visualization_settings"].concat(setting), value)
+                .assocIn([id, "card", "isDirty"], true)
+                .value()
+    },
+    [ADD_CARD_TO_DASH]: (state, { payload: dashcard }) => ({
+        ...state,
+        [dashcard.id]: { ...dashcard, isAdded: true, justAdded: true }
+    }),
+    [REMOVE_CARD_FROM_DASH]: (state, { payload: { dashcardId }}) => ({
+        ...state,
+        [dashcardId]: { ...state[dashcardId], isRemoved: true }
+    }),
+    [MARK_NEW_CARD_SEEN]: (state, { payload: dashcardId }) => ({
+        ...state,
+        [dashcardId]: { ...state[dashcardId], justAdded: false }
+    })
+}, {});
+
+const editingParameterId = handleActions({
+    [SET_EDITING_PARAMETER_ID]: { next: (state, { payload }) => payload }
+}, null);
+
+const revisions = handleActions({
+    [FETCH_REVISIONS]: { next: (state, { payload: { entity, id, revisions } }) => ({ ...state, [entity+'-'+id]: revisions })}
+}, {});
+
+const cardData = handleActions({
+    [FETCH_CARD_DATA]: { next: (state, { payload: { id, result }}) => ({ ...state, [id]: result }) }
+}, {});
+
+const cardDurations = handleActions({
+    [FETCH_CARD_DURATION]: { next: (state, { payload: { id, result }}) => ({ ...state, [id]: result }) }
+}, {});
+
+export default combineReducers({
+    selectedDashboard,
+    isEditing,
+    cards,
+    cardList,
+    dashboards,
+    dashcards,
+    editingParameterId,
+    revisions,
+    cardData,
+    cardDurations
+})
