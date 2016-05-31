@@ -50,6 +50,9 @@ export const FETCH_DATABASE_METADATA = 'FETCH_DATABASE_METADATA';
 export const SET_EDITING_PARAMETER_ID = 'SET_EDITING_PARAMETER_ID';
 export const ADD_PARAMETER = 'ADD_PARAMETER';
 export const SET_PARAMETER_MAPPING = 'SET_PARAMETER_MAPPING';
+export const SET_PARAMETER_NAME = 'SET_PARAMETER_NAME';
+export const SET_PARAMETER_VALUE = 'SET_PARAMETER_VALUE';
+export const SET_PARAMETER_DEFAULT_VALUE = 'SET_PARAMETER_DEFAULT_VALUE';
 
 // resource wrappers
 const DashboardApi = new AngularResourceProxy("Dashboard", ["get", "update", "delete", "reposition_cards", "addcard", "removecard"]);
@@ -101,7 +104,7 @@ export const addCardToDashboard = function({ dashId, cardId }) {
 
 export const removeCardFromDashboard = createAction(REMOVE_CARD_FROM_DASH);
 
-export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card) {
+export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, dashcard) {
     return async function(dispatch, getState) {
         let result = null;
         let slowCardTimer = setTimeout(() => {
@@ -111,25 +114,32 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card) {
         }, DATASET_SLOW_TIMEOUT);
 
         // if we have a parameter, apply it to the card query before we execute
-        // ick!  are we being mutable here?
-        let { dashboards, selectedDashboard } = getState().dashboard;
+        let { dashboards, selectedDashboard, parameterValues } = getState().dashboard;
+
         let dashboard = dashboards[selectedDashboard];
-        let query = card.dataset_query;
-        if (dashboard.parameters && dashboard.parameters.length > 0) {
-            for (var i=0; i < dashboard.parameters.length; i++) {
-                let parameter = dashboard.parameters[i];
-                let cardParameter = _.find(card.dataset_query.parameters || [], (p) => p.name === parameter.name);
-                if (cardParameter) {
-                    if (!parameter.value || _.isEmpty(parameter.value)) {
-                        delete cardParameter.value;
-                    } else {
-                        cardParameter.value = parameter.value;
-                    }
+
+        let parameters = [];
+        if (dashboard.parameters) {
+            for (const parameter of dashboard.parameters) {
+                let mapping = _.findWhere(dashcard && dashcard.parameter_mappings, { card_id: card.id, parameter_id: parameter.id });
+                let target = mapping && mapping.target;
+                let value;
+                if (parameterValues[parameter.id] != null) {
+                    value = parameterValues[parameter.id];
+                } else if (parameter.default != null) {
+                    value = parameter.default;
+                }
+                if (value !== undefined) {
+                    parameters.push({ target, value });
                 }
             }
         }
 
-        result = await MetabaseApi.dataset(query);
+        result = await MetabaseApi.dataset({
+            ...card.dataset_query,
+            parameters
+        });
+
         clearTimeout(slowCardTimer);
         return { id: card.id, result };
     };
@@ -247,6 +257,12 @@ export const setParameterMapping = createThunkAction(SET_PARAMETER_MAPPING, (par
     }
 );
 
+export const setParameterValue = createThunkAction(SET_PARAMETER_VALUE, (parameterId, value) =>
+    (dispatch, getState) => {
+        return { id: parameterId, value };
+    }
+)
+
 // reducers
 
 const selectedDashboard = handleActions({
@@ -324,6 +340,10 @@ const cardDurations = handleActions({
     [FETCH_CARD_DURATION]: { next: (state, { payload: { id, result }}) => ({ ...state, [id]: result }) }
 }, {});
 
+const parameterValues = handleActions({
+    [SET_PARAMETER_VALUE]: { next: (state, { payload: { id, value }}) => i.assoc(state, id, value) }
+}, {});
+
 export default combineReducers({
     selectedDashboard,
     isEditing,
@@ -334,5 +354,6 @@ export default combineReducers({
     editingParameterId,
     revisions,
     cardData,
-    cardDurations
-})
+    cardDurations,
+    parameterValues
+});

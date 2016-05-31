@@ -81,7 +81,7 @@ export default class AddSeriesModal extends Component {
             if (e.target.checked) {
                 if (this.props.cardData[card.id] === undefined) {
                     this.setState({ state: "loading" });
-                    await this.props.fetchCardData(card);
+                    await this.props.fetchCardData(card, dashcard);
                 }
                 let sourceDataset = this.props.cardData[dashcard.card.id];
                 let seriesDataset = this.props.cardData[card.id];

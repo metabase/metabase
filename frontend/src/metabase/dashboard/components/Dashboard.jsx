@@ -94,6 +94,12 @@ export default class Dashboard extends Component {
         }
     }
 
+    componentWillReceiveProps(nextProps) {
+        if (!_.isEqual(this.props.parameterValues, nextProps.parameterValues)) {
+            this.fetchDashboardCardData();
+        }
+    }
+
     componentWillMount() {
         if (screenfull.enabled) {
             document.addEventListener(screenfull.raw.fullscreenchange, this.fullScreenChanged);
@@ -218,30 +224,14 @@ export default class Dashboard extends Component {
         });
     }
 
-    setParameterValue(parameter, value) {
-        console.log("setting dash param", parameter, value);
-
-        let parameters = this.props.dashboard.parameters || [],
-            param = _.find(parameters, (p) => p.name === parameter.name);
-
-        // ick.  mutability
-        param.value = value;
-
-        this.props.setDashboardAttributes({
-            id: this.props.dashboard.id,
-            attributes: { "parameters": parameters }
-        });
-
-        // now refresh all the cards
-        let cards = {};
-        for (let dashcard of this.props.dashboard.ordered_cards) {
-            cards[dashcard.card.id] = dashcard.card;
-            for (let card of dashcard.series) {
-                cards[card.id] = card;
+    // we don't call this initially because DashCards initiate their own fetchCardData
+    fetchDashboardCardData() {
+        console.log("refreshing card data");
+        for (const dashcard of this.props.dashboard.ordered_cards) {
+            const cards = [dashcard.card].concat(dashcard.series || []);
+            for (const card of cards) {
+                this.props.fetchCardData(card, dashcard);
             }
-        }
-        for (let card of Object.values(cards)) {
-            this.props.fetchCardData(card);
         }
     }
 
@@ -251,24 +241,22 @@ export default class Dashboard extends Component {
             refreshElapsed = 0;
 
             await this.props.fetchDashboard(this.props.selectedDashboard);
-            let cards = {};
-            for (let dashcard of this.props.dashboard.ordered_cards) {
-                cards[dashcard.card.id] = dashcard.card;
-                for (let card of dashcard.series) {
-                    cards[card.id] = card;
-                }
-            }
-            for (let card of Object.values(cards)) {
-                this.props.fetchCardData(card);
-            }
+            this.fetchDashboardCardData();
         }
         this.setState({ refreshElapsed });
     }
 
     render() {
-        let { dashboard, isEditing, editingParameter } = this.props;
+        let { dashboard, isEditing, editingParameter, parameterValues } = this.props;
         let { error, isFullscreen, isNightMode } = this.state;
         isNightMode = isNightMode && isFullscreen;
+
+        const parameterSlugCounts = {};
+        if (this.props.dashboard) {
+            for (const param of this.props.dashboard.parameters) {
+                parameterSlugCounts[param.slug] = (parameterSlugCounts[param.slug] || 0) + 1
+            }
+        }
 
         return (
             <LoadingAndErrorWrapper style={{ minHeight: "100%" }} className={cx("Dashboard absolute top left right", { "Dashboard--fullscreen": isFullscreen, "Dashboard--night": isNightMode})} loading={!dashboard} error={error}>
@@ -298,9 +286,11 @@ export default class Dashboard extends Component {
                                         parameter={parameter}
                                         isEditing={isEditing}
                                         isSelected={editingParameter && editingParameter.id === parameter.id}
+                                        isValid={(parameter.slug && parameterSlugCounts[parameter.slug] < 2) && parameter.name !== ""}
                                         onNameChange={(name) => this.setParameterName(parameter, name)}
-                                        onChange={(value) => this.setParameterValue(parameter, value)}
                                         setEditingParameterId={this.props.setEditingParameterId}
+                                        setParameterValue={this.props.setParameterValue}
+                                        parameterValue={parameterValues[parameter.id]}
                                     />
                                 )}
                             </div>

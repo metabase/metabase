@@ -41,8 +41,8 @@ export default class DashCardParameterMapping extends Component {
     render() {
         const { mappingOptions, parameter, dashcard, card, target, setParameterMapping } = this.props;
         return (
-            <select className="m1" value={JSON.stringify(target)} onChange={(e) => setParameterMapping(parameter.id, dashcard.id, card.id, JSON.parse(e.target.value))}>
-                <option></option>
+            <select className="m1" value={JSON.stringify(target)||""} onChange={(e) => setParameterMapping(parameter.id, dashcard.id, card.id, JSON.parse(e.target.value))}>
+                <option value=""></option>
                 {mappingOptions.map(mappingOption =>
                     <option value={JSON.stringify(mappingOption.value)}>{mappingOption.name}</option>
                 )}

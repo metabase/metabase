@@ -3,13 +3,13 @@
     font-size: 16px;
     font-weight: bold;
     border: 2px solid var(--grey-1);
-    border-radius: 2px;
+    border-radius: 4px;
     min-height: 36px;
     min-width: 200px;
     background-color: white;
     display: flex;
     align-items: center;
-    padding: 0.25em;
+    padding: 0.25em 0.5em 0.25em 0.5em;
     color: var(--grey-4);
 }
 
@@ -27,4 +27,12 @@
 
 :local(.parameter.selected) {
     border-color: var(--brand-color);
+}
+
+:local(.parameter.invalid) {
+    border-color: var(--warning-color) !important;
+}
+
+:local(.parameter.hasValue) {
+    color: var(--brand-color) !important;
 }

@@ -13,6 +13,7 @@ export const getCardData          = state => state.dashboard.cardData;
 export const getCardDurations     = state => state.dashboard.cardDurations;
 export const getCardIdList        = state => state.dashboard.cardList;
 export const getRevisions         = state => state.dashboard.revisions;
+export const getParameterValues   = state => state.dashboard.parameterValues;
 
 export const getDatabases         = state => state.metadata.databases;
 
