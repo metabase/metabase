@@ -3,7 +3,8 @@
             [clojure.string :as s]
             [clj-time.core :as t]
             [clj-time.format :as tf]
-            [medley.core :as m]))
+            [medley.core :as m]
+            [metabase.driver :as driver]))
 
 
 (def ^:private ^:const relative-dates
@@ -135,13 +136,15 @@
                                                  sql))))
     query-dict))
 
-(defn- expand-params-native [query-dict params]
-  (let [report-timezone (get-in query-dict [:settings :report-timezone])
-        params          (flatten (map (partial expand-date-range-param report-timezone) params))]
-    (-> (substitute-all-params query-dict params)
-        remove-incomplete-clauses
-        process-multi-clauses
-        process-single-clauses)))
+(defn- expand-params-native [{:keys [driver], :as query-dict} params]
+  (if-not (driver/driver-supports? driver :native-parameters)
+    query-dict
+    (let [report-timezone (get-in query-dict [:settings :report-timezone])
+          params          (flatten (map (partial expand-date-range-param report-timezone) params))]
+      (-> (substitute-all-params query-dict params)
+          remove-incomplete-clauses
+          process-multi-clauses
+          process-single-clauses))))
 
 
 ;;; +-------------------------------------------------------------------------------------------------------+

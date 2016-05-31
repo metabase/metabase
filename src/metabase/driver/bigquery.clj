@@ -472,8 +472,9 @@
           ;; people can manually specifiy "foreign key" relationships in admin and everything should work correctly.
           ;; Since we can't infer any "FK" relationships during sync our normal FK tests are not appropriate for BigQuery, so they're disabled for the time being.
           ;; TODO - either write BigQuery-speciifc tests for FK functionality or add additional code to manually set up these FK relationships for FK tables
-          :features              (constantly (when-not config/is-test?
-                                               #{:foreign-keys}))
+          :features              (constantly (merge #{:native-parameters}
+                                                    (when-not config/is-test?
+                                                      :foreign-keys)))
           :field-values-lazy-seq (u/drop-first-arg field-values-lazy-seq)
           :mbql->native          (u/drop-first-arg mbql->native)}))
 
