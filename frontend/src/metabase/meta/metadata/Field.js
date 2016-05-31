@@ -9,6 +9,8 @@ export default class Field extends Base {
     static type = "field";
     static schema = {};
 
+    id: number;
+    display_name: string;
     table_id: number;
     fk_target_field_id: number;
 
