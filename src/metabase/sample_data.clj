@@ -11,7 +11,9 @@
 (def ^:private ^:const sample-dataset-name     "Sample Dataset")
 (def ^:private ^:const sample-dataset-filename "sample-dataset.db.mv.db")
 
-(defn add-sample-dataset! []
+(defn add-sample-dataset!
+  "Add the sample dataset as a Metabase DB if it doesn't already exist."
+  []
   (when-not (db/exists? Database :is_sample true)
     (try
       (log/info "Loading sample dataset...")
@@ -29,12 +31,14 @@
                           :is_sample true)]
             (sync-database/sync-database! db))))
       (catch Throwable e
-        (log/error (u/format-color 'red "Failed to load sample dataset: %s" (.getMessage e)))))))
+        (log/error (u/format-color 'red "Failed to load sample dataset: %s\n%s" (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e))))))))
 
-(defn update-sample-dataset-if-needed! []
+(defn update-sample-dataset-if-needed!
+  "Re-sync the sample dataset DB if it exists."
+  []
   ;; TODO - it would be a bit nicer if we skipped this when the data hasn't changed
   (when-let [db (Database :is_sample true)]
     (try
       (sync-database/sync-database! db)
       (catch Throwable e
-        (log/error (u/format-color 'red "Failed to update sample dataset: %s" (.getMessage e)))))))
+        (log/error (u/format-color 'red "Failed to update sample dataset: %s\n%s" (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e))))))))
