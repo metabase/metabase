@@ -1,6 +1,9 @@
 /* @flow */
 
-import type { ParameterOption, ParameterObject } from "./types/Dashboard";
+import type Metadata from "./metadata/Metadata";
+import type Table from "./metadata/Table";
+import type { CardObject } from "./types/Card";
+import type { ParameterOption, ParameterObject, ParameterMappingOption } from "./types/Dashboard";
 
 import { slugify } from "metabase/lib/formatting";
 
@@ -84,6 +87,24 @@ for (const option of PARAMETER_OPTIONS) {
     }
     section.options = section.options || [];
     section.options.push(option);
+}
+
+export function getParameterMappingOptions(metadata: Metadata, parameter: ParameterObject, card: CardObject): Array<ParameterMappingOption> {
+    if (card.dataset_query.type === "query") {
+        const table = card.dataset_query.query.source_table != null ? metadata.table(card.dataset_query.query.source_table) : null;
+        if (table) {
+            return table.fields().map(field => {
+                const target = ["dimension", ["field-id", field.id]];
+                return {
+                    name: field.display_name,
+                    target: target
+                };
+            });
+        }
+    } else {
+        return [];
+    }
+    return [];
 }
 
 export function createParameter(option: ParameterOption): ParameterObject {

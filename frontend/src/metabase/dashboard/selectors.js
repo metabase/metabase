@@ -69,28 +69,20 @@ export const getParameterTarget = createSelector(
     }
 );
 
-export const makeGetParameterMappingOptions = () => {
+import * as Dashboard from "metabase/meta/Dashboard";
+import Database from "metabase/meta/metadata/Database";
+import type { CardObject } from "metabase/meta/types/Card";
+import type { ParameterMappingOption } from "metabase/meta/types/Dashboard";
 
+export const makeGetParameterMappingOptions = () => {
+    const getDatabaseMetadata = createSelector(
+        [getDatabase],
+        (database) => database && new Database(database)
+    )
     const getParameterMappingOptions = createSelector(
-        [getEditingParameter, getDatabase, getCard, getDashCard],
-        (parameter, database, card, dashcard) => {
-            if (card.dataset_query.type === "query") {
-                const table = database && database.tables_lookup[card.dataset_query.query.source_table];
-                if (table) {
-                    return table.fields.map(field => {
-                        const target = ["dimension", ["field", field.id]];
-                        return {
-                            name: field.display_name,
-                            value: target
-                        };
-                    });
-                }
-            } else {
-                return [
-                    { name: "FIXME: SQL parameter options not yet implemented" }
-                ];
-            }
-            return [];
+        [getDatabaseMetadata, getEditingParameter, getCard],
+        (metadata: ?Database, parameter: ParameterObject, card: CardObject): Array<ParameterMappingOption> => {
+            return metadata ? Dashboard.getParameterMappingOptions(metadata, parameter, card) : [];
         }
     );
     return getParameterMappingOptions;

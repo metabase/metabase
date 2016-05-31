@@ -60,12 +60,19 @@ export default class Base {
 
     // return an array of wrapped entities
     @memoize
-    _entities<T: Base>(Klass: Class<T>, ids: Array<number>): Array<?T> {
+    _entities<T: Base>(Klass: Class<T>, ids: Array<number>): Array<T> {
         if (this !== this._metadata) {
             return this._metadata._entities(...arguments);
         }
 
-        return ids.map(id => this._entity(Klass, id));
+        let entities: Array<T> = [];
+        for (const id of ids) {
+            let entity = this._entity(Klass, id);
+            if (entity != null) {
+                entities.push(entity);
+            }
+        }
+        return entities;
     }
 }
 

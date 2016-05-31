@@ -37,6 +37,11 @@ export type ParameterMappingTarget =
     ["parameter", string] |
     ["dimension", ConcreteField];
 
+export type ParameterMappingOption = {
+    name: string,
+    target: ParameterMappingTarget
+};
+
 export type ParameterMappingObject = {
     card_id: CardId,
     parameter_id: ParameterId,
@@ -46,6 +51,6 @@ export type ParameterMappingObject = {
 export type ParameterOption = {
     id: string,
     name: string,
-    description: string,
+    description?: string,
     type: ParameterType
 };
