@@ -8,7 +8,8 @@ import _ from "underscore";
 
 export default class ParametersPopover extends Component {
     props: {
-        onAddParameter: (option: ParameterOption) => {}
+        onAddParameter: (option: ParameterOption) => {},
+        onClose: () => {}
     };
     state: {
         section?: string
@@ -23,9 +24,17 @@ export default class ParametersPopover extends Component {
         const { section } = this.state;
         const { onClose, onAddParameter } = this.props;
         if (section == null) {
-            return <ParameterOptionsSectionsPane sections={PARAMETER_SECTIONS} onSelectSection={(section) => this.setState({ section: section.id })} />
+            return <ParameterOptionsSectionsPane sections={PARAMETER_SECTIONS} onSelectSection={(section) => {
+                let { options } = _.findWhere(PARAMETER_SECTIONS, { id: section.id });
+                if (options.length === 1) {
+                    onAddParameter(options[0]);
+                    onClose();
+                } else {
+                    this.setState({ section: section.id });
+                }
+            }} />
         } else {
-            let options = _.findWhere(PARAMETER_SECTIONS, { id: section }).options;
+            let { options } = _.findWhere(PARAMETER_SECTIONS, { id: section });
             return <ParameterOptionsPane options={options} onSelectOption={(option) => { onAddParameter(option); onClose(); } }/>
         }
     }

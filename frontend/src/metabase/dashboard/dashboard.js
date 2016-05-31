@@ -122,15 +122,11 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, d
         if (dashboard.parameters) {
             for (const parameter of dashboard.parameters) {
                 let mapping = _.findWhere(dashcard && dashcard.parameter_mappings, { card_id: card.id, parameter_id: parameter.id });
-                let target = mapping && mapping.target;
-                let value;
                 if (parameterValues[parameter.id] != null) {
-                    value = parameterValues[parameter.id];
-                } else if (parameter.default != null) {
-                    value = parameter.default;
-                }
-                if (value !== undefined) {
-                    parameters.push({ target, value });
+                    parameters.push({
+                        target: mapping && mapping.target,
+                        value: parameterValues[parameter.id]
+                    });
                 }
             }
         }

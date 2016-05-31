@@ -1,7 +1,6 @@
 :local(.parameter) {
     float: right;
     font-size: 16px;
-    font-weight: bold;
     border: 2px solid var(--grey-1);
     border-radius: 4px;
     min-height: 36px;
@@ -13,26 +12,44 @@
     color: var(--grey-4);
 }
 
-:local(.parameter) input {
-    color: var(--grey-4);
-    flex: 1;
-    font-size: 16px;
-    border: none;
-    background-color: trasparent;
-}
-
-:local(.parameter) input:focus {
-    outline: none;
-}
-
 :local(.parameter.selected) {
+    font-weight: bold;
+    color: var(--brand-color) !important;
     border-color: var(--brand-color);
 }
 
-:local(.parameter.invalid) {
-    border-color: var(--warning-color) !important;
+:local(.nameInput) {
+    composes: parameter;
+    composes: mb1 from "style";
+    color: var(--grey-4);
 }
 
-:local(.parameter.hasValue) {
-    color: var(--brand-color) !important;
+:local(.nameInput:focus) {
+    outline: none;
+}
+
+:local(.name) {
+    composes: mb1 from "style";
+    font-size: 16px;
+    font-weight: bold;
+    color: var(--grey-4);
+}
+
+:local(.parameterButtons) {
+    display: flex;
+    justify-content: space-around;
+    font-size: smaller;
+}
+
+:local(.editButton),
+:local(.removeButton) {
+    composes: flex align-center cursor-pointer from "style";
+}
+
+:local(.editButton:hover) {
+    color: var(--brand-color);
+}
+
+:local(.removeButton:hover) {
+    color: var(--warning-color);
 }

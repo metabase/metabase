@@ -8,7 +8,7 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 
 import ParameterWidget from "./parameters/ParameterWidget.jsx";
 
-import { createParameter, setParameterName } from "metabase/meta/Dashboard";
+import { createParameter, setParameterName, setParameterDefaultValue } from "metabase/meta/Dashboard";
 
 import screenfull from "screenfull";
 
@@ -191,37 +191,49 @@ export default class Dashboard extends Component {
         });
     }
 
+    // TODO: move to action
     addParameter(parameterOption) {
         let parameters = this.props.dashboard && this.props.dashboard.parameters || [];
 
         let parameter = createParameter(parameterOption);
 
-
         this.setDashboardAttribute("parameters", [...parameters, parameter]);
         this.props.setEditingParameterId(parameter.id);
     }
 
-    removeParameter(parameterId) {
+    // TODO: move to action
+    removeParameter(parameter) {
         let parameters = this.props.dashboard && this.props.dashboard.parameters || [];
-        parameters = _.reject(parameters, (p) => p.id === parameterId);
+        parameters = _.reject(parameters, (p) => p.id === parameter.id);
         this.setDashboardAttribute("parameters", parameters);
     }
 
+    // TODO: move to action
     setParameterName(parameter, name) {
         let parameters = this.props.dashboard.parameters || [];
         let index = _.findIndex(parameters, (p) => p.id === parameter.id);
         if (index < 0) {
             return;
         }
+        this.setDashboardAttribute("parameters", [
+            ...parameters.slice(0, index),
+            setParameterName(parameter, name),
+            ...parameters.slice(index + 1)
+        ]);
+    }
 
-        this.props.setDashboardAttributes({
-            id: this.props.dashboard.id,
-            attributes: { "parameters": [
-                ...parameters.slice(0, index),
-                setParameterName(parameter, name),
-                ...parameters.slice(index + 1)
-            ] }
-        });
+    // TODO: move to action
+    setParameterDefaultValue(parameter, value) {
+        let parameters = this.props.dashboard.parameters || [];
+        let index = _.findIndex(parameters, (p) => p.id === parameter.id);
+        if (index < 0) {
+            return;
+        }
+        this.setDashboardAttribute("parameters", [
+            ...parameters.slice(0, index),
+            setParameterDefaultValue(parameter, value),
+            ...parameters.slice(index + 1)
+        ]);
     }
 
     // we don't call this initially because DashCards initiate their own fetchCardData
@@ -251,13 +263,6 @@ export default class Dashboard extends Component {
         let { error, isFullscreen, isNightMode } = this.state;
         isNightMode = isNightMode && isFullscreen;
 
-        const parameterSlugCounts = {};
-        if (this.props.dashboard) {
-            for (const param of this.props.dashboard.parameters) {
-                parameterSlugCounts[param.slug] = (parameterSlugCounts[param.slug] || 0) + 1
-            }
-        }
-
         return (
             <LoadingAndErrorWrapper style={{ minHeight: "100%" }} className={cx("Dashboard absolute top left right", { "Dashboard--fullscreen": isFullscreen, "Dashboard--night": isNightMode})} loading={!dashboard} error={error}>
             {() =>
@@ -277,20 +282,24 @@ export default class Dashboard extends Component {
                             addParameter={this.addParameter}
                         />
                     </header>
-                    {this.props.dashboard.parameters && this.props.dashboard.parameters.length > 0 &&
+                    {dashboard.parameters && dashboard.parameters.length > 0 &&
                         <div className="wrapper flex flex-column align-end mt1">
                             <div className="flex flex-row align-end" ref="parameters">
                                 {this.props.dashboard.parameters.map(parameter =>
                                     <ParameterWidget
                                         className="ml1"
-                                        parameter={parameter}
                                         isEditing={isEditing}
-                                        isSelected={editingParameter && editingParameter.id === parameter.id}
-                                        isValid={(parameter.slug && parameterSlugCounts[parameter.slug] < 2) && parameter.name !== ""}
-                                        onNameChange={(name) => this.setParameterName(parameter, name)}
-                                        setEditingParameterId={this.props.setEditingParameterId}
-                                        setParameterValue={this.props.setParameterValue}
+                                        parameter={parameter}
+                                        dashboard={dashboard}
                                         parameterValue={parameterValues[parameter.id]}
+
+                                        editingParameter={editingParameter}
+                                        setEditingParameterId={this.props.setEditingParameterId}
+
+                                        setName={(name) => this.setParameterName(parameter, name)}
+                                        setDefaultValue={(value) => this.setParameterDefaultValue(parameter, value)}
+                                        remove={() => this.removeParameter(parameter)}
+                                        setValue={(value) => this.props.setParameterValue(parameter.id, value)}
                                     />
                                 )}
                             </div>
