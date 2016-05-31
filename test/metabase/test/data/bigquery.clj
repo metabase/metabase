@@ -95,35 +95,35 @@
                                                                (.setQuery (format "SELECT COUNT(*) FROM [%s.%s]" dataset-id table-id))))))))))
 
 ;; This is a dirty HACK
-(defn- ^DateTime timestamp-korma-form->GoogleDateTime
-  "Convert the korma form we normally use to wrap a `Timestamp` to a Google `DateTime`."
-  [{[{^String s :korma.sql.utils/generated}] :korma.sql.utils/args}]
-  {:pre [(seq s)]}
+(defn- ^DateTime timestamp-honeysql-form->GoogleDateTime
+  "Convert the HoneySQL form we normally use to wrap a `Timestamp` to a Google `DateTime`."
+  [{[{s :literal}] :args}]
+  {:pre [(string? s) (seq s)]}
   (DateTime. (u/->Timestamp (s/replace s #"'" ""))))
 
-(defn- insert-data! [^String dataset-id, ^String table-id, row-maps]
-  {:pre [(seq dataset-id) (seq table-id) (sequential? row-maps) (seq row-maps) (every? map? row-maps)]}
-  (execute (.insertAll (.tabledata bigquery) project-id dataset-id table-id
-                       (doto (TableDataInsertAllRequest.)
-                         (.setRows (for [row-map row-maps]
-                                     (let [data (TableRow.)]
-                                       (doseq [[k v] row-map
-                                               :let [v (if (:korma.sql.utils/func v)
-                                                         (timestamp-korma-form->GoogleDateTime v)
-                                                         v)]]
-                                         (.set data (name k) v))
-                                       (doto (TableDataInsertAllRequest$Rows.)
-                                         (.setJson data))))))))
-  ;; Wait up to 30 seconds for all the rows to be loaded and become available by BigQuery
-  (let [expected-row-count (count row-maps)]
-    (loop [seconds-to-wait-for-load 30]
-      (let [actual-row-count (table-row-count dataset-id table-id)]
-        (cond
-          (= expected-row-count actual-row-count) :ok
-          (> seconds-to-wait-for-load 0)          (do (Thread/sleep 1000)
-                                                      (recur (dec seconds-to-wait-for-load)))
-          :else                                   (throw (Exception. (format "Failed to load table data for %s.%s: expected %d rows, loaded %d"
-                                                                             dataset-id table-id expected-row-count actual-row-count))))))))
+  (defn- insert-data! [^String dataset-id, ^String table-id, row-maps]
+    {:pre [(seq dataset-id) (seq table-id) (sequential? row-maps) (seq row-maps) (every? map? row-maps)]}
+    (execute (.insertAll (.tabledata bigquery) project-id dataset-id table-id
+                         (doto (TableDataInsertAllRequest.)
+                           (.setRows (for [row-map row-maps]
+                                       (let [data (TableRow.)]
+                                         (doseq [[k v] row-map
+                                                 :let [v (if (instance? honeysql.types.SqlCall v)
+                                                           (timestamp-honeysql-form->GoogleDateTime v)
+                                                           v)]]
+                                           (.set data (name k) v))
+                                         (doto (TableDataInsertAllRequest$Rows.)
+                                           (.setJson data))))))))
+    ;; Wait up to 30 seconds for all the rows to be loaded and become available by BigQuery
+    (let [expected-row-count (count row-maps)]
+      (loop [seconds-to-wait-for-load 30]
+        (let [actual-row-count (table-row-count dataset-id table-id)]
+          (cond
+            (= expected-row-count actual-row-count) :ok
+            (> seconds-to-wait-for-load 0)          (do (Thread/sleep 1000)
+                                                        (recur (dec seconds-to-wait-for-load)))
+            :else                                   (throw (Exception. (format "Failed to load table data for %s.%s: expected %d rows, loaded %d"
+                                                                               dataset-id table-id expected-row-count actual-row-count))))))))
 
 (def ^:private ^:const base-type->bigquery-type
   {:BigIntegerField :INTEGER
@@ -160,7 +160,7 @@
              :id (inc i)))))
 
 (defn- load-tabledef! [dataset-name {:keys [table-name field-definitions], :as tabledef}]
-  (let [table-name  (normalize-name table-name)]
+  (let [table-name (normalize-name table-name)]
     (create-table! dataset-name table-name (fielddefs->field-name->base-type field-definitions))
     (insert-data!  dataset-name table-name (tabledef->prepared-rows tabledef))))
 

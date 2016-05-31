@@ -13,7 +13,7 @@
             [metabase.query-processor.expand :as ql]
             [metabase.query-processor.interface :as qi]
             [metabase.sync-database :as sync-database]
-            (metabase.test.data [datasets :refer [*data-loader*]]
+            (metabase.test.data [datasets :refer [*driver*]]
                                 [dataset-definitions :as defs]
                                 [h2 :as h2]
                                 [interface :as i])
@@ -29,8 +29,8 @@
 ;; These functions offer a generic way to get bits of info like Table + Field IDs from any of our many driver/dataset combos.
 
 (defn get-or-create-test-data-db!
-  "Get or create the Test Data database for DATA-LOADER, which defaults to `*data-loader*`."
-  ([]            (get-or-create-test-data-db! *data-loader*))
+  "Get or create the Test Data database for DATA-LOADER, which defaults to `*driver*`."
+  ([]            (get-or-create-test-data-db! *driver*))
   ([data-loader] (get-or-create-database! data-loader defs/test-data)))
 
 (def ^:dynamic ^:private *get-db* get-or-create-test-data-db!)
@@ -116,7 +116,7 @@
 
 
 (defn format-name [nm]
-  (i/format-name *data-loader* (name nm)))
+  (i/format-name *driver* (name nm)))
 
 (defn- get-table-id-or-explode [db-id table-name]
   (let [table-name (format-name table-name)]
@@ -153,13 +153,13 @@
 (defn fks-supported?
   "Does the current engine support foreign keys?"
   []
-  (contains? (driver/features *data-loader*) :foreign-keys))
+  (contains? (driver/features *driver*) :foreign-keys))
 
-(defn default-schema [] (i/default-schema *data-loader*))
-(defn id-field-type  [] (i/id-field-type *data-loader*))
+(defn default-schema [] (i/default-schema *driver*))
+(defn id-field-type  [] (i/id-field-type *driver*))
 
 (defn expected-base-type->actual [base-type]
-  (i/expected-base-type->actual *data-loader* base-type))
+  (i/expected-base-type->actual *driver* base-type))
 
 
 ;; ## Loading / Deleting Test Datasets
@@ -167,9 +167,9 @@
 (defn get-or-create-database!
   "Create DBMS database associated with DATABASE-DEFINITION, create corresponding Metabase `Databases`/`Tables`/`Fields`, and sync the `Database`.
    DATASET-LOADER should be an object that implements `IDatasetLoader`; it defaults to the value returned by the method `dataset-loader` for the
-   current dataset (`*data-loader*`), which is H2 by default."
+   current dataset (`*driver*`), which is H2 by default."
   ([^DatabaseDefinition database-definition]
-   (get-or-create-database! *data-loader* database-definition))
+   (get-or-create-database! *driver* database-definition))
   ([dataset-loader {:keys [database-name], :as ^DatabaseDefinition database-definition}]
    (let [engine (i/engine dataset-loader)]
      (or (i/metabase-instance database-definition engine)
@@ -213,9 +213,9 @@
 (defn remove-database!
   "Delete Metabase `Database`, `Fields` and `Tables` associated with DATABASE-DEFINITION, then remove the physical database from the associated DBMS.
    DATASET-LOADER should be an object that implements `IDatasetLoader`; by default it is the value returned by the method `dataset-loader` for the
-   current dataset, bound to `*data-loader*`."
+   current dataset, bound to `*driver*`."
   ([^DatabaseDefinition database-definition]
-   (remove-database! *data-loader* database-definition))
+   (remove-database! *driver* database-definition))
   ([dataset-loader ^DatabaseDefinition database-definition]
    ;; Delete the Metabase Database and associated objects
    (db/cascade-delete! Database :id (:id (i/metabase-instance database-definition (i/engine dataset-loader))))
@@ -241,7 +241,7 @@
 
 
 (defn do-with-temp-db [^DatabaseDefinition dbdef f]
-  (let [loader *data-loader*
+  (let [loader *driver*
         dbdef  (i/map->DatabaseDefinition (assoc dbdef :short-lived? true))]
     (swap! loader->loaded-db-def conj [loader dbdef])
     (binding [db/*disable-db-logging* true]
