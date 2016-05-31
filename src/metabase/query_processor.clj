@@ -428,6 +428,15 @@
           (assert (sequential? (:columns <>)))
           (assert (every? u/string-or-keyword? (:columns <>))))))))
 
+(defn- query->remark
+  "Genarate an approparite REMARK to be prepended to a query to give DBAs additional information about the query being executed.
+   See documentation for `mbql->native` and [issue #2386](https://github.com/metabase/metabase/issues/2386) for more information."
+  ^String [query query-execution]
+  (let [executor-id  (:executor_id query-execution)
+        execution-id (:uuid query-execution)
+        query-type   (if (mbql-query? query) "MBQL" "native")
+        query-hash   (hash query)]
+    (format "Metabase:: userID: %s executionID: %s queryType: %s queryHash: %s" executor-id execution-id query-type query-hash)))
 
 (defn- run-query
   "The end of the QP middleware which actually executes the query on the driver.
@@ -436,10 +445,10 @@
    then we pass that form into the `execute-query` function for final execution.
 
    If the query is already a *native* query then we simply pass it through to `execute-query` unmodified."
-  [query]
+  [query query-execution]
   (let [native-form  (u/prog1 (if-not (mbql-query? query)
                                 (:native query)
-                                (driver/mbql->native (:driver query) query))
+                                (driver/mbql->native (:driver query) query (query->remark query query-execution)))
                        (when-not *disable-qp-logging*
                          (log/debug (u/format-color 'green "NATIVE FORM:\n%s\n" (u/pprint-to-str <>)))))
         native-query (if-not (mbql-query? query)
@@ -489,13 +498,14 @@
 
 (defn process-query
   "Process an MBQL structured or native query, and return the result."
-  [query]
+  [query & [query-execution]]
   (when-not *disable-qp-logging*
     (log/debug (u/format-color 'blue "\nQUERY: 😎\n%s"  (u/pprint-to-str query))))
   ;; TODO: it probably makes sense to throw an error or return a failure response here if we can't get a driver
   (let [driver (driver/database-id->driver (:database query))]
     (binding [*driver* driver]
-      (let [driver-process-in-context (partial driver/process-query-in-context driver)]
+      (let [driver-process-in-context (partial driver/process-query-in-context driver)
+            run-query                 (u/rpartial run-query query-execution)]
         ((<<- wrap-catch-exceptions
               pre-add-settings
               pre-expand-macros
@@ -554,7 +564,7 @@
                          :additional_info   ""
                          :start_time_millis (System/currentTimeMillis)}]
     (try
-      (let [query-result (process-query query)]
+      (let [query-result (process-query query query-execution)]
         (when-not (contains? query-result :status)
           (throw (Exception. "invalid response from database driver. no :status provided")))
         (when (= :failed (:status query-result))

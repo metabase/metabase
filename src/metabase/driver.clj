@@ -144,17 +144,21 @@
     "*OPTIONAL*. Return a humanized (user-facing) version of an connection error message string.
      Generic error messages are provided in the constant `connection-error-messages`; return one of these whenever possible.")
 
-  (mbql->native ^java.util.Map [this, ^Map query]
+  (mbql->native ^java.util.Map [this, ^Map query, ^String remark]
     "Transpile an MBQL structured query into the appropriate native query form.
 
-  The input query will be a fully expanded MBQL query (https://github.com/metabase/metabase/wiki/Expanded-Queries) with
+  The input QUERY will be a [fully-expanded MBQL query](https://github.com/metabase/metabase/wiki/Expanded-Queries) with
   all the necessary pieces of information to build a properly formatted native query for the given database.
+
+  REMARK contains general information about the query and user who ran it; if possible, a driver should include this at the begging of the native form
+  so as to help DBAs identify queries originating from Metabase (see [issue #2386](https://github.com/metabase/metabase/issues/2386) for further discussion).
 
   The result of this function will be passed directly into calls to `execute-query`.
 
   For example, a driver like Postgres would build a valid SQL expression and return a map such as:
 
-       {:query \"SELECT * FROM my_table\"}")
+       {:query \"-- [Contents of `remark`]
+                 SELECT * FROM my_table\"}")
 
   (notify-database-updated [this, ^DatabaseInstance database]
     "*OPTIONAL*. Notify the driver that the attributes of the DATABASE have changed.  This is specifically relevant in

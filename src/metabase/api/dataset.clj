@@ -12,11 +12,11 @@
             [metabase.query-processor :as qp]
             [metabase.util :as u]))
 
-(def ^:const api-max-results-bare-rows
+(def ^:private ^:const api-max-results-bare-rows
   "Maximum number of rows to return specifically on :rows type queries via the API."
   2000)
 
-(def ^:const api-max-results
+(def ^:private ^:const api-max-results
   "General maximum number of rows to return from an API query."
   10000)
 
@@ -65,6 +65,7 @@
        :body   (:error response)})))
 
 
+;; TODO - AFAIK this endpoint is no longer used. Remove it? </3
 (defendpoint GET "/card/:id"
   "Execute the MQL query for a given `Card` and retrieve both the `Card` and the execution results as JSON.
    This is a convenience endpoint which simplifies the normal 2 api calls to fetch the `Card` then execute its query."

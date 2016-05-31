@@ -331,12 +331,12 @@
     (for [row rows]
       (zipmap columns row))))
 
-(defn- mbql->native [{{{:keys [dataset-id]} :details, :as database} :database, {{table-name :name} :source-table} :query, :as outer-query}]
+(defn- mbql->native [{{{:keys [dataset-id]} :details, :as database} :database, {{table-name :name} :source-table} :query, :as outer-query} remark]
   {:pre [(map? database) (seq dataset-id) (seq table-name)]}
   (binding [sqlqp/*query* outer-query]
     (let [honeysql-form (honeysql-form outer-query)
           sql           (honeysql-form->sql honeysql-form)]
-      {:query      sql
+      {:query      (str "-- " remark "\n" sql)
        :table-name table-name
        :mbql?      true})))
 

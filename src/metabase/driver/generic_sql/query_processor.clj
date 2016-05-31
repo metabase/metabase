@@ -272,11 +272,11 @@
 
 (defn mbql->native
   "Transpile MBQL query into a native SQL statement."
-  [driver {inner-query :query, database :database, :as outer-query}]
+  [driver {inner-query :query, database :database, :as outer-query} remark]
   (binding [*query* outer-query]
     (let [honeysql-form (build-honeysql-form driver outer-query)
           [sql & args]  (sql/honeysql-form->sql+args driver honeysql-form)]
-      {:query  sql
+      {:query  (str "-- " remark "\n" sql)
        :params args})))
 
 

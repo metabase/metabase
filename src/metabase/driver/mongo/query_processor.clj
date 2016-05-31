@@ -326,7 +326,9 @@
 
 ;;; # process + run
 
-(defn- generate-aggregation-pipeline [query]
+(defn- generate-aggregation-pipeline
+  "Generate the aggregation pipeline. Returns a sequence of maps representing each stage."
+  [query]
   (loop [pipeline [], [f & more] [add-initial-projection
                                   handle-filter
                                   handle-breakout+aggregation
@@ -378,7 +380,7 @@
 
 (defn mbql->native
   "Process and run an MBQL query."
-  [{database :database, {{source-table-name :name} :source-table} :query, :as query}]
+  [{database :database, {{source-table-name :name} :source-table} :query, :as query} remark]
   {:pre [(map? database)
          (string? source-table-name)]}
   (binding [*query* query]
