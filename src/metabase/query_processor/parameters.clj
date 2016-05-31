@@ -18,17 +18,17 @@
 ;;; +-------------------------------------------------------------------------------------------------------+
 
 
-(defn- build-filter-clause [{param-type :type, :keys [field value]}]
+(defn- build-filter-clause [{param-type :type, param-value :value, [_ field] :target}]
   (if-not (= param-type "date")
     ;; default behavior is to use a simple equals filter
-    ["=" field value]
+    ["=" field param-value]
     ;; otherwise we need to handle date filtering
-    (if-not (contains? relative-dates value)
+    (if-not (contains? relative-dates param-value)
       ;; absolute date range such as: "2014-05-10,2014-05-16"
-      (let [[start end] (s/split value #"," 2)]
+      (let [[start end] (s/split param-value #"," 2)]
         ["BETWEEN" field start end])
       ;; relative date range, so build appropriate MBQL clause
-      (condp = value
+      (condp = param-value
         "past7days"  ["TIME_INTERVAL" field -7 "day"]
         "past30days" ["TIME_INTERVAL" field -30 "day"]
         "yesterday"  ["=" field ["relative_datetime" -1 "day"]]
@@ -42,9 +42,9 @@
     (seq addtl)       addtl
     :else             []))
 
-(defn- expand-params-mbql [query-dict [{:keys [field value], :as param} & rest]]
+(defn- expand-params-mbql [query-dict [{:keys [target value], :as param} & rest]]
   (if param
-    (if (and param field value)
+    (if (and param target value)
       (let [filter-subclause (build-filter-clause param)
             query            (assoc-in query-dict [:query :filter] (merge-filter-clauses (get-in query-dict [:query :filter]) filter-subclause))]
         (expand-params-mbql query rest))
@@ -78,20 +78,20 @@
            ;; the above values are JodaTime objects, so unparse them to iso8601 strings
            (m/map-vals (partial tf/unparse formatter))))))
 
-(defn- expand-date-range-param [report-timezone {param-name :name, param-type :type, param-value :value, :as param}]
+(defn- expand-date-range-param [report-timezone {[target param-name] :target, param-type :type, param-value :value, :as param}]
   (if-not (= param-type "date")
     param
     (let [{:keys [start end]} (extract-dates param-value report-timezone)]
-      [(assoc param :name (str param-name ":start"), :value start)
-       (assoc param :name (str param-name ":end"),   :value end)])))
+      [(assoc param :target [target (str param-name ":start")], :value start)
+       (assoc param :target [target (str param-name ":end")],   :value end)])))
 
 (defn- substitute-param [param-name value query]
   ;; TODO: escaping and protection against SQL injection!
   (s/replace query (re-pattern (str "\\{\\{" param-name "\\}\\}")) value))
 
-(defn- substitute-all-params [query-dict [{:keys [value], param-name :name, :as param} & rest]]
+(defn- substitute-all-params [query-dict [{:keys [value], [_ param-name] :target, :as param} & rest]]
   (if param
-    (if-not (and param param-name value)
+    (if-not (and param param-name value (string? param-name))
       (substitute-all-params query-dict rest)
       (let [query (update-in query-dict [:native :query] (partial substitute-param param-name value))]
         (substitute-all-params query rest)))

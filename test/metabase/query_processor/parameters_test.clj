@@ -31,7 +31,7 @@
                       :parameters [{:hash   "abc123"
                                     :name   "foo"
                                     :type   "id"
-                                    :target nil
+                                    :target ["parameter" "foo"]
                                     :value  "666"}]}))
 
 ;; independent subclause substitution
@@ -45,7 +45,7 @@
                       :parameters [{:hash   "abc123"
                                     :name   "foo"
                                     :type   "id"
-                                    :target nil
+                                    :target ["parameter" "foo"]
                                     :value  "666"}]}))
 
 ;; multi-clause substitution (subclauses are joined by SQL "AND")
@@ -59,12 +59,12 @@
                       :parameters [{:hash   "abc123"
                                     :name   "foo"
                                     :type   "id"
-                                    :target nil
+                                    :target ["parameter" "foo"]
                                     :value  "666"}
                                    {:hash   "def456"
                                     :name   "bar"
                                     :type   "category"
-                                    :target nil
+                                    :target ["parameter" "bar"]
                                     :value  "yipee"}]}))
 
 ;; date range substitution
@@ -79,19 +79,33 @@
                       :parameters [{:hash   "abc123"
                                     :name   "foo"
                                     :type   "date"
-                                    :target nil
+                                    :target ["parameter" "foo"]
                                     :value  "yesterday"}]}))
+
+;; if target is not appropriate then parameter is skipped
+(expect
+  {:database   1
+   :type       :native
+   :native     {:query "SELECT * FROM table WHERE id = 123 "}}
+  (expand-parameters {:database   1
+                      :type       :native
+                      :native     {:query "SELECT * FROM table WHERE id = 123 <AND foo = {{foo}}>"}
+                      :parameters [{:hash   "abc123"
+                                    :name   "foo"
+                                    :type   "id"
+                                    :target ["dimension" ["field" 123]]
+                                    :value  "666"}]}))
 
 ;; date range calculations
 (expect
-  [{:type "date", :name "foo:start", :value "2014-05-10"}
-   {:type "date", :name "foo:end", :value "2014-05-16"}]
-  (expand-date-range-param nil {:name "foo", :type "date", :value "2014-05-10,2014-05-16"}))
+  [{:type "date", :target ["parameter" "foo:start"], :value "2014-05-10"}
+   {:type "date", :target ["parameter" "foo:end"], :value "2014-05-16"}]
+  (expand-date-range-param nil {:target ["parameter" "foo"], :type "date", :value "2014-05-10,2014-05-16"}))
 
 (expect
-  [{:type "date", :name "foo:start", :value (tf/unparse (tf/formatters :year-month-day) (t/yesterday))}
-   {:type "date", :name "foo:end", :value (tf/unparse (tf/formatters :year-month-day) (t/yesterday))}]
-  (expand-date-range-param nil {:name "foo", :type "date", :value "yesterday"}))
+  [{:type "date", :target ["parameter" "foo:start"], :value (tf/unparse (tf/formatters :year-month-day) (t/yesterday))}
+   {:type "date", :target ["parameter" "foo:end"], :value (tf/unparse (tf/formatters :year-month-day) (t/yesterday))}]
+  (expand-date-range-param nil {:target ["parameter" "foo"], :type "date", :value "yesterday"}))
 
 ;; TODO: test for value escaping to prevent sql injection
 
@@ -131,7 +145,7 @@
                       :parameters [{:hash   "abc123"
                                     :name   "foo"
                                     :type   "id"
-                                    :target nil
+                                    :target ["parameter" "foo"]
                                     :value  "666"}]}))
 
 
@@ -154,7 +168,7 @@
                       :parameters [{:hash   "abc123"
                                     :name   "foo"
                                     :type   "id"
-                                    :field  ["field-id" 123]
+                                    :target ["dimension" ["field-id" 123]]
                                     :value  "666"}]}))
 
 ;; multiple filters are conjoined by an "AND"
@@ -172,12 +186,12 @@
                       :parameters [{:hash   "abc123"
                                     :name   "foo"
                                     :type   "id"
-                                    :field  ["field-id" 123]
+                                    :target ["dimension" ["field-id" 123]]
                                     :value  "666"}
                                    {:hash   "def456"
                                     :name   "bar"
                                     :type   "category"
-                                    :field  ["field-id" 456]
+                                    :target ["dimension" ["field-id" 456]]
                                     :value  "999"}]}))
 
 ;; date range parameters
@@ -194,7 +208,7 @@
                       :parameters [{:hash   "abc123"
                                     :name   "foo"
                                     :type   "date"
-                                    :field  ["field-id" 123]
+                                    :target ["dimension" ["field-id" 123]]
                                     :value  "past30days"}]}))
 
 (expect
@@ -210,7 +224,7 @@
                       :parameters [{:hash   "abc123"
                                     :name   "foo"
                                     :type   "date"
-                                    :field  ["field-id" 123]
+                                    :target ["dimension" ["field-id" 123]]
                                     :value  "yesterday"}]}))
 
 (expect
@@ -226,5 +240,5 @@
                       :parameters [{:hash   "abc123"
                                     :name   "foo"
                                     :type   "date"
-                                    :field  ["field-id" 123]
+                                    :target ["dimension" ["field-id" 123]]
                                     :value  "2014-05-10,2014-05-16"}]}))
