@@ -2,8 +2,7 @@
   "Functions which handle the raw sync process."
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
-            (korma [core :as k]
-                   [db :as kdb])
+            [korma.db :as kdb]
             [schema.core :as schema]
             (metabase [db :as db]
                       [driver :as driver])
@@ -24,10 +23,9 @@
   [{table-id :id, database-id :database_id, :as table} fks]
   {:pre [(integer? table-id) (integer? database-id)]}
   (kdb/transaction
-    ;; start by simply resetting all fks and then we'll add them back as defined
-    (k/update RawColumn
-      (k/where {:raw_table_id table-id})
-      (k/set-fields {:fk_target_column_id nil}))
+   ;; start by simply resetting all fks and then we'll add them back as defined
+   (db/update-where! RawColumn {:raw_table_id table-id}
+     :fk_target_column_id nil)
 
     ;; now lookup column-ids and set the fks on this table as needed
     (doseq [{:keys [fk-column-name dest-column-name dest-table]} fks]
@@ -104,14 +102,13 @@
   {:pre [(coll? table-ids) (every? integer? table-ids)]}
   (let [table-ids (filter identity table-ids)]
     (kdb/transaction
-      ;; disable the tables
-      (k/update RawTable
-        (k/where {:id [in table-ids]})
-        (k/set-fields {:active false}))
-      ;; whenever a table is disabled we need to disable all of its fields too (and remove fk references)
-      (k/update RawColumn
-        (k/where {:raw_table_id [in table-ids]})
-        (k/set-fields {:active false, :fk_target_column_id nil})))))
+     ;; disable the tables
+     (db/update-where! RawTable {:id [:in table-ids]}
+       :active false)
+     ;; whenever a table is disabled we need to disable all of its fields too (and remove fk references)
+     (db/update-where! RawColumn {:raw_table_id [:in table-ids]}
+       :active              false
+       :fk_target_column_id nil))))
 
 
 (defn introspect-raw-table-and-update!

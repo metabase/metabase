@@ -186,8 +186,7 @@ var config = module.exports = {
             'process.env': {
                 NODE_ENV: JSON.stringify(NODE_ENV)
             }
-        }),
-        new FlowStatusWebpackPlugin()
+        })
     ],
 
     postcss: function (webpack) {
@@ -236,6 +235,8 @@ if (NODE_ENV === "development" || NODE_ENV === "hot") {
             config.resolve.alias[name] = unminified;
         }
     }
+
+    config.plugins.push(new FlowStatusWebpackPlugin())
 }
 
 if (NODE_ENV === "hot" || isWatching) {

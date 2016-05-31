@@ -1,45 +1,51 @@
 (ns metabase.driver.crate.util
   (:refer-clojure :exclude [second])
-  (:require [korma.core :as k]
-            [korma.sql.utils :as kutils]
+  (:require (honeysql [core :as hsql]
+                      [format :as hformat])
             [metabase.driver.generic-sql.query-processor :as qp]
             [metabase.util :as u]
-            [metabase.util.korma-extensions :as kx])
+            [metabase.util.honeysql-extensions :as hx])
   (:import java.sql.Timestamp))
+
+;; register the try_cast function with HoneySQL
+;; (hsql/format (hsql/call :crate-try-cast :TIMESTAMP :field)) -> "try_cast(field as TIMESTAMP)"
+(defmethod hformat/fn-handler "crate-try-cast" [_ klass expr]
+  (str "try_cast(" (hformat/to-sql expr) " as " (name klass) ")"))
 
 (defn unix-timestamp->timestamp
   "Converts datetime string to a valid timestamp"
   [_ expr seconds-or-milliseconds]
   (case seconds-or-milliseconds
-    :seconds      (recur nil (kx/* expr 1000) :milliseconds)
-    :milliseconds (kutils/func (str "TRY_CAST(%s as TIMESTAMP)") [expr])))
+    :seconds      (recur nil (hx/* expr 1000) :milliseconds)
+    :milliseconds (hsql/call :crate-try-cast :TIMESTAMP expr)))
 
 (defn- date-trunc
   "date_trunc('interval', timezone, timestamp): truncates a timestamp to a given interval"
   [unit expr]
   (let [timezone (get-in qp/*query* [:settings :report-timezone])]
     (if (nil? timezone)
-      (k/sqlfn :DATE_TRUNC (kx/literal unit) expr)
-      (k/sqlfn :DATE_TRUNC (kx/literal unit) timezone expr))))
+      (hsql/call :date_trunc (hx/literal unit) expr)
+      (hsql/call :date_trunc (hx/literal unit) timezone expr))))
 
 (defn- date-format
   "date_format('format_string', timezone, timestamp): formats the timestamp as string"
   [fmt expr]
   (let [timezone (get-in qp/*query* [:settings :report-timezone])]
     (if (nil? timezone)
-      (k/sqlfn :DATE_FORMAT fmt expr)
-      (k/sqlfn :DATE_FORMAT fmt timezone expr))))
+      (hsql/call :date_format fmt expr)
+      (hsql/call :date_format fmt timezone expr))))
 
 (defn- extract
   "extract(field from expr): extracts subfields of a timestamp"
   [unit expr]
-  (case unit
+  (if-not (= unit :day_of_week)
+    (hsql/call :extract unit expr)
     ;; Crate DOW starts with Monday (1) to Sunday (7)
-    :day_of_week (kx/+ (kx/mod (kutils/func (format "EXTRACT(%s FROM %%s)" (name unit)) [expr]) 7) 1)
-    (kutils/func (format "EXTRACT(%s FROM %%s)" (name unit)) [expr])))
+    (hx/+ (hx/mod (hsql/call :extract unit expr)
+                  7)
+          1)))
 
-(def ^:private extract-integer
-  (comp kx/->integer extract))
+(def ^:private extract-integer (comp hx/->integer extract))
 
 (def ^:private ^:const second 1000)
 (def ^:private ^:const minute (* 60 second))
@@ -53,7 +59,7 @@
   "ISQLDriver `date` implementation"
   [_ unit expr]
   (let [v (if (instance? Timestamp expr)
-            (kx/literal (u/date->iso-8601 expr))
+            (hx/literal (u/date->iso-8601 expr))
             expr)]
     (case unit
       :default         (date-format (str "%Y-%m-%d %H:%i:%s") v)
@@ -67,7 +73,7 @@
       :day-of-month    (extract-integer :day_of_month v)
       :day-of-year     (extract-integer :day_of_year v)
       ;; Crate weeks start on Monday, so shift this date into the proper bucket and then decrement the resulting day
-      :week            (date-format (str "%Y-%m-%d") (kx/- (date-trunc :week (kx/+ v day)) day))
+      :week            (date-format (str "%Y-%m-%d") (hx/- (date-trunc :week (hx/+ v day)) day))
       :week-of-year    (extract-integer :week v)
       :month           (date-format (str "%Y-%m-%d") (date-trunc :month v))
       :month-of-year   (extract-integer :month v)
@@ -76,17 +82,17 @@
       :year            (extract-integer :year v))))
 
 (defn- sql-interval [unit amount]
-  (format "CURRENT_TIMESTAMP + %d" (* unit amount)))
+  (format "current_timestamp + %d" (* unit amount)))
 
 (defn date-interval
   "defines the sql command required for date-interval calculation"
   [_ unit amount]
   (case unit
-    :quarter (recur nil :month (kx/* amount 3))
-    :year    (k/raw (sql-interval year   amount))
-    :month   (k/raw (sql-interval month  amount))
-    :week    (k/raw (sql-interval week   amount))
-    :day     (k/raw (sql-interval day    amount))
-    :hour    (k/raw (sql-interval hour   amount))
-    :minute  (k/raw (sql-interval minute amount))
-    :second  (k/raw (sql-interval second amount))))
+    :quarter (recur nil :month (hx/* amount 3))
+    :year    (hsql/raw (sql-interval year   amount))
+    :month   (hsql/raw (sql-interval month  amount))
+    :week    (hsql/raw (sql-interval week   amount))
+    :day     (hsql/raw (sql-interval day    amount))
+    :hour    (hsql/raw (sql-interval hour   amount))
+    :minute  (hsql/raw (sql-interval minute amount))
+    :second  (hsql/raw (sql-interval second amount))))

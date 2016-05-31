@@ -1,15 +1,15 @@
 (ns metabase.driver.postgres
+  ;; TODO - rework this to be like newer-style namespaces that use `u/drop-first-arg`
   (:require [clojure.java.jdbc :as jdbc]
             (clojure [set :refer [rename-keys], :as set]
                      [string :as s])
             [clojure.tools.logging :as log]
-            (korma [core :as k]
-                   [db :as kdb])
-            [korma.sql.utils :as kutils]
+            [honeysql.core :as hsql]
+            [korma.db :as kdb]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
             [metabase.util :as u]
-            [metabase.util.korma-extensions :as kx])
+            [metabase.util.honeysql-extensions :as hx])
   ;; This is necessary for when NonValidatingFactory is passed in the sslfactory connection string argument,
   ;; e.x. when connecting to a Heroku Postgres database from outside of Heroku.
   (:import org.postgresql.ssl.NonValidatingFactory))
@@ -107,16 +107,15 @@
 
 (defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
   (case seconds-or-milliseconds
-    :seconds      (k/sqlfn :TO_TIMESTAMP expr)
-    :milliseconds (recur (kx// expr 1000) :seconds)))
+    :seconds      (hsql/call :to_timestamp expr)
+    :milliseconds (recur (hx// expr 1000) :seconds)))
 
-(defn- date-trunc [unit expr] (k/sqlfn :DATE_TRUNC (kx/literal unit) expr))
-(defn- extract    [unit expr] (kutils/func (format "EXTRACT(%s FROM %%s)" (name unit))
-                                           [expr]))
+(defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) expr))
+(defn- extract    [unit expr] (hsql/call :extract    unit              expr))
 
-(def ^:private extract-integer (comp kx/->integer extract))
+(def ^:private extract-integer (comp hx/->integer extract))
 
-(def ^:private ^:const one-day (k/raw "INTERVAL '1 day'"))
+(def ^:private ^:const one-day (hsql/raw "INTERVAL '1 day'"))
 
 (defn- date [unit expr]
   (case unit
@@ -125,15 +124,15 @@
     :minute-of-hour  (extract-integer :minute expr)
     :hour            (date-trunc :hour expr)
     :hour-of-day     (extract-integer :hour expr)
-    :day             (kx/->date expr)
+    :day             (hx/->date expr)
     ;; Postgres DOW is 0 (Sun) - 6 (Sat); increment this to be consistent with Java, H2, MySQL, and Mongo (1-7)
-    :day-of-week     (kx/inc (extract-integer :dow expr))
+    :day-of-week     (hx/inc (extract-integer :dow expr))
     :day-of-month    (extract-integer :day expr)
     :day-of-year     (extract-integer :doy expr)
     ;; Postgres weeks start on Monday, so shift this date into the proper bucket and then decrement the resulting day
-    :week            (kx/- (date-trunc :week (kx/+ expr one-day))
+    :week            (hx/- (date-trunc :week (hx/+ expr one-day))
                            one-day)
-    :week-of-year    (extract-integer :week (kx/+ expr one-day))
+    :week-of-year    (extract-integer :week (hx/+ expr one-day))
     :month           (date-trunc :month expr)
     :month-of-year   (extract-integer :month expr)
     :quarter         (date-trunc :quarter expr)
@@ -141,7 +140,7 @@
     :year            (extract-integer :year expr)))
 
 (defn- date-interval [unit amount]
-  (k/raw (format "(NOW() + INTERVAL '%d %s')" (int amount) (name unit))))
+  (hsql/raw (format "(NOW() + INTERVAL '%d %s')" (int amount) (name unit))))
 
 (defn- humanize-connection-error-message [message]
   (condp re-matches message
@@ -177,10 +176,8 @@
   "Fetch the Materialized Views for a Postgres DATABASE.
    These are returned as a set of maps, the same format as `:tables` returned by `describe-database`."
   [database]
-  (try (set (for [{:keys [schemaname matviewname]} (jdbc/query (sql/db->jdbc-connection-spec database)
-                                                               ["SELECT schemaname, matviewname FROM pg_matviews;"])]
-              {:schema schemaname
-               :name   matviewname}))
+  (try (set (jdbc/query (sql/db->jdbc-connection-spec database)
+                        ["SELECT schemaname AS \"schema\", matviewname AS \"name\" FROM pg_matviews;"]))
        (catch Throwable e
          (log/error "Failed to fetch materialized views for this database:" (.getMessage e)))))
 
@@ -190,6 +187,9 @@
    This implementation combines the results from the generic SQL default implementation with materialized views fetched from `materialized-views`."
   [driver database]
   (update (sql/describe-database driver database) :tables (u/rpartial set/union (materialized-views database))))
+
+(defn- string-length-fn [field-key]
+  (hsql/call :char_length (hx/cast :VARCHAR field-key)))
 
 
 (defrecord PostgresDriver []
@@ -205,7 +205,7 @@
           :date                      (u/drop-first-arg date)
           :prepare-value             (u/drop-first-arg prepare-value)
           :set-timezone-sql          (constantly "UPDATE pg_settings SET setting = ? WHERE name ILIKE 'timezone';")
-          :string-length-fn          (constantly :CHAR_LENGTH)
+          :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
 (u/strict-extend PostgresDriver

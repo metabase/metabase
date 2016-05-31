@@ -10,6 +10,7 @@
             [metabase.test.data.interface :as i]))
 
 (driver/find-and-load-drivers!)
+
 (def ^:const all-valid-engines (set (keys (driver/available-drivers))))
 
 
@@ -60,19 +61,19 @@
          (require (symbol (str "metabase.test.data." (name engine))) :reload)))
   (driver/engine->driver engine))
 
-(def ^:dynamic *data-loader*
-  "The dataset we're currently testing against, bound by `with-engine`.
+(def ^:dynamic *driver*
+  "The driver we're currently testing against, bound by `with-engine`.
    This is just a regular driver, e.g. `MySQLDriver`, with an extra promise keyed by `:dbpromise`
    that is used to store the `test-data` dataset when you call `load-data!`."
   (driver/engine->driver default-engine))
 
 (defn do-with-engine [engine f]
-  (binding [*engine*      engine
-            *data-loader* (engine->driver engine)]
+  (binding [*engine* engine
+            *driver* (engine->driver engine)]
     (f)))
 
 (defmacro with-engine
-  "Bind `*data-loader*` to the dataset with ENGINE and execute BODY."
+  "Bind `*driver*` to the dataset with ENGINE and execute BODY."
   [engine & body]
   `(do-with-engine ~engine (fn [] ~@body)))
 
@@ -83,7 +84,7 @@
      ~@body))
 
 (defmacro with-engine-when-testing
-  "When testing ENGINE, binding `*data-loader*` and executes BODY."
+  "When testing ENGINE, binding `*driver*` and executes BODY."
   [engine & body]
   `(when-testing-engine ~engine
      (with-engine ~engine
@@ -97,7 +98,7 @@
        ~actual)))
 
 (defmacro expect-with-engine
-  "Generate a unit test that only runs if we're currently testing against ENGINE, and that binds `*data-loader*` to the current dataset."
+  "Generate a unit test that only runs if we're currently testing against ENGINE, and that binds `*driver*` to the current dataset."
   [engine expected actual]
   `(expect-when-testing-engine ~engine
      (with-engine ~engine ~expected)
@@ -105,7 +106,7 @@
 
 (defmacro expect-with-engines
   "Generate unit tests for all datasets in ENGINES; each test will only run if we're currently testing the corresponding dataset.
-   `*data-loader*` is bound to the current dataset inside each test."
+   `*driver*` is bound to the current dataset inside each test."
   [engines expected actual]
   ;; Make functions to get expected/actual so the code is only compiled one time instead of for every single driver
   ;; speeds up loading of metabase.driver.query-processor-test significantly
@@ -120,7 +121,7 @@
 
 (defmacro expect-with-all-engines
   "Generate unit tests for all valid datasets; each test will only run if we're currently testing the corresponding dataset.
-  `*data-loader*` is bound to the current dataset inside each test."
+  `*driver*` is bound to the current dataset inside each test."
   [expected actual]
   `(expect-with-engines all-valid-engines ~expected ~actual))
 

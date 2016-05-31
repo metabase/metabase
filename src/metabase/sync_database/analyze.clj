@@ -152,6 +152,7 @@
 
 (defn make-analyze-table
   "Make a generic implementation of `analyze-table`."
+  {:style/indent 1}
   [driver & {:keys [field-avg-length-fn field-percent-urls-fn]
              :or   {field-avg-length-fn   (partial driver/default-field-avg-length driver)
                     field-percent-urls-fn (partial driver/default-field-percent-urls driver)}}]
