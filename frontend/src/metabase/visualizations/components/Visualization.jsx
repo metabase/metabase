@@ -69,7 +69,7 @@ export default class Visualization extends Component {
     }
 
     render() {
-        const { series, actionButtons, className, isDashboard, width, isSlow, expectedDuration } = this.props;
+        const { series, actionButtons, className, isDashboard, width, isSlow, expectedDuration, replacementContent } = this.props;
         const CardVisualization = visualizations.get(series[0].card.display);
         const small = width < 330;
 
@@ -99,7 +99,7 @@ export default class Visualization extends Component {
 
         return (
             <div className={cx(className, "flex flex-column")}>
-                { isDashboard && (loading || error || !CardVisualization.noHeader) ?
+                { isDashboard && (loading || error || !CardVisualization.noHeader) || replacementContent ?
                     <div className="p1 flex-no-shrink">
                         <LegendHeader
                             series={series}
@@ -108,7 +108,9 @@ export default class Visualization extends Component {
                     </div>
                 : null
                 }
-                { error ?
+                { replacementContent ?
+                    replacementContent
+                : error ?
                     <div className="flex-full px1 pb1 text-centered text-slate-light flex flex-column layout-centered">
                         <Tooltip tooltip={isDashboard ? ERROR_MESSAGE_GENERIC : error} isEnabled={small}>
                             <Icon className="mb2" name="warning" width={50} height={50} />

@@ -2,10 +2,11 @@ import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
 import visualizations from "metabase/visualizations";
-
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
 
 import Icon from "metabase/components/Icon.jsx";
+
+import DashCardParameterMapping from "../containers/DashCardParameterMapping.jsx";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -70,7 +71,7 @@ export default class DashCard extends Component {
     }
 
     render() {
-        const { dashcard, cardData, cardDurations, isEditing, onAddSeries, onRemove } = this.props;
+        const { dashcard, cardData, cardDurations, isEditing, isEditingParameter, onAddSeries, onRemove } = this.props;
 
         const cards = [dashcard.card].concat(dashcard.series || []);
         const series = cards
@@ -116,6 +117,7 @@ export default class DashCard extends Component {
                     gridSize={this.props.isMobile ? undefined : { width: dashcard.sizeX, height: dashcard.sizeY }}
                     actionButtons={isEditing ? <DashCardActionButtons series={series} visualization={CardVisualization} onRemove={onRemove} onAddSeries={onAddSeries} /> : undefined}
                     onUpdateVisualizationSetting={this.props.onUpdateVisualizationSetting}
+                    replacementContent={isEditingParameter && <DashCardParameterMapping dashcard={dashcard} />}
                 />
             </div>
         );

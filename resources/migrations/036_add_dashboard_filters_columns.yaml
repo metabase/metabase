@@ -9,27 +9,15 @@ databaseChangeLog:
               - column:
                   name: parameters
                   type: text
+                  value: []
                   constraints:
                     nullable: true
-                    deferrable: false
-                    initiallyDeferred: false
-        - addNotNullConstraint:
-            columnDataType: text
-            columnName: parameters
-            defaultNullValue: '[]'
-            tableName: report_dashboard
         - addColumn:
             tableName: report_dashboardcard
             columns:
               - column:
                   name: parameter_mappings
                   type: text
+                  value: []
                   constraints:
                     nullable: true
-                    deferrable: false
-                    initiallyDeferred: false
-        - addNotNullConstraint:
-            columnDataType: text
-            columnName: parameter_mappings
-            defaultNullValue: '[]'
-            tableName: report_dashboardcard

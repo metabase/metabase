@@ -114,6 +114,9 @@
     pointer-events: none;
     transition: border .3s, background-color .3s;
 }
+.Dash--editing.Dash--editingParameter .DashCard .Card {
+    pointer-events: auto;
+}
 
 @keyframes fade-out-yellow {
     from {
