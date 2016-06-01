@@ -131,7 +131,7 @@ export default class DashboardGrid extends Component {
                     dashcard={this.state.addSeriesModalDashCard}
                     dashboard={this.props.dashboard}
                     cards={this.props.cards}
-                    cardData={this.props.cardData}
+                    dashcardData={this.props.dashcardData}
                     databases={this.props.databases}
                     fetchCards={this.props.fetchCards}
                     fetchCardData={this.props.fetchCardData}
@@ -202,7 +202,7 @@ export default class DashboardGrid extends Component {
         return (
             <DashCard
                 dashcard={dc}
-                cardData={this.props.cardData}
+                dashcardData={this.props.dashcardData}
                 cardDurations={this.props.cardDurations}
                 fetchCardData={this.props.fetchCardData}
                 markNewCardSeen={this.props.markNewCardSeen}

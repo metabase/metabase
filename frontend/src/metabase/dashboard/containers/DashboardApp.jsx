@@ -18,7 +18,7 @@ const mapStateToProps = (state, props) => {
       dashboard:            getDashboardComplete(state),
       cards:                getCardList(state),
       revisions:            getRevisions(state),
-      cardData:             getCardData(state),
+      dashcardData:             getCardData(state),
       cardDurations:        getCardDurations(state),
       databases:            getDatabases(state),
       editingParameter:     getEditingParameter(state),

@@ -137,7 +137,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, d
         });
 
         clearTimeout(slowCardTimer);
-        return { id: card.id, result };
+        return { dashcard_id: dashcard.id, card_id: card.id, result };
     };
 });
 
@@ -334,8 +334,8 @@ const revisions = handleActions({
     [FETCH_REVISIONS]: { next: (state, { payload: { entity, id, revisions } }) => ({ ...state, [entity+'-'+id]: revisions })}
 }, {});
 
-const cardData = handleActions({
-    [FETCH_CARD_DATA]: { next: (state, { payload: { id, result }}) => ({ ...state, [id]: result }) }
+const dashcardData = handleActions({
+    [FETCH_CARD_DATA]: { next: (state, { payload: { dashcard_id, card_id, result }}) => i.assocIn(state, [dashcard_id, card_id], result)}
 }, {});
 
 const cardDurations = handleActions({
@@ -354,7 +354,7 @@ export default combineReducers({
     dashcards,
     editingParameterId,
     revisions,
-    cardData,
+    dashcardData,
     cardDurations,
     parameterValues
 });

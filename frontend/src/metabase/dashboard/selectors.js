@@ -9,7 +9,7 @@ export const getIsEditing         = state => state.dashboard.isEditing;
 export const getCards             = state => state.dashboard.cards;
 export const getDashboards        = state => state.dashboard.dashboards;
 export const getDashcards         = state => state.dashboard.dashcards;
-export const getCardData          = state => state.dashboard.cardData;
+export const getCardData          = state => state.dashboard.dashcardData;
 export const getCardDurations     = state => state.dashboard.cardDurations;
 export const getCardIdList        = state => state.dashboard.cardList;
 export const getRevisions         = state => state.dashboard.revisions;

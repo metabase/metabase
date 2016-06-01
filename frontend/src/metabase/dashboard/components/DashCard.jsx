@@ -10,6 +10,7 @@ import DashCardParameterMapper from "../components/DashCardParameterMapper.jsx";
 
 import cx from "classnames";
 import _ from "underscore";
+import { getIn } from "icepick";
 
 export default class DashCard extends Component {
     constructor(props, context) {
@@ -24,7 +25,7 @@ export default class DashCard extends Component {
 
     static propTypes = {
         dashcard: PropTypes.object.isRequired,
-        cardData: PropTypes.object.isRequired,
+        dashcardData: PropTypes.object.isRequired,
 
         markNewCardSeen: PropTypes.func.isRequired,
         fetchCardData: PropTypes.func.isRequired,
@@ -71,14 +72,14 @@ export default class DashCard extends Component {
     }
 
     render() {
-        const { dashcard, cardData, cardDurations, isEditing, isEditingParameter, onAddSeries, onRemove } = this.props;
+        const { dashcard, dashcardData, cardDurations, isEditing, isEditingParameter, onAddSeries, onRemove } = this.props;
 
         const cards = [dashcard.card].concat(dashcard.series || []);
         const series = cards
             .map(card => ({
                 card: card,
-                data: cardData[card.id] && cardData[card.id].data,
-                error: cardData[card.id] && cardData[card.id].error,
+                data: getIn(dashcardData, [dashcard.id, card.id, "data"]),
+                error: getIn(dashcardData, [dashcard.id, card.id, "error"]),
                 duration: cardDurations[card.id]
             }));
 
