@@ -254,7 +254,7 @@ export const setDashCardVisualizationSetting = createAction(SET_DASHCARD_VISUALI
 export const setEditingParameterId = createAction(SET_EDITING_PARAMETER_ID);
 export const setParameterMapping = createThunkAction(SET_PARAMETER_MAPPING, (parameter_id, dashcard_id, card_id, target) =>
     (dispatch, getState) => {
-        let { parameter_mappings } = getState().dashboard.dashcards[dashcard_id];
+        let parameter_mappings = getState().dashboard.dashcards[dashcard_id].parameter_mappings || [];
         parameter_mappings = parameter_mappings.filter(m => m.card_id !== card_id || m.parameter_id !== parameter_id);
         if (target) {
             parameter_mappings = parameter_mappings.concat({ parameter_id, card_id, target })
