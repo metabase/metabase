@@ -320,6 +320,7 @@ export default class QueryHeader extends Component {
                 allowNativeToQuery={this.props.cardIsNewFn() && !this.props.cardIsDirtyFn()}
                 nativeForm={this.props.result && this.props.result.data && this.props.result.data.native_form}
                 onSetMode={this.props.setQueryModeFn}
+                tableMetadata={this.props.tableMetadata}
             />
         ]);
 

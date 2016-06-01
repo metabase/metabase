@@ -1,7 +1,8 @@
 import React, { Component, PropTypes } from "react";
 
 import cx from "classnames";
-import { formatSQL } from "metabase/lib/formatting";
+import _ from "underscore";
+import { formatSQL, capitalize } from "metabase/lib/formatting";
 import Icon from "metabase/components/Icon.jsx";
 import Modal from "metabase/components/Modal.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
@@ -29,17 +30,20 @@ export default class QueryModeButton extends Component {
     }
 
     render() {
-        const { allowNativeToQuery, mode, nativeForm, onSetMode } = this.props;
+        const { allowNativeToQuery, mode, nativeForm, onSetMode, tableMetadata } = this.props;
 
         // determine the type to switch to based on the type
         var targetType = (mode === "query") ? "native" : "query";
+
+        const engine = tableMetadata && tableMetadata.db.engine;
+        const nativeQueryName = _.contains(["mongo", "druid"], engine) ? "native query" : "SQL";
 
         // maybe switch up the icon based on mode?
         let onClick = null;
         let tooltip = "Not Supported";
         if (mode === "query") {
             onClick = nativeForm ? () => this.setState({isOpen: true}) : () => onSetMode("native");
-            tooltip = nativeForm ? "View the SQL" : "Switch to SQL";
+            tooltip = nativeForm ? `View the ${nativeQueryName}` : `Switch to ${nativeQueryName}`;
         } else if (mode === "native" && allowNativeToQuery) {
             onClick = () => onSetMode("query");
             tooltip = "Switch to Builder";
@@ -56,19 +60,24 @@ export default class QueryModeButton extends Component {
                 <Modal className="Modal Modal--medium" backdropClassName="Modal-backdrop-dark" isOpen={this.state.isOpen} onClose={() => this.setState({isOpen: false})}>
                     <div className="p4">
                         <div className="mb3 flex flex-row flex-full align-center justify-between">
-                            <h2>SQL for this question</h2>
+                            <h2>{capitalize(nativeQueryName)} for this question</h2>
                             <span className="cursor-pointer" onClick={() => this.setState({isOpen: false})}><Icon name="close" width="16px" height="16px" /></span>
                         </div>
 
                         <pre className="mb3 p2 sql-code">
-                            {nativeForm && nativeForm.query && formatSQL(nativeForm.query)}
+                            {nativeForm && nativeForm.query && (
+                                _.contains(["mongo", "druid"], engine) ?
+                                    JSON.stringify(nativeForm.query)
+                                :
+                                    formatSQL(nativeForm.query)
+                            )}
                         </pre>
 
                         <div className="text-centered">
                             <a className="Button Button--primary" onClick={() => {
                                 onSetMode(targetType);
                                 this.setState({isOpen: false});
-                            }}>Convert this question to SQL</a>
+                            }}>Convert this question to {nativeQueryName}</a>
                         </div>
                     </div>
                 </Modal>
