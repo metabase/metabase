@@ -77,9 +77,8 @@ export default class DashCard extends Component {
         const cards = [dashcard.card].concat(dashcard.series || []);
         const series = cards
             .map(card => ({
+                ...getIn(dashcardData, [dashcard.id, card.id]),
                 card: card,
-                data: getIn(dashcardData, [dashcard.id, card.id, "data"]),
-                error: getIn(dashcardData, [dashcard.id, card.id, "error"]),
                 duration: cardDurations[card.id]
             }));
 
@@ -87,6 +86,8 @@ export default class DashCard extends Component {
         const expectedDuration = Math.max(...series.map((s) => s.duration ? s.duration.average : 0));
         const usuallyFast = _.every(series, (s) => s.duration && s.duration.average < s.duration.fast_threshold);
         const isSlow = loading && _.some(series, (s) => s.duration) && (usuallyFast ? "usually-fast" : "usually-slow");
+
+        const hasUnmappedParameters = _.any(series, (s) => s.json_query && _.any(s.json_query.parameters, (p) => p.target == null));
 
         const errors = series.map(s => s.error).filter(e => e);
         const error = errors[0] || this.state.error;
@@ -106,7 +107,13 @@ export default class DashCard extends Component {
 
         const CardVisualization = visualizations.get(series[0].card.display);
         return (
-            <div className={"Card bordered rounded flex flex-column " + cx({ "Card--recent": dashcard.isAdded, "Card--slow": isSlow === "usually-slow" })}>
+            <div
+                className={"Card bordered rounded flex flex-column " + cx({
+                    "Card--recent": dashcard.isAdded,
+                    "Card--unmapped": hasUnmappedParameters,
+                    "Card--slow": isSlow === "usually-slow"
+                })}
+            >
                 <Visualization
                     className="flex-full"
                     error={errorMessage}

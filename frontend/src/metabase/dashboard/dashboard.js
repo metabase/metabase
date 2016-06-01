@@ -154,15 +154,15 @@ export const fetchCardDuration = createThunkAction(FETCH_CARD_DURATION, function
     };
 });
 
-export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(id) {
+export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(id, enableQueryParameters = true, enableDefaultParameters = true) {
     return async function(dispatch, getState) {
         let result = await DashboardApi.get({ dashId: id });
         if (result.parameters) {
             const { query } = getState().router.location;
             for (const parameter of result.parameters) {
-                if (query[parameter.slug] != null) {
+                if (enableQueryParameters && query[parameter.slug] != null) {
                     dispatch(setParameterValue(parameter.id, query[parameter.slug]));
-                } else if (parameter.default != null) {
+                } else if (enableDefaultParameters && parameter.default != null) {
                     dispatch(setParameterValue(parameter.id, parameter.default));
                 }
             }
@@ -206,8 +206,6 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
         if (dashboard.isDirty) {
             let { id, name, description, public_perms, parameters } = dashboard;
             dashboard = await DashboardApi.update({ id, name, description, public_perms, parameters });
-            // HACK!
-            dashboard.parameters = parameters;
         }
 
         // reposition the cards
@@ -220,7 +218,7 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
         }
 
         // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
-        //dispatch(fetchDashboard(dashId));
+        dispatch(fetchDashboard(dashId, false, true)); // disable using query parameters when saving
 
         MetabaseAnalytics.trackEvent("Dashboard", "Update");
 

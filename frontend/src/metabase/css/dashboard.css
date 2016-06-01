@@ -110,6 +110,10 @@
     border-color: var(--gold-color);
 }
 
+.DashCard .Card.Card--unmapped > * {
+    opacity: 0.25;
+}
+
 .Dash--editing .DashCard .Card {
     pointer-events: none;
     transition: border .3s, background-color .3s;
