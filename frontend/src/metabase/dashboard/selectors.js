@@ -1,10 +1,10 @@
-/* @flow-weak */
+/* @flow weak */
 
 import _ from "underscore";
 
 import { createSelector } from 'reselect';
 
-export const getSelectedDashboard = state => state.dashboard.selectedDashboard
+export const getSelectedDashboard = state => state.router.params.dashboardId;
 export const getIsEditing         = state => state.dashboard.isEditing;
 export const getCards             = state => state.dashboard.cards;
 export const getDashboards        = state => state.dashboard.dashboards;
@@ -72,7 +72,7 @@ export const getParameterTarget = createSelector(
 import * as Dashboard from "metabase/meta/Dashboard";
 import Database from "metabase/meta/metadata/Database";
 import type { CardObject } from "metabase/meta/types/Card";
-import type { ParameterMappingOption } from "metabase/meta/types/Dashboard";
+import type { ParameterMappingOption, ParameterObject } from "metabase/meta/types/Dashboard";
 
 export const makeGetParameterMappingOptions = () => {
     const getDatabaseMetadata = createSelector(
@@ -81,7 +81,7 @@ export const makeGetParameterMappingOptions = () => {
     )
     const getParameterMappingOptions = createSelector(
         [getDatabaseMetadata, getEditingParameter, getCard],
-        (metadata: ?Database, parameter: ParameterObject, card: CardObject): Array<ParameterMappingOption> => {
+        (metadata, parameter: ParameterObject, card: CardObject): Array<ParameterMappingOption> => {
             return metadata ? Dashboard.getParameterMappingOptions(metadata, parameter, card) : [];
         }
     );

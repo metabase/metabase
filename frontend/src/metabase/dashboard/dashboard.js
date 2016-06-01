@@ -21,7 +21,6 @@ dashboard.define({
 });
 
 // action constants
-export const SELECT_DASHBOARD = 'SELECT_DASHBOARD';
 export const SET_EDITING_DASHBOARD = 'SET_EDITING';
 
 export const FETCH_CARDS = 'FETCH_CARDS';
@@ -114,12 +113,13 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, d
         }, DATASET_SLOW_TIMEOUT);
 
         // if we have a parameter, apply it to the card query before we execute
-        let { dashboards, selectedDashboard, parameterValues } = getState().dashboard;
+        let { dashboardId } = getState().router.params;
+        let { dashboards, parameterValues } = getState().dashboard;
 
-        let dashboard = dashboards[selectedDashboard];
+        let dashboard = dashboards[dashboardId];
 
         let parameters = [];
-        if (dashboard.parameters) {
+        if (dashboard && dashboard.parameters) {
             for (const parameter of dashboard.parameters) {
                 let mapping = _.findWhere(dashcard && dashcard.parameter_mappings, { card_id: card.id, parameter_id: parameter.id });
                 if (parameterValues[parameter.id] != null) {
@@ -157,6 +157,16 @@ export const fetchCardDuration = createThunkAction(FETCH_CARD_DURATION, function
 export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(id) {
     return async function(dispatch, getState) {
         let result = await DashboardApi.get({ dashId: id });
+        if (result.parameters) {
+            const { query } = getState().router.location;
+            for (const parameter of result.parameters) {
+                if (query[parameter.slug] != null) {
+                    dispatch(setParameterValue(parameter.id, query[parameter.slug]));
+                } else if (parameter.default != null) {
+                    dispatch(setParameterValue(parameter.id, parameter.default));
+                }
+            }
+        }
         return normalize(result, dashboard);
     };
 });
@@ -261,10 +271,6 @@ export const setParameterValue = createThunkAction(SET_PARAMETER_VALUE, (paramet
 
 // reducers
 
-const selectedDashboard = handleActions({
-    [SELECT_DASHBOARD]: { next: (state, { payload }) => payload }
-}, null);
-
 const isEditing = handleActions({
     [SET_EDITING_DASHBOARD]: { next: (state, { payload }) => payload }
 }, false);
@@ -341,7 +347,6 @@ const parameterValues = handleActions({
 }, {});
 
 export default combineReducers({
-    selectedDashboard,
     isEditing,
     cards,
     cardList,

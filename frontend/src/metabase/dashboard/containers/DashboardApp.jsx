@@ -22,7 +22,8 @@ const mapStateToProps = (state, props) => {
       cardDurations:        getCardDurations(state),
       databases:            getDatabases(state),
       editingParameter:     getEditingParameter(state),
-      parameterValues:      getParameterValues(state)
+      parameterValues:      getParameterValues(state),
+      addCardOnLoad:        parseInt(state.router.location.query.add) || null
   }
 }
 
@@ -33,7 +34,12 @@ const mapDispatchToProps = {
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class DashboardApp extends Component {
+    componentDidMount() {
+        if (this.props.addCardOnLoad != null) {
+            this.props.onChangeLocationSearch("add", null);
+        }
+    }
     render() {
-        return <Dashboard {...this.props} />;
+        return <Dashboard {...this.props} onDashboardDeleted={(id) => this.props.onBroadcast("dashboard:delete", id)}/>;
     }
 }

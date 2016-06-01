@@ -38,7 +38,7 @@ export default class ParameterWidget extends Component {
                 }
             >
                 <div>
-                    <div><input className="input m1" type="text" value={value} onChange={(e) => this.setState({ value: e.target.value })}/></div>
+                    <div><input className="input m1" type="text" value={this.state.value} onChange={(e) => this.setState({ value: e.target.value })}/></div>
                     <div><button className="Button mx1 mb1" onClick={() => {
                         setValue(this.state.value || null);
                         this.refs.valuePopover.close();
