@@ -28,7 +28,7 @@ export default class ParameterWidget extends Component {
             <PopoverWithTrigger
                 ref="valuePopover"
                 triggerElement={
-                    <div className={cx(S.parameter, { [S.selected]: hasValue })}>
+                    <div ref="trigger" className={cx(S.parameter, { [S.selected]: hasValue })}>
                         <div className="mr1">{ hasValue ? value : placeholder }</div>
                         <Icon name={hasValue ? "close" : "chevrondown"} className="flex-align-right" onClick={(e) => {
                             e.stopPropagation();
@@ -36,13 +36,31 @@ export default class ParameterWidget extends Component {
                         }}/>
                     </div>
                 }
+                target={() => this.refs.trigger} // not sure why this is necessary
             >
-                <div>
-                    <div><input className="input m1" type="text" value={this.state.value} onChange={(e) => this.setState({ value: e.target.value })}/></div>
-                    <div><button className="Button mx1 mb1" onClick={() => {
-                        setValue(this.state.value || null);
-                        this.refs.valuePopover.close();
-                    }}>Apply</button></div>
+                <div className="flex flex-column">
+                    <input
+                        className="input m1"
+                        type="text"
+                        value={this.state.value}
+                        onChange={(e) => this.setState({ value: e.target.value })}
+                        onKeyUp={(e) => {
+                            if (e.keyCode === 13) {
+                                setValue(this.state.value || null);
+                                this.refs.valuePopover.close();
+                            }
+                        }}
+                        autoFocus
+                    />
+                    <button
+                        className="Button mx1 mb1 full-width"
+                        onClick={() => {
+                            setValue(this.state.value || null);
+                            this.refs.valuePopover.close();
+                        }}
+                    >
+                        Apply
+                    </button>
                 </div>
             </PopoverWithTrigger>
         );
