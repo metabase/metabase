@@ -110,7 +110,7 @@ export default class DashCard extends Component {
             <div
                 className={"Card bordered rounded flex flex-column " + cx({
                     "Card--recent": dashcard.isAdded,
-                    "Card--unmapped": hasUnmappedParameters,
+                    "Card--unmapped": hasUnmappedParameters && !isEditing,
                     "Card--slow": isSlow === "usually-slow"
                 })}
             >
