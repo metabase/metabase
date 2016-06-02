@@ -136,6 +136,33 @@ export default class DashboardHeader extends Component {
         const buttons = [];
 
         if (isEditing) {
+
+            // Parameters
+            buttons.push(
+                <span>
+                    <Tooltip tooltip="Add a filter">
+                        <a
+                          key="parameters"
+                          className={cx("circular p1 flex", { "bg-brand text-white": this.state.modal == "parameters" || this.props.isEditingParameter })}
+                          style={{ margin: -8, position: "relative", top: -2 }}
+                          title="Parameters"
+                          onClick={() => this.setState({ modal: "parameters" })}
+                        >
+                            <Icon name="funnel" width="16px" height="16px" />
+                        </a>
+                    </Tooltip>
+
+                    {this.state.modal && this.state.modal === "parameters" &&
+                        <Popover onClose={() => this.setState({modal: false})}>
+                            <ParametersPopover
+                                onAddParameter={this.props.addParameter}
+                                onClose={() => this.setState({modal: false})}
+                            />
+                        </Popover>
+                    }
+                </span>
+            );
+
             buttons.push(
                 <ModalWithTrigger
                     key="history"
@@ -158,26 +185,6 @@ export default class DashboardHeader extends Component {
                         onReverted={() => this.onRevertedRevision()}
                     />
                 </ModalWithTrigger>
-            );
-
-            // Parameters
-            buttons.push(
-                <span>
-                    <Tooltip tooltip="Parameters">
-                        <a key="parameters" title="Parameters">
-                            <Icon name='filter' width="16px" height="16px" onClick={() => this.setState({ modal: "parameters" })}></Icon>
-                        </a>
-                    </Tooltip>
-
-                    {this.state.modal && this.state.modal === "parameters" &&
-                        <Popover onClose={() => this.setState({modal: false})}>
-                            <ParametersPopover
-                                onAddParameter={this.props.addParameter}
-                                onClose={() => this.setState({modal: false})}
-                            />
-                        </Popover>
-                    }
-                </span>
             );
         }
 
