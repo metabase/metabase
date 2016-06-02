@@ -195,7 +195,7 @@ export default class Dashboard extends Component {
     addParameter(parameterOption) {
         let parameters = this.props.dashboard && this.props.dashboard.parameters || [];
 
-        let parameter = createParameter(parameterOption);
+        let parameter = createParameter(parameterOption, parameters);
 
         this.setDashboardAttribute("parameters", [...parameters, parameter]);
         this.props.setEditingParameterId(parameter.id);
@@ -287,11 +287,12 @@ export default class Dashboard extends Component {
                     {dashboard.parameters && dashboard.parameters.length > 0 &&
                         <div className="wrapper flex flex-column align-end mt1">
                             <div className="flex flex-row align-end" ref="parameters">
-                                {this.props.dashboard.parameters.map(parameter =>
+                                {dashboard.parameters.map(parameter =>
                                     <ParameterWidget
                                         className="ml1"
                                         isEditing={isEditing}
                                         parameter={parameter}
+                                        parameters={dashboard.parameters}
                                         dashboard={dashboard}
                                         parameterValue={parameterValues[parameter.id]}
 

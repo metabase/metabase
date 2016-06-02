@@ -17,7 +17,7 @@ const dashcard = new Schema('dashcard');
 const card = new Schema('card');
 const dashboard = new Schema('dashboard');
 dashboard.define({
-  ordered_cards: arrayOf(dashcard)
+    ordered_cards: arrayOf(dashcard)
 });
 
 // action constants

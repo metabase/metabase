@@ -107,14 +107,19 @@ export function getParameterMappingOptions(metadata: Metadata, parameter: Parame
     return [];
 }
 
-export function createParameter(option: ParameterOption): ParameterObject {
-    return {
+export function createParameter(option: ParameterOption, parameters: Array<ParameterOption> = []): ParameterObject {
+    let name = option.name;
+    let nameIndex = 0;
+    // get a unique name
+    while (_.any(parameters, (p) => p.name === name)) {
+        name = option.name + " " + (++nameIndex);
+    }
+    let parameter = {
        id: Math.floor(Math.random()*Math.pow(2,32)).toString(16),
-       name: "",
-       slug: "",
        widget: option.id,
        type: option.type,
-   }
+    };
+    return setParameterName(parameter, name);
 }
 
 export function setParameterName(parameter: ParameterObject, name: string): ParameterObject {

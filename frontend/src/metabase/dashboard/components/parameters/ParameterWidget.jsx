@@ -5,6 +5,7 @@ import Icon from "metabase/components/Icon.jsx";
 
 import S from "./ParameterWidget.css";
 import cx from "classnames";
+import _ from "underscore";
 
 export default class ParameterWidget extends Component {
     constructor(props, context) {
@@ -67,7 +68,7 @@ export default class ParameterWidget extends Component {
     }
 
     render() {
-        const { className, parameter, parameterValue, isEditing, editingParameter, setEditingParameterId, setName, setValue, setDefaultValue, remove } = this.props;
+        const { className, parameter, parameterValue, parameters, isEditing, editingParameter, setEditingParameterId, setName, setValue, setDefaultValue, remove } = this.props;
 
         const isEditingDashboard = isEditing;
         const isEditingParameter = editingParameter && editingParameter.id === parameter.id;
@@ -86,7 +87,7 @@ export default class ParameterWidget extends Component {
                     { this.state.isEditingName ?
                         <input
                             type="text"
-                            className={cx(S.nameInput)}
+                            className={cx(S.nameInput, { "border-error": _.any(parameters, (p) => p.name === parameter.name && p.id !== parameter.id) })}
                             value={parameter.name}
                             onChange={(e) => setName(e.target.value)}
                             onBlur={() => this.setState({ isEditingName: false })}
