@@ -1,6 +1,6 @@
 import React, { Component, PropTypes } from "react";
 
-import AccordianList from "./AccordianList.jsx";
+import AccordianList from "metabase/components/AccordianList.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";

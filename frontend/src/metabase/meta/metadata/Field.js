@@ -30,4 +30,8 @@ export default class Field extends Base {
     isCategory()  { return isCategory(this._object); }
     isMetric()    { return isMetric(this._object); }
     isDimension() { return isDimension(this._object); }
+
+    values() {
+        return (this._object.values && this._object.values.length > 0 && this._object.values[0].values) || []
+    }
 }

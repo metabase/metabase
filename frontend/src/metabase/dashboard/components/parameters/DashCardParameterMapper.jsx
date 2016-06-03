@@ -1,6 +1,6 @@
 import React, { Component, PropTypes } from "react";
 
-import DashCardCardParameterMapper from "../containers/DashCardCardParameterMapper.jsx";
+import DashCardCardParameterMapper from "../../containers/DashCardCardParameterMapper.jsx";
 
 const DashCardParameterMapper = ({ dashcard }) =>
     <div className="flex-full flex layout-centered">

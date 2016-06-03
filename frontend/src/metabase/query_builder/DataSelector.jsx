@@ -2,7 +2,7 @@ import React, { Component, PropTypes } from "react";
 
 import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
-import AccordianList from "./AccordianList.jsx";
+import AccordianList from "metabase/components/AccordianList.jsx";
 
 import { isQueryable } from 'metabase/lib/table';
 import { titleize, humanize } from 'metabase/lib/formatting';

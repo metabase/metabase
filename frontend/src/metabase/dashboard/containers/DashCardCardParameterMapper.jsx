@@ -1,11 +1,20 @@
-/* @flow */
-
 import React, { Component, PropTypes } from "react";
 import { connect } from "react-redux";
 
-import { getEditingParameter, getParameterTarget, makeGetParameterMappingOptions } from "../selectors";
+import S from "./DashCardCardParameterMapper.css";
+
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
+import Icon from "metabase/components/Icon.jsx";
+import AccordianList from "metabase/components/AccordianList.jsx";
+import Tooltip from "metabase/components/Tooltip.jsx";
+
+import { getEditingParameter, getParameterTarget, makeGetParameterMappingOptions, getMappingsByParameter } from "../selectors";
 import { fetchDatabaseMetadata } from "../metadata";
 import { setParameterMapping } from "../dashboard";
+
+import _ from "underscore";
+import cx from "classnames";
+import { getIn } from "icepick";
 
 import type { CardObject } from "metabase/meta/types/Card";
 import type { DashCardObject, ParameterId, ParameterObject, ParameterMappingOption, ParameterMappingTarget } from "metabase/meta/types/Dashboard";
@@ -14,9 +23,10 @@ import type { DatabaseId } from "metabase/meta/types/base";
 const makeMapStateToProps = () => {
     const getParameterMappingOptions = makeGetParameterMappingOptions()
     const mapStateToProps = (state, props) => ({
-        parameter:      getEditingParameter(state),
-        mappingOptions: getParameterMappingOptions(state, props),
-        target:         getParameterTarget(state, props)
+        parameter:           getEditingParameter(state),
+        mappingOptions:      getParameterMappingOptions(state, props),
+        target:              getParameterTarget(state, props),
+        mappingsByParameter: getMappingsByParameter(state)
     });
     return mapStateToProps;
 }
@@ -27,7 +37,7 @@ const mapDispatchToProps = {
 };
 
 @connect(makeMapStateToProps, mapDispatchToProps)
-export default class DashCardParameterMapping extends Component {
+export default class DashCardCardParameterMapper extends Component {
     props: {
         card: CardObject,
         dashcard: DashCardObject,
@@ -49,15 +59,46 @@ export default class DashCardParameterMapping extends Component {
         this.props.fetchDatabaseMetadata(card.dataset_query.database);
     }
 
+    onChange = (item) => {
+        const { setParameterMapping, parameter, dashcard, card } = this.props;
+        setParameterMapping(parameter.id, dashcard.id, card.id, item.target);
+        this.refs.popover.close()
+    }
+
     render() {
-        const { mappingOptions, parameter, dashcard, card, target, setParameterMapping } = this.props;
+        const { mappingOptions, target, mappingsByParameter, parameter, dashcard, card } = this.props;
+        const selected = _.find(mappingOptions, (o) => _.isEqual(o.target, target));
+
+        const mapping = getIn(mappingsByParameter, [parameter.id, dashcard.id, card.id]);
+        let overlapWarning = mapping && mapping.mappingsWithValues > 1 && mapping.overlapMax === 1;
+
+        const sections = [
+            {
+                items: mappingOptions
+            }
+        ];
+
         return (
-            <select className="m1" value={JSON.stringify(target)||""} onChange={(e) => setParameterMapping(parameter.id, dashcard.id, card.id, JSON.parse(e.target.value))}>
-                <option value=""></option>
-                {mappingOptions.map(mappingOption =>
-                    <option value={JSON.stringify(mappingOption.target)}>{mappingOption.name}</option>
-                )}
-            </select>
+            <div onMouseDown={(e) => e.stopPropagation()}>
+                <PopoverWithTrigger
+                    ref="popover"
+                    triggerElement={
+                        <Tooltip isEnabled={overlapWarning} tooltip="The values in this field don't overlap with the values of any other fields you've chosen" verticalAttachments={["bottom", "top"]}>
+                            <button className={cx(S.button, { [S.mapped]: !!selected, [S.warn]: overlapWarning })}>
+                                <span className="mr1">{selected ? selected.name : "Select..."}</span>
+                                <Icon className="flex-align-right" name="chevrondown" width={16} height={16} />
+                            </button>
+                        </Tooltip>
+                    }
+                >
+                <AccordianList
+                    className="text-brand"
+                    sections={sections}
+                    onChange={this.onChange}
+                    itemIsSelected={(item) => _.isEqual(item.target, target)}
+                />
+                </PopoverWithTrigger>
+            </div>
         );
     }
 }

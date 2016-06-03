@@ -1,12 +1,27 @@
 import React, { Component, PropTypes } from 'react';
+import { connect } from "react-redux";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import Icon from "metabase/components/Icon.jsx";
+import ColumnarSelector from "metabase/components/ColumnarSelector.jsx";
 
 import S from "./ParameterWidget.css";
 import cx from "classnames";
 import _ from "underscore";
 
+import { getMappingsByParameter } from "../selectors";
+
+const makeMapStateToProps = () => {
+    const mapStateToProps = (state, props) => ({
+        mappingsByParameter: getMappingsByParameter(state)
+    });
+    return mapStateToProps;
+}
+
+const mapDispatchToProps = {
+};
+
+@connect(makeMapStateToProps, mapDispatchToProps)
 export default class ParameterWidget extends Component {
     constructor(props, context) {
         super(props, context);
@@ -24,7 +39,19 @@ export default class ParameterWidget extends Component {
     }
 
     renderPopover(value, placeholder, setValue) {
+        const { parameter, mappingsByParameter } = this.props;
+        const values = _.chain(mappingsByParameter[parameter.id])
+            .values()
+            .map(_.values)
+            .flatten()
+            .map(m => m.values || [])
+            .flatten()
+            .sortBy(_.identity)
+            .uniq(true)
+            .value();
+
         let hasValue = value != null;
+
         return (
             <PopoverWithTrigger
                 ref="valuePopover"
@@ -32,37 +59,53 @@ export default class ParameterWidget extends Component {
                     <div ref="trigger" className={cx(S.parameter, { [S.selected]: hasValue })}>
                         <div className="mr1">{ hasValue ? value : placeholder }</div>
                         <Icon name={hasValue ? "close" : "chevrondown"} className="flex-align-right" onClick={(e) => {
-                            e.stopPropagation();
-                            setValue(null);
+                            if (hasValue) {
+                                e.stopPropagation();
+                                setValue(null);
+                            }
                         }}/>
                     </div>
                 }
                 target={() => this.refs.trigger} // not sure why this is necessary
             >
-                <div className="flex flex-column">
-                    <input
-                        className="input m1"
-                        type="text"
-                        value={this.state.value}
-                        onChange={(e) => this.setState({ value: e.target.value })}
-                        onKeyUp={(e) => {
-                            if (e.keyCode === 13) {
+                { values.length > 0 ?
+                    <ul className="scroll-y scroll-show" style={{ maxWidth: 200, maxHeight: 300 }}>
+                        {values.map(value =>
+                            <li
+                                key={value}
+                                className="px2 py1 bg-brand-hover text-white-hover cursor-pointer"
+                                onClick={() => { setValue(value); this.refs.valuePopover.close(); }}
+                            >
+                                {value}
+                            </li>
+                        )}
+                    </ul>
+                :
+                    <div className="flex flex-column">
+                        <input
+                            className="input m1"
+                            type="text"
+                            value={this.state.value}
+                            onChange={(e) => this.setState({ value: e.target.value })}
+                            onKeyUp={(e) => {
+                                if (e.keyCode === 13) {
+                                    setValue(this.state.value || null);
+                                    this.refs.valuePopover.close();
+                                }
+                            }}
+                            // autoFocus // FIXME: this causes the page to scroll
+                        />
+                        <button
+                            className="Button mx1 mb1 full-width"
+                            onClick={() => {
                                 setValue(this.state.value || null);
                                 this.refs.valuePopover.close();
-                            }
-                        }}
-                        autoFocus
-                    />
-                    <button
-                        className="Button mx1 mb1 full-width"
-                        onClick={() => {
-                            setValue(this.state.value || null);
-                            this.refs.valuePopover.close();
-                        }}
-                    >
-                        Apply
-                    </button>
-                </div>
+                            }}
+                        >
+                            Apply
+                        </button>
+                    </div>
+                }
             </PopoverWithTrigger>
         );
     }

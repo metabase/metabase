@@ -140,7 +140,7 @@ export default class DashboardHeader extends Component {
             // Parameters
             buttons.push(
                 <span>
-                    <Tooltip tooltip="Add a filter">
+                    <Tooltip tooltip="Add a Filter">
                         <a
                           key="parameters"
                           className={cx("circular p1 flex", { "bg-brand text-white": this.state.modal == "parameters" || this.props.isEditingParameter })}

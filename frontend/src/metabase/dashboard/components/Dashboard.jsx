@@ -6,7 +6,7 @@ import DashboardGrid from "../components/DashboardGrid.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
-import ParameterWidget from "./parameters/ParameterWidget.jsx";
+import ParameterWidget from "../containers/ParameterWidget.jsx";
 
 import { createParameter, setParameterName, setParameterDefaultValue } from "metabase/meta/Dashboard";
 

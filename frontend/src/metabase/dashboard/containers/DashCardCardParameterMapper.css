@@ -1,0 +1,22 @@
+:local(.button) {
+    font-weight: bold;
+    font-size: 16px;
+    border: 2px solid var(--brand-color);
+    border-radius: 4px;
+    min-height: 36px;
+    min-width: 100px;
+    background-color: white;
+    display: flex;
+    align-items: center;
+    padding: 0.25em 0.5em 0.25em 0.5em;
+    color: var(--default-font-color);
+}
+
+:local(.mapped) {
+    border-color: var(--green-color);
+}
+
+:local(.warn) {
+    border-color: var(--warning-color) !important;
+    color: var(--warning-color) !important;
+}

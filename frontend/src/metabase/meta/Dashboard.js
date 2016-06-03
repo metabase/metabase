@@ -115,6 +115,7 @@ export function createParameter(option: ParameterOption, parameters: Array<Param
         name = option.name + " " + (++nameIndex);
     }
     let parameter = {
+       name: "",
        id: Math.floor(Math.random()*Math.pow(2,32)).toString(16),
        widget: option.id,
        type: option.type,

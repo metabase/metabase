@@ -6,7 +6,7 @@ import Visualization from "metabase/visualizations/components/Visualization.jsx"
 
 import Icon from "metabase/components/Icon.jsx";
 
-import DashCardParameterMapper from "../components/DashCardParameterMapper.jsx";
+import DashCardParameterMapper from "../components/parameters/DashCardParameterMapper.jsx";
 
 import cx from "classnames";
 import _ from "underscore";
