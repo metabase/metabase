@@ -117,6 +117,7 @@
     "build-hot": "NODE_ENV=hot webpack && NODE_ENV=hot node_modules/webpack-dev-server/bin/webpack-dev-server.js --hot --inline --content-base frontend",
     "shrinkwrap": "npm prune && npm shrinkwrap --dev && ./bin/clean-shrinkwrap",
     "start": "npm run build && lein ring server",
-    "storybook": "start-storybook -p 9001"
+    "storybook": "start-storybook -p 9001",
+    "desktop": "cd desktop && npm start"
   }
 }

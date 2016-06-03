@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+set -eu
+
+cp target/uberjar/metabase.jar resources/frontend_client/init.html desktop/.
+
+desktop/node_modules/.bin/electron-packager desktop Metabase \
+    --platform=darwin,win32 --arch=x64 \
+    --overwrite --out=target/desktop
