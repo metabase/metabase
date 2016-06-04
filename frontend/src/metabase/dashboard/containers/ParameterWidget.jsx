@@ -3,11 +3,12 @@ import { connect } from "react-redux";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import Icon from "metabase/components/Icon.jsx";
-import ColumnarSelector from "metabase/components/ColumnarSelector.jsx";
+import Calendar from "metabase/components/Calendar.jsx";
 
 import S from "./ParameterWidget.css";
 import cx from "classnames";
 import _ from "underscore";
+import moment from "moment";
 
 import { getMappingsByParameter } from "../selectors";
 
@@ -67,7 +68,16 @@ export default class ParameterWidget extends Component {
                 }
                 target={() => this.refs.trigger} // not sure why this is necessary
             >
-                { values.length > 0 ?
+                { parameter.widget === "datetime/single" ?
+                    <div className="p1">
+                        <Calendar
+                            initial={value && moment(value)}
+                            selected={value && moment(value)}
+                            selectedEnd={value && moment(value)}
+                            onChange={(start) => { setValue(start); this.refs.valuePopover.close(); }}
+                        />
+                    </div>
+                : values.length > 0 ?
                     <ul className="scroll-y scroll-show" style={{ maxWidth: 200, maxHeight: 300 }}>
                         {values.map(value =>
                             <li
