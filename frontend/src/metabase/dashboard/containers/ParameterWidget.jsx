@@ -41,7 +41,6 @@ export default class ParameterWidget extends Component {
     renderPopover(value, placeholder, setValue) {
         const { parameter, mappingsByParameter } = this.props;
         const values = _.chain(mappingsByParameter[parameter.id])
-            .values()
             .map(_.values)
             .flatten()
             .map(m => m.values || [])

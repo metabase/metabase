@@ -11,10 +11,10 @@ const MetabaseApi = new AngularResourceProxy("Metabase", ["dataset", "dataset_du
 
 const setRequestState = createAction(SET_REQUEST_STATE);
 
-export const fetchDatabaseMetadata = createThunkAction(FETCH_DATABASE_METADATA, function(dbId) {
+export const fetchDatabaseMetadata = createThunkAction(FETCH_DATABASE_METADATA, function(dbId, reload = false) {
     return async function(dispatch, getState) {
         const requestState = i.getIn(getState(), ["metadata", "requestState", "database", dbId]);
-        if (requestState !== "LOADING") {
+        if (requestState == null || reload) {
             dispatch(setRequestState({ type: "database", id: dbId, state: "LOADING" }));
             let databaseMetadata = await MetabaseApi.db_metadata({ dbId });
             augmentDatabase(databaseMetadata);

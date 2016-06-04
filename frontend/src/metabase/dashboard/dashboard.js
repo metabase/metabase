@@ -9,6 +9,8 @@ import { normalize, Schema, arrayOf } from "normalizr";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
 
+import { fetchDatabaseMetadata } from "./metadata";
+
 const DATASET_SLOW_TIMEOUT   = 15 * 1000;
 const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
 
@@ -167,6 +169,13 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(id, en
                 }
             }
         }
+        _.chain(result.ordered_cards)
+            .map((dc) => [dc.card].concat(dc.series))
+            .flatten()
+            .pluck("database_id")
+            .uniq()
+            .each((dbId) => dispatch(fetchDatabaseMetadata(dbId)));
+
         return normalize(result, dashboard);
     };
 });
