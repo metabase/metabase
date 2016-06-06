@@ -1926,8 +1926,9 @@
    [2 "Lucky Pigeon"]
    [5 "Peter Pelican"]
    [1 "Ronald Raven"]]
-  (dataset avian-singles
-    (rows (run-query messages
-            (ql/aggregation (ql/count))
-            (ql/breakout $sender_id->users.name)
-            (ql/filter (ql/= $reciever_id->users.name "Rasta Toucan"))))))
+  (tu/obj->json->obj
+    (dataset avian-singles
+      (rows (run-query messages
+              (ql/aggregation (ql/count))
+              (ql/breakout $sender_id->users.name)
+              (ql/filter (ql/= $reciever_id->users.name "Rasta Toucan")))))))
