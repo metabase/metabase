@@ -20,7 +20,7 @@
 
 
 (defn- build-filter-clause [{param-type :type, param-value :value, [_ field] :target}]
-  (if-not (= param-type "date")
+  (if-not (s/starts-with? param-type "date")
     ;; default behavior is to use a simple equals filter
     ["=" field param-value]
     ;; otherwise we need to handle date filtering
