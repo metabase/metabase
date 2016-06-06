@@ -571,8 +571,9 @@
                                             :query-hash  (hash query)
                                             :query-type (if (mbql-query? query) "MBQL" "native")})]
     (try
-      (query-complete query-execution (u/prog1 (process-query query)
-                                        (assert-valid-query-result <>)))
+      (let [result (process-query query)]
+        (assert-valid-query-result result)
+        (query-complete query-execution result))
       (catch Throwable e
         (log/error (u/format-color 'red "Query failure: %s" (.getMessage e)))
         (query-fail query-execution (.getMessage e))))))
