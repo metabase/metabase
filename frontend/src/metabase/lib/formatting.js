@@ -178,7 +178,7 @@ export function assignUserColors(userIds, currentUserId, colorClasses = ['bg-bra
 }
 
 export function formatSQL(sql) {
-    if (sql) {
+    if (typeof sql === "string") {
         sql = sql.replace(/\sFROM/, "\nFROM");
         sql = sql.replace(/\sLEFT JOIN/, "\nLEFT JOIN");
         sql = sql.replace(/\sWHERE/, "\nWHERE");

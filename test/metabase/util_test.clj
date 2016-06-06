@@ -102,3 +102,11 @@
   (cond-as-> 100 <>
     (even? <>) (inc <>)
     (odd? <>)  (inc <>)))
+
+
+;;; TESTS FOR key-by
+(expect
+  {1 {:id 1, :name "Rasta"}
+   2 {:id 2, :name "Lucky"}}
+  (key-by :id [{:id 1, :name "Rasta"}
+               {:id 2, :name "Lucky"}]))

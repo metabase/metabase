@@ -1,3 +1,5 @@
+/* @flow weak */
+
 import 'babel-polyfill';
 
 // angular:
@@ -30,6 +32,7 @@ import "./admin/databases/databases.module";
 import "./admin/people/people.module";
 import "./admin/settings/settings.module";
 import "./admin/datamodel/datamodel.module";
+
 
 import Routes from "./Routes.jsx";
 

@@ -85,6 +85,9 @@ export function generateTimeIntervalDescription(n, unit) {
                 return "Yesterday";
         }
     }
+
+    if (!unit && n === 0) return "Today"; // ['relative-datetime', 'current'] is a legal MBQL form but has no unit
+
     unit = inflection.capitalize(unit);
     if (typeof n === "string") {
         if (n === "current") {

@@ -1,7 +1,7 @@
 (ns metabase.driver.postgres-test
   (:require [clojure.java.jdbc :as jdbc]
             [expectations :refer :all]
-            [korma.core :as k]
+            [honeysql.core :as hsql]
             (metabase [db :as db]
                       [driver :as driver])
             [metabase.driver.generic-sql :as sql]
@@ -54,8 +54,8 @@
      (i/create-database-definition "Postgres with a JSON Field"
        ["venues"
         [{:field-name "address", :base-type {:native "json"}}]
-        [[(k/raw "to_json('{\"street\": \"431 Natoma\", \"city\": \"San Francisco\", \"state\": \"CA\", \"zip\": 94103}'::text)")]]])]
-    (db/sel :one :field [Field :special_type] :id (data/id :venues :address))))
+        [[(hsql/raw "to_json('{\"street\": \"431 Natoma\", \"city\": \"San Francisco\", \"state\": \"CA\", \"zip\": 94103}'::text)")]]])]
+    (db/select-one-field :special_type Field, :id (data/id :venues :address))))
 
 
 ;;; # UUID Support

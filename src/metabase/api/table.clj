@@ -1,7 +1,6 @@
 (ns metabase.api.table
   "/api/table endpoints."
   (:require [compojure.core :refer [GET POST PUT]]
-            [korma.core :as k]
             [metabase.api.common :refer :all]
             [metabase.db :as db]
             [metabase.driver :as driver]
@@ -23,7 +22,7 @@
 (defendpoint GET "/"
   "Get all `Tables`."
   []
-  (-> (db/sel :many Table, :active true, (k/order :name :ASC))
+  (-> (db/select Table, :active true, {:order-by [[:name :asc]]})
       (hydrate :db)
       ;; if for some reason a Table doesn't have rows set then set it to 0 so UI doesn't barf
       (#(map (fn [table]
@@ -57,7 +56,7 @@
   [id]
   (let-404 [table (Table id)]
     (read-check table)
-    (db/sel :many Field :table_id id, :visibility_type [not-in ["sensitive" "retired"]], (k/order :name :ASC))))
+    (db/select Field, :table_id id, :visibility_type [:not-in ["sensitive" "retired"]], {:order-by [[:name :asc]]})))
 
 (defendpoint GET "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.
@@ -82,8 +81,8 @@
   [id]
   (let-404 [table (Table id)]
     (read-check table)
-    (let [field-ids (db/sel :many :id Field :table_id id :visibility_type [not= "retired"])]
-      (for [origin-field (db/sel :many Field :fk_target_field_id [in field-ids])]
+    (let [field-ids (db/select-ids Field, :table_id id, :visibility_type [:not= "retired"])]
+      (for [origin-field (db/select Field, :fk_target_field_id [:in field-ids])]
         ;; it's silly to be hydrating some of these tables/dbs
         {:relationship   :Mt1
          :origin_id      (:id origin-field)
@@ -105,7 +104,7 @@
   [id :as {{:keys [new_order]} :body}]
   {new_order [Required ArrayOfIntegers]}
   (write-check Table id)
-  (let [table-fields (db/sel :many Field :table_id id)]
+  (let [table-fields (db/select Field, :table_id id)]
     ;; run a function over the `new_order` list which simply updates `Field` :position to the index in the vector
     ;; NOTE: we assume that all `Fields` in the table are represented in the array
     (dorun

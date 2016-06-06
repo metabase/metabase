@@ -81,21 +81,23 @@
   ([_ db-name table-name field-name]
    [(+suffix db-name) "dbo" table-name field-name]))
 
+(defn- create-db! [driver dbdef]
+  (swap! db-name-counter inc)
+  (create-db! driver dbdef))
+
 
 (u/strict-extend SQLServerDriver
   generic/IGenericSQLDatasetLoader
   (merge generic/DefaultsMixin
          {:drop-db-if-exists-sql     drop-db-if-exists-sql
           :drop-table-if-exists-sql  drop-table-if-exists-sql
-          :field-base-type->sql-type (fn [_ base-type] (field-base-type->sql-type base-type))
+          :field-base-type->sql-type (u/drop-first-arg field-base-type->sql-type)
           :pk-sql-type               (constantly "INT IDENTITY(1,1)")
           :qualified-name-components qualified-name-components})
   i/IDatasetLoader
   (let [{:keys [create-db!], :as mixin} generic/IDatasetLoaderMixin]
     (merge mixin
-           {:create-db!                   (fn [this dbdef]
-                                            (swap! db-name-counter inc)
-                                            (create-db! this dbdef))
+           {:create-db!                   create-db!
             :database->connection-details database->connection-details
             :default-schema               (constantly "dbo")
             :engine                       (constantly :sqlserver)})))

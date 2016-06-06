@@ -1,6 +1,5 @@
 (ns metabase.models.metric
-  (:require [korma.core :as k]
-            [medley.core :as m]
+  (:require [medley.core :as m]
             [metabase.db :as db]
             [metabase.events :as events]
             (metabase.models [dependency :as dependency]
@@ -108,8 +107,8 @@
    {:pre [(integer? table-id)
           (keyword? state)]}
    (-> (if (= :all state)
-         (db/sel :many Metric :table_id table-id, (k/order :name :ASC))
-         (db/sel :many Metric :table_id table-id, :is_active (if (= :active state) true false), (k/order :name :ASC)))
+         (db/select Metric, :table_id table-id, {:order-by [[:name :asc]]})
+         (db/select Metric, :table_id table-id, :is_active (= :active state), {:order-by [[:name :asc]]}))
        (hydrate :creator))))
 
 (defn update-metric!

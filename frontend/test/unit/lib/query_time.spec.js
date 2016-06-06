@@ -1,5 +1,3 @@
-/*eslint-env jasmine */
-
 import moment from "moment";
 
 import { expandTimeIntervalFilter, computeFilterTimeRange, absolute } from 'metabase/lib/query_time';

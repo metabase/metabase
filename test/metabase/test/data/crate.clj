@@ -23,11 +23,11 @@
 
 (defn- timestamp->CrateDateTime
   [value]
-  (if (instance? java.sql.Timestamp value)
-    (.getTime (u/->Timestamp value))
-    (if (and (instance? clojure.lang.PersistentArrayMap value) (contains? value :korma.sql.utils/generated))
-      (+ (read-string (s/replace (:korma.sql.utils/generated value) #"CURRENT_TIMESTAMP \+" "")) (.getTime (u/new-sql-timestamp)))
-      value)))
+  (cond
+    (instance? java.sql.Timestamp value)    (.getTime ^java.sql.Timestamp value)
+    (instance? honeysql.types.SqlRaw value) (+ (Integer/parseInt (s/trim (s/replace (:s value) #"current_timestamp \+" "")))
+                                               (System/currentTimeMillis))
+    :else                                   value))
 
 (defn- escape-field-names
   "Escape the field-name keys in ROW-OR-ROWS."

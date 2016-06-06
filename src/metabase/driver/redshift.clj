@@ -1,27 +1,27 @@
 (ns metabase.driver.redshift
   "Amazon Redshift Driver."
   (:require [clojure.java.jdbc :as jdbc]
-            (korma [core :as k]
-                   [db :as kdb])
+            [honeysql.core :as hsql]
+            [korma.db :as kdb]
             (metabase [config :as config]
                       [driver :as driver])
             (metabase.driver [generic-sql :as sql]
                              [postgres :as postgres])
             [metabase.util :as u]
-            [metabase.util.korma-extensions :as kx]))
+            [metabase.util.honeysql-extensions :as hx]))
 
 (defn- connection-details->spec [details]
   (kdb/postgres (merge details postgres/ssl-params))) ; always connect to redshift over SSL
 
 (defn- date-interval [unit amount]
-  (k/raw (format "(GETDATE() + INTERVAL '%d %s')" (int amount) (name unit))))
+  (hsql/call :+ :%getdate (hsql/raw (format "INTERVAL '%d %s'" (int amount) (name unit)))))
 
 (defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
   (case seconds-or-milliseconds
-    :seconds      (kx/+ (k/raw "TIMESTAMP '1970-01-01T00:00:00Z'")
-                        (kx/* expr
-                              (k/raw "INTERVAL '1 second'")))
-    :milliseconds (recur (kx// expr 1000) :seconds)))
+    :seconds      (hx/+ (hsql/raw "TIMESTAMP '1970-01-01T00:00:00Z'")
+                        (hx/* expr
+                              (hsql/raw "INTERVAL '1 second'")))
+    :milliseconds (recur (hx// expr 1000) :seconds)))
 
 ;; The Postgres JDBC .getImportedKeys method doesn't work for Redshift, and we're not allowed to access information_schema.constraint_column_usage,
 ;; so we'll have to use this custom query instead
@@ -86,7 +86,7 @@
   sql/ISQLDriver
   (merge postgres/PostgresISQLDriverMixin
          {:connection-details->spec  (u/drop-first-arg connection-details->spec)
-          :current-datetime-fn       (constantly (k/sqlfn* :GETDATE))
+          :current-datetime-fn       (constantly :%getdate)
           :set-timezone-sql          (constantly nil)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}
          ;; HACK ! When we test against Redshift we use a session-unique schema so we can run simultaneous tests against a single remote host;

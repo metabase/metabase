@@ -26,7 +26,7 @@
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
   (try
     (when-let [{topic :topic object :item} sync-database-event]
-      (when-let [database (db/sel :one Database :id (events/object->model-id topic object))]
+      (when-let [database (Database (events/object->model-id topic object))]
         ;; just kick off a sync on another thread
         (future (try
                   (sync-database/sync-database! database)

@@ -1,6 +1,5 @@
 (ns metabase.models.label
-  (:require [korma.core :as k]
-            [metabase.db :as db]
+  (:require [metabase.db :as db]
             [metabase.models.interface :as i]
             [metabase.util :as u]))
 
