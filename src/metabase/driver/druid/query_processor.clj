@@ -521,7 +521,7 @@
 
 (defn mbql->native
   "Transpile an MBQL (inner) query into a native form suitable for a Druid DB."
-  [query remark]
+  [query]
   ;; Merge `:settings` into the inner query dict so the QP has access to it
   (let [mbql-query (assoc (:query query)
                      :settings (:settings query))]

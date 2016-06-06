@@ -380,7 +380,7 @@
 
 (defn mbql->native
   "Process and run an MBQL query."
-  [{database :database, {{source-table-name :name} :source-table} :query, :as query} remark]
+  [{database :database, {{source-table-name :name} :source-table} :query, :as query}]
   {:pre [(map? database)
          (string? source-table-name)]}
   (binding [*query* query]

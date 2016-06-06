@@ -428,15 +428,12 @@
           (assert (sequential? (:columns <>)))
           (assert (every? u/string-or-keyword? (:columns <>))))))))
 
-(defn- query->remark
+(defn query->remark
   "Genarate an approparite REMARK to be prepended to a query to give DBAs additional information about the query being executed.
    See documentation for `mbql->native` and [issue #2386](https://github.com/metabase/metabase/issues/2386) for more information."
-  ^String [query query-execution]
-  (let [executor-id  (:executor_id query-execution)
-        execution-id (:uuid query-execution)
-        query-type   (if (mbql-query? query) "MBQL" "native")
-        query-hash   (hash query)]
-    (format "Metabase:: userID: %s executionID: %s queryType: %s queryHash: %s" executor-id execution-id query-type query-hash)))
+  ^String [{{:keys [executed-by uuid query-hash query-type]} :info, :as info}]
+  {:pre [(map? info)]}
+  (format "Metabase:: userID: %s executionID: %s queryType: %s queryHash: %s" executed-by uuid query-type query-hash))
 
 (defn- run-query
   "The end of the QP middleware which actually executes the query on the driver.
@@ -445,10 +442,10 @@
    then we pass that form into the `execute-query` function for final execution.
 
    If the query is already a *native* query then we simply pass it through to `execute-query` unmodified."
-  [query query-execution]
+  [query]
   (let [native-form  (u/prog1 (if-not (mbql-query? query)
                                 (:native query)
-                                (driver/mbql->native (:driver query) query (query->remark query query-execution)))
+                                (driver/mbql->native (:driver query) query))
                        (when-not *disable-qp-logging*
                          (log/debug (u/format-color 'green "NATIVE FORM:\n%s\n" (u/pprint-to-str <>)))))
         native-query (if-not (mbql-query? query)
@@ -498,30 +495,28 @@
 
 (defn process-query
   "Process an MBQL structured or native query, and return the result."
-  [query & [query-execution]]
+  [query]
   (when-not *disable-qp-logging*
     (log/debug (u/format-color 'blue "\nQUERY: 😎\n%s"  (u/pprint-to-str query))))
   ;; TODO: it probably makes sense to throw an error or return a failure response here if we can't get a driver
   (let [driver (driver/database-id->driver (:database query))]
     (binding [*driver* driver]
-      (let [driver-process-in-context (partial driver/process-query-in-context driver)
-            run-query                 (u/rpartial run-query query-execution)]
-        ((<<- wrap-catch-exceptions
-              pre-add-settings
-              pre-expand-macros
-              pre-expand-resolve
-              driver-process-in-context
-              post-add-row-count-and-status
-              post-format-rows
-              pre-add-implicit-fields
-              pre-add-implicit-breakout-order-by
-              cumulative-sum
-              cumulative-count
-              limit
-              post-check-results-format
-              pre-log-query
-              guard-multiple-calls
-              run-query) (assoc query :driver driver))))))
+      ((<<- wrap-catch-exceptions
+            pre-add-settings
+            pre-expand-macros
+            pre-expand-resolve
+            (driver/process-query-in-context driver)
+            post-add-row-count-and-status
+            post-format-rows
+            pre-add-implicit-fields
+            pre-add-implicit-breakout-order-by
+            cumulative-sum
+            cumulative-count
+            limit
+            post-check-results-format
+            pre-log-query
+            guard-multiple-calls
+            run-query) (assoc query :driver driver)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------+
@@ -529,6 +524,13 @@
 ;;; +----------------------------------------------------------------------------------------------------+
 
 (declare query-fail query-complete save-query-execution)
+
+(defn- assert-valid-query-result [query-result]
+  (when-not (contains? query-result :status)
+    (throw (Exception. "invalid response from database driver. no :status provided")))
+  (when (= :failed (:status query-result))
+    (log/error (u/pprint-to-str 'red query-result))
+    (throw (Exception. (str (get query-result :error "general error"))))))
 
 (defn dataset-query
   "Process and run a json based dataset query and return results.
@@ -543,11 +545,12 @@
 
   Possible caller-options include:
 
-    :executed_by [int]               (user_id of caller)"
+    :executed_by [int]  (user_id of caller)"
   {:arglists '([query options])}
   [query {:keys [executed_by]}]
   {:pre [(integer? executed_by)]}
-  (let [query-execution {:uuid              (.toString (java.util.UUID/randomUUID))
+  (let [query-uuid      (.toString (java.util.UUID/randomUUID))
+        query-execution {:uuid              query-uuid
                          :executor_id       executed_by
                          :json_query        query
                          :query_id          nil
@@ -562,15 +565,14 @@
                          :result_data       "{}"
                          :raw_query         ""
                          :additional_info   ""
-                         :start_time_millis (System/currentTimeMillis)}]
+                         :start_time_millis (System/currentTimeMillis)}
+        query           (assoc query :info {:executed-by executed_by
+                                            :uuid        query-uuid
+                                            :query-hash  (hash query)
+                                            :query-type (if (mbql-query? query) "MBQL" "native")})]
     (try
-      (let [query-result (process-query query query-execution)]
-        (when-not (contains? query-result :status)
-          (throw (Exception. "invalid response from database driver. no :status provided")))
-        (when (= :failed (:status query-result))
-          (log/error (u/pprint-to-str 'red query-result))
-          (throw (Exception. (str (get query-result :error "general error")))))
-        (query-complete query-execution query-result))
+      (query-complete query-execution (u/prog1 (process-query query)
+                                        (assert-valid-query-result <>)))
       (catch Throwable e
         (log/error (u/format-color 'red "Query failure: %s" (.getMessage e)))
         (query-fail query-execution (.getMessage e))))))
@@ -586,7 +588,7 @@
     (-> query-execution
         (dissoc :start_time_millis)
         (merge updates)
-        (save-query-execution)
+        save-query-execution
         (dissoc :raw_query :result_rows :version)
         ;; this is just for the response for clien
         (assoc :error     error-message
@@ -606,7 +608,7 @@
                          (:start_time_millis query-execution))
         :result_rows  (get query-result :row_count 0))
       (dissoc :start_time_millis)
-      (save-query-execution)
+      save-query-execution
       ;; at this point we've saved and we just need to massage things into our final response format
       (dissoc :error :raw_query :result_rows :version)
       (merge query-result)))

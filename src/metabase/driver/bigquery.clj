@@ -15,6 +15,7 @@
                              [field :as field]
                              [table :as table])
             [metabase.sync-database.analyze :as analyze]
+            [metabase.query-processor :as qp]
             metabase.query-processor.interface
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
@@ -331,12 +332,12 @@
     (for [row rows]
       (zipmap columns row))))
 
-(defn- mbql->native [{{{:keys [dataset-id]} :details, :as database} :database, {{table-name :name} :source-table} :query, :as outer-query} remark]
+(defn- mbql->native [{{{:keys [dataset-id]} :details, :as database} :database, {{table-name :name} :source-table} :query, :as outer-query}]
   {:pre [(map? database) (seq dataset-id) (seq table-name)]}
   (binding [sqlqp/*query* outer-query]
     (let [honeysql-form (honeysql-form outer-query)
           sql           (honeysql-form->sql honeysql-form)]
-      {:query      (str "-- " remark "\n" sql)
+      {:query      (str "-- " (qp/query->remark outer-query) "\n" sql)
        :table-name table-name
        :mbql?      true})))
 
