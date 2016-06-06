@@ -25,6 +25,7 @@ import "./card/card.module";
 import "./dashboard/dashboard.module";
 import "./home/home.module";
 import "./pulse/pulse.module";
+import "./query_builder/query_builder.module"
 import "./setup/setup.module";
 import "./user/user.module";
 
@@ -61,6 +62,7 @@ var Metabase = angular.module('metabase', [
     'metabase.dashboard',
     'metabase.home',
     'metabase.pulse',
+    'metabase.query_builder',
     'metabase.setup',
     'metabase.user',
     'metabase.admin.databases',

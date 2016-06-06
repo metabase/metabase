@@ -20,6 +20,18 @@ export default class QueryVisualizationObjectDetailTable extends Component {
         data: PropTypes.object
     };
 
+    componentDidMount() {
+        // load up FK references
+        this.props.loadObjectDetailFKReferences();
+    }
+
+    componentWillReceiveProps(nextProps) {
+        // if the card has changed then reload fk references
+        if (this.props.data != nextProps.data) {
+            this.props.loadObjectDetailFKReferences();
+        }
+    }
+
     getIdValue() {
         if (!this.props.data) return null;
 

@@ -7,6 +7,22 @@ import _ from "underscore";
 import DataSelector from './DataSelector.jsx';
 import Icon from "metabase/components/Icon.jsx";
 
+function getModeInfo(query, databases) {
+    let databaseID = query ? query.database : null,
+        database   = _.findWhere(databases, { id: databaseID }),
+        engine     = database ? database.engine : null;
+
+    return {
+        mode: engine === 'druid' || engine === 'mongo' ? 'ace/mode/json'  :
+              engine === 'mysql'                       ? 'ace/mode/mysql' :
+              engine === 'postgres'                    ? 'ace/mode/pgsql' :
+              engine === 'sqlserver'                   ? 'ace/mode/sqlserver' :
+                                                         'ace/mode/sql',
+        description: engine === 'druid' || engine === 'mongo' ? 'JSON' : 'SQL',
+        requiresTable: engine === 'mongo'
+    };
+}
+
 
 export default class NativeQueryEditor extends Component {
     constructor(props, context) {
@@ -26,7 +42,6 @@ export default class NativeQueryEditor extends Component {
         /// *  `mode` :         the ACE Editor mode name, e.g. 'ace/mode/json'
         /// *  `description`:   name used to describe the text written in that mode, e.g. 'JSON'. Used to fill in the blank in 'This question is written in _______'.
         /// *  `requiresTable`: whether the DB selector should be a DB + Table selector. Mongo needs both DB + Table.
-        getModeInfo: PropTypes.func.isRequired,
         isOpen: PropTypes.bool
     };
 
@@ -54,7 +69,7 @@ export default class NativeQueryEditor extends Component {
     /// Update the mode of the ACE Editor to something like `ace/mode/sql` or `ace/mode/json`.
     /// The appropriate mode to use is fetched via the delegation pattern with the function `getModeInfo()`, described in detail above
     updateEditorMode() {
-        let modeInfo = this.props.getModeInfo();
+        let modeInfo = getModeInfo(this.props.query, this.props.databases);
         if (!modeInfo) return;
 
         console.log('Setting ACE Editor mode to:', modeInfo.mode);
@@ -157,7 +172,7 @@ export default class NativeQueryEditor extends Component {
     }
 
     render() {
-        let modeInfo = this.props.getModeInfo();
+        let modeInfo = getModeInfo(this.props.query, this.props.databases);
 
         // we only render a db selector if there are actually multiple to choose from
         var dataSelectors = [];

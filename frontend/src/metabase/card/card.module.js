@@ -24,14 +24,14 @@ var Card = angular.module('metabase.card', [
 ]);
 
 Card.config(['$routeProvider', function($routeProvider) {
-    $routeProvider.when('/q', {
-        template: CARD_DETAIL_TEMPLATE,
-        controller: 'CardDetail'
-    });
-    $routeProvider.when('/card/:cardId', {
-        template: CARD_DETAIL_TEMPLATE,
-        controller: 'CardDetail'
-    });
+    // $routeProvider.when('/q', {
+    //     template: CARD_DETAIL_TEMPLATE,
+    //     controller: 'CardDetail'
+    // });
+    // $routeProvider.when('/card/:cardId', {
+    //     template: CARD_DETAIL_TEMPLATE,
+    //     controller: 'CardDetail'
+    // });
 
     // redirect old urls to new ones with hashes
     $routeProvider.when('/q/:serializedCard', {

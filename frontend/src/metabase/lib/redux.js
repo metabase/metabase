@@ -45,6 +45,11 @@ export function AngularResourceProxy(serviceName, methods) {
     });
 }
 
+export function angularPromise() {
+    let $q = angular.element(document.querySelector("body")).injector().get("$q");
+    return $q.defer();
+}
+
 // similar to createAction but accepts a (redux-thunk style) thunk and dispatches based on whether
 // the promise returned from the thunk resolves or rejects, similar to redux-promise
 export function createThunkAction(actionType, actionThunkCreator) {
