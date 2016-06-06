@@ -336,45 +336,45 @@ export const setQueryMode = createThunkAction(SET_QUERY_MODE, (type) => {
     return (dispatch, getState) => {
         const { card, queryResult, tableMetadata, uiControls } = getState();
         
-        let updatedCard;
-        if (!card.dataset_query.type || type !== card.dataset_query.type) {
-            updatedCard = JSON.parse(JSON.stringify(card));
-            let datasetQuery = updatedCard.dataset_query;
-
-            // if we are going from MBQL -> Native then attempt to carry over the query
-            if (type === "native" && queryResult && queryResult.data && queryResult.data.native_form) {
-                let nativeQuery = _.pick(queryResult.data.native_form, "query", "collection");
-
-                // when the driver requires JSON we need to stringify it because it's been parsed already
-                if (_.contains(["mongo", "druid"], tableMetadata.db.engine)) {
-                    nativeQuery.query = JSON.stringify(queryResult.data.native_form.query);
-                } else {
-                    nativeQuery.query = formatSQL(nativeQuery.query);
-                }
-
-                datasetQuery.type = "native";
-                datasetQuery.native = nativeQuery;
-                delete datasetQuery.query;
-                
-                // when the query changes on saved card we change this into a new query w/ a known starting point
-                if (!uiControls.isEditing && updatedCard.id) {
-                    delete updatedCard.id;
-                    delete updatedCard.name;
-                    delete updatedCard.description;
-                }
-
-                updatedCard.dataset_query = datasetQuery;
-
-                MetabaseAnalytics.trackEvent("QueryBuilder", "MBQL->Native");
-
-            // we are translating an empty query
-            } else {
-                updatedCard = startNewCard(type, card.dataset_query.database);
-                //setCard(newCard, {resetDirty: true, runQuery: false});
-            }
+        // if the type didn't actually change then nothing has been modified
+        if (type === card.dataset_query.type) {
+            return card;
         }
 
-        return updatedCard;
+        // if we are going from MBQL -> Native then attempt to carry over the query
+        if (type === "native" && queryResult && queryResult.data && queryResult.data.native_form) {
+            let updatedCard = JSON.parse(JSON.stringify(card));
+            let datasetQuery = updatedCard.dataset_query;
+            let nativeQuery = _.pick(queryResult.data.native_form, "query", "collection");
+
+            // when the driver requires JSON we need to stringify it because it's been parsed already
+            if (_.contains(["mongo", "druid"], tableMetadata.db.engine)) {
+                nativeQuery.query = JSON.stringify(queryResult.data.native_form.query);
+            } else {
+                nativeQuery.query = formatSQL(nativeQuery.query);
+            }
+
+            datasetQuery.type = "native";
+            datasetQuery.native = nativeQuery;
+            delete datasetQuery.query;
+
+            // when the query changes on saved card we change this into a new query w/ a known starting point
+            if (!uiControls.isEditing && updatedCard.id) {
+                delete updatedCard.id;
+                delete updatedCard.name;
+                delete updatedCard.description;
+            }
+
+            updatedCard.dataset_query = datasetQuery;
+
+            MetabaseAnalytics.trackEvent("QueryBuilder", "MBQL->Native");
+
+            return updatedCard;
+
+        // we are translating an empty query
+        } else {
+            return startNewCard(type, card.dataset_query.database);
+        }
     };
 });
 
@@ -384,41 +384,41 @@ export const setQueryDatabase = createThunkAction(SET_QUERY_DATABASE, (databaseI
     return async (dispatch, getState) => {
         const { card, databases, uiControls } = getState();
 
-        if (databaseId !== card.dataset_query.database) {
-
-            let existingQuery = (card.dataset_query.native) ? card.dataset_query.native.query : undefined;
-            if (!uiControls.isEditing) {
-                let updatedCard = startNewCard(card.dataset_query.type, databaseId);
-                if (existingQuery) {
-                    updatedCard.dataset_query.native.query = existingQuery;
-                }
-
-                // set the initial collection for the query if this is a native query
-                // this is only used for Mongo queries which need to be ran against a specific collection
-                if (updatedCard.dataset_query.type === 'native') {
-                    let database = _.findWhere(databases, { id: databaseId }),
-                        tables   = database ? database.tables : [],
-                        table    = tables.length > 0 ? tables[0] : null;
-                    if (table) updatedCard.dataset_query.native.collection = table.name;
-                }
-
-                return updatedCard;
-
-            } else {
-                // if we are editing a saved query we don't want to replace the card, so just start a fresh query only
-                // TODO: should this clear the visualization as well?
-                let query = createQuery(card.dataset_query.type, databaseId);
-                if (existingQuery) {
-                    query.native.query = existingQuery;
-                }
-
-                let updatedCard = JSON.parse(JSON.stringify(card));
-                updatedCard.dataset_query = query;
-                return updatedCard;
-            }
+        // picking the same database doesn't change anything
+        if (databaseId === card.dataset_query.database) {
+            return card;
         }
-        
-        return card;
+
+        let existingQuery = (card.dataset_query.native) ? card.dataset_query.native.query : undefined;
+        if (!uiControls.isEditing) {
+            let updatedCard = startNewCard(card.dataset_query.type, databaseId);
+            if (existingQuery) {
+                updatedCard.dataset_query.native.query = existingQuery;
+            }
+
+            // set the initial collection for the query if this is a native query
+            // this is only used for Mongo queries which need to be ran against a specific collection
+            if (updatedCard.dataset_query.type === 'native') {
+                let database = _.findWhere(databases, { id: databaseId }),
+                    tables   = database ? database.tables : [],
+                    table    = tables.length > 0 ? tables[0] : null;
+                if (table) updatedCard.dataset_query.native.collection = table.name;
+            }
+
+            return updatedCard;
+
+        } else {
+            // if we are editing a saved query we don't want to replace the card, so just start a fresh query only
+            // TODO: should this clear the visualization as well?
+            let query = createQuery(card.dataset_query.type, databaseId);
+            if (existingQuery) {
+                query.native.query = existingQuery;
+            }
+
+            let updatedCard = JSON.parse(JSON.stringify(card));
+            updatedCard.dataset_query = query;
+            return updatedCard;
+        }
     };
 });
 
@@ -430,41 +430,43 @@ export const setQuerySourceTable = createThunkAction(SET_QUERY_SOURCE_TABLE, (so
 
         // this will either be the id or an object with an id
         const tableId = sourceTable.id || sourceTable;
-        if (tableId !== card.dataset_query.query.source_table) {
-            // load up all the table metadata via the api
-            dispatch(loadTableMetadata(tableId));
 
-            // find the database associated with this table
-            let databaseId;
-            if (_.isObject(sourceTable)) {
-                databaseId = sourceTable.db_id;
-            } else {
-                // this is a bit hacky and slow
-                const { databases } = getState();
-                for (var i=0; i < databases.length; i++) {
-                    const database = databases[i];
+        // if the table didn't actually change then nothing is modified
+        if (tableId === card.dataset_query.query.source_table) {
+            return card;
+        }
 
-                    if (_.findWhere(database.tables, { id: tableId })) {
-                        databaseId = database.id;
-                        break;
-                    }
+        // load up all the table metadata via the api
+        dispatch(loadTableMetadata(tableId));
+
+        // find the database associated with this table
+        let databaseId;
+        if (_.isObject(sourceTable)) {
+            databaseId = sourceTable.db_id;
+        } else {
+            // this is a bit hacky and slow
+            const { databases } = getState();
+            for (var i=0; i < databases.length; i++) {
+                const database = databases[i];
+
+                if (_.findWhere(database.tables, { id: tableId })) {
+                    databaseId = database.id;
+                    break;
                 }
-            }
-
-            if (!uiControls.isEditing) {
-                return startNewCard(card.dataset_query.type, databaseId, tableId);
-            } else {
-                // if we are editing a saved query we don't want to replace the card, so just start a fresh query only
-                // TODO: should this clear the visualization as well?
-                let query = createQuery(card.dataset_query.type, databaseId, tableId);
-
-                let updatedCard = JSON.parse(JSON.stringify(card));
-                updatedCard.dataset_query = query;
-                return updatedCard;
             }
         }
 
-        return card;
+        if (!uiControls.isEditing) {
+            return startNewCard(card.dataset_query.type, databaseId, tableId);
+        } else {
+            // if we are editing a saved query we don't want to replace the card, so just start a fresh query only
+            // TODO: should this clear the visualization as well?
+            let query = createQuery(card.dataset_query.type, databaseId, tableId);
+
+            let updatedCard = JSON.parse(JSON.stringify(card));
+            updatedCard.dataset_query = query;
+            return updatedCard;
+        }
     };
 });
 

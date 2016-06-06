@@ -7,15 +7,21 @@ import * as DataGrid from "metabase/lib/data_grid";
 import Query from "metabase/lib/query";
 
 
-export const card                      = state => state.card;
-export const originalCard              = state => state.originalCard;
-export const tableForeignKeyReferences = state => state.tableForeignKeyReferences;
 export const uiControls                = state => state.uiControls;
 
-// TODO: these pieces are just general schema metadata and should ideally be in a different part of the store and reused by the whole app
+export const card                      = state => state.card;
+export const originalCard              = state => state.originalCard;
+export const isDirty = createSelector(
+	[card, originalCard],
+	(card, originalCard) => {
+		return isCardDirty(card, originalCard);
+	}
+);
+
 export const databases                 = state => state.databases;
 export const tableMetadata             = state => state.tableMetadata;
 export const tableForeignKeys          = state => state.tableForeignKeys;
+export const tableForeignKeyReferences = state => state.tableForeignKeyReferences;
 export const tables = createSelector(
 	[card, databases],
     (card, databases) => {
@@ -98,13 +104,5 @@ export const queryResult = createSelector(
         }
 
         return queryResult;
-	}
-);
-
-
-export const isDirty = createSelector(
-	[card, originalCard],
-	(card, originalCard) => {
-		return isCardDirty(card, originalCard);
 	}
 );
