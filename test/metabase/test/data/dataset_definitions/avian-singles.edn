@@ -1,5 +1,5 @@
 [["users" [{:field-name "name"
-            :base-type  :TextField}]
+            :base-type  :CharField}]
   [["Rasta Toucan"]
    ["Lucky Pigeon"]
    ["Peter Pelican"]
@@ -15,7 +15,7 @@
                :base-type  :IntegerField
                :fk         :users}
               {:field-name "text"
-               :base-type  :TextField}]
+               :base-type  :CharField}]
   [[8 7 "Coo"]
    [8 3 "Bip bip bip bip"]
    [3 2 "Coo"]

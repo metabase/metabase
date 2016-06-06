@@ -18,19 +18,21 @@
             [metabase.test.util :as tu]
             [metabase.util :as u]))
 
-
-;;; ------------------------------------------------------------ Dataset-Independent QP Tests ------------------------------------------------------------
-
 ;;; ------------------------------------------------------------ Helper Fns + Macros ------------------------------------------------------------
 
 ;; Event-Based DBs aren't tested here, but in `event-query-processor-test` instead.
 (def ^:private ^:const timeseries-engines #{:druid})
 (def ^:private ^:const non-timeseries-engines (set/difference datasets/all-valid-engines timeseries-engines))
 
+;; Make sure the driver test extension namespaces are loaded. This is needed because otherwise `lein test metabase.query-processor-test` won't work
+(doseq [engine non-timeseries-engines
+        :let   [driver-test-ns (symbol (str "metabase.test.data." (name engine)))]]
+  (require driver-test-ns :reload))
+
 (defn- engines-that-support [feature]
-  (set (filter (fn [engine]
-                 (contains? (driver/features (driver/engine->driver engine)) feature))
-               non-timeseries-engines)))
+  (set (for [engine non-timeseries-engines
+             :when  (contains? (driver/features (driver/engine->driver engine)) feature)]
+         engine)))
 
 (defn- engines-that-dont-support [feature]
   (set/difference non-timeseries-engines (engines-that-support feature)))
@@ -265,6 +267,7 @@
 
 (defn rows
   "Return the result rows from query results, or throw an Exception if they're missing."
+  {:style/indent 0}
   [results]
   (vec (or (-> results :data :rows)
            (println (u/pprint-to-str 'red results))
@@ -1926,9 +1929,8 @@
    [2 "Lucky Pigeon"]
    [5 "Peter Pelican"]
    [1 "Ronald Raven"]]
-  (tu/obj->json->obj
-    (dataset avian-singles
-      (rows (run-query messages
-              (ql/aggregation (ql/count))
-              (ql/breakout $sender_id->users.name)
-              (ql/filter (ql/= $reciever_id->users.name "Rasta Toucan")))))))
+  (dataset avian-singles
+    (rows (run-query messages
+            (ql/aggregation (ql/count))
+            (ql/breakout $sender_id->users.name)
+            (ql/filter (ql/= $reciever_id->users.name "Rasta Toucan"))))))

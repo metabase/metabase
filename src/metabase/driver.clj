@@ -4,7 +4,8 @@
             [clojure.tools.logging :as log]
             [clojure.tools.namespace.find :as ns-find]
             [medley.core :as m]
-            [metabase.db :as db]
+            (metabase [config :as config]
+                      [db :as db])
             (metabase.models [database :refer [Database]]
                              [query-execution :refer [QueryExecution]]
                              [setting :refer [defsetting]])
@@ -266,16 +267,14 @@
   "Search Classpath for namespaces that start with `metabase.driver.`, then `require` them and look for the `driver-init`
    function which provides a uniform way for Driver initialization to be done."
   []
-  (doseq [namespce (filter (fn [ns-symb]
-                             (re-matches #"^metabase\.driver\.[a-z0-9_]+$" (name ns-symb)))
-                           (ns-find/find-namespaces (classpath/classpath)))]
-    (require namespce)))
+  (doseq [ns-symb (ns-find/find-namespaces (classpath/classpath))
+          :when   (re-matches #"^metabase\.driver\.[a-z0-9_]+$" (name ns-symb))]
+    (require ns-symb)))
 
 (defn is-engine?
   "Is ENGINE a valid driver name?"
   [engine]
-  (when engine
-    (contains? (set (keys (available-drivers))) (keyword engine))))
+  (contains? (available-drivers) (keyword engine)))
 
 (defn driver-supports?
   "Tests if a driver supports a given feature."
