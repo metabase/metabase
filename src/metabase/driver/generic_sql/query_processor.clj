@@ -276,7 +276,7 @@
   (binding [*query* outer-query]
     (let [honeysql-form (build-honeysql-form driver outer-query)
           [sql & args]  (sql/honeysql-form->sql+args driver honeysql-form)]
-      {:query  sql
+      {:query  (str "-- " (qp/query->remark outer-query) "\n" sql)
        :params args})))
 
 

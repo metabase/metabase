@@ -147,14 +147,18 @@
   (mbql->native ^java.util.Map [this, ^Map query]
     "Transpile an MBQL structured query into the appropriate native query form.
 
-  The input query will be a fully expanded MBQL query (https://github.com/metabase/metabase/wiki/Expanded-Queries) with
+  The input QUERY will be a [fully-expanded MBQL query](https://github.com/metabase/metabase/wiki/Expanded-Queries) with
   all the necessary pieces of information to build a properly formatted native query for the given database.
+
+  If the underlying query language supports remarks or comments, the driver should use `query->remark` to generate an appropriate message and include that in an appropriate place;
+  alternatively a driver might directly include the query's `:info` dictionary if the underlying language is JSON-based.
 
   The result of this function will be passed directly into calls to `execute-query`.
 
   For example, a driver like Postgres would build a valid SQL expression and return a map such as:
 
-       {:query \"SELECT * FROM my_table\"}")
+       {:query \"-- [Contents of `(query->remark query)`]
+                 SELECT * FROM my_table\"}")
 
   (notify-database-updated [this, ^DatabaseInstance database]
     "*OPTIONAL*. Notify the driver that the attributes of the DATABASE have changed.  This is specifically relevant in
