@@ -87,7 +87,7 @@
     (write-check field)
     (check (field-should-have-field-values? field)
       [400 "You can only update the mapped values of a Field whose 'special_type' is 'category'/'city'/'state'/'country' or whose 'base_type' is 'BooleanField'."])
-    (if-let [field-values-id (db/sel :one :id FieldValues :field_id id)]
+    (if-let [field-values-id (db/select-one-id FieldValues, :field_id id)]
       (check-500 (db/update! FieldValues field-values-id
                    :human_readable_values values_map))
       (create-field-values-if-needed field values_map)))

@@ -25,7 +25,7 @@
   []
   (doseq [engine event-based-dbs]
     (datasets/with-engine-when-testing engine
-      (data/do-with-temp-db (flattened-db-def) (fn [& _])))))
+      (data/do-with-temp-db (flattened-db-def) (constantly nil)))))
 
 (defmacro ^:private with-flattened-dbdef [& body]
   `(data/with-temp-db [~'_ (flattened-db-def)]
@@ -679,11 +679,19 @@
 
 ;;; MIN & MAX
 
-(expect-with-timeseries-dbs [1.0] (first-row (data/run-query checkins
-                                             (ql/aggregation (ql/min $venue_price)))))
-
+;; tests for dimension columns
 (expect-with-timeseries-dbs [4.0] (first-row (data/run-query checkins
-                                             (ql/aggregation (ql/max $venue_price)))))
+                                               (ql/aggregation (ql/max $venue_price)))))
+
+(expect-with-timeseries-dbs [1.0] (first-row (data/run-query checkins
+                                               (ql/aggregation (ql/min $venue_price)))))
+
+;; tests for metric columns
+(expect-with-timeseries-dbs [1.0] (first-row (data/run-query checkins
+                                               (ql/aggregation (ql/max $count)))))
+
+(expect-with-timeseries-dbs [1.0] (first-row (data/run-query checkins
+                                               (ql/aggregation (ql/min $count)))))
 
 (expect-with-timeseries-dbs
   [["1" 34.0071] ["2" 33.7701] ["3" 10.0646] ["4" 33.983]] ; some sort of weird quirk w/ druid where all columns in breakout get converted to strings

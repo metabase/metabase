@@ -14,7 +14,6 @@ as
 he
 on
 by
-s
 with
 from
 or
@@ -136,7 +135,6 @@ work
 now
 could
 long
-j
 however
 group
 what
@@ -145,7 +143,6 @@ started
 way
 since
 around
-d
 both
 commune
 while
@@ -174,7 +171,6 @@ country
 main
 government
 century
-c
 means
 university
 life
@@ -203,12 +199,9 @@ four
 river
 back
 just
-m
 still
 utc
-n
 located
-t
 population
 including
 king
@@ -220,7 +213,6 @@ left
 school
 great
 end
-e
 against
 september
 high
@@ -247,7 +239,6 @@ using
 district
 based
 form
-b
 german
 games
 near
@@ -354,7 +345,6 @@ next
 moved
 light
 five
-f
 third
 change
 makes
@@ -421,7 +411,6 @@ formed
 roman
 instead
 women
-g
 army
 computer
 find
@@ -524,9 +513,7 @@ space
 hockey
 led
 close
-p
 political
-r
 eastern
 look
 hard
@@ -554,12 +541,10 @@ green
 names
 especially
 soon
-h
 someone
 idea
 seven
 included
-l
 caused
 move
 open
@@ -568,7 +553,6 @@ study
 official
 italian
 run
-k
 village
 ice
 working
@@ -653,7 +637,6 @@ our
 reason
 event
 goes
-v
 ocean
 blood
 hit
@@ -863,7 +846,6 @@ date
 valley
 tells
 speed
-w
 stage
 al
 standard

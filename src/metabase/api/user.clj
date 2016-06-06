@@ -14,9 +14,9 @@
                  (:is_superuser @*current-user*))))
 
 (defendpoint GET "/"
-  "Fetch a list of all active `Users`. You must be a superuser to do this."
+  "Fetch a list of all active `Users`."
   []
-  (db/sel :many User :is_active true))
+  (db/select User, :is_active true))
 
 
 (defendpoint POST "/"
@@ -26,7 +26,7 @@
    last_name  [Required NonEmptyString]
    email      [Required Email]}
   (check-superuser)
-  (if-let [existing-user (db/sel :one [User :id :is_active], :email email)]
+  (if-let [existing-user (db/select-one [User :id :is_active], :email email)]
     (do (when-not (:is_active existing-user)
           ;; this user already exists but is inactive, so simply reactivate the account
           (db/update! User (:id existing-user)
@@ -50,7 +50,7 @@
   "Fetch a `User`. You must be fetching yourself *or* be a superuser."
   [id]
   (check-self-or-superuser id)
-  (check-404 (db/sel :one User :id id, :is_active true)))
+  (check-404 (User :id id, :is_active true)))
 
 
 (defendpoint PUT "/:id"
@@ -60,7 +60,7 @@
    first_name NonEmptyString
    last_name  NonEmptyString}
   (check-self-or-superuser id)
-  (check-404 (db/exists? User, :id id, :is_active true)) ; only allow updates if the specified account is active
+  (check-404 (db/exists? User, :id id, :is_active true))            ; only allow updates if the specified account is active
   (check-400 (not (db/exists? User, :email email, :id [:not= id]))) ; can't change email if it's already taken BY ANOTHER ACCOUNT
   (check-500 (db/update-non-nil-keys! User id
                :email        email
@@ -77,7 +77,7 @@
   [id :as {{:keys [password old_password]} :body}]
   {password     [Required ComplexPassword]}
   (check-self-or-superuser id)
-  (let-404 [user (db/sel :one [User :password_salt :password], :id id, :is_active true)]
+  (let-404 [user (db/select-one [User :password_salt :password], :id id, :is_active true)]
     (when (= id *current-user-id*)
       (checkp (creds/bcrypt-verify (str (:password_salt user) old_password) (:password user)) "old_password" "Invalid password")))
   (set-user-password id password)
@@ -96,7 +96,7 @@
   "Resend the user invite email for a given user."
   [id]
   (check-superuser)
-  (when-let [user (db/sel :one User :id id :is_active true)]
+  (when-let [user (User :id id, :is_active true)]
     (let [reset-token (set-user-password-reset-token id)
           ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
           join-url    (str (form-password-reset-url reset-token) "#new")]

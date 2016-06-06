@@ -1,7 +1,6 @@
 (ns metabase.models.user
   (:require [clojure.string :as s]
             [cemerick.friend.credentials :as creds]
-            [korma.core :as k]
             [metabase.db :as db]
             [metabase.email.messages :as email]
             (metabase.models [interface :as i]
@@ -120,4 +119,4 @@
 (defn instance-created-at
   "The date the instance was created.  We use the :date_joined of the first user to determine this."
   []
-  (db/sel :one :field [User :date_joined] (k/order :date_joined :ASC) (k/limit 1)))
+  (db/select-one-field :date_joined User, {:order-by [[:date_joined :asc]]}))

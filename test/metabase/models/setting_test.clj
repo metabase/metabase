@@ -21,7 +21,7 @@
 (defn db-fetch-setting
   "Fetch `Setting` value from the DB to verify things work as we expect."
   [setting-name]
-  (db/sel :one :field [Setting :value], :key (name setting-name)))
+  (db/select-one-field :value Setting, :key (name setting-name)))
 
 (defn setting-exists? [setting-name]
   (boolean (Setting :key (name setting-name))))

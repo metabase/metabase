@@ -180,8 +180,8 @@
          ids        (set (for [result results
                                :when  (not (get result dest-key))]
                            (source-key result)))
-         objs       (into {} (for [obj (db/sel :many entity :id [in ids])]
-                               {(:id obj) obj}))]
+         objs       (when (seq ids)
+                      (u/key-by :id (db/select entity, :id [:in ids])))]
      (for [{source-id source-key :as result} results]
        (if (get result dest-key)
          result
@@ -191,7 +191,7 @@
 ;; ### Helper Fns
 
 (def ^:private hydration-key->entity
-  "Delay that returns map of `hydration-key` -> korma entity.
+  "Delay that returns map of `hydration-key` -> model entity.
    e.g. `:user -> User`.
 
    This is built pulling the `hydration-keys` set from all of our entities."

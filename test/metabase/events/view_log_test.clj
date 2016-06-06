@@ -1,6 +1,5 @@
 (ns metabase.events.view-log-test
   (:require [expectations :refer :all]
-            [korma.core :as k]
             [metabase.db :as db]
             [metabase.events.view-log :refer :all]
             (metabase.models [user :refer [User]]
@@ -29,7 +28,7 @@
   (do
     (process-view-count-event {:topic :card-create
                                :item  card})
-    (-> (db/sel :one ViewLog :user_id user-id)
+    (-> (ViewLog :user_id user-id)
         (select-keys [:user_id :model :model_id]))))
 
 ;; `:card-read` event
@@ -42,7 +41,7 @@
   (do
     (process-view-count-event {:topic :card-read
                                :item  card})
-    (-> (db/sel :one ViewLog :user_id user-id)
+    (-> (ViewLog :user_id user-id)
         (select-keys [:user_id :model :model_id]))))
 
 ;; `:dashboard-read` event
@@ -55,5 +54,5 @@
   (do
     (process-view-count-event {:topic :dashboard-read
                                :item  dashboard})
-    (-> (db/sel :one ViewLog :user_id user-id)
+    (-> (ViewLog :user_id user-id)
         (select-keys [:user_id :model :model_id]))))

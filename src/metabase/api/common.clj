@@ -5,7 +5,6 @@
                      [walk :as walk])
             [cheshire.core :as json]
             [compojure.core :refer [defroutes]]
-            [korma.core :as k]
             [medley.core :as m]
             [metabase.api.common.internal :refer :all]
             [metabase.db :as db]
@@ -65,7 +64,7 @@
 (defn check-superuser
   "Check that `*current-user*` is a superuser or throw a 403."
   []
-  (check-403 (:is_superuser @*current-user*)))
+  (check-403 (db/exists? 'User, :id *current-user-id*, :is_superuser true)))
 
 
 ;;; #### checkp- functions: as in "check param". These functions expect that you pass a symbol so they can throw exceptions w/ relevant error messages.

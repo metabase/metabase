@@ -85,7 +85,9 @@
       (when full-sync?
         (analyze/analyze-data-shape-for-tables! driver database)))
 
-    (events/publish-event :database-sync-end {:database_id (:id database) :custom_id tracking-hash :running_time (int (/ (- (System/nanoTime) start-time) 1000000.0))}) ; convert to ms
+    (events/publish-event :database-sync-end {:database_id  (:id database)
+                                              :custom_id    tracking-hash
+                                              :running_time (int (/ (- (System/nanoTime) start-time) 1000000.0))}) ; convert to ms
     (log/info (u/format-color 'magenta "Finished syncing %s database '%s'. (%s)" (name driver) (:name database)
                               (u/format-nanoseconds (- (System/nanoTime) start-time))))))
 
@@ -94,11 +96,11 @@
   (let [start-time (System/nanoTime)]
     (log/info (u/format-color 'magenta "Syncing table '%s' from %s database '%s'..." (:display_name table) (name driver) (:name database)))
 
-    (binding [qp/*disable-qp-logging*  true
+    (binding [qp/*disable-qp-logging* true
               db/*disable-db-logging* true]
       ;; if the Table has a RawTable backing it then do an introspection and sync
-      (when-let [raw-tbl (db/sel :one raw-table/RawTable :id (:raw_table_id table))]
-        (introspect/introspect-raw-table-and-update! driver database raw-tbl)
+      (when-let [raw-table (raw-table/RawTable (:raw_table_id table))]
+        (introspect/introspect-raw-table-and-update! driver database raw-table)
         (sync/update-data-models-for-table! table))
 
       ;; if this table comes from a dynamic schema db then run that sync process now

@@ -3,8 +3,9 @@
                      [string :as s]
                      [walk :as walk])
             [clojure.tools.logging :as log]
-            (korma [core :as k]
-                   [db :as kdb])
+            (honeysql [core :as hsql]
+                      [helpers :as h])
+            [korma.db :as kdb]
             (metabase [config :as config]
                       [db :as db]
                       [driver :as driver])
@@ -14,9 +15,10 @@
                              [field :as field]
                              [table :as table])
             [metabase.sync-database.analyze :as analyze]
+            [metabase.query-processor :as qp]
             metabase.query-processor.interface
             [metabase.util :as u]
-            [metabase.util.korma-extensions :as kx])
+            [metabase.util.honeysql-extensions :as hx])
   (:import (java.util Collections Date)
            (com.google.api.client.googleapis.auth.oauth2 GoogleCredential GoogleCredential$Builder GoogleAuthorizationCodeFlow GoogleAuthorizationCodeFlow$Builder GoogleTokenResponse)
            com.google.api.client.googleapis.javanet.GoogleNetHttpTransport
@@ -151,14 +153,16 @@
 
 (defn- table-schema->metabase-field-info [^TableSchema schema]
   (for [^TableFieldSchema field (.getFields schema)]
-    {:name            (.getName field)
-     :base-type       (bigquery-type->base-type (.getType field))}))
+    {:name      (.getName field)
+     :base-type (bigquery-type->base-type (.getType field))}))
 
 (defn- describe-table [database {table-name :name}]
   {:schema nil
    :name   table-name
    :fields (set (table-schema->metabase-field-info (.getSchema (get-table database table-name))))})
 
+
+(def ^:private ^:const query-timeout-seconds 90)
 
 (defn- ^QueryResponse execute-bigquery
   ([{{:keys [project-id]} :details, :as database} query-string]
@@ -167,7 +171,8 @@
   ([^Bigquery client, ^String project-id, ^String query-string]
    {:pre [client (seq project-id) (seq query-string)]}
    (let [request (doto (QueryRequest.)
-                   #_(.setUseLegacySql false)   ; use standards-compliant non-legacy dialect
+                   (.setTimeoutMs (* query-timeout-seconds 1000))
+                   #_(.setUseLegacySql false)   ; use standards-compliant non-legacy dialect -- see https://cloud.google.com/bigquery/sql-reference/enabling-standard-sql
                    (.setQuery query-string))]
      (execute (.query (.jobs client) project-id request)))))
 
@@ -196,11 +201,9 @@
    "STRING"    identity
    "TIMESTAMP" parse-timestamp-str})
 
-(def ^:private ^:const query-default-timeout-seconds 60)
-
 (defn- post-process-native
   ([^QueryResponse response]
-   (post-process-native response query-default-timeout-seconds))
+   (post-process-native response query-timeout-seconds))
   ([^QueryResponse response, ^Integer timeout-seconds]
    (if-not (.getJobComplete response)
      ;; 99% of the time by the time this is called `.getJobComplete` will return `true`. On the off chance it doesn't, wait a few seconds for the job to finish.
@@ -255,64 +258,50 @@
 ;;; # Generic SQL Driver Methods
 
 (defn- date-add [unit timestamp interval]
-  (k/sqlfn* :DATE_ADD timestamp interval (kx/literal unit)))
+  (hsql/call :date_add timestamp interval (hx/literal unit)))
 
 ;; µs = unix timestamp in microseconds. Most BigQuery functions like strftime require timestamps in this format
 
-(def ^:private ->µs (partial k/sqlfn* :TIMESTAMP_TO_USEC))
+(def ^:private ->µs (partial hsql/call :timestamp_to_usec))
 
 (defn- µs->str [format-str µs]
-  (k/sqlfn* :STRFTIME_UTC_USEC µs (kx/literal format-str)))
+  (hsql/call :strftime_utc_usec µs (hx/literal format-str)))
 
 (defn- trunc-with-format [format-str timestamp]
-  (kx/->timestamp (µs->str format-str (->µs timestamp))))
+  (hx/->timestamp (µs->str format-str (->µs timestamp))))
 
 (defn- date [unit expr]
   {:pre [expr]}
   (case unit
     :default         expr
     :minute          (trunc-with-format "%Y-%m-%d %H:%M:00" expr)
-    :minute-of-hour  (kx/minute expr)
+    :minute-of-hour  (hx/minute expr)
     :hour            (trunc-with-format "%Y-%m-%d %H:00:00" expr)
-    :hour-of-day     (kx/hour expr)
-    :day             (kx/->timestamp (k/sqlfn* :DATE expr))
-    :day-of-week     (k/sqlfn* :DAYOFWEEK expr)
-    :day-of-month    (k/sqlfn* :DAY expr)
-    :day-of-year     (k/sqlfn* :DAYOFYEAR expr)
-    :week            (date-add :DAY (date :day expr) (kx/- 1 (date :day-of-week expr)))
-    :week-of-year    (kx/week expr)
+    :hour-of-day     (hx/hour expr)
+    :day             (hx/->timestamp (hsql/call :date expr))
+    :day-of-week     (hsql/call :dayofweek expr)
+    :day-of-month    (hsql/call :day expr)
+    :day-of-year     (hsql/call :dayofyear expr)
+    :week            (date-add :day (date :day expr) (hx/- 1 (date :day-of-week expr)))
+    :week-of-year    (hx/week expr)
     :month           (trunc-with-format "%Y-%m-01" expr)
-    :month-of-year   (kx/month expr)
-    :quarter         (date-add :MONTH
+    :month-of-year   (hx/month expr)
+    :quarter         (date-add :month
                                (trunc-with-format "%Y-01-01" expr)
-                               (kx/* (kx/dec (date :quarter-of-year expr))
+                               (hx/* (hx/dec (date :quarter-of-year expr))
                                      3))
-    :quarter-of-year (kx/quarter expr)
-    :year            (kx/year expr)))
+    :quarter-of-year (hx/quarter expr)
+    :year            (hx/year expr)))
 
 (defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
   (case seconds-or-milliseconds
-    :seconds      (k/sqlfn* :SEC_TO_TIMESTAMP  expr)
-    :milliseconds (k/sqlfn* :MSEC_TO_TIMESTAMP expr)))
+    :seconds      (hsql/call :sec_to_timestamp  expr)
+    :milliseconds (hsql/call :msec_to_timestamp expr)))
 
 
 ;;; # Query Processing
 
 (declare driver)
-
-;; this is never actually connected to, just passed to korma so it applies appropriate delimiters when building SQL
-(def ^:private ^:const korma-db
-  {:pool {:subprotocol "sqlite"
-          :subname     ""}
-   :options {:naming          {:keys   identity
-                               :fields identity}
-             :delimiters      [\[ \]]
-             :alias-delimiter " AS "
-             :subprotocol     ""}})
-
-(defn- entity [dataset-id table-name]
-  (-> (k/create-entity (k/raw (format "[%s.%s]" dataset-id table-name)))
-      (k/database korma-db)))
 
 ;; Make the dataset-id the "schema" of every field or table in the query because otherwise BigQuery can't figure out where things is from
 (defn- qualify-fields-and-tables-with-dataset-id [{{{:keys [dataset-id]} :details} :database, :as query}]
@@ -323,18 +312,17 @@
                      :else                                                      x))
                  (assoc-in query [:query :source-table :schema] dataset-id)))
 
-(defn- korma-form [query entity]
-  (sqlqp/build-korma-form driver (qualify-fields-and-tables-with-dataset-id query) entity))
+(defn- honeysql-form [outer-query]
+  (sqlqp/build-honeysql-form driver (qualify-fields-and-tables-with-dataset-id outer-query)))
 
-(defn- korma-form->sql [korma-form]
-  {:pre [(map? korma-form)]}
-  ;; replace identifiers like [shakespeare].[word] with ones like [shakespeare.word] since that's what BigQuery expects
-  (try (s/replace (kdb/with-db korma-db
-                    (k/as-sql korma-form))
-                  #"\]\.\[" ".")
-       (catch Throwable e
-         (log/error (u/format-color 'red "Couldn't convert korma form to SQL:\n%s" (sqlqp/pprint-korma-form korma-form)))
-         (throw e))))
+(defn- honeysql-form->sql ^String [honeysql-form]
+  {:pre [(map? honeysql-form)]}
+  ;; replace identifiers like [shakespeare].[word] with ones like [shakespeare.word] since that's hat BigQuery expects
+  (let [[sql & args] (sql/honeysql-form->sql+args driver honeysql-form)
+        sql          (s/replace (hx/unescape-dots sql) #"\]\.\[" ".")]
+    (assert (empty? args)
+      "BigQuery statements can't be parameterized!")
+    sql))
 
 (defn- post-process-mbql [dataset-id table-name {:keys [columns rows]}]
   ;; Since we don't alias column names the come back like "veryNiceDataset_shakepeare_corpus". Strip off the dataset and table IDs
@@ -344,14 +332,14 @@
     (for [row rows]
       (zipmap columns row))))
 
-(defn- mbql->native [{{{:keys [dataset-id]} :details, :as database} :database, {{table-name :name} :source-table} :query, :as query}]
+(defn- mbql->native [{{{:keys [dataset-id]} :details, :as database} :database, {{table-name :name} :source-table} :query, :as outer-query}]
   {:pre [(map? database) (seq dataset-id) (seq table-name)]}
-  (let [korma-form (korma-form query (entity dataset-id table-name))
-        sql        (korma-form->sql korma-form)]
-    (sqlqp/log-korma-form korma-form sql)
-    {:query      sql
-     :table-name table-name
-     :mbql?      true}))
+  (binding [sqlqp/*query* outer-query]
+    (let [honeysql-form (honeysql-form outer-query)
+          sql           (honeysql-form->sql honeysql-form)]
+      {:query      (str "-- " (qp/query->remark outer-query) "\n" sql)
+       :table-name table-name
+       :mbql?      true})))
 
 (defn- execute-query [{{{:keys [dataset-id]} :details, :as database} :database, {sql :query, :keys [table-name mbql?]} :native}]
   (let [results (process-native* database sql)
@@ -364,19 +352,19 @@
                   (mapv row columns))
      :annotate? true}))
 
-;; This provides an implementation of `prepare-value` that prevents korma from converting forms to prepared statement parameters (`?`)
+;; This provides an implementation of `prepare-value` that prevents HoneySQL from converting forms to prepared statement parameters (`?`)
 ;; TODO - Move this into `metabase.driver.generic-sql` and document it as an alternate implementation for `prepare-value` (?)
-;;        Or perhaps investigate a lower-level way to disable the functionality in korma, perhaps by swapping out a function somewhere
+;;        Or perhaps investigate a lower-level way to disable the functionality in HoneySQL, perhaps by swapping out a function somewhere
 (defprotocol ^:private IPrepareValue
   (^:private prepare-value [this]))
 (extend-protocol IPrepareValue
   nil           (prepare-value [_] nil)
   DateTimeValue (prepare-value [{:keys [value]}] (prepare-value value))
   Value         (prepare-value [{:keys [value]}] (prepare-value value))
-  String        (prepare-value [this] (kx/literal this))
-  Boolean       (prepare-value [this] (k/raw (if this "TRUE" "FALSE")))
-  Date          (prepare-value [this] (k/sqlfn* :TIMESTAMP (kx/literal (u/date->iso-8601 this))))
-  Number        (prepare-value [this] (k/raw this))
+  String        (prepare-value [this] (hx/literal this))
+  Boolean       (prepare-value [this] (hsql/raw (if this "TRUE" "FALSE")))
+  Date          (prepare-value [this] (hsql/call :timestamp (hx/literal (u/date->iso-8601 this))))
+  Number        (prepare-value [this] this)
   Object        (prepare-value [this] (throw (Exception. (format "Don't know how to prepare value %s %s" (class this) this)))))
 
 
@@ -392,26 +380,44 @@
                       ag-type)))
     :else (str schema-name \. table-name \. field-name)))
 
+;; We have to override the default SQL implementations of breakout and order-by because BigQuery propogates casting functions in SELECT
+;; BAD:
+;; SELECT msec_to_timestamp([sad_toucan_incidents.incidents.timestamp]) AS [sad_toucan_incidents.incidents.timestamp], count(*) AS [count]
+;; FROM [sad_toucan_incidents.incidents]
+;; GROUP BY msec_to_timestamp([sad_toucan_incidents.incidents.timestamp])
+;; ORDER BY msec_to_timestamp([sad_toucan_incidents.incidents.timestamp]) ASC
+;; LIMIT 10
+;;
+;; GOOD:
+;; SELECT msec_to_timestamp([sad_toucan_incidents.incidents.timestamp]) AS [sad_toucan_incidents.incidents.timestamp], count(*) AS [count]
+;; FROM [sad_toucan_incidents.incidents]
+;; GROUP BY [sad_toucan_incidents.incidents.timestamp]
+;; ORDER BY [sad_toucan_incidents.incidents.timestamp] ASC
+;; LIMIT 10
+
 (defn- field->identitfier [field]
-  (k/raw (str \[ (field->alias field) \])))
+  (hsql/raw (str \[ (field->alias field) \])))
 
-(defn- apply-breakout [korma-form {breakout-fields :breakout, fields-fields :fields}]
-  (-> korma-form
+(defn- apply-breakout [honeysql-form {breakout-fields :breakout, fields-fields :fields}]
+  (-> honeysql-form
       ;; Group by all the breakout fields
-      ((partial apply k/group)  (map field->identitfier breakout-fields))
-      ;; Add fields form only for fields that weren't specified in :fields clause -- we don't want to include it twice, or korma will barf
-      ((partial apply k/fields) (for [field breakout-fields
-                                      :when (not (contains? (set fields-fields) field))]
-                                  (sqlqp/as (sqlqp/formatted field) field)))))
+      ((partial apply h/group)  (map field->identitfier breakout-fields))
+      ;; Add fields form only for fields that weren't specified in :fields clause -- we don't want to include it twice, or HoneySQL will barf
+      ((partial apply h/merge-select) (for [field breakout-fields
+                                            :when (not (contains? (set fields-fields) field))]
+                                        (sqlqp/as (sqlqp/formatted field) field)))))
 
-(defn- apply-order-by [korma-form {subclauses :order-by}]
-  (loop [korma-form korma-form, [{:keys [field direction]} & more] subclauses]
-    (let [korma-form (k/order korma-form (field->identitfier field) (case direction
-                                                                      :ascending  :ASC
-                                                                      :descending :DESC))]
+(defn- apply-order-by [honeysql-form {subclauses :order-by}]
+  (loop [honeysql-form honeysql-form, [{:keys [field direction]} & more] subclauses]
+    (let [honeysql-form (h/merge-order-by honeysql-form [(field->identitfier field) (case direction
+                                                                                      :ascending  :asc
+                                                                                      :descending :desc)])]
       (if (seq more)
-        (recur korma-form more)
-        korma-form))))
+        (recur honeysql-form more)
+        honeysql-form))))
+
+(defn- string-length-fn [field-key]
+  (hsql/call :length field-key))
 
 
 (defrecord BigQueryDriver []
@@ -427,11 +433,12 @@
           :apply-order-by            (u/drop-first-arg apply-order-by)
           :column->base-type         (constantly nil)                           ; these two are actually not applicable
           :connection-details->spec  (constantly nil)                           ; since we don't use JDBC
-          :current-datetime-fn       (constantly (k/sqlfn* :CURRENT_TIMESTAMP))
+          :current-datetime-fn       (constantly :%current_timestamp)
           :date                      (u/drop-first-arg date)
           :field->alias              (u/drop-first-arg field->alias)
           :prepare-value             (u/drop-first-arg prepare-value)
-          :string-length-fn          (constantly :LENGTH)
+          :quote-style               (constantly :sqlserver)                    ; we want identifiers quoted [like].[this]
+          :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)})
 
   driver/IDriver
@@ -471,4 +478,4 @@
           :field-values-lazy-seq (u/drop-first-arg field-values-lazy-seq)
           :mbql->native          (u/drop-first-arg mbql->native)}))
 
-(driver/register-driver! :bigquery (BigQueryDriver.))
+(driver/register-driver! :bigquery driver)

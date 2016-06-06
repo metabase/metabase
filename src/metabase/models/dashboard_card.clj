@@ -1,6 +1,5 @@
 (ns metabase.models.dashboard-card
   (:require [clojure.set :as set]
-            [korma.core :as k]
             [korma.db :as kdb]
             [metabase.db :as db]
             [metabase.events :as events]
@@ -10,12 +9,7 @@
             [metabase.models.interface :as i]
             [metabase.util :as u]))
 
-(i/defentity DashboardCard :report_dashboardcard
-  ;; TODO - This can be removed once we finish the transition from korma -> HoneySQL.
-  ;; This needs to be here for the time being because things that go through regular `korma.core/select` don't get ran
-  ;; through `post-select` (like they would if they went through a `metabase.db/` function) and we don't want to have to fix
-  ;; naming manually everywhere
-  (k/transform (u/rpartial set/rename-keys {:sizex :sizeX, :sizey :sizeY})))
+(i/defentity DashboardCard :report_dashboardcard)
 
 (defn- pre-insert [dashcard]
   (let [defaults {:sizeX 2
@@ -41,18 +35,16 @@
   "Return the `Dashboard` associated with the `DashboardCard`."
   [{:keys [dashboard_id]}]
   {:pre [(integer? dashboard_id)]}
-  (db/sel :one 'metabase.models.dashboard/Dashboard :id dashboard_id))
+  (db/select-one 'Dashboard, :id dashboard_id))
 
 
 (defn ^:hydrate series
   "Return the `Cards` associated as additional series on this `DashboardCard`."
   [{:keys [id]}]
-  (->> (k/select Card
-                 (k/join DashboardCardSeries (= :dashboardcard_series.card_id :id))
-                 (k/fields :id :name :description :display :dataset_query :visualization_settings)
-                 (k/where {:dashboardcard_series.dashboardcard_id id})
-                 (k/order :dashboardcard_series.position :asc))
-       (map (partial i/do-post-select Card))))
+  (db/select [Card :id :name :description :display :dataset_query :visualization_settings]
+    (db/join [Card :id] [DashboardCardSeries :card_id])
+    (db/qualify DashboardCardSeries :dashboardcard_id) id
+    {:order-by [[(db/qualify DashboardCardSeries :position) :asc]]}))
 
 
 ;;; ## ---------------------------------------- CRUD FNS ----------------------------------------
@@ -62,7 +54,7 @@
   "Fetch a single `DashboardCard` by its ID value."
   [id]
   {:pre [(integer? id)]}
-  (-> (db/sel :one DashboardCard :id id)
+  (-> (DashboardCard id)
       (hydrate :series)))
 
 (defn update-dashboard-card-series
@@ -81,8 +73,10 @@
   (db/cascade-delete! DashboardCardSeries :dashboardcard_id id)
   ;; now just insert all of the series that were given to us
   (when-not (empty? card-ids)
-    (let [cards (map-indexed (fn [idx itm] {:dashboardcard_id id :card_id itm :position idx}) card-ids)]
-      (k/insert DashboardCardSeries (k/values cards)))))
+    (let [cards (map-indexed (fn [i card-id]
+                               {:dashboardcard_id id, :card_id card-id, :position i})
+                             card-ids)]
+      (db/insert-many! DashboardCardSeries cards))))
 
 (defn update-dashboard-card
   "Update an existing `DashboardCard`, including all `DashboardCardSeries`.
@@ -96,7 +90,7 @@
       (when (and sizeX sizeY row col)
         (db/update! DashboardCard id, :sizeX sizeX, :sizeY sizeY, :row row, :col col))
       ;; update series (only if they changed)
-      (when (not= series (db/sel :many :field [DashboardCardSeries :card_id] :dashboardcard_id id (k/order :position :asc)))
+      (when (not= series (map :card_id (db/select [DashboardCardSeries :card_id], :dashboardcard_id id, {:order-by [[:position :asc]]})))
         (update-dashboard-card-series dashboard-card series))
       ;; fetch the fully updated dashboard card then return it (and fire off an event)
       (->> (retrieve-dashboard-card id)
