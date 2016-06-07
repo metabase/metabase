@@ -29,8 +29,9 @@
 
 (defn- week-range [dt]
   ;; weeks always start on SUNDAY and end on SATURDAY
+  ;; NOTE: in Joda the week starts on Monday and ends on Sunday, so to get the right Sunday we rollback 1 week
   {:end   (.withDayOfWeek dt DateTimeConstants/SATURDAY)
-   :start (.withDayOfWeek dt DateTimeConstants/SUNDAY)})
+   :start (.withDayOfWeek (t/minus dt (t/weeks 1)) DateTimeConstants/SUNDAY)})
 
 (defn- month-range [dt]
   {:end   (t/last-day-of-the-month dt)
@@ -50,17 +51,49 @@
    Supported formats:
       \"2014-05-10~2014-05-16\"
       \"Q1-2016\"
-      \"2016-04\""
+      \"2016-04\"
+      \"2016-04-12\""
   [value]
   (if (s/includes? value "~")
     ;; these values are already expected to be iso8601 strings, so we are done
     (zipmap [:start :end] (s/split value #"~" 2))
     ;; these cases represent fixed date ranges, but we need to calculate start/end still
-    (->> (if (s/starts-with? value "Q")
-           (let [[quarter year] (s/split value #"-" 2)]
-             (quarter-range (start-of-quarter quarter (Integer/parseInt year))))
-           (month-range (tf/parse (tf/formatters :year-month) value)))
+    (->> (cond
+           ;; quarter-year (Q1-2016)
+           (s/starts-with? value "Q") (let [[quarter year] (s/split value #"-" 2)]
+                                        (quarter-range (start-of-quarter quarter (Integer/parseInt year))))
+           ;; year-month (2016-04)
+           (= (count value) 7)        (month-range (tf/parse (tf/formatters :year-month) value))
+           ;; default is to assume a single day (2016-04-18).  we still parse just to validate.
+           :else                      (let [dt (tf/parse (tf/formatters :year-month-day) value)]
+                                        {:start dt, :end dt}))
          (m/map-vals (partial tf/unparse (tf/formatters :year-month-day))))))
+
+
+(defn- relative-date->range
+  "Take a given string description of a relative date range such as 'lastmonth' and return a MAP with a given
+   `:start` and `:end` as iso8601 string formatted dates.  Values should be appropriate for the given REPORT-TIMEZONE."
+  [value report-timezone]
+  (let [tz        (t/time-zone-for-id report-timezone)
+        formatter (tf/formatter "YYYY-MM-dd" tz)
+        today     (.withTimeAtStartOfDay (t/to-time-zone (t/now) tz))]
+    (->> (condp = value
+           "past7days"  {:end   (t/minus today (t/days 1))
+                         :start (t/minus today (t/days 7))}
+           "past30days" {:end   (t/minus today (t/days 1))
+                         :start (t/minus today (t/days 30))}
+           "thisweek"   (week-range today)
+           "thismonth"  (month-range today)
+           "thisyear"   (year-range today)
+           "lastweek"   (week-range (t/minus today (t/weeks 1)))
+           "lastmonth"  (month-range (t/minus today (t/months 1)))
+           "lastyear"   (year-range (t/minus today (t/years 1)))
+           "yesterday"  {:end   (t/minus today (t/days 1))
+                         :start (t/minus today (t/days 1))}
+           "today"      {:end   today
+                         :start today})
+         ;; the above values are JodaTime objects, so unparse them to iso8601 strings
+         (m/map-vals (partial tf/unparse formatter)))))
 
 
 ;;; +-------------------------------------------------------------------------------------------------------+
@@ -112,31 +145,6 @@
 ;;; |                                           SQL QUERIES                                             |
 ;;; +-------------------------------------------------------------------------------------------------------+
 
-
-(defn- relative-date->range
-  "Take a given string description of a relative date range such as 'lastmonth' and return a MAP with a given
-   `:start` and `:end` as iso8601 string formatted dates.  Values should be appropriate for the given REPORT-TIMEZONE."
-  [value report-timezone]
-  (let [tz        (t/time-zone-for-id report-timezone)
-        formatter (tf/formatter "YYYY-MM-dd" tz)
-        today     (t/today-at-midnight tz)]
-    (->> (condp = value
-           "past7days"  {:end   (t/minus today (t/days 1))
-                         :start (t/minus today (t/days 7))}
-           "past30days" {:end   (t/minus today (t/days 1))
-                         :start (t/minus today (t/days 30))}
-           "thisweek"   (week-range today)
-           "thismonth"  (month-range today)
-           "thisyear"   (year-range today)
-           "lastweek"   (week-range (t/minus today (t/weeks 1)))
-           "lastmonth"  (month-range (t/minus today (t/months 1)))
-           "lastyear"   (year-range (t/minus today (t/years 1)))
-           "yesterday"  {:end   (t/minus today (t/days 1))
-                         :start (t/minus today (t/days 1))}
-           "today"      {:end   today
-                         :start today})
-         ;; the above values are JodaTime objects, so unparse them to iso8601 strings
-         (m/map-vals (partial tf/unparse formatter)))))
 
 (defn- extract-dates [value report-timezone]
   (if-not (contains? relative-dates value)
