@@ -4,15 +4,15 @@ import "metabase/directives";
 import "metabase/services";
 import "./card.controllers";
 
-const CARD_DETAIL_TEMPLATE =
-`<div class="QueryBuilder flex flex-column bg-white spread" ng-class="{ 'QueryBuilder--showDataReference': isShowingDataReference }">
-    <div id="react_qb_header"></div>
-    <div id="react_qb_editor" class="z2"></div>
-    <div id="react_qb_viz" class="flex z1"></div>
-</div>
-<div class="DataReference" id="react_data_reference"></div>
-<div id="react_qb_tutorial"></div>
-<div id="react_qbnewb_modal"></div>`;
+// const CARD_DETAIL_TEMPLATE =
+// `<div class="QueryBuilder flex flex-column bg-white spread" ng-class="{ 'QueryBuilder--showDataReference': isShowingDataReference }">
+//     <div id="react_qb_header"></div>
+//     <div id="react_qb_editor" class="z2"></div>
+//     <div id="react_qb_viz" class="flex z1"></div>
+// </div>
+// <div class="DataReference" id="react_data_reference"></div>
+// <div id="react_qb_tutorial"></div>
+// <div id="react_qbnewb_modal"></div>`;
 
 var Card = angular.module('metabase.card', [
     'ngRoute',
