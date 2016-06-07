@@ -210,7 +210,7 @@
                 {:order-by [[:position :asc]
                             [:id :desc]]})]
     (let [field (resolve/resolve-table (map->Field (resolve/rename-mb-field-keys field))
-                                       {source-table-id source-table})]
+                                       {[nil source-table-id] source-table})]
       (if (datetime-field? field)
         (map->DateTimeField {:field field, :unit :default})
         field))))

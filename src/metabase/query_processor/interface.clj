@@ -71,6 +71,7 @@
                     schema-name        :- (s/maybe s/Str)
                     table-name         :- (s/maybe s/Str) ; TODO - Why is this `maybe` ?
                     position           :- (s/maybe s/Int) ; TODO - int >= 0
+                    fk-field-id        :- (s/maybe s/Int)
                     description        :- (s/maybe s/Str)
                     parent-id          :- (s/maybe IntGreaterThanZero)
                     ;; Field once its resolved; FieldPlaceholder before that

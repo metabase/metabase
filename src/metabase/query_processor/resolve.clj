@@ -45,7 +45,7 @@
    "This method is called when walking the Query after fetching `Fields`.
     Placeholder objects should lookup the relevant Field in FIELD-ID->FIELDS and
     return their expanded form. Other objects should just return themselves.a")
-  (resolve-table [this, ^clojure.lang.IPersistentMap table-id->tables]
+  (resolve-table [this, ^clojure.lang.IPersistentMap fk-id+table-id->tables]
    "Called when walking the Query after `Fields` have been resolved and `Tables` have been fetched.
     Objects like `Fields` can add relevant information like the name of their `Table`."))
 
@@ -76,10 +76,10 @@
                                       (map->FieldPlaceholder {:field-id parent-id})))
     :else     this))
 
-(defn- field-resolve-table [{:keys [table-id], :as this} table-id->table]
-  (println "field-resolve-table -------------------->\n\n" (u/format-color 'magenta (into {} this)) "\n\n<--------------------")
-  (let [table (or (table-id->table table-id)
-                  (throw (Exception. (format "Query expansion failed: could not find table %d." table-id))))]
+(defn- field-resolve-table [{:keys [table-id fk-field-id], :as this} fk-id+table-id->table]
+  {:pre [(map? fk-id+table-id->table) (every? vector? (keys fk-id+table-id->table))]}
+  (let [table (or (fk-id+table-id->table [fk-field-id table-id])
+                  (throw (Exception. (format "Query expansion failed: could not find table %d (FK ID = %d). Resolved tables: %s" table-id fk-field-id fk-id+table-id->table))))]
     (assoc this
            :table-name  (:name table)
            :schema-name (:schema table))))
@@ -101,8 +101,7 @@
     (let [datetime-field? (or (contains? #{:DateField :DateTimeField} base-type)
                               (contains? #{:timestamp_seconds :timestamp_milliseconds} special-type))]
       (if-not datetime-field?
-        (u/prog1 field
-          (println "THIS:::::::::::::::::::::\n\n\n" <> "\n\n::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::"))
+        field
         (map->DateTimeField {:field field
                              :unit  (or datetime-unit :day)}))) ; default to `:day` if a unit wasn't specified
     ;; If that fails just return ourselves as-is
@@ -220,41 +219,36 @@
                            [:=  :source-fk.table_id     source-table-id]
                            [:=  :source-fk.special_type "fk"]]})))
 
-(defn- x []
-  (fk-field-ids->info 302 #{749 750 755}))
-
 (defn- fk-field-ids->joined-tables
   "Fetch info for PK/FK `Fields` for the JOIN-TABLES referenced in a Query."
   [source-table-id fk-field-ids]
   (when (seq fk-field-ids)
-    (println "fk-field-ids" fk-field-ids))
-  (vec (for [{:keys [source-field-name source-field-id target-field-id target-field-name target-table-id target-table-name target-table-schema]} (fk-field-ids->info source-table-id fk-field-ids)]
-         (map->JoinTable {:table-id     target-table-id
-                          :table-name   target-table-name
-                          :schema       target-table-schema
-                          :pk-field     (map->JoinTableField {:field-id   target-field-id
-                                                              :field-name target-field-name})
-                          :source-field (map->JoinTableField {:field-id   source-field-id
-                                                              :field-name source-field-name})
-                          :join-alias  (str target-table-name "__via__" source-field-name #_"__" #_source-field-id)}))))
+    (vec (for [{:keys [source-field-name source-field-id target-field-id target-field-name target-table-id target-table-name target-table-schema]} (fk-field-ids->info source-table-id fk-field-ids)]
+           (map->JoinTable {:table-id     target-table-id
+                            :table-name   target-table-name
+                            :schema       target-table-schema
+                            :pk-field     (map->JoinTableField {:field-id   target-field-id
+                                                                :field-name target-field-name})
+                            :source-field (map->JoinTableField {:field-id   source-field-id
+                                                                :field-name source-field-name})
+                            :join-alias  (str target-table-name "__via__" source-field-name)})))))
 
 (defn- resolve-tables
   "Resolve the `Tables` in an EXPANDED-QUERY-DICT."
   [{{source-table-id :source-table} :query, :keys [table-ids fk-field-ids], :as expanded-query-dict}]
   {:pre [(integer? source-table-id)]}
-  (let [table-ids       (conj table-ids source-table-id)
-        source-table    (db/select-one [Table :schema :name :id], :id source-table-id)
-        joined-tables   (fk-field-ids->joined-tables source-table-id fk-field-ids)
-        table-id->table (into {source-table-id source-table}
-                              (for [{:keys [table-id join-alias]} joined-tables]
-                                {table-id {:name join-alias
-                                           :id   table-id}}))]
-    (println "table-id->table" (u/pprint-to-str 'cyan table-id->table))
+  (let [table-ids             (conj table-ids source-table-id)
+        source-table          (or (db/select-one [Table :schema :name :id], :id source-table-id)
+                                  (throw (Exception. (format "Query expansion failed: could not find source table %d." source-table-id))))
+        joined-tables         (fk-field-ids->joined-tables source-table-id fk-field-ids)
+        fk-id+table-id->table (into {[nil source-table-id] source-table}
+                                    (for [{:keys [source-field table-id join-alias]} joined-tables]
+                                      {[(:field-id source-field) table-id] {:name join-alias
+                                                                            :id   table-id}}))]
     (as-> expanded-query-dict <>
-      (assoc-in <> [:query :source-table] (or (table-id->table source-table-id)
-                                              (throw (Exception. (format "Query expansion failed: could not find source table %d." source-table-id)))))
+      (assoc-in <> [:query :source-table] source-table)
       (assoc-in <> [:query :join-tables]  joined-tables)
-      (walk/postwalk #(resolve-table % table-id->table) <>))))
+      (walk/postwalk #(resolve-table % fk-id+table-id->table) <>))))
 
 
 ;;; # ------------------------------------------------------------ PUBLIC INTERFACE ------------------------------------------------------------
