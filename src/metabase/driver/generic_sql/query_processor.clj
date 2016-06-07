@@ -270,7 +270,8 @@
   [driverr {inner-query :query}]
   {:pre [(map? inner-query)]}
   (u/prog1 (apply-clauses driverr {} inner-query)
-    (log/debug "HoneySQL Form: 🍯\n" (u/pprint-to-str 'cyan <>))))
+    (when-not qp/*disable-qp-logging*
+      (log/debug "HoneySQL Form: 🍯\n" (u/pprint-to-str 'cyan <>)))))
 
 (defn mbql->native
   "Transpile MBQL query into a native SQL statement."
