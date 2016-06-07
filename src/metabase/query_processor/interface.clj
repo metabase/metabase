@@ -47,7 +47,8 @@
                         pk-field     :- JoinTableField
                         table-id     :- IntGreaterThanZero
                         table-name   :- s/Str
-                        schema       :- (s/maybe s/Str)])
+                        schema       :- (s/maybe s/Str)
+                        join-alias   :- s/Str])
 
 ;;; # ------------------------------------------------------------ PROTOCOLS ------------------------------------------------------------
 
