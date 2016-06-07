@@ -70,6 +70,14 @@
    Label
    CardLabel])
 
+(def ^:private self-referencing-entities
+  "Entities that have a column with and FK that points back to the same table."
+  #{RawColumn Field})
+
+(def ^:private entities-without-autoinc-ids
+  "Entities that do NOT use an auto incrementing ID column."
+  #{Setting Session})
+
 (defn- insert-entity [e objs]
   (print (u/format-color 'blue "Transfering %d instances of %s..." (count objs) (:name e)))
   (flush)
@@ -98,12 +106,11 @@
 (defn- set-postgres-sequence-values []
   (print (u/format-color 'blue "Setting postgres sequence ids to proper values..."))
   (flush)
-  ;; NOTE: tried using korma/exec-raw for this but i kept getting exceptions so i fell back to raw JDBC
   (jdbc/with-db-transaction [conn (db/jdbc-details @db/db-connection-details)]
-    (doseq [e    (filter #(not (contains? #{Setting Session} %)) entities) ; these 2 tables don't have an "id" column
+    (doseq [e    (filter #(not (contains? entities-without-autoinc-ids %)) entities)
             :let [table-name (:table e)
-                  seq-name (str table-name "_id_seq")
-                  sql (format "SELECT setval('%s', COALESCE((SELECT MAX(id) FROM %s), 1), true) as val" seq-name table-name)]]
+                  seq-name   (str table-name "_id_seq")
+                  sql        (format "SELECT setval('%s', COALESCE((SELECT MAX(id) FROM %s), 1), true) as val" seq-name table-name)]]
       (jdbc/db-query-with-resultset conn [sql] :val)))
   (println (color/green "[OK]")))
 
@@ -113,18 +120,17 @@
 
    Defaults to using `@metabase.db/db-file` as the connection string."
   [h2-connection-string-or-nil]
-  (let [filename (or h2-connection-string-or-nil
-                     @metabase.db/db-file)
-        h2-db    (kdb/create-db (db/jdbc-details {:type :h2, :db (str filename ";IFEXISTS=TRUE")}))] ; TODO - would be nice to add `ACCESS_MODE_DATA=r` but it doesn't work with `AUTO_SERVER=TRUE`
-    (db/setup-db)
-    (kdb/transaction
-     (doseq [e     entities
-             :let  [objs (kdb/with-db h2-db
-                           (k/select (k/database e h2-db)))]
-             :when (seq objs)]
-       (if-not (contains? #{RawColumn Field} e)
-         (insert-entity e objs)
-         (insert-self-referencing-entity e objs))))
+  (db/setup-db)
+  (let [h2-filename (or h2-connection-string-or-nil @metabase.db/db-file)]
+    ;; TODO - would be nice to add `ACCESS_MODE_DATA=r` but it doesn't work with `AUTO_SERVER=TRUE`
+    (jdbc/with-db-connection [h2-spec (db/jdbc-details {:type :h2, :db (str h2-filename ";IFEXISTS=TRUE")})]
+      (kdb/transaction
+        (doseq [e     entities
+                :let  [objs (jdbc/query h2-spec [(str "SELECT * FROM " (:table e))])]
+                :when (seq objs)]
+          (if-not (contains? self-referencing-entities e)
+            (insert-entity e objs)
+            (insert-self-referencing-entity e objs)))))
 
     ;; if we are loading into a postgres db then we need to update sequence nextvals
     (when (= (config/config-str :mb-db-type) "postgres")
