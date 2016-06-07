@@ -76,6 +76,8 @@ AuthControllers.controller('ForgotPassword', ['$scope', '$cookies', '$location',
 
     $scope.sentNotification = false;
 
+    $scope.emailConfigured = MetabaseSettings.isEmailConfigured()
+
     $scope.sendResetNotification = function(email) {
         Session.forgot_password({
             'email': email
