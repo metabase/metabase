@@ -5,6 +5,7 @@
             [colorize.core :as color]
             (korma [core :as k]
                    [db :as kdb])
+            [medley.core :as m]
             [metabase.config :as config]
             [metabase.db :as db]
             (metabase.models [activity :refer [Activity]]
@@ -78,6 +79,10 @@
   "Entities that do NOT use an auto incrementing ID column."
   #{Setting Session})
 
+(def ^:private ^:dynamic *db-conn*
+  "Active database connection to the target database we are loading into."
+  nil)
+
 (defn- insert-entity [e objs]
   (print (u/format-color 'blue "Transfering %d instances of %s..." (count objs) (:name e)))
   (flush)
@@ -106,12 +111,11 @@
 (defn- set-postgres-sequence-values []
   (print (u/format-color 'blue "Setting postgres sequence ids to proper values..."))
   (flush)
-  (jdbc/with-db-transaction [conn (db/jdbc-details @db/db-connection-details)]
-    (doseq [e    (filter #(not (contains? entities-without-autoinc-ids %)) entities)
-            :let [table-name (:table e)
-                  seq-name   (str table-name "_id_seq")
-                  sql        (format "SELECT setval('%s', COALESCE((SELECT MAX(id) FROM %s), 1), true) as val" seq-name table-name)]]
-      (jdbc/db-query-with-resultset conn [sql] :val)))
+  (doseq [e    (filter #(not (contains? entities-without-autoinc-ids %)) entities)
+          :let [table-name (:table e)
+                seq-name   (str table-name "_id_seq")
+                sql        (format "SELECT setval('%s', COALESCE((SELECT MAX(id) FROM %s), 1), true) as val" seq-name table-name)]]
+    (jdbc/db-query-with-resultset *db-conn* [sql] :val))
   (println (color/green "[OK]")))
 
 (defn load-from-h2
@@ -122,11 +126,15 @@
   [h2-connection-string-or-nil]
   (db/setup-db)
   (let [h2-filename (or h2-connection-string-or-nil @metabase.db/db-file)]
-    ;; TODO - would be nice to add `ACCESS_MODE_DATA=r` but it doesn't work with `AUTO_SERVER=TRUE`
-    (jdbc/with-db-connection [h2-spec (db/jdbc-details {:type :h2, :db (str h2-filename ";IFEXISTS=TRUE")})]
+    ;; NOTE: would be nice to add `ACCESS_MODE_DATA=r` but it doesn't work with `AUTO_SERVER=TRUE`
+    ;; connect to H2 database, which is what we are migrating from
+    (jdbc/with-db-connection [h2-conn (db/jdbc-details {:type :h2, :db (str h2-filename ";IFEXISTS=TRUE")})]
       (kdb/transaction
         (doseq [e     entities
-                :let  [objs (jdbc/query h2-spec [(str "SELECT * FROM " (:table e))])]
+                :let  [objs (->> (jdbc/query h2-conn [(str "SELECT * FROM " (:table e))])
+                                 ;; we apply jdbc-clob->str to all row values because H2->Postgres
+                                 ;; gets messed up if the value is left as a clob
+                                 (map #(m/map-vals u/jdbc-clob->str %)))]
                 :when (seq objs)]
           (if-not (contains? self-referencing-entities e)
             (insert-entity e objs)
@@ -134,4 +142,6 @@
 
     ;; if we are loading into a postgres db then we need to update sequence nextvals
     (when (= (config/config-str :mb-db-type) "postgres")
-      (set-postgres-sequence-values))))
+      (jdbc/with-db-transaction [targetdb-conn (db/jdbc-details @db/db-connection-details)]
+        (binding [*db-conn* targetdb-conn]
+          (set-postgres-sequence-values))))))
