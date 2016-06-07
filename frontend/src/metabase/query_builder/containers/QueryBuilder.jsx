@@ -1,6 +1,7 @@
 import React, { Component, PropTypes } from "react";
 import { connect } from "react-redux";
 import cx from "classnames";
+import _ from "underscore";
 
 import { AngularResourceProxy } from "metabase/lib/redux";
 import { loadTable } from "metabase/lib/table";
@@ -62,33 +63,33 @@ function autocompleteResults(card, prefix) {
 }
 
 const mapStateToProps = (state, props) => {
-  return {
-      card:                      card(state),
-      originalCard:              originalCard(state),
-      query:                     state.card && state.card.dataset_query,  // TODO: EOL, redundant
-      databases:                 databases(state),
-      tables:                    tables(state),
-      tableMetadata:             tableMetadata(state),
-      tableForeignKeys:          tableForeignKeys(state),
-      tableForeignKeyReferences: tableForeignKeyReferences(state),
-      result:                    queryResult(state),
-      isDirty:                   isDirty(state),
-      isObjectDetail:            isObjectDetail(state),
-      uiControls:                uiControls(state),
+    return {
+        card:                      card(state),
+        originalCard:              originalCard(state),
+        query:                     state.card && state.card.dataset_query,  // TODO: EOL, redundant
+        databases:                 databases(state),
+        tables:                    tables(state),
+        tableMetadata:             tableMetadata(state),
+        tableForeignKeys:          tableForeignKeys(state),
+        tableForeignKeyReferences: tableForeignKeyReferences(state),
+        result:                    queryResult(state),
+        isDirty:                   isDirty(state),
+        isObjectDetail:            isObjectDetail(state),
+        uiControls:                uiControls(state),
 
-      cardIsDirtyFn:             () => isDirty(state),
-      cardIsNewFn:               () => (state.card && !state.card.id),
-      isShowingDataReference:    state.uiControls.isShowingDataReference,
-      isShowingTutorial:         state.uiControls.isShowingTutorial,
-      isEditing:                 state.uiControls.isEditing,
-      isRunning:                 state.uiControls.isRunning,
-      cardApi:                   cardApi,
-      dashboardApi:              dashboardApi,
-      revisionApi:               revisionApi,
-      loadTableFn:               loadTable,
-      autocompleteResultsFn:     (prefix) => autocompleteResults(state.card, prefix),
-      cellIsClickableFn:         (rowIndex, columnIndex) => cellIsClickable(state.queryResult, rowIndex, columnIndex)
-  }
+        cardIsDirtyFn:             () => isDirty(state),
+        cardIsNewFn:               () => (state.card && !state.card.id),
+        isShowingDataReference:    state.uiControls.isShowingDataReference,
+        isShowingTutorial:         state.uiControls.isShowingTutorial,
+        isEditing:                 state.uiControls.isEditing,
+        isRunning:                 state.uiControls.isRunning,
+        cardApi:                   cardApi,
+        dashboardApi:              dashboardApi,
+        revisionApi:               revisionApi,
+        loadTableFn:               loadTable,
+        autocompleteResultsFn:     (prefix) => autocompleteResults(state.card, prefix),
+        cellIsClickableFn:         (rowIndex, columnIndex) => cellIsClickable(state.queryResult, rowIndex, columnIndex)
+    }
 }
             
 
@@ -98,9 +99,38 @@ const mapDispatchToProps = {
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class QueryBuilder extends Component {
-    
+
+    constructor(props, context) {
+        super(props, context);
+
+        _.bindAll(this, "popStateListener", "handleResize");
+    }
+
     componentWillMount() {
-      this.props.initializeQB();
+        this.props.initializeQB();
+    }
+
+    componentDidMount() {
+        window.addEventListener('popstate', this.popStateListener);
+        window.addEventListener('resize', this.handleResize);
+    }
+
+    componentWillUnmount() {
+        window.removeEventListener('popstate', this.popStateListener);
+        window.removeEventListener('resize', this.handleResize);
+    }
+
+    // When the window is resized we need to re-render, mainly so that our visualization pane updates
+    // Debounce the function to improve resizing performance.
+    handleResize(e) {
+        _.debounce(() => this.setState(this.state), 400);
+    }
+
+    popStateListener(e) {
+        if (e.state && e.state.card) {
+            e.preventDefault();
+            this.props.setCardAndRun(e.state.card);
+        }
     }
 
     render() {
