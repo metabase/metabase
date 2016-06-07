@@ -32,7 +32,8 @@
                              [table :refer [Table]]
                              [user :refer [User]]
                              [view-log :refer [ViewLog]])
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [clojure.set :as set]))
 
 (def ^:private entities
   "Entities in the order they should be serialized/deserialized.
@@ -67,6 +68,27 @@
    Label
    CardLabel])
 
+(defn- insert-entity [e objs]
+  (print (u/format-color 'blue "Transfering %d instances of %s..." (count objs) (:name e)))
+  (flush)
+  ;; The connection closes prematurely on occasion when we're inserting thousands of rows at once. Break into smaller chunks so connection stays alive
+  (doseq [chunk (partition-all 300 objs)]
+    (print (color/blue \.))
+    (flush)
+    (k/insert e (k/values chunk)))
+  (println (color/green "[OK]")))
+
+(defn- insert-self-referencing-entity [e objs]
+  (let [self-ref-attr    (condp = e
+                           RawColumn :fk_target_column_id
+                           Field     :fk_target_field_id)
+        self-referencing (filter self-ref-attr objs)
+        others           (set/difference (set objs) (set self-referencing))]
+    ;; first insert the non-self-referencing objects
+    (insert-entity e others)
+    ;; then insert the rest, which should be safe to insert now
+    (insert-entity e self-referencing)))
+
 (defn load-from-h2
   "Transfer data from existing H2 database to the newly created (presumably MySQL or Postgres) DB specified by env vars.
    Intended as a tool for upgrading from H2 to a 'real' Database.
@@ -82,12 +104,6 @@
              :let  [objs (kdb/with-db h2-db
                            (k/select (k/database e h2-db)))]
              :when (seq objs)]
-       (print (u/format-color 'blue "Transfering %d instances of %s..." (count objs) (:name e)))
-       (flush)
-
-       ;; The connection closes prematurely on occasion when we're inserting thousands of rows at once. Break into smaller chunks so connection stays alive
-       (doseq [chunk (partition-all 300 objs)]
-         (print (color/blue \.))
-         (flush)
-         (k/insert e (k/values chunk)))
-       (println (color/green "[OK]"))))))
+       (if-not (contains? #{RawColumn Field} e)
+         (insert-entity e objs)
+         (insert-self-referencing-entity e objs))))))
