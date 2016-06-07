@@ -20,15 +20,11 @@ export type DashCardObject = {
 
 export type ParameterId = string;
 
-export type ParameterType =
-    "datetime" |
-    "category" |
-    "id";
+export type ParameterType = string;
 
 export type ParameterObject = {
     id: ParameterId,
     name: string,
-    widget: string,
     type: ParameterType,
     default?: string
 };

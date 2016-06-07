@@ -126,6 +126,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, d
                 let mapping = _.findWhere(dashcard && dashcard.parameter_mappings, { card_id: card.id, parameter_id: parameter.id });
                 if (parameterValues[parameter.id] != null) {
                     parameters.push({
+                        type: parameter.type,
                         target: mapping && mapping.target,
                         value: parameterValues[parameter.id]
                     });

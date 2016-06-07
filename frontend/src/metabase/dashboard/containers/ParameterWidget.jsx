@@ -3,12 +3,18 @@ import { connect } from "react-redux";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import Icon from "metabase/components/Icon.jsx";
-import Calendar from "metabase/components/Calendar.jsx";
+
+import DateSingleWidget from "../components/parameters/widgets/DateSingleWidget.jsx";
+import DateRangeWidget from "../components/parameters/widgets/DateRangeWidget.jsx";
+import DateRelativeWidget from "../components/parameters/widgets/DateRelativeWidget.jsx";
+import DateMonthYearWidget from "../components/parameters/widgets/DateMonthYearWidget.jsx";
+import DateQuarterYearWidget from "../components/parameters/widgets/DateQuarterYearWidget.jsx";
+import CategoryWidget from "../components/parameters/widgets/CategoryWidget.jsx";
+import TextWidget from "../components/parameters/widgets/TextWidget.jsx";
 
 import S from "./ParameterWidget.css";
 import cx from "classnames";
 import _ from "underscore";
-import moment from "moment";
 
 import { getMappingsByParameter } from "../selectors";
 
@@ -22,15 +28,22 @@ const makeMapStateToProps = () => {
 const mapDispatchToProps = {
 };
 
+const WIDGETS = {
+    "date/single": DateSingleWidget,
+    "date/range":  DateRangeWidget,
+    "date/relative":  DateRelativeWidget,
+    "date/month-year":  DateMonthYearWidget,
+    "date/quarter-year":  DateQuarterYearWidget
+}
+
 @connect(makeMapStateToProps, mapDispatchToProps)
 export default class ParameterWidget extends Component {
     constructor(props, context) {
         super(props, context);
         this.state = {
-            value: ""
+            isEditingName: false
         };
     }
-
     static propTypes = {
         parameter: PropTypes.object
     };
@@ -52,12 +65,33 @@ export default class ParameterWidget extends Component {
 
         let hasValue = value != null;
 
+        let Widget = WIDGETS[parameter.type] || TextWidget;
+        if (values.length > 0) {
+            Widget = CategoryWidget;
+        }
+
+        if (Widget.noPopover) {
+            return (
+                <div className={cx(S.parameter, S.noPopover, { [S.selected]: hasValue })}>
+                    <Widget value={value} values={values} setValue={setValue} />
+                    { hasValue &&
+                        <Icon name="close" className="flex-align-right" onClick={(e) => {
+                            if (hasValue) {
+                                e.stopPropagation();
+                                setValue(null);
+                            }
+                        }} />
+                    }
+                </div>
+            );
+        }
+
         return (
             <PopoverWithTrigger
                 ref="valuePopover"
                 triggerElement={
                     <div ref="trigger" className={cx(S.parameter, { [S.selected]: hasValue })}>
-                        <div className="mr1">{ hasValue ? value : placeholder }</div>
+                        <div className="mr1">{ hasValue ? Widget.format(value) : placeholder }</div>
                         <Icon name={hasValue ? "close" : "chevrondown"} className="flex-align-right" onClick={(e) => {
                             if (hasValue) {
                                 e.stopPropagation();
@@ -68,53 +102,7 @@ export default class ParameterWidget extends Component {
                 }
                 target={() => this.refs.trigger} // not sure why this is necessary
             >
-                { parameter.widget === "datetime/single" ?
-                    <div className="p1">
-                        <Calendar
-                            initial={value && moment(value)}
-                            selected={value && moment(value)}
-                            selectedEnd={value && moment(value)}
-                            onChange={(start) => { setValue(start); this.refs.valuePopover.close(); }}
-                        />
-                    </div>
-                : values.length > 0 ?
-                    <ul className="scroll-y scroll-show" style={{ maxWidth: 200, maxHeight: 300 }}>
-                        {values.map(value =>
-                            <li
-                                key={value}
-                                className="px2 py1 bg-brand-hover text-white-hover cursor-pointer"
-                                onClick={() => { setValue(value); this.refs.valuePopover.close(); }}
-                            >
-                                {value}
-                            </li>
-                        )}
-                    </ul>
-                :
-                    <div className="flex flex-column">
-                        <input
-                            className="input m1"
-                            type="text"
-                            value={this.state.value}
-                            onChange={(e) => this.setState({ value: e.target.value })}
-                            onKeyUp={(e) => {
-                                if (e.keyCode === 13) {
-                                    setValue(this.state.value || null);
-                                    this.refs.valuePopover.close();
-                                }
-                            }}
-                            // autoFocus // FIXME: this causes the page to scroll
-                        />
-                        <button
-                            className="Button mx1 mb1 full-width"
-                            onClick={() => {
-                                setValue(this.state.value || null);
-                                this.refs.valuePopover.close();
-                            }}
-                        >
-                            Apply
-                        </button>
-                    </div>
-                }
+                <Widget value={value} values={values} setValue={setValue} onClose={() => this.refs.valuePopover.close()} />
             </PopoverWithTrigger>
         );
     }

@@ -11,76 +11,65 @@ import _ from "underscore";
 
 const PARAMETER_OPTIONS: Array<ParameterOption> = [
     {
-        id: "datetime/month-year",
+        type: "date/month-year",
         name: "Month and Year",
-        description: "Like January, 2016",
-        type: "datetime"
+        description: "Like January, 2016"
     },
     {
-        id: "datetime/quarter-year",
+        type: "date/quarter-year",
         name: "Quarter and Year",
-        description: "Like Q1, 2016",
-        type: "datetime"
+        description: "Like Q1, 2016"
     },
     {
-        id: "datetime/single",
+        type: "date/single",
         name: "Single Date",
-        description: "Like January 31, 2016",
-        type: "datetime"
+        description: "Like January 31, 2016"
     },
     {
-        id: "datetime/range",
+        type: "date/range",
         name: "Date Range",
-        description: "Like December 25, 2015 - February 14, 2016",
-        type: "datetime"
+        description: "Like December 25, 2015 - February 14, 2016"
     },
     {
-        id: "datetime/relative",
+        type: "date/relative",
         name: "Relative Date",
-        description: "Like \"the last 7 days\" or \"this month\"",
-        type: "datetime"
+        description: "Like \"the last 7 days\" or \"this month\""
     },
     {
-        id: "location/city",
-        name: "City",
-        type: "category"
+        type: "location/city",
+        name: "City"
     },
     {
-        id: "location/state",
-        name: "State",
-        type: "category"
+        type: "location/state",
+        name: "State"
     },
     {
-        id: "location/zip",
-        name: "ZIP or Postal Code",
-        type: "category"
+        type: "location/zip",
+        name: "ZIP or Postal Code"
     },
     {
-        id: "location/country",
-        name: "Country",
-        type: "category"
+        type: "location/country",
+        name: "Country"
     },
     {
-        id: "id",
-        name: "ID",
-        type: "id"
+        type: "id",
+        name: "ID"
     },
     {
-        id: "category",
-        name: "Category",
-        type: "category"
+        type: "category",
+        name: "Category"
     },
 ];
 
 export const PARAMETER_SECTIONS = [
-    { id: "datetime", name: "Time",             description: "Date range, relative date, time of day, etc." },
+    { id: "date",     name: "Time",             description: "Date range, relative date, time of day, etc." },
     { id: "location", name: "Location",         description: "City, State, Country, ZIP code." },
     { id: "id",       name: "ID",               description: "User ID, product ID, event ID, etc." },
     { id: "category", name: "Other Categories", description: "Category, Type, Model, Rating, etc." },
 ];
 
 for (const option of PARAMETER_OPTIONS) {
-    let sectionId = option.id.split("/")[0];
+    let sectionId = option.type.split("/")[0];
     let section = _.findWhere(PARAMETER_SECTIONS, { id: sectionId });
     if (!section) {
         section = _.findWhere(PARAMETER_SECTIONS, { id: "category" });
@@ -117,7 +106,6 @@ export function createParameter(option: ParameterOption, parameters: Array<Param
     let parameter = {
        name: "",
        id: Math.floor(Math.random()*Math.pow(2,32)).toString(16),
-       widget: option.id,
        type: option.type,
     };
     return setParameterName(parameter, name);

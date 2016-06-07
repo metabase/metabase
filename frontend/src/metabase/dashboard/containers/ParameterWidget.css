@@ -18,13 +18,30 @@
     border-color: var(--brand-color);
 }
 
-:local(.nameInput) {
+:local(.parameter.noPopover) {
+    padding: 0 0.5em 0 0.5em;
+}
+
+:local(.parameter.noPopover) input {
+    font-size: 16px;
+    color: var(--default-font-color);
+    border: none !important;
+}
+
+:local(.parameter.noPopover) input:focus {
+    outline: none !important;
+}
+:local(.parameter.noPopover) input::-webkit-input-placeholder {
+    color: var(--grey-4);
+}
+
+:local(.input) {
     composes: parameter;
     composes: mb1 from "style";
     color: var(--grey-4);
 }
 
-:local(.nameInput:focus) {
+:local(.input:focus) {
     outline: none;
 }
 
