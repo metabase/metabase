@@ -26,7 +26,7 @@
     ;; otherwise we need to handle date filtering
     (if-not (contains? relative-dates param-value)
       ;; absolute date range such as: "2014-05-10,2014-05-16"
-      (let [[start end] (s/split param-value #"," 2)]
+      (let [[start end] (s/split param-value #"~" 2)]
         ["BETWEEN" field start end])
       ;; relative date range, so build appropriate MBQL clause
       (condp = param-value
@@ -62,7 +62,7 @@
   (if-not (contains? relative-dates value)
     ;; absolute date range such as: "2014-05-10,2014-05-16"
     ;; TODO: other absolute options?  year-quarter?  year-month?
-    (zipmap [:start :end] (s/split value #"," 2))
+    (zipmap [:start :end] (s/split value #"~" 2))
     ;; relative date range
     (let [tz        (t/time-zone-for-id report-timezone)
           formatter (tf/formatter "YYYY-MM-dd" tz)

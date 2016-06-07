@@ -14,7 +14,7 @@
 
 :local(.parameter.selected) {
     font-weight: bold;
-    color: var(--brand-color) !important;
+    color: var(--brand-color);
     border-color: var(--brand-color);
 }
 
@@ -25,11 +25,16 @@
 :local(.parameter.noPopover) input {
     font-size: 16px;
     color: var(--default-font-color);
-    border: none !important;
+    border: none;
+}
+:local(.parameter.noPopover.selected) input {
+    font-weight: bold;
+    color: var(--brand-color);
 }
 
 :local(.parameter.noPopover) input:focus {
-    outline: none !important;
+    outline: none;
+    color: var(--default-font-color);
 }
 :local(.parameter.noPopover) input::-webkit-input-placeholder {
     color: var(--grey-4);

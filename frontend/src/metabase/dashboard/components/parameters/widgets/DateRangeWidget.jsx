@@ -3,6 +3,8 @@ import React, { Component, PropTypes } from "react";
 import Calendar from "metabase/components/Calendar.jsx";
 import moment from "moment";
 
+const SEPARATOR = "~"; // URL-safe
+
 export default class DateRangeWidget extends Component {
     constructor(props, context) {
         super(props, context);
@@ -16,7 +18,7 @@ export default class DateRangeWidget extends Component {
     static defaultProps = {};
 
     static format = (value) => {
-        const [start,end] = (value || "").split(",");
+        const [start,end] = (value || "").split(SEPARATOR);
         return start && end ? moment(start).format("MMMM D, YYYY") + " - " + moment(end).format("MMMM D, YYYY") : "";
     }
 
@@ -25,7 +27,7 @@ export default class DateRangeWidget extends Component {
     }
 
     componentWillReceiveProps(nextProps) {
-        const [start, end] = (nextProps.value || "").split(",");
+        const [start, end] = (nextProps.value || "").split(SEPARATOR);
         this.setState({ start, end });
     }
 
@@ -41,7 +43,7 @@ export default class DateRangeWidget extends Component {
                         if (end == null) {
                             this.setState({ start, end });
                         } else {
-                            this.props.setValue([start, end].join(","));
+                            this.props.setValue([start, end].join(SEPARATOR));
                         }
                     }}
                 />

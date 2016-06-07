@@ -123,21 +123,46 @@ export default class Dashboard extends Component {
     }
 
     updateParams() {
-        let params = {};
+        let params = "";
+        let oldParams = "";
+
+        // only perform this check if we've loaded the dashboard
+        if (this.props.dashboard) {
+            let parameters = this.props.dashboard.parameters || [];
+            let queryParams = _.chain(this.props.parameterValues)
+                .map((value, id) => ([_.findWhere(parameters, { id }), value]))
+                .filter(([param, value]) => (param && value))
+                .reduce((params, [param, value]) => ({ ...params,
+                    [encodeURIComponent(param.slug)]: encodeURIComponent(value)
+                }), {})
+                .value();
+
+            let search = querystring.stringify(queryParams);
+            search = (search ? "?" + search : "");
+
+            params += search;
+            oldParams += window.location.search;
+        }
+
+        let hashParams = {};
         if (this.state.refreshPeriod) {
-            params.refresh = this.state.refreshPeriod;
+            hashParams.refresh = this.state.refreshPeriod;
         }
         if (this.state.isFullscreen) {
-            params.fullscreen = true;
+            hashParams.fullscreen = true;
         }
         if (this.state.isNightMode) {
-            params.night = true;
+            hashParams.night = true;
         }
-        let hash = querystring.stringify(params).replace(/=true\b/g, "");
+        let hash = querystring.stringify(hashParams).replace(/=true\b/g, "");
         hash = (hash ? "#" + hash : "");
-        // setting window.location.hash = "" causes the page to reload for some reason
-        if (hash !== window.location.hash) {
-            history.replaceState(null, document.title, window.location.pathname + hash);
+
+        params += hash;
+        oldParams += window.location.hash;
+
+        // setting window.location.hash = "" causes the page to reload for some reasonc
+        if (params !== oldParams) {
+            history.replaceState(null, document.title, window.location.pathname + params);
         }
     }
 
