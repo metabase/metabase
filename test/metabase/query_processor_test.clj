@@ -24,11 +24,6 @@
 (def ^:private ^:const timeseries-engines #{:druid})
 (def ^:private ^:const non-timeseries-engines (set/difference datasets/all-valid-engines timeseries-engines))
 
-;; Make sure the driver test extension namespaces are loaded. This is needed because otherwise `lein test metabase.query-processor-test` won't work
-(doseq [engine non-timeseries-engines
-        :let   [driver-test-ns (symbol (str "metabase.test.data." (name engine)))]]
-  (require driver-test-ns :reload))
-
 (defn- engines-that-support [feature]
   (set (for [engine non-timeseries-engines
              :when  (contains? (driver/features (driver/engine->driver engine)) feature)]

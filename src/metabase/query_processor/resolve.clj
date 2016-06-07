@@ -216,8 +216,8 @@
                            [(db/entity->table-name Table) :target-table]
                            [:= :target-pk.table_id :target-table.id]]
                :where     [:and [:in :source-fk.id      (set fk-field-ids)]
-                           [:=  :source-fk.table_id     source-table-id]
-                           [:=  :source-fk.special_type "fk"]]})))
+                                [:=  :source-fk.table_id     source-table-id]
+                                [:=  :source-fk.special_type "fk"]]})))
 
 (defn- fk-field-ids->joined-tables
   "Fetch info for PK/FK `Fields` for the JOIN-TABLES referenced in a Query."
