@@ -497,3 +497,15 @@ export function foreignKeyCountsByOriginTable(fks) {
         return prev;
     }, {});
 }
+
+export const ICON_MAPPING = {
+    [DATE_TIME]:  'calendar',
+    [LOCATION]: 'location',
+    [COORDINATE]: 'location',
+    [STRING]: 'string',
+    [NUMBER]: 'int'
+};
+
+export function getIconForField(field) {
+    return ICON_MAPPING[getFieldType(field)];
+}

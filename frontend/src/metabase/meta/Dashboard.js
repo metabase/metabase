@@ -78,22 +78,63 @@ for (const option of PARAMETER_OPTIONS) {
     section.options.push(option);
 }
 
+export function getDimensions(table: Table, depth: number) {
+    return _.chain(table.fields())
+        .map(field => {
+            let targetField = field.target();
+            if (targetField && depth > 0) {
+                let targetTable = targetField.table();
+                return _.map(getDimensions(targetTable, depth - 1), (dimension) => ({
+                    ...dimension,
+                    sectionName: targetTable.display_name,
+                    target: ["fk->", targetField.id, dimension.target[0] === "field-id" ? dimension.target[1] : dimension.target],
+                    depth: dimension.depth + 1
+                }));
+            } else {
+                return [{
+                    name: field.display_name,
+                    field_id: field.id,
+                    sectionName: table.display_name,
+                    target: ["field-id", field.id],
+                    depth: 0
+                }];
+            }
+        })
+        .flatten()
+        .value();
+}
+
+const PARAMETER_ICONS = {
+    "string": "string",
+    "number": "int",
+    "date": "calendar"
+};
+
 export function getParameterMappingOptions(metadata: Metadata, parameter: ParameterObject, card: CardObject): Array<ParameterMappingOption> {
+    let options = [];
     if (card.dataset_query.type === "query") {
         const table = card.dataset_query.query.source_table != null ? metadata.table(card.dataset_query.query.source_table) : null;
         if (table) {
-            return table.fields().map(field => {
-                const target = ["dimension", ["field-id", field.id]];
-                return {
-                    name: field.display_name,
-                    target: target
-                };
-            });
+            options.push(...getDimensions(table, 1).map(dimension => ({
+                name: dimension.name,
+                target: ["dimension", dimension.target],
+                icon: metadata.field(dimension.field_id).icon(),
+                sectionName: dimension.sectionName,
+                sectionIcon: dimension.depth > 0 ? "connections" : "table2",
+            })));
         }
-    } else {
-        return [];
     }
-    return [];
+
+    if (card.parameters) {
+        options.push(...card.parameters.map(parameter => ({
+            name: parameter.name,
+            target: ["parameter", parameter.name],
+            icon: PARAMETER_ICONS[parameter.type],
+            sectionName: "Parameters",
+            sectionIcon: "star-outline"
+        })));
+    }
+    return options;
 }
 
 export function createParameter(option: ParameterOption, parameters: Array<ParameterOption> = []): ParameterObject {

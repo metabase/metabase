@@ -3,7 +3,7 @@
 import Base from "./Base";
 import Table from "./Table";
 
-import { isDate, isNumeric, isBoolean, isString, isSummable, isCategory, isDimension, isMetric } from "metabase/lib/schema_metadata";
+import { isDate, isNumeric, isBoolean, isString, isSummable, isCategory, isDimension, isMetric, getIconForField } from "metabase/lib/schema_metadata";
 
 export default class Field extends Base {
     static type = "field";
@@ -33,5 +33,9 @@ export default class Field extends Base {
 
     values() {
         return (this._object.values && this._object.values.length > 0 && this._object.values[0].values) || []
+    }
+
+    icon() {
+        return getIconForField(this._object);
     }
 }

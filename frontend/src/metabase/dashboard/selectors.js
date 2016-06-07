@@ -90,7 +90,7 @@ export const getMappingsByParameter = createSelector(
         let countsByParameter = {};
         let mappings = [];
         for (const dashcard of dashboard.ordered_cards) {
-            for (let mapping of dashcard.parameter_mappings) {
+            for (let mapping of (dashcard.parameter_mappings || [])) {
                 let values = null;
                 if (mapping.target[0] === "dimension") {
                     let dimension = mapping.target[1];

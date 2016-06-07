@@ -25,6 +25,7 @@ const makeMapStateToProps = () => {
     const mapStateToProps = (state, props) => ({
         parameter:           getEditingParameter(state),
         mappingOptions:      getParameterMappingOptions(state, props),
+        mappingOptionSections: _.groupBy(getParameterMappingOptions(state, props), "sectionName"),
         target:              getParameterTarget(state, props),
         mappingsByParameter: getMappingsByParameter(state)
     });
@@ -72,11 +73,11 @@ export default class DashCardCardParameterMapper extends Component {
         const mapping = getIn(mappingsByParameter, [parameter.id, dashcard.id, card.id]);
         let overlapWarning = mapping && mapping.mappingsWithValues > 1 && mapping.overlapMax === 1;
 
-        const sections = [
-            {
-                items: mappingOptions
-            }
-        ];
+        const sections = _.map(this.props.mappingOptionSections, (options) => ({
+            name: options[0].sectionName,
+            icon: options[0].sectionIcon,
+            items: options
+        }));
 
         return (
             <div onMouseDown={(e) => e.stopPropagation()}>
@@ -96,6 +97,8 @@ export default class DashCardCardParameterMapper extends Component {
                     sections={sections}
                     onChange={this.onChange}
                     itemIsSelected={(item) => _.isEqual(item.target, target)}
+                    renderItemIcon={(item) => <Icon name={item.icon} width={18} height={18} />}
+                    renderSectionIcon={(section) => <Icon name={section.icon} width={18} height={18} />}
                 />
                 </PopoverWithTrigger>
             </div>
