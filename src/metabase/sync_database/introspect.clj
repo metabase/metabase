@@ -82,7 +82,6 @@
                 :name         table-name
                 :details      (or details {})
                 :active       true)]
-    ;; save columns
     (save-all-table-columns! table fields)))
 
 (defn- update-raw-table!

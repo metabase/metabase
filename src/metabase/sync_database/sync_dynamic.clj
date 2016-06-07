@@ -63,11 +63,11 @@
     (try
       (if-not (:active raw-table)
         ;; looks like table was deactivated, so lets retire this Table
-        (table/retire-tables #{table-id})
+        (table/retire-tables! #{table-id})
         ;; otherwise we ask the driver for an updated table description and save that info
         (let [table-def (u/prog1 (driver/describe-table driver database (select-keys existing-table [:name :schema]))
                           (schema/validate i/DescribeTable <>))]
-          (-> (table/update-table existing-table raw-table)
+          (-> (table/update-table! existing-table raw-table)
               (save-table-fields! (:fields table-def)))))
       ;; NOTE: dynamic schemas don't have FKs
       (catch Throwable t
@@ -90,16 +90,17 @@
         raw-table-id->table (u/key-by :raw_table_id (db/select table/Table, :db_id database-id, :active true))]
     ;; create/update tables (and their fields)
     ;; NOTE: we make sure to skip the _metabase_metadata table here.  it's not a normal table.
-    (doseq [{raw-table-id :id, :as raw-tbl} (filter #(not= "_metabase_metadata" (s/lower-case (:name %))) raw-tables)]
+    (doseq [{raw-table-id :id, :as raw-table} raw-tables
+            :when                             (not (sync/is-metabase-metadata-table? raw-table))]
       (try
-        (let [table-def (u/prog1 (driver/describe-table driver database (select-keys raw-tbl [:name :schema]))
+        (let [table-def (u/prog1 (driver/describe-table driver database (select-keys raw-table [:name :schema]))
                           (schema/validate i/DescribeTable <>))]
           (if-let [existing-table (get raw-table-id->table raw-table-id)]
             ;; table already exists, update it
-            (-> (table/update-table existing-table raw-tbl)
+            (-> (table/update-table! existing-table raw-table)
                 (save-table-fields! (:fields table-def)))
             ;; must be a new table, insert it
-            (-> (table/create-table database-id (assoc raw-tbl :raw-table-id raw-table-id))
+            (-> (table/create-table! database-id (assoc raw-table :raw-table-id raw-table-id))
                 (save-table-fields! (:fields table-def)))))
         (catch Throwable t
           (log/error (u/format-color 'red "Unexpected error scanning table") t))))
@@ -107,5 +108,5 @@
     ;; NOTE: dynamic schemas don't have FKs
 
     ;; NOTE: if per chance there were multiple _metabase_metadata tables in different schemas, we just take the first
-    (when-let [_metabase_metadata (first (filter #(= (s/lower-case (:name %)) "_metabase_metadata") raw-tables))]
-      (sync/sync-metabase-metadata-table! driver database _metabase_metadata))))
+    (when-let [metabase-metadata-table (first (filter sync/is-metabase-metadata-table? raw-tables))]
+      (sync/sync-metabase-metadata-table! driver database metabase-metadata-table))))

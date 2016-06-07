@@ -8,9 +8,12 @@
                       [db :as db])
             (metabase.models [database :refer [Database]]
                              [query-execution :refer [QueryExecution]]
+                             raw-table
                              [setting :refer [defsetting]])
             [metabase.util :as u])
-  (:import clojure.lang.Keyword))
+  (:import clojure.lang.Keyword
+           metabase.models.database.DatabaseInstance
+           metabase.models.raw_table.RawTableInstance))
 
 
 ;;; ## INTERFACE + CONSTANTS
@@ -183,10 +186,10 @@
          (with-connection [_ database]
            (f)))")
 
-  (table-rows-seq ^clojure.lang.Sequential [this, ^DatabaseInstance database, ^Map table]
-    "*OPTIONAL*. Return a sequence of all the rows in a given TABLE.
-     The TABLE argument is a Map that requires the `:name` key as the table name and optionally uses the `:schema` key for databases that support schemas.
-     Currently, this is only used for iterating over the values in a `_metabase_metadata` table. As such, the results are not expected to be returned lazily."))
+  (table-rows-seq ^clojure.lang.Sequential [this, ^DatabaseInstance database, ^RawTableInstance raw-table]
+    "*OPTIONAL*. Return a sequence of *all* the rows in a given RAW-TABLE.
+     Currently, this is only used for iterating over the values in a `_metabase_metadata` table. As such, the results are not expected to be returned lazily.
+     There is no expectation that the results be returned in any given order."))
 
 
 (defn- percent-valid-urls

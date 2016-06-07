@@ -11,21 +11,22 @@
             [metabase.sync-database.analyze :as analyze]
             metabase.query-processor.interface
             (metabase.models [field :as field]
+                             raw-table
                              [table :as table])
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
   (:import java.sql.DatabaseMetaData
            java.util.Map
-           clojure.lang.Keyword
+           (clojure.lang Keyword PersistentVector)
            com.mchange.v2.c3p0.ComboPooledDataSource
-           (metabase.query_processor.interface Field Value)
-           (clojure.lang PersistentVector)))
+           metabase.models.raw_table.RawTableInstance
+           (metabase.query_processor.interface Field Value)))
 
 (defprotocol ISQLDriver
   "Methods SQL-based drivers should implement in order to use `IDriverSQLDefaultsMixin`.
    Methods marked *OPTIONAL* have default implementations in `ISQLDriverDefaultsMixin`."
 
-  (active-tables ^java.util.Set [this, ^java.sql.DatabaseMetaData metadata]
+  (active-tables ^java.util.Set [this, ^DatabaseMetaData metadata]
     "Return a set of maps containing information about the active tables/views, collections, or equivalent that currently exist in DATABASE.
      Each map should contain the key `:name`, which is the string name of the table. For databases that have a concept of schemas,
      this map should also include the string name of the table's `:schema`.")
@@ -235,11 +236,9 @@
     (fetch-page 0)))
 
 
-(defn- table-rows-seq [driver database table]
-  (let [pk-field (field/Field (table/pk-field-id table))]
-    (query driver database table (merge {:select   [:*]}
-                                        (when pk-field
-                                          {:order-by [[(qualify+escape table pk-field) :asc]]})))))
+(defn- table-rows-seq [driver database, ^RawTableInstance raw-table]
+  {:pre [(instance? RawTableInstance raw-table)]}
+  (query driver database raw-table {:select [:*]}))
 
 (defn- field-avg-length
   [driver field]
