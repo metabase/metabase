@@ -42,6 +42,7 @@
                                   :id     (id :venues)}
                    :filter       {:filter-type :>
                                   :field       {:field-id           (id :venues :price)
+                                                :fk-field-id        nil
                                                 :field-name         "PRICE"
                                                 :field-display-name "Price"
                                                 :base-type          :IntegerField
@@ -56,6 +57,7 @@
                                                 :parent             nil}
                                   :value       {:value 1
                                                 :field {:field-id           (id :venues :price)
+                                                        :fk-field-id        nil
                                                         :field-name         "PRICE"
                                                         :field-display-name "Price"
                                                         :base-type          :IntegerField
@@ -99,28 +101,30 @@
                                   :id     (id :venues)}
                    :filter       {:filter-type :=
                                   :field       {:field-id           (id :categories :name)
+                                                :fk-field-id        (id :venues :category_id)
                                                 :field-name         "NAME"
                                                 :field-display-name "Name"
                                                 :base-type          :TextField
                                                 :special-type       :name
                                                 :visibility-type    :normal
                                                 :table-id           (id :categories)
-                                                :schema-name        "PUBLIC"
-                                                :table-name         "CATEGORIES"
+                                                :schema-name        nil
+                                                :table-name         "CATEGORIES__via__CATEGORY_ID"
                                                 :position           nil
                                                 :description        nil
                                                 :parent-id          nil
                                                 :parent             nil}
                                   :value       {:value "abc"
                                                 :field {:field-id           (id :categories :name)
+                                                        :fk-field-id        (id :venues :category_id)
                                                         :field-name         "NAME"
                                                         :field-display-name "Name"
                                                         :base-type          :TextField
                                                         :special-type       :name
                                                         :visibility-type    :normal
                                                         :table-id           (id :categories)
-                                                        :schema-name        "PUBLIC"
-                                                        :table-name         "CATEGORIES"
+                                                        :schema-name        nil
+                                                        :table-name         "CATEGORIES__via__CATEGORY_ID"
                                                         :position           nil
                                                         :description        nil
                                                         :parent-id          nil
@@ -131,7 +135,8 @@
                                                   :field-name "ID"}
                                    :table-id     (id :categories)
                                    :table-name   "CATEGORIES"
-                                   :schema       "PUBLIC"}]}
+                                   :schema       "PUBLIC"
+                                   :join-alias   "CATEGORIES__via__CATEGORY_ID"}]}
     :fk-field-ids #{(id :venues :category_id)}
     :table-ids    #{(id :categories)}}]
   (let [expanded-form (ql/expand (wrap-inner-query (query venues
@@ -163,14 +168,15 @@
                                   :id     (id :checkins)}
                    :filter       {:filter-type :>
                                   :field       {:field {:field-id           (id :users :last_login)
+                                                        :fk-field-id        (id :checkins :user_id)
                                                         :field-name         "LAST_LOGIN"
                                                         :field-display-name "Last Login"
                                                         :base-type          :DateTimeField
                                                         :special-type       nil
                                                         :visibility-type    :normal
                                                         :table-id           (id :users)
-                                                        :schema-name        "PUBLIC"
-                                                        :table-name         "USERS"
+                                                        :schema-name        nil
+                                                        :table-name         "USERS__via__USER_ID"
                                                         :position           nil
                                                         :description        nil
                                                         :parent-id          nil
@@ -178,14 +184,15 @@
                                                 :unit  :year}
                                   :value       {:value (u/->Timestamp "1980-01-01")
                                                 :field {:field {:field-id           (id :users :last_login)
+                                                                :fk-field-id        (id :checkins :user_id)
                                                                 :field-name         "LAST_LOGIN"
                                                                 :field-display-name "Last Login"
                                                                 :base-type          :DateTimeField
                                                                 :special-type       nil
                                                                 :visibility-type    :normal
                                                                 :table-id           (id :users)
-                                                                :schema-name        "PUBLIC"
-                                                                :table-name         "USERS"
+                                                                :schema-name        nil
+                                                                :table-name         "USERS__via__USER_ID"
                                                                 :position           nil
                                                                 :description        nil
                                                                 :parent-id          nil
@@ -197,7 +204,8 @@
                                                   :field-name "ID"}
                                    :table-id     (id :users)
                                    :table-name   "USERS"
-                                   :schema       "PUBLIC"}]}
+                                   :schema       "PUBLIC"
+                                   :join-alias   "USERS__via__USER_ID"}]}
     :fk-field-ids #{(id :checkins :user_id)}
     :table-ids    #{(id :users)}}]
   (let [expanded-form (ql/expand (wrap-inner-query (query checkins
@@ -238,8 +246,9 @@
                                                      :visibility-type    :normal
                                                      :position           nil
                                                      :field-id           (id :venues :price)
-                                                     :table-name         "VENUES"
-                                                     :schema-name        "PUBLIC"}}
+                                                     :fk-field-id        (id :checkins :venue_id)
+                                                     :table-name         "VENUES__via__VENUE_ID"
+                                                     :schema-name        nil}}
                    :breakout     [{:field {:description        nil
                                            :base-type          :DateField
                                            :parent             nil
@@ -251,6 +260,7 @@
                                            :visibility-type    :normal
                                            :position           nil
                                            :field-id           (id :checkins :date)
+                                           :fk-field-id        nil
                                            :table-name         "CHECKINS"
                                            :schema-name        "PUBLIC"}
                                    :unit  :day-of-week}]
@@ -260,7 +270,8 @@
                                                   :field-name "ID"}
                                    :table-id     (id :venues)
                                    :table-name   "VENUES"
-                                   :schema       "PUBLIC"}]}
+                                   :schema       "PUBLIC"
+                                   :join-alias   "VENUES__via__VENUE_ID"}]}
     :fk-field-ids #{(id :checkins :venue_id)}
     :table-ids    #{(id :venues) (id :checkins)}}]
   (let [expanded-form (ql/expand (wrap-inner-query (query checkins

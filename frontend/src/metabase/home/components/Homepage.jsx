@@ -7,6 +7,7 @@ import Activity from "./Activity.jsx";
 import RecentViews from "./RecentViews.jsx";
 import Smile from './Smile.jsx';
 import NewUserOnboardingModal from './NewUserOnboardingModal.jsx';
+import NextStep from "./NextStep.jsx";
 
 export default class Homepage extends Component {
 
@@ -70,6 +71,7 @@ export default class Homepage extends Component {
                         </div>
                     </div>
                     <div className="Layout-sidebar flex-no-shrink">
+                      <NextStep />
                       <RecentViews {...this.props} />
                     </div>
                 </div>

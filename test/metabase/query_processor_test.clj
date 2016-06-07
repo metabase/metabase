@@ -18,9 +18,6 @@
             [metabase.test.util :as tu]
             [metabase.util :as u]))
 
-
-;;; ------------------------------------------------------------ Dataset-Independent QP Tests ------------------------------------------------------------
-
 ;;; ------------------------------------------------------------ Helper Fns + Macros ------------------------------------------------------------
 
 ;; Event-Based DBs aren't tested here, but in `event-query-processor-test` instead.
@@ -28,9 +25,9 @@
 (def ^:private ^:const non-timeseries-engines (set/difference datasets/all-valid-engines timeseries-engines))
 
 (defn- engines-that-support [feature]
-  (set (filter (fn [engine]
-                 (contains? (driver/features (driver/engine->driver engine)) feature))
-               non-timeseries-engines)))
+  (set (for [engine non-timeseries-engines
+             :when  (contains? (driver/features (driver/engine->driver engine)) feature)]
+         engine)))
 
 (defn- engines-that-dont-support [feature]
   (set/difference non-timeseries-engines (engines-that-support feature)))
@@ -265,6 +262,7 @@
 
 (defn rows
   "Return the result rows from query results, or throw an Exception if they're missing."
+  {:style/indent 0}
   [results]
   (vec (or (-> results :data :rows)
            (println (u/pprint-to-str 'red results))
@@ -1917,3 +1915,27 @@
             (ql/expressions {:x (ql/* $price 2.0)})
             (ql/aggregation (ql/count))
             (ql/breakout (ql/expression :x))))))
+
+
+;;; CAN WE JOIN AGAINST THE SAME TABLE TWICE (MULTIPLE FKS TO A SINGLE TABLE!?)
+;; Query should look something like:
+;; SELECT USERS__via__SENDER_ID.NAME AS NAME, count(*) AS count
+;; FROM PUBLIC.MESSAGES
+;; LEFT JOIN PUBLIC.USERS USERS__via__RECIEVER_ID
+;;   ON PUBLIC.MESSAGES.RECIEVER_ID = USERS__via__RECIEVER_ID.ID
+;; LEFT JOIN PUBLIC.USERS USERS__via__SENDER_ID
+;;   ON PUBLIC.MESSAGES.SENDER_ID = USERS__via__SENDER_ID.ID
+;; WHERE USERS__via__RECIEVER_ID.NAME = 'Rasta Toucan'
+;; GROUP BY USERS__via__SENDER_ID.NAME
+;; ORDER BY USERS__via__SENDER_ID.NAME ASC
+(datasets/expect-with-engines (engines-that-support :foreign-keys)
+  [["Bob the Sea Gull" 2]
+   ["Brenda Blackbird" 2]
+   ["Lucky Pigeon"     2]
+   ["Peter Pelican"    5]
+   ["Ronald Raven"     1]]
+  (dataset avian-singles
+    (rows (run-query messages
+            (ql/aggregation (ql/count))
+            (ql/breakout $sender_id->users.name)
+            (ql/filter (ql/= $reciever_id->users.name "Rasta Toucan"))))))
