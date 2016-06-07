@@ -181,10 +181,13 @@
   "Convert HONEYSQL-FORM to a vector of SQL string and params, like you'd pass to JDBC."
   [driver honeysql-form]
   {:pre [(map? honeysql-form)]}
-  (binding [hformat/*subquery?* false]
-    (hsql/format honeysql-form
-                 :quoting             (quote-style driver)
-                 :allow-dashed-names? true)))
+  (try (binding [hformat/*subquery?* false]
+         (hsql/format honeysql-form
+           :quoting             (quote-style driver)
+           :allow-dashed-names? true))
+       (catch Throwable e
+         (log/error (u/format-color 'red "Invalid HoneySQL form:\n%s" (u/pprint-to-str honeysql-form)))
+         (throw e))))
 
 (defn- qualify+escape ^clojure.lang.Keyword
   ([table]

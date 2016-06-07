@@ -8,7 +8,10 @@
 
 (alter-meta! #'honeysql.core/format assoc :style/indent 1)
 (alter-meta! #'honeysql.core/call   assoc :style/indent 1)
-(alter-meta! #'honeysql.helpers/merge-left-join assoc :arglists '([m & clauses])) ; for some reason the metadata on these helper functions is wrong which causes Eastwood to fail, see https://github.com/jkk/honeysql/issues/123
+;; for some reason the metadata on these helper functions is wrong which causes Eastwood to fail, see https://github.com/jkk/honeysql/issues/123
+(alter-meta! #'honeysql.helpers/merge-left-join assoc
+             :arglists '([m & clauses])
+             :style/indent 1)
 
 
 ;; Add an `:h2` quote style that uppercases the identifier
