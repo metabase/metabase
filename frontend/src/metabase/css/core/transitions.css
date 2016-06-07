@@ -10,3 +10,7 @@
 .transition-all {
   transition: all .2s linear;
 }
+
+.transition-border {
+  transition: border .3s linear;
+}
