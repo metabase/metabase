@@ -31,13 +31,12 @@ Once a feature has been defined, typically it will be taken on by a product desi
 
 Once the main UX flows have been dialed in, there will be a hi-fidelity visual design. 
 
-Features that are ready for design are are tagged [Design Needed](https://github.com/metabase/metabase/labels/_Design%2FNeeded). Once a feature has had a reasonably complete visual design it should be tagged [Help Wanted](https://github.com/metabase/metabase/labels/_Help%20Wanted).
+Features that are ready for design are are tagged [Design Needed](https://github.com/metabase/metabase/labels/Design%2FNeeded). Once a feature has had a reasonably complete visual design it should be tagged [Help Wanted](https://github.com/metabase/metabase/labels/Help%20Wanted).
 
 ### D) Build the feature
 
-Once a feature is tagged [Help Wanted](https://github.com/metabase/metabase/labels/_Help%20Wanted), it is considered ready to be built. A core team member (or you, awesomely helpful person that you are) can start working on it.
-Once once or more people have started to work on a feature, it should be marked 
-[_Feature/_In Progress](https://github.com/metabase/metabase/labels/_Feature%2F_In%20Progress). Once there is a branch+some code, a pull request is opened, linked to the feature + any issues that were pulled together to inform the feature. 
+Once a feature is tagged [Help Wanted](https://github.com/metabase/metabase/labels/Help%20Wanted), it is considered ready to be built. A core team member (or you, awesomely helpful person that you are) can start working on it.
+Once once or more people have started to work on a feature, it should be marked [In Progress](https://github.com/metabase/metabase/labels/In%20Progress). Once there is a branch+some code, a pull request is opened, linked to the feature + any issues that were pulled together to inform the feature. 
 
 ### E) Verification and merging
 
@@ -77,7 +76,7 @@ Some features, eg Database drivers, don't have any user facing pixels. These are
 
 In situations where a design has already been done, we can always use some help. Chime in on a pull request or an issue and offer to help. 
 
-Generally speaking, any issue in [Feature/Designed](https://github.com/metabase/metabase/labels/Feature%2FDesigned) is fair game.
+Generally speaking, any issue in [Help Wanted](https://github.com/metabase/metabase/labels/Help%20Wanted) is fair game.
 
 ### #YOLO JUST SUBMIT A PR
 
