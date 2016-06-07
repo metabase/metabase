@@ -1,8 +1,11 @@
 (ns metabase.cmd.load-from-h2
   "Commands for loading data from an H2 file into another database."
-  (:require [colorize.core :as color]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.set :as set]
+            [colorize.core :as color]
             (korma [core :as k]
                    [db :as kdb])
+            [metabase.config :as config]
             [metabase.db :as db]
             (metabase.models [activity :refer [Activity]]
                              [card :refer [Card]]
@@ -32,8 +35,7 @@
                              [table :refer [Table]]
                              [user :refer [User]]
                              [view-log :refer [ViewLog]])
-            [metabase.util :as u]
-            [clojure.set :as set]))
+            [metabase.util :as u]))
 
 (def ^:private entities
   "Entities in the order they should be serialized/deserialized.
@@ -93,6 +95,18 @@
     ;; then insert the rest, which should be safe to insert now
     (insert-entity e self-referencing)))
 
+(defn- set-postgres-sequence-values []
+  (print (u/format-color 'blue "Setting postgres sequence ids to proper values..."))
+  (flush)
+  ;; NOTE: tried using korma/exec-raw for this but i kept getting exceptions so i fell back to raw JDBC
+  (jdbc/with-db-transaction [conn (db/jdbc-details @db/db-connection-details)]
+    (doseq [e    (filter #(not (contains? #{Setting Session} %)) entities) ; these 2 tables don't have an "id" column
+            :let [table-name (:table e)
+                  seq-name (str table-name "_id_seq")
+                  sql (format "SELECT setval('%s', COALESCE((SELECT MAX(id) FROM %s), 1), true) as val" seq-name table-name)]]
+      (jdbc/db-query-with-resultset conn [sql] :val)))
+  (println (color/green "[OK]")))
+
 (defn load-from-h2
   "Transfer data from existing H2 database to the newly created (presumably MySQL or Postgres) DB specified by env vars.
    Intended as a tool for upgrading from H2 to a 'real' Database.
@@ -110,4 +124,8 @@
              :when (seq objs)]
        (if-not (contains? #{RawColumn Field} e)
          (insert-entity e objs)
-         (insert-self-referencing-entity e objs))))))
+         (insert-self-referencing-entity e objs))))
+
+    ;; if we are loading into a postgres db then we need to update sequence nextvals
+    (when (= (config/config-str :mb-db-type) "postgres")
+      (set-postgres-sequence-values))))
