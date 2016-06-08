@@ -62,7 +62,7 @@ export default class DashCardCardParameterMapper extends Component {
 
     onChange = (item) => {
         const { setParameterMapping, parameter, dashcard, card } = this.props;
-        setParameterMapping(parameter.id, dashcard.id, card.id, item.target);
+        setParameterMapping(parameter.id, dashcard.id, card.id, item && item.target);
         this.refs.popover.close()
     }
 
@@ -87,7 +87,11 @@ export default class DashCardCardParameterMapper extends Component {
                         <Tooltip isEnabled={overlapWarning} tooltip="The values in this field don't overlap with the values of any other fields you've chosen" verticalAttachments={["bottom", "top"]}>
                             <button className={cx(S.button, { [S.mapped]: !!selected, [S.warn]: overlapWarning })}>
                                 <span className="mr1">{selected ? selected.name : "Select..."}</span>
-                                <Icon className="flex-align-right" name="chevrondown" width={16} height={16} />
+                                { selected ?
+                                    <Icon className="flex-align-right" name="close" width={16} height={16} onClick={(e) => { this.onChange(null); e.stopPropagation(); }}/>
+                                :
+                                    <Icon className="flex-align-right" name="chevrondown" width={16} height={16} />
+                                }
                             </button>
                         </Tooltip>
                     }
