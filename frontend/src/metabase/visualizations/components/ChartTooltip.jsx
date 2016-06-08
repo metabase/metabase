@@ -20,7 +20,7 @@ export default class ChartTooltip extends Component {
 
     render() {
         const { series, hovered } = this.props;
-        if (!hovered || !hovered.data) {
+        if (!(hovered && hovered.data && ((hovered.element && document.contains(hovered.element)) || hovered.event))) {
             return <span className="hidden" />;
         }
         let s = series[hovered.index] || series[0];
