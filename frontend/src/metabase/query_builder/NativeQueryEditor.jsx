@@ -7,6 +7,11 @@ import _ from "underscore";
 import DataSelector from './DataSelector.jsx';
 import Icon from "metabase/components/Icon.jsx";
 
+// This should return an object with information about the mode the ACE Editor should use to edit the query.
+// This object should have 2 properties:
+// *  `mode` :         the ACE Editor mode name, e.g. 'ace/mode/json'
+// *  `description`:   name used to describe the text written in that mode, e.g. 'JSON'. Used to fill in the blank in 'This question is written in _______'.
+// *  `requiresTable`: whether the DB selector should be a DB + Table selector. Mongo needs both DB + Table.
 function getModeInfo(query, databases) {
     let databaseID = query ? query.database : null,
         database   = _.findWhere(databases, { id: databaseID }),
@@ -37,11 +42,6 @@ export default class NativeQueryEditor extends Component {
         setQueryFn: PropTypes.func.isRequired,
         setDatabaseFn: PropTypes.func.isRequired,
         autocompleteResultsFn: PropTypes.func.isRequired,
-        /// This should return an object with information about the mode the ACE Editor should use to edit the query.
-        /// This object should have 2 properties:
-        /// *  `mode` :         the ACE Editor mode name, e.g. 'ace/mode/json'
-        /// *  `description`:   name used to describe the text written in that mode, e.g. 'JSON'. Used to fill in the blank in 'This question is written in _______'.
-        /// *  `requiresTable`: whether the DB selector should be a DB + Table selector. Mongo needs both DB + Table.
         isOpen: PropTypes.bool
     };
 
@@ -59,6 +59,10 @@ export default class NativeQueryEditor extends Component {
         this.loadAceEditor();
     }
 
+    componentWillReceiveProps(nextProps) {
+        this.updateEditorMode(nextProps);
+    }
+
     componentDidUpdate() {
         var editor = ace.edit("id_sql");
         if (editor.getValue() !== this.props.query.native.query) {
@@ -68,8 +72,8 @@ export default class NativeQueryEditor extends Component {
 
     /// Update the mode of the ACE Editor to something like `ace/mode/sql` or `ace/mode/json`.
     /// The appropriate mode to use is fetched via the delegation pattern with the function `getModeInfo()`, described in detail above
-    updateEditorMode() {
-        let modeInfo = getModeInfo(this.props.query, this.props.databases);
+    updateEditorMode(props) {
+        let modeInfo = getModeInfo(props.query, props.databases);
         if (!modeInfo) return;
 
         console.log('Setting ACE Editor mode to:', modeInfo.mode);
@@ -81,7 +85,7 @@ export default class NativeQueryEditor extends Component {
     loadAceEditor() {
         var editor = ace.edit("id_sql");
 
-        this.updateEditorMode();
+        this.updateEditorMode(this.props);
 
         // listen to onChange events
         editor.getSession().on('change', this.onChange);
@@ -156,7 +160,6 @@ export default class NativeQueryEditor extends Component {
     /// Change the Database we're currently editing a query for.
     setDatabaseID(databaseID) {
         this.props.setDatabaseFn(databaseID);
-        this.updateEditorMode();
     }
 
     setTableID(tableID) {
