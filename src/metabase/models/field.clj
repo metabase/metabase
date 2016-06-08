@@ -1,7 +1,6 @@
 (ns metabase.models.field
   (:require [clojure.data :as d]
             [clojure.string :as s]
-            [korma.core :as k]
             [medley.core :as m]
             [metabase.db :as db]
             (metabase.models [common :as common]
@@ -88,10 +87,10 @@
     (merge defaults field)))
 
 (defn- pre-cascade-delete [{:keys [id]}]
-  (db/cascade-delete Field :parent_id id)
-  (db/cascade-delete ForeignKey (k/where (or (= :origin_id id)
-                                             (= :destination_id id))))
-  (db/cascade-delete 'FieldValues :field_id id))
+  (db/cascade-delete! Field :parent_id id)
+  (db/cascade-delete! ForeignKey {:where [:or [:= :origin_id id]
+                                          [:= :destination_id id]]})
+  (db/cascade-delete! 'FieldValues :field_id id))
 
 (defn ^:hydrate target
   "Return the FK target `Field` that this `Field` points to."
@@ -103,14 +102,14 @@
 (defn ^:hydrate values
   "Return the `FieldValues` associated with this FIELD."
   [{:keys [id]}]
-  (db/sel :many [FieldValues :field_id :values], :field_id id))
+  (db/select [FieldValues :field_id :values], :field_id id))
 
 (defn qualified-name-components
   "Return the pieces that represent a path to FIELD, of the form `[table-name parent-fields-name* field-name]`."
   [{field-name :name, table-id :table_id, parent-id :parent_id}]
   (conj (if-let [parent (Field parent-id)]
           (qualified-name-components parent)
-          [(db/sel :one :field ['Table :name], :id table-id)])
+          [(db/select-one-field :name 'Table, :id table-id)])
         field-name))
 
 (defn qualified-name
@@ -122,7 +121,7 @@
   "Return the `Table` associated with this `Field`."
   {:arglists '([field])}
   [{:keys [table_id]}]
-  (db/sel :one 'Table, :id table_id))
+  (db/select-one 'Table, :id table_id))
 
 (u/strict-extend (class Field)
   i/IEntity (merge i/IEntityDefaults
@@ -203,7 +202,7 @@
               (last matching-pattern)))))))
 
 
-(defn update-field
+(defn update-field!
   "Update an existing `Field` from the given FIELD-DEF."
   [{:keys [id], :as existing-field} {field-name :name, :keys [base-type special-type pk? parent-id]}]
   (let [updated-field (assoc existing-field
@@ -219,28 +218,28 @@
         [is-diff? _ _] (d/diff updated-field existing-field)]
     ;; if we have a different base-type or special-type, then update
     (when is-diff?
-      (db/upd Field id
-              :display_name (:display_name updated-field)
-              :base_type    base-type
-              :special_type (:special_type updated-field)
-              :parent_id    parent-id))
+      (db/update! Field id
+        :display_name (:display_name updated-field)
+        :base_type    base-type
+        :special_type (:special_type updated-field)
+        :parent_id    parent-id))
     ;; return the updated field when we are done
     updated-field))
 
 
-(defn create-field
+(defn create-field!
   "Create a new `Field` from the given FIELD-DEF."
   [table-id {field-name :name, :keys [base-type special-type pk? parent-id raw-column-id]}]
   {:pre [(integer? table-id)
          (string? field-name)
          (contains? base-types base-type)]}
-  (db/ins Field
-          :table_id       table-id
-          :raw_column_id  raw-column-id
-          :name           field-name
-          :display_name   (common/name->human-readable-name field-name)
-          :base_type      base-type
-          :special_type   (or special-type
-                              (when pk? :id)
-                              (infer-field-special-type field-name base-type))
-          :parent_id      parent-id))
+  (db/insert! Field
+    :table_id      table-id
+    :raw_column_id raw-column-id
+    :name          field-name
+    :display_name  (common/name->human-readable-name field-name)
+    :base_type     base-type
+    :special_type  (or special-type
+                       (when pk? :id)
+                       (infer-field-special-type field-name base-type))
+    :parent_id     parent-id))

@@ -4,7 +4,8 @@
             [clojure.tools.logging :as log]
             [clojure.tools.namespace.find :as ns-find]
             [medley.core :as m]
-            [metabase.db :refer [ins sel upd]]
+            (metabase [config :as config]
+                      [db :as db])
             (metabase.models [database :refer [Database]]
                              [query-execution :refer [QueryExecution]]
                              [setting :refer [defsetting]])
@@ -107,49 +108,62 @@
 
           Is this property required? Defaults to `false`.")
 
+  (execute-query ^java.util.Map [this, ^Map query]
+    "Execute a query against the database and return the results.
+
+  The query passed in will contain:
+
+         {:database ^DatabaseInstance
+          :native   {... driver specific query form such as one returned from a call to `mbql->native` ...}
+          :settings {:report-timezone \"US/Pacific\"
+                     :other-setting   \"and its value\"}}
+
+  Results should look like:
+
+         {:columns [\"id\", \"name\"]
+          :rows    [[1 \"Lucky Bird\"]
+                    [2 \"Rasta Can\"]]}")
+
   (features ^java.util.Set [this]
     "*OPTIONAL*. A set of keyword names of optional features supported by this driver, such as `:foreign-keys`. Valid features are:
 
-     *  `:foreign-keys`
-     *  `:nested-fields`
-     *  `:set-timezone`
-     *  `:standard-deviation-aggregations`
-     *  `:expressions`")
+  *  `:foreign-keys` - Does this database support foreign key relationships?
+  *  `:nested-fields` - Does this database support nested fields (e.g. Mongo)?
+  *  `:set-timezone` - Does this driver support setting a timezone for the query?
+  *  `:standard-deviation-aggregations` - Does this driver support [standard deviation aggregations](https://github.com/metabase/metabase/wiki/Query-Language-'98#stddev-aggregation)?
+  *  `:expressions` - Does this driver support [expressions](https://github.com/metabase/metabase/wiki/Query-Language-'98#expressions) (e.g. adding the values of 2 columns together)?
+  *  `:dynamic-schema` -  Does this Database have no fixed definitions of schemas? (e.g. Mongo)")
 
   (field-values-lazy-seq ^clojure.lang.Sequential [this, ^FieldInstance field]
     "Return a lazy sequence of all values of FIELD.
      This is used to implement some methods of the database sync process which require rows of data during execution.
 
-     The lazy sequence should not return more than `max-sync-lazy-seq-results`, which is currently `10000`.
-     For drivers that provide a chunked implementation, a recommended chunk size is `field-values-lazy-seq-chunk-size`, which is currently `500`.")
+  The lazy sequence should not return more than `max-sync-lazy-seq-results`, which is currently `10000`.
+  For drivers that provide a chunked implementation, a recommended chunk size is `field-values-lazy-seq-chunk-size`, which is currently `500`.")
 
   (humanize-connection-error-message ^String [this, ^String message]
     "*OPTIONAL*. Return a humanized (user-facing) version of an connection error message string.
      Generic error messages are provided in the constant `connection-error-messages`; return one of these whenever possible.")
 
+  (mbql->native ^java.util.Map [this, ^Map query]
+    "Transpile an MBQL structured query into the appropriate native query form.
+
+  The input QUERY will be a [fully-expanded MBQL query](https://github.com/metabase/metabase/wiki/Expanded-Queries) with
+  all the necessary pieces of information to build a properly formatted native query for the given database.
+
+  If the underlying query language supports remarks or comments, the driver should use `query->remark` to generate an appropriate message and include that in an appropriate place;
+  alternatively a driver might directly include the query's `:info` dictionary if the underlying language is JSON-based.
+
+  The result of this function will be passed directly into calls to `execute-query`.
+
+  For example, a driver like Postgres would build a valid SQL expression and return a map such as:
+
+       {:query \"-- [Contents of `(query->remark query)`]
+                 SELECT * FROM my_table\"}")
+
   (notify-database-updated [this, ^DatabaseInstance database]
     "*OPTIONAL*. Notify the driver that the attributes of the DATABASE have changed.  This is specifically relevant in
      the event that the driver was doing some caching or connection pooling.")
-
-  (process-native [this, {^Integer database-id :database, {^String native-query :query} :native, :as ^Map query}]
-    "Process a native QUERY. This function is called by `metabase.driver/process-query`.
-
-     Results should look something like:
-
-       {:columns [\"id\", \"bird_name\"]
-        :cols    [{:name \"id\", :base_type :IntegerField}
-                  {:name \"bird_name\", :base_type :TextField}]
-        :rows    [[1 \"Lucky Bird\"]
-                  [2 \"Rasta Can\"]]}")
-
-  (process-mbql [this, ^Map query]
-    "Process a native or structured QUERY. This function is called by `metabase.driver/process-query` after performing various driver-unspecific
-     steps like Query Expansion and other preprocessing.
-
-     Results should look something like:
-
-       [{:id 1, :name \"Lucky Bird\"}
-        {:id 2, :name \"Rasta Can\"}]")
 
   (process-query-in-context [this, ^IFn qp]
     "*OPTIONAL*. Similar to `sync-in-context`, but for running queries rather than syncing. This should be used to do things like open DB connections
@@ -253,16 +267,14 @@
   "Search Classpath for namespaces that start with `metabase.driver.`, then `require` them and look for the `driver-init`
    function which provides a uniform way for Driver initialization to be done."
   []
-  (doseq [namespce (filter (fn [ns-symb]
-                             (re-matches #"^metabase\.driver\.[a-z0-9_]+$" (name ns-symb)))
-                           (ns-find/find-namespaces (classpath/classpath)))]
-    (require namespce)))
+  (doseq [ns-symb (ns-find/find-namespaces (classpath/classpath))
+          :when   (re-matches #"^metabase\.driver\.[a-z0-9_]+$" (name ns-symb))]
+    (require ns-symb)))
 
 (defn is-engine?
   "Is ENGINE a valid driver name?"
   [engine]
-  (when engine
-    (contains? (set (keys (available-drivers))) (keyword engine))))
+  (contains? (available-drivers) (keyword engine)))
 
 (defn driver-supports?
   "Tests if a driver supports a given feature."
@@ -319,7 +331,7 @@
    (Databases aren't expected to change their types, and this optimization makes things a lot faster).
 
    This loads the corresponding driver if needed."
-  (let [db-id->engine (memoize (fn [db-id] (sel :one :field [Database :engine] :id db-id)))]
+  (let [db-id->engine (memoize (fn [db-id] (db/select-one-field :engine Database, :id db-id)))]
     (fn [db-id]
       (engine->driver (db-id->engine db-id)))))
 

@@ -8,11 +8,11 @@
 ;; and update the name to something that will produce the same slug ("cam") without getting a "name already taken" exception
 (expect
   (with-temp Label [{:keys [id]} {:name "Cam"}]
-    (db/upd Label id, :name "cam")))
+    (db/update! Label id, :name "cam")))
 
 ;; We SHOULD still see an exception if we try to give something a name that produces a slug that's already been taken
 (expect
   clojure.lang.ExceptionInfo
   (with-temp* [Label [{:keys [id]} {:name "Cam"}]
                Label [_            {:name "Rasta"}]]
-    (db/upd Label id, :name "rasta")))
+    (db/update! Label id, :name "rasta")))

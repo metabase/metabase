@@ -1,7 +1,7 @@
 (ns metabase.api.card-test
   "Tests for /api/card endpoints."
   (:require [expectations :refer :all]
-            [metabase.db :refer :all]
+            [metabase.db :as db]
             [metabase.http-client :refer :all, :as http]
             [metabase.middleware :as middleware]
             (metabase.models [card :refer [Card]]
@@ -207,9 +207,9 @@
   (expect-with-temp [Card [{card-id :id, original-name :name}]]
     [original-name
      updated-name]
-    [(sel :one :field [Card :name] :id card-id)
+    [(db/select-one-field :name Card, :id card-id)
      (do ((user->client :rasta) :put 200 (str "card/" card-id) {:name updated-name})
-         (sel :one :field [Card :name] :id card-id))]))
+         (db/select-one-field :name Card, :id card-id))]))
 
 
 (defmacro ^:private with-temp-card {:style/indent 1} [binding & body]

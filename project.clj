@@ -26,7 +26,7 @@
                  [amalloy/ring-gzip-middleware "0.1.3"]               ; Ring middleware to GZIP responses if client can handle it
                  [aleph "0.4.1"]                                      ; Async HTTP library; WebSockets
                  [cheshire "5.6.1"]                                   ; fast JSON encoding (used by Ring JSON middleware)
-                 [clj-http "3.0.1"                                    ; HTTP client
+                 [clj-http "3.1.0"                                    ; HTTP client
                   :exclusions [commons-codec
                                commons-io
                                slingshot]]
@@ -38,38 +38,42 @@
                                org.apache.httpcomponents/httpclient
                                net.sourceforge.nekohtml/nekohtml
                                ring/ring-core]]
-                 [com.draines/postal "1.11.4"]                        ; SMTP library
+                 [com.draines/postal "2.0.0"]                         ; SMTP library
                  [com.google.apis/google-api-services-bigquery        ; Google BigQuery Java Client Library
-                  "v2-rev294-1.21.0"]
+                  "v2-rev300-1.22.0"]
                  [com.h2database/h2 "1.4.191"]                        ; embedded SQL database
                  [com.mattbertolini/liquibase-slf4j "2.0.0"]          ; Java Migrations lib
                  [com.novemberain/monger "3.0.2"]                     ; MongoDB Driver
                  [compojure "1.5.0"]                                  ; HTTP Routing library built on Ring
-                 [environ "1.0.2"]                                    ; easy environment management
+                 [environ "1.0.3"]                                    ; easy environment management
                  [hiccup "1.0.5"]                                     ; HTML templating
+                 [honeysql "0.6.3"]                                   ; Transform Clojure data structures to SQL
                  [korma "0.4.2"]                                      ; SQL generation
                  [log4j/log4j "1.2.17"                                ; logging framework
                   :exclusions [javax.mail/mail
                                javax.jms/jms
                                com.sun.jdmk/jmxtools
                                com.sun.jmx/jmxri]]
-                 [medley "0.7.4"]                                     ; lightweight lib of useful functions
+                 [medley "0.8.1"]                                     ; lightweight lib of useful functions
                  [metabase/throttle "1.0.1"]                          ; Tools for throttling access to API endpoints and other code pathways
-                 [mysql/mysql-connector-java "5.1.38"]                ; MySQL JDBC driver *** DON'T UPDATE THIS YET - NEW VERSION IS JAVA 8+ ONLY: http://dev.mysql.com/doc/connector-j/6.0/en/connector-j-whats-new.html ***
+                 [mysql/mysql-connector-java "5.1.39"]                ; MySQL JDBC driver (don't upgrade to 6.0+ yet -- that's Java 8 only)
                  [net.sf.cssbox/cssbox "4.11"                         ; HTML / CSS rendering
                   :exclusions [org.slf4j/slf4j-api]]
                  [net.sourceforge.jtds/jtds "1.3.1"]                  ; Open Source SQL Server driver
-                 [org.liquibase/liquibase-core "3.5.0"]               ; migration management (Java lib)
+                 [org.liquibase/liquibase-core "3.5.1"]               ; migration management (Java lib)
                  [org.slf4j/slf4j-log4j12 "1.7.21"]                   ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
                  [org.yaml/snakeyaml "1.17"]                          ; YAML parser (required by liquibase)
                  [org.xerial/sqlite-jdbc "3.8.11.2"]                  ; SQLite driver
                  [postgresql "9.3-1102.jdbc41"]                       ; Postgres driver
+                 [io.crate/crate-jdbc "1.11.0"]                       ; Crate JDBC driver
+                 [io.crate/crate-client "0.54.7"]                     ; Crate Java client (used by Crate JDBC)
                  [prismatic/schema "1.1.1"]                           ; Data schema declaration and validation library
                  [ring/ring-jetty-adapter "1.4.0"]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically
                  [stencil "0.5.0"]                                    ; Mustache templates for Clojure
                  [swiss-arrows "1.0.0"]]                              ; 'Magic wand' macro -<>, etc.
-  :plugins [[lein-environ "1.0.2"]                                    ; easy access to environment variables
+  :repositories [["bintray" "https://dl.bintray.com/crate/crate"]]
+  :plugins [[lein-environ "1.0.3"]                                    ; easy access to environment variables
             [lein-ring "0.9.7"                                        ; start the HTTP server with 'lein ring server'
              :exclusions [org.clojure/clojure]]]                      ; TODO - should this be a dev dependency ?
   :main ^:skip-aot metabase.core
@@ -90,10 +94,10 @@
                            ;; and re-enable them if they ever get resolved
                            #_:unused-locals
                            #_:unused-namespaces]
-             :exclude-linters [:constant-test]}                       ; gives us false positives with forms like (when config/is-test? ...)
+             :exclude-linters [:constant-test                         ; gives us false positives with forms like (when config/is-test? ...)
+                               :deprecations]}                        ; Turn this off temporarily until we finish removing self-deprecated DB functions & macros like `upd`, `del`, and `sel`
   :docstring-checker {:include [#"^metabase"]
                       :exclude [#"test"
-                                #"^metabase\.sample-data$"
                                 #"^metabase\.http-client$"]}
   :profiles {:dev {:dependencies [[org.clojure/tools.nrepl "0.2.12"]  ; REPL <3
                                   [expectations "2.1.3"]              ; unit tests *** DON'T UPDATE THIS UNTIL WE REMOVE USES OF DEPRECATED EXPECT-LET IN THE CODEBASE ***

@@ -2,9 +2,7 @@
   "Helper functions and macros for writing unit tests."
   (:require [cheshire.core :as json]
             [expectations :refer :all]
-            [medley.core :as m]
-            (metabase [db :refer :all]
-                      [util :as u])
+            [metabase.db :as db]
             (metabase.models [card :refer [Card]]
                              [common :as common]
                              [dashboard :refer [Dashboard]]
@@ -17,7 +15,8 @@
                              [raw-table :refer [RawTable]]
                              [revision :refer [Revision]]
                              [segment :refer [Segment]]
-                             [table :refer [Table]])))
+                             [table :refer [Table]])
+            [metabase.util :as u]))
 
 (declare $->prop)
 
@@ -73,6 +72,7 @@
 
 (defmacro expect-eval-actual-first
   "Identical to `expect` but evaluates `actual` first (instead of evaluating `expected` first)."
+  {:style/indent 0}
   [expected actual]
   (let [fn-name (gensym)]
     `(def ~(vary-meta fn-name assoc :expectation true)
@@ -194,12 +194,12 @@
 (defn do-with-temp
   "Internal implementation of `with-temp` (don't call this directly)."
   [entity attributes f]
-  (let [temp-object (m/mapply ins entity (merge (with-temp-defaults entity)
-                                                attributes))]
+  (let [temp-object (db/insert! entity (merge (with-temp-defaults entity)
+                                              attributes))]
     (try
       (f temp-object)
       (finally
-        (cascade-delete entity :id (:id temp-object))))))
+        (db/cascade-delete! entity :id (:id temp-object))))))
 
 
 ;;; # with-temp
@@ -244,6 +244,8 @@
         database-id
         (get-most-recent-database-id))"
   {:style/indent 1}
+  ;; TODO - maybe it makes more sense to have the signature be [with-temp*-form expected & actual] and wrap `actual` in a `do` since it seems like a pretty common use-case.
+  ;; I'm not sure about the readability implications however :scream_cat:
   [with-temp*-form expected actual]
   ;; use `gensym` instead of auto gensym here so we can be sure it's a unique symbol every time. Otherwise since expectations hashes its body
   ;; to generate function names it will treat every usage of `expect-with-temp` as the same test and only a single one will end up being ran
@@ -277,5 +279,6 @@
    e.g. keywords that aren't map keys:
 
      (obj->json->obj {:type :query}) -> {:type \"query\"}"
+  {:style/indent 0}
   [obj]
   (json/parse-string (json/generate-string obj) keyword))

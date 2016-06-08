@@ -1,5 +1,3 @@
-/*eslint-env jasmine */
-
 import MetabaseUtils from 'metabase/lib/utils';
 
 

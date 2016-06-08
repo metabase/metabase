@@ -1,7 +1,6 @@
 (ns metabase.api.dashboard
   "/api/dashboard endpoints."
   (:require [compojure.core :refer [GET POST PUT DELETE]]
-            [korma.core :as k]
             [metabase.events :as events]
             [metabase.api.common :refer :all]
             [metabase.db :as db]
@@ -19,10 +18,10 @@
   *  `mine` - Return `Dashboards` created by the current user."
   [f]
   {f FilterOptionAllOrMine}
-  (-> (case (or f :all)
-        :all  (db/sel :many Dashboard (k/where (or {:creator_id *current-user-id*}
-                                                {:public_perms [> common/perms-none]})))
-        :mine (db/sel :many Dashboard :creator_id *current-user-id*))
+  (-> (db/select Dashboard {:where (case (or f :all)
+                                     :all  [:or [:= :creator_id *current-user-id*]
+                                                [:> :public_perms common/perms-none]]
+                                     :mine [:= :creator_id *current-user-id*])})
       (hydrate :creator :can_read :can_write)))
 
 (defendpoint POST "/"
@@ -30,11 +29,11 @@
   [:as {{:keys [name description public_perms]} :body}]
   {name         [Required NonEmptyString]
    public_perms [Required PublicPerms]}
-  (->> (db/ins Dashboard
-               :name name
-               :description description
-               :public_perms public_perms
-               :creator_id *current-user-id*)
+  (->> (db/insert! Dashboard
+         :name         name
+         :description  description
+         :public_perms public_perms
+         :creator_id   *current-user-id*)
        (events/publish-event :dashboard-create)))
 
 (defendpoint GET "/:id"
@@ -53,7 +52,7 @@
   [id :as {{:keys [description name]} :body}]
   {name NonEmptyString}
   (write-check Dashboard id)
-  (check-500 (db/upd-non-nil-keys Dashboard id
+  (check-500 (db/update-non-nil-keys! Dashboard id
                :description description
                :name        name))
   (events/publish-event :dashboard-update (assoc (Dashboard id) :actor_id *current-user-id*)))
@@ -63,8 +62,8 @@
   [id]
   (write-check Dashboard id)
   ;; TODO - it would be much more natural if `cascade-delete` returned the deleted entity instead of an api response
-  (let [dashboard (db/sel :one Dashboard :id id)
-        result    (db/cascade-delete Dashboard :id id)]
+  (let [dashboard (Dashboard id)
+        result    (db/cascade-delete! Dashboard :id id)]
     (events/publish-event :dashboard-delete (assoc dashboard :actor_id *current-user-id*))
     result))
 
@@ -96,7 +95,7 @@
                         ...}]} ...]}"
   [id :as {{:keys [cards]} :body}]
   (write-check Dashboard id)
-  (let [dashcard-ids (set (db/sel :many :id DashboardCard, :dashboard_id id))]
+  (let [dashcard-ids (db/select-ids DashboardCard, :dashboard_id id)]
     (doseq [{dashcard-id :id :as dashboard-card} cards]
       ;; ensure the dashcard we are updating is part of the given dashboard
       (when (contains? dashcard-ids dashcard-id)

@@ -1,10 +1,10 @@
 (ns metabase.db.migrations
   "Clojure-land data migration definitions and fns for running them."
   (:require [clojure.tools.logging :as log]
-            [korma.core :as k]
-            [korma.db :as kdb]
-            [metabase.db :as db]
-            [metabase.driver :as driver]
+            (korma [core :as k]
+                   [db :as kdb])
+            (metabase [db :as db]
+                      [driver :as driver])
             [metabase.events.activity-feed :refer [activity-feed-topics]]
             (metabase.models [activity :refer [Activity]]
                              [card :refer [Card]]
@@ -64,18 +64,18 @@
 (defmigration set-card-database-and-table-ids
   ;; only execute when `:database_id` column on all cards is `nil`
   (when (= 0 (:cnt (first (k/select Card (k/aggregate (count :*) :cnt) (k/where (not= :database_id nil))))))
-    (doseq [{id :id {:keys [type] :as dataset-query} :dataset_query} (db/sel :many [Card :id :dataset_query])]
+    (doseq [{id :id {:keys [type] :as dataset-query} :dataset_query} (db/select [Card :id :dataset_query])]
       (when type
         ;; simply resave the card with the dataset query which will automatically set the database, table, and type
-        (db/upd Card id :dataset_query dataset-query)))))
+        (db/update! Card id, :dataset_query dataset-query)))))
 
 
 ;; Set the `:ssl` key in `details` to `false` for all existing MongoDB `Databases`.
 ;; UI was automatically setting `:ssl` to `true` for every database added as part of the auto-SSL detection.
 ;; Since Mongo did *not* support SSL, all existing Mongo DBs should actually have this key set to `false`.
 (defmigration set-mongodb-databases-ssl-false
-  (doseq [{:keys [id details]} (db/sel :many :fields [Database :id :details] :engine "mongo")]
-    (db/upd Database id, :details (assoc details :ssl false))))
+  (doseq [{:keys [id details]} (db/select [Database :id :details], :engine "mongo")]
+    (db/update! Database id, :details (assoc details :ssl false))))
 
 
 ;; Set default values for :schema in existing tables now that we've added the column
@@ -94,7 +94,9 @@
 ;; Populate the initial value for the `:admin-email` setting for anyone who hasn't done it yet
 (defmigration set-admin-email
   (when-not (setting/get :admin-email)
-    (when-let [email (db/sel :one :field ['User :email] (k/where {:is_superuser true :is_active true}))]
+    (when-let [email (db/select-one-field :email 'User
+                       :is_superuser true
+                       :is_active    true)]
       (setting/set :admin-email email))))
 
 
@@ -107,19 +109,19 @@
 
 ;; Clean up duplicate FK entries
 (defmigration remove-duplicate-fk-entries
-  (let [existing-fks (db/sel :many ForeignKey)
+  (let [existing-fks (db/select ForeignKey)
         grouped-fks  (group-by #(str (:origin_id %) "_" (:destination_id %)) existing-fks)]
     (doseq [[k fks] grouped-fks]
       (when (< 1 (count fks))
         (log/debug "Removing duplicate FK entries for" k)
         (doseq [duplicate-fk (drop-last fks)]
-          (db/del ForeignKey :id (:id duplicate-fk)))))))
+          (db/delete! ForeignKey, :id (:id duplicate-fk)))))))
 
 
 ;; Migrate dashboards to the new grid
 ;; NOTE: this scales the dashboards by 4x in the Y-scale and 3x in the X-scale
 (defmigration update-dashboards-to-new-grid
-  (doseq [{:keys [id row col sizeX sizeY]} (db/sel :many DashboardCard)]
+  (doseq [{:keys [id row col sizeX sizeY]} (db/select DashboardCard)]
     (k/update DashboardCard
       (k/set-fields {:row   (when row (* row 4))
                      :col   (when col (* col 3))
@@ -178,7 +180,7 @@
 ;; migrate FK information from old ForeignKey model to Field.fk_target_field_id
 (defmigration migrate-fk-metadata
   (when (> 1 (:cnt (first (k/select Field (k/aggregate (count :*) :cnt) (k/where (not= :fk_target_field_id nil))))))
-    (when-let [fks (not-empty (db/sel :many ForeignKey))]
+    (when-let [fks (not-empty (db/select ForeignKey))]
       (doseq [{:keys [origin_id destination_id]} fks]
         (k/update Field
           (k/set-fields {:fk_target_field_id destination_id})
@@ -189,10 +191,10 @@
 ;; NOTE: we only handle active Tables/Fields and we skip any FK relationships (they can safely populate later)
 (defmigration create-raw-tables
   (when (= 0 (:cnt (first (k/select RawTable (k/aggregate (count :*) :cnt)))))
-    (binding [db/*sel-disable-logging* true]
+    (binding [db/*disable-db-logging* true]
       (kdb/transaction
-        (doseq [{database-id :id, :keys [name engine]} (db/sel :many Database)]
-          (when-let [tables (not-empty (db/sel :many Table :db_id database-id, :active true))]
+        (doseq [{database-id :id, :keys [name engine]} (db/select Database)]
+          (when-let [tables (not-empty (db/select Table, :db_id database-id, :active true))]
             (log/info (format "Migrating raw schema information for %s database '%s'" engine name))
             (let [processed-tables (atom #{})]
               (doseq [{table-id :id, table-schema :schema, table-name :name} tables]
@@ -205,12 +207,12 @@
                     ;; add this table to the set of tables we've processed
                     (swap! processed-tables conj {:schema table-schema, :name table-name})
                     ;; create the RawTable
-                    (let [{raw-table-id :id} (db/ins RawTable
-                                               :database_id  database-id
-                                               :schema       table-schema
-                                               :name         table-name
-                                               :details      {}
-                                               :active       true)]
+                    (let [{raw-table-id :id} (db/insert! RawTable
+                                               :database_id database-id
+                                               :schema      table-schema
+                                               :name        table-name
+                                               :details     {}
+                                               :active      true)]
                       ;; update the Table and link it with the RawTable
                       (k/update Table
                         (k/set-fields {:raw_table_id raw-table-id})
@@ -218,7 +220,7 @@
                       ;; migrate all Fields in the Table (skipping :dynamic-schema dbs)
                       (when-not (driver/driver-supports? (driver/engine->driver engine) :dynamic-schema)
                         (let [processed-fields (atom #{})]
-                          (doseq [{field-id :id, column-name :name, :as field} (db/sel :many Field :table_id table-id, :visibility_type [not= "retired"])]
+                          (doseq [{field-id :id, column-name :name, :as field} (db/select Field, :table_id table-id, :visibility_type [:not= "retired"])]
                             ;; guard against duplicate fields with the same name
                             (if (contains? @processed-fields column-name)
                               ;; this is a dupe, disable it
@@ -226,12 +228,12 @@
                                 (k/set-fields {:visibility_type "retired"})
                                 (k/where      {:id field-id}))
                               ;; normal unmigrated field, so lets use it
-                              (let [{raw-column-id :id} (db/ins RawColumn
-                                                          :raw_table_id  raw-table-id
-                                                          :name          column-name
-                                                          :is_pk         (= :id (:special_type field))
-                                                          :details       {:base-type (:base_type field)}
-                                                          :active        true)]
+                              (let [{raw-column-id :id} (db/insert! RawColumn
+                                                          :raw_table_id raw-table-id
+                                                          :name         column-name
+                                                          :is_pk        (= :id (:special_type field))
+                                                          :details      {:base-type (:base_type field)}
+                                                          :active       true)]
                                 ;; update the Field and link it with the RawColumn
                                 (k/update Field
                                   (k/set-fields {:raw_column_id raw-column-id

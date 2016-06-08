@@ -1,18 +1,21 @@
 (ns metabase.db
-  "Korma database definition and helper functions for interacting with the database."
+  "Database definition and helper functions for interacting with the database."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             (clojure [set :as set]
                      [string :as s]
                      [walk :as walk])
+            (honeysql [core :as hsql]
+                      [format :as hformat]
+                      [helpers :as h])
             (korma [core :as k]
                    [db :as kdb])
             [medley.core :as m]
             [ring.util.codec :as codec]
             [metabase.config :as config]
-            [metabase.db.internal :as i]
             [metabase.models.interface :as models]
-            [metabase.util :as u])
+            [metabase.util :as u]
+            metabase.util.honeysql-extensions) ; this needs to be loaded so the `:h2` quoting style gets added
   (:import java.io.StringWriter
            java.sql.Connection
            liquibase.Liquibase
@@ -39,6 +42,11 @@
                                   ;; if we don't have an absolute path then make sure we start from "user.dir"
                                   [(System/getProperty "user.dir") "/" db-file-name options]))))))
 
+(defn- db-type
+  "The type of backing DB used to run Metabase. `:h2`, `:mysql`, or `:postgres`."
+  ^clojure.lang.Keyword []
+  (config/config-kw :mb-db-type))
+
 (defn parse-connection-string
   "Parse a DB connection URI like `postgres://cam@localhost.com:5432/cams_cool_db?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory` and return a broken-out map."
   [uri]
@@ -58,8 +66,8 @@
    (e.g., to use the Generic SQL driver functions on the Metabase DB itself)."
   (delay (or (when-let [uri (config/config-str :mb-db-connection-uri)]
                (parse-connection-string uri))
-             (case (config/config-kw :mb-db-type)
-               :h2       {:type     :h2
+             (case (db-type)
+               :h2       {:type     :h2                               ; TODO - we probably don't need to specifc `:type` here since we can just call (db-type)
                           :db       @db-file}
                :mysql    {:type     :mysql
                           :host     (config/config-str :mb-db-host)
@@ -191,174 +199,472 @@
     (apply setup-db args)))
 
 
-;; # ---------------------------------------- UTILITY FUNCTIONS ----------------------------------------
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                         NEW HONEY-SQL BASED DB UTIL FUNCTIONS                                          |
+;;; +------------------------------------------------------------------------------------------------------------------------+
 
-;; ## UPD
-
-(defn upd
-  "Wrapper around `korma.core/update` that updates a single row by its id value and
-   automatically passes &rest KWARGS to `korma.core/set-fields`.
-
-     (upd User 123 :is_active false) ; updates user with id=123, setting is_active=false
-
-   Returns true if update modified rows, false otherwise."
-  [entity entity-id & {:as kwargs}]
-  {:pre [(integer? entity-id)]}
-  (let [obj           (models/do-pre-update entity (assoc kwargs :id entity-id))
-        rows-affected (k/update entity
-                                (k/set-fields (dissoc obj :id))
-                                (k/where {:id entity-id}))]
-    (when (> rows-affected 0)
-      (models/post-update obj))
-    (> rows-affected 0)))
-
-(defn upd-non-nil-keys
-  "Calls `upd`, but filters out KWARGS with `nil` values."
-  {:style/indent 2}
-  [entity entity-id & {:as kwargs}]
-  (->> (m/filter-vals (complement nil?) kwargs)
-       (m/mapply upd entity entity-id)))
-
-
-;; ## DEL
-
-(defn del
-  "Wrapper around `korma.core/delete` that makes it easier to delete a row given a single PK value.
-   Returns a `204 (No Content)` response dictionary."
-  [entity & {:as kwargs}]
-  (k/delete entity (k/where kwargs))
-  {:status 204
-   :body nil})
-
-
-;; ## SEL
-
-(def ^:dynamic *sel-disable-logging*
-  "Should we disable logging for the `sel` macro? Normally `false`, but bind this to `true` to keep logging from getting too noisy during
+(def ^:dynamic ^Boolean *disable-db-logging*
+  "Should we disable logging for database queries? Normally `false`, but bind this to `true` to keep logging from getting too noisy during
    operations that require a lot of DB access, like the sync process."
   false)
 
-(defmacro sel
-  "Wrapper for korma `select` that calls `post-select` on results and provides a few other conveniences.
 
-  ONE-OR-MANY tells `sel` how many objects to fetch and is either `:one` or `:many`.
+(defn- entity-symb->ns
+  "Return the namespace symbol where we'd expect to find an entity symbol.
 
-    (sel :one User :id 1)          -> returns the User (or nil) whose id is 1
-    (sel :many OrgPerm :user_id 1) -> returns sequence of OrgPerms whose user_id is 1
+     (entity-symb->ns 'CardFavorite) -> 'metabase.models.card-favorite"
+  [symb]
+  {:pre [(symbol? symb)]}
+  (symbol (str "metabase.models." (s/lower-case (s/replace (name symb) #"([a-z])([A-Z])" "$1-$2")))))
 
-  OPTION, if specified, is one of `:field`, `:fields`, `:id`, `:id->field`, `:field->id`, `:field->obj`, `:id->fields`,
-  `:field->field`, or `:field->fields`.
+(defn- resolve-entity-from-symbol
+  "Resolve the entity associated with SYMB, calling `require` on its namespace if needed.
 
-    ;; Only return IDs of objects.
-    (sel :one :id User :email \"cam@metabase.com\") -> 120
+     (resolve-entity-from-symbol 'CardFavorite) -> metabase.models.card-favorite/CardFavorite"
+  [symb]
+  (let [entity-ns (entity-symb->ns symb)]
+    @(try (ns-resolve entity-ns symb)
+          (catch Throwable _
+            (require entity-ns)
+            (ns-resolve entity-ns symb)))))
 
-    ;; Only return the specified field.
-    (sel :many :field [User :first_name]) -> (\"Cam\" \"Sameer\" ...)
+(defn resolve-entity
+  "Resolve a model entity *if* it's quoted. This also unwraps entities when they're inside vectores.
 
-    ;; Return map(s) that only contain the specified fields.
-    (sel :one :fields [User :id :first_name])
-      -> ({:id 1 :first_name \"Cam\"}, {:id 2 :first_name \"Sameer\"} ...)
+     (resolve-entity Database)         -> #'metabase.models.database/Database
+     (resolve-entity [Database :name]) -> #'metabase.models.database/Database
+     (resolve-entity 'Database)        -> #'metabase.models.database/Database"
+  [entity]
+  {:post [(:metabase.models.interface/entity %)]}
+  (cond
+    (:metabase.models.interface/entity entity) entity
+    (vector? entity)                           (resolve-entity (first entity))
+    (symbol? entity)                           (resolve-entity-from-symbol entity)
+    :else                                      (throw (Exception. (str "Invalid entity:" entity)))))
 
-    ;; Return a map of ID -> field value
-    (sel :many :id->field [User :first_name])
-      -> {1 \"Cam\", 2 \"Sameer\", ...}
+(defn- db-connection
+  "Get a JDBC connection spec for the Metabase DB."
+  []
+  (setup-db-if-needed)
+  (or korma.db/*current-conn*
+      (korma.db/get-connection (or korma.db/*current-db* @korma.db/_default))))
 
-    ;; Return a map of field value -> ID. Duplicates will be discarded!
-    (sel :many :field->id [User :first_name])
-      -> {\"Cam\" 1, \"Sameer\" 2}
+(defn- quoting-style
+  "Style of `:quoting` that should be passed to HoneySQL `format`."
+  ^clojure.lang.Keyword []
+  (case (db-type)
+    :h2       :h2
+    :mysql    :mysql
+    :postgres :ansi))
 
-    ;; Return a map of field value -> field value.
-    (sel :many :field->field [User :first_name :last_name])
-      -> {\"Cam\" \"Saul\", \"Rasta\" \"Toucan\", ...}
+(defn- quote-fn
+  "The function that JDBC should use to quote identifiers for our database. This is passed as the `:entities` option to functions like `jdbc/insert!`."
+  []
+  ((quoting-style) @(resolve 'honeysql.format/quote-fns)))
 
-    ;; Return a map of field value -> *entire* object. Duplicates will be discarded!
-    (sel :many :field->obj [Table :name] :db_id 1)
-      -> {\"venues\" {:id 1, :name \"venues\", ...}
-          \"users\"  {:id 2, :name \"users\", ...}}
+(defn- honeysql->sql
+  "Compile HONEYSQL-FORM to SQL.
+  This returns a vector with the SQL string as its first item and prepared statement params as the remaining items."
+  [honeysql-form]
+  {:pre [(map? honeysql-form)]}
+  ;; Not sure *why* but without setting this binding on *rare* occasion HoneySQL will unwantedly generate SQL for a subquery and wrap the query in parens like "(UPDATE ...)" which is invalid
+  (u/prog1 (binding [hformat/*subquery?* false]
+             (hsql/format honeysql-form, :quoting (quoting-style), :allow-dashed-names? true))
+    (when-not *disable-db-logging*
+      (log/debug (str "DB Call: " (first <>))))))
 
-    ;; Return a map of field value -> other fields.
-    (sel :many :field->fields [Table :name :id :db_id])
-      -> {\"venues\" {:id 1, :db_id 1}
-          \"users\"  {:id 2, :db_id 1}}
-
-    ;; Return a map of ID -> specified fields
-    (sel :many :id->fields [User :first_name :last_name])
-      -> {1 {:first_name \"Cam\", :last_name \"Saul\"},
-          2 {:first_Name \"Sameer\", :last_name ...}}
-
-  ENTITY may be either an entity like `User` or a vector like `[entity & field-keys]`.
-  If just an entity is passed, `sel` will return `default-fields` for ENTITY.
-  Otherwise, if a vector is passed `sel` will return the fields specified by FIELD-KEYS.
-
-    (sel :many [OrgPerm :admin :id] :user_id 1) -> return admin and id of OrgPerms whose user_id is 1
-
-  ENTITY may optionally be a fully-qualified symbol name of an entity; in this case, the symbol's namespace
-  will be required and the symbol itself resolved at runtime. This is sometimes neccesary to avoid circular
-  dependencies. This is slower, however, due to added runtime overhead.
-
-    ;; require/resolve metabase.models.table/Table. Then sel Table 1
-    (sel :one 'metabase.models.table/Table :id 1)
-
-  FORMS may be either keyword args, which will be added to a korma `where` clause, or [other korma
-  clauses](http://www.sqlkorma.com/docs#select) such as `order`, which are passed directly.
-
-    (sel :many Table :db_id 1)                    -> (select User (where {:id 1}))
-    (sel :many Table :db_id 1 (order :name :ASC)) -> (select User (where {:id 1}) (order :name ASC))"
-  {:arglists '([options? entity & forms])}
-  [& args]
-  (let [[option args] (u/optional keyword? args)]
-    `(~(if option
-         ;; if an option was specified, hand off to macro named metabase.db.internal/sel:OPTION
-         (symbol (format "metabase.db.internal/sel:%s" (name option)))
-         ;; otherwise just hand off to low-level sel* macro
-         'metabase.db.internal/sel*)
-      ~@args)))
+(defn query
+  "Compile HONEYSQL-FROM and call `jdbc/query` against the Metabase database.
+   Options are passed along to `jdbc/query`."
+  [honeysql-form & options]
+  (apply jdbc/query (db-connection) (honeysql->sql honeysql-form) options))
 
 
-;; ## INS
+(defn entity->table-name
+  "Get the keyword table name associated with an ENTITY, which can be anything that can be passed to `resolve-entity`.
 
-(defn ins
-  "Wrapper around `korma.core/insert` that renames the `:scope_identity()` keyword in output to `:id`
-   and automatically passes &rest KWARGS to `korma.core/values`.
-
-   Returns a newly created object by calling `sel`."
-  [entity & {:as kwargs}]
-  (let [vals         (models/do-pre-insert entity kwargs)
-        ;; take database-specific keys returned from a jdbc insert and map them to :id
-        {:keys [id]} (set/rename-keys (k/insert entity (k/values vals))
-                                      {(keyword "scope_identity()") :id
-                                       :generated_key               :id})]
-    (some-> id entity models/post-insert)))
+     (db/entity->table-name 'CardFavorite) -> :report_cardfavorite"
+  ^clojure.lang.Keyword [entity]
+  {:post [(keyword? %)]}
+  (keyword (:table (resolve-entity entity))))
 
 
-;; ## EXISTS?
+(defn qualify
+  "Qualify a FIELD-NAME name with the name its ENTITY. This is necessary for disambiguating fields for HoneySQL queries that contain joins.
 
-(defmacro exists?
-  "Easy way to see if something exists in the db.
+     (db/qualify 'CardFavorite :id) -> :report_cardfavorite.id"
+  ^clojure.lang.Keyword [entity field-name]
+  (if (vector? field-name)
+    [(qualify entity (first field-name)) (second field-name)]
+    (hsql/qualify (entity->table-name entity) field-name)))
 
-    (exists? User :id 100)"
-  [entity & {:as kwargs}]
-  `(boolean (seq (k/select (i/entity->korma ~entity)
-                           (k/fields [:id])
-                           (k/where ~(if (seq kwargs) kwargs {}))
-                           (k/limit 1)))))
+(defn qualified?
+  "Is FIELD-NAME qualified by (e.g. with its table name)?"
+  ^Boolean [field-name]
+  (if (vector? field-name)
+    (qualified? (first field-name))
+    (boolean (re-find #"\." (name field-name)))))
 
-;; ## CASADE-DELETE
+(defn- maybe-qualify
+  "Qualify FIELD-NAME with its table name if it's not already qualified."
+  ^clojure.lang.Keyword [entity field-name]
+  (if (qualified? field-name)
+    field-name
+    (qualify entity field-name)))
 
-(defn -cascade-delete
-  "Internal implementation of `cascade-delete`. Don't use this directly!"
-  [entity f]
-  (let [entity  (i/entity->korma entity)
-        results (i/sel-exec entity f)]
-    (dorun (for [obj (map (partial models/do-post-select entity) results)]
-             (do (models/pre-cascade-delete obj)
-                 (del entity :id (:id obj))))))
-  {:status 204, :body nil})
 
-(defmacro cascade-delete
+(defn- entity->fields
+  "Get the fields that should be used in a query, destructuring ENTITY if it's wrapped in a vector, otherwise calling `default-fields`.
+   This will return `nil` if the entity isn't wrapped in a vector and uses the default implementation of `default-fields`.
+
+     (entity->fields 'User) -> [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb]
+     (entity->fields ['User :first_name :last_name]) -> [:first_name :last_name]
+     (entity->fields 'Database) -> nil"
+  [entity]
+  (if (vector? entity)
+    (let [[entity & fields] entity]
+      (for [field fields]
+        (maybe-qualify entity field)))
+    (models/default-fields (resolve-entity entity))))
+
+
+(defn simple-select
+  "Select objects from the database. Like `select`, but doesn't offer as many conveniences, so you should use that instead.
+   This calls `post-select` on the results.
+
+     (db/simple-select 'User {:where [:= :id 1]})"
+  {:style/indent 1}
+  [entity honeysql-form]
+  (let [entity (resolve-entity entity)]
+    (vec (for [object (query (merge {:select (or (models/default-fields entity)
+                                                 [:*])
+                                     :from   [(entity->table-name entity)]}
+                                    honeysql-form))]
+           (models/do-post-select entity object)))))
+
+(defn simple-select-one
+  "Select a single object from the database. Like `select-one`, but doesn't offer as many conveniences, so prefer that instead.
+
+     (db/simple-select-one 'User (h/where [:= :first-name \"Cam\"]))"
+  ([entity]
+   (simple-select-one entity {}))
+  ([entity honeysql-form]
+   (first (simple-select entity (h/limit honeysql-form 1)))))
+
+(defn execute!
+  "Compile HONEYSQL-FORM and call `jdbc/execute!` against the Metabase DB.
+   OPTIONS are passed directly to `jdbc/execute!` and can be things like `:multi?` (default `false`) or `:transaction?` (default `true`)."
+  [honeysql-form & options]
+  (apply jdbc/execute! (db-connection) (honeysql->sql honeysql-form) options))
+
+(defn- where
+  "Generate a HoneySQL `where` form using key-value args.
+     (where {} :a :b)      -> (h/where {} [:= :a :b])
+     (where {} :a [:!= b]) -> (h/where {} [:!= :a :b])"
+  {:style/indent 1}
+
+  ([honeysql-form]
+   honeysql-form) ; no-op
+
+  ([honeysql-form m]
+   (m/mapply where honeysql-form m))
+
+  ([honeysql-form k v]
+   (h/merge-where honeysql-form (if (vector? v)
+                                  (let [[f v] v] ; e.g. :id [:!= 1] -> [:!= :id 1]
+                                    (assert (keyword? f))
+                                    [f k v])
+                                  [:= k v])))
+
+  ([honeysql-form k v & more]
+   (apply where (where honeysql-form k v) more)))
+
+(defn- where+
+  "Generate a HoneySQL form, converting pairs of arguments with keywords into a `where` clause, and merging other HoneySQL clauses in as-is.
+   Meant for internal use by functions like `select`. (So called because it handles `where` *plus* other clauses).
+
+     (where+ {} [:id 1 {:limit 10}]) -> {:where [:= :id 1], :limit 10}"
+  [honeysql-form options]
+  (loop [honeysql-form honeysql-form, [first-option & [second-option & more, :as butfirst]] options]
+    (cond
+      (keyword? first-option) (recur (where honeysql-form first-option second-option) more)
+      first-option            (recur (merge honeysql-form first-option)               butfirst)
+      :else                   honeysql-form)))
+
+
+;;; ## UPDATE!
+
+(defn update!
+  "Update a single row in the database. Returns `true` if a row was affected, `false` otherwise.
+   Accepts either a single map of updates to make or kwargs. ENTITY is automatically resolved,
+   and `pre-update` is called on KVS before the object is inserted into the database.
+
+     (db/update! 'Label 11 :name \"ToucanFriendly\")
+     (db/update! 'Label 11 {:name \"ToucanFriendly\"})"
+  {:style/indent 2}
+
+  (^Boolean [entity honeysql-form]
+   (let [entity (resolve-entity entity)]
+     (not= [0] (execute! (merge (h/update (entity->table-name entity))
+                                honeysql-form)))))
+
+  (^Boolean [entity id kvs]
+   {:pre [(integer? id) (map? kvs) (every? keyword? (keys kvs))]}
+   (let [entity (resolve-entity entity)
+         kvs    (-> (models/do-pre-update entity (assoc kvs :id id))
+                    (dissoc :id))]
+     (update! entity (-> (h/sset {} kvs)
+                         (where :id id)))))
+
+  (^Boolean [entity id k v & more]
+   (update! entity id (apply array-map k v more))))
+
+(defn update-where!
+  "Convenience for updating several objects matching CONDITIONS-MAP. Returns `true` if any objects were affected.
+   For updating a single object, prefer using `update!`, which calls ENTITY's `pre-update` method first.
+
+     (db/update-where! Table {:name  table-name
+                              :db_id (:id database)}
+       :active false)"
+  {:style/indent 2}
+  ^Boolean [entity conditions-map & {:as values}]
+  {:pre [(map? conditions-map) (every? keyword? (keys values))]}
+  (update! entity (where {:set values} conditions-map)))
+
+
+(defn update-non-nil-keys!
+  "Like `update!`, but filters out KVS with `nil` values."
+  {:style/indent 2}
+  ([entity id kvs]
+   (update! entity id (m/filter-vals (complement nil?) kvs)))
+  ([entity id k v & more]
+   (update-non-nil-keys! entity id (apply array-map k v more))))
+
+
+;;; ## DELETE!
+
+(defn delete!
+  "Delete an object or objects from the Metabase DB matching certain constraints. Returns `true` if something was deleted, `false` otherwise.
+
+     (db/delete! 'Label)                ; delete all Labels
+     (db/delete! Label :name \"Cam\")   ; delete labels where :name == \"Cam\"
+     (db/delete! Label {:name \"Cam\"}) ; for flexibility either a single map or kwargs are accepted
+
+   Most the time, you should use `cascade-delete!` instead, handles deletion of dependent objects via the entity's implementation of `pre-cascade-delete`."
+  {:style/indent 1}
+  ([entity]
+   (delete! entity {}))
+  ([entity conditions]
+   {:pre [(map? conditions) (every? keyword? (keys conditions))]}
+   (let [entity (resolve-entity entity)]
+     (not= [0] (execute! (-> (h/delete-from (entity->table-name entity))
+                             (where conditions))))))
+  ([entity k v & more]
+   (delete! entity (apply array-map k v more))))
+
+
+;;; ## INSERT!
+
+(defn- insert-id-key
+  "The keyword name of the ID column of a newly inserted row returned by `jdbc/insert!`."
+  ^clojure.lang.Keyword []
+  (case (db-type)
+    :postgres :id
+    :mysql    :generated_key
+    :h2       (keyword "scope_identity()")))
+
+(defn simple-insert-many!
+  "Do a simple JDBC `insert!` of multiple objects into the database.
+   Normally you should use `insert-many!` instead, which calls the entity's `pre-insert` method on the ROW-MAPS;
+   `simple-insert-many!` is offered for cases where you'd like to specifically avoid this behavior.
+   Returns a sequences of IDs of newly inserted objects.
+
+     (db/simple-insert-many! 'Label [{:name \"Toucan Friendly\"}
+                                     {:name \"Bird Approved\"}]) -> [38 39]"
+  {:style/indent 1}
+  [entity row-maps]
+  {:pre [(sequential? row-maps) (every? map? row-maps)]}
+  (when (seq row-maps)
+    (let [entity (resolve-entity entity)]
+      (map (insert-id-key) (apply jdbc/insert! (db-connection) (entity->table-name entity) (concat row-maps [:entities (quote-fn)]))))))
+
+(defn insert-many!
+  "Insert several new rows into the Database. Resolves ENTITY, and calls `pre-insert` on each of the ROW-MAPS.
+   Returns a sequence of the IDs of the newly created objects.
+
+     (db/insert-many! 'Label [{:name \"Toucan Friendly\"}
+                              {:name \"Bird Approved\"}]) -> [38 39]"
+  {:style/indent 1}
+  [entity row-maps]
+  (let [entity (resolve-entity entity)]
+    (simple-insert-many! entity (for [row-map row-maps]
+                                  (models/do-pre-insert entity row-map)))))
+
+(defn simple-insert!
+  "Do a simple JDBC `insert!` of a single object.
+   Normally you should use `insert!` instead, which calls the entity's `pre-insert` method on ROW-MAP;
+   `simple-insert!` is offered for cases where you'd like to specifically avoid this behavior.
+   Returns the ID of the inserted object.
+
+     (db/simple-insert! 'Label :name \"Toucan Friendly\") -> 1
+
+   Like `insert!`, `simple-insert!` can be called with either a single ROW-MAP or kv-style arguments."
+  {:style/indent 1}
+  ([entity row-map]
+   {:pre [(map? row-map) (every? keyword? (keys row-map))]}
+   (first (simple-insert-many! entity [row-map])))
+  ([entity k v & more]
+   (simple-insert! entity (apply array-map k v more))))
+
+(defn insert!
+  "Insert a new object into the Database. Resolves ENTITY, and calls its `pre-insert` method on ROW-MAP to prepare it before insertion;
+   after insert, it fetches and returns the newly created object.
+   For flexibility, `insert!` can handle either a single map or individual kwargs:
+
+     (db/insert! Label {:name \"Toucan Unfriendly\"})
+     (db/insert! 'Label :name \"Toucan Friendly\")"
+  {:style/indent 1}
+  ([entity row-map]
+   {:pre [(map? row-map) (every? keyword? (keys row-map))]}
+   (let [entity (resolve-entity entity)]
+     (when-let [id (simple-insert! entity (models/do-pre-insert entity row-map))]
+       (entity id))))
+  ([entity k v & more]
+   (insert! entity (apply array-map k v more))))
+
+
+;;; ## SELECT
+
+;; All of the following functions are based off of the old `sel` macro and can do things like select certain fields by wrapping ENTITY in a vector
+;; and automatically convert kv-args to a `where` clause
+
+(defn select-one
+  "Select a single object from the database.
+
+     (select-one ['Database :name] :id 1) -> {:name \"Sample Dataset\"}"
+  {:style/indent 1}
+  [entity & options]
+  (let [fields (entity->fields entity)]
+    (simple-select-one entity (where+ {:select (or fields [:*])} options))))
+
+(defn select-one-field
+  "Select a single FIELD of a single object from the database.
+
+     (select-one-field :name 'Database :id 1) -> \"Sample Dataset\""
+  {:style/indent 2}
+  [field entity & options]
+  {:pre [(keyword? field)]}
+  (field (apply select-one [entity field] options)))
+
+(defn select-one-id
+  "Select the `:id` of a single object from the database.
+
+     (select-one-id 'Database :name \"Sample Dataset\") -> 1"
+  {:style/indent 1}
+  [entity & options]
+  (let [entity (resolve-entity entity)]
+    (apply select-one-field :id entity options)))
+
+(defn select-one-count
+  "Select the count of objects matching some condition.
+
+     ;; Get all Databases whose name is non-nil
+     (select-one-count 'Database :name [:not= nil]) -> 12"
+  {:style/indent 1}
+  [entity & options]
+  (:count (apply select-one [entity [:%count.* :count]] options)))
+
+(defn select
+  "Select objects from the database.
+
+     (select 'Database :name [:not= nil] {:limit 2}) -> [...]"
+  {:style/indent 1}
+  [entity & options]
+  (let [fields (entity->fields entity)]
+    (simple-select entity (where+ {:select (or fields [:*])} options))))
+
+(defn select-field
+  "Select values of a single field for multiple objects. These are returned as a set if any matching fields were returned, otherwise `nil`.
+
+     (select-field :name 'Database) -> #{\"Sample Dataset\", \"test-data\"}"
+  {:style/indent 2}
+  [field entity & options]
+  {:pre [(keyword? field)]}
+  (when-let [results (seq (map field (apply select [entity field] options)))]
+    (set results)))
+
+(defn select-ids
+  "Select IDs for multiple objects. These are returned as a set if any matching IDs were returned, otherwise `nil`.
+
+     (select-ids 'Table :db_id 1) -> #{1 2 3 4}"
+  {:style/indent 1}
+  [entity & options]
+  (apply select-field :id entity options))
+
+(defn select-field->field
+  "Select fields K and V from objects in the database, and return them as a map from K to V.
+
+     (select-field->field :id :name 'Database) -> {1 \"Sample Dataset\", 2 \"test-data\"}"
+  {:style/indent 3}
+  [k v entity & options]
+  {:pre [(keyword? k) (keyword? v)]}
+  (into {} (for [result (apply select [entity k v] options)]
+             {(k result) (v result)})))
+
+(defn select-field->id
+  "Select FIELD and `:id` from objects in the database, and return them as a map from FIELD to `:id`.
+
+     (select-field->id :name 'Database) -> {\"Sample Dataset\" 1, \"test-data\" 2}"
+  {:style/indent 2}
+  [field entity & options]
+  (apply select-field->field field :id entity options))
+
+(defn select-id->field
+  "Select FIELD and `:id` from objects in the database, and return them as a map from `:id` to FIELD.
+
+     (select-id->field :name 'Database) -> {1 \"Sample Dataset\", 2 \"test-data\"}"
+  {:style/indent 2}
+  [field entity & options]
+  (apply select-field->field :id field entity options))
+
+
+;;; ## EXISTS?
+
+(defn exists?
+  "Easy way to see if something exists in the DB.
+    (db/exists? User :id 100)
+   NOTE: This only works for objects that have an `:id` field."
+  ^Boolean [entity & kvs]
+  (boolean (select-one entity (apply where (h/select {} :id) kvs))))
+
+
+;;; ## CASADE-DELETE
+
+(defn cascade-delete!
   "Do a cascading delete of object(s). For each matching object, the `pre-cascade-delete` multimethod is called,
    which should delete any objects related the object about to be deleted.
+   Returns a 204/nil reponse so it can be used directly in an API endpoint.
 
-   Like `del`, this returns a 204/nil reponse so it can be used directly in an API endpoint."
-  [entity & kwargs]
-  `(-cascade-delete ~entity (i/sel-fn ~@kwargs)))
+     (cascade-delete! Database :id 1)
+
+   TODO - this depends on objects having an `:id` column; consider a way to fix this for models like `Setting` that do not have one."
+  {:style/indent 1}
+  [entity & conditions]
+  (let [entity (resolve-entity entity)]
+    (doseq [object (apply select entity conditions)]
+      (models/pre-cascade-delete object)
+      (delete! entity :id (:id object))))
+  {:status 204, :body nil})
+
+
+;;; Various convenience fns (experiMENTAL)
+
+(defn join
+  "Convenience for generating a HoneySQL `JOIN` clause.
+
+     (db/select-ids Table
+       (db/join [Table :raw_table_id] [RawTable :id])
+       :active true)"
+  [[source-entity fk] [dest-entity pk]]
+  {:left-join [(entity->table-name dest-entity) [:= (qualify source-entity fk)
+                                                    (qualify dest-entity pk)]]})

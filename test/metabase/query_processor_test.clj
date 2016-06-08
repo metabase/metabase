@@ -4,7 +4,7 @@
   (:require [clojure.math.numeric-tower :as math]
             [clojure.set :as set]
             [expectations :refer :all]
-            (metabase [db :refer :all]
+            (metabase [db :as db]
                       [driver :as driver])
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])
@@ -13,13 +13,10 @@
                                       [interface :as qpi])
             [metabase.test.data :refer :all]
             (metabase.test.data [dataset-definitions :as defs]
-                                [datasets :as datasets :refer [*data-loader* *engine*]]
+                                [datasets :as datasets :refer [*driver* *engine*]]
                                 [interface :refer [create-database-definition], :as i])
             [metabase.test.util :as tu]
             [metabase.util :as u]))
-
-
-;;; ------------------------------------------------------------ Dataset-Independent QP Tests ------------------------------------------------------------
 
 ;;; ------------------------------------------------------------ Helper Fns + Macros ------------------------------------------------------------
 
@@ -28,9 +25,9 @@
 (def ^:private ^:const non-timeseries-engines (set/difference datasets/all-valid-engines timeseries-engines))
 
 (defn- engines-that-support [feature]
-  (set (filter (fn [engine]
-                 (contains? (driver/features (driver/engine->driver engine)) feature))
-               non-timeseries-engines)))
+  (set (for [engine non-timeseries-engines
+             :when  (contains? (driver/features (driver/engine->driver engine)) feature)]
+         engine)))
 
 (defn- engines-that-dont-support [feature]
   (set/difference non-timeseries-engines (engines-that-support feature)))
@@ -88,7 +85,7 @@
      :id   {:special_type :id
             :base_type    (id-field-type)
             :name         (format-name "id")
-            :display_name "Id"}
+            :display_name "ID"}
      :name {:special_type :name
             :base_type    (expected-base-type->actual :TextField)
             :name         (format-name "name")
@@ -106,7 +103,7 @@
      :id         {:special_type :id
                   :base_type    (id-field-type)
                   :name         (format-name "id")
-                  :display_name "Id"}
+                  :display_name "ID"}
      :name       {:special_type :name
                   :base_type    (expected-base-type->actual :TextField)
                   :name         (format-name "name")
@@ -134,7 +131,7 @@
      :id          {:special_type :id
                    :base_type    (id-field-type)
                    :name         (format-name "id")
-                   :display_name "Id"}
+                   :display_name "ID"}
      :category_id {:extra_info   (if (fks-supported?)
                                    {:target_table_id (id :categories)}
                                    {})
@@ -145,7 +142,7 @@
                                    :category)
                    :base_type    (expected-base-type->actual :IntegerField)
                    :name         (format-name "category_id")
-                   :display_name "Category Id"}
+                   :display_name "Category ID"}
      :price       {:special_type :category
                    :base_type    (expected-base-type->actual :IntegerField)
                    :name         (format-name "price")
@@ -180,7 +177,7 @@
      :id       {:special_type :id
                 :base_type    (id-field-type)
                 :name         (format-name "id")
-                :display_name "Id"}
+                :display_name "ID"}
      :venue_id {:extra_info   (if (fks-supported?) {:target_table_id (id :venues)}
                                   {})
                 :target       (if (fks-supported?) (-> (venues-col :id)
@@ -190,7 +187,7 @@
                                 :fk)
                 :base_type    (expected-base-type->actual :IntegerField)
                 :name         (format-name "venue_id")
-                :display_name "Venue Id"}
+                :display_name "Venue ID"}
      :user_id  {:extra_info   (if (fks-supported?) {:target_table_id (id :users)}
                                   {})
                 :target       (if (fks-supported?) (-> (users-col :id)
@@ -200,7 +197,7 @@
                                   :category)
                 :base_type    (expected-base-type->actual :IntegerField)
                 :name         (format-name "user_id")
-                :display_name "User Id"})))
+                :display_name "User ID"})))
 
 
 ;;; #### aggregate columns
@@ -234,6 +231,11 @@
     :name         (name ag-col-kw)
     :display_name (name ag-col-kw)}))
 
+(defn boolean-native-form
+  "Convert :native_form attribute to a boolean to make test results comparisons easier"
+  [m]
+  (update-in m [:data :native_form] boolean))
+
 (defn format-rows-by
   "Format the values in result ROWS with the fns at the corresponding indecies in FORMAT-FNS.
    ROWS can be a sequence or any of the common map formats we expect in QP tests.
@@ -260,6 +262,7 @@
 
 (defn rows
   "Return the result rows from query results, or throw an Exception if they're missing."
+  {:style/indent 0}
   [results]
   (vec (or (-> results :data :rows)
            (println (u/pprint-to-str 'red results))
@@ -296,9 +299,11 @@
 (qp-expect-with-all-engines
     {:rows    [[100]]
      :columns ["count"]
-     :cols    [(aggregate-col :count)]}
+     :cols    [(aggregate-col :count)]
+     :native_form true}
   (->> (run-query venues
          (ql/aggregation (ql/count)))
+       boolean-native-form
        (format-rows-by [int])))
 
 
@@ -306,9 +311,11 @@
 (qp-expect-with-all-engines
     {:rows    [[203]]
      :columns ["sum"]
-     :cols    [(aggregate-col :sum (venues-col :price))]}
+     :cols    [(aggregate-col :sum (venues-col :price))]
+     :native_form true}
   (->> (run-query venues
          (ql/aggregation (ql/sum $price)))
+       boolean-native-form
        (format-rows-by [int])))
 
 
@@ -316,9 +323,11 @@
 (qp-expect-with-all-engines
     {:rows    [[35.5059]]
      :columns ["avg"]
-     :cols    [(aggregate-col :avg (venues-col :latitude))]}
+     :cols    [(aggregate-col :avg (venues-col :latitude))]
+     :native_form true}
   (->> (run-query venues
          (ql/aggregation (ql/avg $latitude)))
+       boolean-native-form
        (format-rows-by [(partial u/round-to-decimals 4)])))
 
 
@@ -326,9 +335,12 @@
 (qp-expect-with-all-engines
     {:rows    [[15]]
      :columns ["count"]
-     :cols    [(aggregate-col :count)]}
-  (format-rows-by [int] (run-query checkins
-                          (ql/aggregation (ql/distinct $user_id)))))
+     :cols    [(aggregate-col :count)]
+     :native_form true}
+  (->> (run-query checkins
+                  (ql/aggregation (ql/distinct $user_id)))
+       boolean-native-form
+       (format-rows-by [int])))
 
 
 ;;; ------------------------------------------------------------ "ROWS" AGGREGATION ------------------------------------------------------------
@@ -345,10 +357,13 @@
                [ 9 "Krua Siri"                    71 34.1018 -118.301 1]
                [10 "Fred 62"                      20 34.1046 -118.292 2]]
      :columns (venues-columns)
-     :cols    (venues-cols)}
-  (formatted-venues-rows (run-query venues
-                           (ql/limit 10)
-                           (ql/order-by (ql/asc $id)))))
+     :cols    (venues-cols)
+     :native_form true}
+  (->> (run-query venues
+                  (ql/limit 10)
+                  (ql/order-by (ql/asc $id)))
+       boolean-native-form
+       formatted-venues-rows))
 
 
 ;;; ------------------------------------------------------------ "PAGE" CLAUSE ------------------------------------------------------------
@@ -488,10 +503,13 @@
 (qp-expect-with-all-engines
     {:rows    [[29]]
      :columns ["count"]
-     :cols    [(aggregate-col :count)]}
-  (format-rows-by [int] (run-query checkins
-                          (ql/aggregation (ql/count))
-                          (ql/filter (ql/between $date "2015-04-01" "2015-05-01")))))
+     :cols    [(aggregate-col :count)]
+     :native_form true}
+  (->> (run-query checkins
+                  (ql/aggregation (ql/count))
+                  (ql/filter (ql/between $date "2015-04-01" "2015-05-01")))
+       boolean-native-form
+       (format-rows-by [int])))
 
 ;;; FILTER -- "OR", "<=", "="
 (expect-with-non-timeseries-dbs
@@ -544,11 +562,14 @@
                ["Fred 62" 10]],
      :columns (->columns "name" "id")
      :cols    [(venues-col :name)
-               (venues-col :id)]}
-  (format-rows-by [str int] (run-query venues
-                              (ql/fields $name $id)
-                              (ql/limit 10)
-                              (ql/order-by (ql/asc $id)))))
+               (venues-col :id)]
+     :native_form true}
+  (->> (run-query venues
+                  (ql/fields $name $id)
+                  (ql/limit 10)
+                  (ql/order-by (ql/asc $id)))
+       boolean-native-form
+       (format-rows-by [str int])))
 
 
 ;;; ------------------------------------------------------------ "BREAKOUT" ------------------------------------------------------------
@@ -558,21 +579,27 @@
      :columns [(format-name "user_id")
                "count"]
      :cols    [(checkins-col :user_id)
-               (aggregate-col :count)]}
-  (format-rows-by [int int] (run-query checkins
-                              (ql/aggregation (ql/count))
-                              (ql/breakout $user_id)
-                              (ql/order-by (ql/asc $user_id)))))
+               (aggregate-col :count)]
+     :native_form true}
+  (->> (run-query checkins
+                  (ql/aggregation (ql/count))
+                  (ql/breakout $user_id)
+                  (ql/order-by (ql/asc $user_id)))
+       boolean-native-form
+       (format-rows-by [int int])))
 
 ;;; BREAKOUT w/o AGGREGATION
 ;; This should act as a "distinct values" query and return ordered results
 (qp-expect-with-all-engines
     {:cols    [(checkins-col :user_id)]
      :columns [(format-name "user_id")]
-     :rows    [[1] [2] [3] [4] [5] [6] [7] [8] [9] [10]]}
-  (format-rows-by [int] (run-query checkins
-                          (ql/breakout $user_id)
-                          (ql/limit 10))))
+     :rows    [[1] [2] [3] [4] [5] [6] [7] [8] [9] [10]]
+     :native_form true}
+  (->> (run-query checkins
+                  (ql/breakout $user_id)
+                  (ql/limit 10))
+       boolean-native-form
+       (format-rows-by [int])))
 
 
 ;;; "BREAKOUT" - MULTIPLE COLUMNS W/ IMPLICT "ORDER_BY"
@@ -584,11 +611,14 @@
                "count"]
      :cols    [(checkins-col :user_id)
                (checkins-col :venue_id)
-               (aggregate-col :count)]}
-  (format-rows-by [int int int] (run-query checkins
-                                  (ql/aggregation (ql/count))
-                                  (ql/breakout $user_id $venue_id)
-                                  (ql/limit 10))))
+               (aggregate-col :count)]
+     :native_form true}
+  (->> (run-query checkins
+                  (ql/aggregation (ql/count))
+                  (ql/breakout $user_id $venue_id)
+                  (ql/limit 10))
+       boolean-native-form
+       (format-rows-by [int int int])))
 
 ;;; "BREAKOUT" - MULTIPLE COLUMNS W/ EXPLICIT "ORDER_BY"
 ;; `breakout` should not implicitly order by any fields specified in `order_by`
@@ -599,12 +629,15 @@
                "count"]
      :cols    [(checkins-col :user_id)
                (checkins-col :venue_id)
-               (aggregate-col :count)]}
-  (format-rows-by [int int int] (run-query checkins
-                                  (ql/aggregation (ql/count))
-                                  (ql/breakout $user_id $venue_id)
-                                  (ql/order-by (ql/desc $user_id))
-                                  (ql/limit 10))))
+               (aggregate-col :count)]
+     :native_form true}
+  (->> (run-query checkins
+                  (ql/aggregation (ql/count))
+                  (ql/breakout $user_id $venue_id)
+                  (ql/order-by (ql/desc $user_id))
+                  (ql/limit 10))
+       boolean-native-form
+       (format-rows-by [int int int])))
 
 
 
@@ -638,19 +671,25 @@
 (qp-expect-with-all-engines
     {:rows    [[120]]
      :columns ["sum"]
-     :cols    [(aggregate-col :sum (users-col :id))]}
-  (format-rows-by [int] (run-query users
-                          (ql/aggregation (ql/cum-sum $id)))))
+     :cols    [(aggregate-col :sum (users-col :id))]
+     :native_form true}
+  (->> (run-query users
+                  (ql/aggregation (ql/cum-sum $id)))
+       boolean-native-form
+       (format-rows-by [int])))
 
 
 ;;; Simple cumulative sum where breakout field is same as cum_sum field
 (qp-expect-with-all-engines
     {:rows    [[1] [3] [6] [10] [15] [21] [28] [36] [45] [55] [66] [78] [91] [105] [120]]
      :columns (->columns "id")
-     :cols    [(users-col :id)]}
-    (format-rows-by [int] (run-query users
-                            (ql/aggregation (ql/cum-sum $id))
-                            (ql/breakout $id))))
+     :cols    [(users-col :id)]
+     :native_form true}
+    (->> (run-query users
+                    (ql/aggregation (ql/cum-sum $id))
+                    (ql/breakout $id))
+         boolean-native-form
+         (format-rows-by [int])))
 
 
 ;;; Cumulative sum w/ a different breakout field
@@ -673,10 +712,13 @@
      :columns [(format-name "name")
                "sum"]
      :cols    [(users-col :name)
-               (aggregate-col :sum (users-col :id))]}
-  (format-rows-by [str int] (run-query users
-                              (ql/aggregation (ql/cum-sum $id))
-                              (ql/breakout $name))))
+               (aggregate-col :sum (users-col :id))]
+     :native_form true}
+  (->> (run-query users
+                  (ql/aggregation (ql/cum-sum $id))
+                  (ql/breakout $name))
+       boolean-native-form
+       (format-rows-by [str int])))
 
 
 ;;; Cumulative sum w/ a different breakout field that requires grouping
@@ -688,10 +730,13 @@
      :rows    [[1 1211]
                [2 4066]
                [3 4681]
-               [4 5050]]}
-  (format-rows-by [int int] (run-query venues
-                              (ql/aggregation (ql/cum-sum $id))
-                              (ql/breakout $price))))
+               [4 5050]]
+     :native_form true}
+  (->> (run-query venues
+                  (ql/aggregation (ql/cum-sum $id))
+                  (ql/breakout $price))
+       boolean-native-form
+       (format-rows-by [int int])))
 
 
 ;;; ------------------------------------------------------------ CUMULATIVE COUNT ------------------------------------------------------------
@@ -705,9 +750,12 @@
 (qp-expect-with-all-engines
     {:rows    [[15]]
      :columns ["count"]
-     :cols    [(cumulative-count-col users-col :id)]}
-  (format-rows-by [int] (run-query users
-                          (ql/aggregation (ql/cum-count)))))
+     :cols    [(cumulative-count-col users-col :id)]
+     :native_form true}
+  (->> (run-query users
+                  (ql/aggregation (ql/cum-count)))
+       boolean-native-form
+       (format-rows-by [int])))
 
 ;;; Cumulative count w/ a different breakout field
 (qp-expect-with-all-engines
@@ -729,10 +777,13 @@
      :columns [(format-name "name")
                "count"]
      :cols    [(users-col :name)
-               (cumulative-count-col users-col :id)]}
-  (format-rows-by [str int] (run-query users
-                              (ql/aggregation (ql/cum-count))
-                              (ql/breakout $name))))
+               (cumulative-count-col users-col :id)]
+     :native_form true}
+  (->> (run-query users
+                  (ql/aggregation (ql/cum-count))
+                  (ql/breakout $name))
+       boolean-native-form
+       (format-rows-by [str int])))
 
 
 ;;; Cumulative count w/ a different breakout field that requires grouping
@@ -744,10 +795,13 @@
      :rows    [[1 22]
                [2 81]
                [3 94]
-               [4 100]]}
-  (format-rows-by [int int] (run-query venues
-                              (ql/aggregation (ql/cum-count))
-                              (ql/breakout $price))))
+               [4 100]]
+     :native_form true}
+  (->> (run-query venues
+                  (ql/aggregation (ql/cum-count))
+                  (ql/breakout $price))
+       boolean-native-form
+       (format-rows-by [int int])))
 
 
 ;;; ------------------------------------------------------------ STDDEV AGGREGATION ------------------------------------------------------------
@@ -755,9 +809,11 @@
 (qp-expect-with-engines (engines-that-support :standard-deviation-aggregations)
   {:columns ["stddev"]
    :cols    [(aggregate-col :stddev (venues-col :latitude))]
-   :rows    [[3.4]]}
+   :rows    [[3.4]]
+   :native_form true}
   (-> (run-query venues
         (ql/aggregation (ql/stddev $latitude)))
+      boolean-native-form
       (update-in [:data :rows] (fn [[[v]]]
                                  [[(u/round-to-decimals 1 v)]]))))
 
@@ -781,11 +837,14 @@
              [1 22]
              [2 59]]
    :cols    [(venues-col :price)
-             (aggregate-col :count)]}
-  (format-rows-by [int int] (run-query venues
-                              (ql/aggregation (ql/count))
-                              (ql/breakout $price)
-                              (ql/order-by (ql/asc (ql/aggregate-field 0))))))
+             (aggregate-col :count)]
+   :native_form true}
+  (->> (run-query venues
+                  (ql/aggregation (ql/count))
+                  (ql/breakout $price)
+                  (ql/order-by (ql/asc (ql/aggregate-field 0))))
+       boolean-native-form
+       (format-rows-by [int int])))
 
 
 ;;; order_by aggregate ["sum" field-id]
@@ -797,11 +856,14 @@
              [3  615]
              [4  369]]
    :cols    [(venues-col :price)
-             (aggregate-col :sum (venues-col :id))]}
-  (format-rows-by [int int] (run-query venues
-                              (ql/aggregation (ql/sum $id))
-                              (ql/breakout $price)
-                              (ql/order-by (ql/desc (ql/aggregate-field 0))))))
+             (aggregate-col :sum (venues-col :id))]
+   :native_form true}
+  (->> (run-query venues
+                  (ql/aggregation (ql/sum $id))
+                  (ql/breakout $price)
+                  (ql/order-by (ql/desc (ql/aggregate-field 0))))
+       boolean-native-form
+       (format-rows-by [int int])))
 
 
 ;;; order_by aggregate ["distinct" field-id]
@@ -813,11 +875,14 @@
              [1 22]
              [2 59]]
    :cols    [(venues-col :price)
-             (aggregate-col :count)]}
-  (format-rows-by [int int] (run-query venues
-                              (ql/aggregation (ql/distinct $id))
-                              (ql/breakout $price)
-                              (ql/order-by (ql/asc (ql/aggregate-field 0))))))
+             (aggregate-col :count)]
+   :native_form true}
+  (->> (run-query venues
+                  (ql/aggregation (ql/distinct $id))
+                  (ql/breakout $price)
+                  (ql/order-by (ql/asc (ql/aggregate-field 0))))
+       boolean-native-form
+       (format-rows-by [int int])))
 
 
 ;;; order_by aggregate ["avg" field-id]
@@ -829,29 +894,33 @@
              [1 32]
              [4 53]]
    :cols    [(venues-col :price)
-             (aggregate-col :avg (venues-col :category_id))]}
+             (aggregate-col :avg (venues-col :category_id))]
+   :native_form true}
   (->> (run-query venues
          (ql/aggregation (ql/avg $category_id))
          (ql/breakout $price)
          (ql/order-by (ql/asc (ql/aggregate-field 0))))
+       boolean-native-form
        :data (format-rows-by [int int])))
 
-;;; order_by aggregate ["stddev" field-id]
-;; MySQL has a nasty tendency to return different results on different systems so just round everything to the nearest int.
-;; It also seems to give slightly different results than less-sucky DBs as evidenced below
+;;; ### order_by aggregate ["stddev" field-id]
+;; SQRT calculations are always NOT EXACT (normal behavior) so round everything to the nearest int.
+;; Databases might use different versions of SQRT implementations
 (datasets/expect-with-engines (engines-that-support :standard-deviation-aggregations)
   {:columns [(format-name "price")
              "stddev"]
-   :rows    [[3 (if (= *engine* :mysql) 25 26)]
+   :rows    [[3 (if (contains? #{:mysql :crate} *engine*) 25 26)]
              [1 24]
              [2 21]
-             [4 (if (= *engine* :mysql) 14 15)]]
+             [4 (if (contains? #{:mysql :crate} *engine*) 14 15)]]
    :cols    [(venues-col :price)
-             (aggregate-col :stddev (venues-col :category_id))]}
+             (aggregate-col :stddev (venues-col :category_id))]
+   :native_form true}
   (->> (run-query venues
          (ql/aggregation (ql/stddev $category_id))
          (ql/breakout $price)
          (ql/order-by (ql/desc (ql/aggregate-field 0))))
+       boolean-native-form
        :data (format-rows-by [int (comp int math/round)])))
 
 
@@ -872,9 +941,9 @@
                                    (ql/limit 1))
                                  :data :cols set))]
     [(get-col-names)
-     (do (upd Field (id :venues :price) :visibility_type :details-only)
+     (do (db/update! Field (id :venues :price), :visibility_type :details-only)
          (get-col-names))
-     (do (upd Field (id :venues :price) :visibility_type :normal)
+     (do (db/update! Field (id :venues :price), :visibility_type :normal)
          (get-col-names))]))
 
 
@@ -899,10 +968,12 @@
                [12 "Kfir Caj"]
                [13 "Dwight Gresham"]
                [14 "Broen Olujimi"]
-               [15 "Rüstem Hebel"]]}
+               [15 "Rüstem Hebel"]]
+     :native_form true}
   ;; Filter out the timestamps from the results since they're hard to test :/
   (-> (run-query users
         (ql/order-by (ql/asc $id)))
+      boolean-native-form
       (update-in [:data :rows] (partial mapv (fn [[id name last-login]]
                                                [(int id) name])))))
 
@@ -913,7 +984,7 @@
 
 ;; There were 9 "sad toucan incidents" on 2015-06-02
 (expect-with-non-timeseries-dbs
-  (if (i/has-questionable-timezone-support? *data-loader*)
+  (if (i/has-questionable-timezone-support? *driver*)
     10
     9)
   (count (rows (dataset sad-toucan-incidents
@@ -924,7 +995,7 @@
 
 (expect-with-non-timeseries-dbs
   (cond
-    (= *engine* :sqlite)
+    (contains? #{:sqlite :crate} *engine*)
     [["2015-06-01"  6]
      ["2015-06-02" 10]
      ["2015-06-03"  4]
@@ -937,7 +1008,7 @@
      ["2015-06-10"  9]]
 
     ;; SQL Server, Mongo, and Redshift don't have a concept of timezone so results are all grouped by UTC
-    (i/has-questionable-timezone-support? *data-loader*)
+    (i/has-questionable-timezone-support? *driver*)
     [["2015-06-01T00:00:00.000Z"  6]
      ["2015-06-02T00:00:00.000Z" 10]
      ["2015-06-03T00:00:00.000Z"  4]
@@ -1151,11 +1222,13 @@
              ["foursquare" 100]
              ["twitter"     98]
              ["yelp"        90]]
-   :columns ["source.service" "count"]}
+   :columns ["source.service" "count"]
+   :native_form true}
   (->> (dataset geographical-tips
          (run-query tips
            (ql/aggregation (ql/count))
            (ql/breakout $tips.source.service)))
+       boolean-native-form
        :data (#(dissoc % :cols)) (format-rows-by [str int])))
 
 ;;; Nested Field in FIELDS
@@ -1287,7 +1360,7 @@
 
 (expect-with-non-timeseries-dbs
   (cond
-    (= *engine* :sqlite)
+    (contains? #{:sqlite :crate} *engine*)
     [["2015-06-01 10:31:00" 1]
      ["2015-06-01 16:06:00" 1]
      ["2015-06-01 17:23:00" 1]
@@ -1326,7 +1399,7 @@
 
 (expect-with-non-timeseries-dbs
   (cond
-    (= *engine* :sqlite)
+    (contains? #{:sqlite :crate} *engine*)
     [["2015-06-01 10:31:00" 1]
      ["2015-06-01 16:06:00" 1]
      ["2015-06-01 17:23:00" 1]
@@ -1338,7 +1411,7 @@
      ["2015-06-02 08:20:00" 1]
      ["2015-06-02 11:11:00" 1]]
 
-    (i/has-questionable-timezone-support? *data-loader*)
+    (i/has-questionable-timezone-support? *driver*)
     [["2015-06-01T10:31:00.000Z" 1]
      ["2015-06-01T16:06:00.000Z" 1]
      ["2015-06-01T17:23:00.000Z" 1]
@@ -1378,7 +1451,7 @@
 
 (expect-with-non-timeseries-dbs
   (cond
-    (= *engine* :sqlite)
+    (contains? #{:sqlite :crate} *engine*)
     [["2015-06-01 10:00:00" 1]
      ["2015-06-01 16:00:00" 1]
      ["2015-06-01 17:00:00" 1]
@@ -1390,7 +1463,7 @@
      ["2015-06-02 11:00:00" 1]
      ["2015-06-02 13:00:00" 1]]
 
-    (i/has-questionable-timezone-support? *data-loader*)
+    (i/has-questionable-timezone-support? *driver*)
     [["2015-06-01T10:00:00.000Z" 1]
      ["2015-06-01T16:00:00.000Z" 1]
      ["2015-06-01T17:00:00.000Z" 1]
@@ -1416,14 +1489,14 @@
   (sad-toucan-incidents-with-bucketing :hour))
 
 (expect-with-non-timeseries-dbs
-  (if (i/has-questionable-timezone-support? *data-loader*)
+  (if (i/has-questionable-timezone-support? *driver*)
     [[0 13] [1 8] [2 4] [3  7] [4  5] [5 13] [6 10] [7 8] [8 9] [9 7]]
     [[0  8] [1 9] [2 7] [3 10] [4 10] [5  9] [6  6] [7 5] [8 7] [9 7]])
   (sad-toucan-incidents-with-bucketing :hour-of-day))
 
 (expect-with-non-timeseries-dbs
   (cond
-    (= *engine* :sqlite)
+    (contains? #{:sqlite :crate} *engine*)
     [["2015-06-01"  6]
      ["2015-06-02" 10]
      ["2015-06-03"  4]
@@ -1435,7 +1508,7 @@
      ["2015-06-09"  7]
      ["2015-06-10"  9]]
 
-    (i/has-questionable-timezone-support? *data-loader*)
+    (i/has-questionable-timezone-support? *driver*)
     [["2015-06-01T00:00:00.000Z"  6]
      ["2015-06-02T00:00:00.000Z" 10]
      ["2015-06-03T00:00:00.000Z"  4]
@@ -1461,33 +1534,33 @@
   (sad-toucan-incidents-with-bucketing :day))
 
 (expect-with-non-timeseries-dbs
-  (if (i/has-questionable-timezone-support? *data-loader*)
+  (if (i/has-questionable-timezone-support? *driver*)
     [[1 28] [2 38] [3 29] [4 27] [5 24] [6 30] [7 24]]
     [[1 29] [2 36] [3 33] [4 29] [5 13] [6 38] [7 22]])
   (sad-toucan-incidents-with-bucketing :day-of-week))
 
 (expect-with-non-timeseries-dbs
-  (if (i/has-questionable-timezone-support? *data-loader*)
+  (if (i/has-questionable-timezone-support? *driver*)
     [[1  6] [2 10] [3  4] [4  9] [5  9] [6  8] [7  8] [8  9] [9  7] [10  9]]
     [[1  8] [2  9] [3  9] [4  4] [5 11] [6  8] [7  6] [8 10] [9  6] [10 10]])
   (sad-toucan-incidents-with-bucketing :day-of-month))
 
 (expect-with-non-timeseries-dbs
-  (if (i/has-questionable-timezone-support? *data-loader*)
+  (if (i/has-questionable-timezone-support? *driver*)
     [[152  6] [153 10] [154  4] [155  9] [156  9] [157  8] [158  8] [159  9] [160  7] [161  9]]
     [[152  8] [153  9] [154  9] [155  4] [156 11] [157  8] [158  6] [159 10] [160  6] [161 10]])
   (sad-toucan-incidents-with-bucketing :day-of-year))
 
 (expect-with-non-timeseries-dbs
   (cond
-    (= *engine* :sqlite)
+    (contains? #{:sqlite :crate} *engine*)
     [["2015-05-31" 46]
      ["2015-06-07" 47]
      ["2015-06-14" 40]
      ["2015-06-21" 60]
      ["2015-06-28" 7]]
 
-    (i/has-questionable-timezone-support? *data-loader*)
+    (i/has-questionable-timezone-support? *driver*)
     [["2015-05-31T00:00:00.000Z" 46]
      ["2015-06-07T00:00:00.000Z" 47]
      ["2015-06-14T00:00:00.000Z" 40]
@@ -1505,7 +1578,7 @@
 (expect-with-non-timeseries-dbs
   ;; Not really sure why different drivers have different opinions on these </3
   (cond
-    (contains? #{:sqlserver :sqlite} *engine*)
+    (contains? #{:sqlserver :sqlite :crate} *engine*)
     [[23 54] [24 46] [25 39] [26 61]]
 
     (contains? #{:mongo :redshift :bigquery :postgres :h2} *engine*)
@@ -1516,7 +1589,7 @@
   (sad-toucan-incidents-with-bucketing :week-of-year))
 
 (expect-with-non-timeseries-dbs
-  [[(if (= *engine* :sqlite) "2015-06-01", "2015-06-01T00:00:00.000Z") 200]]
+  [[(if (contains? #{:sqlite :crate} *engine*) "2015-06-01", "2015-06-01T00:00:00.000Z") 200]]
   (sad-toucan-incidents-with-bucketing :month))
 
 (expect-with-non-timeseries-dbs
@@ -1524,7 +1597,7 @@
   (sad-toucan-incidents-with-bucketing :month-of-year))
 
 (expect-with-non-timeseries-dbs
-  [[(if (= *engine* :sqlite) "2015-04-01", "2015-04-01T00:00:00.000Z") 200]]
+  [[(if (contains? #{:sqlite :crate} *engine*) "2015-04-01", "2015-04-01T00:00:00.000Z") 200]]
   (sad-toucan-incidents-with-bucketing :quarter))
 
 (expect-with-non-timeseries-dbs
@@ -1544,7 +1617,7 @@
      (vec (for [i (range -15 15)]
             ;; Create timestamps using relative dates (e.g. `DATEADD(second, -195, GETUTCDATE())` instead of generating `java.sql.Timestamps` here so
             ;; they'll be in the DB's native timezone. Some DBs refuse to use the same timezone we're running the tests from *cough* SQL Server *cough*
-            [(u/prog1 (driver/date-interval *data-loader* :second (* i interval-seconds))
+            [(u/prog1 (driver/date-interval *driver* :second (* i interval-seconds))
                (assert <>))]))]))
 
 (def ^:private checkins:4-per-minute (partial database-def-with-timestamps 15))
@@ -1842,3 +1915,27 @@
             (ql/expressions {:x (ql/* $price 2.0)})
             (ql/aggregation (ql/count))
             (ql/breakout (ql/expression :x))))))
+
+
+;;; CAN WE JOIN AGAINST THE SAME TABLE TWICE (MULTIPLE FKS TO A SINGLE TABLE!?)
+;; Query should look something like:
+;; SELECT USERS__via__SENDER_ID.NAME AS NAME, count(*) AS count
+;; FROM PUBLIC.MESSAGES
+;; LEFT JOIN PUBLIC.USERS USERS__via__RECIEVER_ID
+;;   ON PUBLIC.MESSAGES.RECIEVER_ID = USERS__via__RECIEVER_ID.ID
+;; LEFT JOIN PUBLIC.USERS USERS__via__SENDER_ID
+;;   ON PUBLIC.MESSAGES.SENDER_ID = USERS__via__SENDER_ID.ID
+;; WHERE USERS__via__RECIEVER_ID.NAME = 'Rasta Toucan'
+;; GROUP BY USERS__via__SENDER_ID.NAME
+;; ORDER BY USERS__via__SENDER_ID.NAME ASC
+(datasets/expect-with-engines (engines-that-support :foreign-keys)
+  [["Bob the Sea Gull" 2]
+   ["Brenda Blackbird" 2]
+   ["Lucky Pigeon"     2]
+   ["Peter Pelican"    5]
+   ["Ronald Raven"     1]]
+  (dataset avian-singles
+    (rows (run-query messages
+            (ql/aggregation (ql/count))
+            (ql/breakout $sender_id->users.name)
+            (ql/filter (ql/= $reciever_id->users.name "Rasta Toucan"))))))

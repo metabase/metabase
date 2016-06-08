@@ -1,6 +1,5 @@
 (ns metabase.models.label
-  (:require [korma.core :as k]
-            [metabase.db :as db]
+  (:require [metabase.db :as db]
             [metabase.models.interface :as i]
             [metabase.util :as u]))
 
@@ -22,7 +21,7 @@
                              (assert-unique-slug <>))))))         ; otherwise check to make sure the new slug is unique
 
 (defn- pre-cascade-delete [{:keys [id]}]
-  (db/cascade-delete 'CardLabel :label_id id))
+  (db/cascade-delete! 'CardLabel :label_id id))
 
 (u/strict-extend (class Label)
   i/IEntity

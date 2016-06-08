@@ -1,7 +1,7 @@
 (ns metabase.api.setup-test
   "Tests for /api/setup endpoints."
   (:require [expectations :refer :all]
-            [metabase.db :refer :all]
+            [metabase.db :as db]
             [metabase.http-client :as http]
             (metabase.models [session :refer [Session]]
                              [setting :as setting]
@@ -15,9 +15,7 @@
 ;; Check that we can create a new superuser via setup-token
 (let [user-name (random-name)]
   (expect-eval-actual-first
-    [(match-$ (->> (sel :one User :email (str user-name "@metabase.com"))
-                  (:id)
-                  (sel :one Session :user_id))
+    [(match-$ (Session :user_id (db/select-one-id User, :email (str user-name "@metabase.com")))
       {:id $id})
      (str user-name "@metabase.com")]
     (let [resp (http/client :post 200 "setup" {:token (setup/token-create)

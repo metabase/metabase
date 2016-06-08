@@ -1,6 +1,5 @@
 (ns metabase.events.revision-test
   (:require [expectations :refer :all]
-            [korma.core :as k]
             [metabase.db :as db]
             [metabase.events.revision :refer :all]
             (metabase.models [card :refer [Card]]
@@ -20,7 +19,7 @@
 
 (defn- create-test-card []
   (let [rand-name (random-name)]
-    (db/ins Card
+    (db/insert! Card
       :name                   rand-name
       :description            rand-name
       :public_perms           2
@@ -49,7 +48,7 @@
 
 (defn- create-test-dashboard []
   (let [rand-name (random-name)]
-    (db/ins Dashboard
+    (db/insert! Dashboard
       :name                   rand-name
       :description            rand-name
       :public_perms           2
@@ -72,7 +71,7 @@
   (do
     (process-revision-event {:topic :card-create
                              :item  card})
-    (-> (db/sel :one Revision :model "Card" :model_id card-id)
+    (-> (Revision :model "Card", :model_id card-id)
         (select-keys [:model :model_id :user_id :object :is_reversion :is_creation]))))
 
 ;; :card-update
@@ -86,7 +85,7 @@
   (do
     (process-revision-event {:topic :card-update
                              :item  card})
-    (-> (db/sel :one Revision :model "Card" :model_id card-id)
+    (-> (Revision :model "Card", :model_id card-id)
         (select-keys [:model :model_id :user_id :object :is_reversion :is_creation]))))
 
 ;; :dashboard-create
@@ -100,7 +99,7 @@
   (do
     (process-revision-event {:topic :dashboard-create
                              :item  dashboard})
-    (-> (db/sel :one Revision :model "Dashboard" :model_id dashboard-id)
+    (-> (Revision :model "Dashboard", :model_id dashboard-id)
         (select-keys [:model :model_id :user_id :object :is_reversion :is_creation]))))
 
 ;; :dashboard-update
@@ -114,13 +113,13 @@
   (do
     (process-revision-event {:topic :dashboard-update
                              :item  dashboard})
-    (-> (db/sel :one Revision :model "Dashboard" :model_id dashboard-id)
+    (-> (Revision :model "Dashboard", :model_id dashboard-id)
         (select-keys [:model :model_id :user_id :object :is_reversion :is_creation]))))
 
 ;; :dashboard-add-cards
 (expect-let [{dashboard-id :id :as dashboard} (create-test-dashboard)
              {card-id :id}                    (create-test-card)
-             dashcard                         (db/ins DashboardCard :card_id card-id :dashboard_id dashboard-id)]
+             dashcard                         (db/insert! DashboardCard :card_id card-id :dashboard_id dashboard-id)]
   {:model        "Dashboard"
    :model_id     dashboard-id
    :user_id      (user->id :crowberto)
@@ -132,14 +131,14 @@
                              :item  {:id       dashboard-id
                                      :actor_id (user->id :crowberto)
                                      :dashcards [dashcard]}})
-    (-> (db/sel :one Revision :model "Dashboard" :model_id dashboard-id)
+    (-> (Revision :model "Dashboard", :model_id dashboard-id)
         (select-keys [:model :model_id :user_id :object :is_reversion :is_creation]))))
 
 ;; :dashboard-remove-cards
 (expect-let [{dashboard-id :id :as dashboard} (create-test-dashboard)
              {card-id :id}                    (create-test-card)
-             dashcard                         (db/ins DashboardCard :card_id card-id :dashboard_id dashboard-id)
-             _                                (db/del DashboardCard :id (:id dashcard))]
+             dashcard                         (db/insert! DashboardCard :card_id card-id :dashboard_id dashboard-id)
+             _                                (db/delete! DashboardCard, :id (:id dashcard))]
   {:model        "Dashboard"
    :model_id     dashboard-id
    :user_id      (user->id :crowberto)
@@ -151,14 +150,14 @@
                              :item  {:id       dashboard-id
                                      :actor_id (user->id :crowberto)
                                      :dashcards [dashcard]}})
-    (-> (db/sel :one Revision :model "Dashboard" :model_id dashboard-id)
+    (-> (Revision :model "Dashboard", :model_id dashboard-id)
         (select-keys [:model :model_id :user_id :object :is_reversion :is_creation]))))
 
 ;; :dashboard-reposition-cards
 (expect-let [{dashboard-id :id :as dashboard} (create-test-dashboard)
              {card-id :id}                    (create-test-card)
-             dashcard                         (db/ins DashboardCard :card_id card-id :dashboard_id dashboard-id)
-             _                                (db/upd DashboardCard (:id dashcard) :sizeX 4)]
+             dashcard                         (u/prog1 (db/insert! DashboardCard :card_id card-id :dashboard_id dashboard-id)
+                                                (db/update! DashboardCard (:id <>), :sizeX 4))]
   {:model        "Dashboard"
    :model_id     dashboard-id
    :user_id      (user->id :crowberto)
@@ -176,7 +175,7 @@
                              :item  {:id       dashboard-id
                                      :actor_id (user->id :crowberto)
                                      :dashcards [(assoc dashcard :sizeX 4)]}})
-    (-> (db/sel :one Revision :model "Dashboard" :model_id dashboard-id)
+    (-> (Revision :model "Dashboard", :model_id dashboard-id)
         (select-keys [:model :model_id :user_id :object :is_reversion :is_creation]))))
 
 
@@ -198,7 +197,7 @@
     (process-revision-event {:topic :metric-create
                              :item  metric})
 
-    (let [revision (db/sel :one :fields [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Metric", :model_id (:id metric))]
+    (let [revision (db/select-one [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Metric", :model_id (:id metric))]
       (assoc revision :object (dissoc (:object revision) :id :table_id)))))
 
 ;; :metric-update
@@ -220,7 +219,7 @@
                              :item  (assoc metric
                                            :actor_id         (user->id :crowberto)
                                            :revision_message "updated")})
-    (let [revision (db/sel :one :fields [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Metric", :model_id (:id metric))]
+    (let [revision (db/select-one [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Metric", :model_id (:id metric))]
       (assoc revision :object (dissoc (:object revision) :id :table_id)))))
 
 ;; :metric-delete
@@ -240,7 +239,7 @@
                   Metric   [metric       {:table_id id, :definition {:a "b"}, :is_active false}]]
     (process-revision-event {:topic :metric-delete
                              :item  metric})
-    (let [revision (db/sel :one :fields [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Metric", :model_id (:id metric))]
+    (let [revision (db/select-one [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Metric", :model_id (:id metric))]
       (assoc revision :object (dissoc (:object revision) :id :table_id)))))
 
 
@@ -262,7 +261,7 @@
                                           :definition {:a "b"}}]]
     (process-revision-event {:topic :segment-create
                              :item  segment})
-    (let [revision (-> (db/sel :one Revision :model "Segment" :model_id (:id segment))
+    (let [revision (-> (Revision :model "Segment", :model_id (:id segment))
                        (select-keys [:model :user_id :object :is_reversion :is_creation :message]))]
       (assoc revision :object (dissoc (:object revision) :id :table_id)))))
 
@@ -286,7 +285,7 @@
                              :item  (assoc segment
                                            :actor_id         (user->id :crowberto)
                                            :revision_message "updated")})
-    (update (db/sel :one :fields [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Segment", :model_id (:id segment))
+    (update (db/select-one [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Segment", :model_id (:id segment))
             :object (u/rpartial dissoc :id :table_id))))
 
 ;; :segment-delete
@@ -308,5 +307,5 @@
                                           :is_active  false}]]
     (process-revision-event {:topic :segment-delete
                              :item  segment})
-    (update (db/sel :one :fields [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Segment", :model_id (:id segment))
+    (update (db/select-one [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Segment", :model_id (:id segment))
             :object (u/rpartial dissoc :id :table_id))))

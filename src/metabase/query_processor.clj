@@ -2,13 +2,13 @@
   "Preprocessor that does simple transformations to all incoming queries, simplifing the driver-specific implementations."
   (:require [clojure.walk :as walk]
             [clojure.tools.logging :as log]
-            [korma.core :as k]
             [medley.core :as m]
             schema.utils
             [swiss.arrows :refer [<<-]]
             (metabase [config :as config]
                       [db :as db]
                       [driver :as driver])
+            [metabase.models.database :as database]
             (metabase.models [field :refer [Field]]
                              [query-execution :refer [QueryExecution]])
             (metabase.query-processor [annotate :as annotate]
@@ -144,13 +144,13 @@
   "Transforms an MBQL into an expanded form with more information and structure.  Also resolves references to fields, tables,
    etc, into their concrete details which are necessary for query formation by the executing driver."
   [qp]
-  (fn [query]
-    ;; if necessary, expand/resolve the query
-    (let [query (if-not (mbql-query? query)
-                  query
-                  ;; for MBQL queries we expand first, then resolve
-                  (resolve/resolve (expand/expand query)))]
-      (qp query))))
+  (fn [{database-id :database, :as query}]
+    (let [resolved-db (db/select-one [database/Database :name :id :engine :details], :id database-id)
+          query       (if-not (mbql-query? query)
+                        query
+                        ;; for MBQL queries we expand first, then resolve
+                        (resolve/resolve (expand/expand query)))]
+      (qp (assoc query :database resolved-db)))))
 
 
 (defn- post-add-row-count-and-status
@@ -203,14 +203,14 @@
 (defn- fields-for-source-table
   "Return the all fields for SOURCE-TABLE, for use as an implicit `:fields` clause."
   [{source-table-id :id, :as source-table}]
-  (for [field (db/sel :many :fields [Field :name :display_name :base_type :special_type :visibility_type :display_name :table_id :id :position :description]
-                      :table_id        source-table-id
-                      :visibility_type [not-in ["sensitive" "retired"]]
-                      :parent_id       nil
-                      (k/order :position :asc)
-                      (k/order :id :desc))]
+  (for [field (db/select [Field :name :display_name :base_type :special_type :visibility_type :table_id :id :position :description]
+                :table_id        source-table-id
+                :visibility_type [:not-in ["sensitive" "retired"]]
+                :parent_id       nil
+                {:order-by [[:position :asc]
+                            [:id :desc]]})]
     (let [field (resolve/resolve-table (map->Field (resolve/rename-mb-field-keys field))
-                                       {source-table-id source-table})]
+                                       {[nil source-table-id] source-table})]
       (if (datetime-field? field)
         (map->DateTimeField {:field field, :unit :default})
         field))))
@@ -375,18 +375,6 @@
                                               absolute-max-results))))))
 
 
-(defn post-annotate
-  "QP middleware that runs directly after the the query is run and adds metadata as appropriate."
-  [qp]
-  (fn [query]
-    (let [results (qp query)]
-      (if-not (mbql-query? query)
-        ;; non-MBQL queries are not affected
-        results
-        ;; for MBQL queries capture the results and annotate
-        (annotate/annotate query results)))))
-
-
 (defn- pre-log-query [qp]
   (fn [query]
     (when (and (mbql-query? query)
@@ -440,6 +428,39 @@
           (assert (sequential? (:columns <>)))
           (assert (every? u/string-or-keyword? (:columns <>))))))))
 
+(defn query->remark
+  "Genarate an approparite REMARK to be prepended to a query to give DBAs additional information about the query being executed.
+   See documentation for `mbql->native` and [issue #2386](https://github.com/metabase/metabase/issues/2386) for more information."
+  ^String [{{:keys [executed-by uuid query-hash query-type]} :info, :as info}]
+  {:pre [(map? info)]}
+  (format "Metabase:: userID: %s executionID: %s queryType: %s queryHash: %s" executed-by uuid query-type query-hash))
+
+(defn- run-query
+  "The end of the QP middleware which actually executes the query on the driver.
+
+   If this is an MBQL query then we first call `mbql->native` which builds a database dependent form for execution and
+   then we pass that form into the `execute-query` function for final execution.
+
+   If the query is already a *native* query then we simply pass it through to `execute-query` unmodified."
+  [query]
+  (let [native-form  (u/prog1 (if-not (mbql-query? query)
+                                (:native query)
+                                (driver/mbql->native (:driver query) query))
+                       (when-not *disable-qp-logging*
+                         (log/debug (u/format-color 'green "NATIVE FORM:\n%s\n" (u/pprint-to-str <>)))))
+        native-query (if-not (mbql-query? query)
+                       query
+                       (assoc query :native native-form))
+        raw-result   (driver/execute-query (:driver query) native-query)
+        query-result (if-not (or (mbql-query? query)
+                                 (:annotate? raw-result))
+                       (assoc raw-result :columns (mapv name (:columns raw-result))
+                                         :cols    (for [[column first-value] (partition 2 (interleave (:columns raw-result) (first (:rows raw-result))))]
+                                                    {:name      (name column)
+                                                     :base_type (driver/class->base-type (type first-value))}))
+                       (annotate/annotate query raw-result))]
+    (assoc query-result :native_form native-form)))
+
 
 ;;; +-------------------------------------------------------------------------------------------------------+
 ;;; |                                           QUERY PROCESSOR                                             |
@@ -480,27 +501,22 @@
   ;; TODO: it probably makes sense to throw an error or return a failure response here if we can't get a driver
   (let [driver (driver/database-id->driver (:database query))]
     (binding [*driver* driver]
-      (let [driver-process-in-context (partial driver/process-query-in-context driver)
-            driver-process-query      (partial (if (mbql-query? query)
-                                                 driver/process-mbql
-                                                 driver/process-native) driver)]
-        ((<<- wrap-catch-exceptions
-              pre-add-settings
-              pre-expand-macros
-              pre-expand-resolve
-              driver-process-in-context
-              post-add-row-count-and-status
-              post-format-rows
-              pre-add-implicit-fields
-              pre-add-implicit-breakout-order-by
-              cumulative-sum
-              cumulative-count
-              limit
-              post-check-results-format
-              post-annotate
-              pre-log-query
-              guard-multiple-calls
-              driver-process-query) (assoc query :driver driver))))))
+      ((<<- wrap-catch-exceptions
+            pre-add-settings
+            pre-expand-macros
+            pre-expand-resolve
+            (driver/process-query-in-context driver)
+            post-add-row-count-and-status
+            post-format-rows
+            pre-add-implicit-fields
+            pre-add-implicit-breakout-order-by
+            cumulative-sum
+            cumulative-count
+            limit
+            post-check-results-format
+            pre-log-query
+            guard-multiple-calls
+            run-query) (assoc query :driver driver)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------+
@@ -508,6 +524,13 @@
 ;;; +----------------------------------------------------------------------------------------------------+
 
 (declare query-fail query-complete save-query-execution)
+
+(defn- assert-valid-query-result [query-result]
+  (when-not (contains? query-result :status)
+    (throw (Exception. "invalid response from database driver. no :status provided")))
+  (when (= :failed (:status query-result))
+    (log/error (u/pprint-to-str 'red query-result))
+    (throw (Exception. (str (get query-result :error "general error"))))))
 
 (defn dataset-query
   "Process and run a json based dataset query and return results.
@@ -522,11 +545,12 @@
 
   Possible caller-options include:
 
-    :executed_by [int]               (user_id of caller)"
+    :executed_by [int]  (user_id of caller)"
   {:arglists '([query options])}
   [query {:keys [executed_by]}]
   {:pre [(integer? executed_by)]}
-  (let [query-execution {:uuid              (.toString (java.util.UUID/randomUUID))
+  (let [query-uuid      (.toString (java.util.UUID/randomUUID))
+        query-execution {:uuid              query-uuid
                          :executor_id       executed_by
                          :json_query        query
                          :query_id          nil
@@ -541,15 +565,15 @@
                          :result_data       "{}"
                          :raw_query         ""
                          :additional_info   ""
-                         :start_time_millis (System/currentTimeMillis)}]
+                         :start_time_millis (System/currentTimeMillis)}
+        query           (assoc query :info {:executed-by executed_by
+                                            :uuid        query-uuid
+                                            :query-hash  (hash query)
+                                            :query-type (if (mbql-query? query) "MBQL" "native")})]
     (try
-      (let [query-result (process-query query)]
-        (when-not (contains? query-result :status)
-          (throw (Exception. "invalid response from database driver. no :status provided")))
-        (when (= :failed (:status query-result))
-          (log/error (u/pprint-to-str 'red query-result))
-          (throw (Exception. (str (get query-result :error "general error")))))
-        (query-complete query-execution query-result))
+      (let [result (process-query query)]
+        (assert-valid-query-result result)
+        (query-complete query-execution result))
       (catch Throwable e
         (log/error (u/format-color 'red "Query failure: %s" (.getMessage e)))
         (query-fail query-execution (.getMessage e))))))
@@ -565,7 +589,7 @@
     (-> query-execution
         (dissoc :start_time_millis)
         (merge updates)
-        (save-query-execution)
+        save-query-execution
         (dissoc :raw_query :result_rows :version)
         ;; this is just for the response for clien
         (assoc :error     error-message
@@ -585,18 +609,18 @@
                          (:start_time_millis query-execution))
         :result_rows  (get query-result :row_count 0))
       (dissoc :start_time_millis)
-      (save-query-execution)
+      save-query-execution
       ;; at this point we've saved and we just need to massage things into our final response format
       (dissoc :error :raw_query :result_rows :version)
       (merge query-result)))
 
 (defn save-query-execution
   "Save (or update) a `QueryExecution`."
-  [{:keys [id] :as query-execution}]
+  [{:keys [id], :as query-execution}]
   (if id
     ;; execution has already been saved, so update it
     (do
-      (m/mapply db/upd QueryExecution id query-execution)
+      (db/update! QueryExecution id query-execution)
       query-execution)
     ;; first time saving execution, so insert it
-    (m/mapply db/ins QueryExecution query-execution)))
+    (db/insert! QueryExecution query-execution)))

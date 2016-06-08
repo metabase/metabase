@@ -1,6 +1,5 @@
 (ns metabase.models.dashboard-card
   (:require [clojure.set :as set]
-            [korma.core :as k]
             [korma.db :as kdb]
             [metabase.db :as db]
             [metabase.events :as events]
@@ -10,11 +9,7 @@
             [metabase.models.interface :as i]
             [metabase.util :as u]))
 
-(i/defentity DashboardCard :report_dashboardcard
-             ;; This is implemented as a `transform` function instead of `post-select` because we want it to apply even
-             ;; when we use low-level korma primitives like `select`. Otherwise you can't `insert` what you `select`.
-             ;; TODO - The fact that we have to work around these names means we should probably just rename them
-             (k/transform (u/rpartial set/rename-keys {:sizex :sizeX, :sizey :sizeY})))
+(i/defentity DashboardCard :report_dashboardcard)
 
 (defn- pre-insert [dashcard]
   (let [defaults {:sizeX 2
@@ -22,14 +17,15 @@
     (merge defaults dashcard)))
 
 (defn- pre-cascade-delete [{:keys [id]}]
-  (db/cascade-delete 'DashboardCardSeries :dashboardcard_id id))
+  (db/cascade-delete! 'DashboardCardSeries :dashboardcard_id id))
 
 (u/strict-extend (class DashboardCard)
   i/IEntity
   (merge i/IEntityDefaults
          {:timestamped?       (constantly true)
           :pre-insert         pre-insert
-          :pre-cascade-delete pre-cascade-delete}))
+          :pre-cascade-delete pre-cascade-delete
+          :post-select        (u/rpartial set/rename-keys {:sizex :sizeX, :sizey :sizeY})}))
 
 
 ;;; ## ---------------------------------------- HYDRATION ----------------------------------------
@@ -39,18 +35,16 @@
   "Return the `Dashboard` associated with the `DashboardCard`."
   [{:keys [dashboard_id]}]
   {:pre [(integer? dashboard_id)]}
-  (db/sel :one 'metabase.models.dashboard/Dashboard :id dashboard_id))
+  (db/select-one 'Dashboard, :id dashboard_id))
 
 
 (defn ^:hydrate series
   "Return the `Cards` associated as additional series on this `DashboardCard`."
   [{:keys [id]}]
-  (->> (k/select Card
-                 (k/join DashboardCardSeries (= :dashboardcard_series.card_id :id))
-                 (k/fields :id :name :description :display :dataset_query :visualization_settings)
-                 (k/where {:dashboardcard_series.dashboardcard_id id})
-                 (k/order :dashboardcard_series.position :asc))
-       (map (partial i/do-post-select Card))))
+  (db/select [Card :id :name :description :display :dataset_query :visualization_settings]
+    (db/join [Card :id] [DashboardCardSeries :card_id])
+    (db/qualify DashboardCardSeries :dashboardcard_id) id
+    {:order-by [[(db/qualify DashboardCardSeries :position) :asc]]}))
 
 
 ;;; ## ---------------------------------------- CRUD FNS ----------------------------------------
@@ -60,7 +54,7 @@
   "Fetch a single `DashboardCard` by its ID value."
   [id]
   {:pre [(integer? id)]}
-  (-> (db/sel :one DashboardCard :id id)
+  (-> (DashboardCard id)
       (hydrate :series)))
 
 (defn update-dashboard-card-series
@@ -76,11 +70,13 @@
          (sequential? card-ids)
          (every? integer? card-ids)]}
   ;; first off, just delete all series on the dashboard card (we add them again below)
-  (db/cascade-delete DashboardCardSeries :dashboardcard_id id)
+  (db/cascade-delete! DashboardCardSeries :dashboardcard_id id)
   ;; now just insert all of the series that were given to us
   (when-not (empty? card-ids)
-    (let [cards (map-indexed (fn [idx itm] {:dashboardcard_id id :card_id itm :position idx}) card-ids)]
-      (k/insert DashboardCardSeries (k/values cards)))))
+    (let [cards (map-indexed (fn [i card-id]
+                               {:dashboardcard_id id, :card_id card-id, :position i})
+                             card-ids)]
+      (db/insert-many! DashboardCardSeries cards))))
 
 (defn update-dashboard-card
   "Update an existing `DashboardCard`, including all `DashboardCardSeries`.
@@ -92,9 +88,9 @@
     (kdb/transaction
       ;; update the dashcard itself (positional attributes)
       (when (and sizeX sizeY row col)
-        (db/upd DashboardCard id :sizeX sizeX :sizeY sizeY :row row :col col))
+        (db/update! DashboardCard id, :sizeX sizeX, :sizeY sizeY, :row row, :col col))
       ;; update series (only if they changed)
-      (when (not= series (db/sel :many :field [DashboardCardSeries :card_id] :dashboardcard_id id (k/order :position :asc)))
+      (when (not= series (map :card_id (db/select [DashboardCardSeries :card_id], :dashboardcard_id id, {:order-by [[:position :asc]]})))
         (update-dashboard-card-series dashboard-card series))
       ;; fetch the fully updated dashboard card then return it (and fire off an event)
       (->> (retrieve-dashboard-card id)
@@ -110,13 +106,13 @@
   (let [{:keys [sizeX sizeY row col series]} (merge {:sizeX 2, :sizeY 2, :series []}
                                                     dashboard-card)]
     (kdb/transaction
-      (let [{:keys [id] :as dashboard-card} (db/ins DashboardCard
-                                                    :dashboard_id dashboard_id
-                                                    :card_id      card_id
-                                                    :sizeX        sizeX
-                                                    :sizeY        sizeY
-                                                    :row          row
-                                                    :col          col)]
+      (let [{:keys [id] :as dashboard-card} (db/insert! DashboardCard
+                                              :dashboard_id dashboard_id
+                                              :card_id      card_id
+                                              :sizeX        sizeX
+                                              :sizeY        sizeY
+                                              :row          row
+                                              :col          col)]
         ;; add series to the DashboardCard
         (update-dashboard-card-series dashboard-card series)
         ;; return the full DashboardCard (and record our create event)
@@ -131,5 +127,5 @@
   {:pre [(map? dashboard-card)
          (integer? user-id)]}
   (let [{:keys [id]} (dashboard dashboard-card)]
-    (db/cascade-delete DashboardCard :id (:id dashboard-card))
+    (db/cascade-delete! DashboardCard :id (:id dashboard-card))
     (events/publish-event :dashboard-remove-cards {:id id :actor_id user-id :dashcards [dashboard-card]})))

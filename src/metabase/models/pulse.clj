@@ -1,6 +1,5 @@
 (ns metabase.models.pulse
-  (:require (korma [core :as k]
-                   [db :as kdb])
+  (:require [korma.db :as kdb]
             [medley.core :as m]
             [metabase.db :as db]
             [metabase.events :as events]
@@ -22,20 +21,19 @@
 (defn ^:hydrate channels
   "Return the `PulseChannels` associated with this PULSE."
   [{:keys [id]}]
-  (db/sel :many PulseChannel, :pulse_id id))
+  (db/select PulseChannel, :pulse_id id))
 
 (defn- pre-cascade-delete [{:keys [id]}]
-  (db/cascade-delete PulseCard :pulse_id id)
-  (db/cascade-delete PulseChannel :pulse_id id))
+  (db/cascade-delete! PulseCard :pulse_id id)
+  (db/cascade-delete! PulseChannel :pulse_id id))
 
 (defn ^:hydrate cards
-  "Return the `Cards` assoicated with this PULSE."
+  "Return the `Cards` associated with this PULSE."
   [{:keys [id]}]
-  (k/select Card
-            (k/join PulseCard (= :pulse_card.card_id :id))
-            (k/fields :id :name :description :display)
-            (k/where {:pulse_card.pulse_id id})
-            (k/order :pulse_card.position :asc)))
+  (db/select [Card :id :name :description :display]
+    (db/join [Card :id] [PulseCard :card_id])
+    (db/qualify PulseCard :pulse_id) id
+    {:order-by [[(db/qualify PulseCard :position) :asc]]}))
 
 (u/strict-extend (class Pulse)
   i/IEntity
@@ -50,6 +48,7 @@
 
 ;; ## Persistence Functions
 
+;; TODO - this should be renamed `update-pulse-cards!`
 (defn update-pulse-cards
   "Update the `PulseCards` for a given PULSE.
    CARD-IDS should be a definitive collection of *all* IDs of cards for the pulse in the desired order.
@@ -63,12 +62,13 @@
          (sequential? card-ids)
          (every? integer? card-ids)]}
   ;; first off, just delete any cards associated with this pulse (we add them again below)
-  (db/cascade-delete PulseCard :pulse_id id)
+  (db/cascade-delete! PulseCard :pulse_id id)
   ;; now just insert all of the cards that were given to us
   (when-not (empty? card-ids)
     (let [cards (map-indexed (fn [idx itm] {:pulse_id id :card_id itm :position idx}) card-ids)]
-      (k/insert PulseCard (k/values cards)))))
+      (db/insert-many! PulseCard cards))))
 
+;; TODO - Rename to `create-update-delete-channel!`
 (defn- create-update-delete-channel
   "Utility function which determines how to properly update a single pulse channel."
   [pulse-id new-channel existing-channel]
@@ -84,12 +84,13 @@
       ;; 1. in channels, NOT in db-channels = CREATE
       (and channel (not existing-channel))  (pulse-channel/create-pulse-channel channel)
       ;; 2. NOT in channels, in db-channels = DELETE
-      (and (nil? channel) existing-channel) (db/cascade-delete PulseChannel :id (:id existing-channel))
+      (and (nil? channel) existing-channel) (db/cascade-delete! PulseChannel :id (:id existing-channel))
       ;; 3. in channels, in db-channels = UPDATE
       (and channel existing-channel)        (pulse-channel/update-pulse-channel channel)
       ;; 4. NOT in channels, NOT in db-channels = NO-OP
       :else nil)))
 
+;; TODO - Rename to `update-pulse-channels!`
 (defn update-pulse-channels
   "Update the `PulseChannels` for a given PULSE.
    CHANNELS should be a definitive collection of *all* of the channels for the the pulse.
@@ -103,7 +104,7 @@
          (coll? channels)
          (every? map? channels)]}
   (let [new-channels   (group-by (comp keyword :channel_type) channels)
-        old-channels   (group-by (comp keyword :channel_type) (db/sel :many PulseChannel :pulse_id id))
+        old-channels   (group-by (comp keyword :channel_type) (db/select PulseChannel :pulse_id id))
         handle-channel #(create-update-delete-channel id (first (get new-channels %)) (first (get old-channels %)))]
     (assert (= 0 (count (get new-channels nil))) "Cannot have channels without a :channel_type attribute")
     ;; for each of our possible channel types call our handler function
@@ -113,17 +114,18 @@
   "Fetch a single `Pulse` by its ID value."
   [id]
   {:pre [(integer? id)]}
-  (-> (db/sel :one Pulse :id id)
+  (-> (Pulse id)
       (hydrate :creator :cards [:channels :recipients])
       (m/dissoc-in [:details :emails])))
 
 (defn retrieve-pulses
   "Fetch all `Pulses`."
   []
-  (for [pulse (-> (db/sel :many Pulse (k/order :name :ASC))
+  (for [pulse (-> (db/select Pulse, {:order-by [[:name :asc]]})
                   (hydrate :creator :cards [:channels :recipients]))]
     (m/dissoc-in pulse [:details :emails])))
 
+;; TODO - rename to `update-pulse!`
 (defn update-pulse
   "Update an existing `Pulse`, including all associated data such as: `PulseCards`, `PulseChannels`, and `PulseChannelRecipients`.
 
@@ -138,9 +140,9 @@
          (every? map? channels)]}
   (kdb/transaction
     ;; update the pulse itself
-    (db/upd Pulse id :name name)
+    (db/update! Pulse id, :name name)
     ;; update cards (only if they changed)
-    (when (not= cards (db/sel :many :field [PulseCard :card_id] :pulse_id id (k/order :position :asc)))
+    (when (not= cards (map :card_id (db/select [PulseCard :card_id], :pulse_id id, {:order-by [[:position :asc]]})))
       (update-pulse-cards pulse cards))
     ;; update channels
     (update-pulse-channels pulse channels)
@@ -148,6 +150,7 @@
     (->> (retrieve-pulse id)
          (events/publish-event :pulse-update))))
 
+;; TODO - rename to `create-pulse!`
 (defn create-pulse
   "Create a new `Pulse` by inserting it into the database along with all associated pieces of data such as:
   `PulseCards`, `PulseChannels`, and `PulseChannelRecipients`.
@@ -162,7 +165,7 @@
          (coll? channels)
          (every? map? channels)]}
   (kdb/transaction
-    (let [{:keys [id] :as pulse} (db/ins Pulse
+    (let [{:keys [id] :as pulse} (db/insert! Pulse
                                    :creator_id creator-id
                                    :name pulse-name)]
       ;; add card-ids to the Pulse

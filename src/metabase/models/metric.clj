@@ -1,6 +1,5 @@
 (ns metabase.models.metric
-  (:require [korma.core :as k]
-            [medley.core :as m]
+  (:require [medley.core :as m]
             [metabase.db :as db]
             [metabase.events :as events]
             (metabase.models [dependency :as dependency]
@@ -75,13 +74,13 @@
          (string? metric-name)
          (integer? creator-id)
          (map? definition)]}
-  (let [metric (db/ins Metric
-                  :table_id    table-id
-                  :creator_id  creator-id
-                  :name        metric-name
-                  :description description
-                  :is_active   true
-                  :definition  definition)]
+  (let [metric (db/insert! Metric
+                 :table_id    table-id
+                 :creator_id  creator-id
+                 :name        metric-name
+                 :description description
+                 :is_active   true
+                 :definition  definition)]
     (-> (events/publish-event :metric-create metric)
         (hydrate :creator))))
 
@@ -108,8 +107,8 @@
    {:pre [(integer? table-id)
           (keyword? state)]}
    (-> (if (= :all state)
-         (db/sel :many Metric :table_id table-id, (k/order :name :ASC))
-         (db/sel :many Metric :table_id table-id, :is_active (if (= :active state) true false), (k/order :name :ASC)))
+         (db/select Metric, :table_id table-id, {:order-by [[:name :asc]]})
+         (db/select Metric, :table_id table-id, :is_active (= :active state), {:order-by [[:name :asc]]}))
        (hydrate :creator))))
 
 (defn update-metric!
@@ -123,7 +122,7 @@
          (integer? user-id)
          (string? revision_message)]}
   ;; update the metric itself
-  (db/upd Metric id
+  (db/update! Metric id
     :name        name
     :description description
     :definition  definition)
@@ -142,7 +141,7 @@
          (integer? user-id)
          (string? revision-message)]}
   ;; make Metric not active
-  (db/upd Metric id :is_active false)
+  (db/update! Metric id, :is_active false)
   ;; retrieve the updated metric (now retired)
   (u/prog1 (retrieve-metric id)
     (events/publish-event :metric-delete (assoc <> :actor_id user-id, :revision_message revision-message))))

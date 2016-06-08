@@ -104,7 +104,8 @@
    DATE is anything that can coerced to a `Timestamp` via `->Timestamp`, such as a `Date`, `Timestamp`,
    `Long` (ms since the epoch), or an ISO-8601 `String`. DATE defaults to the current moment in time.
 
-   DATE-FORMAT is anything that can be passed to `->DateTimeFormatter`, such as `String`, `Keyword`, or `DateTimeFormatter`.
+   DATE-FORMAT is anything that can be passed to `->DateTimeFormatter`, such as `String` (using [the usual date format args](http://docs.oracle.com/javase/7/docs/api/java/text/SimpleDateFormat.html)),
+   `Keyword`, or `DateTimeFormatter`.
 
 
      (format-date \"yyyy-MM-dd\")                        -> \"2015-11-18\"
@@ -237,7 +238,7 @@
 (defn format-nanoseconds
   "Format a time interval in nanoseconds to something more readable (µs/ms/etc.)
    Useful for logging elapsed time when using `(System/nanotime)`"
-  [nanoseconds]
+  ^String [nanoseconds]
   (loop [n nanoseconds, [[unit divisor] & more] [[:ns 1000] [:µs 1000] [:ms 1000] [:s 60] [:mins 60] [:hours Integer/MAX_VALUE]]]
     (if (and (> n divisor)
              (seq more))
@@ -610,7 +611,7 @@
   "Execute F, a function that takes no arguments, and return the results.
    If F fails with an exception, retry F up to NUM-RETRIES times until it succeeds.
 
-    Consider using the `auto-retry` macro instead of calling this function directly."
+   Consider using the `auto-retry` macro instead of calling this function directly."
   {:style/indent 1}
   [num-retries f]
   (if (<= num-retries 0)
@@ -633,3 +634,14 @@
   [x]
   (or (string? x)
       (keyword? x)))
+
+(defn key-by
+  "Convert a sequential COLL to a map of `(f item)` -> `item`.
+   This is similar to `group-by`, but the resultant map's values are single items from COLL rather than sequences of items.
+   (Because only a single item is kept for each value of `f`,  items producing duplicate values will be discarded).
+
+     (key-by :id [{:id 1, :name :a} {:id 2, :name :b}]) -> {1 {:id 1, :name :a}, 2 {:id 2, :name :b}}"
+  {:style/indent 1}
+  [f coll]
+  (into {} (for [item coll]
+             {(f item) item})))

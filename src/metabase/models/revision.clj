@@ -1,14 +1,12 @@
 (ns metabase.models.revision
   (:require [clojure.data :as data]
-            [korma.core :as k]
-            [medley.core :as m]
+            [korma.db :as kdb]
             [metabase.db :as db]
             (metabase.models [hydrate :refer [hydrate]]
                              [interface :as i]
                              [user :refer [User]])
             [metabase.models.revision.diff :refer [diff-string]]
-            [metabase.util :as u]
-            [korma.db :as kdb]))
+            [metabase.util :as u]))
 
 (def ^:const max-revisions
   "Maximum number of revisions to keep for each individual object. After this limit is surpassed, the oldest revisions will be deleted."
@@ -36,7 +34,7 @@
 (defn default-revert-to-revision
   "Default implementation of `revert-to-revision` which simply does an update using the values from `serialized-instance`."
   [entity id user-id serialized-instance]
-  (m/mapply db/upd entity id serialized-instance))
+  (db/update! entity id, serialized-instance))
 
 (defn default-diff-map
   "Default implementation of `diff-map` which simply uses clojures `data/diff` function and sets the keys `:before` and `:after`."
@@ -61,16 +59,12 @@
 
 ;;; # Revision Entity
 
-(defn- post-select [{:keys [message] :as revision}]
-  (assoc revision :message (u/jdbc-clob->str message)))
-
 (i/defentity Revision :revision)
 
 (u/strict-extend (class Revision)
   i/IEntity
   (merge i/IEntityDefaults
-         {:types        (constantly {:object :json})
-          :post-select  post-select
+         {:types        (constantly {:object :json, :message :clob})
           :pre-insert   (u/rpartial assoc :timestamp (u/new-sql-timestamp))
           :pre-update   (fn [& _] (throw (Exception. "You cannot update a Revision!")))}))
 
@@ -94,7 +88,7 @@
   [entity id]
   {:pre [(i/metabase-entity? entity)
          (integer? id)]}
-  (db/sel :many Revision :model (:name entity), :model_id id, (k/order :id :DESC)))
+  (db/select Revision, :model (:name entity), :model_id id, {:order-by [[:id :desc]]}))
 
 (defn revisions+details
   "Fetch `revisions` for ENTITY with ID and add details."
@@ -110,8 +104,8 @@
   "Delete old revisions of ENTITY with ID when there are more than `max-revisions` in the DB."
   [entity id]
   {:pre [(i/metabase-entity? entity) (integer? id)]}
-  (when-let [old-revisions (seq (drop max-revisions (db/sel :many :id Revision, :model (:name entity), :model_id id, (k/order :timestamp :DESC))))]
-    (db/cascade-delete Revision :id [in old-revisions])))
+  (when-let [old-revisions (seq (drop max-revisions (map :id (db/select [Revision :id], :model (:name entity), :model_id id, {:order-by [[:timestamp :desc]]}))))]
+    (db/cascade-delete! Revision :id [:in old-revisions])))
 
 (defn push-revision
   "Record a new `Revision` for ENTITY with ID.
@@ -130,7 +124,7 @@
         object (serialize-instance entity id object)]
     ;; make sure we still have a map after calling out serialization function
     (assert (map? object))
-    (db/ins Revision
+    (db/insert! Revision
       :model        (:name entity)
       :model_id     id
       :user_id      user-id
@@ -150,13 +144,13 @@
          (integer? user-id)
          (db/exists? User :id user-id)
          (integer? revision-id)]}
-  (let [serialized-instance (db/sel :one :field [Revision :object] :model (:name entity), :model_id id, :id revision-id)]
+  (let [serialized-instance (db/select-one-field :object Revision, :model (:name entity), :model_id id, :id revision-id)]
     (kdb/transaction
       ;; Do the reversion of the object
       (revert-to-revision entity id user-id serialized-instance)
       ;; Push a new revision to record this change
-      (let [last-revision (db/sel :one Revision, :model (:name entity), :model_id id, (k/order :id :DESC))
-            new-revision  (db/ins Revision
+      (let [last-revision (Revision :model (:name entity), :model_id id, {:order-by [[:id :desc]]})
+            new-revision  (db/insert! Revision
                             :model        (:name entity)
                             :model_id     id
                             :user_id      user-id

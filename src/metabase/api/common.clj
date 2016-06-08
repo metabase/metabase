@@ -5,16 +5,14 @@
                      [walk :as walk])
             [cheshire.core :as json]
             [compojure.core :refer [defroutes]]
-            [korma.core :as k]
             [medley.core :as m]
             [metabase.api.common.internal :refer :all]
-            [metabase.db :refer :all]
+            [metabase.db :as db]
             [metabase.models.interface :as models]
             [metabase.util :as u]
             [metabase.util.password :as password]))
 
-(declare check-403
-         check-404)
+(declare check-403 check-404)
 
 ;;; ## DYNAMIC VARIABLES
 ;; These get bound by middleware for each HTTP request.
@@ -61,12 +59,12 @@
 (defn check-exists?
   "Check that object with ID exists in the DB, or throw a 404."
   [entity id]
-  (check-404 (exists? entity :id id)))
+  (check-404 (db/exists? entity, :id id)))
 
 (defn check-superuser
   "Check that `*current-user*` is a superuser or throw a 403."
   []
-  (check-403 (:is_superuser @*current-user*)))
+  (check-403 (db/exists? 'User, :id *current-user-id*, :is_superuser true)))
 
 
 ;;; #### checkp- functions: as in "check param". These functions expect that you pass a symbol so they can throw exceptions w/ relevant error messages.

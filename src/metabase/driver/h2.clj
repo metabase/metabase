@@ -1,14 +1,13 @@
 (ns metabase.driver.h2
+  ;; TODO - This namespace should be reworked to use `u/drop-first-arg` like newer drivers
   (:require [clojure.string :as s]
-            (korma [core :as k]
-                   [db :as kdb])
-            [korma.sql.utils :as kutils]
+            [honeysql.core :as hsql]
+            [korma.db :as kdb]
             [metabase.db :as db]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
-            [metabase.models.database :refer [Database]]
             [metabase.util :as u]
-            [metabase.util.korma-extensions :as kx]))
+            [metabase.util.honeysql-extensions :as hx]))
 
 (defn- column->base-type [_ column-type]
   ({:ARRAY                       :UnknownField
@@ -110,10 +109,12 @@
 
 
 (defn- unix-timestamp->timestamp [_ expr seconds-or-milliseconds]
-  (kutils/func (format "TIMESTAMPADD('%s', %%s, TIMESTAMP '1970-01-01T00:00:00Z')" (case seconds-or-milliseconds
-                                                                                     :seconds      "SECOND"
-                                                                                     :milliseconds "MILLISECOND"))
-               [expr]))
+  (hsql/call :timestampadd
+             (hx/literal (case seconds-or-milliseconds
+                           :seconds      "second"
+                           :milliseconds "millisecond"))
+             expr
+             (hsql/raw "timestamp '1970-01-01T00:00:00Z'")))
 
 
 (defn- process-query-in-context [_ qp]
@@ -122,7 +123,7 @@
     ;; For :native queries check to make sure the DB in question has a (non-default) NAME property specified in the connection string.
     ;; We don't allow SQL execution on H2 databases for the default admin account for security reasons
     (when (= (keyword query-type) :native)
-      (let [{:keys [db]}   (db/sel :one :field [Database :details] :id (:database query))
+      (let [{:keys [db]}   (get-in query [:database :details])
             _              (assert db)
             [_ options]    (connection-string->file+options db)
             {:strs [USER]} options]
@@ -135,25 +136,25 @@
 ;; H2 doesn't have date_trunc() we fake it by formatting a date to an appropriate string
 ;; and then converting back to a date.
 ;; Format strings are the same as those of SimpleDateFormat.
-(defn- format-datetime   [format-str expr] (k/sqlfn :FORMATDATETIME expr (kx/literal format-str)))
-(defn- parse-datetime    [format-str expr] (k/sqlfn :PARSEDATETIME expr  (kx/literal format-str)))
+(defn- format-datetime   [format-str expr] (hsql/call :formatdatetime expr (hx/literal format-str)))
+(defn- parse-datetime    [format-str expr] (hsql/call :parsedatetime expr  (hx/literal format-str)))
 (defn- trunc-with-format [format-str expr] (parse-datetime format-str (format-datetime format-str expr)))
 
 (defn- date [_ unit expr]
   (case unit
     :default         expr
     :minute          (trunc-with-format "yyyyMMddHHmm" expr)
-    :minute-of-hour  (kx/minute expr)
+    :minute-of-hour  (hx/minute expr)
     :hour            (trunc-with-format "yyyyMMddHH" expr)
-    :hour-of-day     (kx/hour expr)
-    :day             (kx/->date expr)
-    :day-of-week     (k/sqlfn :DAY_OF_WEEK expr)
-    :day-of-month    (k/sqlfn :DAY_OF_MONTH expr)
-    :day-of-year     (k/sqlfn :DAY_OF_YEAR expr)
+    :hour-of-day     (hx/hour expr)
+    :day             (hx/->date expr)
+    :day-of-week     (hsql/call :day_of_week expr)
+    :day-of-month    (hsql/call :day_of_month expr)
+    :day-of-year     (hsql/call :day_of_year expr)
     :week            (trunc-with-format "YYYYww" expr) ; Y = week year; w = week in year
-    :week-of-year    (kx/week expr)
+    :week-of-year    (hx/week expr)
     :month           (trunc-with-format "yyyyMM" expr)
-    :month-of-year   (kx/month expr)
+    :month-of-year   (hx/month expr)
     ;; Rounding dates to quarters is a bit involved but still doable. Here's the plan:
     ;; *  extract the year and quarter from the date;
     ;; *  convert the quarter (1 - 4) to the corresponding starting month (1, 4, 7, or 10).
@@ -164,19 +165,17 @@
     ;; Postgres DATE_TRUNC('quarter', x)
     ;; becomes  PARSEDATETIME(CONCAT(YEAR(x), ((QUARTER(x) * 3) - 2)), 'yyyyMM')
     :quarter         (parse-datetime "yyyyMM"
-                                     (kx/concat (kx/year expr) (kx/- (kx/* (kx/quarter expr)
+                                     (hx/concat (hx/year expr) (hx/- (hx/* (hx/quarter expr)
                                                                            3)
                                                                      2)))
-    :quarter-of-year (kx/quarter expr)
-    :year            (kx/year expr)))
-
-(def ^:private now (k/sqlfn :NOW))
+    :quarter-of-year (hx/quarter expr)
+    :year            (hx/year expr)))
 
 ;; TODO - maybe rename this relative-date ?
 (defn- date-interval [_ unit amount]
   (if (= unit :quarter)
-    (recur nil :month (kx/* amount 3))
-    (k/sqlfn :DATEADD (kx/literal (s/upper-case (name unit))) amount now)))
+    (recur nil :month (hx/* amount 3))
+    (hsql/call :dateadd (hx/literal unit) amount :%now)))
 
 
 (defn- humanize-connection-error-message [_ message]
@@ -192,6 +191,10 @@
 
     #".*" ; default
     message))
+
+(defn- string-length-fn [field-key]
+  (hsql/call :length field-key))
+
 
 (defrecord H2Driver []
   clojure.lang.Named
@@ -214,7 +217,7 @@
           :column->base-type         column->base-type
           :connection-details->spec  connection-details->spec
           :date                      date
-          :string-length-fn          (constantly :LENGTH)
+          :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp unix-timestamp->timestamp}))
 
 (driver/register-driver! :h2 (H2Driver.))

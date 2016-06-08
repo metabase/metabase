@@ -4,7 +4,6 @@
             [clojure.string :as s]
             [clojure.tools.logging :as log]
             [cheshire.core :as json]
-            [korma.core :as k]
             [schema.core :as schema]
             [metabase.db :as db]
             [metabase.db.metadata-queries :as queries]
@@ -153,6 +152,7 @@
 
 (defn make-analyze-table
   "Make a generic implementation of `analyze-table`."
+  {:style/indent 1}
   [driver & {:keys [field-avg-length-fn field-percent-urls-fn]
              :or   {field-avg-length-fn   (partial driver/default-field-avg-length driver)
                     field-percent-urls-fn (partial driver/default-field-percent-urls driver)}}]
@@ -174,21 +174,21 @@
 
 (defn analyze-table-data-shape!
   "Analyze the data shape for a single `Table`."
-  [driver {table-id :id, :as tbl}]
-  (let [new-field-ids (set (db/sel :many :id field/Field, :table_id table-id, :visibility_type [not= "retired"], :last_analyzed nil))]
+  [driver {table-id :id, :as table}]
+  (let [new-field-ids (db/select-ids field/Field, :table_id table-id, :visibility_type [:not= "retired"], :last_analyzed nil)]
     ;; TODO: this call should include the database
-    (when-let [table-stats (u/prog1 (driver/analyze-table driver tbl new-field-ids)
+    (when-let [table-stats (u/prog1 (driver/analyze-table driver table new-field-ids)
                              (when <>
                                (schema/validate i/AnalyzeTable <>)))]
       ;; update table row count
       (when (:row_count table-stats)
-        (db/upd table/Table table-id :rows (:row_count table-stats)))
+        (db/update! table/Table table-id, :rows (:row_count table-stats)))
 
       ;; update individual fields
       (doseq [{:keys [id preview-display special-type values]} (:fields table-stats)]
         ;; set Field metadata we may have detected
         (when (and id (or preview-display special-type))
-          (db/upd-non-nil-keys field/Field id
+          (db/update-non-nil-keys! field/Field id
             ;; if a field marked `preview-display` as false then set the visibility type to `:details-only` (see models.field/visibility-types)
             :visibility_type (when (false? preview-display) :details-only)
             :special_type    special-type))
@@ -198,10 +198,9 @@
           (field-values/clear-field-values id))))
 
     ;; update :last_analyzed for all fields in the table
-    (k/update field/Field
-      (k/set-fields {:last_analyzed (u/new-sql-timestamp)})
-      (k/where {:table_id        table-id
-                :visibility_type [not= "retired"]}))))
+    (db/update-where! field/Field {:table_id        table-id
+                                   :visibility_type [:not= "retired"]}
+      :last_analyzed (u/new-sql-timestamp))))
 
 (defn analyze-data-shape-for-tables!
   "Perform in-depth analysis on the data shape for all `Tables` in a given DATABASE.
@@ -211,7 +210,7 @@
   (log/info (u/format-color 'blue "Analyzing data in %s database '%s' (this may take a while) ..." (name driver) (:name database)))
 
   (let [start-time-ns         (System/nanoTime)
-        tables                (db/sel :many table/Table :db_id database-id, :active true)
+        tables                (db/select table/Table, :db_id database-id, :active true)
         tables-count          (count tables)
         finished-tables-count (atom 0)]
     (doseq [{table-name :name, :as table} tables]

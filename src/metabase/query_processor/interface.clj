@@ -46,7 +46,9 @@
 (s/defrecord JoinTable [source-field :- JoinTableField
                         pk-field     :- JoinTableField
                         table-id     :- IntGreaterThanZero
-                        table-name   :- s/Str])
+                        table-name   :- s/Str
+                        schema       :- (s/maybe s/Str)
+                        join-alias   :- s/Str])
 
 ;;; # ------------------------------------------------------------ PROTOCOLS ------------------------------------------------------------
 
@@ -69,6 +71,7 @@
                     schema-name        :- (s/maybe s/Str)
                     table-name         :- (s/maybe s/Str) ; TODO - Why is this `maybe` ?
                     position           :- (s/maybe s/Int) ; TODO - int >= 0
+                    fk-field-id        :- (s/maybe s/Int)
                     description        :- (s/maybe s/Str)
                     parent-id          :- (s/maybe IntGreaterThanZero)
                     ;; Field once its resolved; FieldPlaceholder before that
@@ -300,11 +303,14 @@
   (s/named (s/cond-pre SimpleFilterClause NotFilter CompoundFilter)
            "Valid filter clause"))
 
+(def OrderByDirection
+  "Schema for the direction in an `OrderBy` subclause."
+  (s/named (s/enum :ascending :descending) "Valid order-by direction"))
 
 (def OrderBy
   "Schema for top-level `order-by` clause in an MBQL query."
   (s/named {:field     AnyField
-            :direction (s/named (s/enum :ascending :descending) "Valid order-by direction")}
+            :direction OrderByDirection}
            "Valid order-by subclause"))
 
 

@@ -2,9 +2,9 @@
   "Unit tests for /api/dataset endpoints."
   (:require [expectations :refer :all]
             [metabase.api.dataset :refer [dataset-query-api-constraints]]
-            [metabase.db :refer :all]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.query-execution :refer [QueryExecution]]
+            [metabase.db :as db]
+            (metabase.models [card :refer [Card]]
+                             [query-execution :refer [QueryExecution]])
             [metabase.query-processor.expand :as ql]
             [metabase.test.data.users :refer :all]
             [metabase.test.data :refer :all]
@@ -38,9 +38,12 @@
 
 (defn format-response [m]
   (into {} (for [[k v] m]
-             (if (contains? #{:id :uuid :started_at :finished_at :running_time} k)
-               [k (boolean v)]
-               [k v]))))
+             (cond
+               (contains? #{:id :uuid :started_at :finished_at :running_time} k) [k (boolean v)]
+               (= :data k) [k (if-not (contains? v :native_form)
+                                v
+                                (update v :native_form boolean))]
+               :else [k v]))))
 
 ;;; ## POST /api/meta/dataset
 ;; Just a basic sanity check to make sure Query Processor endpoint is still working correctly.
@@ -50,7 +53,8 @@
   [{:data         {:rows    [[1000]]
                    :columns ["count"]
                    :cols    [{:base_type "IntegerField", :special_type "number", :name "count", :display_name "count", :id nil, :table_id nil,
-                              :description nil, :target nil, :extra_info {}}]}
+                              :description nil, :target nil, :extra_info {}}]
+                   :native_form true}
     :row_count    1
     :status       "completed"
     :id           true
@@ -85,7 +89,7 @@
                                                             (query checkins
                                                                    (ql/aggregation (ql/count)))))]
     [(format-response result)
-     (format-response (sel :one QueryExecution :uuid (:uuid result)))]))
+     (format-response (QueryExecution :uuid (:uuid result)))]))
 
 ;; Even if a query fails we still expect a 200 response from the api
 (expect
@@ -117,7 +121,7 @@
                                                            :type     "native"
                                                            :native   {:query "foobar"}})]
     [(format-response result)
-     (format-response (sel :one QueryExecution :uuid (:uuid result)))]))
+     (format-response (QueryExecution :uuid (:uuid result)))]))
 
 
 ;; GET /api/dataset/card/:id
@@ -142,7 +146,8 @@
     :result {:data         {:rows    [[1000]]
                             :columns ["count"]
                             :cols    [{:base_type "IntegerField", :special_type "number", :name "count", :display_name "count", :id nil, :table_id nil,
-                                       :description nil, :target nil, :extra_info {}}]}
+                                       :description nil, :target nil, :extra_info {}}]
+                            :native_form true}
              :row_count    1
              :status       "completed"
              :id           true
@@ -181,4 +186,4 @@
       [(-> result
            (update :card remove-ids-and-boolean-timestamps)
            (update :result format-response))
-       (format-response (sel :one QueryExecution :uuid (get-in result [:result :uuid])))])))
+       (format-response (QueryExecution :uuid (get-in result [:result :uuid])))])))

@@ -2,7 +2,7 @@
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            [metabase.db :refer [sel]]
+            [metabase.db :as db]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor.interface :as i]
             [metabase.util :as u]))
@@ -85,30 +85,46 @@
                                 (apply str)
                                 keyword)))
 
+(defn- ag-type->field-name
+  "Return the (keyword) name that should be used for the column in the results. This is the same as the name of the aggregation,
+   except for `distinct`, which is called `:count` for unknown reasons and/or historical accident."
+  [ag-type]
+  {:pre [(keyword? ag-type)]}
+  (if (= ag-type :distinct)
+    :count
+    ag-type))
+
 (defn- add-aggregate-field-if-needed
   "Add a Field containing information about an aggregate column such as `:count` or `:distinct` if needed."
   [{{ag-type :aggregation-type, ag-field :field} :aggregation} fields]
   (if (or (not ag-type)
           (= ag-type :rows))
     fields
-    (conj fields (merge {:source :aggregation}
-                        (if (contains? #{:count :distinct} ag-type)
-                          {:base-type          :IntegerField
-                           :field-name         :count
-                           :field-display-name :count
-                           :special-type       :number}
-                          (assoc (select-keys ag-field [:base-type :special-type])
-                                 :field-name         ag-type
-                                 :field-display-name ag-type))))))
+    (conj fields (merge (let [field-name (ag-type->field-name ag-type)]
+                          {:source             :aggregation
+                           :field-name         field-name
+                           :field-display-name field-name
+                           :base-type          (:base-type ag-field)
+                           :special-type       (:special-type ag-field)})
+                        ;; Always treat count or distinct count as an integer even if the DB in question returns it as something wacky like a BigDecimal or Float
+                        (when (contains? #{:count :distinct} ag-type)
+                          {:base-type    :IntegerField
+                           :special-type :number})
+                        ;; For the time being every Expression is an arithmetic operator and returns a floating-point number, so hardcoding these types is fine;
+                        ;; In the future when we extend Expressions to handle more functionality we'll want to introduce logic that associates a return type with a given expression.
+                        ;; But this will work for the purposes of a patch release.
+                        (when (instance? metabase.query_processor.interface.ExpressionRef ag-field)
+                          {:base-type    :FloatField
+                           :special-type :number})))))
 
-(defn- add-unknown-fields-if-needed`
+(defn- add-unknown-fields-if-needed
   "When create info maps for any fields we didn't expect to come back from the query.
    Ideally, this should never happen, but on the off chance it does we still want to return it in the results."
   [actual-keys fields]
   {:pre [(set? actual-keys)
          (every? keyword? actual-keys)]}
-  (let [expected-keys (set (map :field-name fields))
-        _             (assert (every? keyword? expected-keys))
+  (let [expected-keys (u/prog1 (set (map :field-name fields))
+                        (assert (every? keyword? <>)))
         missing-keys  (set/difference actual-keys expected-keys)]
     (when (seq missing-keys)
       (log/warn (u/format-color 'yellow "There are fields we weren't expecting in the results: %s\nExpected: %s\nActual: %s"
@@ -185,7 +201,7 @@
                            :special-type       :special_type
                            :visibility-type    :visibility_type
                            :table-id           :table_id})
-        (dissoc :position :clause-position :source :parent :parent-id :table-name))))
+        (dissoc :position :clause-position :source :parent :parent-id :table-name :fk-field-id))))
 
 (defn- fk-field->dest-fn
   "Fetch fk info and return a function that returns the destination Field of a given Field."
@@ -197,14 +213,14 @@
   ;; Fetch the ForeignKey objects whose origin is in the returned Fields, create a map of origin-field-id->destination-field-id
   ([fields fk-ids]
    (when (seq fk-ids)
-     (fk-field->dest-fn fields fk-ids (sel :many :field->field [Field :id :fk_target_field_id]
-                                           :id                 [in fk-ids]
-                                           :fk_target_field_id [not= nil]))))
+     (fk-field->dest-fn fields fk-ids (db/select-id->field :fk_target_field_id Field
+                                        :id                 [:in fk-ids]
+                                        :fk_target_field_id [:not= nil]))))
   ;; Fetch the destination Fields referenced by the ForeignKeys
   ([fields fk-ids id->dest-id]
    (when (seq id->dest-id)
-     (fk-field->dest-fn fields fk-ids id->dest-id (sel :many :id->fields [Field :id :name :display_name :table_id :description :base_type :special_type :visibility_type]
-                                                       :id [in (vals id->dest-id)]))))
+     (fk-field->dest-fn fields fk-ids id->dest-id (u/key-by :id (db/select [Field :id :name :display_name :table_id :description :base_type :special_type :visibility_type]
+                                                                  :id [:in (vals id->dest-id)])))))
   ;; Return a function that will return the corresponding destination Field for a given Field
   ([fields fk-ids id->dest-id dest-id->field]
    (fn [{:keys [id]}]
@@ -217,8 +233,9 @@
     (for [field fields]
       (let [{:keys [table_id], :as dest-field} (field->dest field)]
         (assoc field
-               :target     dest-field
-               :extra_info (if table_id {:target_table_id table_id} {}))))))
+          :target     (when dest-field
+                        (into {} dest-field))
+          :extra_info (if table_id {:target_table_id table_id} {}))))))
 
 (defn- resolve-sort-and-format-columns
   "Collect the Fields referenced in QUERY, sort them according to the rules at the top
@@ -243,12 +260,13 @@
   1.  Sorts the results according to the rules at the top of this page
   2.  Resolves the Fields returned in the results and adds information like `:columns` and `:cols`
       expected by the frontend."
-  [query results]
-  (let [result-keys (set (keys (first results)))
-        cols        (resolve-sort-and-format-columns (:query query) result-keys)
-        columns     (mapv :name cols)]
+  [query {:keys [columns rows]}]
+  (let [row-maps (for [row rows]
+                   (zipmap columns row))
+        cols    (resolve-sort-and-format-columns (:query query) (set columns))
+        columns (mapv :name cols)]
     {:cols    (vec (for [col cols]
                      (update col :name name)))
      :columns (mapv name columns)
-     :rows    (for [row results]
+     :rows    (for [row row-maps]
                 (mapv row columns))}))
