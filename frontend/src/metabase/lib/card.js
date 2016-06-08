@@ -26,20 +26,9 @@ export function startNewCard(type, databaseId, tableId) {
 }
 
 // load a card either by ID or from a base64 serialization.  if both are present then they are merged, which the serialized version taking precedence
-export async function loadCard(cardId, serializedCard) {
+export async function loadCard(cardId) {
     try {
-        let card = null;
-
-        // if we have a card ID then load up the card from the api
-        if (cardId != undefined) {
-            card = await Card.get({ "cardId": cardId });
-        }
-
-        // if we have a serialized card then unpack it and use it
-        if (serializedCard) {
-            let deserializedCard = deserializeCardFromUrl(serializedCard);
-            card = card ? _.extend(card, deserializedCard) : deserializedCard;
-        }
+        let card = card = await Card.get({ "cardId": cardId });
 
         // strip off angular $xyz stuff
         return card && cleanCopyCard(card);

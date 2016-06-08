@@ -8,7 +8,7 @@ import moment from "moment";
 import { AngularResourceProxy, angularPromise, createThunkAction } from "metabase/lib/redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import { loadCard, isCardDirty, startNewCard } from "metabase/lib/card";
+import { loadCard, isCardDirty, startNewCard, deserializeCardFromUrl } from "metabase/lib/card";
 import { formatSQL } from "metabase/lib/formatting";
 import Query from "metabase/lib/query";
 import { createQuery } from "metabase/lib/query";
@@ -23,7 +23,7 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, () => {
     return async (dispatch, getState) => {
         const { router: { location, params }, updateUrl, user } = getState();
 
-        let card, databases, uiControls = {};
+        let card, databases, originalCard, uiControls = {};
 
         // always start the QB by loading up the databases for the application
         try {
@@ -46,11 +46,23 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, () => {
         if (cardId || serializedCard) {
             // existing card being loaded
             try {
-                card = await loadCard(cardId, serializedCard);
+                if (cardId) {
+                    card = await loadCard(cardId);
+
+                    // when we are loading from a card id we want an explict clone of the card we loaded which is unmodified
+                    originalCard = JSON.parse(JSON.stringify(card));
+                }
+
+                // if we have a serialized card then unpack it and use it
+                if (serializedCard) {
+                    let deserializedCard = deserializeCardFromUrl(serializedCard);
+                    card = card ? _.extend(card, deserializedCard) : deserializedCard;
+                }
 
                 MetabaseAnalytics.trackEvent("QueryBuilder", "Query Loaded", card.dataset_query.type);
 
-                uiControls.isEditing = location.query.edit ? true : false;
+                // if we have deserialized card from the url AND loaded a card by id then the user should be dropped into edit mode
+                uiControls.isEditing = (location.query.edit || (cardId && serializedCard)) ? true : false;
 
                 // if this is the users first time loading a saved card on the QB then show them the newb modal
                 if (cardId && user.is_qbnewb) {
@@ -107,10 +119,11 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, () => {
         }
 
         // clean up the url and make sure it reflects our card state
-        updateUrl(card, isCardDirty(card, card));
+        updateUrl(card, isCardDirty(card, originalCard));
 
         return {
             card,
+            originalCard,
             databases,
             uiControls
         };

@@ -96,7 +96,7 @@ export const card = handleActions({
 //       because we can't have any links between the active card being modified and the "originalCard" for testing dirtiness
 // ALSO: we consistently check for payload.id because an unsaved card has no "originalCard"
 export const originalCard = handleActions({
-    [INITIALIZE_QB]: { next: (state, { payload }) => payload.card && payload.card.id ? JSON.parse(JSON.stringify(payload.card)) : null },
+    [INITIALIZE_QB]: { next: (state, { payload }) => payload.originalCard ? JSON.parse(JSON.stringify(payload.originalCard)) : null },
     [RELOAD_CARD]: { next: (state, { payload }) => payload.id ? JSON.parse(JSON.stringify(payload)) : null },
     [CANCEL_EDITING]: { next: (state, { payload }) => payload.id ? JSON.parse(JSON.stringify(payload)) : null },
     [SET_CARD_AND_RUN]: { next: (state, { payload }) => payload.id ? JSON.parse(JSON.stringify(payload)) : null },
