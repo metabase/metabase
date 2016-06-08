@@ -105,6 +105,7 @@ export default class QueryBuilder extends Component {
 
         _.bindAll(this, "popStateListener", "handleResize");
 
+        // TODO: React tells us that forceUpdate() is not the best thing to use, so ideally we can find a different way to trigger this
         this.forceUpdateDebounced = _.debounce(this.forceUpdate.bind(this), 400);
     }
 
@@ -115,6 +116,14 @@ export default class QueryBuilder extends Component {
     componentDidMount() {
         window.addEventListener('popstate', this.popStateListener);
         window.addEventListener('resize', this.handleResize);
+    }
+
+    componentWillReceiveProps(nextProps) {
+        if (nextProps.uiControls.isShowingDataReference !== this.props.uiControls.isShowingDataReference) {
+            // when the data reference is toggled we need to trigger a rerender after a short delay in order to
+            // ensure that some components are updated after the animation completes (e.g. card visualization)
+            window.setTimeout(this.forceUpdateDebounced, 300);
+        }
     }
 
     componentWillUnmount() {
