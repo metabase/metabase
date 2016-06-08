@@ -1,6 +1,7 @@
 (ns metabase.api.database
   "/api/database endpoints."
-  (:require [compojure.core :refer [GET POST PUT DELETE]]
+  (:require [clojure.tools.logging :as log]
+            [compojure.core :refer [GET POST PUT DELETE]]
             [metabase.api.common :refer :all]
             (metabase [config :as config]
                       [db :as db]
@@ -154,22 +155,25 @@
    Suggestions include matching `Tables` and `Fields` in this `Database`."
   [id prefix] ; TODO - should prefix be Required/NonEmptyString ?
   (read-check Database id)
-  (let [prefix-len      (count prefix)
-        table-id->name  (db/select-id->field :name Table, :db_id id, :active true)
-        matching-tables (->> (vals table-id->name)                                                              ; get all Table names that start with PREFIX
-                             (filter (fn [^String table-name]
-                                       (and (>= (count table-name) prefix-len)
-                                            (= prefix (.substring table-name 0 prefix-len)))))
-                             (map (fn [table-name]                                                              ; return them in the format [table_name "Table"]
-                                    [table-name "Table"])))
-        fields (->> (db/select [Field :name :base_type :special_type :table_id]                                 ; get all Fields with names that start with PREFIX
-                      :table_id        [:in (keys table-id->name)]                                              ; whose Table is in this DB
-                      :name            [:like (str prefix "%")]
-                      :visibility_type [:not-in ["sensitive" "retired"]])
-                    (map (fn [{:keys [name base_type special_type table_id]}]                                   ; return them in the format
-                           [name (str (table-id->name table_id) " " base_type (when special_type                ; [field_name "table_name base_type special_type"]
-                                                                                (str " " special_type)))])))]
-    (concat matching-tables fields)))                                                                           ; return combined seq of Fields + Tables
+  (try
+    (let [prefix-len      (count prefix)
+          table-id->name  (db/select-id->field :name Table, :db_id id, :active true)
+          matching-tables (->> (vals table-id->name)                                                              ; get all Table names that start with PREFIX
+                               (filter (fn [^String table-name]
+                                         (and (>= (count table-name) prefix-len)
+                                              (= prefix (.substring table-name 0 prefix-len)))))
+                               (map (fn [table-name]                                                              ; return them in the format [table_name "Table"]
+                                      [table-name "Table"])))
+          fields (->> (db/select [Field :name :base_type :special_type :table_id]                                 ; get all Fields with names that start with PREFIX
+                                 :table_id        [:in (keys table-id->name)]                                              ; whose Table is in this DB
+                                 :name            [:like (str prefix "%")]
+                                 :visibility_type [:not-in ["sensitive" "retired"]])
+                      (map (fn [{:keys [name base_type special_type table_id]}]                                   ; return them in the format
+                             [name (str (table-id->name table_id) " " base_type (when special_type                ; [field_name "table_name base_type special_type"]
+                                                                                  (str " " special_type)))])))]
+      (concat matching-tables fields))                                                                           ; return combined seq of Fields + Tables
+    (catch Throwable t
+      (log/warn "Error with autocomplete: " (.getMessage t)))))
 
 (defendpoint GET "/:id/tables"
   "Get a list of all `Tables` in `Database`."

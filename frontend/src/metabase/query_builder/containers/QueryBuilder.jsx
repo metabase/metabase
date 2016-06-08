@@ -59,7 +59,7 @@ function autocompleteResults(card, prefix) {
        dbId: databaseId,
        prefix: prefix
     });
-    return apiCall.$promise;
+    return apiCall;
 }
 
 const mapStateToProps = (state, props) => {

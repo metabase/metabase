@@ -33,7 +33,9 @@ export default class NativeQueryEditor extends Component {
     constructor(props, context) {
         super(props, context);
 
-        _.bindAll(this, 'onChange', 'toggleEditor', 'updateEditorMode', 'setDatabaseID', 'setTableID');
+        this.localUpdate = false;
+
+        _.bindAll(this, 'onChange', 'toggleEditor', 'setDatabaseID', 'setTableID');
     }
 
     static propTypes = {
@@ -51,7 +53,8 @@ export default class NativeQueryEditor extends Component {
 
     componentWillMount() {
         this.setState({
-            showEditor: this.props.isOpen
+            showEditor: this.props.isOpen,
+            modeInfo: getModeInfo(this.props.query, this.props.databases)
         });
     }
 
@@ -60,32 +63,33 @@ export default class NativeQueryEditor extends Component {
     }
 
     componentWillReceiveProps(nextProps) {
-        this.updateEditorMode(nextProps);
+        if (this.props.query.database !== nextProps.query.database) {
+            this.setState({
+                modeInfo: getModeInfo(nextProps.query, nextProps.databases)
+            });
+        }
     }
 
     componentDidUpdate() {
         var editor = ace.edit("id_sql");
         if (editor.getValue() !== this.props.query.native.query) {
-            editor.setValue(this.props.query.native.query)
+            // This is a weird hack, but the purpose is to avoid an infinite loop caused by the fact that calling editor.setValue()
+            // will trigger the editor 'change' event, update the query, and cause another rendering loop which we don't want, so
+            // we need a way to update the editor without causing the onChange event to go through as well
+            this.localUpdate = true;
+            editor.setValue(this.props.query.native.query);
+            editor.clearSelection();
+            this.localUpdate = false;
         }
-    }
 
-    /// Update the mode of the ACE Editor to something like `ace/mode/sql` or `ace/mode/json`.
-    /// The appropriate mode to use is fetched via the delegation pattern with the function `getModeInfo()`, described in detail above
-    updateEditorMode(props) {
-        let modeInfo = getModeInfo(props.query, props.databases);
-        if (!modeInfo) return;
-
-        console.log('Setting ACE Editor mode to:', modeInfo.mode);
-
-        let editor = ace.edit("id_sql");
-        editor.getSession().setMode(modeInfo.mode);
+        if (this.state.modeInfo && editor.getSession().$modeId !== this.state.modeInfo.mode) {
+            console.log('Setting ACE Editor mode to:', this.state.modeInfo.mode);
+            editor.getSession().setMode(this.state.modeInfo.mode);
+        }
     }
 
     loadAceEditor() {
         var editor = ace.edit("id_sql");
-
-        this.updateEditorMode(this.props);
 
         // listen to onChange events
         editor.getSession().on('change', this.onChange);
@@ -146,7 +150,7 @@ export default class NativeQueryEditor extends Component {
     }
 
     onChange(event) {
-        if (this.state.editor) {
+        if (this.state.editor && !this.localUpdate) {
             var query = this.props.query;
             query.native.query = this.state.editor.getValue();
             this.setQuery(query);
