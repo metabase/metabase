@@ -14,6 +14,7 @@
 
 :local(.mapped) {
     border-color: var(--green-color);
+    color: var(--green-color);
 }
 
 :local(.warn) {
