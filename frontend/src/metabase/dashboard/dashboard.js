@@ -107,8 +107,16 @@ export const addCardToDashboard = function({ dashId, cardId }) {
 
 export const removeCardFromDashboard = createAction(REMOVE_CARD_FROM_DASH);
 
+const UPDATE_DASHCARD_ID = "UPDATE_DASHCARD_ID"
+const updateDashcardId = createAction(UPDATE_DASHCARD_ID, (oldDashcardId, newDashcardId) => ({ oldDashcardId, newDashcardId }));
+
+const CLEAR_CARD_DATA = "CLEAR_CARD_DATA";
+export const clearCardData = createAction(CLEAR_CARD_DATA, (cardId, dashcardId) => ({ cardId, dashcardId }));
+
 export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, dashcard) {
     return async function(dispatch, getState) {
+        dispatch(clearCardData(card.id, dashcard.id));
+
         let result = null;
         let slowCardTimer = setTimeout(() => {
             if (result === null) {
@@ -183,9 +191,6 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(id, en
     };
 });
 
-const UPDATE_DASHCARD_ID = "UPDATE_DASHCARD_ID"
-const updateDashcardId = createAction(UPDATE_DASHCARD_ID);
-
 export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) {
     return async function(dispatch, getState) {
         let { dashboards, dashcards } = getState().dashboard;
@@ -205,7 +210,7 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
             .map(async dc => {
                 if (dc.isAdded) {
                     let result = await DashboardApi.addcard({ dashId, cardId: dc.card_id });
-                    dispatch(updateDashcardId({ oldDashcardId: dc.id, newDashcardId: result.id }));
+                    dispatch(updateDashcardId(dc.id, result.id));
                     // mark isAdded because addcard doesn't record the position
                     return { ...result, col: dc.col, row: dc.row, sizeX: dc.sizeX, sizeY: dc.sizeY, series: dc.series, parameter_mappings: dc.parameter_mappings, isAdded: true }
                 } else {
@@ -361,6 +366,9 @@ const revisions = handleActions({
 const dashcardData = handleActions({
     [FETCH_CARD_DATA]: { next: (state, { payload: { dashcard_id, card_id, result }}) =>
         i.assocIn(state, [dashcard_id, card_id], result)
+    },
+    [CLEAR_CARD_DATA]: { next: (state, { payload: { cardId, dashcardId }}) =>
+        i.assocIn(state, [dashcardId, cardId])
     },
     [UPDATE_DASHCARD_ID]: { next: (state, { payload: { oldDashcardId, newDashcardId }}) =>
         i.chain(state)
