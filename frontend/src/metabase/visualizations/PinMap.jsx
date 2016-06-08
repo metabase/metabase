@@ -147,6 +147,15 @@ export default class PinMap extends Component {
               marker.bindPopup(tooltipElement);
             }
 
+            map.on('moveend', () => {
+              let center = map.getCenter();
+              this.onMapCenterChange(center.lat, center.lng);
+            });
+
+            map.on('zoomend', () => {
+              this.onMapZoomChange(map.getZoom());
+            })
+
           /* map.addListener("center_changed", () => {
            *     let center = map.getCenter();
            *     this.onMapCenterChange(center.lat(), center.lng());
