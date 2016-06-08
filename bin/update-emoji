@@ -44,4 +44,4 @@ orderedEmoji.forEach(function(emoji) {
     }
 });
 
-fs.writeFileSync("frontend/src/lib/emoji.json", JSON.stringify(results));
+fs.writeFileSync("frontend/src/metabase/lib/emoji.json", JSON.stringify(results));

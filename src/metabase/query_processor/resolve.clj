@@ -41,11 +41,11 @@
    "Return the unresolved Field ID associated with this object, if any.")
   (^:private fk-field-id ^Integer [this]
    "Return a the FK Field ID (for joining) associated with this object, if any.")
-  (^:private resolve-field [this, ^clojure.lang.IPersistentMap field-id->fields]
+  (^:private resolve-field [this, ^clojure.lang.IPersistentMap field-id->field]
    "This method is called when walking the Query after fetching `Fields`.
     Placeholder objects should lookup the relevant Field in FIELD-ID->FIELDS and
     return their expanded form. Other objects should just return themselves.a")
-  (resolve-table [this, ^clojure.lang.IPersistentMap table-id->tables]
+  (resolve-table [this, ^clojure.lang.IPersistentMap fk-id+table-id->tables]
    "Called when walking the Query after `Fields` have been resolved and `Tables` have been fetched.
     Objects like `Fields` can add relevant information like the name of their `Table`."))
 
@@ -66,19 +66,20 @@
       (when (instance? FieldPlaceholder parent)
         parent-id)))
 
-(defn- field-resolve-field [{:keys [parent parent-id], :as this} field-id->fields]
+(defn- field-resolve-field [{:keys [parent parent-id], :as this} field-id->field]
   (cond
     parent    (or (when (instance? FieldPlaceholder parent)
-                    (when-let [resolved (resolve-field parent field-id->fields)]
+                    (when-let [resolved (resolve-field parent field-id->field)]
                       (assoc this :parent resolved)))
                   this)
-    parent-id (assoc this :parent (or (field-id->fields parent-id)
+    parent-id (assoc this :parent (or (field-id->field parent-id)
                                       (map->FieldPlaceholder {:field-id parent-id})))
     :else     this))
 
-(defn- field-resolve-table [{:keys [table-id], :as this} table-id->table]
-  (let [table (or (table-id->table table-id)
-                  (throw (Exception. (format "Query expansion failed: could not find table %d." table-id))))]
+(defn- field-resolve-table [{:keys [table-id fk-field-id], :as this} fk-id+table-id->table]
+  {:pre [(map? fk-id+table-id->table) (every? vector? (keys fk-id+table-id->table))]}
+  (let [table (or (fk-id+table-id->table [fk-field-id table-id])
+                  (throw (Exception. (format "Query expansion failed: could not find table %d (FK ID = %d). Resolved tables: %s" table-id fk-field-id fk-id+table-id->table))))]
     (assoc this
            :table-name  (:name table)
            :schema-name (:schema table))))
@@ -92,10 +93,11 @@
 
 ;;; ## ------------------------------------------------------------ FIELD PLACEHOLDER ------------------------------------------------------------
 
-(defn- field-ph-resolve-field [{:keys [field-id, datetime-unit], :as this} field-id->fields]
-  (if-let [{:keys [base-type special-type], :as field} (some-> (field-id->fields field-id)
-                                                               map->Field)]
-    ;; try to resolve the Field with the ones available in field-id->fields
+(defn- field-ph-resolve-field [{:keys [field-id datetime-unit fk-field-id], :as this} field-id->field]
+  (if-let [{:keys [base-type special-type], :as field} (some-> (field-id->field field-id)
+                                                               map->Field
+                                                               (assoc :fk-field-id fk-field-id))]
+    ;; try to resolve the Field with the ones available in field-id->field
     (let [datetime-field? (or (contains? #{:DateField :DateTimeField} base-type)
                               (contains? #{:timestamp_seconds :timestamp_milliseconds} special-type))]
       (if-not datetime-field?
@@ -143,8 +145,8 @@
       :else
       (throw (Exception. (format "Invalid value '%s': expected a DateTime." value))))))
 
-(defn- value-ph-resolve-field [{:keys [field-placeholder value]} field-id->fields]
-  (let [resolved-field (resolve-field field-placeholder field-id->fields)]
+(defn- value-ph-resolve-field [{:keys [field-placeholder value]} field-id->field]
+  (let [resolved-field (resolve-field field-placeholder field-id->field)]
     (when-not resolved-field
       (throw (Exception. (format "Unable to resolve field: %s" field-placeholder))))
     (parse-value resolved-field value)))
@@ -163,8 +165,10 @@
                           (when-let [id (f form)]
                             (conj! ids id)))))
     (persistent! ids)))
+
 (def ^:private collect-unresolved-field-ids (partial collect-ids-with unresolved-field-id))
 (def ^:private collect-fk-field-ids         (partial collect-ids-with fk-field-id))
+
 
 (defn- record-fk-field-ids
   "Record `:fk-field-id` referenced in the Query."
@@ -197,53 +201,54 @@
            ;; Recurse in case any new (nested) unresolved fields were found.
            (recur (dec max-iterations))))))))
 
-(defn- join-tables-fetch-field-info
+(defn- fk-field-ids->info [source-table-id fk-field-ids]
+  (when (seq fk-field-ids)
+    (db/query {:select    [[:source-fk.name      :source-field-name]
+                           [:source-fk.id        :source-field-id]
+                           [:target-pk.id        :target-field-id]
+                           [:target-pk.name      :target-field-name]
+                           [:target-table.id     :target-table-id]
+                           [:target-table.name   :target-table-name]
+                           [:target-table.schema :target-table-schema]]
+               :from      [[(db/entity->table-name field/Field) :source-fk]]
+               :left-join [[(db/entity->table-name field/Field) :target-pk]
+                           [:= :source-fk.fk_target_field_id :target-pk.id]
+                           [(db/entity->table-name Table) :target-table]
+                           [:= :target-pk.table_id :target-table.id]]
+               :where     [:and [:in :source-fk.id      (set fk-field-ids)]
+                                [:=  :source-fk.table_id     source-table-id]
+                                [:=  :source-fk.special_type "fk"]]})))
+
+(defn- fk-field-ids->joined-tables
   "Fetch info for PK/FK `Fields` for the JOIN-TABLES referenced in a Query."
-  [source-table-id join-tables fk-field-ids]
-  (when (seq join-tables)
-    (when-not (seq fk-field-ids)
-      (throw (Exception. "You must use the fk-> form to reference Fields that are not part of the source_table.")))
-    (let [ ;; Build a map of source table FK field IDs -> field names
-          fk-field-id->field-name      (db/select-id->field :name field/Field
-                                         :id           [:in fk-field-ids]
-                                         :table_id     source-table-id
-                                         :special_type "fk")
-
-          ;; Build a map of join table PK field IDs -> source table FK field IDs
-          pk-field-id->fk-field-id     (db/select-field->id :fk_target_field_id field/Field
-                                         :id                 [:in (keys fk-field-id->field-name)]
-                                         :fk_target_field_id [:not= nil])
-
-          ;; Build a map of join table ID -> PK field info
-          join-table-id->pk-field      (let [pk-fields (db/select [field/Field :id :table_id :name]
-                                                         :id [:in (keys pk-field-id->fk-field-id)])]
-                                         (zipmap (map :table_id pk-fields) pk-fields))]
-
-      ;; Now build the :join-tables clause
-      (vec (for [{table-id :id, table-name :name, schema :schema} join-tables]
-             (let [{pk-field-id :id, pk-field-name :name} (join-table-id->pk-field table-id)]
-               (map->JoinTable {:table-id     table-id
-                                :table-name   table-name
-                                :schema       schema
-                                :pk-field     (map->JoinTableField {:field-id   pk-field-id
-                                                                    :field-name pk-field-name})
-                                :source-field (let [fk-id (pk-field-id->fk-field-id pk-field-id)]
-                                                (map->JoinTableField {:field-id   fk-id
-                                                                      :field-name (fk-field-id->field-name fk-id)}))})))))))
+  [source-table-id fk-field-ids]
+  (when (seq fk-field-ids)
+    (vec (for [{:keys [source-field-name source-field-id target-field-id target-field-name target-table-id target-table-name target-table-schema]} (fk-field-ids->info source-table-id fk-field-ids)]
+           (map->JoinTable {:table-id     target-table-id
+                            :table-name   target-table-name
+                            :schema       target-table-schema
+                            :pk-field     (map->JoinTableField {:field-id   target-field-id
+                                                                :field-name target-field-name})
+                            :source-field (map->JoinTableField {:field-id   source-field-id
+                                                                :field-name source-field-name})
+                            :join-alias  (str target-table-name "__via__" source-field-name)})))))
 
 (defn- resolve-tables
   "Resolve the `Tables` in an EXPANDED-QUERY-DICT."
   [{{source-table-id :source-table} :query, :keys [table-ids fk-field-ids], :as expanded-query-dict}]
   {:pre [(integer? source-table-id)]}
-  (let [table-ids       (conj table-ids source-table-id)
-        table-id->table (u/key-by :id (db/select [Table :schema :name :id]
-                                        :id [:in table-ids]))
-        join-tables     (vals (dissoc table-id->table source-table-id))]
+  (let [table-ids             (conj table-ids source-table-id)
+        source-table          (or (db/select-one [Table :schema :name :id], :id source-table-id)
+                                  (throw (Exception. (format "Query expansion failed: could not find source table %d." source-table-id))))
+        joined-tables         (fk-field-ids->joined-tables source-table-id fk-field-ids)
+        fk-id+table-id->table (into {[nil source-table-id] source-table}
+                                    (for [{:keys [source-field table-id join-alias]} joined-tables]
+                                      {[(:field-id source-field) table-id] {:name join-alias
+                                                                            :id   table-id}}))]
     (as-> expanded-query-dict <>
-      (assoc-in <> [:query :source-table] (or (table-id->table source-table-id)
-                                              (throw (Exception. (format "Query expansion failed: could not find source table %d." source-table-id)))))
-      (assoc-in <> [:query :join-tables]  (join-tables-fetch-field-info source-table-id join-tables fk-field-ids))
-      (walk/postwalk #(resolve-table % table-id->table) <>))))
+      (assoc-in <> [:query :source-table] source-table)
+      (assoc-in <> [:query :join-tables]  joined-tables)
+      (walk/postwalk #(resolve-table % fk-id+table-id->table) <>))))
 
 
 ;;; # ------------------------------------------------------------ PUBLIC INTERFACE ------------------------------------------------------------

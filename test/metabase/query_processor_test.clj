@@ -13,13 +13,10 @@
                                       [interface :as qpi])
             [metabase.test.data :refer :all]
             (metabase.test.data [dataset-definitions :as defs]
-                                [datasets :as datasets :refer [*data-loader* *engine*]]
+                                [datasets :as datasets :refer [*driver* *engine*]]
                                 [interface :refer [create-database-definition], :as i])
             [metabase.test.util :as tu]
             [metabase.util :as u]))
-
-
-;;; ------------------------------------------------------------ Dataset-Independent QP Tests ------------------------------------------------------------
 
 ;;; ------------------------------------------------------------ Helper Fns + Macros ------------------------------------------------------------
 
@@ -28,9 +25,9 @@
 (def ^:private ^:const non-timeseries-engines (set/difference datasets/all-valid-engines timeseries-engines))
 
 (defn- engines-that-support [feature]
-  (set (filter (fn [engine]
-                 (contains? (driver/features (driver/engine->driver engine)) feature))
-               non-timeseries-engines)))
+  (set (for [engine non-timeseries-engines
+             :when  (contains? (driver/features (driver/engine->driver engine)) feature)]
+         engine)))
 
 (defn- engines-that-dont-support [feature]
   (set/difference non-timeseries-engines (engines-that-support feature)))
@@ -265,6 +262,7 @@
 
 (defn rows
   "Return the result rows from query results, or throw an Exception if they're missing."
+  {:style/indent 0}
   [results]
   (vec (or (-> results :data :rows)
            (println (u/pprint-to-str 'red results))
@@ -986,7 +984,7 @@
 
 ;; There were 9 "sad toucan incidents" on 2015-06-02
 (expect-with-non-timeseries-dbs
-  (if (i/has-questionable-timezone-support? *data-loader*)
+  (if (i/has-questionable-timezone-support? *driver*)
     10
     9)
   (count (rows (dataset sad-toucan-incidents
@@ -1010,7 +1008,7 @@
      ["2015-06-10"  9]]
 
     ;; SQL Server, Mongo, and Redshift don't have a concept of timezone so results are all grouped by UTC
-    (i/has-questionable-timezone-support? *data-loader*)
+    (i/has-questionable-timezone-support? *driver*)
     [["2015-06-01T00:00:00.000Z"  6]
      ["2015-06-02T00:00:00.000Z" 10]
      ["2015-06-03T00:00:00.000Z"  4]
@@ -1413,7 +1411,7 @@
      ["2015-06-02 08:20:00" 1]
      ["2015-06-02 11:11:00" 1]]
 
-    (i/has-questionable-timezone-support? *data-loader*)
+    (i/has-questionable-timezone-support? *driver*)
     [["2015-06-01T10:31:00.000Z" 1]
      ["2015-06-01T16:06:00.000Z" 1]
      ["2015-06-01T17:23:00.000Z" 1]
@@ -1465,7 +1463,7 @@
      ["2015-06-02 11:00:00" 1]
      ["2015-06-02 13:00:00" 1]]
 
-    (i/has-questionable-timezone-support? *data-loader*)
+    (i/has-questionable-timezone-support? *driver*)
     [["2015-06-01T10:00:00.000Z" 1]
      ["2015-06-01T16:00:00.000Z" 1]
      ["2015-06-01T17:00:00.000Z" 1]
@@ -1491,7 +1489,7 @@
   (sad-toucan-incidents-with-bucketing :hour))
 
 (expect-with-non-timeseries-dbs
-  (if (i/has-questionable-timezone-support? *data-loader*)
+  (if (i/has-questionable-timezone-support? *driver*)
     [[0 13] [1 8] [2 4] [3  7] [4  5] [5 13] [6 10] [7 8] [8 9] [9 7]]
     [[0  8] [1 9] [2 7] [3 10] [4 10] [5  9] [6  6] [7 5] [8 7] [9 7]])
   (sad-toucan-incidents-with-bucketing :hour-of-day))
@@ -1510,7 +1508,7 @@
      ["2015-06-09"  7]
      ["2015-06-10"  9]]
 
-    (i/has-questionable-timezone-support? *data-loader*)
+    (i/has-questionable-timezone-support? *driver*)
     [["2015-06-01T00:00:00.000Z"  6]
      ["2015-06-02T00:00:00.000Z" 10]
      ["2015-06-03T00:00:00.000Z"  4]
@@ -1536,19 +1534,19 @@
   (sad-toucan-incidents-with-bucketing :day))
 
 (expect-with-non-timeseries-dbs
-  (if (i/has-questionable-timezone-support? *data-loader*)
+  (if (i/has-questionable-timezone-support? *driver*)
     [[1 28] [2 38] [3 29] [4 27] [5 24] [6 30] [7 24]]
     [[1 29] [2 36] [3 33] [4 29] [5 13] [6 38] [7 22]])
   (sad-toucan-incidents-with-bucketing :day-of-week))
 
 (expect-with-non-timeseries-dbs
-  (if (i/has-questionable-timezone-support? *data-loader*)
+  (if (i/has-questionable-timezone-support? *driver*)
     [[1  6] [2 10] [3  4] [4  9] [5  9] [6  8] [7  8] [8  9] [9  7] [10  9]]
     [[1  8] [2  9] [3  9] [4  4] [5 11] [6  8] [7  6] [8 10] [9  6] [10 10]])
   (sad-toucan-incidents-with-bucketing :day-of-month))
 
 (expect-with-non-timeseries-dbs
-  (if (i/has-questionable-timezone-support? *data-loader*)
+  (if (i/has-questionable-timezone-support? *driver*)
     [[152  6] [153 10] [154  4] [155  9] [156  9] [157  8] [158  8] [159  9] [160  7] [161  9]]
     [[152  8] [153  9] [154  9] [155  4] [156 11] [157  8] [158  6] [159 10] [160  6] [161 10]])
   (sad-toucan-incidents-with-bucketing :day-of-year))
@@ -1562,7 +1560,7 @@
      ["2015-06-21" 60]
      ["2015-06-28" 7]]
 
-    (i/has-questionable-timezone-support? *data-loader*)
+    (i/has-questionable-timezone-support? *driver*)
     [["2015-05-31T00:00:00.000Z" 46]
      ["2015-06-07T00:00:00.000Z" 47]
      ["2015-06-14T00:00:00.000Z" 40]
@@ -1619,7 +1617,7 @@
      (vec (for [i (range -15 15)]
             ;; Create timestamps using relative dates (e.g. `DATEADD(second, -195, GETUTCDATE())` instead of generating `java.sql.Timestamps` here so
             ;; they'll be in the DB's native timezone. Some DBs refuse to use the same timezone we're running the tests from *cough* SQL Server *cough*
-            [(u/prog1 (driver/date-interval *data-loader* :second (* i interval-seconds))
+            [(u/prog1 (driver/date-interval *driver* :second (* i interval-seconds))
                (assert <>))]))]))
 
 (def ^:private checkins:4-per-minute (partial database-def-with-timestamps 15))
@@ -1917,3 +1915,27 @@
             (ql/expressions {:x (ql/* $price 2.0)})
             (ql/aggregation (ql/count))
             (ql/breakout (ql/expression :x))))))
+
+
+;;; CAN WE JOIN AGAINST THE SAME TABLE TWICE (MULTIPLE FKS TO A SINGLE TABLE!?)
+;; Query should look something like:
+;; SELECT USERS__via__SENDER_ID.NAME AS NAME, count(*) AS count
+;; FROM PUBLIC.MESSAGES
+;; LEFT JOIN PUBLIC.USERS USERS__via__RECIEVER_ID
+;;   ON PUBLIC.MESSAGES.RECIEVER_ID = USERS__via__RECIEVER_ID.ID
+;; LEFT JOIN PUBLIC.USERS USERS__via__SENDER_ID
+;;   ON PUBLIC.MESSAGES.SENDER_ID = USERS__via__SENDER_ID.ID
+;; WHERE USERS__via__RECIEVER_ID.NAME = 'Rasta Toucan'
+;; GROUP BY USERS__via__SENDER_ID.NAME
+;; ORDER BY USERS__via__SENDER_ID.NAME ASC
+(datasets/expect-with-engines (engines-that-support :foreign-keys)
+  [["Bob the Sea Gull" 2]
+   ["Brenda Blackbird" 2]
+   ["Lucky Pigeon"     2]
+   ["Peter Pelican"    5]
+   ["Ronald Raven"     1]]
+  (dataset avian-singles
+    (rows (run-query messages
+            (ql/aggregation (ql/count))
+            (ql/breakout $sender_id->users.name)
+            (ql/filter (ql/= $reciever_id->users.name "Rasta Toucan"))))))

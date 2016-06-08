@@ -1,7 +1,8 @@
 (ns metabase.test.data.postgres
   "Code for creating / destroying a Postgres database from a `DatabaseDefinition`."
   (:require [environ.core :refer [env]]
-            metabase.driver.postgres
+            (metabase.driver [generic-sql :as sql]
+                             postgres)
             (metabase.test.data [generic-sql :as generic]
                                 [interface :as i])
             [metabase.util :as u])
@@ -44,3 +45,10 @@
           :engine                       (constantly :postgres)
           ;; TODO: this is suspect, but it works
           :has-questionable-timezone-support? (constantly true)}))
+
+;; it's super obnoxious when testing locally to have tests fail because someone is already connected to the test-data DB (meaning we can't drop it), so close all connections to it beforehand
+(defn- kill-connections-to-test-data-db!
+  {:expectations-options :before-run}
+  []
+  (generic/query-when-testing! :postgres (fn [] (sql/connection-details->spec (PostgresDriver.) (database->connection-details :server {})))
+    "SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE pid <> pg_backend_pid() AND pg_stat_activity.datname = 'test-data';"))

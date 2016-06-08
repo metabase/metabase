@@ -98,7 +98,6 @@
                                :deprecations]}                        ; Turn this off temporarily until we finish removing self-deprecated DB functions & macros like `upd`, `del`, and `sel`
   :docstring-checker {:include [#"^metabase"]
                       :exclude [#"test"
-                                #"^metabase\.sample-data$"
                                 #"^metabase\.http-client$"]}
   :profiles {:dev {:dependencies [[org.clojure/tools.nrepl "0.2.12"]  ; REPL <3
                                   [expectations "2.1.3"]              ; unit tests *** DON'T UPDATE THIS UNTIL WE REMOVE USES OF DEPRECATED EXPECT-LET IN THE CODEBASE ***

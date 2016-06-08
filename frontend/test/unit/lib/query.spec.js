@@ -1,5 +1,3 @@
-/*eslint-env jasmine */
-
 import Query from "metabase/lib/query";
 import { createQuery, AggregationClause, BreakoutClause } from "metabase/lib/query";
 
