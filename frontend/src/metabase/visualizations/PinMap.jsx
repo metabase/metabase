@@ -129,12 +129,23 @@ export default class PinMap extends Component {
            *         tileSize: new google.maps.Size(256, 256)
            *     }));
            * }*/
+            L.Icon.Default.imagePath = '/app/img';
+            let map = L.map(element).setView([settings.map.center_latitude, settings.map.center_longitude], settings.map.zoom);
 
-            let map = L.map(element).setView([settings.map.center_latitude, settings.map.center_longitude], 13);
             L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
               attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a>',
               maxZoom: 18,
             }).addTo(map);
+            for (let row of data.rows) {
+              let latColIndex = settings.map.latitude_dataset_col_index;
+              let lonColIndex = settings.map.longitude_dataset_col_index;
+
+              let marker = L.marker([row[latColIndex], row[lonColIndex]]).addTo(map);
+
+              let tooltipElement = document.createElement("div");
+              ReactDOM.render(<ObjectDetailTooltip row={row} cols={data.cols} />, tooltipElement);
+              marker.bindPopup(tooltipElement);
+            }
 
           /* map.addListener("center_changed", () => {
            *     let center = map.getCenter();
