@@ -10,6 +10,7 @@ import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
 
 import _ from "underscore";
 import cx from "classnames";
+import L from "leaflet";
 
 export default class PinMap extends Component {
     static displayName = "Pin Map";
@@ -96,47 +97,53 @@ export default class PinMap extends Component {
             settings = getSettingsForVisualization(settings, "pin_map");
             settings = setLatitudeAndLongitude(settings, data.cols);
 
-            let mapOptions = {
-                zoom: settings.map.zoom,
-                center: new google.maps.LatLng(settings.map.center_latitude, settings.map.center_longitude),
-                mapTypeId: google.maps.MapTypeId.MAP,
-                scrollwheel: false
-            };
+          /* let mapOptions = {
+           *     zoom: settings.map.zoom,
+           *     center: new google.maps.LatLng(settings.map.center_latitude, settings.map.center_longitude),
+           *     mapTypeId: google.maps.MapTypeId.MAP,
+           *     scrollwheel: false
+           * };
 
-            let map = this.map = new google.maps.Map(element, mapOptions);
+           * let map = this.map = new google.maps.Map(element, mapOptions);*/
 
-            if (data.rows.length < 2000) {
-                let tooltip = new google.maps.InfoWindow();
-                let latColIndex = settings.map.latitude_dataset_col_index;
-                let lonColIndex = settings.map.longitude_dataset_col_index;
-                for (let row of data.rows) {
-                    let marker = new google.maps.Marker({
-                        position: new google.maps.LatLng(row[latColIndex], row[lonColIndex]),
-                        map: map,
-                        icon: "/app/img/pin.png"
-                    });
-                    marker.addListener("click", () => {
-                        let tooltipElement = document.createElement("div");
-                        ReactDOM.render(<ObjectDetailTooltip row={row} cols={data.cols} />, tooltipElement);
-                        tooltip.setContent(tooltipElement);
-                        tooltip.open(map, marker);
-                    });
-                }
-            } else {
-                map.overlayMapTypes.push(new google.maps.ImageMapType({
-                    getTileUrl: this.getTileUrl.bind(this, settings),
-                    tileSize: new google.maps.Size(256, 256)
-                }));
-            }
+          /* if (data.rows.length < 2000) {
+           *     let tooltip = new google.maps.InfoWindow();
+           *     let latColIndex = settings.map.latitude_dataset_col_index;
+           *     let lonColIndex = settings.map.longitude_dataset_col_index;
+           *     for (let row of data.rows) {
+           *         let marker = new google.maps.Marker({
+           *             position: new google.maps.LatLng(row[latColIndex], row[lonColIndex]),
+           *             map: map,
+           *             icon: "/app/img/pin.png"
+           *         });
+           *         marker.addListener("click", () => {
+           *             let tooltipElement = document.createElement("div");
+           *             ReactDOM.render(<ObjectDetailTooltip row={row} cols={data.cols} />, tooltipElement);
+           *             tooltip.setContent(tooltipElement);
+           *             tooltip.open(map, marker);
+           *         });
+           *     }
+           * } else {
+           *     map.overlayMapTypes.push(new google.maps.ImageMapType({
+           *         getTileUrl: this.getTileUrl.bind(this, settings),
+           *         tileSize: new google.maps.Size(256, 256)
+           *     }));
+           * }*/
 
-            map.addListener("center_changed", () => {
-                let center = map.getCenter();
-                this.onMapCenterChange(center.lat(), center.lng());
-            });
+            let map = L.map(element).setView([settings.map.center_latitude, settings.map.center_longitude], 13);
+            L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+              attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a>',
+              maxZoom: 18,
+            }).addTo(map);
 
-            map.addListener("zoom_changed", () => {
-                this.onMapZoomChange(map.getZoom());
-            });
+          /* map.addListener("center_changed", () => {
+           *     let center = map.getCenter();
+           *     this.onMapCenterChange(center.lat(), center.lng());
+           * });
+
+           * map.addListener("zoom_changed", () => {
+           *     this.onMapZoomChange(map.getZoom());
+           * });*/
         } catch (err) {
             console.error(err);
             this.props.onRenderError(err.message || err);

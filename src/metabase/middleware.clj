@@ -150,7 +150,8 @@
                                                                       "localhost:8080")]
                                                       :style-src   ["'unsafe-inline'"
                                                                     "'self'"
-                                                                    "fonts.googleapis.com"]
+                                                                    "fonts.googleapis.com"
+                                                                    "cdn.leafletjs.com"]
                                                       :font-src    ["'self'"
                                                                     "fonts.gstatic.com"
                                                                     "themes.googleusercontent.com"
