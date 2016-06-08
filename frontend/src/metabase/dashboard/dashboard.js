@@ -220,7 +220,17 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
 
         // reposition the cards
         if (_.some(updatedDashcards, (dc) => dc.isDirty || dc.isAdded)) {
-            let cards = updatedDashcards.map(({ id, row, col, sizeX, sizeY, series, parameter_mappings }) => ({ id, row, col, sizeX, sizeY, series, parameter_mappings }));
+            let cards = updatedDashcards.map(({ id, card_id, row, col, sizeX, sizeY, series, parameter_mappings }) =>
+                ({
+                    id, card_id, row, col, sizeX, sizeY, series,
+                    parameter_mappings: parameter_mappings.filter(mapping =>
+                        // filter out mappings for deleted paramters
+                        _.findWhere(dashboard.parameters, { id: mapping.parameter_id }) &&
+                        // filter out mappings for deleted series
+                        (card_id === mapping.card_id || _.findWhere(series, { id: mapping.card_id }))
+                    )
+                })
+            );
             var result = await DashboardApi.reposition_cards({ dashId, cards });
             if (result.status !== "ok") {
                 throw new Error(result.status);
