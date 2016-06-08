@@ -10,7 +10,7 @@ import { duration } from "metabase/lib/formatting";
 
 import visualizations from "metabase/visualizations";
 
-import i from "icepick";
+import { assoc, getIn } from "icepick";
 import _ from "underscore";
 import cx from "classnames";
 
@@ -54,7 +54,7 @@ export default class Visualization extends Component {
             // if we have Y axis split info then find the Y axis index (0 = left, 1 = right)
             if (renderInfo && renderInfo.yAxisSplit) {
                 const axisIndex = _.findIndex(renderInfo.yAxisSplit, (indexes) => _.contains(indexes, hovered.index));
-                hovered = i.assoc(hovered, "axisIndex", axisIndex);
+                hovered = assoc(hovered, "axisIndex", axisIndex);
             }
         }
         this.setState({ hovered });
@@ -110,6 +110,17 @@ export default class Visualization extends Component {
                 }
                 { replacementContent ?
                     replacementContent
+                : isDashboard && getIn(series, [0, "data", "rows", "length"]) === 0 ?
+                    <div className="flex-full px1 pb1 text-centered text-slate flex flex-column layout-centered">
+                        <Tooltip tooltip="No results!" isEnabled={small}>
+                            <img src="/app/img/no_results.svg" />
+                        </Tooltip>
+                        { !small &&
+                            <span className="h4 text-bold">
+                                No results!
+                            </span>
+                        }
+                    </div>
                 : error ?
                     <div className="flex-full px1 pb1 text-centered text-slate-light flex flex-column layout-centered">
                         <Tooltip tooltip={isDashboard ? ERROR_MESSAGE_GENERIC : error} isEnabled={small}>
