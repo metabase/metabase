@@ -6,7 +6,6 @@ import promise from 'redux-promise';
 import thunk from "redux-thunk";
 import _ from "underscore";
 
-import "metabase/filters";
 import "metabase/directives";
 import "metabase/services";
 
@@ -20,9 +19,6 @@ const createStoreWithMiddleware = applyMiddleware(
 )(createStore)
 
 var QueryBuilderModule = angular.module('metabase.query_builder', [
-    'ngRoute',
-    'ngCookies',
-    'metabase.filters',
     'metabase.directives',
     'metabase.services',
 ]);
