@@ -71,7 +71,7 @@ export default class DashCardCardParameterMapper extends Component {
         const selected = _.find(mappingOptions, (o) => _.isEqual(o.target, target));
 
         const mapping = getIn(mappingsByParameter, [parameter.id, dashcard.id, card.id]);
-        let overlapWarning = mapping && mapping.mappingsWithValues > 1 && mapping.overlapMax === 1;
+        let overlapWarning = !!(mapping && mapping.mappingsWithValues > 1 && mapping.overlapMax === 1);
 
         const sections = _.map(this.props.mappingOptionSections, (options) => ({
             name: options[0].sectionName,
@@ -80,7 +80,10 @@ export default class DashCardCardParameterMapper extends Component {
         }));
 
         return (
-            <div onMouseDown={(e) => e.stopPropagation()}>
+            <div className="mx1 flex flex-column align-center" onMouseDown={(e) => e.stopPropagation()}>
+                { dashcard.series && dashcard.series.length > 0 &&
+                    <div className="h3 mb1 text-bold" style={{ textOverflow: "ellipsis", whiteSpace: "nowrap", overflowX: "hidden", maxWidth: 200 }}>{card.name}</div>
+                }
                 <PopoverWithTrigger
                     ref="popover"
                     triggerElement={
