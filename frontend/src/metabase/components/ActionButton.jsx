@@ -41,7 +41,10 @@ export default class ActionButton extends Component {
     resetStateOnTimeout() {
         // clear any previously set timeouts then start a new one
         clearTimeout(this.timeout);
-        this.timeout = setTimeout(() => this.replaceState(this.getInitialState()), 5000);
+        this.timeout = setTimeout(() => this.replaceState({
+            active: false,
+            result: null
+        }), 5000);
     }
 
     onClick(event) {
