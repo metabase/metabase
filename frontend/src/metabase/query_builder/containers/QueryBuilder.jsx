@@ -104,6 +104,8 @@ export default class QueryBuilder extends Component {
         super(props, context);
 
         _.bindAll(this, "popStateListener", "handleResize");
+
+        this.forceUpdateDebounced = _.debounce(this.forceUpdate.bind(this), 400);
     }
 
     componentWillMount() {
@@ -123,7 +125,7 @@ export default class QueryBuilder extends Component {
     // When the window is resized we need to re-render, mainly so that our visualization pane updates
     // Debounce the function to improve resizing performance.
     handleResize(e) {
-        _.debounce(() => this.setState(this.state), 400);
+        this.forceUpdateDebounced();
     }
 
     popStateListener(e) {
