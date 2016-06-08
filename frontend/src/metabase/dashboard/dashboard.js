@@ -173,7 +173,7 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(id, en
         _.chain(result.ordered_cards)
             .map((dc) => [dc.card].concat(dc.series))
             .flatten()
-            .pluck("database_id")
+            .map(card => card.dataset_query && card.dataset_query.database)
             .uniq()
             .each((dbId) => dispatch(fetchDatabaseMetadata(dbId)));
 
