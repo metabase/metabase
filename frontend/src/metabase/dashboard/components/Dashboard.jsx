@@ -96,7 +96,7 @@ export default class Dashboard extends Component {
 
     componentWillReceiveProps(nextProps) {
         if (!_.isEqual(this.props.parameterValues, nextProps.parameterValues) || !this.props.dashboard) {
-            this.fetchDashboardCardData(nextProps);
+            this.fetchDashboardCardData(nextProps, true);
         }
     }
 
@@ -262,13 +262,13 @@ export default class Dashboard extends Component {
     }
 
     // we don't call this initially because DashCards initiate their own fetchCardData
-    fetchDashboardCardData(props) {
+    fetchDashboardCardData(props, clearExisting) {
         console.log("refreshing card data");
         if (props.dashboard) {
             for (const dashcard of props.dashboard.ordered_cards) {
                 const cards = [dashcard.card].concat(dashcard.series || []);
                 for (const card of cards) {
-                    props.fetchCardData(card, dashcard);
+                    props.fetchCardData(card, dashcard, clearExisting);
                 }
             }
         }

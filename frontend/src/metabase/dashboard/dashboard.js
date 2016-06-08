@@ -113,9 +113,11 @@ const updateDashcardId = createAction(UPDATE_DASHCARD_ID, (oldDashcardId, newDas
 const CLEAR_CARD_DATA = "CLEAR_CARD_DATA";
 export const clearCardData = createAction(CLEAR_CARD_DATA, (cardId, dashcardId) => ({ cardId, dashcardId }));
 
-export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, dashcard) {
+export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, dashcard, clearExisting = false) {
     return async function(dispatch, getState) {
-        dispatch(clearCardData(card.id, dashcard.id));
+        if (clearExisting) {
+            dispatch(clearCardData(card.id, dashcard.id));
+        }
 
         let result = null;
         let slowCardTimer = setTimeout(() => {
