@@ -83,8 +83,8 @@ export default class AddSeriesModal extends Component {
                     this.setState({ state: "loading" });
                     await this.props.fetchCardData(card, dashcard);
                 }
-                let sourceDataset = getIn(dashcardData, [dashcard.id, dashcard.card.id]);
-                let seriesDataset = getIn(dashcardData, [dashcard.id, card.id]);
+                let sourceDataset = getIn(this.props.dashcardData, [dashcard.id, dashcard.card.id]);
+                let seriesDataset = getIn(this.props.dashcardData, [dashcard.id, card.id]);
                 if (CardVisualization.seriesAreCompatible(
                     { card: dashcard.card, data: sourceDataset.data },
                     { card: card, data: seriesDataset.data }
