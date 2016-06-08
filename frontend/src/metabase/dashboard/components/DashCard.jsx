@@ -42,14 +42,6 @@ export default class DashCard extends Component {
             ReactDOM.findDOMNode(this).scrollIntoView();
             markNewCardSeen(dashcard.id);
         }
-
-        let cards = [dashcard.card].concat(...(dashcard.series || []));
-        try {
-            await Promise.all(cards.map(fetchCardData));
-        } catch (error) {
-            console.error("DashCard error", error)
-            this.setState({ error });
-        }
     }
 
     componentWillUnmount() {

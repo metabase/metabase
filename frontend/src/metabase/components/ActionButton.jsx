@@ -41,7 +41,7 @@ export default class ActionButton extends Component {
     resetStateOnTimeout() {
         // clear any previously set timeouts then start a new one
         clearTimeout(this.timeout);
-        this.timeout = setTimeout(() => this.replaceState({
+        this.timeout = setTimeout(() => this.setState({
             active: false,
             result: null
         }), 5000);
@@ -65,6 +65,7 @@ export default class ActionButton extends Component {
             }, this.resetStateOnTimeout);
         }, (error) => {
             if (!error.isCanceled) {
+                console.error(error);
                 this.setState({
                     active: false,
                     result: "failed"

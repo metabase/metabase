@@ -92,14 +92,16 @@ export const addCardToDashboard = function({ dashId, cardId }) {
     return function(dispatch, getState) {
         const { dashboards, dashcards, cards } = getState().dashboard;
         const existingCards = dashboards[dashId].ordered_cards.map(id => dashcards[id]).filter(dc => !dc.isRemoved);
-        const id = Math.random(); // temporary id
-        dispatch(createAction(ADD_CARD_TO_DASH)({
-            id: id,
+        const card = cards[cardId];
+        const dashcard = {
+            id: Math.random(), // temporary id
             dashboard_id: dashId,
-            card_id: cardId,
-            card: cards[cardId],
+            card_id: card.id,
+            card: card,
             ...getPositionForNewDashCard(existingCards)
-        }));
+        };
+        dispatch(createAction(ADD_CARD_TO_DASH)(dashcard));
+        dispatch(fetchCardData(card, dashcard));
     };
 }
 
@@ -181,6 +183,9 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(id, en
     };
 });
 
+const UPDATE_DASHCARD_ID = "UPDATE_DASHCARD_ID"
+const updateDashcardId = createAction(UPDATE_DASHCARD_ID);
+
 export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) {
     return async function(dispatch, getState) {
         let { dashboards, dashcards } = getState().dashboard;
@@ -199,7 +204,8 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
             .filter(dc => !dc.isRemoved)
             .map(async dc => {
                 if (dc.isAdded) {
-                    let result = await DashboardApi.addcard({ dashId, cardId: dc.card_id })
+                    let result = await DashboardApi.addcard({ dashId, cardId: dc.card_id });
+                    dispatch(updateDashcardId({ oldDashcardId: dc.id, newDashcardId: result.id }));
                     // mark isAdded because addcard doesn't record the position
                     return { ...result, col: dc.col, row: dc.row, sizeX: dc.sizeX, sizeY: dc.sizeY, series: dc.series, parameter_mappings: dc.parameter_mappings, isAdded: true }
                 } else {
@@ -223,7 +229,7 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
             let cards = updatedDashcards.map(({ id, card_id, row, col, sizeX, sizeY, series, parameter_mappings }) =>
                 ({
                     id, card_id, row, col, sizeX, sizeY, series,
-                    parameter_mappings: parameter_mappings.filter(mapping =>
+                    parameter_mappings: parameter_mappings && parameter_mappings.filter(mapping =>
                         // filter out mappings for deleted paramters
                         _.findWhere(dashboard.parameters, { id: mapping.parameter_id }) &&
                         // filter out mappings for deleted series
@@ -353,7 +359,15 @@ const revisions = handleActions({
 }, {});
 
 const dashcardData = handleActions({
-    [FETCH_CARD_DATA]: { next: (state, { payload: { dashcard_id, card_id, result }}) => i.assocIn(state, [dashcard_id, card_id], result)}
+    [FETCH_CARD_DATA]: { next: (state, { payload: { dashcard_id, card_id, result }}) =>
+        i.assocIn(state, [dashcard_id, card_id], result)
+    },
+    [UPDATE_DASHCARD_ID]: { next: (state, { payload: { oldDashcardId, newDashcardId }}) =>
+        i.chain(state)
+            .assoc(newDashcardId, state[oldDashcardId])
+            .dissoc(oldDashcardId)
+            .value()
+    }
 }, {});
 
 const cardDurations = handleActions({
