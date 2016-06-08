@@ -143,12 +143,11 @@ export default class DashboardHeader extends Component {
                     <Tooltip tooltip="Add a Filter">
                         <a
                           key="parameters"
-                          className={cx("circular p1 flex", { "bg-brand text-white": this.state.modal == "parameters" || this.props.isEditingParameter })}
-                          style={{ margin: -8, position: "relative", top: -2 }}
+                          className={cx({ "text-brand": this.state.modal == "parameters" })}
                           title="Parameters"
                           onClick={() => this.setState({ modal: "parameters" })}
                         >
-                            <Icon name="funnel" width="16px" height="16px" />
+                            <Icon name="funneladd" width="16px" height="16px" />
                         </a>
                     </Tooltip>
 

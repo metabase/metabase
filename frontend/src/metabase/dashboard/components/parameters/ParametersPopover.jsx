@@ -41,7 +41,7 @@ export default class ParametersPopover extends Component {
 }
 
 const ParameterOptionsSection = ({ section, onClick }) =>
-    <li onClick={onClick} className="p1 px2 cursor-pointer">
+    <li onClick={onClick} className="p1 px2 cursor-pointer brand-hover">
         <div className="text-brand text-bold">{section.name}</div>
         <div>{section.description}</div>
     </li>
@@ -57,7 +57,7 @@ const ParameterOptionsSectionsPane = ({ sections, onSelectSection }) =>
     </div>
 
 const ParameterOptionItem = ({ option, onClick }) =>
-    <li onClick={onClick} className="p1 px2 cursor-pointer">
+    <li onClick={onClick} className="p1 px2 cursor-pointer brand-hover">
         <div className="text-brand text-bold">{option.name}</div>
         <div>{option.description}</div>
     </li>
