@@ -322,7 +322,7 @@ export default class QueryHeader extends Component {
                 onSetMode={this.props.setQueryModeFn}
             />
         ]);
-        
+
         // data reference button
         var dataReferenceButtonClasses = cx('mr1 transition-color', {
             'text-brand': this.props.isShowingDataReference,
