@@ -3,7 +3,7 @@
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
-import { getSettingsForVisualization, setLatitudeAndLongitude } from "metabase/lib/visualization_settings";
+import { getSettingsForVisualization, setLatitudeAndLongitude, setCategory } from "metabase/lib/visualization_settings";
 import { hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 
 import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
@@ -75,6 +75,8 @@ export default class PinMap extends Component {
             let settings = card.visualization_settings;
             settings = getSettingsForVisualization(settings, "pin_map");
             settings = setLatitudeAndLongitude(settings, data.cols);
+            settings = setCategory(settings, data.cols);
+            console.log(settings);
 
             let latColIndex = settings.map.latitude_dataset_col_index;
             let lonColIndex = settings.map.longitude_dataset_col_index;

@@ -228,3 +228,24 @@ export function setLatitudeAndLongitude(settings, columnDefs) {
         return settings;
     }
 }
+
+export function setCategory(settings, columnDefs){
+    var categoryColumn,
+        categoryColumnIndex;
+    columnDefs.forEach(function(col, index) {
+        if (col.special_type &&
+              col.special_type === "category" &&
+              !categoryColumn) {
+            categoryColumn = col;
+            categoryColumnIndex = index;
+        }
+    });
+
+    if (categoryColumn) {
+        settings.map.category_source_table_field_id = categoryColumn.id;
+        settings.map.category_dataset_col_index = categoryColumnIndex;
+        return settings;
+    } else {
+        return settings;
+    }
+}
