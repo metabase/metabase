@@ -172,39 +172,49 @@
         (substitute-all-params query rest)))
     query-dict))
 
-(def ^:private ^:const outer-clause #"\[\[.*?\]\]")
-(def ^:private ^:const outer-clause-prefix #"^\[\[(.*?)\s.*\]\]$")
-(def ^:private ^:const incomplete-outer-clause #"\[\[.*?\{\{.*?\}\}.*?\]\]")
-(def ^:private ^:const inner-clause #"<(.*?)>")
-(def ^:private ^:const incomplete-inner-clause #"<.*?\{\{.*?\}\}.*?>")
+(def ^:private ^:const outer-clause-pattern #"\[\[.*?\]\]")
+(def ^:private ^:const outer-clause-prefix-pattern #"^\[\[(.*?)\s.*\]\]$")
+(def ^:private ^:const incomplete-outer-clause-pattern #"\[\[.*?\{\{.*?\}\}.*?\]\]")
+(def ^:private ^:const inner-clause-pattern #"<(.*?)>")
+(def ^:private ^:const incomplete-inner-clause-pattern #"<.*?\{\{.*?\}\}.*?>")
 
-(defn- remove-incomplete-clauses [query-dict]
+(defn- remove-incomplete-clauses
+  "Scans the native query body and removes any custom clauses which were not substituted with a parameter."
+  [query-dict]
   (let [find-and-replace (fn [sql]
                            (-> sql
-                               (s/replace incomplete-outer-clause "")
-                               (s/replace incomplete-inner-clause "")))]
+                               (s/replace incomplete-outer-clause-pattern "")
+                               (s/replace incomplete-inner-clause-pattern "")))]
     (update-in query-dict [:native :query] find-and-replace)))
 
-(defn- conjoin-multi-clause [clause]
-  (let [prefix (second (re-find outer-clause-prefix clause))]
+(defn- format-outer-clause
+  "Formats an outer clause, finding all inner clauses and joining them via `AND` and then concatenating that onto the clause prefix.
+   e.g. \"[[WHERE <foo='bar'> <tou='can'>]]\" -> \"WHERE foo='bar' AND tou='can'\""
+  [clause]
+  (let [prefix (second (re-find outer-clause-prefix-pattern clause))]
     ;; re-seq produces a vector for each match like [matched-form grouping1] and we only want grouping1.
-    (str prefix " " (s/join " AND " (map second (re-seq inner-clause clause))))))
+    (str prefix " " (s/join " AND " (map second (re-seq inner-clause-pattern clause))))))
 
-(defn- process-multi-clauses [query-dict]
-  (if-let [multi-clauses (re-seq outer-clause (get-in query-dict [:native :query]))]
+(defn- process-outer-clauses
+  "Takes a native query body and completely processes all included outer clauses present."
+  [query-dict]
+  (if-let [outer-clauses (re-seq outer-clause-pattern (get-in query-dict [:native :query]))]
     (update-in query-dict [:native :query] (fn [q]
                                              (loop [sql                   q
-                                                    [multi-clause & rest] multi-clauses]
-                                               (if multi-clause
-                                                 (recur (s/replace-first sql multi-clause (conjoin-multi-clause multi-clause)) rest)
+                                                    [outer-clause & rest] outer-clauses]
+                                               (if outer-clause
+                                                 (recur (s/replace-first sql outer-clause (format-outer-clause outer-clause)) rest)
                                                  sql))))
     query-dict))
 
-(defn- process-single-clauses [query-dict]
-  (if-let [single-clauses (re-seq inner-clause (get-in query-dict [:native :query]))]
+(defn- process-inner-clauses
+  "Takes a native query body and completely processes all included inner clauses present.
+   e.g. \"<foo='bar'>\" -> \"foo='bar'\""
+  [query-dict]
+  (if-let [inner-clauses (re-seq inner-clause-pattern (get-in query-dict [:native :query]))]
     (update-in query-dict [:native :query] (fn [q]
                                              (loop [sql                      q
-                                                    [[orig stripped] & rest] single-clauses]
+                                                    [[orig stripped] & rest] inner-clauses]
                                                (if orig
                                                  (recur (s/replace-first sql orig stripped) rest)
                                                  sql))))
@@ -217,8 +227,8 @@
           params          (flatten (map (partial expand-date-range-param report-timezone) params))]
       (-> (substitute-all-params query-dict params)
           remove-incomplete-clauses
-          process-multi-clauses
-          process-single-clauses))))
+          process-outer-clauses
+          process-inner-clauses))))
 
 
 ;;; +-------------------------------------------------------------------------------------------------------+
@@ -226,9 +236,9 @@
 ;;; +-------------------------------------------------------------------------------------------------------+
 
 
-;; TODO: feature = :parameter-substitution (at least for native queries)
 (defn expand-parameters
-  "Expand any :parameters set on the QUERY-DICT."
+  "Expand any :parameters set on the QUERY-DICT and apply them to the query definition.
+   This function removes the :parameters attribute from the QUERY-DICT as part of its execution."
   [{:keys [parameters], :as query-dict}]
   (let [query (dissoc query-dict :parameters)]
     (if (= :query (keyword (:type query)))
