@@ -50,7 +50,7 @@
   "Take a given string description of an absolute date range and return a MAP with a given `:start` and `:end`.
 
    Supported formats:
-   
+
       \"2014-05-10~2014-05-16\"
       \"Q1-2016\"
       \"2016-04\"
