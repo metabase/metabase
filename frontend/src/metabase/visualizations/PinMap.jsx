@@ -11,6 +11,9 @@ import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
 import _ from "underscore";
 import cx from "classnames";
 import L from "leaflet";
+import tinycolor from "tinycolor2";
+import ColorHash from "color-hash";
+const ch = new ColorHash();
 
 export default class PinMap extends Component {
     static displayName = "Pin Map";
@@ -66,6 +69,10 @@ export default class PinMap extends Component {
         });
     }
 
+    genColorCode(string){
+        return tinycolor(ch.hex(string)).monochromatic()[3].toHexString();
+    }
+
     componentDidMount() {
         try {
             let element = ReactDOM.findDOMNode(this.refs.map);
@@ -76,10 +83,10 @@ export default class PinMap extends Component {
             settings = getSettingsForVisualization(settings, "pin_map");
             settings = setLatitudeAndLongitude(settings, data.cols);
             settings = setCategory(settings, data.cols);
-            console.log(settings);
 
             let latColIndex = settings.map.latitude_dataset_col_index;
             let lonColIndex = settings.map.longitude_dataset_col_index;
+            let catColIndex = settings.map.category_dataset_col_index;
 
             let center_latitude = settings.map.center_latitude;
             let center_longitude = settings.map.center_longitude;
@@ -87,6 +94,7 @@ export default class PinMap extends Component {
               center_latitude = this.averageCoordinate(_.pluck(data.rows, latColIndex));
               center_longitude = this.averageCoordinate(_.pluck(data.rows, lonColIndex));
             }
+
 
             L.Icon.Default.imagePath = '/app/img';
             let map = L.map(element).setView([center_latitude, center_longitude], settings.map.zoom);
@@ -96,8 +104,9 @@ export default class PinMap extends Component {
               maxZoom: 18,
             }).addTo(map);
             for (let row of data.rows) {
-              let options = {
-                icon: this.genMarker('red')
+              let options = {}
+              if (catColIndex){
+                options.icon = this.genMarker(this.genColorCode(row[catColIndex]));
               }
               let marker = L.marker([row[latColIndex], row[lonColIndex]], options).addTo(map);
 
