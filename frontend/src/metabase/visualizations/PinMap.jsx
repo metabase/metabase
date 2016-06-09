@@ -87,6 +87,13 @@ export default class PinMap extends Component {
             let latColIndex = settings.map.latitude_dataset_col_index;
             let lonColIndex = settings.map.longitude_dataset_col_index;
             let catColIndex = settings.map.category_dataset_col_index;
+            let catColorMap;
+            if (catColIndex) {
+              let cats = _.union(_.pluck(data.rows, catColIndex))
+              catColorMap = _.map(cats, (cat, index) => {
+                return {'name': cat, 'color': this.genColorCode(cat), 'id': index}
+              })
+            }
 
             let center_latitude = settings.map.center_latitude;
             let center_longitude = settings.map.center_longitude;
@@ -95,8 +102,6 @@ export default class PinMap extends Component {
               center_longitude = this.averageCoordinate(_.pluck(data.rows, lonColIndex));
             }
 
-
-            L.Icon.Default.imagePath = '/app/img';
             let map = L.map(element).setView([center_latitude, center_longitude], settings.map.zoom);
 
             L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
@@ -105,22 +110,79 @@ export default class PinMap extends Component {
             }).addTo(map);
 
             let pruneCluster = new PruneClusterForLeaflet();
+            let pi2 = pi2 = Math.PI * 2;
+            pruneCluster.BuildLeafletClusterIcon = function(cluster) {
+              L.Icon.MarkerCluster = L.Icon.extend({
+                options: {
+                  iconSize: new L.Point(44, 44),
+                  className: 'prunecluster leaflet-markercluster-icon'
+                },
+
+                createIcon: function () {
+                  var e = document.createElement('canvas');
+                  this._setIconStyles(e, 'icon');
+                  var s = this.options.iconSize;
+                  e.width = s.x;
+                  e.height = s.y;
+                  this.draw(e.getContext('2d'), s.x, s.y);
+                  return e;
+                },
+
+                createShadow: function () {
+                  return null;
+                },
+
+                draw: function(canvas, width, height) {
+                  var lol = 0;
+                  var start = 0;
+                  for (var i = 0, l = catColorMap.length; i < l; ++i) {
+                      var size = this.stats[i] / this.population;
+                      if (size > 0) {
+                          canvas.beginPath();
+                          canvas.moveTo(22, 22);
+                          canvas.fillStyle = _.findWhere(catColorMap, {id: i}).color;
+                          var from = start + 0.14,
+                              to = start + size * pi2;
+                          if (to < from) {
+                              from = start;
+                          }
+                          canvas.arc(22,22,22, from, to);
+                          start = start + size*pi2;
+                          canvas.lineTo(22,22);
+                          canvas.fill();
+                          canvas.closePath();
+                      }
+                  }
+                  canvas.beginPath();
+                  canvas.fillStyle = 'white';
+                  canvas.arc(22, 22, 18, 0, Math.PI*2);
+                  canvas.fill();
+                  canvas.closePath();
+                  canvas.fillStyle = '#555';
+                  canvas.textAlign = 'center';
+                  canvas.textBaseline = 'middle';
+                  canvas.font = 'bold 12px sans-serif';
+                  canvas.fillText(this.population, 22, 22, 40);
+                }
+              });
+              let e = new L.Icon.MarkerCluster();
+              e.stats = cluster.stats;
+              e.population = cluster.population;
+              return e;
+            };
             for (let row of data.rows) {
-              /* let options = {}
-               * if (catColIndex){
-               *   options.icon = this.genMarker(this.genColorCode(row[catColIndex]));
-               * }
-               * let marker = L.marker([row[latColIndex], row[lonColIndex]], options);
-
-               * let tooltipElement = document.createElement("div");
-               * ReactDOM.render(<ObjectDetailTooltip row={row} cols={data.cols} />, tooltipElement);
-               * marker.bindPopup(tooltipElement);*/
-
               let tooltipElement = document.createElement("div");
               ReactDOM.render(<ObjectDetailTooltip row={row} cols={data.cols} />, tooltipElement);
 
               let marker = new PruneCluster.Marker(row[latColIndex], row[lonColIndex]);
-              marker.data.icon = this.genMarker(this.genColorCode(row[catColIndex]));
+              if(catColIndex){
+                let cat = row[catColIndex]
+                let color = _.findWhere(catColorMap, {name: cat}).color
+                marker.data.icon = this.genMarker(color);
+                marker.category = cat;
+              } else {
+                marker.data.icon = this.genMarker('#3090e9');
+              }
               marker.data.popup = tooltipElement;
               pruneCluster.RegisterMarker(marker);
             }
