@@ -56,6 +56,10 @@ export default class PinMap extends Component {
         this.setState({ zoom });
     }
 
+    averageCoordinate(coordinates) {
+        return _.reduce(coordinates, (memo, num) => {return memo + num}, 0) / coordinates.length;
+    }
+
     componentDidMount() {
         try {
             let element = ReactDOM.findDOMNode(this.refs.map);
@@ -63,21 +67,27 @@ export default class PinMap extends Component {
             let { card, data } = this.props.series[0];
 
             let settings = card.visualization_settings;
-
             settings = getSettingsForVisualization(settings, "pin_map");
             settings = setLatitudeAndLongitude(settings, data.cols);
 
+            let latColIndex = settings.map.latitude_dataset_col_index;
+            let lonColIndex = settings.map.longitude_dataset_col_index;
+
+            let center_latitude = settings.map.center_latitude;
+            let center_longitude = settings.map.center_longitude;
+            if (!center_latitude || !center_longitude){
+              center_latitude = this.averageCoordinate(_.pluck(data.rows, latColIndex));
+              center_longitude = this.averageCoordinate(_.pluck(data.rows, lonColIndex));
+            }
+
             L.Icon.Default.imagePath = '/app/img';
-            let map = L.map(element).setView([settings.map.center_latitude, settings.map.center_longitude], settings.map.zoom);
+            let map = L.map(element).setView([center_latitude, center_longitude], settings.map.zoom);
 
             L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
               attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a>',
               maxZoom: 18,
             }).addTo(map);
             for (let row of data.rows) {
-              let latColIndex = settings.map.latitude_dataset_col_index;
-              let lonColIndex = settings.map.longitude_dataset_col_index;
-
               let marker = L.marker([row[latColIndex], row[lonColIndex]]).addTo(map);
 
               let tooltipElement = document.createElement("div");

@@ -120,9 +120,9 @@ var settings = {
         'longitude_source_table_field_id': null,
         'latitude_dataset_col_index': null,
         'longitude_dataset_col_index': null,
-        'zoom': 10,
-        'center_latitude': 37.7577, //defaults to SF ;-)
-        'center_longitude': -122.4376
+        'zoom': 7,
+        'center_latitude': null,
+        'center_longitude': null
     }
 };
 
