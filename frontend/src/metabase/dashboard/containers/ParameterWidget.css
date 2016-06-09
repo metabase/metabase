@@ -1,3 +1,7 @@
+:local(.container) {
+    composes: flex align-center mr3 mb2 from "style";
+}
+
 :local(.parameter) {
     float: right;
     font-size: 16px;
@@ -46,12 +50,21 @@
     color: var(--grey-4);
 }
 
+:local(.nameInput:focus),
 :local(.input:focus) {
     outline: none;
 }
 
 :local(.name) {
-    composes: mb1 from "style";
+    composes: mr1 from "style";
+    font-size: 16px;
+    font-weight: bold;
+    color: var(--grey-4);
+}
+
+:local(.nameInput) {
+    composes: parameter;
+    composes: mr1 from "style";
     font-size: 16px;
     font-weight: bold;
     color: var(--grey-4);

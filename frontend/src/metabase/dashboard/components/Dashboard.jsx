@@ -310,7 +310,7 @@ export default class Dashboard extends Component {
                         />
                     </header>
                     {dashboard.parameters && dashboard.parameters.length > 0 &&
-                        <div className="wrapper flex flex-column align-end mt1">
+                        <div className="wrapper flex flex-column align-start mt1">
                             <div className="flex flex-row align-end" ref="parameters">
                                 {dashboard.parameters.map(parameter =>
                                     <ParameterWidget
