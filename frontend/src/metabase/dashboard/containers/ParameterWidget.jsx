@@ -116,14 +116,14 @@ export default class ParameterWidget extends Component {
 
         if (!isEditingDashboard) {
             return (
-                <div className={className}>
+                <div className={cx(className, S.container)}>
                     <div className={S.name}>{parameter.name}</div>
                     {this.renderPopover(parameterValue, "Select...", (value) => setValue(value))}
                 </div>
             );
         } else if (isEditingParameter) {
             return (
-                <div className={cx(className, "flex flex-column")}>
+                <div className={cx(className, S.container)}>
                     { this.state.isEditingName ?
                         <input
                             type="text"
@@ -131,6 +131,11 @@ export default class ParameterWidget extends Component {
                             value={parameter.name}
                             onChange={(e) => setName(e.target.value)}
                             onBlur={() => this.setState({ isEditingName: false })}
+                            onKeyUp={(e) => {
+                                if (e.keyCode === 27 || e.keyCode === 13) {
+                                    e.target.blur();
+                                }
+                            }}
                             autoFocus
                         />
                     :
@@ -144,14 +149,14 @@ export default class ParameterWidget extends Component {
             );
         } else if (isDisabled) {
             return (
-                <div className={cx(className, "disabled")}>
+                <div className={cx(className, S.container, "disabled")}>
                     <div className={S.name}>{parameter.name}</div>
                     {this.renderPopover(null, "Select...")}
                 </div>
             )
         } else {
             return (
-                <div className={cx(className)}>
+                <div className={cx(className, S.container)}>
                     <div className={S.name}>{parameter.name}</div>
                     <div className={cx(S.parameter, S.parameterButtons)}>
                         <div className={S.editButton} onClick={() => setEditingParameterId(parameter.id)}>
