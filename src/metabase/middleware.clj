@@ -146,12 +146,14 @@
                                                                     "*.gstatic.com"
                                                                     "js.intercomcdn.com"
                                                                     "*.intercom.io"
+                                                                    "cdn.rawgit.com"
                                                                     (when config/is-dev?
                                                                       "localhost:8080")]
                                                       :style-src   ["'unsafe-inline'"
                                                                     "'self'"
                                                                     "fonts.googleapis.com"
-                                                                    "cdn.leafletjs.com"]
+                                                                    "cdn.leafletjs.com"
+                                                                    "cdn.rawgit.com"]
                                                       :font-src    ["'self'"
                                                                     "fonts.gstatic.com"
                                                                     "themes.googleusercontent.com"
