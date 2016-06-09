@@ -325,7 +325,7 @@
                  (and (re-matches #"^https?$" (.getProtocol url))           ; these are both automatically downcased
                       (re-matches #"^.+\..{2,}$" (.getAuthority url)))))))) ; this is the part like 'google.com'. Make sure it contains at least one period and 2+ letter TLD
 
-(defn nil-or-maplist?
+(defn nil-or-sequence-of-maps?
   "Is VALUE either nil or sequential? such that every item is a map?"
   [v]
   (or (nil? v)

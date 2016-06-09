@@ -85,7 +85,7 @@
    Returns the updated `DashboardCard` or throws an Exception."
   [{:keys [id series parameter_mappings] :as dashboard-card}]
   {:pre [(integer? id)
-         (u/nil-or-maplist? parameter_mappings)
+         (u/nil-or-sequence-of-maps? parameter_mappings)
          (every? integer? series)]}
   (let [{:keys [sizeX sizeY row col series]} (merge {:series []} dashboard-card)]
     (kdb/transaction
@@ -106,7 +106,7 @@
   {:pre [(integer? dashboard_id)
          (integer? card_id)
          (integer? creator_id)
-         (u/nil-or-maplist? parameter_mappings)]}
+         (u/nil-or-sequence-of-maps? parameter_mappings)]}
   (let [{:keys [sizeX sizeY row col series]} (merge {:sizeX 2, :sizeY 2, :series []}
                                                     dashboard-card)]
     (kdb/transaction
