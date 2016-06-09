@@ -20,8 +20,7 @@ export default class ExtendedOptions extends Component {
 
         this.state = {
             isOpen: false,
-            editExpression: null,
-            editParameter: null
+            editExpression: null
         };
 
         _.bindAll(
@@ -38,8 +37,7 @@ export default class ExtendedOptions extends Component {
     };
 
     static defaultProps = {
-        expressions: {},
-        parameters: []
+        expressions: {}
     };
 
 
@@ -99,41 +97,6 @@ export default class ExtendedOptions extends Component {
         this.setState({editExpression: null});
 
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove Expression');
-    }
-
-    setParameter(parameter, previousName) {
-        console.log("setting parameter", parameter, previousName);
-        
-        let parameters = this.props.query.parameters || [];
-        
-        if (!_.isEmpty(previousName)) {
-            // remove old expression using original name.  this accounts for case where parameter is renamed.
-            parameters = _.reject(parameters, (p) => p.name === previousName);
-        }
-
-        // now add the new parameter
-        parameters = [...parameters, parameter];
-        this.props.query.parameters = parameters;
-        this.props.setQuery(this.props.query);
-        this.setState({editParameter: null});
-
-        console.log("parameters", this.props.query.parameters);
-
-        MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Parameter', !_.isEmpty(previousName));
-    }
-
-    removeParameter(parameter) {
-        console.log("remove parameter", parameter);
-
-        let parameters = this.props.query.parameters || [];
-        parameters = _.reject(parameters, (p) => p.name === parameter.name);
-        this.props.query.parameters = parameters;
-        this.props.setQuery(this.props.query);
-        this.setState({editParameter: null});
-
-        console.log("parameters", this.props.query.parameters);
-
-        MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove Parameter');
     }
 
     renderSort() {

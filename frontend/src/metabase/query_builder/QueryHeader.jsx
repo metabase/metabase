@@ -19,9 +19,6 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 import Query from "metabase/lib/query";
 import { cancelable } from "metabase/lib/promise";
 
-import ParametersPopover from "./parameters/ParametersPopover.jsx";
-import Popover from "metabase/components/Popover.jsx";
-
 import cx from "classnames";
 import _ from "underscore";
 
@@ -32,13 +29,12 @@ export default class QueryHeader extends Component {
         this.state = {
             recentlySaved: null,
             modal: null,
-            revisions: null,
-            isShowingQueryBar: true
+            revisions: null
         };
 
         _.bindAll(this, "resetStateOnTimeout",
             "onCreate", "onSave", "onBeginEditing", "onCancel", "onDelete",
-            "onFollowBreadcrumb", "onToggleDataReference", "onToggleQueryBarVisibility",
+            "onFollowBreadcrumb", "onToggleDataReference",
             "onFetchRevisions", "onRevertToRevision", "onRevertedRevision"
         );
     }
@@ -150,10 +146,6 @@ export default class QueryHeader extends Component {
         this.props.onRestoreOriginalQuery();
     }
 
-    onToggleQueryBarVisibility() {
-        this.props.toggleQueryBarVisibility();
-    }
-
     onToggleDataReference() {
         this.props.toggleDataReferenceFn();
     }
@@ -174,28 +166,6 @@ export default class QueryHeader extends Component {
     onRevertedRevision() {
         this.props.reloadCardFn();
         this.refs.cardHistory.toggle();
-    }
-
-    setParameter(parameter) {
-        let parameters = this.props.card && this.props.card.dataset_query && this.props.card.dataset_query.parameters || [];
-        // if this parameter was already defined then remove the previous definition
-        parameters = _.reject(parameters, (p) => p.hash === parameter.hash);
-
-        parameters = [...parameters, parameter];
-        this.props.card.dataset_query.parameters = parameters;
-        this.props.setQuery(this.props.card.dataset_query);
-
-        MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Parameter');
-    }
-
-    removeParameter(parameter) {
-        let parameters = this.props.card && this.props.card.dataset_query && this.props.card.dataset_query.parameters || [];
-        parameters = _.reject(parameters, (p) => p.name === parameter.name);
-        this.props.card.dataset_query.parameters = parameters;
-        this.props.setQuery(this.props.card.dataset_query);
-        this.setState({editParameter: null});
-
-        MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove Parameter');
     }
 
     getHeaderButtons() {
@@ -320,28 +290,6 @@ export default class QueryHeader extends Component {
             ]);
         }
 
-        // parameters
-        buttonSections.push([
-            <span key="parameters">
-                <Tooltip tooltip="Parameters">
-                    <a className="text-brand-hover" title="Add quick parameters">
-                        <Icon name="gear" width="16px" height="16px" onClick={() => this.setState({ modal: "parameters" })}></Icon>
-                    </a>
-                </Tooltip>
-                {this.state.modal && this.state.modal === "parameters" &&
-                    <Popover onClose={() => this.setState({modal: false})}>
-                        <ParametersPopover
-                            parameters={this.props.card.dataset_query.parameters}
-                            tableMetadata={this.props.tableMetadata}
-                            onSetParameter={(parameter) => this.setParameter(parameter)}
-                            onRemoveParameter={(parameter) => this.removeParameter(parameter)}
-                            onClose={() => this.setState({modal: false})}
-                        />
-                    </Popover>
-                }
-            </span>
-        ]);
-
         // history icon on saved cards
         if (!this.props.cardIsNewFn()) {
             buttonSections.push([
@@ -373,18 +321,6 @@ export default class QueryHeader extends Component {
                 nativeForm={this.props.result && this.props.result.data && this.props.result.data.native_form}
                 onSetMode={this.props.setQueryModeFn}
             />
-        ]);
-
-        // query bar toggle
-        var queryBarToggleClasses = cx('mx1 transition-color', {
-            'text-grey-4': !this.props.isShowingQueryBar,
-            'text-brand': this.props.isShowingQueryBar,
-            'text-brand-hover': !this.state.isShowingQueryBar
-        });
-        buttonSections.push([
-            <a key="queryBarToggle" className={queryBarToggleClasses} title="Toggle the full query bar">
-                <Icon name='chevrondown' width="16px" height="16px" onClick={this.onToggleQueryBarVisibility}></Icon>
-            </a>
         ]);
         
         // data reference button
