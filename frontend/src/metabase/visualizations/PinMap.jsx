@@ -60,6 +60,12 @@ export default class PinMap extends Component {
         return _.reduce(coordinates, (memo, num) => {return memo + num}, 0) / coordinates.length;
     }
 
+    genMarker(color){
+        return L.VectorMarkers.icon({
+            markerColor: color
+        });
+    }
+
     componentDidMount() {
         try {
             let element = ReactDOM.findDOMNode(this.refs.map);
@@ -88,7 +94,10 @@ export default class PinMap extends Component {
               maxZoom: 18,
             }).addTo(map);
             for (let row of data.rows) {
-              let marker = L.marker([row[latColIndex], row[lonColIndex]]).addTo(map);
+              let options = {
+                icon: this.genMarker('red')
+              }
+              let marker = L.marker([row[latColIndex], row[lonColIndex]], options).addTo(map);
 
               let tooltipElement = document.createElement("div");
               ReactDOM.render(<ObjectDetailTooltip row={row} cols={data.cols} />, tooltipElement);
