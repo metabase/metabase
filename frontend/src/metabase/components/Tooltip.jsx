@@ -36,9 +36,9 @@ export default class Tooltip extends Component {
     }
 
     componentDidUpdate() {
-        const { isEnabled } = this.props;
+        const { isEnabled, tooltip } = this.props;
         const { isOpen } = this.state;
-        if (isEnabled && isOpen) {
+        if (tooltip && isEnabled && isOpen) {
             ReactDOM.render(
                 <TooltipPopover isOpen={true} target={this} {...this.props} children={this.props.tooltip} />,
                 this._element

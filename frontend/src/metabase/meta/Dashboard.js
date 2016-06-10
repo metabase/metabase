@@ -5,7 +5,7 @@ import type Table from "./metadata/Table";
 import type { CardObject } from "./types/Card";
 import type { ParameterOption, ParameterObject, ParameterMappingOption } from "./types/Dashboard";
 
-import { slugify } from "metabase/lib/formatting";
+import { slugify, stripId } from "metabase/lib/formatting";
 
 import _ from "underscore";
 
@@ -44,7 +44,7 @@ const PARAMETER_OPTIONS: Array<ParameterOption> = [
         name: "State"
     },
     {
-        type: "location/zip",
+        type: "location/zip_code",
         name: "ZIP or Postal Code"
     },
     {
@@ -78,19 +78,19 @@ for (const option of PARAMETER_OPTIONS) {
     section.options.push(option);
 }
 
-export function getDimensions(table: Table, depth: number) {
+export function getDimensions(table: Table, depth: number, filter = () => true) {
     return _.chain(table.fields())
         .map(field => {
             let targetField = field.target();
             if (targetField && depth > 0) {
                 let targetTable = targetField.table();
-                return _.map(getDimensions(targetTable, depth - 1), (dimension) => ({
+                return _.map(getDimensions(targetTable, depth - 1, filter), (dimension) => ({
                     ...dimension,
-                    sectionName: targetTable.display_name,
+                    sectionName: stripId(field.display_name),
                     target: ["fk->", targetField.id, dimension.target[0] === "field-id" ? dimension.target[1] : dimension.target],
                     depth: dimension.depth + 1
                 }));
-            } else {
+            } else if (filter(field)) {
                 return [{
                     name: field.display_name,
                     field_id: field.id,
@@ -101,6 +101,7 @@ export function getDimensions(table: Table, depth: number) {
             }
         })
         .flatten()
+        .filter(dimension => dimension != null)
         .value();
 }
 
@@ -110,17 +111,28 @@ const PARAMETER_ICONS = {
     "date": "calendar"
 };
 
+function fieldFilterForParameter(parameter: ParameterObject) {
+    const [type, subtype] = parameter.type.split("/");
+    switch (type) {
+        case "date":        return (field) => field.isDate();
+        case "location":    return (field) => field.special_type === subtype;
+        case "id":          return (field) => field.special_type === "id";
+        case "category":    return (field) => field.special_type === "category";
+    }
+    return (field) => false;
+}
+
 export function getParameterMappingOptions(metadata: Metadata, parameter: ParameterObject, card: CardObject): Array<ParameterMappingOption> {
     let options = [];
     if (card.dataset_query.type === "query") {
         const table = card.dataset_query.query.source_table != null ? metadata.table(card.dataset_query.query.source_table) : null;
         if (table) {
-            options.push(...getDimensions(table, 1).map(dimension => ({
+            options.push(...getDimensions(table, 1, fieldFilterForParameter(parameter))
+            .map(dimension => ({
                 name: dimension.name,
                 target: ["dimension", dimension.target],
                 icon: metadata.field(dimension.field_id).icon(),
-                sectionName: dimension.sectionName,
-                sectionIcon: dimension.depth > 0 ? "connections" : "table2",
+                sectionName: dimension.sectionName
             })));
         }
     }
@@ -130,8 +142,7 @@ export function getParameterMappingOptions(metadata: Metadata, parameter: Parame
             name: parameter.name,
             target: ["parameter", parameter.name],
             icon: PARAMETER_ICONS[parameter.type],
-            sectionName: "Parameters",
-            sectionIcon: "star-outline"
+            sectionName: ""
         })));
     }
     return options;

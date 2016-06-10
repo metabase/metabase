@@ -1,13 +1,10 @@
 :local(.button) {
-    font-weight: bold;
+    composes: flex align-center bg-white text-bold cursor-pointer from "style";
     font-size: 16px;
     border: 2px solid var(--brand-color);
     border-radius: 4px;
     min-height: 36px;
     min-width: 100px;
-    background-color: white;
-    display: flex;
-    align-items: center;
     padding: 0.25em 0.5em 0.25em 0.5em;
     color: var(--default-font-color);
 }
@@ -20,4 +17,9 @@
 :local(.warn) {
     border-color: var(--warning-color) !important;
     color: var(--warning-color) !important;
+}
+
+:local(.disabled) {
+    composes: disabled from "style";
+    border-color: inherit;
 }

@@ -68,10 +68,12 @@ export default class DashCardCardParameterMapper extends Component {
 
     render() {
         const { mappingOptions, target, mappingsByParameter, parameter, dashcard, card } = this.props;
+
+        const disabled = mappingOptions.length === 0;
         const selected = _.find(mappingOptions, (o) => _.isEqual(o.target, target));
 
         const mapping = getIn(mappingsByParameter, [parameter.id, dashcard.id, card.id]);
-        let overlapWarning = !!(mapping && mapping.mappingsWithValues > 1 && mapping.overlapMax === 1);
+        const noOverlap = !!(mapping && mapping.mappingsWithValues > 1 && mapping.overlapMax === 1);
 
         const sections = _.map(this.props.mappingOptionSections, (options) => ({
             name: options[0].sectionName,
@@ -79,22 +81,44 @@ export default class DashCardCardParameterMapper extends Component {
             items: options
         }));
 
+        let tooltipText = null;
+        if (disabled) {
+            tooltipText = "This card doesn't have any fields or parameters that can be mapped to this parameter type.";
+        } else if (noOverlap) {
+            tooltipText = "The values in this field don't overlap with the values of any other fields you've chosen.";
+        }
+
         return (
             <div className="mx1 flex flex-column align-center" onMouseDown={(e) => e.stopPropagation()}>
                 { dashcard.series && dashcard.series.length > 0 &&
-                    <div className="h3 mb1 text-bold" style={{ textOverflow: "ellipsis", whiteSpace: "nowrap", overflowX: "hidden", maxWidth: 200 }}>{card.name}</div>
+                    <div className="h5 mb1 text-bold" style={{ textOverflow: "ellipsis", whiteSpace: "nowrap", overflowX: "hidden", maxWidth: 100 }}>{card.name}</div>
                 }
                 <PopoverWithTrigger
                     ref="popover"
+                    triggerClasses={cx({ "disabled": disabled })}
                     triggerElement={
-                        <Tooltip isEnabled={overlapWarning} tooltip="The values in this field don't overlap with the values of any other fields you've chosen" verticalAttachments={["bottom", "top"]}>
-                            <button className={cx(S.button, { [S.mapped]: !!selected, [S.warn]: overlapWarning })}>
-                                <span className="mr1">{selected ? selected.name : "Select..."}</span>
+                        <Tooltip tooltip={tooltipText} verticalAttachments={["bottom", "top"]}>
+                            <button
+                                className={cx(S.button, {
+                                    [S.mapped]: !!selected,
+                                    [S.warn]: noOverlap,
+                                    [S.disabled]: disabled
+                                })}
+                            >
+                                <span className="mr1">
+                                { disabled ?
+                                    "No valid fields"
+                                : selected ?
+                                    selected.name
+                                :
+                                    "Select..."
+                                }
+                                </span>
                                 { selected ?
                                     <Icon className="flex-align-right" name="close" width={16} height={16} onClick={(e) => { this.onChange(null); e.stopPropagation(); }}/>
-                                :
+                                : !disabled ?
                                     <Icon className="flex-align-right" name="chevrondown" width={16} height={16} />
-                                }
+                                : null }
                             </button>
                         </Tooltip>
                     }
@@ -105,7 +129,7 @@ export default class DashCardCardParameterMapper extends Component {
                     onChange={this.onChange}
                     itemIsSelected={(item) => _.isEqual(item.target, target)}
                     renderItemIcon={(item) => <Icon name={item.icon} width={18} height={18} />}
-                    renderSectionIcon={(section) => <Icon name={section.icon} width={18} height={18} />}
+                    alwaysExpanded={true}
                 />
                 </PopoverWithTrigger>
             </div>
