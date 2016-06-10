@@ -77,7 +77,7 @@ export default class ParameterWidget extends Component {
                 <div className={cx(S.parameter, S.noPopover, { [S.selected]: hasValue })}>
                     <Widget value={value} values={values} setValue={setValue} isEditing={isEditingParameter} />
                     { hasValue &&
-                        <Icon name="close" className="flex-align-right" onClick={(e) => {
+                        <Icon name="close" className="flex-align-right cursor-pointer" onClick={(e) => {
                             if (hasValue) {
                                 e.stopPropagation();
                                 setValue(null);
@@ -98,6 +98,7 @@ export default class ParameterWidget extends Component {
                             if (hasValue) {
                                 e.stopPropagation();
                                 setValue(null);
+                                this.refs.valuePopover.close();
                             }
                         }}/>
                     </div>
