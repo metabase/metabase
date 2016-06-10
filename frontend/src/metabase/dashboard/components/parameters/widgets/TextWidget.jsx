@@ -22,7 +22,7 @@ export default class TextWidget extends Component {
     }
 
     render() {
-        const { setValue, className } = this.props;
+        const { setValue, className, isEditing } = this.props;
         return (
             <input
                 className={className}
@@ -38,7 +38,7 @@ export default class TextWidget extends Component {
                     }
                 }}
                 onBlur={() => this.setState({ value: this.props.value })}
-                placeholder="Enter a value..."
+                placeholder={isEditing ? "Enter a default value..." : "Enter a value..."}
             />
         );
     }

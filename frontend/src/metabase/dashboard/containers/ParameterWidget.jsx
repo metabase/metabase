@@ -53,7 +53,9 @@ export default class ParameterWidget extends Component {
     }
 
     renderPopover(value, placeholder, setValue) {
-        const { parameter, mappingsByParameter } = this.props;
+        const { parameter, mappingsByParameter, editingParameter } = this.props;
+        const isEditingParameter = editingParameter && editingParameter.id === parameter.id;
+
         const values = _.chain(mappingsByParameter[parameter.id])
             .map(_.values)
             .flatten()
@@ -73,7 +75,7 @@ export default class ParameterWidget extends Component {
         if (Widget.noPopover) {
             return (
                 <div className={cx(S.parameter, S.noPopover, { [S.selected]: hasValue })}>
-                    <Widget value={value} values={values} setValue={setValue} />
+                    <Widget value={value} values={values} setValue={setValue} isEditing={isEditingParameter} />
                     { hasValue &&
                         <Icon name="close" className="flex-align-right" onClick={(e) => {
                             if (hasValue) {
