@@ -143,7 +143,7 @@ export default class DashboardHeader extends Component {
                     <Tooltip tooltip="Add a Filter">
                         <a
                           key="parameters"
-                          className={cx({ "text-brand": this.state.modal == "parameters" })}
+                          className={cx("text-brand-hover", { "text-brand": this.state.modal == "parameters" })}
                           title="Parameters"
                           onClick={() => this.setState({ modal: "parameters" })}
                         >
