@@ -7,6 +7,7 @@
             (metabase [config :as config]
                       [db :as db])
             (metabase.models [database :refer [Database]]
+                             field
                              [query-execution :refer [QueryExecution]]
                              [setting :refer [defsetting]])
             [metabase.util :as u])
