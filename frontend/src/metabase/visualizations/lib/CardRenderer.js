@@ -461,9 +461,28 @@ export let CardRenderer = {
         let xValues = _.chain(datas)
             .map((data) => _.pluck(data, 0))
             .flatten(true)
-            .sortBy(value => value)
             .uniq(true)
             .value();
+
+        // detect if every series' dimension is strictly ascending or descending and use that to sort xValues
+        let isAscending = true;
+        let isDescending = true;
+        outer: for (const rows of datas) {
+            for (let i = 1; i < rows.length; i++) {
+                isAscending = isAscending && rows[i - 1][0] <= rows[i][0];
+                isDescending = isDescending && rows[i - 1][0] >= rows[i][0];
+                if (!isAscending && !isDescending) {
+                    break outer;
+                }
+            }
+        }
+        if (isDescending) {
+            // use JavaScript's in-place sort/reverse since it's a bit more efficient than underscore's sortBy
+            xValues.sort().reverse();
+        } else if (isAscending || (chartType === "line" || chartType === "area")) {
+            // default line/area charts to ascending since otherwise lines could be wonky
+            xValues.sort();
+        }
 
         let dimension, groups, yAxisSplit;
 
