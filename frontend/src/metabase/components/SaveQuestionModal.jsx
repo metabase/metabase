@@ -13,11 +13,14 @@ export default class SaveQuestionModal extends Component {
 
     constructor(props, context) {
         super(props, context);
+
+        const isStructured = Query.isStructured(props.card.dataset_query);
+
         this.state = {
             error: null,
             valid: false,
             details: {
-                name: props.card.name || Query.generateQueryDescription(props.tableMetadata, props.card.dataset_query.query),
+                name: props.card.name || isStructured ? Query.generateQueryDescription(props.tableMetadata, props.card.dataset_query.query) : "",
                 description: props.card.description || null,
                 saveType: "create"
             }
