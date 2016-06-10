@@ -87,7 +87,7 @@ export function getDimensions(table: Table, depth: number, filter = () => true) 
                 return _.map(getDimensions(targetTable, depth - 1, filter), (dimension) => ({
                     ...dimension,
                     sectionName: stripId(field.display_name),
-                    target: ["fk->", targetField.id, dimension.target[0] === "field-id" ? dimension.target[1] : dimension.target],
+                    target: ["fk->", field.id, dimension.target[0] === "field-id" ? dimension.target[1] : dimension.target],
                     depth: dimension.depth + 1
                 }));
             } else if (filter(field)) {
