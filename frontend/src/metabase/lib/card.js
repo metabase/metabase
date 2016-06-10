@@ -1,4 +1,9 @@
+import _ from "underscore";
 import Query from "metabase/lib/query";
+import { createQuery } from "metabase/lib/query";
+import { AngularResourceProxy } from "metabase/lib/redux";
+
+const Card = new AngularResourceProxy("Card", ["get"]);
 
 
 export function createCard(name = null) {
@@ -9,6 +14,55 @@ export function createCard(name = null) {
         visualization_settings: {},
         dataset_query: {},
     };
+}
+
+// start a new card using the given query type and optional database and table selections
+export function startNewCard(type, databaseId, tableId) {
+    // create a brand new card to work from
+    let card = createCard();
+    card.dataset_query = createQuery(type, databaseId, tableId);
+
+    return card;
+}
+
+// load a card either by ID or from a base64 serialization.  if both are present then they are merged, which the serialized version taking precedence
+export async function loadCard(cardId) {
+    try {
+        let card = card = await Card.get({ "cardId": cardId });
+
+        // strip off angular $xyz stuff
+        return card && cleanCopyCard(card);
+
+    } catch (error) {
+        console.log("error loading card", error);
+        throw error;
+    }
+}
+
+// predicate function that dermines if a given card is "dirty" compared to the last known version of the card
+export function isCardDirty(card, originalCard) {
+    // The rules:
+    //   - if it's new, then it's dirty when
+    //       1) there is a database/table chosen or
+    //       2) when there is any content on the native query
+    //   - if it's saved, then it's dirty when
+    //       1) the current card doesn't match the last saved version
+
+    if (!card) {
+        return false;
+    } else if (!card.id) {
+        if (card.dataset_query.query && card.dataset_query.query.source_table) {
+            return true;
+        } else if (card.dataset_query.native && !_.isEmpty(card.dataset_query.native.query)) {
+            return true;
+        } else {
+            return false;
+        }
+    } else {
+        const origCardSerialized = originalCard ? serializeCardForUrl(originalCard) : null;
+        const newCardSerialized = card ? serializeCardForUrl(card) : null;
+        return (newCardSerialized !== origCardSerialized);
+    }
 }
 
 export function serializeCardForUrl(card) {
@@ -54,7 +108,7 @@ export function urlForCardState(state, dirty) {
     } else {
         url = "/q";
     }
-    if (state.serializedCard && (!state.cardId || dirty)) {
+    if (state.serializedCard && dirty) {
         url += "#" + state.serializedCard;
     }
     return url;

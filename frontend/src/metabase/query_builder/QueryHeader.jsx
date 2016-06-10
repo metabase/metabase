@@ -84,7 +84,7 @@ export default class QueryHeader extends Component {
             Query.cleanQuery(card.dataset_query.query);
         }
 
-        this.requesetPromise = cancelable(this.props.cardApi.create(card).$promise);
+        this.requesetPromise = cancelable(this.props.cardApi.create(card));
         return this.requesetPromise.then(newCard => {
             this.props.notifyCardCreatedFn(newCard);
 
@@ -108,7 +108,7 @@ export default class QueryHeader extends Component {
             Query.cleanQuery(card.dataset_query.query);
         }
 
-        this.requesetPromise = cancelable(this.props.cardApi.update(card).$promise);
+        this.requesetPromise = cancelable(this.props.cardApi.update(card));
         return this.requesetPromise.then(updatedCard => {
             if (this.props.fromUrl) {
                 this.onGoBack();
@@ -137,7 +137,7 @@ export default class QueryHeader extends Component {
     }
 
     async onDelete() {
-        await this.props.cardApi.delete({ 'cardId': this.props.card.id }).$promise;
+        await this.props.cardApi.delete({ 'cardId': this.props.card.id });
         this.onGoBack();
         MetabaseAnalytics.trackEvent("QueryBuilder", "Delete");
     }
@@ -155,12 +155,12 @@ export default class QueryHeader extends Component {
     }
 
     async onFetchRevisions({ entity, id }) {
-        var revisions = await this.props.revisionApi.list({ entity, id }).$promise;
+        var revisions = await this.props.revisionApi.list({ entity, id });
         this.setState({ revisions });
     }
 
     onRevertToRevision({ entity, id, revision_id }) {
-        return this.props.revisionApi.revert({ entity, id, revision_id }).$promise;
+        return this.props.revisionApi.revert({ entity, id, revision_id });
     }
 
     onRevertedRevision() {
