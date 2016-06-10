@@ -181,10 +181,13 @@
   "Convert HONEYSQL-FORM to a vector of SQL string and params, like you'd pass to JDBC."
   [driver honeysql-form]
   {:pre [(map? honeysql-form)]}
-  (binding [hformat/*subquery?* false]
-    (hsql/format honeysql-form
-                 :quoting             (quote-style driver)
-                 :allow-dashed-names? true)))
+  (try (binding [hformat/*subquery?* false]
+         (hsql/format honeysql-form
+           :quoting             (quote-style driver)
+           :allow-dashed-names? true))
+       (catch Throwable e
+         (log/error (u/format-color 'red "Invalid HoneySQL form:\n%s" (u/pprint-to-str honeysql-form)))
+         (throw e))))
 
 (defn- qualify+escape ^clojure.lang.Keyword
   ([table]
@@ -234,9 +237,9 @@
 
 (defn- table-rows-seq [driver database table]
   (let [pk-field (field/Field (table/pk-field-id table))]
-    (query driver database table {:select   [:*]
-                                  :order-by (when pk-field
-                                              [[(qualify+escape table pk-field) :asc]])})))
+    (query driver database table (merge {:select   [:*]}
+                                        (when pk-field
+                                          {:order-by [[(qualify+escape table pk-field) :asc]]})))))
 
 (defn- field-avg-length
   [driver field]
@@ -275,11 +278,11 @@
         db          (table/database table)
         field-k     (qualify+escape table field)
         pk-field    (field/Field (table/pk-field-id table))
-        results     (map :is_url (query driver db table {:select   [[(hsql/call :like field-k (hx/literal "http%://_%.__%")) :is_url]]
-                                                         :where    [:not= field-k nil]
-                                                         :order-by (when pk-field
-                                                                     [[(qualify+escape table pk-field) :asc]])
-                                                         :limit    driver/max-sync-lazy-seq-results}))
+        results     (map :is_url (query driver db table (merge {:select   [[(hsql/call :like field-k (hx/literal "http%://_%.__%")) :is_url]]
+                                                                :where    [:not= field-k nil]
+                                                                :limit    driver/max-sync-lazy-seq-results}
+                                                               (when pk-field
+                                                                 {:order-by [[(qualify+escape table pk-field) :asc]]}))))
         total-count (count results)
         url-count   (count (filter #(or (true? %) (= % 1)) results))]
     (url-percentage url-count total-count)))

@@ -15,6 +15,7 @@
                              [field :as field]
                              [table :as table])
             [metabase.sync-database.analyze :as analyze]
+            [metabase.query-processor :as qp]
             metabase.query-processor.interface
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
@@ -336,7 +337,7 @@
   (binding [sqlqp/*query* outer-query]
     (let [honeysql-form (honeysql-form outer-query)
           sql           (honeysql-form->sql honeysql-form)]
-      {:query      sql
+      {:query      (str "-- " (qp/query->remark outer-query) "\n" sql)
        :table-name table-name
        :mbql?      true})))
 

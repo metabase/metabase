@@ -22,6 +22,7 @@
                                                Field
                                                Expression
                                                ExpressionRef
+                                               JoinTable
                                                RelativeDateTimeValue
                                                Value)))
 
@@ -188,11 +189,11 @@
 (defn apply-join-tables
   "Apply expanded query `join-tables` clause to HONEYSQL-FORM. Default implementation of `apply-join-tables` for SQL drivers."
   [_ honeysql-form {join-tables :join-tables, {source-table-name :name, source-schema :schema} :source-table}]
-  (loop [honeysql-form honeysql-form, [{:keys [table-name pk-field source-field schema]} & more] join-tables]
+  (loop [honeysql-form honeysql-form, [{:keys [table-name pk-field source-field schema join-alias]} & more] join-tables]
     (let [honeysql-form (h/merge-left-join honeysql-form
-                          (hx/qualify-and-escape-dots schema table-name)
+                          [(hx/qualify-and-escape-dots schema table-name) (keyword join-alias)]
                           [:= (hx/qualify-and-escape-dots source-schema source-table-name (:field-name source-field))
-                              (hx/qualify-and-escape-dots schema        table-name        (:field-name pk-field))])]
+                              (hx/qualify-and-escape-dots join-alias                      (:field-name pk-field))])]
       (if (seq more)
         (recur honeysql-form more)
         honeysql-form))))
@@ -268,7 +269,9 @@
   "Build the HoneySQL form we will compile to SQL and execute."
   [driverr {inner-query :query}]
   {:pre [(map? inner-query)]}
-  (apply-clauses driverr {} inner-query))
+  (u/prog1 (apply-clauses driverr {} inner-query)
+    (when-not qp/*disable-qp-logging*
+      (log/debug "HoneySQL Form: 🍯\n" (u/pprint-to-str 'cyan <>)))))
 
 (defn mbql->native
   "Transpile MBQL query into a native SQL statement."
@@ -276,7 +279,7 @@
   (binding [*query* outer-query]
     (let [honeysql-form (build-honeysql-form driver outer-query)
           [sql & args]  (sql/honeysql-form->sql+args driver honeysql-form)]
-      {:query  sql
+      {:query  (str "-- " (qp/query->remark outer-query) "\n" sql)
        :params args})))
 
 

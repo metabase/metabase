@@ -78,11 +78,10 @@ export default class DataSelector extends Component {
     }
 
     onChangeTable(item) {
-        if (item.database != null) {
-            this.props.setDatabaseFn(item.database.id);
-        }
         if (item.table != null) {
             this.props.setSourceTableFn(item.table.id);
+        } else if (item.database != null) {
+            this.props.setDatabaseFn(item.database.id);
         }
         this.refs.popover.toggle();
     }

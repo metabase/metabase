@@ -4,7 +4,8 @@
             [clojure.tools.logging :as log]
             [clojure.tools.namespace.find :as ns-find]
             [medley.core :as m]
-            [metabase.db :as db]
+            (metabase [config :as config]
+                      [db :as db])
             (metabase.models [database :refer [Database]]
                              [query-execution :refer [QueryExecution]]
                              [setting :refer [defsetting]])
@@ -148,14 +149,18 @@
   (mbql->native ^java.util.Map [this, ^Map query]
     "Transpile an MBQL structured query into the appropriate native query form.
 
-  The input query will be a fully expanded MBQL query (https://github.com/metabase/metabase/wiki/Expanded-Queries) with
+  The input QUERY will be a [fully-expanded MBQL query](https://github.com/metabase/metabase/wiki/Expanded-Queries) with
   all the necessary pieces of information to build a properly formatted native query for the given database.
+
+  If the underlying query language supports remarks or comments, the driver should use `query->remark` to generate an appropriate message and include that in an appropriate place;
+  alternatively a driver might directly include the query's `:info` dictionary if the underlying language is JSON-based.
 
   The result of this function will be passed directly into calls to `execute-query`.
 
   For example, a driver like Postgres would build a valid SQL expression and return a map such as:
 
-       {:query \"SELECT * FROM my_table\"}")
+       {:query \"-- [Contents of `(query->remark query)`]
+                 SELECT * FROM my_table\"}")
 
   (notify-database-updated [this, ^DatabaseInstance database]
     "*OPTIONAL*. Notify the driver that the attributes of the DATABASE have changed.  This is specifically relevant in
@@ -263,16 +268,14 @@
   "Search Classpath for namespaces that start with `metabase.driver.`, then `require` them and look for the `driver-init`
    function which provides a uniform way for Driver initialization to be done."
   []
-  (doseq [namespce (filter (fn [ns-symb]
-                             (re-matches #"^metabase\.driver\.[a-z0-9_]+$" (name ns-symb)))
-                           (ns-find/find-namespaces (classpath/classpath)))]
-    (require namespce)))
+  (doseq [ns-symb (ns-find/find-namespaces (classpath/classpath))
+          :when   (re-matches #"^metabase\.driver\.[a-z0-9_]+$" (name ns-symb))]
+    (require ns-symb)))
 
 (defn is-engine?
   "Is ENGINE a valid driver name?"
   [engine]
-  (when engine
-    (contains? (set (keys (available-drivers))) (keyword engine))))
+  (contains? (available-drivers) (keyword engine)))
 
 (defn driver-supports?
   "Tests if a driver supports a given feature."

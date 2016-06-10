@@ -249,7 +249,7 @@ export default class AddSeriesModal extends Component {
                                 </span>
                                 { card.dataset_query.type !== "query" &&
                                     <Tooltip tooltip="We're not sure if this question is compatible">
-                                        <Icon className="px1 flex-align-right text-grey-2 text-grey-4-hover cursor-pointer" name="warning" width={20} height={20} />
+                                        <Icon className="px1 flex-align-right text-grey-2 text-grey-4-hover cursor-pointer flex-no-shrink" name="warning" width={20} height={20} />
                                     </Tooltip>
                                 }
                             </li>
