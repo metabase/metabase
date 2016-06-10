@@ -1,4 +1,5 @@
-/*global google*/
+/*global PruneClusterForLeaflet*/
+/*global PruneCluster*/
 
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
@@ -7,6 +8,7 @@ import { getSettingsForVisualization, setLatitudeAndLongitude, setCategory } fro
 import { hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 
 import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
+import categoryClusterIcon from "metabase/visualizations/lib/categoryClusterIcon";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -110,66 +112,16 @@ export default class PinMap extends Component {
             }).addTo(map);
 
             let pruneCluster = new PruneClusterForLeaflet();
-            let pi2 = pi2 = Math.PI * 2;
-            pruneCluster.BuildLeafletClusterIcon = function(cluster) {
-              L.Icon.MarkerCluster = L.Icon.extend({
-                options: {
-                  iconSize: new L.Point(44, 44),
-                  className: 'prunecluster leaflet-markercluster-icon'
-                },
+            if(catColIndex){
+              pruneCluster.BuildLeafletClusterIcon = function(cluster) {
+                L.Icon.MarkerCluster = categoryClusterIcon(catColorMap);
 
-                createIcon: function () {
-                  var e = document.createElement('canvas');
-                  this._setIconStyles(e, 'icon');
-                  var s = this.options.iconSize;
-                  e.width = s.x;
-                  e.height = s.y;
-                  this.draw(e.getContext('2d'), s.x, s.y);
-                  return e;
-                },
-
-                createShadow: function () {
-                  return null;
-                },
-
-                draw: function(canvas, width, height) {
-                  var lol = 0;
-                  var start = 0;
-                  for (var i = 0, l = catColorMap.length; i < l; ++i) {
-                      var size = this.stats[i] / this.population;
-                      if (size > 0) {
-                          canvas.beginPath();
-                          canvas.moveTo(22, 22);
-                          canvas.fillStyle = _.findWhere(catColorMap, {id: i}).color;
-                          var from = start + 0.14,
-                              to = start + size * pi2;
-                          if (to < from) {
-                              from = start;
-                          }
-                          canvas.arc(22,22,22, from, to);
-                          start = start + size*pi2;
-                          canvas.lineTo(22,22);
-                          canvas.fill();
-                          canvas.closePath();
-                      }
-                  }
-                  canvas.beginPath();
-                  canvas.fillStyle = 'white';
-                  canvas.arc(22, 22, 18, 0, Math.PI*2);
-                  canvas.fill();
-                  canvas.closePath();
-                  canvas.fillStyle = '#555';
-                  canvas.textAlign = 'center';
-                  canvas.textBaseline = 'middle';
-                  canvas.font = 'bold 12px sans-serif';
-                  canvas.fillText(this.population, 22, 22, 40);
-                }
-              });
-              let e = new L.Icon.MarkerCluster();
-              e.stats = cluster.stats;
-              e.population = cluster.population;
-              return e;
-            };
+                let e = new L.Icon.MarkerCluster();
+                e.stats = cluster.stats;
+                e.population = cluster.population;
+                return e;
+              };
+            }
             for (let row of data.rows) {
               let tooltipElement = document.createElement("div");
               ReactDOM.render(<ObjectDetailTooltip row={row} cols={data.cols} />, tooltipElement);
