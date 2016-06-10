@@ -221,7 +221,7 @@
                 {:order-by [[:position :asc]
                             [:id :desc]]})]
     (let [field (resolve/resolve-table (map->Field (resolve/rename-mb-field-keys field))
-                                       {source-table-id source-table})]
+                                       {[nil source-table-id] source-table})]
       (if (datetime-field? field)
         (map->DateTimeField {:field field, :unit :default})
         field))))
@@ -439,6 +439,12 @@
           (assert (sequential? (:columns <>)))
           (assert (every? u/string-or-keyword? (:columns <>))))))))
 
+(defn query->remark
+  "Genarate an approparite REMARK to be prepended to a query to give DBAs additional information about the query being executed.
+   See documentation for `mbql->native` and [issue #2386](https://github.com/metabase/metabase/issues/2386) for more information."
+  ^String [{{:keys [executed-by uuid query-hash query-type]} :info, :as info}]
+  {:pre [(map? info)]}
+  (format "Metabase:: userID: %s executionID: %s queryType: %s queryHash: %s" executed-by uuid query-type query-hash))
 
 (defn- run-query
   "The end of the QP middleware which actually executes the query on the driver.
@@ -532,6 +538,13 @@
 
 (declare query-fail query-complete save-query-execution)
 
+(defn- assert-valid-query-result [query-result]
+  (when-not (contains? query-result :status)
+    (throw (Exception. "invalid response from database driver. no :status provided")))
+  (when (= :failed (:status query-result))
+    (log/error (u/pprint-to-str 'red query-result))
+    (throw (Exception. (str (get query-result :error "general error"))))))
+
 (defn dataset-query
   "Process and run a json based dataset query and return results.
 
@@ -545,11 +558,12 @@
 
   Possible caller-options include:
 
-    :executed_by [int]               (user_id of caller)"
+    :executed_by [int]  (user_id of caller)"
   {:arglists '([query options])}
   [query {:keys [executed_by]}]
   {:pre [(integer? executed_by)]}
-  (let [query-execution {:uuid              (.toString (java.util.UUID/randomUUID))
+  (let [query-uuid      (.toString (java.util.UUID/randomUUID))
+        query-execution {:uuid              query-uuid
                          :executor_id       executed_by
                          :json_query        query
                          :query_id          nil
@@ -564,15 +578,15 @@
                          :result_data       "{}"
                          :raw_query         ""
                          :additional_info   ""
-                         :start_time_millis (System/currentTimeMillis)}]
+                         :start_time_millis (System/currentTimeMillis)}
+        query           (assoc query :info {:executed-by executed_by
+                                            :uuid        query-uuid
+                                            :query-hash  (hash query)
+                                            :query-type (if (mbql-query? query) "MBQL" "native")})]
     (try
-      (let [query-result (process-query query)]
-        (when-not (contains? query-result :status)
-          (throw (Exception. "invalid response from database driver. no :status provided")))
-        (when (= :failed (:status query-result))
-          (log/error (u/pprint-to-str 'red query-result))
-          (throw (Exception. (str (get query-result :error "general error")))))
-        (query-complete query-execution query-result))
+      (let [result (process-query query)]
+        (assert-valid-query-result result)
+        (query-complete query-execution result))
       (catch Throwable e
         (log/error (u/format-color 'red "Query failure: %s" (.getMessage e)))
         (query-fail query-execution (.getMessage e))))))
@@ -588,7 +602,7 @@
     (-> query-execution
         (dissoc :start_time_millis)
         (merge updates)
-        (save-query-execution)
+        save-query-execution
         (dissoc :raw_query :result_rows :version)
         ;; this is just for the response for clien
         (assoc :error     error-message
@@ -608,7 +622,7 @@
                          (:start_time_millis query-execution))
         :result_rows  (get query-result :row_count 0))
       (dissoc :start_time_millis)
-      (save-query-execution)
+      save-query-execution
       ;; at this point we've saved and we just need to massage things into our final response format
       (dissoc :error :raw_query :result_rows :version)
       (merge query-result)))

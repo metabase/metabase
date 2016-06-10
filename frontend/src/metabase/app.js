@@ -21,9 +21,9 @@ import "./services";
 import "./icons";
 
 import "./auth/auth.module";
-import "./card/card.module";
 import "./home/home.module";
 import "./pulse/pulse.module";
+import "./query_builder/query_builder.module"
 import "./setup/setup.module";
 import "./user/user.module";
 
@@ -58,9 +58,9 @@ var Metabase = angular.module('metabase', [
     'metabase.directives',
     'metabase.controllers',
     'metabase.icons',
-    'metabase.card',
     'metabase.home',
     'metabase.pulse',
+    'metabase.query_builder',
     'metabase.setup',
     'metabase.user',
     'metabase.admin.databases',
@@ -163,6 +163,24 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
     $routeProvider.when('/admin/', {
         redirectTo: function(routeParams, path, search) {
             return '/admin/settings';
+        }
+    });
+
+    // redirect old urls to new ones with hashes
+    $routeProvider.when('/q/:serializedCard', {
+        redirectTo: function (routeParams, path, search) {
+            return "/q#"+routeParams.serializedCard;
+        }
+    });
+    $routeProvider.when('/card/:cardId/:serializedCard', {
+        redirectTo: function (routeParams, path, search) {
+            return "/card/"+routeParams.cardId+"#"+routeParams.serializedCard;
+        }
+    });
+
+    $routeProvider.when('/card/', {
+        redirectTo: function (routeParams, path, search) {
+            return "/questions/all";
         }
     });
 
