@@ -5,7 +5,7 @@
             [clj-time.format :as tf]
             [medley.core :as m]
             [metabase.driver :as driver])
-  (:import (org.joda.time DateTimeConstants)))
+  (:import (org.joda.time DateTimeConstants DateTime)))
 
 
 (def ^:private ^:const relative-dates
@@ -27,22 +27,22 @@
     "Q3" (t/first-day-of-the-month (.withMonthOfYear (t/date-time year) DateTimeConstants/JULY))
     "Q4" (t/first-day-of-the-month (.withMonthOfYear (t/date-time year) DateTimeConstants/OCTOBER))))
 
-(defn- week-range [dt]
+(defn- week-range [^DateTime dt]
   ;; weeks always start on SUNDAY and end on SATURDAY
   ;; NOTE: in Joda the week starts on Monday and ends on Sunday, so to get the right Sunday we rollback 1 week
   {:end   (.withDayOfWeek dt DateTimeConstants/SATURDAY)
-   :start (.withDayOfWeek (t/minus dt (t/weeks 1)) DateTimeConstants/SUNDAY)})
+   :start (.withDayOfWeek ^DateTime (t/minus dt (t/weeks 1)) DateTimeConstants/SUNDAY)})
 
-(defn- month-range [dt]
+(defn- month-range [^DateTime dt]
   {:end   (t/last-day-of-the-month dt)
    :start (t/first-day-of-the-month dt)})
 
 ;; NOTE: this is perhaps a little hacky, but we are assuming that `dt` will be in the first month of the quarter
-(defn- quarter-range [dt]
+(defn- quarter-range [^DateTime dt]
   {:end   (t/last-day-of-the-month (t/plus dt (t/months 2)))
    :start (t/first-day-of-the-month dt)})
 
-(defn- year-range [dt]
+(defn- year-range [^DateTime dt]
   {:end   (t/last-day-of-the-month (.withMonthOfYear dt DateTimeConstants/DECEMBER))
    :start (t/first-day-of-the-month (.withMonthOfYear dt DateTimeConstants/JANUARY))})
 
