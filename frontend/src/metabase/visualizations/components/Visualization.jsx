@@ -75,6 +75,7 @@ export default class Visualization extends Component {
 
         let error = this.props.error || this.state.error;
         let loading = !(series.length > 0 && _.every(series, (s) => s.data));
+        let noResults = false;
 
         if (!loading && !error) {
             if (!CardVisualization) {
@@ -85,9 +86,16 @@ export default class Visualization extends Component {
                         CardVisualization.checkRenderable(series[0].data.cols, series[0].data.rows);
                     }
                 } catch (e) {
+                    // MinRowsError
+                    if (e.actualRows === 0) {
+                        noResults = true;
+                    }
                     error = e.message || "Could not display this chart with this data.";
                 }
             }
+        }
+        if (!error) {
+            noResults = getIn(series, [0, "data", "rows", "length"]) === 0;
         }
 
         let extra;
@@ -110,7 +118,8 @@ export default class Visualization extends Component {
                 }
                 { replacementContent ?
                     replacementContent
-                : isDashboard && getIn(series, [0, "data", "rows", "length"]) === 0 ?
+                // on dashboards we should show the "No results!" warning if there are no rows or there's a MinRowsError and actualRows === 0
+                : isDashboard && noResults ?
                     <div className="flex-full px1 pb1 text-centered text-slate flex flex-column layout-centered">
                         <Tooltip tooltip="No results!" isEnabled={small}>
                             <img src="/app/img/no_results.svg" />
