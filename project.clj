@@ -30,7 +30,7 @@
                   :exclusions [commons-codec
                                commons-io
                                slingshot]]
-                 [clj-time "0.12.0"]                                  ; library for dealing with date/time
+                 [clj-time "0.11.0"]                                  ; library for dealing with date/time
                  [clojurewerkz/quartzite "2.0.0"]                     ; scheduling library
                  [colorize "0.1.1" :exclusions [org.clojure/clojure]] ; string output with ANSI color codes (for logging)
                  [com.cemerick/friend "0.2.1"                         ; auth library
