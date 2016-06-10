@@ -83,7 +83,7 @@
   (db/select-one-field :db_id Table, :id table-id))
 
 
-(defn retire-tables
+(defn retire-tables!
   "Retire all `Tables` in the list of TABLE-IDs along with all of each tables `Fields`."
   [table-ids]
   {:pre [(set? table-ids) (every? integer? table-ids)]}
@@ -95,7 +95,7 @@
     (db/update-where! Field {:table_id [:in table-ids]}
       :visibility_type "retired")))
 
-(defn update-table
+(defn update-table!
   "Update `Table` with the data from TABLE-DEF."
   [{:keys [id display_name], :as existing-table} {table-name :name}]
   {:pre [(integer? id)]}
@@ -109,7 +109,7 @@
     updated-table))
 
 
-(defn create-table
+(defn create-table!
   "Create `Table` with the data from TABLE-DEF."
   [database-id {schema-name :schema, table-name :name, raw-table-id :raw-table-id, visibility-type :visibility-type}]
   (db/insert! Table

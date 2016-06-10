@@ -181,16 +181,14 @@
 (defn- max-date [& dates]
   {:pre [(every? (partial instance? Date) dates)]
    :post [(instance? Date %)]}
-  (let [d (Date.)]
-    (.setTime d (apply max (map #(.getTime ^Date %) dates)))
-    d))
+  (doto (Date.)
+    (.setTime (apply max (map #(.getTime ^Date %) dates)))))
 
 (defn- min-date [& dates]
   {:pre [(every? (partial instance? Date) dates)]
    :post [(instance? Date %)]}
-  (let [d (Date.)]
-    (.setTime d (apply min (map #(.getTime ^Date %) dates)))
-    d))
+  (doto (Date.)
+    (.setTime (apply min (map #(.getTime ^Date %) dates)))))
 
 (defn random-order [{:keys [state], :as ^Person person} {:keys [price], :as product}]
   {:pre [(string? state)

@@ -7,10 +7,13 @@
             (metabase [config :as config]
                       [db :as db])
             (metabase.models [database :refer [Database]]
+                             field
                              [query-execution :refer [QueryExecution]]
                              [setting :refer [defsetting]])
             [metabase.util :as u])
-  (:import clojure.lang.Keyword))
+  (:import clojure.lang.Keyword
+           metabase.models.database.DatabaseInstance
+           metabase.models.field.FieldInstance))
 
 
 ;;; ## INTERFACE + CONSTANTS
@@ -51,7 +54,7 @@
     "*OPTIONAL*. Return a map containing information that provides optional analysis values for TABLE.
      Output should match the `AnalyzeTable` schema.")
 
-  (can-connect? ^Boolean [this, ^Map details-map]
+  (can-connect? ^Boolean [this, ^java.util.Map details-map]
     "Check whether we can connect to a `Database` with DETAILS-MAP and perform a simple query. For example, a SQL database might
      try running a query like `SELECT 1;`. This function should return `true` or `false`.")
 
@@ -108,7 +111,7 @@
 
           Is this property required? Defaults to `false`.")
 
-  (execute-query ^java.util.Map [this, ^Map query]
+  (execute-query ^java.util.Map [this, ^java.util.Map query]
     "Execute a query against the database and return the results.
 
   The query passed in will contain:
@@ -145,7 +148,7 @@
     "*OPTIONAL*. Return a humanized (user-facing) version of an connection error message string.
      Generic error messages are provided in the constant `connection-error-messages`; return one of these whenever possible.")
 
-  (mbql->native ^java.util.Map [this, ^Map query]
+  (mbql->native ^java.util.Map [this, ^java.util.Map query]
     "Transpile an MBQL structured query into the appropriate native query form.
 
   The input QUERY will be a [fully-expanded MBQL query](https://github.com/metabase/metabase/wiki/Expanded-Queries) with
@@ -165,7 +168,7 @@
     "*OPTIONAL*. Notify the driver that the attributes of the DATABASE have changed.  This is specifically relevant in
      the event that the driver was doing some caching or connection pooling.")
 
-  (process-query-in-context [this, ^IFn qp]
+  (process-query-in-context [this, ^clojure.lang.IFn qp]
     "*OPTIONAL*. Similar to `sync-in-context`, but for running queries rather than syncing. This should be used to do things like open DB connections
      that need to remain open for the duration of post-processing. This function follows a middleware pattern and is injected into the QP
      middleware stack immediately after the Query Expander; in other words, it will receive the expanded query.
@@ -175,7 +178,7 @@
          (fn [query]
            (qp query)))")
 
-  (sync-in-context [this, ^DatabaseInstance database, ^IFn f]
+  (sync-in-context [this, ^DatabaseInstance database, ^clojure.lang.IFn f]
     "*OPTIONAL*. Drivers may provide this function if they need to do special setup before a sync operation such as `sync-database!`. The sync
      operation itself is encapsulated as the lambda F, which must be called with no arguments.
 
@@ -183,10 +186,10 @@
          (with-connection [_ database]
            (f)))")
 
-  (table-rows-seq ^clojure.lang.Sequential [this, ^DatabaseInstance database, ^Map table]
-    "*OPTIONAL*. Return a sequence of all the rows in a given TABLE.
-     The TABLE argument is a Map that requires the `:name` key as the table name and optionally uses the `:schema` key for databases that support schemas.
-     Currently, this is only used for iterating over the values in a `_metabase_metadata` table. As such, the results are not expected to be returned lazily."))
+  (table-rows-seq ^clojure.lang.Sequential [this, ^DatabaseInstance database, ^java.util.Map table]
+    "*OPTIONAL*. Return a sequence of *all* the rows in a given TABLE, which is guaranteed to have at least `:name` and `:schema` keys.
+     Currently, this is only used for iterating over the values in a `_metabase_metadata` table. As such, the results are not expected to be returned lazily.
+     There is no expectation that the results be returned in any given order."))
 
 
 (defn- percent-valid-urls
