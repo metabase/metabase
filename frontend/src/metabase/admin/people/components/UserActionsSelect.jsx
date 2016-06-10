@@ -29,6 +29,11 @@ export default class UserActionsSelect extends Component {
     }
 
     onResetPassword() {
+        if (window.OSX) {
+            window.OSX.resetPassword();
+            return;
+        }
+
         this.props.dispatch(showModal({type: MODAL_RESET_PASSWORD, details: {user: this.props.user}}));
         this.refs.popover.toggle();
     }
