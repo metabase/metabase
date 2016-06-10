@@ -114,7 +114,6 @@ export default class ParameterWidget extends Component {
 
         const isEditingDashboard = isEditing;
         const isEditingParameter = editingParameter && editingParameter.id === parameter.id;
-        const isDisabled = editingParameter != null && !isEditingParameter;
 
         if (!isEditingDashboard) {
             return (
@@ -149,16 +148,9 @@ export default class ParameterWidget extends Component {
                     {this.renderPopover(parameter.default, "Pick a default value (optional)", (value) => setDefaultValue(value))}
                 </div>
             );
-        } else if (isDisabled) {
-            return (
-                <div className={cx(className, S.container, "disabled")}>
-                    <div className={S.name}>{parameter.name}</div>
-                    {this.renderPopover(null, "Select...")}
-                </div>
-            )
         } else {
             return (
-                <div className={cx(className, S.container)}>
+                <div className={cx(className, S.container, { [S.deemphasized]: !isEditingParameter && editingParameter != null})}>
                     <div className={S.name}>{parameter.name}</div>
                     <div className={cx(S.parameter, S.parameterButtons)}>
                         <div className={S.editButton} onClick={() => setEditingParameterId(parameter.id)}>
