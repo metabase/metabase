@@ -53,7 +53,7 @@
   [{:data         {:rows    [[1000]]
                    :columns ["count"]
                    :cols    [{:base_type "IntegerField", :special_type "number", :name "count", :display_name "count", :id nil, :table_id nil,
-                              :description nil, :target nil, :extra_info {}}]
+                              :description nil, :target nil, :extra_info {}, :source "aggregation"}]
                    :native_form true}
     :row_count    1
     :status       "completed"
@@ -146,7 +146,7 @@
     :result {:data         {:rows    [[1000]]
                             :columns ["count"]
                             :cols    [{:base_type "IntegerField", :special_type "number", :name "count", :display_name "count", :id nil, :table_id nil,
-                                       :description nil, :target nil, :extra_info {}}]
+                                       :description nil, :target nil, :extra_info {}, :source "aggregation"}]
                             :native_form true}
              :row_count    1
              :status       "completed"
