@@ -190,62 +190,45 @@ export function getSettingsForVisualization(dbSettings, visualization) {
     return getSettingsForGroups(settings, groups);
 }
 
+function getColAndIndexByType(columnDefs, type) {
+    for (let index=0; index < columnDefs.length; index++) {
+        let column = columnDefs[index];
+        if (column.special_type && column.special_type === type) {
+            return {column, index}
+        }
+    }
+
+    return {}
+}
+
 export function setLatitudeAndLongitude(settings, columnDefs) {
     // latitude
-    var latitudeColumn,
-        latitudeColumnIndex;
-    columnDefs.forEach(function(col, index) {
-        if (col.special_type &&
-                col.special_type === "latitude" &&
-                latitudeColumn === undefined) {
-            latitudeColumn = col;
-            latitudeColumnIndex = index;
-        }
-    });
+    let {column: latitudeColumn,
+         index: latitudeColumnIndex} = getColAndIndexByType(columnDefs, "latitude")
 
     // longitude
-    var longitudeColumn,
-        longitudeColumnIndex;
-    columnDefs.forEach(function(col, index) {
-        if (col.special_type &&
-                col.special_type === "longitude" &&
-                longitudeColumn === undefined) {
-            longitudeColumn = col;
-            longitudeColumnIndex = index;
-        }
-    });
+    let {column: longitudeColumn,
+         index: longitudeColumnIndex} = getColAndIndexByType(columnDefs, "longitude")
 
     if (latitudeColumn && longitudeColumn) {
-        var settingsWithLatAndLon = angular.copy(settings);
+        settings.map.latitude_source_table_field_id = latitudeColumn.id;
+        settings.map.latitude_dataset_col_index = latitudeColumnIndex;
+        settings.map.longitude_source_table_field_id = longitudeColumn.id;
+        settings.map.longitude_dataset_col_index = longitudeColumnIndex;
 
-        settingsWithLatAndLon.map.latitude_source_table_field_id = latitudeColumn.id;
-        settingsWithLatAndLon.map.latitude_dataset_col_index = latitudeColumnIndex;
-        settingsWithLatAndLon.map.longitude_source_table_field_id = longitudeColumn.id;
-        settingsWithLatAndLon.map.longitude_dataset_col_index = longitudeColumnIndex;
-
-        return settingsWithLatAndLon;
-    } else {
-        return settings;
     }
+
+    return settings;
 }
 
 export function setCategory(settings, columnDefs){
-    var categoryColumn,
-        categoryColumnIndex;
-    columnDefs.forEach(function(col, index) {
-        if (col.special_type &&
-              col.special_type === "category" &&
-              !categoryColumn) {
-            categoryColumn = col;
-            categoryColumnIndex = index;
-        }
-    });
+    let {column: categoryColumn,
+         index: categoryColumnIndex} = getColAndIndexByType(columnDefs, "category")
 
     if (categoryColumn) {
         settings.map.category_source_table_field_id = categoryColumn.id;
         settings.map.category_dataset_col_index = categoryColumnIndex;
-        return settings;
-    } else {
-        return settings;
     }
+
+    return settings;
 }

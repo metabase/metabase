@@ -8,31 +8,31 @@ export default function(catColorMap){
             className: 'prunecluster leaflet-markercluster-icon'
         },
 
-        createIcon: function () {
-            var e = document.createElement('canvas');
+        createIcon: function() {
+            let e = document.createElement('canvas');
             this._setIconStyles(e, 'icon');
-            var s = this.options.iconSize;
+            let s = this.options.iconSize;
             e.width = s.x;
             e.height = s.y;
             this.draw(e.getContext('2d'), s.x, s.y);
             return e;
         },
 
-        createShadow: function () {
+        createShadow: function() {
             return null;
         },
 
         draw: function(canvas, width, height) {
             let pi2 = pi2 = Math.PI * 2;
 
-            var start = 0;
-            for (var i = 0, l = catColorMap.length; i < l; ++i) {
-                var size = this.stats[i] / this.population;
+            let start = 0;
+            for (let i = 0; i < catColorMap.length; i++) {
+                let size = this.stats[i] / this.population;
                 if (size > 0) {
                     canvas.beginPath();
                     canvas.moveTo(22, 22);
                     canvas.fillStyle = _.findWhere(catColorMap, {id: i}).color;
-                    var from = start + 0.14,
+                    let from = start + 0.14,
                         to = start + size * pi2;
                     if (to < from) {
                         from = start;

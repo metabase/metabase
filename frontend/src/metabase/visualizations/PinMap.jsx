@@ -61,93 +61,83 @@ export default class PinMap extends Component {
         this.setState({ zoom });
     }
 
-    averageCoordinate(coordinates) {
-        return _.reduce(coordinates, (memo, num) => {return memo + num}, 0) / coordinates.length;
+    genMarker(color="#3090e9"){
+        return L.VectorMarkers.icon({ markerColor: color });
     }
 
-    genMarker(color){
-        return L.VectorMarkers.icon({
-            markerColor: color
-        });
+    genPopup(row, cols) {
+        let popup = document.createElement("div");
+        ReactDOM.render(<ObjectDetailTooltip row={row} cols={cols} />, popup);
+        return popup
     }
-
-    genColorCode(string){
-        return tinycolor(ch.hex(string)).monochromatic()[3].toHexString();
-    }
-
     componentDidMount() {
         try {
             let element = ReactDOM.findDOMNode(this.refs.map);
-
             let { card, data } = this.props.series[0];
-
             let settings = card.visualization_settings;
+
             settings = getSettingsForVisualization(settings, "pin_map");
             settings = setLatitudeAndLongitude(settings, data.cols);
             settings = setCategory(settings, data.cols);
 
-            let latColIndex = settings.map.latitude_dataset_col_index;
-            let lonColIndex = settings.map.longitude_dataset_col_index;
-            let catColIndex = settings.map.category_dataset_col_index;
-            let catColorMap;
-            if (catColIndex) {
-              let cats = _.union(_.pluck(data.rows, catColIndex))
-              catColorMap = _.map(cats, (cat, index) => {
-                return {'name': cat, 'color': this.genColorCode(cat), 'id': index}
-              })
-            }
+            let {
+                center_latitude,
+                center_longitude,
+                latitude_dataset_col_index: latColIndex,
+                longitude_dataset_col_index: lonColIndex,
+                category_dataset_col_index: catColIndex,
+            } = settings.map;
 
-            let center_latitude = settings.map.center_latitude;
-            let center_longitude = settings.map.center_longitude;
-            if (!center_latitude || !center_longitude){
-              center_latitude = this.averageCoordinate(_.pluck(data.rows, latColIndex));
-              center_longitude = this.averageCoordinate(_.pluck(data.rows, lonColIndex));
-            }
+            center_latitude = center_latitude ? center_latitude : average(_.pluck(data.rows, latColIndex));
+            center_longitude = center_longitude ? center_longitude : average(_.pluck(data.rows, lonColIndex));
 
             let map = L.map(element).setView([center_latitude, center_longitude], settings.map.zoom);
 
             L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
-              attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a>',
-              maxZoom: 18,
+                attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a>',
+                maxZoom: 18,
             }).addTo(map);
 
             let pruneCluster = new PruneClusterForLeaflet();
-            if(catColIndex){
-              pruneCluster.BuildLeafletClusterIcon = function(cluster) {
-                L.Icon.MarkerCluster = categoryClusterIcon(catColorMap);
 
-                let e = new L.Icon.MarkerCluster();
-                e.stats = cluster.stats;
-                e.population = cluster.population;
-                return e;
-              };
+            let catColorMap;
+            if (catColIndex) {
+                catColorMap = genCatColorMap(_.union(_.pluck(data.rows, catColIndex)));
+
+                pruneCluster.BuildLeafletClusterIcon = function(cluster) {
+                    L.Icon.MarkerCluster = categoryClusterIcon(catColorMap);
+
+                    let e = new L.Icon.MarkerCluster();
+                    e.stats = cluster.stats;
+                    e.population = cluster.population;
+                    return e;
+                };
             }
-            for (let row of data.rows) {
-              let tooltipElement = document.createElement("div");
-              ReactDOM.render(<ObjectDetailTooltip row={row} cols={data.cols} />, tooltipElement);
 
-              let marker = new PruneCluster.Marker(row[latColIndex], row[lonColIndex]);
-              if(catColIndex){
-                let cat = row[catColIndex]
-                let color = _.findWhere(catColorMap, {name: cat}).color
-                marker.data.icon = this.genMarker(color);
-                marker.category = cat;
-              } else {
-                marker.data.icon = this.genMarker('#3090e9');
-              }
-              marker.data.popup = tooltipElement;
-              pruneCluster.RegisterMarker(marker);
+            for (let row of data.rows) {
+                let marker = new PruneCluster.Marker(row[latColIndex], row[lonColIndex]);
+
+                if(catColIndex){
+                    let category = _.findWhere(catColorMap, {name: row[catColIndex]})
+                    marker.data.icon = this.genMarker(category.color);
+                    marker.category = category.id;
+                } else {
+                    marker.data.icon = this.genMarker('#3090e9');
+                }
+
+                marker.data.popup = this.genPopup(row, data.cols);
+                pruneCluster.RegisterMarker(marker);
             }
 
             map.addLayer(pruneCluster);
 
             map.on('moveend', () => {
-              let center = map.getCenter();
-              this.onMapCenterChange(center.lat, center.lng);
+                let center = map.getCenter();
+                this.onMapCenterChange(center.lat, center.lng);
             });
 
             map.on('zoomend', () => {
-              this.onMapZoomChange(map.getZoom());
+                this.onMapZoomChange(map.getZoom());
             })
 
         } catch (err) {
@@ -171,6 +161,30 @@ export default class PinMap extends Component {
             </div>
         );
     }
+}
+
+const genColorCode = function(string){
+    let color;
+    let truthy = /^(?:yes|true|on|1|ok)$/i;
+    let falsy = /^(?:no|false|off|0|wrong)$/i;
+    if (_.isString(string)){
+        if (string.search(truthy) > -1){
+            color = "#c7f464"
+        } else if (string.search(falsy) > -1){
+            color = "#ea4444"
+        }
+    }
+    return color ? color : tinycolor(ch.hex(string)).monochromatic()[3].toHexString()
+}
+
+const genCatColorMap = function(cats){
+    return _.map(cats, (cat, index) => {
+        return {'name': cat, 'color': genColorCode(cat), 'id': index}
+    })
+}
+
+const average = function(list) {
+    return _.reduce(list, (memo, num) => {return memo + num}, 0) / list.length;
 }
 
 const ObjectDetailTooltip = ({ row, cols }) =>
