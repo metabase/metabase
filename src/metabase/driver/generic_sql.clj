@@ -19,7 +19,6 @@
            java.util.Map
            (clojure.lang Keyword PersistentVector)
            com.mchange.v2.c3p0.ComboPooledDataSource
-           metabase.models.raw_table.RawTableInstance
            (metabase.query_processor.interface Field Value)))
 
 (defprotocol ISQLDriver
@@ -236,9 +235,8 @@
     (fetch-page 0)))
 
 
-(defn- table-rows-seq [driver database, ^RawTableInstance raw-table]
-  {:pre [(instance? RawTableInstance raw-table)]}
-  (query driver database raw-table {:select [:*]}))
+(defn- table-rows-seq [driver database table]
+  (query driver database table {:select [:*]}))
 
 (defn- field-avg-length
   [driver field]
@@ -277,9 +275,9 @@
         db          (table/database table)
         field-k     (qualify+escape table field)
         pk-field    (field/Field (table/pk-field-id table))
-        results     (map :is_url (query driver db table (merge {:select   [[(hsql/call :like field-k (hx/literal "http%://_%.__%")) :is_url]]
-                                                                :where    [:not= field-k nil]
-                                                                :limit    driver/max-sync-lazy-seq-results}
+        results     (map :is_url (query driver db table (merge {:select [[(hsql/call :like field-k (hx/literal "http%://_%.__%")) :is_url]]
+                                                                :where  [:not= field-k nil]
+                                                                :limit  driver/max-sync-lazy-seq-results}
                                                                (when pk-field
                                                                  {:order-by [[(qualify+escape table pk-field) :asc]]}))))
         total-count (count results)
