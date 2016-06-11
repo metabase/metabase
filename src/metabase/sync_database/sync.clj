@@ -8,7 +8,8 @@
                              [raw-column :refer [RawColumn]]
                              [raw-table :refer [RawTable], :as raw-table]
                              [table :refer [Table], :as table])
-            [metabase.util :as u]))
+            [metabase.util :as u])
+  (:import metabase.models.raw_table.RawTableInstance))
 
 
 (defn- save-fks!
@@ -42,8 +43,8 @@
    `keypath` is of the form `table-name.key` or `table-name.field-name.key`, where `key` is the name of some property of `Table` or `Field`.
 
    This functionality is currently only used by the Sample Dataset. In order to use this functionality, drivers must implement optional fn `:table-rows-seq`."
-  [driver database _metabase_metadata]
-  (doseq [{:keys [keypath value]} (driver/table-rows-seq driver database _metabase_metadata)]
+  [driver database, ^RawTableInstance metabase-metadata-table]
+  (doseq [{:keys [keypath value]} (driver/table-rows-seq driver database metabase-metadata-table)]
     ;; TODO: this does not support schemas in dbs :(
     (let [[_ table-name field-name k] (re-matches #"^([^.]+)\.(?:([^.]+)\.)?([^.]+)$" keypath)]
       (try (when-not (if field-name
@@ -106,7 +107,7 @@
                                    :db_id database-id
                                    (db/qualify Table :active) true
                                    (db/qualify RawTable :active) false)]
-    (table/retire-tables table-ids-to-remove)))
+    (table/retire-tables! table-ids-to-remove)))
 
 
 (defn update-data-models-for-table!
@@ -117,10 +118,10 @@
     (try
       (if-not (:active raw-table)
         ;; looks like the table has been deactivated, so lets retire this Table and its fields
-        (table/retire-tables #{table-id})
+        (table/retire-tables! #{table-id})
         ;; otherwise update based on the RawTable/RawColumn information
         (do
-          (save-table-fields! (table/update-table existing-table raw-table))
+          (save-table-fields! (table/update-table! existing-table raw-table))
 
           ;; handle setting any fk relationships
           (when-let [table-fks (db/select [RawColumn [:id :source-column] [:fk_target_column_id :target-column]]
@@ -166,18 +167,23 @@
   [table]
   (contains? crufty-table-names (s/lower-case (:name table))))
 
+(defn is-metabase-metadata-table?
+  "Is this TABLE the special `_metabase_metadata` table?"
+  [table]
+  (= "_metabase_metadata" (s/lower-case (:name table))))
+
 (defn- create-and-update-tables!
   "Create/update tables (and their fields)."
   [database existing-tables raw-tables]
   (doseq [{raw-table-id :id, :as raw-table} (for [table raw-tables
-                                                  :when (not= "_metabase_metadata" (s/lower-case (:name table)))]
+                                                  :when (not (is-metabase-metadata-table? table))]
                                               table)]
     (try
       (save-table-fields! (if-let [existing-table (get existing-tables raw-table-id)]
                             ;; table already exists, update it
-                            (table/update-table existing-table raw-table)
+                            (table/update-table! existing-table raw-table)
                             ;; must be a new table, insert it
-                            (table/create-table (:id database) (assoc raw-table
+                            (table/create-table! (:id database) (assoc raw-table
                                                                       :raw-table-id    raw-table-id
                                                                       :visibility-type (when (is-crufty-table? raw-table)
                                                                                          :cruft)))))
@@ -197,7 +203,7 @@
   "Sync the `_metabase_metadata` table, a special table with Metabase metadata, if present.
    If per chance there were multiple `_metabase_metadata` tables in different schemas, just sync the first one we find."
   [database raw-tables]
-  (when-let [metadata-table (first (filter #(= (s/lower-case (:name %)) "_metabase_metadata") raw-tables))]
+  (when-let [metadata-table (first (filter is-metabase-metadata-table? raw-tables))]
     (sync-metabase-metadata-table! (driver/engine->driver (:engine database)) database metadata-table)))
 
 (defn update-data-models-from-raw-tables!

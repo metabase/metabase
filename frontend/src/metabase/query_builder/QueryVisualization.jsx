@@ -53,7 +53,7 @@ export default class QueryVisualization extends Component {
         // whenever we are told that we are running a query lets update our understanding of the "current" query
         if (nextProps.isRunning) {
             this.setState({
-                lastRunDatasetQuery: nextProps.card.dataset_query
+                lastRunDatasetQuery: JSON.parse(JSON.stringify(nextProps.card.dataset_query))
             });
         }
     }
@@ -306,7 +306,8 @@ export default class QueryVisualization extends Component {
                             tableForeignKeyReferences={this.props.tableForeignKeyReferences}
                             cellIsClickableFn={this.props.cellIsClickableFn}
                             cellClickedFn={this.props.cellClickedFn}
-                            followForeignKeyFn={this.props.followForeignKeyFn} />
+                            followForeignKeyFn={this.props.followForeignKeyFn}
+                            loadObjectDetailFKReferences={this.props.loadObjectDetailFKReferences} />
                     );
 
                 } else if (this.props.result.data.rows.length === 0) {
