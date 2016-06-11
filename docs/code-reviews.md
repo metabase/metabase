@@ -21,7 +21,7 @@ Look for tricks, techniques, or idioms you can steal. Your teammates are smart f
 
 ## Mindset getting a Code Review:
 
-The reviewer is doing you a Solid. They are there to help you do the best work you can. The best of the best have coaches, editors and mentors. You code reviewers should help you in the same way. In situations where they are more experienced this can be direct mentoring. In situations where they are more junior, they have a fresh pair of eyes that might get you to question deeply held assumptions. 
+The reviewer is doing you a Solid. They are there to help you do the best work you can. The best of the best have coaches, editors and mentors. Your code reviewers should help you in the same way. In situations where they are more experienced, this can be direct mentoring. In situations where they are more junior, they have a fresh pair of eyes that might get you to question deeply held assumptions. 
 
 When a reviewer disagrees with an approach you took, seek to understand why. They might know things or see consequences you didn’t. While they might not have thought as deeply on the specific subject of the PR as you, they likewise probably are thinking about the impacts of the PR on areas you might not be paying attention to. 
 
@@ -29,7 +29,7 @@ If someone slaps a strong :-1: on your PR, be especially patient. Dig into why t
 
 
 ## Process:
-* Every PR that closes needs to be :+1:’d by at least one other engineer on the team (or @salsakran) to merge
+* Every PR of significant complexity needs to be :+1:’d by at least one other engineer on the team (or @salsakran) to merge
 * Add people you think should review your PR to the PR’s assignees. The reviewer can remove themselves once they have reviewed it, or decided they aren’t an appropriate reviewer
 * Code that impacts other engineer’s work should be reviewed by those engineers
 * A :+1: is the default “I’m ok with this"
