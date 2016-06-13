@@ -67,7 +67,7 @@ export default class DashCardCardParameterMapper extends Component {
     }
 
     render() {
-        const { mappingOptions, target, mappingsByParameter, parameter, dashcard, card } = this.props;
+        const { mappingOptions, mappingOptionSections, target, mappingsByParameter, parameter, dashcard, card } = this.props;
 
         const disabled = mappingOptions.length === 0;
         const selected = _.find(mappingOptions, (o) => _.isEqual(o.target, target));
@@ -75,7 +75,9 @@ export default class DashCardCardParameterMapper extends Component {
         const mapping = getIn(mappingsByParameter, [parameter.id, dashcard.id, card.id]);
         const noOverlap = !!(mapping && mapping.mappingsWithValues > 1 && mapping.overlapMax === 1);
 
-        const sections = _.map(this.props.mappingOptionSections, (options) => ({
+        const hasFkOption = _.any(mappingOptions, (o) => o.isFk);
+
+        const sections = _.map(mappingOptionSections, (options) => ({
             name: options[0].sectionName,
             icon: options[0].sectionIcon,
             items: options
@@ -130,6 +132,7 @@ export default class DashCardCardParameterMapper extends Component {
                     itemIsSelected={(item) => _.isEqual(item.target, target)}
                     renderItemIcon={(item) => <Icon name={item.icon} width={18} height={18} />}
                     alwaysExpanded={true}
+                    hideSingleSectionTitle={!hasFkOption}
                 />
                 </PopoverWithTrigger>
             </div>

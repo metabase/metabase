@@ -132,7 +132,8 @@ export function getParameterMappingOptions(metadata: Metadata, parameter: Parame
                 name: dimension.name,
                 target: ["dimension", dimension.target],
                 icon: metadata.field(dimension.field_id).icon(),
-                sectionName: dimension.sectionName
+                sectionName: dimension.sectionName,
+                isFk: dimension.depth > 0
             })));
         }
     }

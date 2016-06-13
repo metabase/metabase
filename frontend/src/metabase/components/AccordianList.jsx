@@ -143,7 +143,7 @@ export default class AccordianList extends Component {
     }
 
     render() {
-        const { searchable, sections, showItemArrows, alwaysTogglable, alwaysExpanded } = this.props;
+        const { searchable, sections, showItemArrows, alwaysTogglable, alwaysExpanded, hideSingleSectionTitle } = this.props;
         const { searchText } = this.state;
 
         const openSection = this.getOpenSection();
@@ -155,14 +155,13 @@ export default class AccordianList extends Component {
                 {sections.map((section, sectionIndex) =>
                     <section key={sectionIndex} className={cx("List-section", { "List-section--open": sectionIsOpen(sectionIndex) })}>
                         { section.name && alwaysExpanded ?
-                            ((sections.length > 1 || alwaysTogglable) &&
+                            (!hideSingleSectionTitle || sections.length > 1 || alwaysTogglable) &&
                                 <div className="px2 pt2 h6 text-grey-2 text-uppercase text-bold">
                                     {section.name}
                                 </div>
-                            )
                         : section.name ?
                             <div className={"p1 border-bottom"}>
-                                { sections.length > 1 || alwaysTogglable ?
+                                { !hideSingleSectionTitle || sections.length > 1 || alwaysTogglable ?
                                     <div className="List-section-header px1 py1 cursor-pointer full flex align-center" onClick={() => this.toggleSection(sectionIndex)}>
                                         { this.renderSectionIcon(section, sectionIndex) }
                                         <h3 className="List-section-title">{section.name}</h3>
