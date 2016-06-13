@@ -3,7 +3,8 @@
   (:require [clojure.walk :as walk]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            schema.utils
+            (schema [core :as s]
+                    utils)
             [swiss.arrows :refer [<<-]]
             (metabase [config :as config]
                       [db :as db]
@@ -19,7 +20,7 @@
             [metabase.util :as u])
   (:import (schema.utils NamedError ValidationError)))
 
-;; # CONSTANTS
+;;; CONSTANTS
 
 (def ^:const absolute-max-results
   "Maximum number of rows the QP should ever return.
@@ -29,11 +30,26 @@
   1048576)
 
 
-;; # DYNAMIC VARS
+;;;  DYNAMIC VARS
 
 (def ^:dynamic *disable-qp-logging*
   "Should we disable logging for the QP? (e.g., during sync we probably want to turn it off to keep logs less cluttered)."
   false)
+
+
+;;; SCHEMA VALIDATION
+
+(def qp-results-format
+  "Schema for the expected format of results returned by a query processor."
+  {:columns               [(s/cond-pre s/Keyword s/Str)]
+   (s/optional-key :cols) [{s/Keyword s/Any}]            ; This is optional because QPs don't neccesarily have to add it themselves; annotate will take care of that
+   :rows                  [[s/Any]]
+   s/Keyword              s/Any})
+
+(def ^{:arglists '([results])} validate-results
+  "Validate that the RESULTS of executing a query match the `qp-results-format` schema.
+   Throws an `Exception` if they are not; returns RESULTS as-is if they are."
+  (s/validator qp-results-format))
 
 
 ;;; +----------------------------------------------------------------------------------------------------+
@@ -419,14 +435,7 @@
     (fn [qp]
       (fn [query]
         (u/prog1 (qp query)
-          (assert (or (map? <>)
-                      (println "Expected results to be a map, got a " (class <>))))
-          (assert (sequential? (:rows <>)))
-          (assert (every? sequential? (:rows <>)))
-          (assert (sequential? (:cols <>)))
-          (assert (every? map? (:cols <>)))
-          (assert (sequential? (:columns <>)))
-          (assert (every? u/string-or-keyword? (:columns <>))))))))
+          (validate-results <>))))))
 
 (defn query->remark
   "Genarate an approparite REMARK to be prepended to a query to give DBAs additional information about the query being executed.
