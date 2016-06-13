@@ -41,7 +41,6 @@
                               (pre-insert 1)
                               (pre-update 1)
                               (project 1)
-                              (qp-expect-with-all-engines 1)
                               (qp-expect-with-engines 1)
                               (query-with-temp-db 1)
                               (resolve-private-fns 1)
