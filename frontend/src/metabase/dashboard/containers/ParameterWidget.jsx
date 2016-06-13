@@ -52,11 +52,9 @@ export default class ParameterWidget extends Component {
         parameter: null,
     }
 
-    renderPopover(value, placeholder, setValue) {
-        const { parameter, mappingsByParameter, editingParameter } = this.props;
-        const isEditingParameter = editingParameter && editingParameter.id === parameter.id;
-
-        const values = _.chain(mappingsByParameter[parameter.id])
+    getValues() {
+        const { parameter, mappingsByParameter } = this.props;
+        return _.chain(mappingsByParameter[parameter.id])
             .map(_.values)
             .flatten()
             .map(m => m.values || [])
@@ -64,13 +62,24 @@ export default class ParameterWidget extends Component {
             .sortBy(_.identity)
             .uniq(true)
             .value();
+    }
 
-        let hasValue = value != null;
-
+    getWidget(parameter, values) {
         let Widget = WIDGETS[parameter.type] || TextWidget;
         if (values.length > 0) {
             Widget = CategoryWidget;
         }
+        return Widget;
+    }
+
+    renderPopover(value, placeholder, setValue) {
+        const { parameter, editingParameter } = this.props;
+        const isEditingParameter = editingParameter && editingParameter.id === parameter.id;
+
+        let hasValue = value != null;
+
+        const values = this.getValues();
+        let Widget = this.getWidget(parameter, values);
 
         if (Widget.noPopover) {
             return (
@@ -111,12 +120,25 @@ export default class ParameterWidget extends Component {
     }
 
     render() {
-        const { className, parameter, parameterValue, parameters, isEditing, editingParameter, setEditingParameterId, setName, setValue, setDefaultValue, remove } = this.props;
+        const { className, parameter, parameterValue, parameters, isEditing, isFullscreen, isNightMode, editingParameter, setEditingParameterId, setName, setValue, setDefaultValue, remove } = this.props;
 
         const isEditingDashboard = isEditing;
         const isEditingParameter = editingParameter && editingParameter.id === parameter.id;
 
-        if (!isEditingDashboard) {
+        if (isFullscreen) {
+            if (parameterValue != null) {
+                return (
+                    <div className={cx(className, S.container, S.fullscreen)}>
+                        <div className={S.name}>{parameter.name}</div>
+                        <div className={cx(S.parameter, S.selected)}>
+                            {this.getWidget(parameter, this.getValues()).format(parameterValue)}
+                        </div>
+                    </div>
+                );
+            } else {
+                return <span className="hide" />;
+            }
+        } else if (!isEditingDashboard) {
             return (
                 <div className={cx(className, S.container)}>
                     <div className={S.name}>{parameter.name}</div>

@@ -290,6 +290,27 @@ export default class Dashboard extends Component {
         let { error, isFullscreen, isNightMode } = this.state;
         isNightMode = isNightMode && isFullscreen;
 
+        let parameters = dashboard && dashboard.parameters && dashboard.parameters.map(parameter =>
+            <ParameterWidget
+                className="ml1"
+                isEditing={isEditing}
+                isFullscreen={isFullscreen}
+                isNightMode={isNightMode}
+                parameter={parameter}
+                parameters={dashboard.parameters}
+                dashboard={dashboard}
+                parameterValue={parameterValues[parameter.id]}
+
+                editingParameter={editingParameter}
+                setEditingParameterId={this.props.setEditingParameterId}
+
+                setName={(name) => this.setParameterName(parameter, name)}
+                setDefaultValue={(value) => this.setParameterDefaultValue(parameter, value)}
+                remove={() => this.removeParameter(parameter)}
+                setValue={(value) => this.props.setParameterValue(parameter.id, value)}
+            />
+        );
+
         return (
             <LoadingAndErrorWrapper style={{ minHeight: "100%" }} className={cx("Dashboard absolute top left right", { "Dashboard--fullscreen": isFullscreen, "Dashboard--night": isNightMode})} loading={!dashboard} error={error}>
             {() =>
@@ -307,29 +328,13 @@ export default class Dashboard extends Component {
                             onEditingChange={this.setEditing}
                             setDashboardAttribute={this.setDashboardAttribute}
                             addParameter={this.addParameter}
+                            parameters={parameters}
                         />
                     </header>
-                    {dashboard.parameters && dashboard.parameters.length > 0 &&
+                    {!isFullscreen && parameters.length > 0 &&
                         <div className="wrapper flex flex-column align-start mt1">
                             <div className="flex flex-row align-end" ref="parameters">
-                                {dashboard.parameters.map(parameter =>
-                                    <ParameterWidget
-                                        className="ml1"
-                                        isEditing={isEditing}
-                                        parameter={parameter}
-                                        parameters={dashboard.parameters}
-                                        dashboard={dashboard}
-                                        parameterValue={parameterValues[parameter.id]}
-
-                                        editingParameter={editingParameter}
-                                        setEditingParameterId={this.props.setEditingParameterId}
-
-                                        setName={(name) => this.setParameterName(parameter, name)}
-                                        setDefaultValue={(value) => this.setParameterDefaultValue(parameter, value)}
-                                        remove={() => this.removeParameter(parameter)}
-                                        setValue={(value) => this.props.setParameterValue(parameter.id, value)}
-                                    />
-                                )}
+                                {parameters}
                             </div>
                         </div>
                     }

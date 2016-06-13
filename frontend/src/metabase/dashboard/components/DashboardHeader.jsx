@@ -135,6 +135,10 @@ export default class DashboardHeader extends Component {
 
         const buttons = [];
 
+        if (isFullscreen) {
+            buttons.push(...this.props.parameters);
+        }
+
         if (isEditing) {
 
             // Parameters

@@ -10,7 +10,6 @@
     opacity: 1;
 }
 
-
 :local(.parameter) {
     float: right;
     font-size: 16px;
@@ -23,6 +22,21 @@
     align-items: center;
     padding: 0.25em 0.5em 0.25em 0.5em;
     color: var(--grey-4);
+}
+
+:local(.fullscreen) {
+    margin-right: 0;
+    margin-left: 0;
+}
+
+:local(.fullscreen .name) {
+    font-size: 14px;
+}
+:local(.fullscreen .parameter) {
+    min-width: 0;
+    min-height: 0;
+    background-color: transparent;
+    font-size: 14px;
 }
 
 :local(.parameter.selected) {
