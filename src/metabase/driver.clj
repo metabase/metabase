@@ -85,31 +85,31 @@
      a `Database` `details` map, and for validating it on the Backend. It should include things like `host`,
      `port`, and other driver-specific parameters. Each field information map should have the following properties:
 
-       *  `:name`
+   *  `:name`
 
-           The key that should be used to store this property in the `details` map.
+      The key that should be used to store this property in the `details` map.
 
-       *  `:display-name`
+   *  `:display-name`
 
-           Human-readable name that should be displayed to the User in UI for editing this field.
+      Human-readable name that should be displayed to the User in UI for editing this field.
 
-       *  `:type` *(OPTIONAL)*
+   *  `:type` *(OPTIONAL)*
 
-          `:string`, `:integer`, `:boolean`, or `:password`. Defaults to `:string`.
+      `:string`, `:integer`, `:boolean`, or `:password`. Defaults to `:string`.
 
-       *  `:default` *(OPTIONAL)*
+   *  `:default` *(OPTIONAL)*
 
-           A default value for this field if the user hasn't set an explicit value. This is shown in the UI as a placeholder.
+       A default value for this field if the user hasn't set an explicit value. This is shown in the UI as a placeholder.
 
-       *  `:placeholder` *(OPTIONAL)*
+   *  `:placeholder` *(OPTIONAL)*
 
-          Placeholder value to show in the UI if user hasn't set an explicit value. Similar to `:default`, but this value is
-          *not* saved to `:details` if no explicit value is set. Since `:default` values are also shown as placeholders, you
-          cannot specify both `:default` and `:placeholder`.
+      Placeholder value to show in the UI if user hasn't set an explicit value. Similar to `:default`, but this value is
+      *not* saved to `:details` if no explicit value is set. Since `:default` values are also shown as placeholders, you
+      cannot specify both `:default` and `:placeholder`.
 
-       *  `:required` *(OPTIONAL)*
+   *  `:required` *(OPTIONAL)*
 
-          Is this property required? Defaults to `false`.")
+      Is this property required? Defaults to `false`.")
 
   (execute-query ^java.util.Map [this, ^java.util.Map query]
     "Execute a query against the database and return the results.
