@@ -2,8 +2,8 @@
 
 ## Goals:
 
-* Point out clear mistakes
-* Point out deviations from style guides
+* Catch bugs 
+* Catch non-obvious consequences of an approach - will this PR make future code harder to secure or more buggy.
 * For situations where things were coded without being discussed, a code review serves as a sanity check to make sure a correct approach is being taken
 * Point out implications of the PR for parts of Metabase that a PR doesn’t touch
 * Point out places where a good approach or style was used. Code reviews are not a hatefest. Unless a PR is completely horrific there should be an equal number of good and bad points brought up.
@@ -34,7 +34,7 @@ If someone slaps a strong :-1: on your PR, be especially patient. Dig into why t
 * Code that impacts other engineer’s work should be reviewed by those engineers
 * A :+1: is the default “I’m ok with this"
 * A :+0: (I made that up) is “I’m not thrilled with this, but other people saying “+1” means it can be merged
-* A :-1: is a hard veto. This should be used sparingly in run of the mill PRs, and only for things that are either violations of a style guide, or break assumptions about another part of the code base depends on. 
+* A :-1: is a hard veto. This should be used sparingly in run of the mill PRs, and only for things that are missing tests, flagrant violations of a style guide, or break assumptions another part of the code base depends on. 
 * If you cut a major branch without discussing design, or talking through implications with other engineers whose work might be impacted, you should expect a :-1:, and not be hung up on reworking controversial sections. 
 * Any PR that has a :-1: CANNOT be merged until it is resolved. 
 * The owner of the PR and the person casting a :-1: should resolve the differences in approach.
