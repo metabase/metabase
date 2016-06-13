@@ -22,7 +22,11 @@
 
 ;; Event-Based DBs aren't tested here, but in `event-query-processor-test` instead.
 (def ^:private ^:const timeseries-engines #{:druid})
-(def ^:private ^:const non-timeseries-engines (set/difference datasets/all-valid-engines timeseries-engines))
+
+;; TODO - Since this is used in other test namespaces it might make sense to move it somewhere more general
+(def ^:const non-timeseries-engines
+  "Set of engines for non-timeseries DBs (i.e., every driver except `:druid`)."
+  (set/difference datasets/all-valid-engines timeseries-engines))
 
 (defn- engines-that-support [feature]
   (set (for [engine non-timeseries-engines
