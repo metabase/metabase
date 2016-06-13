@@ -248,4 +248,5 @@
   (let [query (dissoc query-dict :parameters)]
     (if (= :query (keyword (:type query)))
       (expand-params-mbql query parameters)
-      (expand-params-native query parameters))))
+      ;;(expand-params-native query parameters)
+      query)))
