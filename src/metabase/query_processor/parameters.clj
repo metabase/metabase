@@ -174,10 +174,13 @@
         (substitute-all-params query rest)))
     query-dict))
 
-(def ^:private ^:const outer-clause-pattern #"\[\[.*?\]\]")
-(def ^:private ^:const outer-clause-prefix-pattern #"^\[\[(.*?)\s.*\]\]$")
+;; these are various regex patterns used by the functions below to parse/extract our custom clauses
+;; an "outer-clause" is of the form [[PREFIX ...]] and an "inner-clause" is of the form <...>
+;; an incomplete clause is any clause which has an unsubstituted parameter left in it.  e.g. [[AND foo={{bar}}]]
+(def ^:private ^:const outer-clause-pattern            #"\[\[.*?\]\]")
+(def ^:private ^:const outer-clause-prefix-pattern     #"^\[\[(.*?)\s.*\]\]$")
 (def ^:private ^:const incomplete-outer-clause-pattern #"\[\[.*?\{\{.*?\}\}.*?\]\]")
-(def ^:private ^:const inner-clause-pattern #"<(.*?)>")
+(def ^:private ^:const inner-clause-pattern            #"<(.*?)>")
 (def ^:private ^:const incomplete-inner-clause-pattern #"<.*?\{\{.*?\}\}.*?>")
 
 (defn- remove-incomplete-clauses
@@ -245,4 +248,5 @@
   (let [query (dissoc query-dict :parameters)]
     (if (= :query (keyword (:type query)))
       (expand-params-mbql query parameters)
-      (expand-params-native query parameters))))
+      ;;(expand-params-native query parameters)
+      query)))
