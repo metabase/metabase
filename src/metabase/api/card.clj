@@ -144,19 +144,14 @@
 
 (defendpoint POST "/"
   "Create a new `Card`."
-  [:as {{:keys [dataset_query description display name public_perms visualization_settings]} :body}]
-  {name         [Required NonEmptyString]
-   public_perms [Required PublicPerms]
-   display      [Required NonEmptyString]}
-  (->> (db/insert! Card
-         :creator_id             *current-user-id*
-         :dataset_query          dataset_query
-         :description            description
-         :display                display
-         :name                   name
-         :public_perms           public_perms
-         :visualization_settings visualization_settings)
-       (events/publish-event :card-create)))
+  [:as {{:keys [dataset_query display name parameters public_perms visualization_settings], :as body} :body}]
+  {dataset_query          [Required Dict]
+   display                [Required NonEmptyString]
+   name                   [Required NonEmptyString]
+   parameters             [Required ArrayOfMaps]
+   public_perms           [Required PublicPerms]
+   visualization_settings [Required Dict]}
+  (card/create-card body *current-user-id*))
 
 (defendpoint GET "/:id"
   "Get `Card` with ID."
@@ -170,32 +165,25 @@
 
 (defendpoint PUT "/:id"
   "Update a `Card`."
-  [id :as {{:keys [dataset_query description display name public_perms visualization_settings archived], :as body} :body}]
-  {name                   NonEmptyString
-   public_perms           PublicPerms
-   display                NonEmptyString
-   visualization_settings Dict
-   archived               Boolean}
+  [id :as {{:keys [archived dataset_query display name parameters public_perms visualization_settings], :as body} :body}]
+  {archived               [Boolean]
+   dataset_query          [Required Dict]
+   display                [Required NonEmptyString]
+   name                   [Required NonEmptyString]
+   parameters             [Required ArrayOfMaps]
+   public_perms           [Required PublicPerms]
+   visualization_settings [Required Dict]}
   (let-404 [card (Card id)]
     (write-check card)
-    (db/update-non-nil-keys! Card id
-      :dataset_query          dataset_query
-      :description            description
-      :display                display
-      :name                   name
-      :public_perms           public_perms
-      :visualization_settings visualization_settings
-      :archived               archived)
-    (let [event (cond
-                  ;; card was archived
-                  (and archived
-                       (not (:archived card))) :card-archive
-                  ;; card was unarchived
-                  (and (not (nil? archived))
-                       (not archived)
-                       (:archived card))       :card-unarchive
-                  :else                        :card-update)]
-      (events/publish-event event (assoc (Card id) :actor_id *current-user-id*)))))
+    (cond
+      ;; card is being archived
+      (and archived
+           (not (:archived card))) (card/archive-card id *current-user-id*)
+      ;; card is being unarchived
+      (and (not (nil? archived))
+           (not archived)
+           (:archived card))       (card/unarchive-card id *current-user-id*)
+      :else                        (card/update-card body *current-user-id*))))
 
 (defendpoint DELETE "/:id"
   "Delete a `Card`."

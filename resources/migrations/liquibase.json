@@ -34,6 +34,7 @@
       {"include": {"file": "migrations/033_add_physical_schema_tables.yaml"}},
       {"include": {"file": "migrations/034_add_pulse_channel_enabled_field.yaml"}},
       {"include": {"file": "migrations/035_modify_setting_value_length.yaml"}},
-      {"include": {"file": "migrations/036_add_dashboard_filters_columns.yaml"}}
+      {"include": {"file": "migrations/036_add_dashboard_filters_columns.yaml"}},
+      {"include": {"file": "migrations/037_add_card_parameters_column.yaml"}}
   ]
 }
