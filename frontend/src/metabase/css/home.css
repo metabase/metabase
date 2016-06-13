@@ -199,3 +199,5 @@
     line-height: 1;
     text-transform: uppercase;
 }
+
+  .circle { border-radius: 99px; }

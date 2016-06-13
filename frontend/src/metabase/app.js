@@ -120,6 +120,12 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
             }]
         }
     };
+    $routeProvider.when('/reference', route);
+    $routeProvider.when('/reference/metrics', route);
+    $routeProvider.when('/reference/metrics/:id', route);
+    $routeProvider.when('/reference/lists', route);
+    $routeProvider.when('/reference/lists/:id', route);
+    $routeProvider.when('/reference/:entity/:id/edit', route);
 
     $routeProvider.when('/questions', route);
     $routeProvider.when('/questions/edit/:section', route);
@@ -133,6 +139,7 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
     $routeProvider.when('/admin/datamodel/segment/:segmentId', route);
 
     $routeProvider.when('/admin/datamodel/:objectType/:objectId/revisions', route);
+
 
     $routeProvider.when('/unauthorized/', {
         templateUrl: '/app/unauthorized.html',

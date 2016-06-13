@@ -158,3 +158,10 @@
 .text-white-hover:hover { color: #fff; }
 
 .bg-white, :local(.bg-white) { background-color: #fff; }
+
+.bg-light-blue { background-color: #F5FAFC; }
+
+.text-light-blue,
+.text-light-blue-hover:hover {
+  color: #CFE4F5
+}
