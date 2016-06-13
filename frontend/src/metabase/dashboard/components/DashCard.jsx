@@ -32,7 +32,7 @@ export default class DashCard extends Component {
     };
 
     async componentDidMount() {
-        const { dashcard, markNewCardSeen, fetchCardData } = this.props;
+        const { dashcard, markNewCardSeen } = this.props;
 
         this.visibilityTimer = window.setInterval(this.updateVisibility, 2000);
         window.addEventListener("scroll", this.updateVisibility, false);

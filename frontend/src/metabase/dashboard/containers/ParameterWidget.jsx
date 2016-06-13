@@ -120,7 +120,7 @@ export default class ParameterWidget extends Component {
     }
 
     render() {
-        const { className, parameter, parameterValue, parameters, isEditing, isFullscreen, isNightMode, editingParameter, setEditingParameterId, setName, setValue, setDefaultValue, remove } = this.props;
+        const { className, parameter, parameterValue, parameters, isEditing, isFullscreen, editingParameter, setEditingParameterId, setName, setValue, setDefaultValue, remove } = this.props;
 
         const isEditingDashboard = isEditing;
         const isEditingParameter = editingParameter && editingParameter.id === parameter.id;

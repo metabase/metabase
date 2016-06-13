@@ -15,10 +15,7 @@ import Tooltip from "metabase/components/Tooltip.jsx";
 import ParametersPopover from "./parameters/ParametersPopover.jsx";
 import Popover from "metabase/components/Popover.jsx";
 
-import MetabaseAnalytics from "metabase/lib/analytics";
-
 import cx from "classnames";
-import _ from "underscore";
 
 export default class DashboardHeader extends Component {
 

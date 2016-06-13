@@ -6,7 +6,7 @@ import cx from "classnames";
 @BodyComponent
 export default class HeaderModal extends Component {
     render() {
-        const { className, height, children, title, onDone, onCancel } = this.props;
+        const { className, height, title, onDone, onCancel } = this.props;
         return (
             <div className={cx(className, "absolute top left right bg-brand flex flex-column layout-centered")} style={{ zIndex: 2, height: height }}>
                     <h2 className="text-white pb2">{title}</h2>
