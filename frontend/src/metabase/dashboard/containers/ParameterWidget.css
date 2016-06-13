@@ -1,5 +1,5 @@
 :local(.container) {
-    composes: flex align-center mr3 mb1 from "style";
+    composes: flex align-center mr3 from "style";
     transition: opacity 500ms linear;
 }
 
