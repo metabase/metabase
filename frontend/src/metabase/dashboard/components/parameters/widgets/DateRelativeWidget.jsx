@@ -5,30 +5,47 @@ import RelativeDatePicker from "metabase/query_builder/filters/pickers/RelativeD
 import _ from "underscore";
 
 // HACK: easiest way to get working with RelativeDatePicker
-const FILTER_MAPPINGS = {
-    "today":      ["=", null, ["relative_datetime", "current"]],
-    "yesterday":  ["=", null, ["relative_datetime", -1, "day"]],
-    "past7days":  ["TIME_INTERVAL", null, -7, "day"],
-    "past30days": ["TIME_INTERVAL", null, -30, "day"],
-    "lastweek":   ["TIME_INTERVAL", null, "last", "week"],
-    "lastmonth":  ["TIME_INTERVAL", null, "last", "month"],
-    "lastyear":   ["TIME_INTERVAL", null, "last", "year"],
-    "thisweek":   ["TIME_INTERVAL", null, "current", "week"],
-    "thismonth":  ["TIME_INTERVAL", null, "current", "month"],
-    "thisyear":   ["TIME_INTERVAL", null, "current", "year"],
-};
-
-const FILTER_NAMES = {
-    "today":      "Today",
-    "yesterday":  "Yesterday",
-    "past7days":  "Past 7 Days",
-    "past30days": "Past 30 Days",
-    "lastweek":   "Last Week",
-    "lastmonth":  "Last Month",
-    "lastyear":   "Last Year",
-    "thisweek":   "This Week",
-    "thismonth":  "This Month",
-    "thisyear":   "This Year",
+const FILTERS = {
+    "today": {
+        name: "Today",
+        mapping: ["=", null, ["relative_datetime", "current"]]
+    },
+    "yesterday": {
+        name: "Yesterday",
+        mapping: ["=", null, ["relative_datetime", -1, "day"]]
+    },
+    "past7days": {
+        name: "Past 7 Days",
+        mapping: ["TIME_INTERVAL", null, -7, "day"]
+    },
+    "past30days": {
+        name: "Past 30 Days",
+        mapping: ["TIME_INTERVAL", null, -30, "day"]
+    },
+    "lastweek": {
+        name: "Last Week",
+        mapping: ["TIME_INTERVAL", null, "last", "week"]
+    },
+    "lastmonth": {
+        name: "Last Month",
+        mapping: ["TIME_INTERVAL", null, "last", "month"]
+    },
+    "lastyear": {
+        name: "Last Year",
+        mapping: ["TIME_INTERVAL", null, "last", "year"]
+    },
+    "thisweek": {
+        name: "This Week",
+        mapping: ["TIME_INTERVAL", null, "current", "week"]
+    },
+    "thismonth": {
+        name: "This Month",
+        mapping: ["TIME_INTERVAL", null, "current", "month"]
+    },
+    "thisyear": {
+        name: "This Year",
+        mapping: ["TIME_INTERVAL", null, "current", "year"]
+    }
 };
 
 export default class DateRelativeWidget extends Component {
@@ -40,16 +57,16 @@ export default class DateRelativeWidget extends Component {
     static propTypes = {};
     static defaultProps = {};
 
-    static format = (value) => FILTER_NAMES[value] || "";
+    static format = (value) => FILTERS[value] ? FILTERS[value].name : "";
 
     render() {
         const { value, setValue, onClose } = this.props;
         return (
             <div className="px1" style={{ maxWidth: 300 }}>
                 <RelativeDatePicker
-                    filter={FILTER_MAPPINGS[value] || [null, null]}
+                    filter={FILTERS[value] ? FILTERS[value].mapping : [null, null]}
                     onFilterChange={(filter) => {
-                        setValue(_.findKey(FILTER_MAPPINGS, (f) => _.isEqual(f, filter)));
+                        setValue(_.findKey(FILTERS, (f) => _.isEqual(f.mapping, filter)));
                         onClose();
                     }}
                 />
