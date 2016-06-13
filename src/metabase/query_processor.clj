@@ -432,7 +432,6 @@
   "Genarate an approparite REMARK to be prepended to a query to give DBAs additional information about the query being executed.
    See documentation for `mbql->native` and [issue #2386](https://github.com/metabase/metabase/issues/2386) for more information."
   ^String [{{:keys [executed-by uuid query-hash query-type], :as info} :info}]
-  {:pre [(map? info)]}
   (format "Metabase:: userID: %s executionID: %s queryType: %s queryHash: %s" executed-by uuid query-type query-hash))
 
 (defn- run-query
