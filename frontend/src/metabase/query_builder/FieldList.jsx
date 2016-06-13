@@ -7,7 +7,7 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import TimeGroupingPopover from "./TimeGroupingPopover.jsx";
 import QueryDefinitionTooltip from "./QueryDefinitionTooltip.jsx";
 
-import { isDate, getFieldType, getIconForField } from 'metabase/lib/schema_metadata';
+import { isDate, getIconForField } from 'metabase/lib/schema_metadata';
 import { parseFieldBucketing, parseFieldTarget } from "metabase/lib/query_time";
 import { stripId, singularize } from "metabase/lib/formatting";
 
