@@ -1,8 +1,10 @@
 (ns metabase.driver.bigquery-test
   (:require metabase.driver.bigquery
             [metabase.models.database :as database]
+            [metabase.query-processor :as qp]
             [metabase.test.data :as data]
-            (metabase.test.data [datasets :refer [expect-with-engine]]
+            (metabase.test.data [bigquery :as bq-data]
+                                [datasets :refer [expect-with-engine]]
                                 [interface :refer [def-database-definition]])))
 
 ;; Make sure that paging works correctly for the bigquery driver when fetching a list of tables
@@ -64,3 +66,14 @@
   51
   (data/with-temp-db [db fifty-one-different-tables]
     (count (database/tables db))))
+
+
+;; Test native queries
+(expect-with-engine :bigquery
+  [[100]
+   [99]]
+  (get-in (qp/process-query {:native   {:query (apply format "SELECT [%stest_data.venues.id] FROM [%stest_data.venues] ORDER BY [%stest_data.venues.id] DESC LIMIT 2;"
+                                                      (repeat 3 bq-data/unique-prefix))}
+                             :type     :native
+                             :database (data/id)})
+          [:data :rows]))

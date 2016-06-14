@@ -328,9 +328,13 @@
   ;; Since we don't alias column names the come back like "veryNiceDataset_shakepeare_corpus". Strip off the dataset and table IDs
   (let [demangle-name (u/rpartial s/replace (re-pattern (str \^ dataset-id \_ table-name \_)) "")
         columns       (for [column columns]
-                        (keyword (demangle-name column)))]
-    (for [row rows]
-      (zipmap columns row))))
+                        (keyword (demangle-name column)))
+        rows          (for [row rows]
+                        (zipmap columns row))
+        columns       (vec (keys (first rows)))]
+    {:columns columns
+     :rows    (for [row rows]
+                (mapv row columns))}))
 
 (defn- mbql->native [{{{:keys [dataset-id]} :details, :as database} :database, {{table-name :name} :source-table} :query, :as outer-query}]
   {:pre [(map? database) (seq dataset-id) (seq table-name)]}
@@ -345,12 +349,8 @@
   (let [results (process-native* database sql)
         results (if mbql?
                   (post-process-mbql dataset-id table-name results)
-                  results)
-        columns (vec (keys (first results)))]
-    {:columns   columns
-     :rows      (for [row results]
-                  (mapv row columns))
-     :annotate? true}))
+                  (update results :columns (partial map keyword)))]
+    (assoc results :annotate? true)))
 
 ;; This provides an implementation of `prepare-value` that prevents HoneySQL from converting forms to prepared statement parameters (`?`)
 ;; TODO - Move this into `metabase.driver.generic-sql` and document it as an alternate implementation for `prepare-value` (?)
