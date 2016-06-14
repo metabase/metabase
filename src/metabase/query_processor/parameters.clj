@@ -21,7 +21,7 @@
     "lastyear"})
 
 (defn- start-of-quarter [quarter year]
-  (condp = quarter
+  (case quarter
     "Q1" (t/first-day-of-the-month (.withMonthOfYear (t/date-time year) DateTimeConstants/JANUARY))
     "Q2" (t/first-day-of-the-month (.withMonthOfYear (t/date-time year) DateTimeConstants/APRIL))
     "Q3" (t/first-day-of-the-month (.withMonthOfYear (t/date-time year) DateTimeConstants/JULY))
@@ -79,7 +79,7 @@
 ;  (let [tz        (t/time-zone-for-id report-timezone)
 ;        formatter (tf/formatter "yyyy-MM-dd" tz)
 ;        today     (.withTimeAtStartOfDay (t/to-time-zone (t/now) tz))]
-;    (->> (condp = value
+;    (->> (case value
 ;           "past7days"  {:end   (t/minus today (t/days 1))
 ;                         :start (t/minus today (t/days 7))}
 ;           "past30days" {:end   (t/minus today (t/days 1))
@@ -113,7 +113,7 @@
       (let [{:keys [start end]} (absolute-date->range param-value)]
         ["BETWEEN" field start end])
       ;; relative date range
-      (condp = param-value
+      (case param-value
         "past7days"  ["TIME_INTERVAL" field -7 "day"]
         "past30days" ["TIME_INTERVAL" field -30 "day"]
         "thisweek"   ["TIME_INTERVAL" field "current" "week"]
