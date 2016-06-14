@@ -8,7 +8,7 @@
                              [card :refer [Card]]
                              [common :as common]
                              [dashboard :refer [Dashboard]]
-                             [dashboard-card :refer [DashboardCard create-dashboard-card update-dashboard-card delete-dashboard-card]])
+                             [dashboard-card :refer [DashboardCard create-dashboard-card! update-dashboard-card! delete-dashboard-card!]])
             [metabase.models.revision :as revision]))
 
 (defendpoint GET "/"
@@ -79,7 +79,7 @@
                         :series       (or series [])}
         dashboard-card (-> (merge dashboard-card defaults)
                            (update :series #(filter identity (map :id %))))]
-    (let-500 [result (create-dashboard-card dashboard-card)]
+    (let-500 [result (create-dashboard-card! dashboard-card)]
       (events/publish-event :dashboard-add-cards {:id id :actor_id *current-user-id* :dashcards [result]})
       result)))
 
@@ -99,7 +99,7 @@
     (doseq [{dashcard-id :id :as dashboard-card} cards]
       ;; ensure the dashcard we are updating is part of the given dashboard
       (when (contains? dashcard-ids dashcard-id)
-        (update-dashboard-card (update dashboard-card :series #(filter identity (map :id %)))))))
+        (update-dashboard-card! (update dashboard-card :series #(filter identity (map :id %)))))))
   (events/publish-event :dashboard-reposition-cards {:id id :actor_id *current-user-id* :dashcards cards})
   {:status :ok})
 
@@ -110,7 +110,7 @@
   (check-404 (db/exists? Dashboard :id id))
   (write-check Dashboard id)
   (when-let [dashboard-card (DashboardCard dashcardId)]
-    (check-500 (delete-dashboard-card dashboard-card *current-user-id*))
+    (check-500 (delete-dashboard-card! dashboard-card *current-user-id*))
     {:success true}))
 
 (defendpoint GET "/:id/revisions"
@@ -126,7 +126,7 @@
   {revision_id [Required Integer]}
   (check-404 (db/exists? Dashboard :id id))
   (write-check Dashboard id)
-  (revision/revert
+  (revision/revert!
     :entity      Dashboard
     :id          id
     :user-id     *current-user-id*

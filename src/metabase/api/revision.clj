@@ -29,7 +29,7 @@
   [:as {{:keys [entity id revision_id]} :body}]
   {entity Entity, id Integer, revision_id Integer}
   (check-404 (db/exists? revision/Revision :model (:name entity) :model_id id :id revision_id))
-  (revision/revert
+  (revision/revert!
     :entity      entity
     :id          id
     :user-id     *current-user-id*

@@ -10,7 +10,7 @@
             (metabase.models [database :refer [Database]]
                              [session :refer [Session]]
                              [setting :as setting]
-                             [user :refer [User set-user-password]])
+                             [user :refer [User set-user-password!]])
             [metabase.setup :as setup]
             [metabase.util :as u]))
 
@@ -41,7 +41,7 @@
                      :password     (str (java.util.UUID/randomUUID))
                      :is_superuser true)]
     ;; this results in a second db call, but it avoids redundant password code so figure it's worth it
-    (set-user-password (:id new-user) password)
+    (set-user-password! (:id new-user) password)
     ;; set a couple preferences
     (setting/set :site-name site_name)
     (setting/set :admin-email email)

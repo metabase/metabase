@@ -52,5 +52,5 @@
                   Field       [{field-id :id} {:table_id table-id}]
                   FieldValues [_              {:field_id field-id, :values "[1,2,3]"}]]
     [(db/select-one-field :values FieldValues, :field_id field-id)
-     (clear-field-values field-id)
+     (clear-field-values! field-id)
      (db/select-one-field :values FieldValues, :field_id field-id)]))

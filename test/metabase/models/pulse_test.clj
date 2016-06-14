@@ -30,7 +30,7 @@
 
 (defn- update-pulse-then-select!
   [pulse]
-  (let [{:keys [cards channels] :as pulse} (update-pulse pulse)]
+  (let [{:keys [cards channels] :as pulse} (update-pulse! pulse)]
     (-> pulse
         (dissoc :id :creator :pulse_id :created_at :updated_at)
         (assoc :cards (mapv #(dissoc % :id) cards))
@@ -74,7 +74,7 @@
                                                (m/dissoc-in [:details :emails]))))))))
 
 
-;; update-pulse-cards
+;; update-pulse-cards!
 (expect
   [#{}
    #{"card1"}
@@ -86,7 +86,7 @@
                   Card  [{card-id-2 :id} {:name "card2"}]
                   Card  [{card-id-3 :id} {:name "card3"}]]
     (let [upd-cards! (fn [cards]
-                       (update-pulse-cards {:id pulse-id} cards)
+                       (update-pulse-cards! {:id pulse-id} cards)
                        (set (for [card-id (db/select-field :card_id PulseCard, :pulse_id pulse-id)]
                               (db/select-one-field :name Card, :id card-id))))]
       [(upd-cards! [])
@@ -95,7 +95,7 @@
        (upd-cards! [card-id-2 card-id-1])
        (upd-cards! [card-id-1 card-id-3])])))
 
-;; update-pulse-channels
+;; update-pulse-channels!
 (expect
   {:enabled       true
    :channel_type  :email
@@ -106,11 +106,11 @@
    :recipients    [{:email "foo@bar.com"}
                    (dissoc (user-details :rasta) :is_superuser :is_qbnewb)]}
   (tu/with-temp Pulse [{:keys [id]}]
-    (update-pulse-channels {:id id} [{:enabled       true
-                                      :channel_type  :email
-                                      :schedule_type :daily
-                                      :schedule_hour 4
-                                      :recipients    [{:email "foo@bar.com"} {:id (user->id :rasta)}]}])
+    (update-pulse-channels! {:id id} [{:enabled       true
+                                       :channel_type  :email
+                                       :schedule_type :daily
+                                       :schedule_hour 4
+                                       :recipients    [{:email "foo@bar.com"} {:id (user->id :rasta)}]}])
     (-> (PulseChannel :pulse_id id)
         (hydrate :recipients)
         (dissoc :id :pulse_id :created_at :updated_at)
@@ -137,7 +137,7 @@
                                                                   :schedule_hour 18
                                                                   :recipients    [{:email "foo@bar.com"}]}])))
 
-;; update-pulse
+;; update-pulse!
 ;; basic update.  we are testing several things here
 ;;  1. ability to update the Pulse name
 ;;  2. creator_id cannot be changed

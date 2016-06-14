@@ -90,6 +90,7 @@
 
 ;;; ### SET / DELETE
 
+;; TODO - rename this `set!`
 (defn set
   "Set the value of a `Setting`.
 
@@ -110,6 +111,7 @@
   (swap! cached-setting->value assoc k v)
   v)
 
+;; TODO - this should be renamed `delete!`
 (defn delete
   "Clear the value of a `Setting`."
   [k]
@@ -119,6 +121,7 @@
   (db/delete! Setting, :key (name k))
   {:status 204, :body nil})
 
+;; TODO - rename this `set-all!`
 (defn set-all
   "Set the value of several `Settings` at once.
 
@@ -131,6 +134,7 @@
       (delete k)))
   (events/publish-event :settings-update settings))
 
+;; TODO - Rename to `set!*`
 (defn set*
   "Set the value of a `Setting`, deleting it if VALUE is `nil` or an empty string."
   [setting-key value]

@@ -65,7 +65,7 @@
     (remove-ids-and-timestamps (retrieve-dashboard-card dashcard-id))))
 
 
-;; update-dashboard-card-series
+;; update-dashboard-card-series!
 (expect
   [#{}
    #{"card1"}
@@ -81,7 +81,7 @@
                   Card          [{card-id-2 :id} {:name "card2"}]
                   Card          [{card-id3 :id} {:name "card3"}]]
     (let [upd-series (fn [series]
-                       (update-dashboard-card-series {:id dashcard-id} series)
+                       (update-dashboard-card-series! {:id dashcard-id} series)
                        (set (for [card-id (db/select-field :card_id DashboardCardSeries, :dashboardcard_id dashcard-id)]
                               (db/select-one-field :name Card, :id card-id))))]
       [(upd-series [])
@@ -91,7 +91,7 @@
        (upd-series [card-id-1 card-id3])])))
 
 
-;; create-dashboard-card
+;; create-dashboard-card!
 ;; simple example with a single card
 (expect
   [{:sizeX  4
@@ -114,19 +114,19 @@
               :visualization_settings {}}]}]
   (tu/with-temp* [Dashboard [{dashboard-id :id}]
                   Card      [{card-id :id} {:name "Test Card"}]]
-    (let [dashboard-card (create-dashboard-card {:creator_id   (user->id :rasta)
-                                                 :dashboard_id dashboard-id
-                                                 :card_id      card-id
-                                                 :sizeX        4
-                                                 :sizeY        3
-                                                 :row          1
-                                                 :col          1
-                                                 :series       [card-id]})]
+    (let [dashboard-card (create-dashboard-card! {:creator_id   (user->id :rasta)
+                                                  :dashboard_id dashboard-id
+                                                  :card_id      card-id
+                                                  :sizeX        4
+                                                  :sizeY        3
+                                                  :row          1
+                                                  :col          1
+                                                  :series       [card-id]})]
       ;; first result is return value from function, second is to validate db captured everything
       [(remove-ids-and-timestamps dashboard-card)
        (remove-ids-and-timestamps (retrieve-dashboard-card (:id dashboard-card)))])))
 
-;; update-dashboard-card
+;; update-dashboard-card!
 ;; basic update.  we are testing multiple things here
 ;;  1. ability to update all the normal attributes for size/position
 ;;  2. ability to update series and ensure proper ordering
@@ -175,13 +175,13 @@
     ;; second is the return value from the update call
     ;; third is to validate db captured everything
     [(remove-ids-and-timestamps (retrieve-dashboard-card dashcard-id))
-     (remove-ids-and-timestamps (update-dashboard-card {:id           dashcard-id
-                                                        :actor_id     (user->id :rasta)
-                                                        :dashboard_id nil
-                                                        :card_id      nil
-                                                        :sizeX        4
-                                                        :sizeY        3
-                                                        :row          1
-                                                        :col          1
-                                                        :series       [card-id-2 card-id-1]}))
+     (remove-ids-and-timestamps (update-dashboard-card! {:id           dashcard-id
+                                                         :actor_id     (user->id :rasta)
+                                                         :dashboard_id nil
+                                                         :card_id      nil
+                                                         :sizeX        4
+                                                         :sizeY        3
+                                                         :row          1
+                                                         :col          1
+                                                         :series       [card-id-2 card-id-1]}))
      (remove-ids-and-timestamps (retrieve-dashboard-card dashcard-id))]))

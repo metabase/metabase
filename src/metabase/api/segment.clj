@@ -16,7 +16,7 @@
    definition [Required Dict]}
   (check-superuser)
   (checkp #(db/exists? Table :id table_id) "table_id" "Table does not exist.")
-  (check-500 (segment/create-segment table_id name description *current-user-id* definition)))
+  (check-500 (segment/create-segment! table_id name description *current-user-id* definition)))
 
 
 (defendpoint GET "/:id"
@@ -34,7 +34,7 @@
    definition       [Required Dict]}
   (check-superuser)
   (check-404 (segment/exists-segment? id))
-  (segment/update-segment
+  (segment/update-segment!
     {:id               id
      :name             name
      :description      description
@@ -49,7 +49,7 @@
   {revision_message [Required NonEmptyString]}
   (check-superuser)
   (check-404 (segment/exists-segment? id))
-  (segment/delete-segment id *current-user-id* revision_message)
+  (segment/delete-segment! id *current-user-id* revision_message)
   {:success true})
 
 
@@ -67,7 +67,7 @@
   {revision_id [Required Integer]}
   (check-superuser)
   (check-404 (segment/exists-segment? id))
-  (revision/revert
+  (revision/revert!
     :entity      Segment
     :id          id
     :user-id     *current-user-id*

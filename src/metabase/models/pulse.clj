@@ -48,8 +48,7 @@
 
 ;; ## Persistence Functions
 
-;; TODO - this should be renamed `update-pulse-cards!`
-(defn update-pulse-cards
+(defn update-pulse-cards!
   "Update the `PulseCards` for a given PULSE.
    CARD-IDS should be a definitive collection of *all* IDs of cards for the pulse in the desired order.
 
@@ -68,8 +67,8 @@
     (let [cards (map-indexed (fn [idx itm] {:pulse_id id :card_id itm :position idx}) card-ids)]
       (db/insert-many! PulseCard cards))))
 
-;; TODO - Rename to `create-update-delete-channel!`
-(defn- create-update-delete-channel
+
+(defn- create-update-delete-channel!
   "Utility function which determines how to properly update a single pulse channel."
   [pulse-id new-channel existing-channel]
   ;; NOTE that we force the :id of the channel being updated to the :id we *know* from our
@@ -82,16 +81,15 @@
                                     :schedule_frame (keyword (:schedule_frame new-channel))))]
     (cond
       ;; 1. in channels, NOT in db-channels = CREATE
-      (and channel (not existing-channel))  (pulse-channel/create-pulse-channel channel)
+      (and channel (not existing-channel))  (pulse-channel/create-pulse-channel! channel)
       ;; 2. NOT in channels, in db-channels = DELETE
       (and (nil? channel) existing-channel) (db/cascade-delete! PulseChannel :id (:id existing-channel))
       ;; 3. in channels, in db-channels = UPDATE
-      (and channel existing-channel)        (pulse-channel/update-pulse-channel channel)
+      (and channel existing-channel)        (pulse-channel/update-pulse-channel! channel)
       ;; 4. NOT in channels, NOT in db-channels = NO-OP
       :else nil)))
 
-;; TODO - Rename to `update-pulse-channels!`
-(defn update-pulse-channels
+(defn update-pulse-channels!
   "Update the `PulseChannels` for a given PULSE.
    CHANNELS should be a definitive collection of *all* of the channels for the the pulse.
 
@@ -105,7 +103,7 @@
          (every? map? channels)]}
   (let [new-channels   (group-by (comp keyword :channel_type) channels)
         old-channels   (group-by (comp keyword :channel_type) (db/select PulseChannel :pulse_id id))
-        handle-channel #(create-update-delete-channel id (first (get new-channels %)) (first (get old-channels %)))]
+        handle-channel #(create-update-delete-channel! id (first (get new-channels %)) (first (get old-channels %)))]
     (assert (= 0 (count (get new-channels nil))) "Cannot have channels without a :channel_type attribute")
     ;; for each of our possible channel types call our handler function
     (dorun (map handle-channel (vec (keys pulse-channel/channel-types))))))
@@ -125,8 +123,7 @@
                   (hydrate :creator :cards [:channels :recipients]))]
     (m/dissoc-in pulse [:details :emails])))
 
-;; TODO - rename to `update-pulse!`
-(defn update-pulse
+(defn update-pulse!
   "Update an existing `Pulse`, including all associated data such as: `PulseCards`, `PulseChannels`, and `PulseChannelRecipients`.
 
    Returns the updated `Pulse` or throws an Exception."
@@ -143,9 +140,9 @@
     (db/update! Pulse id, :name name)
     ;; update cards (only if they changed)
     (when (not= cards (map :card_id (db/select [PulseCard :card_id], :pulse_id id, {:order-by [[:position :asc]]})))
-      (update-pulse-cards pulse cards))
+      (update-pulse-cards! pulse cards))
     ;; update channels
-    (update-pulse-channels pulse channels)
+    (update-pulse-channels! pulse channels)
     ;; fetch the fully updated pulse and return it (and fire off an event)
     (->> (retrieve-pulse id)
          (events/publish-event :pulse-update))))
@@ -169,8 +166,8 @@
                                    :creator_id creator-id
                                    :name pulse-name)]
       ;; add card-ids to the Pulse
-      (update-pulse-cards pulse card-ids)
+      (update-pulse-cards! pulse card-ids)
       ;; add channels to the Pulse
-      (update-pulse-channels pulse channels)
+      (update-pulse-channels! pulse channels)
       ;; return the full Pulse (and record our create event)
       (events/publish-event :pulse-create (retrieve-pulse id)))))

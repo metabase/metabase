@@ -194,8 +194,8 @@
             :special_type    special-type))
         ;; handle field values, setting them if applicable otherwise clearing them
         (if (and id values (< 0 (count (filter identity values))))
-          (field-values/save-field-values id values)
-          (field-values/clear-field-values id))))
+          (field-values/save-field-values! id values)
+          (field-values/clear-field-values! id))))
 
     ;; update :last_analyzed for all fields in the table
     (db/update-where! field/Field {:table_id        table-id
