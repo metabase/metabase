@@ -27,11 +27,11 @@
     "Q3" (t/first-day-of-the-month (.withMonthOfYear (t/date-time year) DateTimeConstants/JULY))
     "Q4" (t/first-day-of-the-month (.withMonthOfYear (t/date-time year) DateTimeConstants/OCTOBER))))
 
-(defn- week-range [^DateTime dt]
-  ;; weeks always start on SUNDAY and end on SATURDAY
-  ;; NOTE: in Joda the week starts on Monday and ends on Sunday, so to get the right Sunday we rollback 1 week
-  {:end   (.withDayOfWeek dt DateTimeConstants/SATURDAY)
-   :start (.withDayOfWeek ^DateTime (t/minus dt (t/weeks 1)) DateTimeConstants/SUNDAY)})
+;(defn- week-range [^DateTime dt]
+;  ;; weeks always start on SUNDAY and end on SATURDAY
+;  ;; NOTE: in Joda the week starts on Monday and ends on Sunday, so to get the right Sunday we rollback 1 week
+;  {:end   (.withDayOfWeek dt DateTimeConstants/SATURDAY)
+;   :start (.withDayOfWeek ^DateTime (t/minus dt (t/weeks 1)) DateTimeConstants/SUNDAY)})
 
 (defn- month-range [^DateTime dt]
   {:end   (t/last-day-of-the-month dt)
@@ -42,9 +42,9 @@
   {:end   (t/last-day-of-the-month (t/plus dt (t/months 2)))
    :start (t/first-day-of-the-month dt)})
 
-(defn- year-range [^DateTime dt]
-  {:end   (t/last-day-of-the-month (.withMonthOfYear dt DateTimeConstants/DECEMBER))
-   :start (t/first-day-of-the-month (.withMonthOfYear dt DateTimeConstants/JANUARY))})
+;(defn- year-range [^DateTime dt]
+;  {:end   (t/last-day-of-the-month (.withMonthOfYear dt DateTimeConstants/DECEMBER))
+;   :start (t/first-day-of-the-month (.withMonthOfYear dt DateTimeConstants/JANUARY))})
 
 (defn- absolute-date->range
   "Take a given string description of an absolute date range and return a MAP with a given `:start` and `:end`.
@@ -72,30 +72,30 @@
          (m/map-vals (partial tf/unparse (tf/formatters :year-month-day))))))
 
 
-(defn- relative-date->range
-  "Take a given string description of a relative date range such as 'lastmonth' and return a MAP with a given
-   `:start` and `:end` as iso8601 string formatted dates.  Values should be appropriate for the given REPORT-TIMEZONE."
-  [value report-timezone]
-  (let [tz        (t/time-zone-for-id report-timezone)
-        formatter (tf/formatter "yyyy-MM-dd" tz)
-        today     (.withTimeAtStartOfDay (t/to-time-zone (t/now) tz))]
-    (->> (condp = value
-           "past7days"  {:end   (t/minus today (t/days 1))
-                         :start (t/minus today (t/days 7))}
-           "past30days" {:end   (t/minus today (t/days 1))
-                         :start (t/minus today (t/days 30))}
-           "thisweek"   (week-range today)
-           "thismonth"  (month-range today)
-           "thisyear"   (year-range today)
-           "lastweek"   (week-range (t/minus today (t/weeks 1)))
-           "lastmonth"  (month-range (t/minus today (t/months 1)))
-           "lastyear"   (year-range (t/minus today (t/years 1)))
-           "yesterday"  {:end   (t/minus today (t/days 1))
-                         :start (t/minus today (t/days 1))}
-           "today"      {:end   today
-                         :start today})
-         ;; the above values are JodaTime objects, so unparse them to iso8601 strings
-         (m/map-vals (partial tf/unparse formatter)))))
+;(defn- relative-date->range
+;  "Take a given string description of a relative date range such as 'lastmonth' and return a MAP with a given
+;   `:start` and `:end` as iso8601 string formatted dates.  Values should be appropriate for the given REPORT-TIMEZONE."
+;  [value report-timezone]
+;  (let [tz        (t/time-zone-for-id report-timezone)
+;        formatter (tf/formatter "yyyy-MM-dd" tz)
+;        today     (.withTimeAtStartOfDay (t/to-time-zone (t/now) tz))]
+;    (->> (condp = value
+;           "past7days"  {:end   (t/minus today (t/days 1))
+;                         :start (t/minus today (t/days 7))}
+;           "past30days" {:end   (t/minus today (t/days 1))
+;                         :start (t/minus today (t/days 30))}
+;           "thisweek"   (week-range today)
+;           "thismonth"  (month-range today)
+;           "thisyear"   (year-range today)
+;           "lastweek"   (week-range (t/minus today (t/weeks 1)))
+;           "lastmonth"  (month-range (t/minus today (t/months 1)))
+;           "lastyear"   (year-range (t/minus today (t/years 1)))
+;           "yesterday"  {:end   (t/minus today (t/days 1))
+;                         :start (t/minus today (t/days 1))}
+;           "today"      {:end   today
+;                         :start today})
+;         ;; the above values are JodaTime objects, so unparse them to iso8601 strings
+;         (m/map-vals (partial tf/unparse formatter)))))
 
 
 ;;; +-------------------------------------------------------------------------------------------------------+
@@ -148,92 +148,92 @@
 ;;; +-------------------------------------------------------------------------------------------------------+
 
 
-(defn- extract-dates [value report-timezone]
-  (if-not (contains? relative-dates value)
-    ;; absolute date range
-    (absolute-date->range value)
-    ;; relative date range
-    (relative-date->range value report-timezone)))
-
-(defn- expand-date-range-param [report-timezone {[target param-name] :target, param-type :type, param-value :value, :as param}]
-  (if-not (= param-type "date")
-    param
-    (let [{:keys [start end]} (extract-dates param-value report-timezone)]
-      [(assoc param :target [target (str param-name ":start")], :value start)
-       (assoc param :target [target (str param-name ":end")],   :value end)])))
-
-(defn- substitute-param [param-name value query]
-  ;; TODO: escaping and protection against SQL injection!
-  (s/replace query (re-pattern (str "\\{\\{" param-name "\\}\\}")) value))
-
-(defn- substitute-all-params [query-dict [{:keys [value], [_ param-name] :target, :as param} & rest]]
-  (if param
-    (if-not (and value (string? param-name))
-      (substitute-all-params query-dict rest)
-      (let [query (update-in query-dict [:native :query] (partial substitute-param param-name value))]
-        (substitute-all-params query rest)))
-    query-dict))
-
-;; these are various regex patterns used by the functions below to parse/extract our custom clauses
-;; an "outer-clause" is of the form [[PREFIX ...]] and an "inner-clause" is of the form <...>
-;; an incomplete clause is any clause which has an unsubstituted parameter left in it.  e.g. [[AND foo={{bar}}]]
-(def ^:private ^:const outer-clause-pattern            #"\[\[.*?\]\]")
-(def ^:private ^:const outer-clause-prefix-pattern     #"^\[\[(.*?)\s.*\]\]$")
-(def ^:private ^:const incomplete-outer-clause-pattern #"\[\[.*?\{\{.*?\}\}.*?\]\]")
-(def ^:private ^:const inner-clause-pattern            #"<(.*?)>")
-(def ^:private ^:const incomplete-inner-clause-pattern #"<.*?\{\{.*?\}\}.*?>")
-
-(defn- remove-incomplete-clauses
-  "Scans the native query body and removes any custom clauses which were not substituted with a parameter."
-  [query-dict]
-  (let [find-and-replace (fn [sql]
-                           (-> sql
-                               (s/replace incomplete-outer-clause-pattern "")
-                               (s/replace incomplete-inner-clause-pattern "")))]
-    (update-in query-dict [:native :query] find-and-replace)))
-
-(defn- format-outer-clause
-  "Formats an outer clause, finding all inner clauses and joining them via `AND` and then concatenating that onto the clause prefix.
-   e.g. \"[[WHERE <foo='bar'> <tou='can'>]]\" -> \"WHERE foo='bar' AND tou='can'\""
-  [clause]
-  (let [prefix (second (re-find outer-clause-prefix-pattern clause))]
-    ;; re-seq produces a vector for each match like [matched-form grouping1] and we only want grouping1.
-    (str prefix " " (s/join " AND " (map second (re-seq inner-clause-pattern clause))))))
-
-(defn- process-outer-clauses
-  "Takes a native query body and completely processes all included outer clauses present."
-  [query-dict]
-  (if-let [outer-clauses (re-seq outer-clause-pattern (get-in query-dict [:native :query]))]
-    (update-in query-dict [:native :query] (fn [q]
-                                             (loop [sql                   q
-                                                    [outer-clause & rest] outer-clauses]
-                                               (if outer-clause
-                                                 (recur (s/replace-first sql outer-clause (format-outer-clause outer-clause)) rest)
-                                                 sql))))
-    query-dict))
-
-(defn- process-inner-clauses
-  "Takes a native query body and completely processes all included inner clauses present.
-   e.g. \"<foo='bar'>\" -> \"foo='bar'\""
-  [query-dict]
-  (if-let [inner-clauses (re-seq inner-clause-pattern (get-in query-dict [:native :query]))]
-    (update-in query-dict [:native :query] (fn [q]
-                                             (loop [sql                      q
-                                                    [[orig stripped] & rest] inner-clauses]
-                                               (if orig
-                                                 (recur (s/replace-first sql orig stripped) rest)
-                                                 sql))))
-    query-dict))
-
-(defn- expand-params-native [{:keys [driver], :as query-dict} params]
-  (if-not (driver/driver-supports? driver :native-parameters)
-    query-dict
-    (let [report-timezone (get-in query-dict [:settings :report-timezone])
-          params          (flatten (map (partial expand-date-range-param report-timezone) params))]
-      (-> (substitute-all-params query-dict params)
-          remove-incomplete-clauses
-          process-outer-clauses
-          process-inner-clauses))))
+;(defn- extract-dates [value report-timezone]
+;  (if-not (contains? relative-dates value)
+;    ;; absolute date range
+;    (absolute-date->range value)
+;    ;; relative date range
+;    (relative-date->range value report-timezone)))
+;
+;(defn- expand-date-range-param [report-timezone {[target param-name] :target, param-type :type, param-value :value, :as param}]
+;  (if-not (= param-type "date")
+;    param
+;    (let [{:keys [start end]} (extract-dates param-value report-timezone)]
+;      [(assoc param :target [target (str param-name ":start")], :value start)
+;       (assoc param :target [target (str param-name ":end")],   :value end)])))
+;
+;(defn- substitute-param [param-name value query]
+;  ;; TODO: escaping and protection against SQL injection!
+;  (s/replace query (re-pattern (str "\\{\\{" param-name "\\}\\}")) value))
+;
+;(defn- substitute-all-params [query-dict [{:keys [value], [_ param-name] :target, :as param} & rest]]
+;  (if param
+;    (if-not (and value (string? param-name))
+;      (substitute-all-params query-dict rest)
+;      (let [query (update-in query-dict [:native :query] (partial substitute-param param-name value))]
+;        (substitute-all-params query rest)))
+;    query-dict))
+;
+;;; these are various regex patterns used by the functions below to parse/extract our custom clauses
+;;; an "outer-clause" is of the form [[PREFIX ...]] and an "inner-clause" is of the form <...>
+;;; an incomplete clause is any clause which has an unsubstituted parameter left in it.  e.g. [[AND foo={{bar}}]]
+;(def ^:private ^:const outer-clause-pattern            #"\[\[.*?\]\]")
+;(def ^:private ^:const outer-clause-prefix-pattern     #"^\[\[(.*?)\s.*\]\]$")
+;(def ^:private ^:const incomplete-outer-clause-pattern #"\[\[.*?\{\{.*?\}\}.*?\]\]")
+;(def ^:private ^:const inner-clause-pattern            #"<(.*?)>")
+;(def ^:private ^:const incomplete-inner-clause-pattern #"<.*?\{\{.*?\}\}.*?>")
+;
+;(defn- remove-incomplete-clauses
+;  "Scans the native query body and removes any custom clauses which were not substituted with a parameter."
+;  [query-dict]
+;  (let [find-and-replace (fn [sql]
+;                           (-> sql
+;                               (s/replace incomplete-outer-clause-pattern "")
+;                               (s/replace incomplete-inner-clause-pattern "")))]
+;    (update-in query-dict [:native :query] find-and-replace)))
+;
+;(defn- format-outer-clause
+;  "Formats an outer clause, finding all inner clauses and joining them via `AND` and then concatenating that onto the clause prefix.
+;   e.g. \"[[WHERE <foo='bar'> <tou='can'>]]\" -> \"WHERE foo='bar' AND tou='can'\""
+;  [clause]
+;  (let [prefix (second (re-find outer-clause-prefix-pattern clause))]
+;    ;; re-seq produces a vector for each match like [matched-form grouping1] and we only want grouping1.
+;    (str prefix " " (s/join " AND " (map second (re-seq inner-clause-pattern clause))))))
+;
+;(defn- process-outer-clauses
+;  "Takes a native query body and completely processes all included outer clauses present."
+;  [query-dict]
+;  (if-let [outer-clauses (re-seq outer-clause-pattern (get-in query-dict [:native :query]))]
+;    (update-in query-dict [:native :query] (fn [q]
+;                                             (loop [sql                   q
+;                                                    [outer-clause & rest] outer-clauses]
+;                                               (if outer-clause
+;                                                 (recur (s/replace-first sql outer-clause (format-outer-clause outer-clause)) rest)
+;                                                 sql))))
+;    query-dict))
+;
+;(defn- process-inner-clauses
+;  "Takes a native query body and completely processes all included inner clauses present.
+;   e.g. \"<foo='bar'>\" -> \"foo='bar'\""
+;  [query-dict]
+;  (if-let [inner-clauses (re-seq inner-clause-pattern (get-in query-dict [:native :query]))]
+;    (update-in query-dict [:native :query] (fn [q]
+;                                             (loop [sql                      q
+;                                                    [[orig stripped] & rest] inner-clauses]
+;                                               (if orig
+;                                                 (recur (s/replace-first sql orig stripped) rest)
+;                                                 sql))))
+;    query-dict))
+;
+;(defn- expand-params-native [{:keys [driver], :as query-dict} params]
+;  (if-not (driver/driver-supports? driver :native-parameters)
+;    query-dict
+;    (let [report-timezone (get-in query-dict [:settings :report-timezone])
+;          params          (flatten (map (partial expand-date-range-param report-timezone) params))]
+;      (-> (substitute-all-params query-dict params)
+;          remove-incomplete-clauses
+;          process-outer-clauses
+;          process-inner-clauses))))
 
 
 ;;; +-------------------------------------------------------------------------------------------------------+
