@@ -21,11 +21,11 @@
     "lastyear"})
 
 (defn- start-of-quarter [quarter year]
-  (case quarter
-    "Q1" (t/first-day-of-the-month (.withMonthOfYear (t/date-time year) DateTimeConstants/JANUARY))
-    "Q2" (t/first-day-of-the-month (.withMonthOfYear (t/date-time year) DateTimeConstants/APRIL))
-    "Q3" (t/first-day-of-the-month (.withMonthOfYear (t/date-time year) DateTimeConstants/JULY))
-    "Q4" (t/first-day-of-the-month (.withMonthOfYear (t/date-time year) DateTimeConstants/OCTOBER))))
+  (t/first-day-of-the-month (.withMonthOfYear (t/date-time year) (case quarter
+                                                                   "Q1" DateTimeConstants/JANUARY
+                                                                   "Q2" DateTimeConstants/APRIL
+                                                                   "Q3" DateTimeConstants/JULY
+                                                                   "Q4" DateTimeConstants/OCTOBER))))
 
 ;(defn- week-range [^DateTime dt]
 ;  ;; weeks always start on SUNDAY and end on SATURDAY
