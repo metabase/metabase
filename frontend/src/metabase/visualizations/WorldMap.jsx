@@ -12,9 +12,9 @@ export default class WorldMap extends ChoroplethMap {
     static defaultProps = {
         geoJsonPath: "/app/charts/world.json",
         projection: d3.geo.mercator(),
-        getRowKey: (row) => row[0].toLowerCase(),
+        getRowKey: (row) => String(row[0]).toLowerCase(),
         getRowValue: (row) => row[1] || 0,
-        getFeatureKey: (feature) => feature.properties.ISO_A2.toLowerCase(),
-        getFeatureName: (feature) => feature.properties.NAME
+        getFeatureKey: (feature) => String(feature.properties.ISO_A2).toLowerCase(),
+        getFeatureName: (feature) => String(feature.properties.NAME)
     };
 }
