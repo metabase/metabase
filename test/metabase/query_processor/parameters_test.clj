@@ -12,7 +12,7 @@
             [metabase.test.util :as tu]))
 
 (tu/resolve-private-fns metabase.query-processor.parameters
-  absolute-date->range expand-date-range-param relative-date->range)
+  absolute-date->range)
 
 (expect {:end "2016-03-31", :start "2016-01-01"} (absolute-date->range "Q1-2016"))
 (expect {:end "2016-02-29", :start "2016-02-01"} (absolute-date->range "2016-02"))
@@ -20,20 +20,20 @@
 (expect {:end "2016-04-23", :start "2016-04-18"} (absolute-date->range "2016-04-18~2016-04-23"))
 
 ;; we hard code "now" to a specific point in time so that we can control the test output
-(defn- test-relative [value]
-  (with-redefs-fn {#'clj-time.core/now (fn [] (t/date-time 2016 06 07 12 0 0))}
-    #(relative-date->range value nil)))
-
-(expect {:end "2016-06-06", :start "2016-05-31"} (test-relative "past7days"))
-(expect {:end "2016-06-06", :start "2016-05-08"} (test-relative "past30days"))
-(expect {:end "2016-06-11", :start "2016-06-05"} (test-relative "thisweek"))
-(expect {:end "2016-06-30", :start "2016-06-01"} (test-relative "thismonth"))
-(expect {:end "2016-12-31", :start "2016-01-01"} (test-relative "thisyear"))
-(expect {:end "2016-06-04", :start "2016-05-29"} (test-relative "lastweek"))
-(expect {:end "2016-05-31", :start "2016-05-01"} (test-relative "lastmonth"))
-(expect {:end "2015-12-31", :start "2015-01-01"} (test-relative "lastyear"))
-(expect {:end "2016-06-06", :start "2016-06-06"} (test-relative "yesterday"))
-(expect {:end "2016-06-07", :start "2016-06-07"} (test-relative "today"))
+;(defn- test-relative [value]
+;  (with-redefs-fn {#'clj-time.core/now (fn [] (t/date-time 2016 06 07 12 0 0))}
+;    #(relative-date->range value nil)))
+;
+;(expect {:end "2016-06-06", :start "2016-05-31"} (test-relative "past7days"))
+;(expect {:end "2016-06-06", :start "2016-05-08"} (test-relative "past30days"))
+;(expect {:end "2016-06-11", :start "2016-06-05"} (test-relative "thisweek"))
+;(expect {:end "2016-06-30", :start "2016-06-01"} (test-relative "thismonth"))
+;(expect {:end "2016-12-31", :start "2016-01-01"} (test-relative "thisyear"))
+;(expect {:end "2016-06-04", :start "2016-05-29"} (test-relative "lastweek"))
+;(expect {:end "2016-05-31", :start "2016-05-01"} (test-relative "lastmonth"))
+;(expect {:end "2015-12-31", :start "2015-01-01"} (test-relative "lastyear"))
+;(expect {:end "2016-06-06", :start "2016-06-06"} (test-relative "yesterday"))
+;(expect {:end "2016-06-07", :start "2016-06-07"} (test-relative "today"))
 
 
 ;;; +-------------------------------------------------------------------------------------------------------+

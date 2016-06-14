@@ -64,25 +64,7 @@ export default class Dashboard extends Component {
     };
 
     async componentDidMount() {
-        this.loadParams();
-        const { addCardOnLoad, selectedDashboard, fetchDashboard, fetchCards, addCardToDashboard, onChangeLocation } = this.props;
-
-        try {
-            await fetchDashboard(this.props.selectedDashboard);
-            if (addCardOnLoad != null) {
-                // we have to load our cards before we can add one
-                await fetchCards();
-                this.setEditing(true);
-                addCardToDashboard({ dashId: selectedDashboard, cardId: addCardOnLoad });
-            }
-        } catch (error) {
-            console.error(error)
-            if (error.status === 404) {
-                onChangeLocation("/404");
-            } else {
-                this.setState({ error });
-            }
-        }
+        this.loadDashboard(this.props.selectedDashboard);
     }
 
     componentDidUpdate() {
@@ -96,7 +78,9 @@ export default class Dashboard extends Component {
     }
 
     componentWillReceiveProps(nextProps) {
-        if (!_.isEqual(this.props.parameterValues, nextProps.parameterValues) || !this.props.dashboard) {
+        if (this.props.selectedDashboard !== nextProps.selectedDashboard) {
+            this.loadDashboard(nextProps.selectedDashboard);
+        } else if (!_.isEqual(this.props.parameterValues, nextProps.parameterValues) || !this.props.dashboard) {
             this.fetchDashboardCardData(nextProps, true);
         }
     }
@@ -112,6 +96,28 @@ export default class Dashboard extends Component {
         this._clearRefreshInterval();
         if (screenfull.enabled) {
             document.removeEventListener(screenfull.raw.fullscreenchange, this.fullScreenChanged);
+        }
+    }
+
+    async loadDashboard(dashboardId) {
+        this.loadParams();
+        const { addCardOnLoad, fetchDashboard, fetchCards, addCardToDashboard, onChangeLocation } = this.props;
+
+        try {
+            await fetchDashboard(dashboardId);
+            if (addCardOnLoad != null) {
+                // we have to load our cards before we can add one
+                await fetchCards();
+                this.setEditing(true);
+                addCardToDashboard({ dashId: dashboardId, cardId: addCardOnLoad });
+            }
+        } catch (error) {
+            console.error(error)
+            if (error.status === 404) {
+                onChangeLocation("/404");
+            } else {
+                this.setState({ error });
+            }
         }
     }
 
@@ -332,7 +338,7 @@ export default class Dashboard extends Component {
                             parameters={parameters}
                         />
                     </header>
-                    {!isFullscreen && parameters.length > 0 &&
+                    {!isFullscreen && parameters && parameters.length > 0 &&
                         <div className="wrapper flex flex-column align-start mt1">
                             <div className="flex flex-row align-end" ref="parameters">
                                 {parameters}
