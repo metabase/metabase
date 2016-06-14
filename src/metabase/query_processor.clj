@@ -512,24 +512,23 @@
   ;; TODO: it probably makes sense to throw an error or return a failure response here if we can't get a driver
   (let [driver (driver/database-id->driver (:database query))]
     (binding [*driver* driver]
-      (let [driver-process-in-context (partial driver/process-query-in-context driver)]
-        ((<<- wrap-catch-exceptions
-              pre-add-settings
-              pre-expand-macros
-              pre-substitute-parameters
-              pre-expand-resolve
-              driver-process-in-context
-              post-add-row-count-and-status
-              post-format-rows
-              pre-add-implicit-fields
-              pre-add-implicit-breakout-order-by
-              cumulative-sum
-              cumulative-count
-              limit
-              post-check-results-format
-              pre-log-query
-              guard-multiple-calls
-              run-query) (assoc query :driver driver))))))
+      ((<<- wrap-catch-exceptions
+            pre-add-settings
+            pre-expand-macros
+            pre-substitute-parameters
+            pre-expand-resolve
+            (driver/process-query-in-context driver)
+            post-add-row-count-and-status
+            post-format-rows
+            pre-add-implicit-fields
+            pre-add-implicit-breakout-order-by
+            cumulative-sum
+            cumulative-count
+            limit
+            post-check-results-format
+            pre-log-query
+            guard-multiple-calls
+            run-query) (assoc query :driver driver)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------+
