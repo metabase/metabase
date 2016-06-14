@@ -53,16 +53,15 @@ export default class Header extends Component {
     }
 
     renderHeaderModal() {
-        if (this.props.headerModalMessage) {
-            return (
-                <HeaderModal
-                    height={this.state.headerHeight}
-                    title={this.props.headerModalMessage}
-                    onDone={this.props.onHeaderModalDone}
-                    onCancel={this.props.onHeaderModalCancel}
-                />
-            );
-        }
+        return (
+            <HeaderModal
+                isOpen={!!this.props.headerModalMessage}
+                height={this.state.headerHeight}
+                title={this.props.headerModalMessage}
+                onDone={this.props.onHeaderModalDone}
+                onCancel={this.props.onHeaderModalCancel}
+            />
+        );
     }
 
     render() {

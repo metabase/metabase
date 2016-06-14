@@ -126,14 +126,14 @@ export default class DashboardHeader extends Component {
     }
 
     getHeaderButtons() {
-        const { dashboard, isEditing, isFullscreen, isNightMode } = this.props;
+        const { dashboard, parameters, isEditing, isFullscreen, isNightMode } = this.props;
         const isEmpty = !dashboard || dashboard.ordered_cards.length === 0;
         const canEdit = dashboard && dashboard.can_write;
 
         const buttons = [];
 
-        if (isFullscreen) {
-            buttons.push(...this.props.parameters);
+        if (isFullscreen && parameters) {
+            buttons.push(...parameters);
         }
 
         if (isEditing) {
