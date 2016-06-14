@@ -382,7 +382,7 @@ export default class AdminPeople extends Component {
                                     </td>
                                     <td>{ user.last_login ? user.last_login.fromNow() : "Never" }</td>
                                     <td className="text-right">
-                                        <UserActionsSelect user={user} dispatch={this.props.dispatch} isActiveUser={this.props.user.id !== user.id} />
+                                        <UserActionsSelect user={user} dispatch={this.props.dispatch} isActiveUser={this.props.user.id === user.id} />
                                     </td>
                                 </tr>
                                 )}
