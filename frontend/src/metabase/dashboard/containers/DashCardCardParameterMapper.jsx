@@ -125,15 +125,16 @@ export default class DashCardCardParameterMapper extends Component {
                         </Tooltip>
                     }
                 >
-                <AccordianList
-                    className="text-brand"
-                    sections={sections}
-                    onChange={this.onChange}
-                    itemIsSelected={(item) => _.isEqual(item.target, target)}
-                    renderItemIcon={(item) => <Icon name={item.icon} width={18} height={18} />}
-                    alwaysExpanded={true}
-                    hideSingleSectionTitle={!hasFkOption}
-                />
+                    <AccordianList
+                        className="text-brand scroll-show scroll-y"
+                        style={{ maxHeight: 600 }}
+                        sections={sections}
+                        onChange={this.onChange}
+                        itemIsSelected={(item) => _.isEqual(item.target, target)}
+                        renderItemIcon={(item) => <Icon name={item.icon || "unknown"} width={18} height={18} />}
+                        alwaysExpanded={true}
+                        hideSingleSectionTitle={!hasFkOption}
+                    />
                 </PopoverWithTrigger>
             </div>
         );

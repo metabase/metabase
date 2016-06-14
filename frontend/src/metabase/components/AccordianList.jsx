@@ -50,6 +50,7 @@ export default class AccordianList extends Component {
     };
 
     static defaultProps = {
+        style: {},
         searchable: false,
         alwaysTogglable: false,
         alwaysExpanded: false,
@@ -143,7 +144,7 @@ export default class AccordianList extends Component {
     }
 
     render() {
-        const { searchable, sections, showItemArrows, alwaysTogglable, alwaysExpanded, hideSingleSectionTitle } = this.props;
+        const { searchable, sections, showItemArrows, alwaysTogglable, alwaysExpanded, hideSingleSectionTitle, style } = this.props;
         const { searchText } = this.state;
 
         const openSection = this.getOpenSection();
@@ -151,7 +152,7 @@ export default class AccordianList extends Component {
             alwaysExpanded || openSection === sectionIndex;
 
         return (
-            <div className={this.props.className} style={{width: '300px'}}>
+            <div className={this.props.className} style={{ width: '300px', ...style }}>
                 {sections.map((section, sectionIndex) =>
                     <section key={sectionIndex} className={cx("List-section", { "List-section--open": sectionIsOpen(sectionIndex) })}>
                         { section.name && alwaysExpanded ?
