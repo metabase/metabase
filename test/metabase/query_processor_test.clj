@@ -75,11 +75,12 @@
    :description     nil
    :visibility_type :normal
    :schema_name     (default-schema)
-   :source          :fields})
+   :source          :fields
+   :fk_field_id     nil})
 
 (defn- target-field [field]
   (when (fks-supported?)
-    (dissoc field :target :extra_info :schema_name :source)))
+    (dissoc field :target :extra_info :schema_name :source :fk_field_id)))
 
 (defn- categories-col
   "Return column information for the `categories` column named by keyword COL."

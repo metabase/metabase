@@ -76,13 +76,19 @@
                                       (map->FieldPlaceholder {:field-id parent-id})))
     :else     this))
 
-(defn- field-resolve-table [{:keys [table-id fk-field-id], :as this} fk-id+table-id->table]
+(defn- field-resolve-table [{:keys [table-id fk-field-id field-id], :as this} fk-id+table-id->table]
   {:pre [(map? fk-id+table-id->table) (every? vector? (keys fk-id+table-id->table))]}
   (let [table (or (fk-id+table-id->table [fk-field-id table-id])
-                  (throw (Exception. (format "Query expansion failed: could not find table %d (FK ID = %d). Resolved tables: %s" table-id fk-field-id fk-id+table-id->table))))]
+                  ;; if we didn't find a matching table check and see whether we're trying to use a field from another table without wrapping it in an fk-> form
+                  (doseq [[fk table] (keys fk-id+table-id->table)
+                          :when      (and fk (= table table-id))]
+                    (throw (Exception. (format "Invalid query: Field %d belongs to table %d. Since %d is not the source table, it must be wrapped in a fk-> form, e.g. [fk-> %d %d]."
+                                               field-id table-id table-id fk field-id))))
+                  ;; Otherwise, we're using what is most likely an invalid Field ID; complain about it and give a list of tables that are valid
+                  (throw (Exception. (format "Query expansion failed: could not find table %d (FK ID = %d). Resolved tables ([fk-id table-id]): %s" table-id fk-field-id (keys fk-id+table-id->table)))))]
     (assoc this
-           :table-name  (:name table)
-           :schema-name (:schema table))))
+      :table-name  (:name table)
+      :schema-name (:schema table))))
 
 (u/strict-extend Field
   IResolve (merge IResolveDefaults
