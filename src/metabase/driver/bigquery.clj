@@ -347,10 +347,9 @@
 
 (defn- execute-query [{{{:keys [dataset-id]} :details, :as database} :database, {sql :query, :keys [table-name mbql?]} :native}]
   (let [results (process-native* database sql)
-        results (u/prog1 (if mbql?
-                           (post-process-mbql dataset-id table-name results)
-                           (update results :columns (partial map keyword)))
-                  (qp/validate-results <>))]
+        results (if mbql?
+                  (post-process-mbql dataset-id table-name results)
+                  (update results :columns (partial map keyword)))]
     (assoc results :annotate? true)))
 
 ;; This provides an implementation of `prepare-value` that prevents HoneySQL from converting forms to prepared statement parameters (`?`)
