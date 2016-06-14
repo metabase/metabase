@@ -200,8 +200,9 @@
                            :schema-name        :schema_name
                            :special-type       :special_type
                            :visibility-type    :visibility_type
-                           :table-id           :table_id})
-        (dissoc :position :clause-position :parent :parent-id :table-name :fk-field-id))))
+                           :table-id           :table_id
+                           :fk-field-id        :fk_field_id})
+        (dissoc :position :clause-position :parent :parent-id :table-name))))
 
 (defn- fk-field->dest-fn
   "Fetch fk info and return a function that returns the destination Field of a given Field."

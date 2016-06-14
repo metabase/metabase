@@ -547,7 +547,7 @@ export const runQuery = createThunkAction(RUN_QUERY, (card, updateUrl=true) => {
         if (dataset_query.query) {
             // TODO: this needs to be immutable
             dataset_query.query = Query.cleanQuery(dataset_query.query);
-        }        
+        }
 
         if (updateUrl) {
             state.updateUrl(card, cardIsDirty);
@@ -638,8 +638,11 @@ export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnInde
         if (!queryResult) return false;
 
         // lookup the coldef and cell value of the cell we are taking action on
-        var coldef = queryResult.data.cols[columnIndex],
-            value = queryResult.data.rows[rowIndex][columnIndex];
+        var coldef          = queryResult.data.cols[columnIndex],
+            value           = queryResult.data.rows[rowIndex][columnIndex],
+            sourceTableID   = card.dataset_query.query.source_table,
+            isForeignColumn = coldef.table_id && coldef.table_id !== sourceTableID && coldef.fk_field_id,
+            fieldRefForm    = isForeignColumn ? ['fk->', coldef.fk_field_id, coldef.id] : ['field-id', coldef.id];
 
         if (coldef.special_type === "id") {
             // action is on a PK column
@@ -647,7 +650,7 @@ export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnInde
 
             newCard.dataset_query.query.source_table = coldef.table_id;
             newCard.dataset_query.query.aggregation = ["rows"];
-            newCard.dataset_query.query.filter = ["AND", ["=", coldef.id, value]];
+            newCard.dataset_query.query.filter = ["AND", ["=", fieldRefForm, value]];
 
             // run it
             dispatch(setCardAndRun(newCard));
@@ -681,11 +684,11 @@ export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnInde
                     case "year": start = moment(value, "YYYY").format("YYYY-MM-DD");
                                  end = moment(value, "YYYY").add(1, "years").subtract(1, "days").format("YYYY-MM-DD"); break;
                 }
-                Query.updateFilter(dataset_query.query, dataset_query.query.filter.length - 1, ["BETWEEN", coldef.id, start, end]);
+                Query.updateFilter(dataset_query.query, dataset_query.query.filter.length - 1, ["BETWEEN", fieldRefForm, start, end]);
 
             } else {
                 // quick filtering on a normal value (string/number)
-                Query.updateFilter(dataset_query.query, dataset_query.query.filter.length - 1, [filter, coldef.id, value]);
+                Query.updateFilter(dataset_query.query, dataset_query.query.filter.length - 1, [filter, fieldRefForm, value]);
             }
 
             dispatch(setQuery(dataset_query));
@@ -801,4 +804,3 @@ export const onUpdateVisualizationSetting = setCardVisualizationSetting;
 export const onUpdateVisualizationSettings = setCardVisualizationSettings;
 export const cellClickedFn = cellClicked;
 export const followForeignKeyFn = followForeignKey;
-
