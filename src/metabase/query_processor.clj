@@ -451,8 +451,7 @@
 (defn query->remark
   "Genarate an approparite REMARK to be prepended to a query to give DBAs additional information about the query being executed.
    See documentation for `mbql->native` and [issue #2386](https://github.com/metabase/metabase/issues/2386) for more information."
-  ^String [{{:keys [executed-by uuid query-hash query-type]} :info, :as info}]
-  {:pre [(map? info)]}
+  ^String [{{:keys [executed-by uuid query-hash query-type], :as info} :info}]
   (format "Metabase:: userID: %s executionID: %s queryType: %s queryHash: %s" executed-by uuid query-type query-hash))
 
 (defn- run-query
@@ -590,13 +589,13 @@
         query           (assoc query :info {:executed-by executed_by
                                             :uuid        query-uuid
                                             :query-hash  (hash query)
-                                            :query-type (if (mbql-query? query) "MBQL" "native")})]
+                                            :query-type  (if (mbql-query? query) "MBQL" "native")})]
     (try
       (let [result (process-query query)]
         (assert-valid-query-result result)
         (query-complete query-execution result))
       (catch Throwable e
-        (log/error (u/format-color 'red "Query failure: %s" (.getMessage e)))
+        (log/error (u/format-color 'red "Query failure: %s\n%s" (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e))))
         (query-fail query-execution (.getMessage e))))))
 
 (defn query-fail

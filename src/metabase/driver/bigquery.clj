@@ -341,12 +341,13 @@
   (binding [sqlqp/*query* outer-query]
     (let [honeysql-form (honeysql-form outer-query)
           sql           (honeysql-form->sql honeysql-form)]
-      {:query      (str "-- " (qp/query->remark outer-query) "\n" sql)
+      {:query      sql
        :table-name table-name
        :mbql?      true})))
 
-(defn- execute-query [{{{:keys [dataset-id]} :details, :as database} :database, {sql :query, :keys [table-name mbql?]} :native}]
-  (let [results (process-native* database sql)
+(defn- execute-query [{{{:keys [dataset-id]} :details, :as database} :database, {sql :query, :keys [table-name mbql?]} :native, :as outer-query}]
+  (let [sql     (str "-- " (qp/query->remark outer-query) "\n" sql)
+        results (process-native* database sql)
         results (if mbql?
                   (post-process-mbql dataset-id table-name results)
                   (update results :columns (partial map keyword)))]
