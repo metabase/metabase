@@ -5,10 +5,25 @@ import cx from "classnames";
 
 @BodyComponent
 export default class HeaderModal extends Component {
+    constructor(props, context) {
+        super(props, context);
+        this.state = {
+            initialTop: "-100%"
+        };
+    }
+
+    componentDidMount() {
+        this.setState({ initialTop: 0 });
+    }
+
     render() {
-        const { className, height, title, onDone, onCancel } = this.props;
+        const { className, height, title, onDone, onCancel, isOpen } = this.props;
+        const { initialTop } = this.state;
         return (
-            <div className={cx(className, "absolute top left right bg-brand flex flex-column layout-centered")} style={{ zIndex: 2, height: height }}>
+            <div
+                className={cx(className, "absolute top left right bg-brand flex flex-column layout-centered")}
+                style={{ zIndex: 2, height: height, transform: `translateY(${isOpen ? initialTop : "-100%"})`, transition: "transform 0.3s cubic-bezier(0.145, -0.005, 1.000, 0.495)" }}
+            >
                     <h2 className="text-white pb2">{title}</h2>
                     <div className="flex layout-centered">
                         <button className="Button Button--borderless text-brand bg-white text-bold" onClick={onDone}>Done</button>
