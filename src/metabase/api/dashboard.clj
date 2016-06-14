@@ -30,7 +30,7 @@
   {name         [Required NonEmptyString]
    public_perms [Required PublicPerms]
    parameters   [ArrayOfMaps]}
-  (dashboard/create-dashboard dashboard *current-user-id*))
+  (dashboard/create-dashboard! dashboard *current-user-id*))
 
 (defendpoint GET "/:id"
   "Get `Dashboard` with ID."
@@ -50,7 +50,7 @@
    parameters   [ArrayOfMaps]}
   (write-check Dashboard id)
   (check-500 (-> (assoc dashboard :id id)
-                 (dashboard/update-dashboard *current-user-id*))))
+                 (dashboard/update-dashboard! *current-user-id*))))
 
 (defendpoint DELETE "/:id"
   "Delete a `Dashboard`."

@@ -39,7 +39,7 @@
 ;;; ## ---------------------------------------- PERSISTENCE FUNCTIONS ----------------------------------------
 
 
-(defn create-dashboard
+(defn create-dashboard!
   "Create a `Dashboard`"
   [{:keys [name description parameters public_perms], :as dashboard} user-id]
   {:pre [(map? dashboard)
@@ -53,7 +53,7 @@
                    :creator_id   user-id)
        (events/publish-event :dashboard-create)))
 
-(defn update-dashboard
+(defn update-dashboard!
   "Update a `Dashboard`"
   [{:keys [id name description parameters], :as dashboard} user-id]
   {:pre [(map? dashboard)

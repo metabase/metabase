@@ -183,26 +183,14 @@
     ;; second is the return value from the update call
     ;; third is to validate db captured everything
     [(remove-ids-and-timestamps (retrieve-dashboard-card dashcard-id))
-     <<<<<<< HEAD
-     (remove-ids-and-timestamps (update-dashboard-card! {:id           dashcard-id
-                                                         :actor_id     (user->id :rasta)
-                                                         :dashboard_id nil
-                                                         :card_id      nil
-                                                         :sizeX        4
-                                                         :sizeY        3
-                                                         :row          1
-                                                         :col          1
-                                                         :series       [card-id-2 card-id-1]}))
-     =======
-     (remove-ids-and-timestamps (update-dashboard-card {:id                 dashcard-id
-                                                        :actor_id           (user->id :rasta)
-                                                        :dashboard_id       nil
-                                                        :card_id            nil
-                                                        :sizeX              4
-                                                        :sizeY              3
-                                                        :row                1
-                                                        :col                1
-                                                        :parameter_mappings [{:foo "barbar"}]
-                                                        :series             [card-id-2 card-id-1]}))
-     >>>>>>> 6161e125978af1a6db7887464be4c5df48259464
+     (remove-ids-and-timestamps (update-dashboard-card! {:id                 dashcard-id
+                                                         :actor_id           (user->id :rasta)
+                                                         :dashboard_id       nil
+                                                         :card_id            nil
+                                                         :sizeX              4
+                                                         :sizeY              3
+                                                         :row                1
+                                                         :col                1
+                                                         :parameter_mappings [{:foo "barbar"}]
+                                                         :series             [card-id-2 card-id-1]}))
      (remove-ids-and-timestamps (retrieve-dashboard-card dashcard-id))]))
