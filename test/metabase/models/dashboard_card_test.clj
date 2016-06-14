@@ -159,21 +159,21 @@
                           :display                :table
                           :dataset_query          {}
                           :visualization_settings {}}]}
-   {:sizeX  4
-    :sizeY  3
-    :col    1
-    :row    1
+   {:sizeX              4
+    :sizeY              3
+    :col                1
+    :row                1
     :parameter_mappings [{:foo "barbar"}]
-    :series [{:name                   "Test Card 2"
-              :description            nil
-              :display                :table
-              :dataset_query          {}
-              :visualization_settings {}}
-             {:name                   "Test Card 1"
-              :description            nil
-              :display                :table
-              :dataset_query          {}
-              :visualization_settings {}}]}]
+    :series             [{:name                   "Test Card 2"
+                          :description            nil
+                          :display                :table
+                          :dataset_query          {}
+                          :visualization_settings {}}
+                         {:name                   "Test Card 1"
+                          :description            nil
+                          :display                :table
+                          :dataset_query          {}
+                          :visualization_settings {}}]}]
   (tu/with-temp* [Dashboard     [{dashboard-id :id}]
                   Card          [{card-id :id}]
                   DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id, :parameter_mappings [{:foo "bar"}]}]
@@ -194,15 +194,15 @@
                                                          :col          1
                                                          :series       [card-id-2 card-id-1]}))
      =======
-     (remove-ids-and-timestamps (update-dashboard-card {:id           dashcard-id
-                                                        :actor_id     (user->id :rasta)
-                                                        :dashboard_id nil
-                                                        :card_id      nil
-                                                        :sizeX        4
-                                                        :sizeY        3
-                                                        :row          1
-                                                        :col          1
+     (remove-ids-and-timestamps (update-dashboard-card {:id                 dashcard-id
+                                                        :actor_id           (user->id :rasta)
+                                                        :dashboard_id       nil
+                                                        :card_id            nil
+                                                        :sizeX              4
+                                                        :sizeY              3
+                                                        :row                1
+                                                        :col                1
                                                         :parameter_mappings [{:foo "barbar"}]
-                                                        :series       [card-id-2 card-id-1]}))
+                                                        :series             [card-id-2 card-id-1]}))
      >>>>>>> 6161e125978af1a6db7887464be4c5df48259464
      (remove-ids-and-timestamps (retrieve-dashboard-card dashcard-id))]))
