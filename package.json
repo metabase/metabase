@@ -111,10 +111,10 @@
     "flow": "flow; test $? -eq 0 -o $? -eq 2",
     "test": "karma start frontend/test/karma.conf.js --single-run --reporters nyan",
     "test-watch": "karma start frontend/test/karma.conf.js --auto-watch --reporters nyan",
-    "test-e2e": "webdriver-manager update && ./node_modules/protractor/bin/protractor frontend/test/protractor-conf.js",
+    "test-e2e": "webdriver-manager update && protractor frontend/test/protractor-conf.js",
     "build": "webpack",
     "build-watch": "webpack --watch",
-    "build-hot": "NODE_ENV=hot webpack && NODE_ENV=hot node_modules/webpack-dev-server/bin/webpack-dev-server.js --hot --inline --content-base frontend",
+    "build-hot": "NODE_ENV=hot webpack && NODE_ENV=hot webpack-dev-server --hot --inline --content-base frontend",
     "shrinkwrap": "npm prune && npm shrinkwrap --dev && ./bin/clean-shrinkwrap",
     "start": "npm run build && lein ring server",
     "storybook": "start-storybook -p 9001"

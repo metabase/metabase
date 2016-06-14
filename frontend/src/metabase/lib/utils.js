@@ -1,5 +1,10 @@
 import generatePassword from "password-generator";
 
+function s4() {
+    return Math.floor((1 + Math.random()) * 0x10000)
+      .toString(16)
+      .substring(1);
+}
 
 // provides functions for building urls to things we care about
 var MetabaseUtils = {
@@ -44,6 +49,10 @@ var MetabaseUtils = {
         } else {
             return ""+num;
         }
+    },
+
+    uuid: function() {
+        return s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4();
     },
 
     validEmail: function(email) {

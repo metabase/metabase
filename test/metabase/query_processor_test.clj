@@ -16,6 +16,7 @@
                                 [datasets :as datasets :refer [*driver* *engine*]]
                                 [interface :refer [create-database-definition], :as i])
             [metabase.test.util :as tu]
+            [metabase.query-processor :as qp]
             [metabase.util :as u]))
 
 ;;; ------------------------------------------------------------ Helper Fns + Macros ------------------------------------------------------------
@@ -983,6 +984,31 @@
       boolean-native-form
       (update-in [:data :rows] (partial mapv (fn [[id name last-login]]
                                                [(int id) name])))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------------+
+;;; |                                                     PARAMETERS                                                      |
+;;; +----------------------------------------------------------------------------------------------------------------------+
+
+
+(expect-with-non-timeseries-dbs
+  [[9 "Nils Gotam"]]
+  (format-rows-by [int str]
+    (let [inner-query (query users
+                             (ql/aggregation (ql/rows)))
+          outer-query (wrap-inner-query inner-query)
+          outer-query (assoc outer-query :parameters [{:name "id", :type "id", :target ["field-id" (id :users :id)], :value 9}])]
+      (rows (qp/process-query outer-query)))))
+
+
+(expect-with-non-timeseries-dbs
+  [[6]]
+  (format-rows-by [int]
+    (let [inner-query (query venues
+                             (ql/aggregation (ql/count)))
+          outer-query (wrap-inner-query inner-query)
+          outer-query (assoc outer-query :parameters [{:name "price", :type "category", :target ["field-id" (id :venues :price)], :value 4}])]
+      (rows (qp/process-query outer-query)))))
 
 
 ;; +------------------------------------------------------------------------------------------------------------------------+

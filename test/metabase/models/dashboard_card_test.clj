@@ -32,10 +32,11 @@
    :sizeY  2
    :col    nil
    :row    nil
+   :parameter_mappings [{:foo "bar"}]
    :series []}
   (tu/with-temp* [Dashboard     [{dashboard-id :id}]
                   Card          [{card-id :id}]
-                  DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]]
+                  DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id, :parameter_mappings [{:foo "bar"}]}]]
     (remove-ids-and-timestamps (retrieve-dashboard-card dashcard-id))))
 
 ;; retrieve-dashboard-card
@@ -45,6 +46,7 @@
    :sizeY  2
    :col    nil
    :row    nil
+   :parameter_mappings []
    :series [{:name                   "Additional Series Card 1"
              :description            nil
              :display                :table
@@ -98,6 +100,7 @@
     :sizeY  3
     :col    1
     :row    1
+    :parameter_mappings [{:foo "bar"}]
     :series [{:name                   "Test Card"
               :description            nil
               :display                :table
@@ -107,6 +110,7 @@
     :sizeY  3
     :col    1
     :row    1
+    :parameter_mappings [{:foo "bar"}]
     :series [{:name                   "Test Card"
               :description            nil
               :display                :table
@@ -121,6 +125,7 @@
                                                  :sizeY        3
                                                  :row          1
                                                  :col          1
+                                                 :parameter_mappings [{:foo "bar"}]
                                                  :series       [card-id]})]
       ;; first result is return value from function, second is to validate db captured everything
       [(remove-ids-and-timestamps dashboard-card)
@@ -137,11 +142,13 @@
     :sizeY  2
     :col    nil
     :row    nil
+    :parameter_mappings [{:foo "bar"}]
     :series []}
    {:sizeX  4
     :sizeY  3
     :col    1
     :row    1
+    :parameter_mappings [{:foo "barbar"}]
     :series [{:name                   "Test Card 2"
               :description            nil
               :display                :table
@@ -156,6 +163,7 @@
     :sizeY  3
     :col    1
     :row    1
+    :parameter_mappings [{:foo "barbar"}]
     :series [{:name                   "Test Card 2"
               :description            nil
               :display                :table
@@ -168,7 +176,7 @@
               :visualization_settings {}}]}]
   (tu/with-temp* [Dashboard     [{dashboard-id :id}]
                   Card          [{card-id :id}]
-                  DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
+                  DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id, :parameter_mappings [{:foo "bar"}]}]
                   Card          [{card-id-1 :id}   {:name "Test Card 1"}]
                   Card          [{card-id-2 :id}   {:name "Test Card 2"}]]
     ;; first result is the unmodified dashcard
@@ -183,5 +191,6 @@
                                                         :sizeY        3
                                                         :row          1
                                                         :col          1
+                                                        :parameter_mappings [{:foo "barbar"}]
                                                         :series       [card-id-2 card-id-1]}))
      (remove-ids-and-timestamps (retrieve-dashboard-card dashcard-id))]))

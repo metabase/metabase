@@ -1,0 +1,35 @@
+databaseChangeLog:
+  - changeSet:
+      id: 36
+      author: agilliland
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: parameters
+                  type: text
+                  constraints:
+                    nullable: true
+                    deferrable: false
+                    initiallyDeferred: false
+        - addNotNullConstraint:
+            columnDataType: text
+            columnName: parameters
+            defaultNullValue: '[]'
+            tableName: report_dashboard
+        - addColumn:
+            tableName: report_dashboardcard
+            columns:
+              - column:
+                  name: parameter_mappings
+                  type: text
+                  constraints:
+                    nullable: true
+                    deferrable: false
+                    initiallyDeferred: false
+        - addNotNullConstraint:
+            columnDataType: text
+            columnName: parameter_mappings
+            defaultNullValue: '[]'
+            tableName: report_dashboardcard
