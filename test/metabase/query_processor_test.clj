@@ -16,8 +16,8 @@
                                 [datasets :as datasets :refer [*driver* *engine*]]
                                 [interface :refer [create-database-definition], :as i])
             [metabase.test.util :as tu]
-            [metabase.util :as u]
-            [metabase.query-processor :as qp]))
+            [metabase.query-processor :as qp]
+            [metabase.util :as u]))
 
 ;;; ------------------------------------------------------------ Helper Fns + Macros ------------------------------------------------------------
 

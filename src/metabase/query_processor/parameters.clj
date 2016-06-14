@@ -77,7 +77,7 @@
    `:start` and `:end` as iso8601 string formatted dates.  Values should be appropriate for the given REPORT-TIMEZONE."
   [value report-timezone]
   (let [tz        (t/time-zone-for-id report-timezone)
-        formatter (tf/formatter "YYYY-MM-dd" tz)
+        formatter (tf/formatter "yyyy-MM-dd" tz)
         today     (.withTimeAtStartOfDay (t/to-time-zone (t/now) tz))]
     (->> (condp = value
            "past7days"  {:end   (t/minus today (t/days 1))
@@ -168,7 +168,7 @@
 
 (defn- substitute-all-params [query-dict [{:keys [value], [_ param-name] :target, :as param} & rest]]
   (if param
-    (if-not (and param param-name value (string? param-name))
+    (if-not (and value (string? param-name))
       (substitute-all-params query-dict rest)
       (let [query (update-in query-dict [:native :query] (partial substitute-param param-name value))]
         (substitute-all-params query rest)))
