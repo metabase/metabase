@@ -3,7 +3,8 @@
   (:require [clojure.walk :as walk]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            schema.utils
+            (schema [core :as s]
+                    utils)
             [swiss.arrows :refer [<<-]]
             (metabase [config :as config]
                       [db :as db]
@@ -15,11 +16,12 @@
                                       [expand :as expand]
                                       [interface :refer :all]
                                       [macros :as macros]
+                                      [parameters :as params]
                                       [resolve :as resolve])
             [metabase.util :as u])
   (:import (schema.utils NamedError ValidationError)))
 
-;; # CONSTANTS
+;;; CONSTANTS
 
 (def ^:const absolute-max-results
   "Maximum number of rows the QP should ever return.
@@ -29,11 +31,26 @@
   1048576)
 
 
-;; # DYNAMIC VARS
+;;;  DYNAMIC VARS
 
 (def ^:dynamic *disable-qp-logging*
   "Should we disable logging for the QP? (e.g., during sync we probably want to turn it off to keep logs less cluttered)."
   false)
+
+
+;;; SCHEMA VALIDATION
+
+(def qp-results-format
+  "Schema for the expected format of results returned by a query processor."
+  {:columns               [(s/cond-pre s/Keyword s/Str)]
+   (s/optional-key :cols) [{s/Keyword s/Any}]            ; This is optional because QPs don't neccesarily have to add it themselves; annotate will take care of that
+   :rows                  [[s/Any]]
+   s/Keyword              s/Any})
+
+(def ^{:arglists '([results])} validate-results
+  "Validate that the RESULTS of executing a query match the `qp-results-format` schema.
+   Throws an `Exception` if they are not; returns RESULTS as-is if they are."
+  (s/validator qp-results-format))
 
 
 ;;; +----------------------------------------------------------------------------------------------------+
@@ -139,6 +156,16 @@
                       (log/debug (u/format-color 'cyan "\n\nMACRO/SUBSTITUTED: 😻\n%s" (u/pprint-to-str <>))))))]
       (qp query))))
 
+(defn- pre-substitute-parameters
+  "If any parameters were supplied then substitute them into the query."
+  [qp]
+  (fn [query]
+    ;; if necessary, handle parameters substitution
+    (let [query (u/prog1 (params/expand-parameters query)
+                  (when (and (not *disable-qp-logging*)
+                             (not= <> query))
+                    (log/debug (u/format-color 'cyan "\n\nPARAMS/SUBSTITUTED: 😻\n%s" (u/pprint-to-str <>)))))]
+      (qp query))))
 
 (defn- pre-expand-resolve
   "Transforms an MBQL into an expanded form with more information and structure.  Also resolves references to fields, tables,
@@ -419,20 +446,12 @@
     (fn [qp]
       (fn [query]
         (u/prog1 (qp query)
-          (assert (or (map? <>)
-                      (println "Expected results to be a map, got a " (class <>))))
-          (assert (sequential? (:rows <>)))
-          (assert (every? sequential? (:rows <>)))
-          (assert (sequential? (:cols <>)))
-          (assert (every? map? (:cols <>)))
-          (assert (sequential? (:columns <>)))
-          (assert (every? u/string-or-keyword? (:columns <>))))))))
+          (validate-results <>))))))
 
 (defn query->remark
   "Genarate an approparite REMARK to be prepended to a query to give DBAs additional information about the query being executed.
    See documentation for `mbql->native` and [issue #2386](https://github.com/metabase/metabase/issues/2386) for more information."
-  ^String [{{:keys [executed-by uuid query-hash query-type]} :info, :as info}]
-  {:pre [(map? info)]}
+  ^String [{{:keys [executed-by uuid query-hash query-type], :as info} :info}]
   (format "Metabase:: userID: %s executionID: %s queryType: %s queryHash: %s" executed-by uuid query-type query-hash))
 
 (defn- run-query
@@ -504,6 +523,7 @@
       ((<<- wrap-catch-exceptions
             pre-add-settings
             pre-expand-macros
+            pre-substitute-parameters
             pre-expand-resolve
             (driver/process-query-in-context driver)
             post-add-row-count-and-status
@@ -569,13 +589,13 @@
         query           (assoc query :info {:executed-by executed_by
                                             :uuid        query-uuid
                                             :query-hash  (hash query)
-                                            :query-type (if (mbql-query? query) "MBQL" "native")})]
+                                            :query-type  (if (mbql-query? query) "MBQL" "native")})]
     (try
       (let [result (process-query query)]
         (assert-valid-query-result result)
         (query-complete query-execution result))
       (catch Throwable e
-        (log/error (u/format-color 'red "Query failure: %s" (.getMessage e)))
+        (log/error (u/format-color 'red "Query failure: %s\n%s" (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e))))
         (query-fail query-execution (.getMessage e))))))
 
 (defn query-fail

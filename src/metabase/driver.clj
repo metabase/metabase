@@ -61,9 +61,9 @@
   (date-interval [this, ^Keyword unit, ^Number amount]
     "*OPTIONAL* Return an driver-appropriate representation of a moment relative to the current moment in time. By default, this returns an `Timestamp` by calling
      `metabase.util/relative-date`; but when possible drivers should return a native form so we can be sure the correct timezone is applied. For example, SQL drivers should
-     return a Korma form to call the appropriate SQL fns:
+     return a HoneySQL form to call the appropriate SQL fns:
 
-       (date-interval (PostgresDriver.) :month 1) -> (k/raw* \"(NOW() + INTERVAL '1 month')\")")
+       (date-interval (PostgresDriver.) :month 1) -> (hsql/call :+ :%now (hsql/raw \"INTERVAL '1 month'\"))")
 
   (describe-database ^java.util.Map [this, ^DatabaseInstance database]
     "Return a map containing information that describes all of the schema settings in DATABASE, most notably a set of tables.
@@ -135,7 +135,8 @@
   *  `:set-timezone` - Does this driver support setting a timezone for the query?
   *  `:standard-deviation-aggregations` - Does this driver support [standard deviation aggregations](https://github.com/metabase/metabase/wiki/Query-Language-'98#stddev-aggregation)?
   *  `:expressions` - Does this driver support [expressions](https://github.com/metabase/metabase/wiki/Query-Language-'98#expressions) (e.g. adding the values of 2 columns together)?
-  *  `:dynamic-schema` -  Does this Database have no fixed definitions of schemas? (e.g. Mongo)")
+  *  `:dynamic-schema` -  Does this Database have no fixed definitions of schemas? (e.g. Mongo)
+  *  `:native-parameters` - The driver supports parameter substitution on native queries.")
 
   (field-values-lazy-seq ^clojure.lang.Sequential [this, ^FieldInstance field]
     "Return a lazy sequence of all values of FIELD.

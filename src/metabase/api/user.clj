@@ -66,9 +66,8 @@
                :email        email
                :first_name   first_name
                :last_name    last_name
-               :is_superuser (if (:is_superuser @*current-user*)
-                               is_superuser
-                               nil)))
+               :is_superuser (when (:is_superuser @*current-user*)
+                               is_superuser)))
   (User id))
 
 

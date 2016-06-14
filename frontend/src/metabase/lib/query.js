@@ -437,6 +437,10 @@ var Query = {
         return typeof field === "number";
     },
 
+    isLocalField(field) {
+        return Array.isArray(field) && field[0] === "field-id";
+    },
+
     isForeignKeyField(field) {
         return Array.isArray(field) && field[0] === "fk->";
     },
@@ -456,6 +460,7 @@ var Query = {
     isValidField(field) {
         return (
             (Query.isRegularField(field)) ||
+            (Query.isLocalField(field)) ||
             (Query.isForeignKeyField(field) && Query.isRegularField(field[1]) && Query.isRegularField(field[2])) ||
             (Query.isDatetimeField(field)   && Query.isValidField(field[1]) && field[2] === "as" && typeof field[3] === "string") ||
             (Query.isExpressionField(field) && _.isString(field[1])) ||
@@ -475,6 +480,8 @@ var Query = {
     getFieldTargetId: function(field) {
         if (Query.isRegularField(field)) {
             return field;
+        } else if (Query.isLocalField(field)) {
+            return field[1];
         } else if (Query.isForeignKeyField(field)) {
             return Query.getFieldTargetId(field[2]);
         } else if (Query.isDatetimeField(field)) {
@@ -487,6 +494,8 @@ var Query = {
     getFieldTarget: function(field, tableDef) {
         if (Query.isRegularField(field)) {
             return { table: tableDef, field: tableDef.fields_lookup && tableDef.fields_lookup[field] };
+        } else if (Query.isLocalField(field)) {
+            return Query.getFieldTarget(field[1], tableDef);
         } else if (Query.isForeignKeyField(field)) {
             let fkFieldDef = tableDef.fields_lookup && tableDef.fields_lookup[field[1]];
             let targetTableDef = fkFieldDef && fkFieldDef.target.table;

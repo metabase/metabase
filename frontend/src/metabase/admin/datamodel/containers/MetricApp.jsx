@@ -38,7 +38,7 @@ export default class MetricApp extends Component {
             MetabaseAnalytics.trackEvent("Data Model", "Metric Created");
         }
 
-        this.onLocationChange("/admin/datamodel/database/" + tableMetadata.db_id + "/table/" + tableMetadata.id);
+        this.props.onChangeLocation("/admin/datamodel/database/" + tableMetadata.db_id + "/table/" + tableMetadata.id);
     }
 
     render() {
@@ -50,13 +50,5 @@ export default class MetricApp extends Component {
                 />
             </div>
         );
-    }
-
-    // HACK: figure out a better way to do this that works with both redux-router and Angular's router
-    onLocationChange(path) {
-        const el = angular.element(document.querySelector("body"));
-        el.scope().$apply(function() {
-            el.injector().get("$location").path(path);
-        });
     }
 }

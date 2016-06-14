@@ -41,6 +41,7 @@ export default class DashboardGrid extends Component {
 
     static propTypes = {
         isEditing: PropTypes.bool.isRequired,
+        isEditingParameter: PropTypes.bool.isRequired,
         dashboard: PropTypes.object.isRequired,
         cards: PropTypes.array,
 
@@ -130,7 +131,7 @@ export default class DashboardGrid extends Component {
                     dashcard={this.state.addSeriesModalDashCard}
                     dashboard={this.props.dashboard}
                     cards={this.props.cards}
-                    cardData={this.props.cardData}
+                    dashcardData={this.props.dashcardData}
                     databases={this.props.databases}
                     fetchCards={this.props.fetchCards}
                     fetchCardData={this.props.fetchCardData}
@@ -197,29 +198,36 @@ export default class DashboardGrid extends Component {
         });
     }
 
+    renderDashCard(dc, isMobile) {
+        return (
+            <DashCard
+                dashcard={dc}
+                dashcardData={this.props.dashcardData}
+                cardDurations={this.props.cardDurations}
+                fetchCardData={this.props.fetchCardData}
+                markNewCardSeen={this.props.markNewCardSeen}
+                isEditing={this.props.isEditing}
+                isEditingParameter={this.props.isEditingParameter}
+                isFullscreen={this.props.isFullscreen}
+                isMobile={isMobile}
+                onRemove={this.onDashCardRemove.bind(this, dc)}
+                onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
+                onUpdateVisualizationSetting={this.onUpdateVisualizationSetting.bind(this, dc)}
+            />
+        )
+    }
+
     renderMobile() {
-        const { isEditing } = this.props;
+        const { isEditing, isEditingParameter } = this.props;
         const { width, dashcards } = this.state;
         return (
             <div
-                className={cx("DashboardGrid", { "Dash--editing": isEditing, "Dash--dragging": this.state.isDragging })}
+                className={cx("DashboardGrid", { "Dash--editing": isEditing, "Dash--editingParameter": isEditingParameter, "Dash--dragging": this.state.isDragging })}
                 style={{ margin: 0 }}
             >
                 {dashcards && dashcards.map(dc =>
                     <div key={dc.id} className="DashCard" style={{ width: width, marginTop: 10, marginBottom: 10, height: width / MOBILE_ASPECT_RATIO}}>
-                        <DashCard
-                            dashcard={dc}
-                            cardData={this.props.cardData}
-                            cardDurations={this.props.cardDurations}
-                            fetchCardData={this.props.fetchCardData}
-                            markNewCardSeen={this.props.markNewCardSeen}
-                            isEditing={isEditing}
-                            isFullscreen={this.props.isFullscreen}
-                            isMobile={true}
-                            onRemove={this.onDashCardRemove.bind(this, dc)}
-                            onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
-                            onUpdateVisualizationSetting={this.onUpdateVisualizationSetting.bind(this, dc)}
-                        />
+                        {this.renderDashCard(dc, true)}
                     </div>
                 )}
             </div>
@@ -227,12 +235,12 @@ export default class DashboardGrid extends Component {
     }
 
     renderGrid() {
-        const { dashboard, isEditing } = this.props;
+        const { dashboard, isEditing, isEditingParameter } = this.props;
         const { width } = this.state;
         const rowHeight = Math.floor(width / GRID_WIDTH / GRID_ASPECT_RATIO);
         return (
             <GridLayout
-                className={cx("DashboardGrid", { "Dash--editing": isEditing, "Dash--dragging": this.state.isDragging })}
+                className={cx("DashboardGrid", { "Dash--editing": isEditing, "Dash--editingParameter": isEditingParameter, "Dash--dragging": this.state.isDragging })}
                 layout={this.state.layout}
                 cols={GRID_WIDTH}
                 margin={GRID_MARGIN}
@@ -244,18 +252,7 @@ export default class DashboardGrid extends Component {
             >
                 {dashboard && dashboard.ordered_cards.map(dc =>
                     <div key={dc.id} className="DashCard" onMouseDownCapture={this.onDashCardMouseDown} onTouchStartCapture={this.onDashCardMouseDown}>
-                        <DashCard
-                            dashcard={dc}
-                            cardData={this.props.cardData}
-                            cardDurations={this.props.cardDurations}
-                            fetchCardData={this.props.fetchCardData}
-                            markNewCardSeen={this.props.markNewCardSeen}
-                            isEditing={isEditing}
-                            isFullscreen={this.props.isFullscreen}
-                            onRemove={this.onDashCardRemove.bind(this, dc)}
-                            onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
-                            onUpdateVisualizationSetting={this.onUpdateVisualizationSetting.bind(this, dc)}
-                        />
+                        {this.renderDashCard(dc, false)}
                     </div>
                 )}
             </GridLayout>

@@ -43,11 +43,18 @@ export default class AccordianList extends Component {
         itemIsSelected: PropTypes.func,
         renderItem: PropTypes.func,
         renderSectionIcon: PropTypes.func,
-        getItemClasses: PropTypes.func
+        getItemClasses: PropTypes.func,
+        alwaysTogglable: PropTypes.bool,
+        alwaysExpanded: PropTypes.bool,
+        hideSingleSectionTitle: PropTypes.bool,
     };
 
     static defaultProps = {
-        searchable: false
+        style: {},
+        searchable: false,
+        alwaysTogglable: false,
+        alwaysExpanded: false,
+        hideSingleSectionTitle: false
     };
 
     toggleSection(sectionIndex) {
@@ -137,24 +144,31 @@ export default class AccordianList extends Component {
     }
 
     render() {
-        let { searchable, sections, showItemArrows, alwaysTogglable } = this.props;
+        const { searchable, sections, showItemArrows, alwaysTogglable, alwaysExpanded, hideSingleSectionTitle, style } = this.props;
         const { searchText } = this.state;
 
-        let openSection = this.getOpenSection();
+        const openSection = this.getOpenSection();
+        const sectionIsOpen = (sectionIndex) =>
+            alwaysExpanded || openSection === sectionIndex;
 
         return (
-            <div className={this.props.className} style={{width: '300px'}}>
+            <div className={this.props.className} style={{ width: '300px', ...style }}>
                 {sections.map((section, sectionIndex) =>
-                    <section key={sectionIndex} className={cx("List-section", { "List-section--open": openSection === sectionIndex })}>
-                        { section.name != null ?
-                            <div className="p1 border-bottom">
-                                { sections.length > 1 || alwaysTogglable ?
+                    <section key={sectionIndex} className={cx("List-section", { "List-section--open": sectionIsOpen(sectionIndex) })}>
+                        { section.name && alwaysExpanded ?
+                            (!hideSingleSectionTitle || sections.length > 1 || alwaysTogglable) &&
+                                <div className="px2 pt2 h6 text-grey-2 text-uppercase text-bold">
+                                    {section.name}
+                                </div>
+                        : section.name ?
+                            <div className={"p1 border-bottom"}>
+                                { !hideSingleSectionTitle || sections.length > 1 || alwaysTogglable ?
                                     <div className="List-section-header px1 py1 cursor-pointer full flex align-center" onClick={() => this.toggleSection(sectionIndex)}>
                                         { this.renderSectionIcon(section, sectionIndex) }
                                         <h3 className="List-section-title">{section.name}</h3>
                                         { section.items.length > 0 &&
                                             <span className="flex-align-right">
-                                                <Icon name={openSection === sectionIndex ? "chevronup" : "chevrondown"} width={12} height={12} />
+                                                <Icon name={sectionIsOpen(sectionIndex) ? "chevronup" : "chevrondown"} width={12} height={12} />
                                             </span>
                                         }
                                     </div>
@@ -179,8 +193,11 @@ export default class AccordianList extends Component {
                             </div>
                         }
 
-                        { openSection === sectionIndex && section.items.length > 0 &&
-                            <ul style={{maxHeight: 400}} className="p1 border-bottom scroll-y scroll-show">
+                        { sectionIsOpen(sectionIndex) && section.items.length > 0 &&
+                            <ul
+                                style={{ maxHeight: alwaysExpanded ? undefined : 400}}
+                                className={cx("p1", { "border-bottom scroll-y scroll-show": !alwaysExpanded })}
+                            >
                                 { section.items.filter((i) => searchText ? (i.name.toLowerCase().includes(searchText.toLowerCase())) : true ).map((item, itemIndex) =>
                                     <li key={itemIndex} className={cx("List-item flex", { 'List-item--selected': this.itemIsSelected(item, itemIndex) }, this.getItemClasses(item, itemIndex))}>
                                         <a

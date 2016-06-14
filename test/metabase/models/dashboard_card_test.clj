@@ -32,10 +32,11 @@
    :sizeY  2
    :col    nil
    :row    nil
+   :parameter_mappings [{:foo "bar"}]
    :series []}
   (tu/with-temp* [Dashboard     [{dashboard-id :id}]
                   Card          [{card-id :id}]
-                  DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]]
+                  DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id, :parameter_mappings [{:foo "bar"}]}]]
     (remove-ids-and-timestamps (retrieve-dashboard-card dashcard-id))))
 
 ;; retrieve-dashboard-card
@@ -45,6 +46,7 @@
    :sizeY  2
    :col    nil
    :row    nil
+   :parameter_mappings []
    :series [{:name                   "Additional Series Card 1"
              :description            nil
              :display                :table
@@ -94,34 +96,37 @@
 ;; create-dashboard-card!
 ;; simple example with a single card
 (expect
-  [{:sizeX  4
-    :sizeY  3
-    :col    1
-    :row    1
-    :series [{:name                   "Test Card"
-              :description            nil
-              :display                :table
-              :dataset_query          {}
-              :visualization_settings {}}]}
-   {:sizeX  4
-    :sizeY  3
-    :col    1
-    :row    1
-    :series [{:name                   "Test Card"
-              :description            nil
-              :display                :table
-              :dataset_query          {}
-              :visualization_settings {}}]}]
+  [{:sizeX              4
+    :sizeY              3
+    :col                1
+    :row                1
+    :parameter_mappings [{:foo "bar"}]
+    :series             [{:name                   "Test Card"
+                          :description            nil
+                          :display                :table
+                          :dataset_query          {}
+                          :visualization_settings {}}]}
+   {:sizeX              4
+    :sizeY              3
+    :col                1
+    :row                1
+    :parameter_mappings [{:foo "bar"}]
+    :series             [{:name                   "Test Card"
+                          :description            nil
+                          :display                :table
+                          :dataset_query          {}
+                          :visualization_settings {}}]}]
   (tu/with-temp* [Dashboard [{dashboard-id :id}]
                   Card      [{card-id :id} {:name "Test Card"}]]
-    (let [dashboard-card (create-dashboard-card! {:creator_id   (user->id :rasta)
-                                                  :dashboard_id dashboard-id
-                                                  :card_id      card-id
-                                                  :sizeX        4
-                                                  :sizeY        3
-                                                  :row          1
-                                                  :col          1
-                                                  :series       [card-id]})]
+    (let [dashboard-card (create-dashboard-card! {:creator_id        (user->id :rasta)
+                                                  :dashboard_id       dashboard-id
+                                                  :card_id            card-id
+                                                  :sizeX              4
+                                                  :sizeY              3
+                                                  :row                1
+                                                  :col                1
+                                                  :parameter_mappings [{:foo "bar"}]
+                                                  :series             [card-id]})]
       ;; first result is return value from function, second is to validate db captured everything
       [(remove-ids-and-timestamps dashboard-card)
        (remove-ids-and-timestamps (retrieve-dashboard-card (:id dashboard-card)))])))
@@ -133,29 +138,32 @@
 ;;  3. ensure the card_id cannot be changed
 ;;  4. ensure the dashboard_id cannot be changed
 (expect
-  [{:sizeX  2
-    :sizeY  2
-    :col    nil
-    :row    nil
-    :series []}
+  [{:sizeX              2
+    :sizeY              2
+    :col                nil
+    :row                nil
+    :parameter_mappings [{:foo "bar"}]
+    :series             []}
+   {:sizeX              4
+    :sizeY              3
+    :col                1
+    :row                1
+    :parameter_mappings [{:foo "barbar"}]
+    :series             [{:name                   "Test Card 2"
+                          :description            nil
+                          :display                :table
+                          :dataset_query          {}
+                          :visualization_settings {}}
+                         {:name                   "Test Card 1"
+                          :description            nil
+                          :display                :table
+                          :dataset_query          {}
+                          :visualization_settings {}}]}
    {:sizeX  4
     :sizeY  3
     :col    1
     :row    1
-    :series [{:name                   "Test Card 2"
-              :description            nil
-              :display                :table
-              :dataset_query          {}
-              :visualization_settings {}}
-             {:name                   "Test Card 1"
-              :description            nil
-              :display                :table
-              :dataset_query          {}
-              :visualization_settings {}}]}
-   {:sizeX  4
-    :sizeY  3
-    :col    1
-    :row    1
+    :parameter_mappings [{:foo "barbar"}]
     :series [{:name                   "Test Card 2"
               :description            nil
               :display                :table
@@ -168,13 +176,14 @@
               :visualization_settings {}}]}]
   (tu/with-temp* [Dashboard     [{dashboard-id :id}]
                   Card          [{card-id :id}]
-                  DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
+                  DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id, :parameter_mappings [{:foo "bar"}]}]
                   Card          [{card-id-1 :id}   {:name "Test Card 1"}]
                   Card          [{card-id-2 :id}   {:name "Test Card 2"}]]
     ;; first result is the unmodified dashcard
     ;; second is the return value from the update call
     ;; third is to validate db captured everything
     [(remove-ids-and-timestamps (retrieve-dashboard-card dashcard-id))
+     <<<<<<< HEAD
      (remove-ids-and-timestamps (update-dashboard-card! {:id           dashcard-id
                                                          :actor_id     (user->id :rasta)
                                                          :dashboard_id nil
@@ -184,4 +193,16 @@
                                                          :row          1
                                                          :col          1
                                                          :series       [card-id-2 card-id-1]}))
+     =======
+     (remove-ids-and-timestamps (update-dashboard-card {:id           dashcard-id
+                                                        :actor_id     (user->id :rasta)
+                                                        :dashboard_id nil
+                                                        :card_id      nil
+                                                        :sizeX        4
+                                                        :sizeY        3
+                                                        :row          1
+                                                        :col          1
+                                                        :parameter_mappings [{:foo "barbar"}]
+                                                        :series       [card-id-2 card-id-1]}))
+     >>>>>>> 6161e125978af1a6db7887464be4c5df48259464
      (remove-ids-and-timestamps (retrieve-dashboard-card dashcard-id))]))

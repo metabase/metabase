@@ -12,8 +12,9 @@
 (i/defentity DashboardCard :report_dashboardcard)
 
 (defn- pre-insert [dashcard]
-  (let [defaults {:sizeX 2
-                  :sizeY 2}]
+  (let [defaults {:sizeX              2
+                  :sizeY              2
+                  :parameter_mappings []}]
     (merge defaults dashcard)))
 
 (defn- pre-cascade-delete [{:keys [id]}]
@@ -23,6 +24,7 @@
   i/IEntity
   (merge i/IEntityDefaults
          {:timestamped?       (constantly true)
+          :types              (constantly {:parameter_mappings :json})
           :pre-insert         pre-insert
           :pre-cascade-delete pre-cascade-delete
           :post-select        (u/rpartial set/rename-keys {:sizex :sizeX, :sizey :sizeY})}))
@@ -81,14 +83,15 @@
 (defn update-dashboard-card!
   "Update an existing `DashboardCard`, including all `DashboardCardSeries`.
    Returns the updated `DashboardCard` or throws an Exception."
-  [{:keys [id series] :as dashboard-card}]
+  [{:keys [id series parameter_mappings] :as dashboard-card}]
   {:pre [(integer? id)
+         (u/nil-or-sequence-of-maps? parameter_mappings)
          (every? integer? series)]}
   (let [{:keys [sizeX sizeY row col series]} (merge {:series []} dashboard-card)]
     (kdb/transaction
       ;; update the dashcard itself (positional attributes)
       (when (and sizeX sizeY row col)
-        (db/update! DashboardCard id, :sizeX sizeX, :sizeY sizeY, :row row, :col col))
+        (db/update-non-nil-keys! DashboardCard id, :sizeX sizeX, :sizeY sizeY, :row row, :col col, :parameter_mappings parameter_mappings))
       ;; update series (only if they changed)
       (when (not= series (map :card_id (db/select [DashboardCardSeries :card_id], :dashboardcard_id id, {:order-by [[:position :asc]]})))
         (update-dashboard-card-series! dashboard-card series))
@@ -99,20 +102,22 @@
 (defn create-dashboard-card!
   "Create a new `DashboardCard` by inserting it into the database along with all associated pieces of data such as `DashboardCardSeries`.
    Returns the newly created `DashboardCard` or throws an Exception."
-  [{:keys [dashboard_id card_id creator_id] :as dashboard-card}]
+  [{:keys [dashboard_id card_id creator_id parameter_mappings] :as dashboard-card}]
   {:pre [(integer? dashboard_id)
          (integer? card_id)
-         (integer? creator_id)]}
+         (integer? creator_id)
+         (u/nil-or-sequence-of-maps? parameter_mappings)]}
   (let [{:keys [sizeX sizeY row col series]} (merge {:sizeX 2, :sizeY 2, :series []}
                                                     dashboard-card)]
     (kdb/transaction
       (let [{:keys [id] :as dashboard-card} (db/insert! DashboardCard
-                                              :dashboard_id dashboard_id
-                                              :card_id      card_id
-                                              :sizeX        sizeX
-                                              :sizeY        sizeY
-                                              :row          row
-                                              :col          col)]
+                                              :dashboard_id       dashboard_id
+                                              :card_id            card_id
+                                              :sizeX              sizeX
+                                              :sizeY              sizeY
+                                              :row                row
+                                              :col                col
+                                              :parameter_mappings (or parameter_mappings []))]
         ;; add series to the DashboardCard
         (update-dashboard-card-series! dashboard-card series)
         ;; return the full DashboardCard (and record our create event)
