@@ -984,7 +984,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------------+
 
 
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   [[9 "Nils Gotam"]]
   (format-rows-by [int str]
     (let [inner-query (query users
@@ -994,7 +994,7 @@
       (rows (qp/process-query outer-query)))))
 
 
-(datasets/expect-with-all-engines
+(expect-with-non-timeseries-dbs
   [[6]]
   (format-rows-by [int]
     (let [inner-query (query venues
