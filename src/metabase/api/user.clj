@@ -77,7 +77,8 @@
   {password     [Required ComplexPassword]}
   (check-self-or-superuser id)
   (let-404 [user (db/select-one [User :password_salt :password], :id id, :is_active true)]
-    (when (= id *current-user-id*)
+    (when (and (not (:is_superuser @*current-user*))
+               (= id *current-user-id*))
       (checkp (creds/bcrypt-verify (str (:password_salt user) old_password) (:password user)) "old_password" "Invalid password")))
   (set-user-password id password)
   (User id))

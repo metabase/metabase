@@ -44,7 +44,7 @@ export default class AdminPeople extends Component {
 
     static propTypes = {
         dispatch: PropTypes.func.isRequired,
-        users: PropTypes.array
+        users: PropTypes.object
     };
 
     async componentDidMount() {
@@ -382,7 +382,7 @@ export default class AdminPeople extends Component {
                                     </td>
                                     <td>{ user.last_login ? user.last_login.fromNow() : "Never" }</td>
                                     <td className="text-right">
-                                        <UserActionsSelect user={user} dispatch={this.props.dispatch} />
+                                        <UserActionsSelect user={user} dispatch={this.props.dispatch} isActiveUser={this.props.user.id === user.id} />
                                     </td>
                                 </tr>
                                 )}

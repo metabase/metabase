@@ -14,7 +14,8 @@ import { resendInvite, showModal } from "../actions";
 export default class UserActionsSelect extends Component {
 
     static propTypes = {
-        user: PropTypes.object.isRequired
+        user: PropTypes.object.isRequired,
+        isActiveUser: PropTypes.bool.isRequired
     };
 
     onEditDetails() {
@@ -44,7 +45,7 @@ export default class UserActionsSelect extends Component {
     }
 
     render() {
-        let { user } = this.props;
+        let { isActiveUser, user } = this.props;
 
         return (
             <PopoverWithTrigger ref="popover"
@@ -54,12 +55,14 @@ export default class UserActionsSelect extends Component {
                     <li className="py1 px2 bg-brand-hover text-white-hover cursor-pointer" onClick={this.onEditDetails.bind(this)}>Edit Details</li>
 
                     { (user.last_login === null && MetabaseSettings.isEmailConfigured()) ?
-                        <li className="py1 px2 bg-brand-hover text-white-hover cursor-pointer" onClick={this.onResendInvite.bind(this)}>Re-send Invite</li>
+                        <li className="pt1 pb2 px2 bg-brand-hover text-white-hover cursor-pointer" onClick={this.onResendInvite.bind(this)}>Re-send Invite</li>
                     :
-                        <li className="py1 px2 bg-brand-hover text-white-hover cursor-pointer" onClick={this.onResetPassword.bind(this)}>Reset Password</li>
+                        <li className="pt1 pb2 px2 bg-brand-hover text-white-hover cursor-pointer" onClick={this.onResetPassword.bind(this)}>Reset Password</li>
                     }
 
-                    <li className="mt1 p2 border-top bg-error-hover text-error text-white-hover cursor-pointer"  onClick={this.onRemoveUser.bind(this)}>Remove</li>
+                    { !isActiveUser &&
+                        <li className="p2 border-top bg-error-hover text-error text-white-hover cursor-pointer"  onClick={this.onRemoveUser.bind(this)}>Remove</li>
+                    }
                 </ul>
             </PopoverWithTrigger>
         );

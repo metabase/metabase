@@ -233,6 +233,23 @@
     ;; now simply grab the lastest pass from the db and compare to the one we have from before reset
     (not= password (db/select-one-field :password User, :email (:email creds)))))
 
+;; Replicate the same test above with a superuser to ensure admins can reset their own password
+(expect-let [creds {:email    "hij@metabase.com"
+                    :password "def"}
+             {:keys [id password]} (db/insert! User
+                                     :first_name   "test"
+                                     :last_name    "user"
+                                     :email        "hij@metabase.com"
+                                     :password     "def"
+                                     :is_superuser true)]
+  true
+  (do
+    ;; use API to reset the users password
+    (metabase.http-client/client creds :put 200 (format "user/%d/password" id) {:password     "abc123!!DEF"
+                                                                                :old_password (:password creds)})
+    ;; now simply grab the lastest pass from the db and compare to the one we have from before reset
+    (not= password (db/select-one-field :password User, :email (:email creds)))))
+
 ;; Check that a non-superuser CANNOT update someone else's password
 (expect "You don't have permissions to do that."
   ((user->client :rasta) :put 403 (format "user/%d/password" (user->id :trashbird)) {:password "whateverUP12!!"
