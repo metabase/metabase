@@ -38,7 +38,7 @@
         ;; entity must support dependency tracking to continue
         (when (satisfies? IDependent entity)
           (when-let [deps (dependency/dependencies entity id object)]
-            (dependency/update-dependencies entity id deps)))))
+            (dependency/update-dependencies! entity id deps)))))
     (catch Throwable e
       (log/warn (format "Failed to process dependencies event. %s" (:topic dependency-event)) e))))
 

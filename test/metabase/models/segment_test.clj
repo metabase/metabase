@@ -21,14 +21,14 @@
 
 (defn- create-segment-then-select!
   [table name description creator definition]
-  (segment-details (create-segment table name description creator definition)))
+  (segment-details (create-segment! table name description creator definition)))
 
 (defn- update-segment-then-select!
   [segment]
-  (segment-details (update-segment segment (user->id :crowberto))))
+  (segment-details (update-segment! segment (user->id :crowberto))))
 
 
-;; create-segment
+;; create-segment!
 (expect
   {:creator_id  (user->id :rasta)
    :creator     (user-details :rasta)
@@ -92,7 +92,7 @@
                  (update :creator (u/rpartial dissoc :date_joined :last_login)))))))
 
 
-;; update-segment
+;; update-segment!
 ;; basic update.  we are testing several things here
 ;;  1. ability to update the Segment name
 ;;  2. creator_id cannot be changed
@@ -119,7 +119,7 @@
                                                :query    {:filter ["not" "the toucans you're looking for"]}}
                                  :revision_message "Just horsing around"})))
 
-;; delete-segment
+;; delete-segment!
 (expect
   {:creator_id   (user->id :rasta)
    :creator      (user-details :rasta)
@@ -130,7 +130,7 @@
   (tu/with-temp* [Database [{database-id :id}]
                   Table    [{:keys [id]} {:db_id database-id}]
                   Segment  [{:keys [id]} {:table_id id}]]
-    (delete-segment id (user->id :crowberto) "revision message")
+    (delete-segment! id (user->id :crowberto) "revision message")
     (segment-details (retrieve-segment id))))
 
 

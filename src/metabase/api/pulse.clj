@@ -49,10 +49,10 @@
   (check-404 (db/exists? Pulse :id id))
   ;; prevent more than 5 cards
   ;; limit channel types to :email and :slack
-  (pulse/update-pulse {:id       id
-                       :name     name
-                       :cards    (filter identity (map :id cards))
-                       :channels channels})
+  (pulse/update-pulse! {:id       id
+                        :name     name
+                        :cards    (filter identity (map :id cards))
+                        :channels channels})
   (pulse/retrieve-pulse id))
 
 

@@ -90,7 +90,7 @@
   (let [user-last-name     (random-name)
         password           {:old "password"
                             :new "whateverUP12!!"}
-        {:keys [email id]} (create-user :password (:old password), :last_name user-last-name, :reset_triggered (System/currentTimeMillis))
+        {:keys [email id]} (create-user! :password (:old password), :last_name user-last-name, :reset_triggered (System/currentTimeMillis))
         token              (u/prog1 (str id "_" (java.util.UUID/randomUUID))
                              (db/update! User id, :reset_token <>))
         creds              {:old {:password (:old password)
@@ -118,7 +118,7 @@
           session-id (db/select-one-id Session, :user_id id)]
       {:success    true
        :session_id session-id})
-    (let [{:keys [email id]} (create-user :password "password", :last_name user-last-name, :reset_triggered (System/currentTimeMillis))
+    (let [{:keys [email id]} (create-user! :password "password", :last_name user-last-name, :reset_triggered (System/currentTimeMillis))
           token              (u/prog1 (str id "_" (java.util.UUID/randomUUID))
                                (db/update! User id, :reset_token <>))]
       ;; run the password reset
