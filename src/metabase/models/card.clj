@@ -61,6 +61,7 @@
          :description            description
          :display                display
          :name                   name
+         :parameters             parameters
          :public_perms           public_perms
          :visualization_settings visualization_settings)
        (events/publish-event :card-create)))

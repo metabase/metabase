@@ -156,7 +156,7 @@
     (relative-date->range value report-timezone)))
 
 (defn- expand-date-range-param [report-timezone {[target param-name] :target, param-type :type, param-value :value, :as param}]
-  (if-not (= param-type "date")
+  (if-not (s/starts-with? param-type "date")
     param
     (let [{:keys [start end]} (extract-dates param-value report-timezone)]
       [(assoc param :target [target (str param-name ":start")], :value start)
