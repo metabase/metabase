@@ -28,6 +28,7 @@
                                :type     "query"
                                :query    {:aggregation ["rows"]
                                           :source_table (id :categories)}}
+      :parameters             []
       :visualization_settings {}
       :creator_id             (user->id :crowberto))))
 
@@ -43,6 +44,7 @@
    :id                     (:id card)
    :display                "table"
    :visualization_settings {}
+   :parameters             []
    :public_perms           2
    :archived               false})
 

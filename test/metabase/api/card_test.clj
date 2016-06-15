@@ -187,6 +187,7 @@
      :id                     $
      :display                "table"
      :visualization_settings {}
+     :parameters             []
      :public_perms           0
      :created_at             $
      :database_id            database-id ; these should be inferred from the dataset_query
@@ -200,7 +201,12 @@
 
 ;; updating a card that doesn't exist should give a 404
 (expect "Not found."
-  ((user->client :crowberto) :put 404 "card/12345"))
+  ((user->client :crowberto) :put 404 "card/12345" {:name                   "Blah"
+                                                    :display                "table"
+                                                    :public_perms           0
+                                                    :parameters             []
+                                                    :dataset_query          {}
+                                                    :visualization_settings {}}))
 
 ;; Test that we can edit a Card
 (let [updated-name (random-name)]
@@ -222,7 +228,13 @@
   (with-temp-card [{:keys [id]}]
     (let [archived?     (fn [] (:archived (Card id)))
           set-archived! (fn [archived]
-                          ((user->client :rasta) :put 200 (str "card/" id) {:archived archived})
+                          ((user->client :rasta) :put 200 (str "card/" id) {:archived               archived
+                                                                            :name                   "Blah"
+                                                                            :display                "table"
+                                                                            :public_perms           0
+                                                                            :parameters             []
+                                                                            :dataset_query          {}
+                                                                            :visualization_settings {}})
                           (archived?))]
       [(archived?)
        (set-archived! true)

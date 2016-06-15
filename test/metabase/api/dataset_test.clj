@@ -145,6 +145,7 @@
                                              (ql/aggregation (ql/count))))
                                          (assoc :type "query")
                                          (assoc-in [:query :aggregation] {:aggregation-type "count"}))
+             :parameters             []
              :visualization_settings {}
              :created_at             true
              :updated_at             true

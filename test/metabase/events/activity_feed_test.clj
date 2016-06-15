@@ -44,6 +44,7 @@
                     :dataset_query          {:database (id)
                                              :type     :query
                                              :query    {:source_table (id :categories)}}
+                    :parameters             []
                     :visualization_settings {})
         dashcard  (db/insert! DashboardCard
                     :card_id      (:id card)

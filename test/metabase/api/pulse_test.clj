@@ -22,6 +22,7 @@
     :public_perms           common/perms-readwrite
     :display                "table"
     :dataset_query          {}
+    :parameters             []
     :visualization_settings {}))
 
 (defn- new-pulse! [& {:keys [name cards channels]
