@@ -22,6 +22,7 @@
                                                Field
                                                Expression
                                                ExpressionRef
+                                               JoinTable
                                                RelativeDateTimeValue
                                                Value)))
 
@@ -188,11 +189,11 @@
 (defn apply-join-tables
   "Apply expanded query `join-tables` clause to HONEYSQL-FORM. Default implementation of `apply-join-tables` for SQL drivers."
   [_ honeysql-form {join-tables :join-tables, {source-table-name :name, source-schema :schema} :source-table}]
-  (loop [honeysql-form honeysql-form, [{:keys [table-name pk-field source-field schema]} & more] join-tables]
+  (loop [honeysql-form honeysql-form, [{:keys [table-name pk-field source-field schema join-alias]} & more] join-tables]
     (let [honeysql-form (h/merge-left-join honeysql-form
-                          (hx/qualify-and-escape-dots schema table-name)
+                          [(hx/qualify-and-escape-dots schema table-name) (keyword join-alias)]
                           [:= (hx/qualify-and-escape-dots source-schema source-table-name (:field-name source-field))
-                              (hx/qualify-and-escape-dots schema        table-name        (:field-name pk-field))])]
+                              (hx/qualify-and-escape-dots join-alias                      (:field-name pk-field))])]
       (if (seq more)
         (recur honeysql-form more)
         honeysql-form))))
@@ -268,7 +269,9 @@
   "Build the HoneySQL form we will compile to SQL and execute."
   [driverr {inner-query :query}]
   {:pre [(map? inner-query)]}
-  (apply-clauses driverr {} inner-query))
+  (u/prog1 (apply-clauses driverr {} inner-query)
+    (when-not qp/*disable-qp-logging*
+      (log/debug "HoneySQL Form: 🍯\n" (u/pprint-to-str 'cyan <>)))))
 
 (defn mbql->native
   "Transpile MBQL query into a native SQL statement."
@@ -291,8 +294,8 @@
 
 (defn- run-query
   "Run the query itself."
-  [{sql :query, params :params} connection]
-  (let [sql              (hx/unescape-dots sql)
+  [{sql :query, params :params, remark :remark} connection]
+  (let [sql              (str "-- " remark "\n" (hx/unescape-dots sql))
         statement        (into [sql] params)
         [columns & rows] (jdbc/query connection statement, :identifiers identity, :as-arrays? true)]
     {:rows    (or rows [])
@@ -320,12 +323,13 @@
 
 (defn execute-query
   "Process and run a native (raw SQL) QUERY."
-  [driver {:keys [database settings], query :native}]
-  (do-with-try-catch
-    (fn []
-      (let [db-connection (sql/db->jdbc-connection-spec database)]
-        (jdbc/with-db-transaction [transaction-connection db-connection]
-          (do-with-auto-commit-disabled transaction-connection
-            (fn []
-              (maybe-set-timezone! driver settings transaction-connection)
-              (run-query query transaction-connection))))))))
+  [driver {:keys [database settings], query :native, :as outer-query}]
+  (let [query (assoc query :remark (qp/query->remark outer-query))]
+    (do-with-try-catch
+      (fn []
+        (let [db-connection (sql/db->jdbc-connection-spec database)]
+          (jdbc/with-db-transaction [transaction-connection db-connection]
+            (do-with-auto-commit-disabled transaction-connection
+              (fn []
+                (maybe-set-timezone! driver settings transaction-connection)
+                (run-query query transaction-connection)))))))))

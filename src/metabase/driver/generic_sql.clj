@@ -11,21 +11,21 @@
             [metabase.sync-database.analyze :as analyze]
             metabase.query-processor.interface
             (metabase.models [field :as field]
+                             raw-table
                              [table :as table])
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
   (:import java.sql.DatabaseMetaData
            java.util.Map
-           clojure.lang.Keyword
+           (clojure.lang Keyword PersistentVector)
            com.mchange.v2.c3p0.ComboPooledDataSource
-           (metabase.query_processor.interface Field Value)
-           (clojure.lang PersistentVector)))
+           (metabase.query_processor.interface Field Value)))
 
 (defprotocol ISQLDriver
   "Methods SQL-based drivers should implement in order to use `IDriverSQLDefaultsMixin`.
    Methods marked *OPTIONAL* have default implementations in `ISQLDriverDefaultsMixin`."
 
-  (active-tables ^java.util.Set [this, ^java.sql.DatabaseMetaData metadata]
+  (active-tables ^java.util.Set [this, ^DatabaseMetaData metadata]
     "Return a set of maps containing information about the active tables/views, collections, or equivalent that currently exist in DATABASE.
      Each map should contain the key `:name`, which is the string name of the table. For databases that have a concept of schemas,
      this map should also include the string name of the table's `:schema`.")
@@ -181,10 +181,13 @@
   "Convert HONEYSQL-FORM to a vector of SQL string and params, like you'd pass to JDBC."
   [driver honeysql-form]
   {:pre [(map? honeysql-form)]}
-  (binding [hformat/*subquery?* false]
-    (hsql/format honeysql-form
-                 :quoting             (quote-style driver)
-                 :allow-dashed-names? true)))
+  (try (binding [hformat/*subquery?* false]
+         (hsql/format honeysql-form
+           :quoting             (quote-style driver)
+           :allow-dashed-names? true))
+       (catch Throwable e
+         (log/error (u/format-color 'red "Invalid HoneySQL form:\n%s" (u/pprint-to-str honeysql-form)))
+         (throw e))))
 
 (defn- qualify+escape ^clojure.lang.Keyword
   ([table]
@@ -233,10 +236,7 @@
 
 
 (defn- table-rows-seq [driver database table]
-  (let [pk-field (field/Field (table/pk-field-id table))]
-    (query driver database table (merge {:select   [:*]}
-                                        (when pk-field
-                                          {:order-by [[(qualify+escape table pk-field) :asc]]})))))
+  (query driver database table {:select [:*]}))
 
 (defn- field-avg-length
   [driver field]
@@ -275,9 +275,9 @@
         db          (table/database table)
         field-k     (qualify+escape table field)
         pk-field    (field/Field (table/pk-field-id table))
-        results     (map :is_url (query driver db table (merge {:select   [[(hsql/call :like field-k (hx/literal "http%://_%.__%")) :is_url]]
-                                                                :where    [:not= field-k nil]
-                                                                :limit    driver/max-sync-lazy-seq-results}
+        results     (map :is_url (query driver db table (merge {:select [[(hsql/call :like field-k (hx/literal "http%://_%.__%")) :is_url]]
+                                                                :where  [:not= field-k nil]
+                                                                :limit  driver/max-sync-lazy-seq-results}
                                                                (when pk-field
                                                                  {:order-by [[(qualify+escape table pk-field) :asc]]}))))
         total-count (count results)
@@ -290,7 +290,8 @@
   [driver]
   (cond-> #{:standard-deviation-aggregations
             :foreign-keys
-            :expressions}
+            :expressions
+            :native-parameters}
     (set-timezone-sql driver) (conj :set-timezone)))
 
 

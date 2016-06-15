@@ -28,7 +28,7 @@
 ;; We'll add a unique prefix like "NR_" to every database we create for this test run so multiple tests running at the same time won't stop over each other
 ;; This gives us 676 possible prefixes. This should prevent clashes but still recycle prefixes often enough that the code that destroys the test databases
 ;; (ran at the end of the test suite) will still eventually run and clean up after tests that fail for one reason or another without cleaning up after themselves.
-(defonce ^:private ^:const ^String unique-prefix
+(defonce ^:const ^String unique-prefix
   (str (apply str (take 2 (shuffle (map char (range (int \A) (inc (int \Z))))))) \_))
 
 (def ^:private ^:const details

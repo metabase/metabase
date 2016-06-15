@@ -25,14 +25,23 @@ if (DEBUG) {
 // common createStore with middleware applied
 export const createStore = compose(
   applyMiddleware(...middleware),
-  reduxReactRouter({ createHistory })
+  reduxReactRouter({ createHistory }),
+  window.devToolsExtension ? window.devToolsExtension() : f => f
 )(originalCreateStore);
 
 export const createStoreWithAngularScope = ($scope, $location, ...args) => {
-    return compose(
+    let store = compose(
         applyMiddleware(...middleware),
-        reduxReactRouter({ createHistory: createAngularHistory.bind(null, $scope, $location) })
+        reduxReactRouter({ createHistory: createAngularHistory.bind(null, $scope, $location) }),
+        window.devToolsExtension ? window.devToolsExtension() : f => f
     )(originalCreateStore)(...args);
+
+    // HACK: ugh, we have mismatched versions of redux-router and history.
+    // this allows hot reloading to work.
+    store.history.replace = ({ state, pathname, query }) =>
+        store.history.replaceState(state, pathname, query);
+
+    return store;
 }
 
 // HACK: just use our Angular resources for now
@@ -43,6 +52,11 @@ export function AngularResourceProxy(serviceName, methods) {
             return service[methodName](...args).$promise;
         }
     });
+}
+
+export function angularPromise() {
+    let $q = angular.element(document.querySelector("body")).injector().get("$q");
+    return $q.defer();
 }
 
 // similar to createAction but accepts a (redux-thunk style) thunk and dispatches based on whether

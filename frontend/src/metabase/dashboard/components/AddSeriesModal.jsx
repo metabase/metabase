@@ -13,7 +13,7 @@ import visualizations from "metabase/visualizations";
 
 import _ from "underscore";
 import cx from "classnames";
-
+import { getIn } from "icepick";
 
 function getQueryColumns(card, databases) {
     let dbId = card.dataset_query.database;
@@ -45,7 +45,7 @@ export default class AddSeriesModal extends Component {
     static propTypes = {
         dashcard: PropTypes.object.isRequired,
         cards: PropTypes.array,
-        cardData: PropTypes.object.isRequired,
+        dashcardData: PropTypes.object.isRequired,
         fetchCards: PropTypes.func.isRequired,
         fetchCardData: PropTypes.func.isRequired,
         fetchDatabaseMetadata: PropTypes.func.isRequired,
@@ -75,16 +75,16 @@ export default class AddSeriesModal extends Component {
     }
 
     async onCardChange(card, e) {
-        const { dashcard } = this.props;
+        const { dashcard, dashcardData } = this.props;
         let CardVisualization = visualizations.get(dashcard.card.display);
         try {
             if (e.target.checked) {
-                if (this.props.cardData[card.id] === undefined) {
+                if (getIn(dashcardData, [dashcard.id, card.id]) === undefined) {
                     this.setState({ state: "loading" });
-                    await this.props.fetchCardData(card);
+                    await this.props.fetchCardData(card, dashcard);
                 }
-                let sourceDataset = this.props.cardData[dashcard.card.id];
-                let seriesDataset = this.props.cardData[card.id];
+                let sourceDataset = getIn(this.props.dashcardData, [dashcard.id, dashcard.card.id]);
+                let seriesDataset = getIn(this.props.dashcardData, [dashcard.id, card.id]);
                 if (CardVisualization.seriesAreCompatible(
                     { card: dashcard.card, data: sourceDataset.data },
                     { card: card, data: seriesDataset.data }
@@ -134,12 +134,12 @@ export default class AddSeriesModal extends Component {
     }
 
     filteredCards() {
-        const { cards, dashcard, databases, cardData } = this.props;
+        const { cards, dashcard, databases, dashcardData } = this.props;
         const { searchValue } = this.state;
 
         const initialSeries = {
             card: dashcard.card,
-            data: cardData[dashcard.card.id] && cardData[dashcard.card.id].data
+            data: getIn(dashcardData, [dashcard.id, dashcard.card.id, "data"])
         };
 
         const CardVisualization = visualizations.get(dashcard.card.display);
@@ -170,7 +170,7 @@ export default class AddSeriesModal extends Component {
     }
 
     render() {
-        const { dashcard, cardData, cards } = this.props;
+        const { dashcard, dashcardData, cards } = this.props;
 
         let error = this.state.error;
 
@@ -201,7 +201,7 @@ export default class AddSeriesModal extends Component {
 
         let series = [dashcard.card].concat(this.state.series).map(card => ({
             card: card,
-            data: cardData[card.id] && cardData[card.id].data
+            data: getIn(dashcardData, [dashcard.id, card.id, "data"])
         })).filter(s => !!s.data);
 
         return (
@@ -249,7 +249,7 @@ export default class AddSeriesModal extends Component {
                                 </span>
                                 { card.dataset_query.type !== "query" &&
                                     <Tooltip tooltip="We're not sure if this question is compatible">
-                                        <Icon className="px1 flex-align-right text-grey-2 text-grey-4-hover cursor-pointer" name="warning" width={20} height={20} />
+                                        <Icon className="px1 flex-align-right text-grey-2 text-grey-4-hover cursor-pointer flex-no-shrink" name="warning" width={20} height={20} />
                                     </Tooltip>
                                 }
                             </li>

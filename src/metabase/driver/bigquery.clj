@@ -15,6 +15,7 @@
                              [field :as field]
                              [table :as table])
             [metabase.sync-database.analyze :as analyze]
+            [metabase.query-processor :as qp]
             metabase.query-processor.interface
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
@@ -327,9 +328,13 @@
   ;; Since we don't alias column names the come back like "veryNiceDataset_shakepeare_corpus". Strip off the dataset and table IDs
   (let [demangle-name (u/rpartial s/replace (re-pattern (str \^ dataset-id \_ table-name \_)) "")
         columns       (for [column columns]
-                        (keyword (demangle-name column)))]
-    (for [row rows]
-      (zipmap columns row))))
+                        (keyword (demangle-name column)))
+        rows          (for [row rows]
+                        (zipmap columns row))
+        columns       (vec (keys (first rows)))]
+    {:columns columns
+     :rows    (for [row rows]
+                (mapv row columns))}))
 
 (defn- mbql->native [{{{:keys [dataset-id]} :details, :as database} :database, {{table-name :name} :source-table} :query, :as outer-query}]
   {:pre [(map? database) (seq dataset-id) (seq table-name)]}
@@ -340,16 +345,13 @@
        :table-name table-name
        :mbql?      true})))
 
-(defn- execute-query [{{{:keys [dataset-id]} :details, :as database} :database, {sql :query, :keys [table-name mbql?]} :native}]
-  (let [results (process-native* database sql)
+(defn- execute-query [{{{:keys [dataset-id]} :details, :as database} :database, {sql :query, :keys [table-name mbql?]} :native, :as outer-query}]
+  (let [sql     (str "-- " (qp/query->remark outer-query) "\n" sql)
+        results (process-native* database sql)
         results (if mbql?
                   (post-process-mbql dataset-id table-name results)
-                  results)
-        columns (vec (keys (first results)))]
-    {:columns   columns
-     :rows      (for [row results]
-                  (mapv row columns))
-     :annotate? true}))
+                  (update results :columns (partial map keyword)))]
+    (assoc results :annotate? true)))
 
 ;; This provides an implementation of `prepare-value` that prevents HoneySQL from converting forms to prepared statement parameters (`?`)
 ;; TODO - Move this into `metabase.driver.generic-sql` and document it as an alternate implementation for `prepare-value` (?)
@@ -472,8 +474,10 @@
           ;; people can manually specifiy "foreign key" relationships in admin and everything should work correctly.
           ;; Since we can't infer any "FK" relationships during sync our normal FK tests are not appropriate for BigQuery, so they're disabled for the time being.
           ;; TODO - either write BigQuery-speciifc tests for FK functionality or add additional code to manually set up these FK relationships for FK tables
-          :features              (constantly (when-not config/is-test?
-                                               #{:foreign-keys}))
+          :features              (constantly (if (not config/is-test?)
+                                               #{:native-parameters :foreign-keys}
+                                               ;; during unit tests don't treat bigquery as having FK support
+                                               #{:native-parameters}))
           :field-values-lazy-seq (u/drop-first-arg field-values-lazy-seq)
           :mbql->native          (u/drop-first-arg mbql->native)}))
 

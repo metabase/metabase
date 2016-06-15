@@ -167,6 +167,8 @@ NSString *BaseURL() {
 	// custom functions for OS X integration are available to the frontend as properties of window.OSX
 	context[@"OSX"] = @{@"saveCSV": ^(JSValue *datasetQuery){
 		[self saveCSV:datasetQuery.description];
+	}, @"resetPassword": ^(){
+		[self resetPassword:nil];
 	}};
 }
 

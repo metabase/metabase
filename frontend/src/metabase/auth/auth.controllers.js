@@ -9,8 +9,8 @@ var AuthControllers = angular.module('metabase.auth.controllers', [
     'metabase.forms'
 ]);
 
-AuthControllers.controller('Login', ['$scope', '$location', '$timeout', 'AuthUtil', 'Session', 'AppState',
-    function($scope, $location, $timeout, AuthUtil, Session, AppState) {
+AuthControllers.controller('Login', ['$scope', '$window', '$location', '$timeout', 'AuthUtil', 'Session', 'AppState',
+    function($scope, $window, $location, $timeout, AuthUtil, Session, AppState) {
         function validEmail(email) {
             var re = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
             return re.test(email);
@@ -38,6 +38,11 @@ AuthControllers.controller('Login', ['$scope', '$location', '$timeout', 'AuthUti
             }, function (error) {
                 $scope.$broadcast("form:api-error", error);
             });
+        };
+
+        $scope.resetPassword = function() {
+            if ($window.OSX) $window.OSX.resetPassword();
+            else             $location.path('/auth/forgot_password');
         };
 
         // do a quick check if the user is already logged in.  if so then send them somewhere better.
@@ -75,6 +80,8 @@ AuthControllers.controller('Logout', ['$scope', '$location', '$timeout', 'ipCook
 AuthControllers.controller('ForgotPassword', ['$scope', '$cookies', '$location', 'Session', function($scope, $cookies, $location, Session) {
 
     $scope.sentNotification = false;
+
+    $scope.emailConfigured = MetabaseSettings.isEmailConfigured()
 
     $scope.sendResetNotification = function(email) {
         Session.forgot_password({

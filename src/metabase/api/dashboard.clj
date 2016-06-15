@@ -7,7 +7,7 @@
             (metabase.models [hydrate :refer [hydrate]]
                              [card :refer [Card]]
                              [common :as common]
-                             [dashboard :refer [Dashboard]]
+                             [dashboard :refer [Dashboard], :as dashboard]
                              [dashboard-card :refer [DashboardCard create-dashboard-card update-dashboard-card delete-dashboard-card]])
             [metabase.models.revision :as revision]))
 
@@ -26,15 +26,11 @@
 
 (defendpoint POST "/"
   "Create a new `Dashboard`."
-  [:as {{:keys [name description public_perms]} :body}]
+  [:as {{:keys [name description parameters public_perms], :as dashboard} :body}]
   {name         [Required NonEmptyString]
-   public_perms [Required PublicPerms]}
-  (->> (db/insert! Dashboard
-         :name         name
-         :description  description
-         :public_perms public_perms
-         :creator_id   *current-user-id*)
-       (events/publish-event :dashboard-create)))
+   public_perms [Required PublicPerms]
+   parameters   [ArrayOfMaps]}
+  (dashboard/create-dashboard dashboard *current-user-id*))
 
 (defendpoint GET "/:id"
   "Get `Dashboard` with ID."
@@ -49,13 +45,12 @@
 
 (defendpoint PUT "/:id"
   "Update a `Dashboard`."
-  [id :as {{:keys [description name]} :body}]
-  {name NonEmptyString}
+  [id :as {{:keys [description name parameters], :as dashboard} :body}]
+  {name         [Required NonEmptyString]
+   parameters   [ArrayOfMaps]}
   (write-check Dashboard id)
-  (check-500 (db/update-non-nil-keys! Dashboard id
-               :description description
-               :name        name))
-  (events/publish-event :dashboard-update (assoc (Dashboard id) :actor_id *current-user-id*)))
+  (check-500 (-> (assoc dashboard :id id)
+                 (dashboard/update-dashboard *current-user-id*))))
 
 (defendpoint DELETE "/:id"
   "Delete a `Dashboard`."
@@ -69,8 +64,9 @@
 
 (defendpoint POST "/:id/cards"
   "Add a `Card` to a `Dashboard`."
-  [id :as {{:keys [cardId series] :as dashboard-card} :body}]
-  {cardId [Required Integer]}
+  [id :as {{:keys [cardId parameter_mappings series] :as dashboard-card} :body}]
+  {cardId             [Required Integer]
+   parameter_mappings [ArrayOfMaps]}
   (write-check Dashboard id)
   (check-400 (db/exists? Card :id cardId))
   (let [defaults       {:dashboard_id id
@@ -84,7 +80,7 @@
       result)))
 
 (defendpoint PUT "/:id/cards"
-  "Reposition `Cards` on a `Dashboard`. Request body should have the form:
+  "Update `Cards` on a `Dashboard`. Request body should have the form:
 
     {:cards [{:id ...
               :sizeX ...

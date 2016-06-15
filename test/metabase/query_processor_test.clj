@@ -16,21 +16,23 @@
                                 [datasets :as datasets :refer [*driver* *engine*]]
                                 [interface :refer [create-database-definition], :as i])
             [metabase.test.util :as tu]
+            [metabase.query-processor :as qp]
             [metabase.util :as u]))
-
-
-;;; ------------------------------------------------------------ Dataset-Independent QP Tests ------------------------------------------------------------
 
 ;;; ------------------------------------------------------------ Helper Fns + Macros ------------------------------------------------------------
 
 ;; Event-Based DBs aren't tested here, but in `event-query-processor-test` instead.
 (def ^:private ^:const timeseries-engines #{:druid})
-(def ^:private ^:const non-timeseries-engines (set/difference datasets/all-valid-engines timeseries-engines))
+
+;; TODO - Since this is used in other test namespaces it might make sense to move it somewhere more general
+(def ^:const non-timeseries-engines
+  "Set of engines for non-timeseries DBs (i.e., every driver except `:druid`)."
+  (set/difference datasets/all-valid-engines timeseries-engines))
 
 (defn- engines-that-support [feature]
-  (set (filter (fn [engine]
-                 (contains? (driver/features (driver/engine->driver engine)) feature))
-               non-timeseries-engines)))
+  (set (for [engine non-timeseries-engines
+             :when  (contains? (driver/features (driver/engine->driver engine)) feature)]
+         engine)))
 
 (defn- engines-that-dont-support [feature]
   (set/difference non-timeseries-engines (engines-that-support feature)))
@@ -42,7 +44,9 @@
      ~expected
      ~actual))
 
-(defmacro ^:private qp-expect-with-all-engines [data q-form & post-process-fns]
+(defmacro ^:private qp-expect-with-all-engines
+  {:style/indent 0}
+  [data q-form & post-process-fns]
   `(expect-with-non-timeseries-dbs
      {:status    :completed
       :row_count ~(count (:rows data))
@@ -75,7 +79,13 @@
    :target          nil
    :description     nil
    :visibility_type :normal
-   :schema_name     (default-schema)})
+   :schema_name     (default-schema)
+   :source          :fields
+   :fk_field_id     nil})
+
+(defn- target-field [field]
+  (when (fks-supported?)
+    (dissoc field :target :extra_info :schema_name :source :fk_field_id)))
 
 (defn- categories-col
   "Return column information for the `categories` column named by keyword COL."
@@ -138,8 +148,7 @@
      :category_id {:extra_info   (if (fks-supported?)
                                    {:target_table_id (id :categories)}
                                    {})
-                   :target       (when (fks-supported?)
-                                   (dissoc (categories-col :id) :target :extra_info :schema_name))
+                   :target       (target-field (categories-col :id))
                    :special_type (if (fks-supported?)
                                    :fk
                                    :category)
@@ -183,9 +192,7 @@
                 :display_name "ID"}
      :venue_id {:extra_info   (if (fks-supported?) {:target_table_id (id :venues)}
                                   {})
-                :target       (if (fks-supported?) (-> (venues-col :id)
-                                                       (dissoc :target :extra_info :schema_name))
-                                  nil)
+                :target       (target-field (venues-col :id))
                 :special_type (when (fks-supported?)
                                 :fk)
                 :base_type    (expected-base-type->actual :IntegerField)
@@ -193,9 +200,7 @@
                 :display_name "Venue ID"}
      :user_id  {:extra_info   (if (fks-supported?) {:target_table_id (id :users)}
                                   {})
-                :target       (if (fks-supported?) (-> (users-col :id)
-                                                       (dissoc :target :extra_info :schema_name))
-                                  nil)
+                :target       (target-field (users-col :id))
                 :special_type (if (fks-supported?) :fk
                                   :category)
                 :base_type    (expected-base-type->actual :IntegerField)
@@ -220,6 +225,7 @@
               :id           nil
               :table_id     nil
               :description  nil
+              :source       :aggregation
               :extra_info   {}
               :target       nil}))
   ([ag-col-kw {:keys [base_type special_type]}]
@@ -229,10 +235,14 @@
     :id           nil
     :table_id     nil
     :description  nil
+    :source       :aggregation
     :extra_info   {}
     :target       nil
     :name         (name ag-col-kw)
     :display_name (name ag-col-kw)}))
+
+(defn- breakout-col [column]
+  (assoc column :source :breakout))
 
 (defn boolean-native-form
   "Convert :native_form attribute to a boolean to make test results comparisons easier"
@@ -265,6 +275,7 @@
 
 (defn rows
   "Return the result rows from query results, or throw an Exception if they're missing."
+  {:style/indent 0}
   [results]
   (vec (or (-> results :data :rows)
            (println (u/pprint-to-str 'red results))
@@ -299,73 +310,73 @@
 ;;; ------------------------------------------------------------ "COUNT" AGGREGATION ------------------------------------------------------------
 
 (qp-expect-with-all-engines
-    {:rows    [[100]]
-     :columns ["count"]
-     :cols    [(aggregate-col :count)]
+    {:rows        [[100]]
+     :columns     ["count"]
+     :cols        [(aggregate-col :count)]
      :native_form true}
-  (->> (run-query venues
-         (ql/aggregation (ql/count)))
-       boolean-native-form
-       (format-rows-by [int])))
+    (->> (run-query venues
+           (ql/aggregation (ql/count)))
+         boolean-native-form
+         (format-rows-by [int])))
 
 
 ;;; ------------------------------------------------------------ "SUM" AGGREGATION ------------------------------------------------------------
 (qp-expect-with-all-engines
-    {:rows    [[203]]
-     :columns ["sum"]
-     :cols    [(aggregate-col :sum (venues-col :price))]
+    {:rows        [[203]]
+     :columns     ["sum"]
+     :cols        [(aggregate-col :sum (venues-col :price))]
      :native_form true}
-  (->> (run-query venues
-         (ql/aggregation (ql/sum $price)))
-       boolean-native-form
-       (format-rows-by [int])))
+    (->> (run-query venues
+           (ql/aggregation (ql/sum $price)))
+         boolean-native-form
+         (format-rows-by [int])))
 
 
 ;;; ------------------------------------------------------------ "AVG" AGGREGATION ------------------------------------------------------------
 (qp-expect-with-all-engines
-    {:rows    [[35.5059]]
-     :columns ["avg"]
-     :cols    [(aggregate-col :avg (venues-col :latitude))]
+    {:rows        [[35.5059]]
+     :columns     ["avg"]
+     :cols        [(aggregate-col :avg (venues-col :latitude))]
      :native_form true}
-  (->> (run-query venues
-         (ql/aggregation (ql/avg $latitude)))
-       boolean-native-form
-       (format-rows-by [(partial u/round-to-decimals 4)])))
+    (->> (run-query venues
+           (ql/aggregation (ql/avg $latitude)))
+         boolean-native-form
+         (format-rows-by [(partial u/round-to-decimals 4)])))
 
 
 ;;; ------------------------------------------------------------ "DISTINCT COUNT" AGGREGATION ------------------------------------------------------------
 (qp-expect-with-all-engines
-    {:rows    [[15]]
-     :columns ["count"]
-     :cols    [(aggregate-col :count)]
+    {:rows        [[15]]
+     :columns     ["count"]
+     :cols        [(aggregate-col :count)]
      :native_form true}
-  (->> (run-query checkins
-                  (ql/aggregation (ql/distinct $user_id)))
-       boolean-native-form
-       (format-rows-by [int])))
+    (->> (run-query checkins
+           (ql/aggregation (ql/distinct $user_id)))
+         boolean-native-form
+         (format-rows-by [int])))
 
 
 ;;; ------------------------------------------------------------ "ROWS" AGGREGATION ------------------------------------------------------------
 ;; Test that a rows aggregation just returns rows as-is.
 (qp-expect-with-all-engines
-    {:rows    [[ 1 "Red Medicine"                  4 10.0646 -165.374 3]
-               [ 2 "Stout Burgers & Beers"        11 34.0996 -118.329 2]
-               [ 3 "The Apple Pan"                11 34.0406 -118.428 2]
-               [ 4 "Wurstküche"                   29 33.9997 -118.465 2]
-               [ 5 "Brite Spot Family Restaurant" 20 34.0778 -118.261 2]
-               [ 6 "The 101 Coffee Shop"          20 34.1054 -118.324 2]
-               [ 7 "Don Day Korean Restaurant"    44 34.0689 -118.305 2]
-               [ 8 "25°"                          11 34.1015 -118.342 2]
-               [ 9 "Krua Siri"                    71 34.1018 -118.301 1]
-               [10 "Fred 62"                      20 34.1046 -118.292 2]]
-     :columns (venues-columns)
-     :cols    (venues-cols)
+    {:rows        [[ 1 "Red Medicine"                  4 10.0646 -165.374 3]
+                   [ 2 "Stout Burgers & Beers"        11 34.0996 -118.329 2]
+                   [ 3 "The Apple Pan"                11 34.0406 -118.428 2]
+                   [ 4 "Wurstküche"                   29 33.9997 -118.465 2]
+                   [ 5 "Brite Spot Family Restaurant" 20 34.0778 -118.261 2]
+                   [ 6 "The 101 Coffee Shop"          20 34.1054 -118.324 2]
+                   [ 7 "Don Day Korean Restaurant"    44 34.0689 -118.305 2]
+                   [ 8 "25°"                          11 34.1015 -118.342 2]
+                   [ 9 "Krua Siri"                    71 34.1018 -118.301 1]
+                   [10 "Fred 62"                      20 34.1046 -118.292 2]]
+     :columns     (venues-columns)
+     :cols        (venues-cols)
      :native_form true}
-  (->> (run-query venues
-                  (ql/limit 10)
-                  (ql/order-by (ql/asc $id)))
-       boolean-native-form
-       formatted-venues-rows))
+    (->> (run-query venues
+           (ql/limit 10)
+           (ql/order-by (ql/asc $id)))
+         boolean-native-form
+         formatted-venues-rows))
 
 
 ;;; ------------------------------------------------------------ "PAGE" CLAUSE ------------------------------------------------------------
@@ -580,7 +591,7 @@
     {:rows    [[1 31] [2 70] [3 75] [4 77] [5 69] [6 70] [7 76] [8 81] [9 68] [10 78] [11 74] [12 59] [13 76] [14 62] [15 34]],
      :columns [(format-name "user_id")
                "count"]
-     :cols    [(checkins-col :user_id)
+     :cols    [(breakout-col (checkins-col :user_id))
                (aggregate-col :count)]
      :native_form true}
   (->> (run-query checkins
@@ -593,7 +604,7 @@
 ;;; BREAKOUT w/o AGGREGATION
 ;; This should act as a "distinct values" query and return ordered results
 (qp-expect-with-all-engines
-    {:cols    [(checkins-col :user_id)]
+    {:cols    [(breakout-col (checkins-col :user_id))]
      :columns [(format-name "user_id")]
      :rows    [[1] [2] [3] [4] [5] [6] [7] [8] [9] [10]]
      :native_form true}
@@ -611,8 +622,8 @@
      :columns [(format-name "user_id")
                (format-name "venue_id")
                "count"]
-     :cols    [(checkins-col :user_id)
-               (checkins-col :venue_id)
+     :cols    [(breakout-col (checkins-col :user_id))
+               (breakout-col (checkins-col :venue_id))
                (aggregate-col :count)]
      :native_form true}
   (->> (run-query checkins
@@ -629,8 +640,8 @@
      :columns [(format-name "user_id")
                (format-name "venue_id")
                "count"]
-     :cols    [(checkins-col :user_id)
-               (checkins-col :venue_id)
+     :cols    [(breakout-col (checkins-col :user_id))
+               (breakout-col (checkins-col :venue_id))
                (aggregate-col :count)]
      :native_form true}
   (->> (run-query checkins
@@ -653,16 +664,16 @@
 ;; Apply an arbitrary max-results on the query and ensure our results size is appropriately constrained
 (expect 1234
   (->> (((resolve 'metabase.query-processor/limit) identity) {:constraints {:max-results 1234}
-                                                                     :query       {:aggregation {:aggregation-type :count}}
-                                                                     :rows        (repeat [:ok])})
+                                                              :query       {:aggregation {:aggregation-type :count}}
+                                                              :rows        (repeat [:ok])})
        :rows
        count))
 
 ;; Apply a max-results-bare-rows limit specifically on :rows type query
 (expect [46 46]
   (let [res (((resolve 'metabase.query-processor/limit) identity) {:constraints {:max-results 46}
-                                                                          :query       {:aggregation {:aggregation-type :rows}}
-                                                                          :rows        (repeat [:ok])})]
+                                                                   :query       {:aggregation {:aggregation-type :rows}}
+                                                                   :rows        (repeat [:ok])})]
     [(->> res :rows count)
      (->> res :query :limit)]))
 
@@ -676,7 +687,7 @@
      :cols    [(aggregate-col :sum (users-col :id))]
      :native_form true}
   (->> (run-query users
-                  (ql/aggregation (ql/cum-sum $id)))
+         (ql/aggregation (ql/cum-sum $id)))
        boolean-native-form
        (format-rows-by [int])))
 
@@ -688,55 +699,55 @@
      :cols    [(users-col :id)]
      :native_form true}
     (->> (run-query users
-                    (ql/aggregation (ql/cum-sum $id))
-                    (ql/breakout $id))
+           (ql/aggregation (ql/cum-sum $id))
+           (ql/breakout $id))
          boolean-native-form
          (format-rows-by [int])))
 
 
 ;;; Cumulative sum w/ a different breakout field
 (qp-expect-with-all-engines
-    {:rows    [["Broen Olujimi"        14]
-               ["Conchúr Tihomir"      21]
-               ["Dwight Gresham"       34]
-               ["Felipinho Asklepios"  36]
-               ["Frans Hevel"          46]
-               ["Kaneonuskatew Eiran"  49]
-               ["Kfir Caj"             61]
-               ["Nils Gotam"           70]
-               ["Plato Yeshua"         71]
-               ["Quentin Sören"        76]
-               ["Rüstem Hebel"         91]
-               ["Shad Ferdynand"       97]
-               ["Simcha Yan"          101]
-               ["Spiros Teofil"       112]
-               ["Szymon Theutrich"    120]]
-     :columns [(format-name "name")
-               "sum"]
-     :cols    [(users-col :name)
-               (aggregate-col :sum (users-col :id))]
-     :native_form true}
+  {:rows        [["Broen Olujimi"        14]
+                 ["Conchúr Tihomir"      21]
+                 ["Dwight Gresham"       34]
+                 ["Felipinho Asklepios"  36]
+                 ["Frans Hevel"          46]
+                 ["Kaneonuskatew Eiran"  49]
+                 ["Kfir Caj"             61]
+                 ["Nils Gotam"           70]
+                 ["Plato Yeshua"         71]
+                 ["Quentin Sören"        76]
+                 ["Rüstem Hebel"         91]
+                 ["Shad Ferdynand"       97]
+                 ["Simcha Yan"          101]
+                 ["Spiros Teofil"       112]
+                 ["Szymon Theutrich"    120]]
+   :columns     [(format-name "name")
+                 "sum"]
+   :cols        [(breakout-col (users-col :name))
+                 (aggregate-col :sum (users-col :id))]
+   :native_form true}
   (->> (run-query users
-                  (ql/aggregation (ql/cum-sum $id))
-                  (ql/breakout $name))
+         (ql/aggregation (ql/cum-sum $id))
+         (ql/breakout $name))
        boolean-native-form
        (format-rows-by [str int])))
 
 
 ;;; Cumulative sum w/ a different breakout field that requires grouping
 (qp-expect-with-all-engines
-    {:columns [(format-name "price")
-               "sum"]
-     :cols    [(venues-col :price)
-               (aggregate-col :sum (venues-col :id))]
-     :rows    [[1 1211]
-               [2 4066]
-               [3 4681]
-               [4 5050]]
-     :native_form true}
+  {:columns     [(format-name "price")
+                 "sum"]
+   :cols        [(breakout-col (venues-col :price))
+                 (aggregate-col :sum (venues-col :id))]
+   :rows        [[1 1211]
+                 [2 4066]
+                 [3 4681]
+                 [4 5050]]
+   :native_form true}
   (->> (run-query venues
-                  (ql/aggregation (ql/cum-sum $id))
-                  (ql/breakout $price))
+         (ql/aggregation (ql/cum-sum $id))
+         (ql/breakout $price))
        boolean-native-form
        (format-rows-by [int int])))
 
@@ -761,47 +772,47 @@
 
 ;;; Cumulative count w/ a different breakout field
 (qp-expect-with-all-engines
-    {:rows    [["Broen Olujimi"        1]
-               ["Conchúr Tihomir"      2]
-               ["Dwight Gresham"       3]
-               ["Felipinho Asklepios"  4]
-               ["Frans Hevel"          5]
-               ["Kaneonuskatew Eiran"  6]
-               ["Kfir Caj"             7]
-               ["Nils Gotam"           8]
-               ["Plato Yeshua"         9]
-               ["Quentin Sören"       10]
-               ["Rüstem Hebel"        11]
-               ["Shad Ferdynand"      12]
-               ["Simcha Yan"          13]
-               ["Spiros Teofil"       14]
-               ["Szymon Theutrich"    15]]
-     :columns [(format-name "name")
-               "count"]
-     :cols    [(users-col :name)
-               (cumulative-count-col users-col :id)]
-     :native_form true}
+  {:rows        [["Broen Olujimi"        1]
+                 ["Conchúr Tihomir"      2]
+                 ["Dwight Gresham"       3]
+                 ["Felipinho Asklepios"  4]
+                 ["Frans Hevel"          5]
+                 ["Kaneonuskatew Eiran"  6]
+                 ["Kfir Caj"             7]
+                 ["Nils Gotam"           8]
+                 ["Plato Yeshua"         9]
+                 ["Quentin Sören"       10]
+                 ["Rüstem Hebel"        11]
+                 ["Shad Ferdynand"      12]
+                 ["Simcha Yan"          13]
+                 ["Spiros Teofil"       14]
+                 ["Szymon Theutrich"    15]]
+   :columns     [(format-name "name")
+                 "count"]
+   :cols        [(breakout-col (users-col :name))
+                 (cumulative-count-col users-col :id)]
+   :native_form true}
   (->> (run-query users
-                  (ql/aggregation (ql/cum-count))
-                  (ql/breakout $name))
+         (ql/aggregation (ql/cum-count))
+         (ql/breakout $name))
        boolean-native-form
        (format-rows-by [str int])))
 
 
 ;;; Cumulative count w/ a different breakout field that requires grouping
 (qp-expect-with-all-engines
-    {:columns [(format-name "price")
-               "count"]
-     :cols    [(venues-col :price)
-               (cumulative-count-col venues-col :id)]
-     :rows    [[1 22]
-               [2 81]
-               [3 94]
-               [4 100]]
-     :native_form true}
+  {:columns     [(format-name "price")
+                 "count"]
+   :cols        [(breakout-col (venues-col :price))
+                 (cumulative-count-col venues-col :id)]
+   :rows        [[1 22]
+                 [2 81]
+                 [3 94]
+                 [4 100]]
+   :native_form true}
   (->> (run-query venues
-                  (ql/aggregation (ql/cum-count))
-                  (ql/breakout $price))
+         (ql/aggregation (ql/cum-count))
+         (ql/breakout $price))
        boolean-native-form
        (format-rows-by [int int])))
 
@@ -809,9 +820,9 @@
 ;;; ------------------------------------------------------------ STDDEV AGGREGATION ------------------------------------------------------------
 
 (qp-expect-with-engines (engines-that-support :standard-deviation-aggregations)
-  {:columns ["stddev"]
-   :cols    [(aggregate-col :stddev (venues-col :latitude))]
-   :rows    [[3.4]]
+  {:columns     ["stddev"]
+   :cols        [(aggregate-col :stddev (venues-col :latitude))]
+   :rows        [[3.4]]
    :native_form true}
   (-> (run-query venues
         (ql/aggregation (ql/stddev $latitude)))
@@ -832,71 +843,71 @@
 
 ;;; order_by aggregate ["count"]
 (qp-expect-with-all-engines
-  {:columns [(format-name "price")
-             "count"]
-   :rows    [[4  6]
-             [3 13]
-             [1 22]
-             [2 59]]
-   :cols    [(venues-col :price)
-             (aggregate-col :count)]
+  {:columns     [(format-name "price")
+                 "count"]
+   :rows        [[4  6]
+                 [3 13]
+                 [1 22]
+                 [2 59]]
+   :cols        [(breakout-col (venues-col :price))
+                 (aggregate-col :count)]
    :native_form true}
   (->> (run-query venues
-                  (ql/aggregation (ql/count))
-                  (ql/breakout $price)
-                  (ql/order-by (ql/asc (ql/aggregate-field 0))))
+         (ql/aggregation (ql/count))
+         (ql/breakout $price)
+         (ql/order-by (ql/asc (ql/aggregate-field 0))))
        boolean-native-form
        (format-rows-by [int int])))
 
 
 ;;; order_by aggregate ["sum" field-id]
 (qp-expect-with-all-engines
-  {:columns [(format-name "price")
-             "sum"]
-   :rows    [[2 2855]
-             [1 1211]
-             [3  615]
-             [4  369]]
-   :cols    [(venues-col :price)
-             (aggregate-col :sum (venues-col :id))]
+  {:columns     [(format-name "price")
+                 "sum"]
+   :rows        [[2 2855]
+                 [1 1211]
+                 [3  615]
+                 [4  369]]
+   :cols        [(breakout-col (venues-col :price))
+                 (aggregate-col :sum (venues-col :id))]
    :native_form true}
   (->> (run-query venues
-                  (ql/aggregation (ql/sum $id))
-                  (ql/breakout $price)
-                  (ql/order-by (ql/desc (ql/aggregate-field 0))))
+         (ql/aggregation (ql/sum $id))
+         (ql/breakout $price)
+         (ql/order-by (ql/desc (ql/aggregate-field 0))))
        boolean-native-form
        (format-rows-by [int int])))
 
 
 ;;; order_by aggregate ["distinct" field-id]
 (qp-expect-with-all-engines
-  {:columns [(format-name "price")
-             "count"]
-   :rows    [[4  6]
-             [3 13]
-             [1 22]
-             [2 59]]
-   :cols    [(venues-col :price)
-             (aggregate-col :count)]
+  {:columns     [(format-name "price")
+                 "count"]
+   :rows        [[4  6]
+                 [3 13]
+                 [1 22]
+                 [2 59]]
+   :cols        [(breakout-col (venues-col :price))
+                 (aggregate-col :count)]
    :native_form true}
   (->> (run-query venues
-                  (ql/aggregation (ql/distinct $id))
-                  (ql/breakout $price)
-                  (ql/order-by (ql/asc (ql/aggregate-field 0))))
+         (ql/aggregation (ql/distinct $id))
+         (ql/breakout $price)
+         (ql/order-by (ql/asc (ql/aggregate-field 0))))
        boolean-native-form
        (format-rows-by [int int])))
 
 
 ;;; order_by aggregate ["avg" field-id]
 (expect-with-non-timeseries-dbs
-  {:columns [(format-name "price")
-             "avg"]
-   :rows    [[3 22]
-             [2 28]
-             [1 32]
-             [4 53]]
-   :cols    [(venues-col :price)
-             (aggregate-col :avg (venues-col :category_id))]
+  {:columns     [(format-name "price")
+                 "avg"]
+   :rows        [[3 22]
+                 [2 28]
+                 [1 32]
+                 [4 53]]
+   :cols        [(breakout-col (venues-col :price))
+                 (aggregate-col :avg (venues-col :category_id))]
    :native_form true}
   (->> (run-query venues
          (ql/aggregation (ql/avg $category_id))
@@ -909,14 +920,14 @@
 ;; SQRT calculations are always NOT EXACT (normal behavior) so round everything to the nearest int.
 ;; Databases might use different versions of SQRT implementations
 (datasets/expect-with-engines (engines-that-support :standard-deviation-aggregations)
-  {:columns [(format-name "price")
-             "stddev"]
-   :rows    [[3 (if (contains? #{:mysql :crate} *engine*) 25 26)]
-             [1 24]
-             [2 21]
-             [4 (if (contains? #{:mysql :crate} *engine*) 14 15)]]
-   :cols    [(venues-col :price)
-             (aggregate-col :stddev (venues-col :category_id))]
+  {:columns     [(format-name "price")
+                 "stddev"]
+   :rows        [[3 (if (contains? #{:mysql :crate} *engine*) 25 26)]
+                 [1 24]
+                 [2 21]
+                 [4 (if (contains? #{:mysql :crate} *engine*) 14 15)]]
+   :cols        [(breakout-col (venues-col :price))
+                 (aggregate-col :stddev (venues-col :category_id))]
    :native_form true}
   (->> (run-query venues
          (ql/aggregation (ql/stddev $category_id))
@@ -935,8 +946,7 @@
      (venues-col :latitude)
      (venues-col :id)
      (venues-col :longitude)
-     (-> (venues-col :price)
-         (assoc :visibility_type :details-only))}
+     (assoc (venues-col :price) :visibility_type :details-only)}
    (set (venues-cols))]
   (let [get-col-names (fn [] (-> (run-query venues
                                    (ql/order-by (ql/asc $id))
@@ -952,32 +962,57 @@
 ;;; ------------------------------------------------------------ :sensitive fields ------------------------------------------------------------
 ;;; Make sure :sensitive information fields are never returned by the QP
 (qp-expect-with-all-engines
-    {:columns (->columns "id" "name" "last_login")
-     :cols    [(users-col :id)
-               (users-col :name)
-               (users-col :last_login)],
-     :rows    [[ 1 "Plato Yeshua"]
-               [ 2 "Felipinho Asklepios"]
-               [ 3 "Kaneonuskatew Eiran"]
-               [ 4 "Simcha Yan"]
-               [ 5 "Quentin Sören"]
-               [ 6 "Shad Ferdynand"]
-               [ 7 "Conchúr Tihomir"]
-               [ 8 "Szymon Theutrich"]
-               [ 9 "Nils Gotam"]
-               [10 "Frans Hevel"]
-               [11 "Spiros Teofil"]
-               [12 "Kfir Caj"]
-               [13 "Dwight Gresham"]
-               [14 "Broen Olujimi"]
-               [15 "Rüstem Hebel"]]
-     :native_form true}
+  {:columns     (->columns "id" "name" "last_login")
+   :cols        [(users-col :id)
+                 (users-col :name)
+                 (users-col :last_login)],
+   :rows        [[ 1 "Plato Yeshua"]
+                 [ 2 "Felipinho Asklepios"]
+                 [ 3 "Kaneonuskatew Eiran"]
+                 [ 4 "Simcha Yan"]
+                 [ 5 "Quentin Sören"]
+                 [ 6 "Shad Ferdynand"]
+                 [ 7 "Conchúr Tihomir"]
+                 [ 8 "Szymon Theutrich"]
+                 [ 9 "Nils Gotam"]
+                 [10 "Frans Hevel"]
+                 [11 "Spiros Teofil"]
+                 [12 "Kfir Caj"]
+                 [13 "Dwight Gresham"]
+                 [14 "Broen Olujimi"]
+                 [15 "Rüstem Hebel"]]
+   :native_form true}
   ;; Filter out the timestamps from the results since they're hard to test :/
   (-> (run-query users
         (ql/order-by (ql/asc $id)))
       boolean-native-form
       (update-in [:data :rows] (partial mapv (fn [[id name last-login]]
                                                [(int id) name])))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------------+
+;;; |                                                     PARAMETERS                                                      |
+;;; +----------------------------------------------------------------------------------------------------------------------+
+
+
+(expect-with-non-timeseries-dbs
+  [[9 "Nils Gotam"]]
+  (format-rows-by [int str]
+    (let [inner-query (query users
+                             (ql/aggregation (ql/rows)))
+          outer-query (wrap-inner-query inner-query)
+          outer-query (assoc outer-query :parameters [{:name "id", :type "id", :target ["field-id" (id :users :id)], :value 9}])]
+      (rows (qp/process-query outer-query)))))
+
+
+(expect-with-non-timeseries-dbs
+  [[6]]
+  (format-rows-by [int]
+    (let [inner-query (query venues
+                             (ql/aggregation (ql/count)))
+          outer-query (wrap-inner-query inner-query)
+          outer-query (assoc outer-query :parameters [{:name "price", :type "category", :target ["field-id" (id :venues :price)], :value 4}])]
+      (rows (qp/process-query outer-query)))))
 
 
 ;; +------------------------------------------------------------------------------------------------------------------------+
@@ -1219,12 +1254,12 @@
 ;;; Nested Field in BREAKOUT
 ;; Let's see how many tips we have by source.service
 (datasets/expect-with-engines (engines-that-support :nested-fields)
-  {:rows    [["facebook"   107]
-             ["flare"      105]
-             ["foursquare" 100]
-             ["twitter"     98]
-             ["yelp"        90]]
-   :columns ["source.service" "count"]
+  {:rows        [["facebook"   107]
+                 ["flare"      105]
+                 ["foursquare" 100]
+                 ["twitter"     98]
+                 ["yelp"        90]]
+   :columns     ["source.service" "count"]
    :native_form true}
   (->> (dataset geographical-tips
          (run-query tips
@@ -1917,3 +1952,27 @@
             (ql/expressions {:x (ql/* $price 2.0)})
             (ql/aggregation (ql/count))
             (ql/breakout (ql/expression :x))))))
+
+
+;;; CAN WE JOIN AGAINST THE SAME TABLE TWICE (MULTIPLE FKS TO A SINGLE TABLE!?)
+;; Query should look something like:
+;; SELECT USERS__via__SENDER_ID.NAME AS NAME, count(*) AS count
+;; FROM PUBLIC.MESSAGES
+;; LEFT JOIN PUBLIC.USERS USERS__via__RECIEVER_ID
+;;   ON PUBLIC.MESSAGES.RECIEVER_ID = USERS__via__RECIEVER_ID.ID
+;; LEFT JOIN PUBLIC.USERS USERS__via__SENDER_ID
+;;   ON PUBLIC.MESSAGES.SENDER_ID = USERS__via__SENDER_ID.ID
+;; WHERE USERS__via__RECIEVER_ID.NAME = 'Rasta Toucan'
+;; GROUP BY USERS__via__SENDER_ID.NAME
+;; ORDER BY USERS__via__SENDER_ID.NAME ASC
+(datasets/expect-with-engines (engines-that-support :foreign-keys)
+  [["Bob the Sea Gull" 2]
+   ["Brenda Blackbird" 2]
+   ["Lucky Pigeon"     2]
+   ["Peter Pelican"    5]
+   ["Ronald Raven"     1]]
+  (dataset avian-singles
+    (rows (run-query messages
+            (ql/aggregation (ql/count))
+            (ql/breakout $sender_id->users.name)
+            (ql/filter (ql/= $reciever_id->users.name "Rasta Toucan"))))))

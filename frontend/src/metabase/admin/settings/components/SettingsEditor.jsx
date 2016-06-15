@@ -7,6 +7,7 @@ import SettingsHeader from "./SettingsHeader.jsx";
 import SettingsSetting from "./SettingsSetting.jsx";
 import SettingsEmailForm from "./SettingsEmailForm.jsx";
 import SettingsSlackForm from "./SettingsSlackForm.jsx";
+import SettingsSetupList from "./SettingsSetupList.jsx";
 import SettingsUpdatesForm from "./SettingsUpdatesForm.jsx";
 
 import _ from "underscore";
@@ -74,6 +75,13 @@ export default class SettingsEditor extends Component {
                         updateEmailSettings={this.props.updateEmailSettings}
                         sendTestEmail={this.props.sendTestEmail}
                     />
+                </div>
+            );
+        } else if (section.name === "Setup") {
+            return (
+                <div className="px2">
+                    <SettingsSetupList
+                        ref="settingsForm" />
                 </div>
             );
         } else if (section.name === "Slack") {

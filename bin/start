@@ -13,7 +13,13 @@ fi
 
 # Heroku Postgres
 if [ "$DATABASE_URL" ]; then
-    export MB_DB_CONNECTION_URI="$DATABASE_URL"
+    if [[ $string == *"?"* ]]; then
+        # if DATABASE_URL already has a query string don't mess with it
+        export MB_DB_CONNECTION_URI="$DATABASE_URL"
+    else
+        # otherwise add the SSL parameters to ensure upgraded databases work on Heroku
+        export MB_DB_CONNECTION_URI="$DATABASE_URL?ssl=true&sslmode=require&sslfactory=org.postgresql.ssl.NonValidatingFactory"
+    fi
 fi
 
 # Mailgun (Heroku)

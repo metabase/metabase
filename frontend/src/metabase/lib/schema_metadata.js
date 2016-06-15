@@ -105,8 +105,9 @@ export const isBoolean = isFieldType.bind(null, BOOLEAN);
 export const isString = isFieldType.bind(null, STRING);
 export const isSummable = isFieldType.bind(null, SUMMABLE);
 export const isCategory = isFieldType.bind(null, CATEGORY);
-export const isDimension = () => true;
-export const isMetric = (col) => isNumeric(col)
+
+export const isDimension = (col) => (col && col.source !== "aggregation");
+export const isMetric    = (col) => (col && col.source !== "breakout") && isNumeric(col);
 
 // operator argument constructors:
 
@@ -496,4 +497,16 @@ export function foreignKeyCountsByOriginTable(fks) {
 
         return prev;
     }, {});
+}
+
+export const ICON_MAPPING = {
+    [DATE_TIME]:  'calendar',
+    [LOCATION]: 'location',
+    [COORDINATE]: 'location',
+    [STRING]: 'string',
+    [NUMBER]: 'int'
+};
+
+export function getIconForField(field) {
+    return ICON_MAPPING[getFieldType(field)];
 }

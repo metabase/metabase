@@ -3,7 +3,8 @@
   (:require [clojure.walk :as walk]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            schema.utils
+            (schema [core :as s]
+                    utils)
             [swiss.arrows :refer [<<-]]
             (metabase [config :as config]
                       [db :as db]
@@ -15,11 +16,12 @@
                                       [expand :as expand]
                                       [interface :refer :all]
                                       [macros :as macros]
+                                      [parameters :as params]
                                       [resolve :as resolve])
             [metabase.util :as u])
   (:import (schema.utils NamedError ValidationError)))
 
-;; # CONSTANTS
+;;; CONSTANTS
 
 (def ^:const absolute-max-results
   "Maximum number of rows the QP should ever return.
@@ -29,11 +31,26 @@
   1048576)
 
 
-;; # DYNAMIC VARS
+;;;  DYNAMIC VARS
 
 (def ^:dynamic *disable-qp-logging*
   "Should we disable logging for the QP? (e.g., during sync we probably want to turn it off to keep logs less cluttered)."
   false)
+
+
+;;; SCHEMA VALIDATION
+
+(def qp-results-format
+  "Schema for the expected format of results returned by a query processor."
+  {:columns               [(s/cond-pre s/Keyword s/Str)]
+   (s/optional-key :cols) [{s/Keyword s/Any}]            ; This is optional because QPs don't neccesarily have to add it themselves; annotate will take care of that
+   :rows                  [[s/Any]]
+   s/Keyword              s/Any})
+
+(def ^{:arglists '([results])} validate-results
+  "Validate that the RESULTS of executing a query match the `qp-results-format` schema.
+   Throws an `Exception` if they are not; returns RESULTS as-is if they are."
+  (s/validator qp-results-format))
 
 
 ;;; +----------------------------------------------------------------------------------------------------+
@@ -139,6 +156,16 @@
                       (log/debug (u/format-color 'cyan "\n\nMACRO/SUBSTITUTED: 😻\n%s" (u/pprint-to-str <>))))))]
       (qp query))))
 
+(defn- pre-substitute-parameters
+  "If any parameters were supplied then substitute them into the query."
+  [qp]
+  (fn [query]
+    ;; if necessary, handle parameters substitution
+    (let [query (u/prog1 (params/expand-parameters query)
+                  (when (and (not *disable-qp-logging*)
+                             (not= <> query))
+                    (log/debug (u/format-color 'cyan "\n\nPARAMS/SUBSTITUTED: 😻\n%s" (u/pprint-to-str <>)))))]
+      (qp query))))
 
 (defn- pre-expand-resolve
   "Transforms an MBQL into an expanded form with more information and structure.  Also resolves references to fields, tables,
@@ -210,7 +237,7 @@
                 {:order-by [[:position :asc]
                             [:id :desc]]})]
     (let [field (resolve/resolve-table (map->Field (resolve/rename-mb-field-keys field))
-                                       {source-table-id source-table})]
+                                       {[nil source-table-id] source-table})]
       (if (datetime-field? field)
         (map->DateTimeField {:field field, :unit :default})
         field))))
@@ -419,15 +446,13 @@
     (fn [qp]
       (fn [query]
         (u/prog1 (qp query)
-          (assert (or (map? <>)
-                      (println "Expected results to be a map, got a " (class <>))))
-          (assert (sequential? (:rows <>)))
-          (assert (every? sequential? (:rows <>)))
-          (assert (sequential? (:cols <>)))
-          (assert (every? map? (:cols <>)))
-          (assert (sequential? (:columns <>)))
-          (assert (every? u/string-or-keyword? (:columns <>))))))))
+          (validate-results <>))))))
 
+(defn query->remark
+  "Genarate an approparite REMARK to be prepended to a query to give DBAs additional information about the query being executed.
+   See documentation for `mbql->native` and [issue #2386](https://github.com/metabase/metabase/issues/2386) for more information."
+  ^String [{{:keys [executed-by uuid query-hash query-type], :as info} :info}]
+  (format "Metabase:: userID: %s executionID: %s queryType: %s queryHash: %s" executed-by uuid query-type query-hash))
 
 (defn- run-query
   "The end of the QP middleware which actually executes the query on the driver.
@@ -495,23 +520,23 @@
   ;; TODO: it probably makes sense to throw an error or return a failure response here if we can't get a driver
   (let [driver (driver/database-id->driver (:database query))]
     (binding [*driver* driver]
-      (let [driver-process-in-context (partial driver/process-query-in-context driver)]
-        ((<<- wrap-catch-exceptions
-              pre-add-settings
-              pre-expand-macros
-              pre-expand-resolve
-              driver-process-in-context
-              post-add-row-count-and-status
-              post-format-rows
-              pre-add-implicit-fields
-              pre-add-implicit-breakout-order-by
-              cumulative-sum
-              cumulative-count
-              limit
-              post-check-results-format
-              pre-log-query
-              guard-multiple-calls
-              run-query) (assoc query :driver driver))))))
+      ((<<- wrap-catch-exceptions
+            pre-add-settings
+            pre-expand-macros
+            pre-substitute-parameters
+            pre-expand-resolve
+            (driver/process-query-in-context driver)
+            post-add-row-count-and-status
+            post-format-rows
+            pre-add-implicit-fields
+            pre-add-implicit-breakout-order-by
+            cumulative-sum
+            cumulative-count
+            limit
+            post-check-results-format
+            pre-log-query
+            guard-multiple-calls
+            run-query) (assoc query :driver driver)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------+
@@ -519,6 +544,13 @@
 ;;; +----------------------------------------------------------------------------------------------------+
 
 (declare query-fail query-complete save-query-execution)
+
+(defn- assert-valid-query-result [query-result]
+  (when-not (contains? query-result :status)
+    (throw (Exception. "invalid response from database driver. no :status provided")))
+  (when (= :failed (:status query-result))
+    (log/error (u/pprint-to-str 'red query-result))
+    (throw (Exception. (str (get query-result :error "general error"))))))
 
 (defn dataset-query
   "Process and run a json based dataset query and return results.
@@ -533,11 +565,12 @@
 
   Possible caller-options include:
 
-    :executed_by [int]               (user_id of caller)"
+    :executed_by [int]  (user_id of caller)"
   {:arglists '([query options])}
   [query {:keys [executed_by]}]
   {:pre [(integer? executed_by)]}
-  (let [query-execution {:uuid              (.toString (java.util.UUID/randomUUID))
+  (let [query-uuid      (.toString (java.util.UUID/randomUUID))
+        query-execution {:uuid              query-uuid
                          :executor_id       executed_by
                          :json_query        query
                          :query_id          nil
@@ -552,17 +585,17 @@
                          :result_data       "{}"
                          :raw_query         ""
                          :additional_info   ""
-                         :start_time_millis (System/currentTimeMillis)}]
+                         :start_time_millis (System/currentTimeMillis)}
+        query           (assoc query :info {:executed-by executed_by
+                                            :uuid        query-uuid
+                                            :query-hash  (hash query)
+                                            :query-type  (if (mbql-query? query) "MBQL" "native")})]
     (try
-      (let [query-result (process-query query)]
-        (when-not (contains? query-result :status)
-          (throw (Exception. "invalid response from database driver. no :status provided")))
-        (when (= :failed (:status query-result))
-          (log/error (u/pprint-to-str 'red query-result))
-          (throw (Exception. (str (get query-result :error "general error")))))
-        (query-complete query-execution query-result))
+      (let [result (process-query query)]
+        (assert-valid-query-result result)
+        (query-complete query-execution result))
       (catch Throwable e
-        (log/error (u/format-color 'red "Query failure: %s" (.getMessage e)))
+        (log/error (u/format-color 'red "Query failure: %s\n%s" (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e))))
         (query-fail query-execution (.getMessage e))))))
 
 (defn query-fail
@@ -576,7 +609,7 @@
     (-> query-execution
         (dissoc :start_time_millis)
         (merge updates)
-        (save-query-execution)
+        save-query-execution
         (dissoc :raw_query :result_rows :version)
         ;; this is just for the response for clien
         (assoc :error     error-message
@@ -596,7 +629,7 @@
                          (:start_time_millis query-execution))
         :result_rows  (get query-result :row_count 0))
       (dissoc :start_time_millis)
-      (save-query-execution)
+      save-query-execution
       ;; at this point we've saved and we just need to massage things into our final response format
       (dissoc :error :raw_query :result_rows :version)
       (merge query-result)))

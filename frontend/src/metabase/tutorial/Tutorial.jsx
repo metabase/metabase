@@ -185,6 +185,19 @@ export default class Tutorial extends Component {
         };
     }
 
+    // HACK: Ensure we render twice so that getTargets can get the rendered DOM elements
+    componentWillReceiveProps() {
+        this.setState({ rendered: false });
+    }
+    componentDidMount() {
+        this.componentDidUpdate();
+    }
+    componentDidUpdate() {
+        if (!this.state.rendered) {
+            this.setState({ rendered: true });
+        }
+    }
+
     render() {
         let step = this.props.steps[this.state.step];
 

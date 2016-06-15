@@ -1,6 +1,8 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 
 import Input from "metabase/components/Input.jsx";
+import HeaderModal from "metabase/components/HeaderModal.jsx";
 
 export default class Header extends Component {
     static defaultProps = {
@@ -11,6 +13,27 @@ export default class Header extends Component {
         headerClassName: "py1 lg-py2 xl-py3 wrapper"
     };
 
+    constructor(props, context) {
+        super(props, context);
+
+        this.state = {
+            headerHeight: 0
+        };
+    }
+
+    componentDidMount() {
+        this.componentDidUpdate();
+    }
+    componentDidUpdate() {
+        if (this.refs.header) {
+            const rect = ReactDOM.findDOMNode(this.refs.header).getBoundingClientRect();
+            const headerHeight = rect.top + window.scrollY;
+            if (this.state.headerHeight !== headerHeight) {
+                this.setState({ headerHeight });
+            }
+        }
+    }
+
     setItemAttribute(attribute, event) {
         this.props.setItemAttributeFn(attribute, event.target.value);
     }
@@ -18,7 +41,7 @@ export default class Header extends Component {
     renderEditHeader() {
         if (this.props.isEditing) {
             return (
-                <div className="EditHeader wrapper py1 flex align-center">
+                <div className="EditHeader wrapper py1 flex align-center" ref="editHeader">
                     <span className="EditHeader-title">{this.props.editingTitle}</span>
                     <span className="EditHeader-subtitle mx1">{this.props.editingSubtitle}</span>
                     <span className="flex-align-right">
@@ -27,6 +50,18 @@ export default class Header extends Component {
                 </div>
             );
         }
+    }
+
+    renderHeaderModal() {
+        return (
+            <HeaderModal
+                isOpen={!!this.props.headerModalMessage}
+                height={this.state.headerHeight}
+                title={this.props.headerModalMessage}
+                onDone={this.props.onHeaderModalDone}
+                onCancel={this.props.onHeaderModalCancel}
+            />
+        );
     }
 
     render() {
@@ -79,7 +114,8 @@ export default class Header extends Component {
         return (
             <div>
                 {this.renderEditHeader()}
-                <div className={"QueryBuilder-section flex align-center " + this.props.headerClassName}>
+                {this.renderHeaderModal()}
+                <div className={"QueryBuilder-section flex align-center " + this.props.headerClassName} ref="header">
                     <div className="Entity">
                         {titleAndDescription}
                         {attribution}

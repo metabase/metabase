@@ -106,9 +106,9 @@
    {:name "The Apple Pan",                :price 2, :category_id 11, :id 3}
    {:name "Wurstküche",                   :price 2, :category_id 29, :id 4}
    {:name "Brite Spot Family Restaurant", :price 2, :category_id 20, :id 5}]
-  (for [row (take 5 (table-rows-seq datasets/*driver*
-                                    (db/select-one 'Database :id (id))
-                                    (db/select-one 'Table :id (id :venues))))]
+  (for [row (take 5 (sort-by :id (table-rows-seq datasets/*driver*
+                                                 (db/select-one 'Database :id (id))
+                                                 (db/select-one 'RawTable :id (db/select-one-field :raw_table_id 'Table, :id (id :venues))))))]
     (dissoc row :latitude :longitude))) ; different DBs use different precisions for these
 
 ;;; FIELD-PERCENT-URLS
