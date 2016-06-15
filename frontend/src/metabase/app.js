@@ -21,7 +21,6 @@ import "./services";
 import "./icons";
 
 import "./auth/auth.module";
-import "./dashboard/dashboard.module";
 import "./home/home.module";
 import "./pulse/pulse.module";
 import "./query_builder/query_builder.module"
@@ -45,6 +44,8 @@ import * as datamodel from 'metabase/admin/datamodel/reducers';
 import questions from 'metabase/questions/questions';
 import labels from 'metabase/questions/labels';
 import undo from 'metabase/questions/undo';
+import metadata from 'metabase/dashboard/metadata';
+import dashboard from 'metabase/dashboard/dashboard';
 
 import { registerAnalyticsClickListener } from "metabase/lib/analytics";
 
@@ -57,7 +58,6 @@ var Metabase = angular.module('metabase', [
     'metabase.directives',
     'metabase.controllers',
     'metabase.icons',
-    'metabase.dashboard',
     'metabase.home',
     'metabase.pulse',
     'metabase.query_builder',
@@ -76,15 +76,28 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
 
     const route = {
         template: '<div mb-redux-component class="flex flex-column spread" />',
-        controller: ['$scope', '$location', '$route', '$routeParams', 'AppState',
-            function($scope, $location, $route, $routeParams, AppState) {
+        controller: ['$scope', '$location', '$route', '$routeParams', '$rootScope', 'AppState',
+            function($scope, $location, $route, $routeParams, $rootScope, AppState) {
                 $scope.Component = Routes;
-                $scope.props = {};
+                $scope.props = {
+                    onChangeLocation(url) {
+                        $scope.$apply(() => $location.url(url));
+                    },
+                    onChangeLocationSearch(name, value) {
+                        // FIXME: this doesn't seem to work
+                        $scope.$apply(() => $location.search(name, value));
+                    },
+                    onBroadcast(...args) {
+                        $scope.$apply(() => $rootScope.$broadcast(...args));
+                    }
+                };
                 $scope.store = createStoreWithAngularScope($scope, $location, combineReducers({
                     // admin: {
                     //     datamodel
                     // },
                     datamodel: combineReducers(datamodel),
+                    metadata,
+                    dashboard,
                     questions,
                     labels,
                     undo,
@@ -120,6 +133,8 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
             }]
         }
     };
+
+    $routeProvider.when('/dash/:dashboardId', route);
 
     $routeProvider.when('/questions', route);
     $routeProvider.when('/questions/edit/:section', route);

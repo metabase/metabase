@@ -279,7 +279,7 @@
   (binding [*query* outer-query]
     (let [honeysql-form (build-honeysql-form driver outer-query)
           [sql & args]  (sql/honeysql-form->sql+args driver honeysql-form)]
-      {:query  (str "-- " (qp/query->remark outer-query) "\n" sql)
+      {:query  sql
        :params args})))
 
 
@@ -294,8 +294,8 @@
 
 (defn- run-query
   "Run the query itself."
-  [{sql :query, params :params} connection]
-  (let [sql              (hx/unescape-dots sql)
+  [{sql :query, params :params, remark :remark} connection]
+  (let [sql              (str "-- " remark "\n" (hx/unescape-dots sql))
         statement        (into [sql] params)
         [columns & rows] (jdbc/query connection statement, :identifiers identity, :as-arrays? true)]
     {:rows    (or rows [])
@@ -323,12 +323,13 @@
 
 (defn execute-query
   "Process and run a native (raw SQL) QUERY."
-  [driver {:keys [database settings], query :native}]
-  (do-with-try-catch
-    (fn []
-      (let [db-connection (sql/db->jdbc-connection-spec database)]
-        (jdbc/with-db-transaction [transaction-connection db-connection]
-          (do-with-auto-commit-disabled transaction-connection
-            (fn []
-              (maybe-set-timezone! driver settings transaction-connection)
-              (run-query query transaction-connection))))))))
+  [driver {:keys [database settings], query :native, :as outer-query}]
+  (let [query (assoc query :remark (qp/query->remark outer-query))]
+    (do-with-try-catch
+      (fn []
+        (let [db-connection (sql/db->jdbc-connection-spec database)]
+          (jdbc/with-db-transaction [transaction-connection db-connection]
+            (do-with-auto-commit-disabled transaction-connection
+              (fn []
+                (maybe-set-timezone! driver settings transaction-connection)
+                (run-query query transaction-connection)))))))))

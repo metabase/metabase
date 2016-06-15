@@ -12,9 +12,21 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import NightModeIcon from "metabase/components/icons/NightModeIcon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 
+import ParametersPopover from "./parameters/ParametersPopover.jsx";
+import Popover from "metabase/components/Popover.jsx";
+
 import cx from "classnames";
 
 export default class DashboardHeader extends Component {
+
+    constructor(props, context) {
+        super(props, context);
+
+        this.state = {
+            modal: null,
+        };
+    }
+
     static propTypes = {
         dashboard: PropTypes.object.isRequired,
         revisions: PropTypes.object.isRequired,
@@ -32,7 +44,7 @@ export default class DashboardHeader extends Component {
         fetchRevisions: PropTypes.func.isRequired,
         revertToRevision: PropTypes.func.isRequired,
         saveDashboard: PropTypes.func.isRequired,
-        setDashboardAttributes: PropTypes.func.isRequired,
+        setDashboardAttribute: PropTypes.func.isRequired,
         onEditingChange: PropTypes.func.isRequired,
         setRefreshPeriod: PropTypes.func.isRequired,
 
@@ -50,13 +62,6 @@ export default class DashboardHeader extends Component {
 
     onRevert() {
         this.props.fetchDashboard(this.props.dashboard.id);
-    }
-
-    onAttributeChange(attribute, value) {
-        this.props.setDashboardAttributes({
-            id: this.props.dashboard.id,
-            attributes: { [attribute]: value }
-        });
     }
 
     async onSave() {
@@ -121,13 +126,43 @@ export default class DashboardHeader extends Component {
     }
 
     getHeaderButtons() {
-        const { dashboard, isEditing, isFullscreen, isNightMode } = this.props;
+        const { dashboard, parameters, isEditing, isFullscreen, isNightMode } = this.props;
         const isEmpty = !dashboard || dashboard.ordered_cards.length === 0;
         const canEdit = dashboard && dashboard.can_write;
 
         const buttons = [];
 
+        if (isFullscreen && parameters) {
+            buttons.push(...parameters);
+        }
+
         if (isEditing) {
+
+            // Parameters
+            buttons.push(
+                <span>
+                    <Tooltip tooltip="Add a Filter">
+                        <a
+                          key="parameters"
+                          className={cx("text-brand-hover", { "text-brand": this.state.modal == "parameters" })}
+                          title="Parameters"
+                          onClick={() => this.setState({ modal: "parameters" })}
+                        >
+                            <Icon name="funneladd" width="16px" height="16px" />
+                        </a>
+                    </Tooltip>
+
+                    {this.state.modal && this.state.modal === "parameters" &&
+                        <Popover onClose={() => this.setState({modal: false})}>
+                            <ParametersPopover
+                                onAddParameter={this.props.addParameter}
+                                onClose={() => this.setState({modal: false})}
+                            />
+                        </Popover>
+                    }
+                </span>
+            );
+
             buttons.push(
                 <ModalWithTrigger
                     key="history"
@@ -231,7 +266,10 @@ export default class DashboardHeader extends Component {
                 headerButtons={this.getHeaderButtons()}
                 editingTitle="You are editing a dashboard"
                 editingButtons={this.getEditingButtons()}
-                setItemAttributeFn={this.onAttributeChange.bind(this)}
+                setItemAttributeFn={this.props.setDashboardAttribute}
+                headerModalMessage={this.props.isEditingParameter ?
+                    "Select the field that should be filtered for each card" : null}
+                onHeaderModalDone={() => this.props.setEditingParameterId(null)}
             >
             </Header>
         );

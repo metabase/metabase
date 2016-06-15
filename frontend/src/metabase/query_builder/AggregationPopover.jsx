@@ -1,6 +1,6 @@
 import React, { Component, PropTypes } from "react";
 
-import AccordianList from "./AccordianList.jsx";
+import AccordianList from "metabase/components/AccordianList.jsx";
 import FieldList from './FieldList.jsx';
 import QueryDefinitionTooltip from "./QueryDefinitionTooltip.jsx";
 
@@ -123,7 +123,7 @@ export default class AggregationPopover extends Component {
             icon: "table2"
         }];
 
-        // we only want to consider active metrics, with the ONE exception that if the currently selected aggregation is a 
+        // we only want to consider active metrics, with the ONE exception that if the currently selected aggregation is a
         // retired metric then we include it in the list to maintain continuity
         let metrics = tableMetadata.metrics && tableMetadata.metrics.filter((mtrc) => mtrc.is_active === true || (selectedAggregation && selectedAggregation.id === mtrc.id));
         if (metrics && metrics.length > 0) {

@@ -34,7 +34,7 @@
 
 (def DescribeTableFKs
   "Schema for the expected output of `describe-table-fks`."
-  #{{:fk-column-name   schema/Str
-     :dest-table       {:name   schema/Str
-                        :schema (schema/maybe schema/Str)}
-     :dest-column-name schema/Str}})
+  (schema/maybe #{{:fk-column-name   schema/Str
+                   :dest-table       {:name   schema/Str
+                                      :schema (schema/maybe schema/Str)}
+                   :dest-column-name schema/Str}}))

@@ -1,6 +1,7 @@
 (ns metabase.models.dashboard
   (:require [clojure.data :refer [diff]]
             [metabase.db :as db]
+            [metabase.events :as events]
             (metabase.models [dashboard-card :refer [DashboardCard] :as dashboard-card]
                              [interface :as i]
                              [revision :as revision])
@@ -18,6 +19,9 @@
   (db/cascade-delete! 'Revision :model "Dashboard" :model_id id)
   (db/cascade-delete! DashboardCard :dashboard_id id))
 
+(defn- pre-insert [dashboard]
+  (let [defaults {:parameters []}]
+    (merge defaults dashboard)))
 
 (i/defentity Dashboard :report_dashboard)
 
@@ -25,10 +29,43 @@
   i/IEntity
   (merge i/IEntityDefaults
          {:timestamped?       (constantly true)
-          :types              (constantly {:description :clob})
+          :types              (constantly {:description :clob, :parameters :json})
           :can-read?          i/publicly-readable?
           :can-write?         i/publicly-writeable?
-          :pre-cascade-delete pre-cascade-delete}))
+          :pre-cascade-delete pre-cascade-delete
+          :pre-insert         pre-insert}))
+
+
+;;; ## ---------------------------------------- PERSISTENCE FUNCTIONS ----------------------------------------
+
+
+(defn create-dashboard
+  "Create a `Dashboard`"
+  [{:keys [name description parameters public_perms], :as dashboard} user-id]
+  {:pre [(map? dashboard)
+         (u/nil-or-sequence-of-maps? parameters)
+         (integer? user-id)]}
+  (->> (db/insert! Dashboard
+                   :name         name
+                   :description  description
+                   :parameters   (or parameters [])
+                   :public_perms public_perms
+                   :creator_id   user-id)
+       (events/publish-event :dashboard-create)))
+
+(defn update-dashboard
+  "Update a `Dashboard`"
+  [{:keys [id name description parameters], :as dashboard} user-id]
+  {:pre [(map? dashboard)
+         (integer? id)
+         (u/nil-or-sequence-of-maps? parameters)
+         (integer? user-id)]}
+  (db/update-non-nil-keys! Dashboard id
+    :description description
+    :name        name
+    :parameters  parameters)
+  (u/prog1 (Dashboard id)
+    (events/publish-event :dashboard-update (assoc <> :actor_id user-id))))
 
 
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------
