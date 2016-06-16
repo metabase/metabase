@@ -1,4 +1,4 @@
-# Charts with multiple series
+## Charts with multiple series
 
 Data in isolation is rarely all that useful. One of the best ways to add context and clarity when communicating with data is to show data side-by-side with other data. Here are just a few  examples of data that is better together than apart.
 
@@ -7,7 +7,7 @@ Data in isolation is rarely all that useful. One of the best ways to add context
 - New users per day vs. returning users per day.
 - Orders per day from a few different product lines.
 
-## In Metabase there are two main ways to get data side-by-side.
+### In Metabase there are two main ways to get data side-by-side.
 
 1. Combining two existing saved questions that share a common dimension (like time) on a dashboard
 
@@ -17,7 +17,7 @@ e.g. Let me see revenue over time and cost over time together.
 
 e.g. The count of users by region over time.
 
-## Combining two existing saved questions
+### Combining two existing saved questions
 If you already have two or more saved questions you’d like to compare, and they share a dimension, they can be combined on any dashboard. Here’s how:
 
 1. Add a question with a dimension like time or a category to a dashboard. In practice, these will usually be line charts or bar charts.
@@ -40,15 +40,15 @@ Once you have your chart looking how you’d like, hit done and your changes wil
 
 ![multiseriefinished](images/MultiSeriesFinished.png)
 
-### A quick note about SQL based questions.
+#### A quick note about SQL based questions.
 Metabase has less information about SQL based questions, so we cannot guarantee if they can be added reliably. You'll see a little warning sign next to SQL questions to indicate this and when you try adding them just be aware it may not work.
 
-##  Combining scalars
+###  Combining scalars
 If you need to compare flat numbers and get a sense of how they differ, Metabase also lets you turn multiple scalars into a bar chart. To do this, follow the same process outlined above. While editing a dashboard, click “edit data” on the scalar of your choice and then select the other scalars you’d like to see represented on the bar chart.
 
 At Metabase, we use this to create simple funnel visualizations.
 
-## Creating a multi-series visualization in the query builder.
+### Creating a multi-series visualization in the query builder.
 If you’re creating a new question in the query builder, you can also view the result as a multi-series visualization. To do this you’ll need to add two dimensions to your question and use an aggregation that isn’t just “raw data.”
 
 As an example, we might want to see which service is referring the most people to our product this month.
@@ -63,10 +63,10 @@ If we switch the resulting table to a line or bar chart we can now see a multi-s
 
 It’s worth noting that at this time you won’t be able to add another saved question to multi-series visualizations made in this fashion.  Metabase can only visualize up to 10 values of a dimension at once, so you may need to filter the values if you're selecting a field that contains a lot of values like "State."
 
-## Other multiple series tips
+### Other multiple series tips
 - When displaying multiple series it’s important to keep legibility in mind. Combining many series can sometimes decrease the communication value of the data.
 
-## To recap:
+### To recap:
 
 - Existing saved questions can be combined and displayed on dashboards when editing the dashboard.
 - Scalars can be combined to create bar charts and simple funnels
@@ -75,5 +75,7 @@ It’s worth noting that at this time you won’t be able to add another saved q
 Go forth and start letting your data get to know each other.
 
 ---
-## That’s it!
-If you still have questions, or want to share Metabase tips and tricks, head over to our [discussion board](http://discourse.metabase.com/). See you there!
+
+## Next: Getting reports with Pulses
+
+Pulses let you send out a group of saved questions on a schedule via email or Slack. [Get started with Pulses](09-pulses.md).

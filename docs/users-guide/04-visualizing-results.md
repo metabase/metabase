@@ -22,7 +22,10 @@ To change how the answer to your question is displayed, click on the Visualizati
 ![visualizechoices](images/VisualizeChoices.png)
 
 If a particular visualization doesn’t really make sense for your answer, the format option will appear faded in the dropdown menu.  
- 
-Once a question is answered, you can save or download the answer, or add it to a dashboard. 
 
-Learn more about [Sharing Answers](05-sharing-answers.md) next.
+Once a question is answered, you can save or download the answer, or add it to a dashboard.
+
+---
+
+## Next: Sharing and organizing questions
+Now let's learn about [sharing and organizing your saved questions](05-sharing-answers.md).
