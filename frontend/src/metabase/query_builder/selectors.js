@@ -5,6 +5,7 @@ import _ from "underscore";
 import { isCardDirty } from "metabase/lib/card";
 import * as DataGrid from "metabase/lib/data_grid";
 import Query from "metabase/lib/query";
+import { parseFieldTarget } from "metabase/lib/query_time";
 
 
 export const uiControls                = state => state.uiControls;
@@ -32,7 +33,7 @@ export const tables = createSelector(
 	            return db.tables;
 	        }
     	}
-        
+
         return [];
     }
 );
@@ -49,7 +50,7 @@ export const isObjectDetail = createSelector(
 
 		let response = false;
 
-	    // NOTE: we specifically use only the query result here because we don't want the state of the 
+	    // NOTE: we specifically use only the query result here because we don't want the state of the
 	    //       visualization being shown (Object Details) to change as the query/card changes.
 
 	    // "rows" type query w/ an '=' filter against the PK column
@@ -79,7 +80,7 @@ export const isObjectDetail = createSelector(
 	                if (Array.isArray(filter) &&
 	                        filter.length === 3 &&
 	                        filter[0] === "=" &&
-	                        filter[1] === pkField &&
+   	                        parseFieldTarget(filter[1]) === pkField &&
 	                        filter[2] !== null) {
 	                    // well, all of our conditions have passed so we have an object detail query here
 	                    response = true;
