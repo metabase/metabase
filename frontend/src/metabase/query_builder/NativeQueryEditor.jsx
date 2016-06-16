@@ -251,7 +251,7 @@ export default class NativeQueryEditor extends Component {
                                 <ParameterValuePicker
                                     parameter={parameter}
                                     value={this.props.parameterValues[parameter.id]}
-                                    setValue={(v) => this.props.setParameterValue(parameter.id, v)}
+                                    setValue={(v) => this.props.setParameterValue(parameter.id, v)} 
                                 />
                             </div>
                         )}

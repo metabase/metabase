@@ -149,11 +149,13 @@
 
 
 (defn- extract-dates [value report-timezone]
-  (if-not (contains? relative-dates value)
-    ;; absolute date range
-    (absolute-date->range value)
+  (cond
+    ;; no value supplied
+    (nil? value)                     {:start nil, :end nil}
     ;; relative date range
-    (relative-date->range value report-timezone)))
+    (contains? relative-dates value) (relative-date->range value report-timezone)
+    ;; absolute date range
+    :else                            (absolute-date->range value)))
 
 (defn- expand-date-range-param [report-timezone {[target param-name] :target, param-type :type, param-value :value, :as param}]
   (if-not (s/starts-with? param-type "date")
