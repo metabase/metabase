@@ -12,6 +12,7 @@ import GuiQueryEditor from "../GuiQueryEditor.jsx";
 import NativeQueryEditor from "../NativeQueryEditor.jsx";
 import QueryVisualization from "../QueryVisualization.jsx";
 import DataReference from "../dataref/DataReference.jsx";
+import ParameterEditorSidebar from "../parameters/ParameterEditorSidebar.jsx";
 import QueryBuilderTutorial from "../../tutorial/QueryBuilderTutorial.jsx";
 import SavedQuestionIntroModal from "../SavedQuestionIntroModal.jsx";
 
@@ -21,6 +22,7 @@ import {
     originalCard,
     databases,
     queryResult,
+    parameterValues,
     isDirty,
     isObjectDetail,
     tables,
@@ -67,6 +69,7 @@ const mapStateToProps = (state, props) => {
         card:                      card(state),
         originalCard:              originalCard(state),
         query:                     state.card && state.card.dataset_query,  // TODO: EOL, redundant
+        parameterValues:           parameterValues(state),
         databases:                 databases(state),
         tables:                    tables(state),
         tableMetadata:             tableMetadata(state),
@@ -119,7 +122,8 @@ export default class QueryBuilder extends Component {
     }
 
     componentWillReceiveProps(nextProps) {
-        if (nextProps.uiControls.isShowingDataReference !== this.props.uiControls.isShowingDataReference) {
+        if (nextProps.uiControls.isShowingDataReference !== this.props.uiControls.isShowingDataReference ||
+            nextProps.uiControls.isShowingParametersEditor !== this.props.uiControls.isShowingParametersEditor) {
             // when the data reference is toggled we need to trigger a rerender after a short delay in order to
             // ensure that some components are updated after the animation completes (e.g. card visualization)
             window.setTimeout(this.forceUpdateDebounced, 300);
@@ -164,9 +168,10 @@ export default class QueryBuilder extends Component {
             );
         }
 
+        const showDrawer = uiControls.isShowingDataReference || uiControls.isShowingParametersEditor;
         return (
             <div>
-                <div className={cx("QueryBuilder flex flex-column bg-white spread", {"QueryBuilder--showDataReference": uiControls.isShowingDataReference})}>
+                <div className={cx("QueryBuilder flex flex-column bg-white spread", {"QueryBuilder--showSideDrawer": showDrawer})}>
                     <div id="react_qb_header">
                         <QueryHeader {...this.props}/>
                     </div>
@@ -184,8 +189,14 @@ export default class QueryBuilder extends Component {
                     </div>
                 </div>
 
-                <div className="DataReference" id="react_data_reference">
-                    <DataReference {...this.props} closeFn={() => this.props.toggleDataReference()} />
+                <div className="SideDrawer">
+                    { uiControls.isShowingDataReference &&
+                        <DataReference {...this.props} closeFn={() => this.props.toggleDataReference()} />
+                    }
+
+                    { uiControls.isShowingParametersEditor &&
+                        <ParameterEditorSidebar {...this.props} onClose={() => this.props.toggleParametersEditor()} />
+                    }
                 </div>
 
                 { uiControls.isShowingTutorial &&

@@ -9,7 +9,7 @@ import { slugify, stripId } from "metabase/lib/formatting";
 
 import _ from "underscore";
 
-const PARAMETER_OPTIONS: Array<ParameterOption> = [
+export const PARAMETER_OPTIONS: Array<ParameterOption> = [
     {
         type: "date/month-year",
         name: "Month and Year",

@@ -13,6 +13,7 @@ import { formatSQL } from "metabase/lib/formatting";
 import Query from "metabase/lib/query";
 import { createQuery } from "metabase/lib/query";
 import { loadTable } from "metabase/lib/table";
+import Utils from "metabase/lib/utils";
 
 const Metabase = new AngularResourceProxy("Metabase", ["db_list_with_tables", "db_tables", "dataset", "table_query_metadata"]);
 const User = new AngularResourceProxy("User", ["update_qbnewb"]);
@@ -134,6 +135,9 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, () => {
 export const TOGGLE_DATA_REFERENCE = "TOGGLE_DATA_REFERENCE";
 export const toggleDataReference = createAction(TOGGLE_DATA_REFERENCE);
 
+export const TOGGLE_PARAMETERS_EDITOR = "TOGGLE_PARAMETERS_EDITOR";
+export const toggleParametersEditor = createAction(TOGGLE_PARAMETERS_EDITOR);
+
 export const CLOSE_QB_TUTORIAL = "CLOSE_QB_TUTORIAL";
 export const closeQbTutorial = createAction(CLOSE_QB_TUTORIAL, () => {
     MetabaseAnalytics.trackEvent("QueryBuilder", "Tutorial Close");
@@ -248,6 +252,46 @@ export const setCardVisualizationSettings = createThunkAction(SET_CARD_VISUALIZA
     };
 });
 
+export const UPDATE_PARAMETER = "UPDATE_PARAMETER";
+export const updateParameter = createThunkAction(UPDATE_PARAMETER, (parameter) => {
+    return (dispatch, getState) => {
+        const { card, uiControls } = getState();
+
+        let updatedCard = JSON.parse(JSON.stringify(card));
+
+        // when the query changes on saved card we change this into a new query w/ a known starting point
+        if (!uiControls.isEditing && updatedCard.id) {
+            delete updatedCard.id;
+            delete updatedCard.name;
+            delete updatedCard.description;
+        }
+
+        let updateIdx = _.findIndex(updatedCard.parameters, (p) => p.id === parameter.id);
+        updatedCard.parameters[updateIdx] = parameter;
+
+        return updatedCard;
+    };
+});
+
+export const SET_PARAMETER_VALUE = "SET_PARAMETER_VALUE";
+export const setParameterValue = createThunkAction(SET_PARAMETER_VALUE, (parameterId, value) => {
+    return (dispatch, getState) => {
+        let { parameterValues } = getState();
+
+        // always clone before modifying
+        parameterValues = JSON.parse(JSON.stringify(parameterValues));
+
+        // apply this specific value
+        parameterValues = { ...parameterValues, [parameterId]: value};
+
+        // whenever a parameter value is set run the query
+        dispatch(runQuery(null, null, parameterValues));
+
+        // the return value from our action is still just the id/value of the parameter set
+        return {id: parameterId, value};
+    };
+});
+
 
 export const NOTIFY_CARD_CREATED = "NOTIFY_CARD_CREATED";
 export const notifyCardCreatedFn = createThunkAction(NOTIFY_CARD_CREATED, (card) => {
@@ -328,7 +372,8 @@ export const setQuery = createThunkAction(SET_QUERY, (dataset_query) => {
     return (dispatch, getState) => {
         const { card, uiControls } = getState();
 
-        let updatedCard = JSON.parse(JSON.stringify(card));
+        let updatedCard = JSON.parse(JSON.stringify(card)),
+            openParametersEditor = uiControls.isShowingParametersEditor;
 
         // when the query changes on saved card we change this into a new query w/ a known starting point
         if (!uiControls.isEditing && updatedCard.id) {
@@ -339,7 +384,59 @@ export const setQuery = createThunkAction(SET_QUERY, (dataset_query) => {
 
         updatedCard.dataset_query = JSON.parse(JSON.stringify(dataset_query));
 
-        return updatedCard;
+        // special handling for NATIVE cards to automatically detect parameters ... {{varname}}
+        if (Query.isNative(dataset_query) && !_.isEmpty(dataset_query.native.query)) {
+            let variables = [];
+
+            // look for variable usage in the query (like '{{varname}}').  we only allow alphanumeric characters for the variable name
+            // a variable name can optionally end with :start or :end which is not considered part of the actual variable name
+            // expected pattern is like mustache templates, so we are looking for something like {{category}} or {{date:start}}
+            // anything that doesn't match our rule is ignored, so {{&foo!}} would simply be ignored
+            let match, re = /\{\{([A-Za-z0-9]*?)(?:\:start|\:end)*\}\}/g;
+            while((match = re.exec(dataset_query.native.query)) != null) {
+                variables.push(match[1]);
+            }
+
+            // eliminate any duplicates since it's allowed for a user to reference the same variable multiple times
+            variables = _.uniq(variables);
+
+            // if we ended up with any variables in the query then update the card parameters list accordingly
+            if (variables.length > 0 || (updatedCard.parameters && updatedCard.parameters.length > 0)) {
+                let existingVariables = updatedCard.parameters ? updatedCard.parameters.map(p => p.name) : [];
+
+                let newVariables = _.difference(variables, existingVariables);
+                let oldVariables = _.difference(existingVariables, variables);
+
+                let parameters = updatedCard.parameters;
+                if (oldVariables.length === 1 && newVariables.length === 1) {
+                    // renaming
+                    let param = _.find(parameters, p => p.name === oldVariables[0]);
+                    param.name = newVariables[0];
+                } else {
+                    // remove old vars
+                    parameters = _.reject(parameters, p => _.contains(oldVariables, p.name));
+
+                    // create new vars
+                    newVariables.forEach(function (paramName) {
+                        parameters.push({id: Utils.uuid(), target: ["VAR", paramName], label: paramName, type: null});
+                    });
+                }
+
+                updatedCard.parameters = parameters;
+
+                if (newVariables.length > 0) {
+                    openParametersEditor = true;
+                } else if (parameters.length === 0) {
+                    openParametersEditor = false;
+                }
+            }
+        }
+
+        return {
+            card: updatedCard,
+            openParametersEditor
+
+        };
     };
 });
 
@@ -534,7 +631,7 @@ export const setQuerySort = createThunkAction(SET_QUERY_SORT, (column) => {
 
 // runQuery
 export const RUN_QUERY = "RUN_QUERY";
-export const runQuery = createThunkAction(RUN_QUERY, (card, updateUrl=true) => {
+export const runQuery = createThunkAction(RUN_QUERY, (card, updateUrl=true, paramValues) => {
     return async (dispatch, getState) => {
         const state = getState();
 
@@ -547,6 +644,19 @@ export const runQuery = createThunkAction(RUN_QUERY, (card, updateUrl=true) => {
         if (dataset_query.query) {
             // TODO: this needs to be immutable
             dataset_query.query = Query.cleanQuery(dataset_query.query);
+        }
+
+        // apply any parameters, if specified
+        if (card.parameters && card.parameters.length > 0) {
+            let parameterValues = paramValues || state.parameterValues || {};
+            let queryParameters = [];
+            card.parameters.forEach(param => {
+                let parameter = JSON.parse(JSON.stringify(param));
+                parameter.value = parameterValues[param.id];
+                queryParameters.push(parameter);
+            });
+
+            dataset_query.parameters = queryParameters;
         }
 
         if (updateUrl) {

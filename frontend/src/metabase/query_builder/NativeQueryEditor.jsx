@@ -6,6 +6,7 @@ import _ from "underscore";
 
 import DataSelector from './DataSelector.jsx';
 import Icon from "metabase/components/Icon.jsx";
+import ParameterValuePicker from "./parameters/ParameterValuePicker.jsx";
 
 // This should return an object with information about the mode the ACE Editor should use to edit the query.
 // This object should have 2 properties:
@@ -39,6 +40,7 @@ export default class NativeQueryEditor extends Component {
     }
 
     static propTypes = {
+        card: PropTypes.object.isRequired,
         databases: PropTypes.array.isRequired,
         query: PropTypes.object.isRequired,
         setQueryFn: PropTypes.func.isRequired,
@@ -243,6 +245,16 @@ export default class NativeQueryEditor extends Component {
                 <div className="NativeQueryEditor bordered rounded shadowed">
                     <div className="flex">
                         {dataSelectors}
+                        { this.props.card && this.props.card.parameters && this.props.card.parameters.map(parameter =>
+                            <div key={parameter.name} className="pl2 GuiBuilder-section GuiBuilder-data flex align-center">
+                                <span className="GuiBuilder-section-label Query-label">{parameter.label}</span>
+                                <ParameterValuePicker
+                                    parameter={parameter}
+                                    value={this.props.parameterValues[parameter.id]}
+                                    setValue={(v) => this.props.setParameterValue(parameter.id, v)}
+                                />
+                            </div>
+                        )}
                         <a className="Query-label no-decoration flex-align-right flex align-center px2" onClick={this.toggleEditor}>
                             <span className="mx2">{toggleEditorText}</span>
                             <Icon name={toggleEditorIcon} width="20" height="20"/>

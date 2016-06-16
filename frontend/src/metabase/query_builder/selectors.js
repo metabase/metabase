@@ -11,6 +11,7 @@ export const uiControls                = state => state.uiControls;
 
 export const card                      = state => state.card;
 export const originalCard              = state => state.originalCard;
+export const parameterValues           = state => state.parameterValues;
 export const isDirty = createSelector(
 	[card, originalCard],
 	(card, originalCard) => {

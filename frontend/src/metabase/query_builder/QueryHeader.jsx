@@ -257,6 +257,21 @@ export default class QueryHeader extends Component {
             }
         }
 
+        // parameters
+        if (Query.isNative(this.props.query) && this.props.card.parameters && this.props.card.parameters.length > 0) {
+            const parametersButtonClasses = cx('transition-color', {
+                'text-brand': this.props.uiControls.isShowingParametersEditor,
+                'text-brand-hover': !this.props.uiControls.isShowingParametersEditor
+            });
+            buttonSections.push([
+                <Tooltip key="parameterEdititor" tooltip="Parameters">
+                    <a className={parametersButtonClasses}>
+                        <Icon name="gear" width="16px" height="16px" onClick={this.props.toggleParametersEditor}></Icon>
+                    </a>
+                </Tooltip>
+            ]);
+        }
+
         // add to dashboard
         if (!this.props.cardIsNewFn() && !this.props.isEditing) {
             // simply adding an existing saved card to a dashboard, so show the modal to do so

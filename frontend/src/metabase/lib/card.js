@@ -75,6 +75,7 @@ export function serializeCardForUrl(card) {
         description: card.description,
         dataset_query: dataset_query,
         display: card.display,
+        parameters: card.parameters,
         visualization_settings: card.visualization_settings
     };
     return utf8_to_b64url(JSON.stringify(cardCopy));
