@@ -418,7 +418,7 @@ export const setQuery = createThunkAction(SET_QUERY, (dataset_query) => {
 
                     // create new vars
                     newVariables.forEach(function (paramName) {
-                        parameters.push({id: Utils.uuid(), target: ["VAR", paramName], label: paramName, type: null});
+                        parameters.push({id: Utils.uuid(), name: paramName, target: ["VAR", paramName], label: paramName, type: null});
                     });
                 }
 

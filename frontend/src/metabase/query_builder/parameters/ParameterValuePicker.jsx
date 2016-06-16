@@ -31,6 +31,7 @@ export default class ParameterValuePicker extends Component {
 
     determinePickerComponent(type, numValues) {
         switch(type) {
+            case null:                return UnknownWidget;
             case "date/month-year":   return DateMonthYearWidget;
             case "date/quarter-year": return DateQuarterYearWidget;
             case "date/range":        return DateRangeWidget;
@@ -107,3 +108,7 @@ export default class ParameterValuePicker extends Component {
         );
     }
 }
+
+const UnknownWidget = () =>
+    <input type="text" value="No type chosen" disabled={true} />
+UnknownWidget.noPopover = true;
