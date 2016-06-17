@@ -40,7 +40,7 @@
    ;; add sensible constraints for results limits on our query
    (let [query         (assoc body :constraints dataset-query-api-constraints)
          running-times (db/select-field :running_time QueryExecution
-                         :json_query (json/generate-string query)
+                         :query_hash (hash query)
                          {:order-by [[:started_at :desc]]
                           :limit    10})]
      {:average (float (/ (reduce + running-times)
