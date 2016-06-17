@@ -104,7 +104,7 @@
         num-users          (db/select-one-count 'User)]
     [{:title       "Add a database"
       :group       "Get connected"
-      :description "TODO - Write something good here"
+      :description "Connect to your data so your whole team can start to explore."
       :link        "/admin/databases/create"
       :completed   has-dbs?
       :triggered   :always}
