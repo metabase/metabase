@@ -20,5 +20,6 @@ If you click on a field you’re interested in, you’ll see a description of th
 In addition to looking at a table's fields, you can also look at its connections if your table includes any. Connections show up here if there’s a field in the table you’re looking at that’s included in another table. Click on **Connections** (located next to **Field** button) to view the connected tables.
 
 ---
-## Next: Multi series charting
-Next we'll take a look at how to combine what we've learned so far and [visualize multiple series on a chart](09-multi-series-charting.md).
+
+## That’s it!
+If you still have questions, or want to share Metabase tips and tricks, head over to our [discussion board](http://discourse.metabase.com/). See you there!

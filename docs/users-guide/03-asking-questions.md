@@ -146,4 +146,7 @@ To try it out, type the command `select sum(subtotal), created_at from orders gr
 
 Questions asked using SQL can be saved, downloaded, or added to a dashboard just like questions asked using the question builder.
 
+---
+
+## Next: Creating charts
 Once you have an answer to your question, you can now learn more about [visualizing answers](04-visualizing-results.md).
