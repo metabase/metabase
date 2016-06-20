@@ -35,7 +35,7 @@ const isDimensionDimensionMetric = (cols, strict = true) =>
     isMetric(cols[2])
 
 const isDimensionMetricMetric = (cols, strict = true) =>
-    (!strict || cols.length >= 3) &&
+    cols.length >= 3 &&
     isDimension(cols[0]) &&
     cols.slice(1).reduce((acc, col) => acc && isMetric(col), true)
 
