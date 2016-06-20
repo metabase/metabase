@@ -3,7 +3,9 @@
 ## Prereqs
 
 1.  Install XCode.
+
 2.  Run `./bin/build` to build the latest version of the uberjar.
+
 3.  Next, you'll need to run the following commands before building the app:
 
     ```bash
