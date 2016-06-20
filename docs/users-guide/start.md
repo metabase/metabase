@@ -14,7 +14,7 @@
 
 > [Creating dashboards](06-dashboards.md)
 
-> [Tips on creating useful dashboards](07-dashboard-tips.md)
+> [Adding filters to dashboards](07-dashboard-filters.md)
 
 > [Creating charts with multiple series](08-multi-series-charting.md)
 
