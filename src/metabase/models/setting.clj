@@ -250,7 +250,8 @@
    :admin_email           (get :admin-email)
    :report_timezone       (get :report-timezone)
    :timezone_short        (short-timezone-name (get :report-timezone))
-   :has_sample_dataset    (db/exists? 'Database, :is_sample true)})
+   :has_sample_dataset    (db/exists? 'Database, :is_sample true)
+   :google_auth_client_id (get :google-auth-client-id)})
 
 
 ;;; # IMPLEMENTATION

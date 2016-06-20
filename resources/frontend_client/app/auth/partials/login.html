@@ -29,6 +29,10 @@
                     </div>
 
                     <div class="Form-actions p2 Grid Grid--full md-Grid--1of2">
+                        <div class="g-signin2" data-onsuccess="googleLogin"></div>
+                    </div>
+
+                    <div class="Form-actions p2 Grid Grid--full md-Grid--1of2">
                         <button class="Button Grid-cell" ng-class="{'Button--primary': form.$valid}" ng-click="login(email, password, remember_me)" ng-disabled="!form.$valid">
                             Sign in
                         </button>

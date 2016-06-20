@@ -2,6 +2,8 @@ import "./auth.services";
 
 import MetabaseSettings from "metabase/lib/settings";
 
+import { clearGoogleAuthCredentials } from "metabase/lib/auth";
+
 var AuthControllers = angular.module('metabase.auth.controllers', [
     'metabase.auth.services',
     'ipCookie',
@@ -16,6 +18,28 @@ AuthControllers.controller('Login', ['$scope', '$window', '$location', '$timeout
             return re.test(email);
         }
 
+        function onLoginSuccess(newSession) {
+            // set a session cookie
+            AuthUtil.setSession(newSession.id);
+
+            // this is ridiculously stupid.  we have to wait (300ms) for the cookie to actually be set in the browser :(
+            $timeout(function() {
+                AppState.redirectAfterLogin();
+            }, 300);
+        }
+
+        function onLoginError(error) {
+            $scope.$broadcast("form:api-error", error);
+            console.log('error:', error);
+
+            clearGoogleAuthCredentials(); // clear credentials in browser if backend didn't accept them
+
+            // If we see a 428 ("Precondition Required") that means we need to show the "No Metabase account exists for this Google Account" page
+            if (error.status === 428) {
+                console.log('TODO - show "No Metabase account exists for this Google Account" page');
+            }
+        }
+
         $scope.login = function(email, password, remember_me) {
             $scope.$broadcast("form:reset");
 
@@ -27,17 +51,18 @@ AuthControllers.controller('Login', ['$scope', '$window', '$location', '$timeout
             Session.create({
                 'email': email,
                 'password': password
-            }, function (new_session) {
-                // set a session cookie
-                AuthUtil.setSession(new_session.id);
+            }, onLoginSuccess, onLoginError);
+        };
 
-                // this is ridiculously stupid.  we have to wait (300ms) for the cookie to actually be set in the browser :(
-                $timeout(function() {
-                    AppState.redirectAfterLogin();
-                }, 300);
-            }, function (error) {
-                $scope.$broadcast("form:api-error", error);
-            });
+        // TODO -- is there some way we can attach this to $scope instead of $window?
+        $window.googleLogin = function(googleUser) {
+            console.log('googleUser:', googleUser);
+            $window.googleUser = googleUser; // NOCOMMIT
+
+            // OK, now call the backend
+            Session.createWithGoogleAuth({
+                token: googleUser.getAuthResponse().id_token
+            }, onLoginSuccess, onLoginError);
         };
 
         $scope.resetPassword = function() {
@@ -52,7 +77,6 @@ AuthControllers.controller('Login', ['$scope', '$window', '$location', '$timeout
     }
 ]);
 
-
 AuthControllers.controller('Logout', ['$scope', '$location', '$timeout', 'ipCookie', 'Session', function($scope, $location, $timeout, ipCookie, Session) {
 
     // any time we hit this controller just clear out anything session related and move on
@@ -64,8 +88,9 @@ AuthControllers.controller('Logout', ['$scope', '$location', '$timeout', 'ipCook
 
         // this is ridiculously stupid.  we have to wait (300ms) for the cookie to actually be set in the browser :(
         $timeout(function() {
-            // don't actually need to do anything here
             $scope.$emit('appstate:logout', sessionId);
+
+            clearGoogleAuthCredentials();
 
             // only sensible place to go after logout is login page
             $location.path('/auth/login');
