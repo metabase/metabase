@@ -270,7 +270,6 @@ export default class Dashboard extends Component {
 
     // we don't call this initially because DashCards initiate their own fetchCardData
     fetchDashboardCardData(props, clearExisting) {
-        console.log("refreshing card data");
         if (props.dashboard) {
             for (const dashcard of props.dashboard.ordered_cards) {
                 const cards = [dashcard.card].concat(dashcard.series || []);
