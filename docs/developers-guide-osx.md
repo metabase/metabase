@@ -2,23 +2,23 @@
 
 ## Prereqs
 
-Install XCode.
+1.  Install XCode.
+2.  Run `./bin/build` to build the latest version of the uberjar.
+3.  Next, you'll need to run the following commands before building the app:
 
-Next, you'll need to run the following commands before building the app:
-
-```bash
-# Fetch and initialize git submodule
-git submodule update --init
-
-# Install libcurl (needed by WWW::Curl::Simple)
-brew install curl && brew link curl --force
-
-# Install Perl modules used by ./setup and ./release
-sudo cpan install File::Copy::Recursive JSON Readonly String::Util Text::Caml WWW::Curl::Simple
-
-# Copy JRE and uberjar
-./bin/osx-setup
-```
+    ```bash
+   # Fetch and initialize git submodule
+   git submodule update --init
+   
+   # Install libcurl (needed by WWW::Curl::Simple)
+   brew install curl && brew link curl --force
+   
+   # Install Perl modules used by ./setup and ./release
+   sudo cpan install File::Copy::Recursive JSON Readonly String::Util Text::Caml WWW::Curl::Simple
+   
+   # Copy JRE and uberjar
+   ./bin/osx-setup
+   ```
 
 `./bin/osx-setup` will build run commands to build the uberjar for you if needed.
 Run `./bin/osx-setup` again at any time in the future to copy the latest version of the uberjar into the project.
