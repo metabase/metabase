@@ -2,7 +2,9 @@
 
 ## Prereqs
 
-You'll need to run the following commands before building the app:
+Install XCode.
+
+Next, you'll need to run the following commands before building the app:
 
 ```bash
 # Fetch and initialize git submodule
@@ -45,5 +47,5 @@ You'll probably also want an Apple Developer ID Application Certificate in your 
 After that, you are good to go:
 ```bash
 # Bundle entire app, and upload to s3
-./release
+./bin/osx-release
 ```
