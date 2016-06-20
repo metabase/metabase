@@ -43,8 +43,10 @@
                          :query_hash (hash query)
                          {:order-by [[:started_at :desc]]
                           :limit    10})]
-     {:average (float (/ (reduce + running-times)
-                         (count running-times)))}))
+     {:average (if (empty? running-times)
+                   0
+                   (float (/ (reduce + running-times)
+                             (count running-times))))}))
 
 (defendpoint POST "/csv"
   "Execute an MQL query and download the result data as a CSV file."
