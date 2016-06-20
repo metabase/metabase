@@ -22,7 +22,7 @@ export default class HeaderModal extends Component {
         return (
             <div
                 className={cx(className, "absolute top left right bg-brand flex flex-column layout-centered")}
-                style={{ zIndex: 2, height: height, minHeight: 50, transform: `translateY(${isOpen ? initialTop : "-100%"})`, transition: "transform 0.3s cubic-bezier(0.145, -0.005, 1.000, 0.495)" }}
+                style={{ zIndex: 2, height: height, minHeight: 50, transform: `translateY(${isOpen ? initialTop : "-100%"})`, transition: "transform 400ms ease-in-out" }}
             >
                     <h2 className="text-white pb2">{title}</h2>
                     <div className="flex layout-centered">
