@@ -131,6 +131,17 @@ const SECTIONS = [
                 type: "boolean"
             }
         ]
+    },
+    {
+        name: "Single Sign On",
+        settings: [
+            {
+                key: "google-auth-client-id"
+            },
+            {
+                key: "google-auth-auto-create-accounts-domain"
+            }
+        ]
     }
 ];
 

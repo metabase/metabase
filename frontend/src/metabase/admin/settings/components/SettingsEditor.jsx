@@ -9,6 +9,7 @@ import SettingsEmailForm from "./SettingsEmailForm.jsx";
 import SettingsSlackForm from "./SettingsSlackForm.jsx";
 import SettingsSetupList from "./SettingsSetupList.jsx";
 import SettingsUpdatesForm from "./SettingsUpdatesForm.jsx";
+import SettingsSingleSignOnForm from "./SettingsSingleSignOnForm.jsx";
 
 import _ from "underscore";
 import cx from 'classnames';
@@ -103,6 +104,15 @@ export default class SettingsEditor extends Component {
                         elements={section.settings}
                         updateSetting={this.updateSetting}
                         handleChangeEvent={this.handleChangeEvent}
+                    />
+                </div>
+            );
+        } else if (section.name === "Single Sign On") {
+            return (
+                <div className="px2">
+                    <SettingsSingleSignOnForm
+                        elements={section.settings}
+                        updateSetting={this.updateSetting}
                     />
                 </div>
             );
