@@ -36,7 +36,7 @@ AuthControllers.controller('Login', ['$scope', '$window', '$location', '$timeout
 
             // If we see a 428 ("Precondition Required") that means we need to show the "No Metabase account exists for this Google Account" page
             if (error.status === 428) {
-                console.log('TODO - show "No Metabase account exists for this Google Account" page');
+                $location.path('/auth/google_no_mb_account');
             }
         }
 
@@ -106,7 +106,7 @@ AuthControllers.controller('ForgotPassword', ['$scope', '$cookies', '$location',
 
     $scope.sentNotification = false;
 
-    $scope.emailConfigured = MetabaseSettings.isEmailConfigured()
+    $scope.emailConfigured = MetabaseSettings.isEmailConfigured();
 
     $scope.sendResetNotification = function(email) {
         Session.forgot_password({

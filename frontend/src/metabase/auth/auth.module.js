@@ -26,4 +26,8 @@ Auth.config(['$routeProvider', function($routeProvider) {
     $routeProvider.when('/auth/password_reset_token_expired', {
         templateUrl: '/app/auth/partials/password_reset_token_expired.html'
     });
+
+    $routeProvider.when('/auth/google_no_mb_account', {
+        templateUrl: '/app/auth/partials/google_no_mb_account.html'
+    });
 }]);
