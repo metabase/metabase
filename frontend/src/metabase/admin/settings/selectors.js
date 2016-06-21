@@ -1,12 +1,7 @@
-import "metabase/services";
-
 import _ from "underscore";
+import { createSelector } from "reselect";
+import MetabaseSettings from "metabase/lib/settings";
 
-import SettingsEditor from './components/SettingsEditor.jsx';
-import MetabaseSettings from 'metabase/lib/settings';
-
-
-var SettingsAdminControllers = angular.module('metabase.admin.settings.controllers', ['metabase.services']);
 
 const SECTIONS = [
     {
@@ -134,37 +129,24 @@ const SECTIONS = [
     }
 ];
 
-SettingsAdminControllers.controller('SettingsEditor', ['$scope', '$location', 'Settings', 'Email', 'Slack', 'AppState', 'settings',
-    function($scope, $location, Settings, Email, Slack, AppState, settings) {
-        $scope.SettingsEditor = SettingsEditor;
+export const getSettings = state => state.settings;
 
-        if ('section' in $location.search()) {
-            $scope.initialSection = _.findIndex(SECTIONS, function(v) {
-                return v.name === $location.search().section;
-            });
-        }
+export const getNewVersionAvailable = createSelector(
+    getSettings,
+    (settings) => {
+        return MetabaseSettings.newVersionAvailable(settings);
+    }
+);
 
-        $scope.updateSetting = async function(setting) {
-            await Settings.put({ key: setting.key }, setting).$promise;
-            AppState.refreshSiteSettings();
-        };
-
-        $scope.updateEmailSettings = async function(settings) {
-            await Email.updateSettings(settings).$promise;
-            AppState.refreshSiteSettings();
-        }
-
-        $scope.updateSlackSettings = async function(settings) {
-            await Slack.updateSettings(settings).$promise;
-            AppState.refreshSiteSettings();
-        }
-
-        $scope.sendTestEmail = async function(settings) {
-            await Email.sendTest().$promise;
+export const getSections = createSelector(
+    getSettings,
+    (settings) => {
+        if (!settings || _.isEmpty(settings)) {
+            return [];
         }
 
         let settingsByKey = _.groupBy(settings, 'key');
-        $scope.sections = SECTIONS.map(function(section) {
+        return SECTIONS.map(function(section) {
             let sectionSettings = section.settings.map(function(setting) {
                 const apiSetting = settingsByKey[setting.key][0];
                 if (apiSetting) {
@@ -177,7 +159,17 @@ SettingsAdminControllers.controller('SettingsEditor', ['$scope', '$location', 'S
             updatedSection.settings = sectionSettings;
             return updatedSection;
         });
-
-        $scope.settings = settings;
     }
-]);
+);
+
+export const getActiveSection = createSelector(
+    state => state.activeSection,
+    getSections,
+    (section, sections) => {
+        if (sections) {
+            return _.findWhere(sections, {name: section});
+        } else {
+            return null;
+        }
+    }
+);
