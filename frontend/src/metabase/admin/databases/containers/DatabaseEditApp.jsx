@@ -1,23 +1,47 @@
 import React, { Component, PropTypes } from "react";
-
-import DeleteDatabaseModal from "./DeleteDatabaseModal.jsx";
-import DatabaseEditForms from "./DatabaseEditForms.jsx";
+import { connect } from "react-redux";
+import MetabaseSettings from "metabase/lib/settings";
+import DeleteDatabaseModal from "../components/DeleteDatabaseModal.jsx";
+import DatabaseEditForms from "../components/DatabaseEditForms.jsx";
 
 import ActionButton from "metabase/components/ActionButton.jsx";
 import Breadcrumbs from "metabase/components/Breadcrumbs.jsx"
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 
-export default class DatabaseEdit extends Component {
+import {
+    getEditingDatabase,
+    getFormState
+} from "../selectors";
+import * as databaseActions from "../database";
+
+
+const mapStateToProps = (state, props) => {
+    return {
+        database:    getEditingDatabase(state),
+        formState:   getFormState(state)
+    }
+}
+
+const mapDispatchToProps = {
+    ...databaseActions
+}
+
+@connect(mapStateToProps, mapDispatchToProps)
+export default class DatabaseEditApp extends Component {
     static propTypes = {
         database: PropTypes.object,
-        details: PropTypes.object,
-        sync: PropTypes.func.isRequired,
-        delete: PropTypes.func.isRequired,
-        save: PropTypes.func.isRequired
+        syncDatabase: PropTypes.func.isRequired,
+        deleteDatabase: PropTypes.func.isRequired,
+        saveDatabase: PropTypes.func.isRequired
     };
+
+    componentWillMount() {
+        this.props.initializeDatabase(this.props.databaseId);
+    }
 
     render() {
         let { database } = this.props;
+
         return (
             <div className="wrapper">
                 <Breadcrumbs crumbs={[
@@ -27,7 +51,15 @@ export default class DatabaseEdit extends Component {
                 <section className="Grid Grid--gutters Grid--2-of-3">
                     <div className="Grid-cell">
                         <div className="Form-new bordered rounded shadowed">
-                            <DatabaseEditForms {...this.props} />
+                            <DatabaseEditForms
+                                database={database}
+                                details={database ? database.details : null}
+                                engines={MetabaseSettings.get('engines')}
+                                hiddenFields={{ssl: true}}
+                                formState={this.props.formState}
+                                selectEngine={this.props.selectEngine}
+                                save={this.props.saveDatabase}
+                            />
                         </div>
                     </div>
 
@@ -38,7 +70,7 @@ export default class DatabaseEdit extends Component {
                                 <h3>Actions</h3>
                                 <div className="Actions-group">
                                     <ActionButton
-                                        actionFn={() => this.props.sync()}
+                                        actionFn={() => this.props.syncDatabase(database.id)}
                                         className="Button"
                                         normalText="Sync"
                                         activeText="Starting…"
@@ -57,7 +89,7 @@ export default class DatabaseEdit extends Component {
                                         <DeleteDatabaseModal
                                             database={database}
                                             onClose={() => this.refs.deleteDatabaseModal.toggle()}
-                                            onDelete={() => this.props.delete(database.id)}
+                                            onDelete={() => this.props.deleteDatabase(database.id, true)}
                                         />
                                     </ModalWithTrigger>
                                 </div>
