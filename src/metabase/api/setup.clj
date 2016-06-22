@@ -104,7 +104,7 @@
         num-users          (db/select-one-count 'User)]
     [{:title       "Add a database"
       :group       "Get connected"
-      :description "TODO - Write something good here"
+      :description "Connect to your data so your whole team can start to explore."
       :link        "/admin/databases/create"
       :completed   has-dbs?
       :triggered   :always}
@@ -138,7 +138,7 @@
       :group       "Curate your data"
       :description "Have a lot of saved questions in Metabase? Create labels to help manage them and add context."
       :link        "/questions/all"
-      :completed   (not has-labels?)
+      :completed   has-labels?
       :triggered   (>= num-cards 30)}
      {:title       "Create metrics"
       :group       "Curate your data"
@@ -151,13 +151,7 @@
       :description "Keep everyone on the same page by creating canonnical sets of filters anyone can use while asking questions."
       :link        "/admin/datamodel/database"
       :completed   has-segments?
-      :triggered   (>= num-cards 30)}
-     {:title       "Create a getting started guide"
-      :group       "Curate your data"
-      :description "Have a lot of data in Metabase? A getting started guide can help your team find their way around."
-      :completed   false                               ; TODO - how do we determine this?
-      :triggered   (and (>= num-cards 10)
-                        (>= num-users 5))}]))
+      :triggered   (>= num-cards 30)}]))
 
 (defn- add-next-step-info
   "Add `is_next_step` key to all the STEPS from `admin-checklist`.
