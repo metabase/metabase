@@ -16,22 +16,6 @@ export default class DatabaseEditForms extends Component {
         formState: PropTypes.object
     };
 
-    static defaultProps = {
-        formSuccess: null,
-        formError: null
-    };
-
-    async detailsCaptured(database) {
-        this.setState({ formError: null, formSuccess: null })
-        try {
-            await this.props.save({ ...database, id: this.props.database.id }, database.details);
-            // this object format is what FormMessage expects:
-            this.setState({ formSuccess: { data: { message: "Successfully saved!" }}});
-        } catch (error) {
-            this.setState({ formError: error })
-        }
-    }
-
     render() {
         let { database, details, hiddenFields, engines, formState: { formError, formSuccess } } = this.props;
 
@@ -58,7 +42,7 @@ export default class DatabaseEditForms extends Component {
                               formError={formError}
                               formSuccess={formSuccess}
                               hiddenFields={hiddenFields}
-                              submitFn={(database) => this.detailsCaptured(database)}
+                              submitFn={(database) => this.props.save({ ...database, id: this.props.database.id }, database.details)}
                               submitButtonText={'Save'}>
                           </DatabaseDetailsForm>
                           : null }
