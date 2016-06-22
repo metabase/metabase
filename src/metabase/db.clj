@@ -42,11 +42,6 @@
                                   ;; if we don't have an absolute path then make sure we start from "user.dir"
                                   [(System/getProperty "user.dir") "/" db-file-name options]))))))
 
-(defn- db-type
-  "The type of backing DB used to run Metabase. `:h2`, `:mysql`, or `:postgres`."
-  ^clojure.lang.Keyword []
-  (config/config-kw :mb-db-type))
-
 (defn parse-connection-string
   "Parse a DB connection URI like `postgres://cam@localhost.com:5432/cams_cool_db?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory` and return a broken-out map."
   [uri]
@@ -61,11 +56,20 @@
                    codec/form-decode
                    walk/keywordize-keys))))
 
+(def ^:private connection-string-details
+  (delay (when-let [uri (config/config-str :mb-db-connection-uri)]
+           (parse-connection-string uri))))
+
+(defn- db-type
+  "The type of backing DB used to run Metabase. `:h2`, `:mysql`, or `:postgres`."
+  ^clojure.lang.Keyword []
+  (or (:type @connection-string-details)
+      (config/config-kw :mb-db-type)))
+
 (def db-connection-details
   "Connection details that can be used when pretending the Metabase DB is itself a `Database`
    (e.g., to use the Generic SQL driver functions on the Metabase DB itself)."
-  (delay (or (when-let [uri (config/config-str :mb-db-connection-uri)]
-               (parse-connection-string uri))
+  (delay (or @connection-string-details
              (case (db-type)
                :h2       {:type     :h2                               ; TODO - we probably don't need to specifc `:type` here since we can just call (db-type)
                           :db       @db-file}

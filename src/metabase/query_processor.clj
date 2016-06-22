@@ -570,9 +570,11 @@
   [query {:keys [executed_by]}]
   {:pre [(integer? executed_by)]}
   (let [query-uuid      (.toString (java.util.UUID/randomUUID))
+        query-hash      (hash query)
         query-execution {:uuid              query-uuid
                          :executor_id       executed_by
                          :json_query        query
+                         :query_hash        query-hash
                          :query_id          nil
                          :version           0
                          :status            :starting
@@ -588,7 +590,7 @@
                          :start_time_millis (System/currentTimeMillis)}
         query           (assoc query :info {:executed-by executed_by
                                             :uuid        query-uuid
-                                            :query-hash  (hash query)
+                                            :query-hash  query-hash
                                             :query-type  (if (mbql-query? query) "MBQL" "native")})]
     (try
       (let [result (process-query query)]
