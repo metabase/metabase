@@ -48,7 +48,6 @@ QueryBuilderModule.controller('QB', ['$scope', '$rootScope', '$location', '$rout
                 $rootScope.$broadcast(eventName, value);
             },
             onChangeLocation: function(url) {
-                console.log("changing location");
                 $scope.$apply(() => $location.url(url));
             }
         };
