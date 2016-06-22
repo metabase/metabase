@@ -1,27 +1,25 @@
 import React, { Component, PropTypes } from "react";
-
+import cx from "classnames";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 import DatabaseDetailsForm from "metabase/components/DatabaseDetailsForm.jsx";
 
-import cx from "classnames";
 
 export default class DatabaseEditForms extends Component {
-    constructor(props, context) {
-        super(props, context);
-        this.state = {
-            formSuccess: null,
-            formError: null
-        };
-    }
 
     static propTypes = {
         database: PropTypes.object,
         details: PropTypes.object,
         engines: PropTypes.object.isRequired,
         hiddenFields: PropTypes.object,
-        save: PropTypes.func.isRequired
+        selectEngine: PropTypes.func.isRequired,
+        save: PropTypes.func.isRequired,
+        formState: PropTypes.object
     };
-    static defaultProps = {};
+
+    static defaultProps = {
+        formSuccess: null,
+        formError: null
+    };
 
     async detailsCaptured(database) {
         this.setState({ formError: null, formSuccess: null })
@@ -35,8 +33,7 @@ export default class DatabaseEditForms extends Component {
     }
 
     render() {
-        let { database, details, hiddenFields, engines } = this.props;
-        let { formError, formSuccess } = this.state;
+        let { database, details, hiddenFields, engines, formState: { formError, formSuccess } } = this.props;
 
         let errors = {};
         return (
@@ -61,7 +58,7 @@ export default class DatabaseEditForms extends Component {
                               formError={formError}
                               formSuccess={formSuccess}
                               hiddenFields={hiddenFields}
-                              submitFn={this.detailsCaptured.bind(this)}
+                              submitFn={(database) => this.detailsCaptured(database)}
                               submitButtonText={'Save'}>
                           </DatabaseDetailsForm>
                           : null }
