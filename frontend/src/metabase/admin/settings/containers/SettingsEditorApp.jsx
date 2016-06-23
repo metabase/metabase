@@ -1,48 +1,59 @@
 import React, { Component, PropTypes } from "react";
-
+import { connect } from "react-redux";
 import MetabaseAnalytics from "metabase/lib/analytics";
-import MetabaseSettings from "metabase/lib/settings";
 
-import SettingsHeader from "./SettingsHeader.jsx";
-import SettingsSetting from "./SettingsSetting.jsx";
-import SettingsEmailForm from "./SettingsEmailForm.jsx";
-import SettingsSlackForm from "./SettingsSlackForm.jsx";
-import SettingsSetupList from "./SettingsSetupList.jsx";
-import SettingsUpdatesForm from "./SettingsUpdatesForm.jsx";
+import SettingsHeader from "../components/SettingsHeader.jsx";
+import SettingsSetting from "../components/SettingsSetting.jsx";
+import SettingsEmailForm from "../components/SettingsEmailForm.jsx";
+import SettingsSlackForm from "../components/SettingsSlackForm.jsx";
+import SettingsSetupList from "../components/SettingsSetupList.jsx";
+import SettingsUpdatesForm from "../components/SettingsUpdatesForm.jsx";
 
 import _ from "underscore";
 import cx from 'classnames';
 
-export default class SettingsEditor extends Component {
+
+import {
+    getSettings,
+    getSections,
+    getActiveSection,
+    getNewVersionAvailable
+} from "../selectors";
+import * as settingsActions from "../settings";
+
+
+const mapStateToProps = (state, props) => {
+  return {
+      settings:            getSettings(state),
+      sections:            getSections(state),
+      activeSection:       getActiveSection(state),
+      newVersionAvailable: getNewVersionAvailable(state)
+  }
+}
+
+const mapDispatchToProps = {
+    ...settingsActions
+}
+
+@connect(mapStateToProps, mapDispatchToProps)
+export default class SettingsEditorApp extends Component {
     constructor(props, context) {
         super(props, context);
         this.handleChangeEvent = this.handleChangeEvent.bind(this);
-        this.selectSection = this.selectSection.bind(this);
         this.updateSetting = this.updateSetting.bind(this);
-
-        this.state = {
-            currentSection: 0
-        };
     }
 
     static propTypes = {
-        initialSection: PropTypes.number,
-        sections: PropTypes.object.isRequired,
+        sections: PropTypes.array.isRequired,
+        activeSection: PropTypes.object.isRequired,
         updateSetting: PropTypes.func.isRequired,
         updateEmailSettings: PropTypes.func.isRequired,
+        updateSlackSettings: PropTypes.func.isRequired,
         sendTestEmail: PropTypes.func.isRequired
     };
 
     componentWillMount() {
-        if (this.props.initialSection) {
-            this.setState({
-                currentSection: this.props.initialSection
-            });
-        }
-    }
-
-    selectSection(section) {
-        this.setState({ currentSection: section });
+        this.props.initializeSettings();
     }
 
     updateSetting(setting, value) {
@@ -64,7 +75,9 @@ export default class SettingsEditor extends Component {
     }
 
     renderSettingsPane() {
-        let section = this.props.sections[this.state.currentSection];
+        if (!this.props.activeSection) return null;
+
+        let section = this.props.activeSection; // this.props.sections[this.state.currentSection];
 
         if (section.name === "Email") {
             return (
@@ -120,14 +133,16 @@ export default class SettingsEditor extends Component {
     }
 
     renderSettingsSections() {
-        const sections = _.map(this.props.sections, (section, idx) => {
+        const { sections, activeSection, selectSection, newVersionAvailable } = this.props;
+
+        const renderedSections = _.map(sections, (section, idx) => {
             const classes = cx("AdminList-item", "flex", "align-center", "justify-between", "no-decoration", {
-                "selected": this.state.currentSection === idx
+                "selected": activeSection && section.name === activeSection.name // this.state.currentSection === idx
             });
 
             // if this is the Updates section && there is a new version then lets add a little indicator
             let newVersionIndicator;
-            if (section.name === "Updates" && MetabaseSettings.newVersionAvailable(this.props.settings)) {
+            if (section.name === "Updates" && newVersionAvailable) {
                 newVersionIndicator = (
                     <span style={{padding: "4px 8px 4px 8px"}} className="bg-brand rounded text-white text-bold h6">1</span>
                 );
@@ -135,7 +150,7 @@ export default class SettingsEditor extends Component {
 
             return (
                 <li key={section.name}>
-                    <a href="#" className={classes} onClick={this.selectSection.bind(null, idx)}>
+                    <a href="#" className={classes} onClick={() => selectSection(section.name)}>
                         <span>{section.name}</span>
                         {newVersionIndicator}
                     </a>
@@ -146,7 +161,7 @@ export default class SettingsEditor extends Component {
         return (
             <div className="MetadataEditor-table-list AdminList flex-no-shrink">
                 <ul className="AdminList-items pt1">
-                    {sections}
+                    {renderedSections}
                 </ul>
             </div>
         );

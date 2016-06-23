@@ -1,19 +1,43 @@
 import React, { Component, PropTypes } from "react";
-
-import CreatedDatabaseModal from "./CreatedDatabaseModal.jsx";
-import DeleteDatabaseModal from "./DeleteDatabaseModal.jsx";
-
+import { connect } from "react-redux";
+import cx from "classnames";
+import MetabaseSettings from "metabase/lib/settings";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 
-import cx from "classnames";
+import CreatedDatabaseModal from "../components/CreatedDatabaseModal.jsx";
+import DeleteDatabaseModal from "../components/DeleteDatabaseModal.jsx";
 
+import {
+    getDatabasesSorted,
+    hasSampleDataset
+} from "../selectors";
+import * as databaseActions from "../database";
+
+
+const mapStateToProps = (state, props) => {
+  return {
+      databases:            getDatabasesSorted(state),
+      hasSampleDataset:     hasSampleDataset(state),
+      engines:              MetabaseSettings.get('engines')
+  }
+}
+
+const mapDispatchToProps = {
+    ...databaseActions
+}
+
+@connect(mapStateToProps, mapDispatchToProps)
 export default class DatabaseList extends Component {
     static propTypes = {
         databases: PropTypes.array,
         hasSampleDataset: PropTypes.bool,
         engines: PropTypes.object
     };
+
+    componentWillMount() {
+        this.props.fetchDatabases();
+    }
 
     render() {
         let { databases, hasSampleDataset, created, engines } = this.props;
@@ -52,7 +76,7 @@ export default class DatabaseList extends Component {
                                                 <DeleteDatabaseModal
                                                     database={database}
                                                     onClose={() => this.refs["deleteDatabaseModal_"+database.id].close()}
-                                                    onDelete={() => this.props.delete(database.id)}
+                                                    onDelete={() => this.props.deleteDatabase(database.id)}
                                                 />
                                             </ModalWithTrigger>
                                         </td>
@@ -71,7 +95,7 @@ export default class DatabaseList extends Component {
                     { !hasSampleDataset ?
                         <div className="pt4">
                             <span className={cx("p2 text-italic", {"border-top": databases && databases.length > 0})}>
-                                <a className="text-grey-2 text-brand-hover no-decoration" href="" onClick={this.props.addSampleDataset}>Bring the sample dataset back</a>
+                                <a className="text-grey-2 text-brand-hover no-decoration" href="" onClick={() => this.props.addSampleDataset()}>Bring the sample dataset back</a>
                             </span>
                         </div>
                     : null }
