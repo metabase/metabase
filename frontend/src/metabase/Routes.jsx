@@ -12,6 +12,8 @@ import EditLabels from "metabase/questions/containers/EditLabels.jsx";
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp.jsx";
 import PulseListApp from "metabase/pulse/containers/PulseListApp.jsx";
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder.jsx";
+import SetupApp from "metabase/setup/containers/SetupApp.jsx";
+import UserSettingsApp from "metabase/user/containers/UserSettingsApp.jsx";
 
 // admin containers
 import DatabaseListApp from "metabase/admin/databases/containers/DatabaseListApp.jsx";
@@ -76,6 +78,10 @@ export default class Routes extends Component {
                     <Route path=":section" component={EntityList} />
                     <Route path=":section/:slug" component={EntityList} />
                 </Route>
+
+                <Route path="/setup" component={this._forwardProps(SetupApp, ["setSessionFn"])} />
+
+                <Route path="/user/edit_current" component={UserSettingsApp} />
 
                 <Route path="/*"/>
             </ReduxRouter>

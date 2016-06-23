@@ -22,8 +22,6 @@ import "./icons";
 
 import "./auth/auth.module";
 import "./query_builder/query_builder.module"
-import "./setup/setup.module";
-import "./user/user.module";
 
 
 import { registerAnalyticsClickListener } from "metabase/lib/analytics";
@@ -53,7 +51,9 @@ import * as pulse from "metabase/pulse/reducers";
 import * as qb from "metabase/query_builder/reducers";
 import questions from "metabase/questions/questions";
 import settings from "metabase/admin/settings/settings";
+import * as setup from "metabase/setup/reducers";
 import undo from "metabase/questions/undo";
+import * as user from "metabase/user/reducers";
 import { currentUser } from "metabase/user";
 
 import { DEBUG } from "metabase/lib/debug";
@@ -74,7 +74,9 @@ const reducers = combineReducers({
     pulse: combineReducers(pulse),
     qb: combineReducers(qb),
     questions,
+    setup: combineReducers(setup),
     undo,
+    user: combineReducers(user),
 
     // admin reducers
     databases,
@@ -104,9 +106,7 @@ var Metabase = angular.module('metabase', [
     'metabase.directives',
     'metabase.controllers',
     'metabase.icons',
-    'metabase.query_builder',
-    'metabase.setup',
-    'metabase.user',
+    'metabase.query_builder'
 ]);
 Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider, $locationProvider) {
     $locationProvider.html5Mode({
@@ -116,8 +116,8 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
 
     const route = {
         template: '<div mb-redux-component class="flex flex-column spread" />',
-        controller: ['$scope', '$location', '$route', '$routeParams', '$rootScope', 'AppState',
-            function($scope, $location, $route, $routeParams, $rootScope, AppState) {
+        controller: ['$scope', '$location', '$route', '$routeParams', '$rootScope', '$timeout', 'ipCookie', 'AppState',
+            function($scope, $location, $route, $routeParams, $rootScope, $timeout, ipCookie, AppState) {
                 $scope.Component = Routes;
                 $scope.props = {
                     onChangeLocation(url) {
@@ -132,6 +132,21 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
                     },
                     refreshSiteSettings() {
                         $scope.$apply(() => AppState.refreshSiteSettings());
+                    },
+                    setSessionFn(sessionId) {
+                        // TODO - this session cookie code needs to be somewhere easily reusable
+                        var isSecure = ($location.protocol() === "https") ? true : false;
+                        ipCookie('metabase.SESSION_ID', sessionId, {
+                            path: '/',
+                            expires: 14,
+                            secure: isSecure
+                        });
+
+                        // send a login notification event
+                        $scope.$emit('appstate:login', sessionId);
+
+                        // this is ridiculously stupid.  we have to wait (300ms) for the cookie to actually be set in the browser :(
+                        return $timeout(function(){}, 1000);
                     }
                 };
                 $scope.store = createMetabaseStore(reducers, {currentUser: AppState.model.currentUser});
@@ -218,6 +233,10 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
     $routeProvider.when('/questions/edit/:section', route);
     $routeProvider.when('/questions/:section', route);
     $routeProvider.when('/questions/:section/:slug', route);
+
+    $routeProvider.when('/setup/', { ...route, template: '<div mb-redux-component class="full-height" />' });
+
+    $routeProvider.when('/user/edit_current', route);
 
 
     $routeProvider.when('/unauthorized/', {
