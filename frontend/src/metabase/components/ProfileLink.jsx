@@ -6,6 +6,7 @@ import _ from "underscore";
 import MetabaseSettings from "metabase/lib/settings";
 import Modal from "metabase/components/Modal.jsx";
 import Logs from "metabase/components/Logs.jsx";
+import Tooltip from "metabase/components/Tooltip.jsx";
 
 import UserAvatar from './UserAvatar.jsx';
 import Icon from './Icon.jsx';
@@ -132,10 +133,12 @@ export default class ProfileLink extends Component {
                                     <LogoIcon width={48} height={48} />
                                 </div>
                                 <h2 style={{fontSize: "1.75em"}} className="text-dark">Thanks for using Metabase!</h2>
-                                <p className="pt2">
-                                    <h3 className="text-dark">You're on version {tag}</h3>
-                                    <span className="text-grey-3 text-bold">built on {date}</span>
-                                </p>
+                                <Tooltip tooltip={<pre className="px2">{JSON.stringify(MetabaseSettings.get('version'), null, 2)}</pre>}>
+                                    <div className="pt2">
+                                        <h3 className="text-dark">You're on version {tag}</h3>
+                                        <p className="text-grey-3 text-bold mt1">built on {date}</p>
+                                    </div>
+                                </Tooltip>
                             </div>
                             <div style={{borderWidth: "2px"}} className="p2 h5 text-centered text-grey-3 border-top">
                                 <span className="block"><span className="text-bold">Metabase</span> is a Trademark of Metabase, Inc</span>
