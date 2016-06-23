@@ -13,6 +13,11 @@ export default class SettingsSingleSignOnForm extends Component {
         this.onCheckboxClicked = this.onCheckboxClicked.bind(this);
     }
 
+    static propTypes = {
+        elements: PropTypes.array,
+        updateSetting: PropTypes.func.isRequired
+    };
+
     componentWillMount() {
         let { elements } = this.props;
 
@@ -31,8 +36,7 @@ export default class SettingsSingleSignOnForm extends Component {
             }
         });
 
-        console.log('updateClientID:', newValue);
-        // TODO - Save updated setting
+        this.props.updateSetting(this.state.clientID, newValue);
     }
 
     updateDomain(newValue) {
@@ -44,8 +48,7 @@ export default class SettingsSingleSignOnForm extends Component {
             }
         });
 
-        console.log('updateDomain:', newValue);
-        // TODO - Save updated setting
+        this.props.updateSetting(this.state.domain, newValue);
     }
 
     onCheckboxClicked() {
@@ -61,8 +64,6 @@ export default class SettingsSingleSignOnForm extends Component {
     }
 
     render() {
-        console.log('render()!');
-
         return (
             <form noValidate>
                 <div className="px2"
@@ -77,7 +78,8 @@ export default class SettingsSingleSignOnForm extends Component {
                         className="SettingsInput AdminInput bordered rounded h3"
                         type="text"
                         value={this.state.clientID.value}
-                        onBlurChange={this.updateClientID}
+                        placeholder="534278061337-lrsutnnp2g06ltqoql6f1p2njk8h2b4se.apps.googleusercontent.com"
+                        onBlurChange={(event) => this.updateClientID(event.target.value)}
                     />
                     <div className="py3">
                         <CheckBox

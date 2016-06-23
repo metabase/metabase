@@ -54,11 +54,10 @@ AuthControllers.controller('Login', ['$scope', '$window', '$location', '$timeout
             }, onLoginSuccess, onLoginError);
         };
 
+        $scope.enableGoogleAuth = MetabaseSettings.enableGoogleAuth();
+
         // TODO -- is there some way we can attach this to $scope instead of $window?
         $window.googleLogin = function(googleUser) {
-            console.log('googleUser:', googleUser);
-            $window.googleUser = googleUser; // NOCOMMIT
-
             // OK, now call the backend
             Session.createWithGoogleAuth({
                 token: googleUser.getAuthResponse().id_token

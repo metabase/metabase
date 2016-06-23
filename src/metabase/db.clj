@@ -21,7 +21,6 @@
            liquibase.Liquibase
            (liquibase.database DatabaseFactory Database)
            liquibase.database.jvm.JdbcConnection
-           liquibase.exception.DatabaseException
            liquibase.resource.ClassLoaderResourceAccessor))
 
 ;; ## DB FILE, JDBC/KORMA DEFINITONS
@@ -109,22 +108,21 @@
    *  `:release-locks` - Manually release migration locks left by an earlier failed migration.
                          (This shouldn't be necessary now that we run migrations inside a transaction,
                          but is available just in case)."
-  [db-details direction]
-  (try
-    (jdbc/with-db-transaction [conn (jdbc-details db-details)]
-      (let [^Database database (-> (DatabaseFactory/getInstance)
-                                   (.findCorrectDatabaseImplementation (JdbcConnection. (jdbc/get-connection conn))))
-            ^Liquibase liquibase (Liquibase. changelog-file (ClassLoaderResourceAccessor.) database)]
-        (case direction
-          :up            (.update liquibase "")
-          :down          (.rollback liquibase 10000 "")
-          :down-one      (.rollback liquibase 1 "")
-          :print         (let [writer (StringWriter.)]
-                           (.update liquibase "" writer)
-                           (.toString writer))
-          :release-locks (.forceReleaseLocks liquibase))))
-    (catch Throwable e
-      (throw (DatabaseException. e)))))
+  ([direction]
+   (migrate @db-connection-details direction))
+  ([db-details direction]
+   (jdbc/with-db-transaction [conn (jdbc-details db-details)]
+     (let [^Database database (-> (DatabaseFactory/getInstance)
+                                  (.findCorrectDatabaseImplementation (JdbcConnection. (jdbc/get-connection conn))))
+           ^Liquibase liquibase (Liquibase. changelog-file (ClassLoaderResourceAccessor.) database)]
+       (case direction
+         :up            (.update liquibase "")
+         :down          (.rollback liquibase 10000 "")
+         :down-one      (.rollback liquibase 1 "")
+         :print         (let [writer (StringWriter.)]
+                          (.update liquibase "" writer)
+                          (.toString writer))
+         :release-locks (.forceReleaseLocks liquibase))))))
 
 
 ;; ## SETUP-DB

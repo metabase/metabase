@@ -35,6 +35,10 @@ const MetabaseSettings = {
         return (mb_settings.setup_token !== undefined && mb_settings.setup_token !== null);
     },
 
+    enableGoogleAuth: function() {
+        return mb_settings.google_auth_client_id != null;
+    },
+
     newVersionAvailable: function(settings) {
         let versionInfo = _.findWhere(settings, {key: "version-info"}),
             currentVersion = MetabaseSettings.get("version").tag;

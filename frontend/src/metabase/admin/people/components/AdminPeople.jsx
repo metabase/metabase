@@ -364,6 +364,7 @@ export default class AdminPeople extends Component {
                             <thead>
                                 <tr>
                                     <th>Name</th>
+                                    <th></th>
                                     <th>Email</th>
                                     <th>Role</th>
                                     <th>Last Seen</th>
@@ -374,6 +375,7 @@ export default class AdminPeople extends Component {
                                 { users.map(user =>
                                 <tr>
                                     <td><span className="text-white inline-block"><UserAvatar background={(user.is_superuser) ? "bg-purple" : "bg-brand"} user={user} /></span> <span className="ml2 text-bold">{user.common_name}</span></td>
+                                    <td>{user.google_auth ? '👿' : ''}</td>
                                     <td>{user.email}</td>
                                     <td>
                                         <UserRoleSelect

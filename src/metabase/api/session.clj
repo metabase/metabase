@@ -85,8 +85,14 @@
 
 (defn- google-auth-create-new-user! [first-name last-name email]
   (check-autocreate-user-allowed-for-email email)
-  ;; TODO - actually create new user
-  (db/select-one [User :id :last_login] :email "cam@metabase.com"))
+  (db/insert! User
+    :first_name  first-name
+    :last_name   last-name
+    :email       email
+    :google_auth true
+    ;; just give the user a random password; they can go reset it if they ever change their mind and want to log in without Google Auth;
+    ;; this lets us keep the NOT NULL constraints on password / salt without having to make things hairy and only enforce those for non-Google Auth users
+    :password    (str (java.util.UUID/randomUUID))))
 
 (defendpoint POST "/google_auth"
   "Login with Google Auth."
@@ -128,7 +134,7 @@
   ;; Don't leak whether the account doesn't exist, just pretend everything is ok
   (when-let [user-id (db/select-one-id User, :email email)]
     (let [reset-token        (set-user-password-reset-token! user-id)
-          password-reset-url (str (@(ns-resolve 'metabase.core 'site-url) request) "/auth/reset_password/" reset-token)]
+          password-reset-url (str ((resolve 'metabase.core/site-url) request) "/auth/reset_password/" reset-token)]
       (email/send-password-reset-email email server-name password-reset-url)
       (log/info password-reset-url))))
 
