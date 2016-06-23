@@ -25,9 +25,6 @@ import "./query_builder/query_builder.module"
 import "./setup/setup.module";
 import "./user/user.module";
 
-import "./admin/databases/databases.module";
-import "./admin/people/people.module";
-import "./admin/settings/settings.module";
 
 import { registerAnalyticsClickListener } from "metabase/lib/analytics";
 
@@ -46,13 +43,16 @@ import Navbar from "./components/Navbar.jsx";
 import Routes from "./Routes.jsx";
 
 import dashboard from "metabase/dashboard/dashboard";
+import databases from "metabase/admin/databases/database";
 import datamodel from "metabase/admin/datamodel/metadata";
 import * as home from "metabase/home/reducers";
 import labels from "metabase/questions/labels";
 import metadata from "metabase/dashboard/metadata";
+import * as people from "metabase/admin/people/reducers";
 import * as pulse from "metabase/pulse/reducers";
 import * as qb from "metabase/query_builder/reducers";
 import questions from "metabase/questions/questions";
+import settings from "metabase/admin/settings/settings";
 import undo from "metabase/questions/undo";
 import { currentUser } from "metabase/user";
 
@@ -65,6 +65,7 @@ const reducers = combineReducers({
 
     // global reducers
     currentUser,
+    metadata,
 
     // main app reducers
     dashboard,
@@ -76,8 +77,10 @@ const reducers = combineReducers({
     undo,
 
     // admin reducers
+    databases,
     datamodel: datamodel,
-    metadata,
+    people: combineReducers(people),
+    settings
 });
 
 let middleware = [thunk, promise];
@@ -104,9 +107,6 @@ var Metabase = angular.module('metabase', [
     'metabase.query_builder',
     'metabase.setup',
     'metabase.user',
-    'metabase.admin.databases',
-    'metabase.admin.people',
-    'metabase.admin.settings',
 ]);
 Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider, $locationProvider) {
     $locationProvider.html5Mode({
@@ -129,6 +129,9 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
                     },
                     onBroadcast(...args) {
                         $scope.$apply(() => $rootScope.$broadcast(...args));
+                    },
+                    refreshSiteSettings() {
+                        $scope.$apply(() => AppState.refreshSiteSettings());
                     }
                 };
                 $scope.store = createMetabaseStore(reducers, {currentUser: AppState.model.currentUser});
@@ -190,6 +193,9 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
 
     $routeProvider.when('/', { ...route, template: '<div mb-redux-component class="full-height" />'});
 
+    $routeProvider.when('/admin/databases', route);
+    $routeProvider.when('/admin/databases/create', route);
+    $routeProvider.when('/admin/databases/:databaseId', route);
     $routeProvider.when('/admin/datamodel/database', { ...routeNoReload, template: '<div class="full-height spread" mb-redux-component />' });
     $routeProvider.when('/admin/datamodel/database/:databaseId', { ...routeNoReload, template: '<div class="full-height spread" mb-redux-component />' });
     $routeProvider.when('/admin/datamodel/database/:databaseId/:mode', { ...routeNoReload, template: '<div class="full-height spread" mb-redux-component />' });
@@ -199,6 +205,8 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
     $routeProvider.when('/admin/datamodel/segment', route);
     $routeProvider.when('/admin/datamodel/segment/:segmentId', route);
     $routeProvider.when('/admin/datamodel/:objectType/:objectId/revisions', route);
+    $routeProvider.when('/admin/people/', route);
+    $routeProvider.when('/admin/settings/', { ...route, template: '<div class="full-height" mb-redux-component />' });
 
     $routeProvider.when('/dash/:dashboardId', route);
 

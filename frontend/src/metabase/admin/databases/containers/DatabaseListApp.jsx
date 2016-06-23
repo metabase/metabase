@@ -16,11 +16,12 @@ import * as databaseActions from "../database";
 
 
 const mapStateToProps = (state, props) => {
-  return {
-      databases:            getDatabasesSorted(state),
-      hasSampleDataset:     hasSampleDataset(state),
-      engines:              MetabaseSettings.get('engines')
-  }
+    return {
+        created:              state.router && state.router.params && state.router.params.created,
+        databases:            getDatabasesSorted(state),
+        hasSampleDataset:     hasSampleDataset(state),
+        engines:              MetabaseSettings.get('engines')
+    }
 }
 
 const mapDispatchToProps = {

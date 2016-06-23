@@ -14,10 +14,14 @@ import PulseListApp from "metabase/pulse/containers/PulseListApp.jsx";
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder.jsx";
 
 // admin containers
+import DatabaseListApp from "metabase/admin/databases/containers/DatabaseListApp.jsx";
+import DatabaseEditApp from "metabase/admin/databases/containers/DatabaseEditApp.jsx";
 import MetadataEditorApp from "metabase/admin/datamodel/containers/MetadataEditorApp.jsx";
 import MetricApp from "metabase/admin/datamodel/containers/MetricApp.jsx";
 import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp.jsx";
 import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp.jsx";
+import AdminPeopleApp from "metabase/admin/people/containers/AdminPeopleApp.jsx";
+import SettingsEditorApp from "metabase/admin/settings/containers/SettingsEditorApp.jsx";
 
 
 export default class Routes extends Component {
@@ -36,6 +40,10 @@ export default class Routes extends Component {
                 <Route path="/" component={this._forwardProps(HomepageApp, ["onChangeLocation"])} />
 
                 <Route path="/admin">
+                    <Route path="databases" component={DatabaseListApp} />
+                    <Route path="databases/create" component={this._forwardProps(DatabaseEditApp, ["onChangeLocation"])} />
+                    <Route path="databases/:databaseId" component={this._forwardProps(DatabaseEditApp, ["onChangeLocation"])} />
+
                     <Route path="datamodel">
                         <Route path="database" component={this._forwardProps(MetadataEditorApp, ["onChangeLocation"])} />
                         <Route path="database/:databaseId" component={this._forwardProps(MetadataEditorApp, ["onChangeLocation"])} />
@@ -47,7 +55,11 @@ export default class Routes extends Component {
                         <Route path="segment/:id" component={this._forwardProps(SegmentApp, ["onChangeLocation"])} />
                         <Route path=":entity/:id/revisions" component={RevisionHistoryApp} />
                     </Route>
+
+                    <Route path="people" component={this._forwardProps(AdminPeopleApp, ["onChangeLocation"])} />
+                    <Route path="settings" component={this._forwardProps(SettingsEditorApp, ["refreshSiteSettings"])} />
                 </Route>
+
 
                 <Route path="/card/:cardId" component={QueryBuilder} />
 
