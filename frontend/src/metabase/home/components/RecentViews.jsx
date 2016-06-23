@@ -16,6 +16,10 @@ export default class RecentViews extends Component {
         recentViews: PropTypes.array.isRequired
     }
 
+    static defaultProps = {
+        recentViews: []
+    }
+
     async componentDidMount() {
         try {
             await this.props.fetchRecentViews();
