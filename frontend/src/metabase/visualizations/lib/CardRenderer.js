@@ -477,11 +477,12 @@ export let CardRenderer = {
             }
         }
         if (isDescending) {
-            // use JavaScript's in-place sort/reverse since it's a bit more efficient than underscore's sortBy
-            xValues.sort().reverse();
+            // JavaScript's .sort() sorts lexicographically by default (e.x. 1, 10, 2)
+            // We could implement a comparator but _.sortBy handles strings, numbers, and dates correctly
+            xValues = _.sortBy(xValues, x => x).reverse();
         } else if (isAscending || (chartType === "line" || chartType === "area")) {
             // default line/area charts to ascending since otherwise lines could be wonky
-            xValues.sort();
+            xValues = _.sortBy(xValues, x => x);
         }
 
         let dimension, groups, yAxisSplit;
