@@ -14,13 +14,7 @@ import 'angular-http-auth';
 
 import "./controllers";
 import "./directives";
-import "./filters";
-import "./forms";
 import "./services";
-
-import "./icons";
-
-import "./auth/auth.module";
 
 
 import React from "react";
@@ -34,9 +28,10 @@ import { reduxReactRouter, routerStateReducer } from "redux-router";
 import thunk from "redux-thunk";
 import { createHistory } from 'history';
 
-//import Navbar from "./components/Navbar.jsx";
+import Navbar from "./components/Navbar.jsx";
 import Routes from "./Routes.jsx";
 
+import auth from "metabase/auth/auth";
 import dashboard from "metabase/dashboard/dashboard";
 import databases from "metabase/admin/databases/database";
 import datamodel from "metabase/admin/datamodel/metadata";
@@ -63,6 +58,7 @@ const reducers = combineReducers({
     router: routerStateReducer,
 
     // global reducers
+    auth,
     currentUser,
     metadata,
 
@@ -97,25 +93,20 @@ const createMetabaseStore = compose(
 )(createStore);
 
 // Declare app level module which depends on filters, and services
-var Metabase = angular.module('metabase', [
+angular.module('metabase', [
     'ngRoute',
     'ngCookies',
-    'metabase.auth',
-    'metabase.filters',
     'metabase.directives',
     'metabase.controllers',
-    'metabase.icons'
-]);
-
-Metabase.run(["AppState", function(AppState) {
+])
+.run(["AppState", function(AppState) {
     // initialize app state
     AppState.init();
 
     // start our analytics click listener
     registerAnalyticsClickListener();
-}]);
-
-Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider, $locationProvider) {
+}])
+.config(['$routeProvider', '$locationProvider', function($routeProvider, $locationProvider) {
     $locationProvider.html5Mode({
         enabled: true,
         requireBase: false
@@ -275,6 +266,10 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
     $routeProvider.when('/admin/settings/', { ...route, template: '<div class="full-height" mb-redux-component />' });
 
     $routeProvider.when('/auth/', { redirectTo: () => ('/auth/login') });
+    $routeProvider.when('/auth/forgot_password', { ...route, template: '<div mb-redux-component />' });
+    $routeProvider.when('/auth/login', { ...route, template: '<div mb-redux-component />' });
+    $routeProvider.when('/auth/logout', { ...route, template: '<div mb-redux-component />' });
+    $routeProvider.when('/auth/reset_password/:token', { ...route, template: '<div mb-redux-component />' });
 
     $routeProvider.when('/card/', { redirectTo: () => ("/questions/all") });
     $routeProvider.when('/card/:cardId', { ...route, template: '<div mb-redux-component />' });
@@ -300,7 +295,72 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
     $routeProvider.when('/user/edit_current', route);
 
     $routeProvider.otherwise(route);
-}]);
+}])
+.controller('Nav', ['$scope', '$routeParams', '$location', '$rootScope', 'AppState', 'Dashboard',
+    function($scope, $routeParams, $location, $rootScope, AppState, Dashboard) {
+
+        function refreshDashboards() {
+            if (AppState.model.currentUser) {
+                Dashboard.list({ f: "all" }, function (dashes) {
+                    $scope.dashboards = dashes;
+                }, function (error) {
+                    console.log('error getting dahsboards list', error);
+                });
+            }
+        }
+
+        function setNavContext(context) {
+            $scope.context = context;
+        }
+
+        $scope.Navbar = Navbar;
+        $scope.location = $location;
+
+        $scope.dashboards = [];
+        $scope.createDashboardFn = async function(newDashboard) {
+            var dashboard = await Dashboard.create(newDashboard).$promise;
+            $rootScope.$broadcast("dashboard:create", dashboard.id);
+            $location.path("/dash/" + dashboard.id);
+
+            // this is important because it allows our caller to perform any of their own actions after the promis resolves
+            return dashboard;
+        };
+
+        $scope.$on('appstate:context-changed', function(event, newAppContext) {
+            setNavContext(newAppContext);
+        });
+
+        $scope.$on("dashboard:create", function(event, dashboardId) {
+            refreshDashboards();
+        });
+
+        $scope.$on("dashboard:delete", function(event, dashboardId) {
+            refreshDashboards();
+        });
+
+        $scope.$on("dashboard:update", function(event, dashboardId) {
+            refreshDashboards();
+        });
+
+        $scope.$on("appstate:user", function(event, dashboardId) {
+            refreshDashboards();
+        });
+
+        $scope.$on("appstate:login", function(event, dashboardId) {
+            refreshDashboards();
+        });
+
+        $scope.$on("appstate:logout", function(event, dashboardId) {
+            $scope.dashboards = [];
+        });
+
+        // always initialize with a fresh listing
+        refreshDashboards();
+
+        // initialize our state from the current AppState model, which we expect to have resolved already
+        setNavContext(AppState.model.appContext);
+    }
+]);
 
 
 

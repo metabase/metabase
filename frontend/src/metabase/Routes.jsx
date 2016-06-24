@@ -3,6 +3,12 @@ import React, { Component, PropTypes } from "react";
 import { Route } from 'react-router';
 import { ReduxRouter } from 'redux-router';
 
+// auth containers
+import ForgotPasswordApp from "metabase/auth/containers/ForgotPasswordApp.jsx";
+import LoginApp from "metabase/auth/containers/LoginApp.jsx";
+import LogoutApp from "metabase/auth/containers/LogoutApp.jsx";
+import PasswordResetApp from "metabase/auth/containers/PasswordResetApp.jsx";
+
 // main app containers
 import DashboardApp from "metabase/dashboard/containers/DashboardApp.jsx";
 import HomepageApp from "metabase/home/containers/HomepageApp.jsx";
@@ -65,6 +71,10 @@ export default class Routes extends Component {
                     <Route path="settings" component={this._forwardProps(SettingsEditorApp, ["refreshSiteSettings"])} />
                 </Route>
 
+                <Route path="/auth/forgot_password" component={ForgotPasswordApp} />
+                <Route path="/auth/login" component={this._forwardProps(LoginApp, ["onChangeLocation"])} />
+                <Route path="/auth/logout" component={this._forwardProps(LogoutApp, ["onChangeLocation"])} />
+                <Route path="/auth/reset_password/:token" component={this._forwardProps(PasswordResetApp, ["onChangeLocation"])} />
 
                 <Route path="/card/:cardId" component={this._forwardProps(QueryBuilder, ["onChangeLocation", "broadcastEventFn", "updateUrl"])} />
 
