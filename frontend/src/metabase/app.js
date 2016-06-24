@@ -278,10 +278,10 @@ angular.module('metabase', [
     $routeProvider.when('/admin/settings/', { ...route, template: '<div class="full-height" mb-redux-component />' });
 
     $routeProvider.when('/auth/', { redirectTo: () => ('/auth/login') });
-    $routeProvider.when('/auth/forgot_password', { ...route, template: '<div mb-redux-component />' });
-    $routeProvider.when('/auth/login', { ...route, template: '<div mb-redux-component />' });
-    $routeProvider.when('/auth/logout', { ...route, template: '<div mb-redux-component />' });
-    $routeProvider.when('/auth/reset_password/:token', { ...route, template: '<div mb-redux-component />' });
+    $routeProvider.when('/auth/forgot_password', { ...route, template: '<div mb-redux-component class="full-height" />' });
+    $routeProvider.when('/auth/login', { ...route, template: '<div mb-redux-component class="full-height" />' });
+    $routeProvider.when('/auth/logout', { ...route, template: '<div mb-redux-component class="full-height"  />' });
+    $routeProvider.when('/auth/reset_password/:token', { ...route, template: '<div mb-redux-component class="full-height" />' });
 
     $routeProvider.when('/card/', { redirectTo: () => ("/questions/all") });
     $routeProvider.when('/card/:cardId', { ...route, template: '<div mb-redux-component />' });
