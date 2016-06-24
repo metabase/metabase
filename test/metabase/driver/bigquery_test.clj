@@ -81,8 +81,8 @@
 
 ;; make sure that BigQuery native queries maintain the column ordering specified in the SQL -- post-processing ordering shouldn't apply (Issue #2821)
 (expect-with-engine :bigquery
-  {:cols    ["venue_id" "user_id" "checkins_id"]
-   :columns [{:name "venue_id",    :base_type :IntegerField}
+  {:columns ["venue_id" "user_id" "checkins_id"]
+   :cols    [{:name "venue_id",    :base_type :IntegerField}
              {:name "user_id",     :base_type :IntegerField}
              {:name "checkins_id", :base_type :IntegerField}]}
   (select-keys (:data (qp/process-query {:native   {:query (apply format "SELECT [%stest_data.checkins.venue_id] AS [venue_id], [%stest_data.checkins.user_id] AS [user_id], [%stest_data.checkins.id] AS [checkins_id]

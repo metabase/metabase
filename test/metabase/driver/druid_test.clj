@@ -27,12 +27,12 @@
                :rows        [["2013-01-03T08:00:00.000Z" "931" "Simcha Yan" "1" "Kinaree Thai Bistro"       1]
                              ["2013-01-10T08:00:00.000Z" "285" "Kfir Caj"   "2" "Ruen Pair Thai Restaurant" 1]]
                :annotate?   nil
-               :cols        [{:name "timestamp", :base_type :TextField}
-                             {:name "id", :base_type :TextField}
-                             {:name "user_name", :base_type :TextField}
+               :cols        [{:name "timestamp",   :base_type :TextField}
+                             {:name "id",          :base_type :TextField}
+                             {:name "user_name",   :base_type :TextField}
                              {:name "venue_price", :base_type :TextField}
-                             {:name "venue_name", :base_type :TextField}
-                             {:name "count", :base_type :IntegerField}]
+                             {:name "venue_name",  :base_type :TextField}
+                             {:name "count",       :base_type :IntegerField}]
                :native_form {:query native-query}}}
   (metabase.test.data.datasets/with-engine :druid
     (timeseries-qp-test/with-flattened-dbdef
