@@ -64,9 +64,13 @@ function autocompleteResults(card, prefix) {
 
 const mapStateToProps = (state, props) => {
     return {
+        updateUrl:                 props.updateUrl,
+        user:                      state.currentUser,
+        fromUrl:                   state.router && state.router.location && state.router.location.query.from,
+
         card:                      card(state),
         originalCard:              originalCard(state),
-        query:                     state.card && state.card.dataset_query,  // TODO: EOL, redundant
+        query:                     state.qb.card && state.qb.card.dataset_query,  // TODO: EOL, redundant
         databases:                 databases(state),
         tables:                    tables(state),
         tableMetadata:             tableMetadata(state),
@@ -78,17 +82,17 @@ const mapStateToProps = (state, props) => {
         uiControls:                uiControls(state),
 
         cardIsDirtyFn:             () => isDirty(state),
-        cardIsNewFn:               () => (state.card && !state.card.id),
-        isShowingDataReference:    state.uiControls.isShowingDataReference,
-        isShowingTutorial:         state.uiControls.isShowingTutorial,
-        isEditing:                 state.uiControls.isEditing,
-        isRunning:                 state.uiControls.isRunning,
+        cardIsNewFn:               () => (state.qb.card && !state.qb.card.id),
+        isShowingDataReference:    state.qb.uiControls.isShowingDataReference,
+        isShowingTutorial:         state.qb.uiControls.isShowingTutorial,
+        isEditing:                 state.qb.uiControls.isEditing,
+        isRunning:                 state.qb.uiControls.isRunning,
         cardApi:                   cardApi,
         dashboardApi:              dashboardApi,
         revisionApi:               revisionApi,
         loadTableFn:               loadTable,
-        autocompleteResultsFn:     (prefix) => autocompleteResults(state.card, prefix),
-        cellIsClickableFn:         (rowIndex, columnIndex) => cellIsClickable(state.queryResult, rowIndex, columnIndex)
+        autocompleteResultsFn:     (prefix) => autocompleteResults(state.qb.card, prefix),
+        cellIsClickableFn:         (rowIndex, columnIndex) => cellIsClickable(state.qb.queryResult, rowIndex, columnIndex)
     }
 }
             
@@ -110,7 +114,7 @@ export default class QueryBuilder extends Component {
     }
 
     componentWillMount() {
-        this.props.initializeQB();
+        this.props.initializeQB(this.props.updateUrl);
     }
 
     componentDidMount() {

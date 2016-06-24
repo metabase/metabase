@@ -19,9 +19,9 @@ const User = new AngularResourceProxy("User", ["update_qbnewb"]);
 
 
 export const INITIALIZE_QB = "INITIALIZE_QB";
-export const initializeQB = createThunkAction(INITIALIZE_QB, () => {
+export const initializeQB = createThunkAction(INITIALIZE_QB, (updateUrl) => {
     return async (dispatch, getState) => {
-        const { router: { location, params }, updateUrl, user } = getState();
+        const { router: { location, params }, currentUser } = getState();
 
         let card, databases, originalCard, uiControls = {};
 
@@ -41,7 +41,7 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, () => {
 
         // load up or initialize the card we'll be working on
         const cardId = params.cardId;
-        const serializedCard = _.isEmpty(location.hash) ? null : location.hash;
+        const serializedCard = _.isEmpty(location.hash) ? null : location.hash.substr(1);
         const sampleDataset = _.findWhere(databases, { is_sample: true });
         if (cardId || serializedCard) {
             // existing card being loaded
@@ -65,7 +65,7 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, () => {
                 uiControls.isEditing = (location.query.edit || (cardId && serializedCard)) ? true : false;
 
                 // if this is the users first time loading a saved card on the QB then show them the newb modal
-                if (cardId && user.is_qbnewb) {
+                if (cardId && currentUser.is_qbnewb) {
                     uiControls.isShowingNewbModal = true;
                     MetabaseAnalytics.trackEvent("QueryBuilder", "Show Newb Modal");
                 }
@@ -125,7 +125,8 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, () => {
             card,
             originalCard,
             databases,
-            uiControls
+            uiControls,
+            updateUrl
         };
     };
 });
@@ -143,8 +144,8 @@ export const CLOSE_QB_NEWB_MODAL = "CLOSE_QB_NEWB_MODAL";
 export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {
     return async (dispatch, getState) => {
         // persist the fact that this user has seen the NewbModal
-        const { user } = getState();
-        await User.update_qbnewb({id: user.id});
+        const { currentUser } = getState();
+        await User.update_qbnewb({id: currentUser.id});
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Close Newb Modal');
     };
 });
@@ -158,7 +159,7 @@ export const beginEditing = createAction(BEGIN_EDITING, () => {
 export const CANCEL_EDITING = "CANCEL_EDITING";
 export const cancelEditing = createThunkAction(CANCEL_EDITING, () => {
     return (dispatch, getState) => {
-        const { originalCard, updateUrl } = getState();
+        const { qb: { originalCard, updateUrl } } = getState();
 
         // clone
         let card = JSON.parse(JSON.stringify(originalCard));
@@ -181,7 +182,7 @@ export const LOAD_TABLE_METADATA = "LOAD_TABLE_METADATA";
 export const loadTableMetadata = createThunkAction(LOAD_TABLE_METADATA, (tableId) => {
     return async (dispatch, getState) => {
         // if we already have the metadata loaded for the given table then we are done
-        const { tableMetadata } = getState();
+        const { qb: { tableMetadata } } = getState();
         if (tableMetadata && tableMetadata.id === tableId) {
             return tableMetadata;
         }
@@ -221,30 +222,30 @@ export const setCardAttribute = createAction(SET_CARD_ATTRIBUTE, (attr, value) =
 export const SET_CARD_VISUALIZATION = "SET_CARD_VISUALIZATION";
 export const setCardVisualization = createThunkAction(SET_CARD_VISUALIZATION, (display) => {
     return (dispatch, getState) => {
-        const state = getState();
-        let card = updateVisualizationSettings(state.card, state.uiControls.isEditing, display, state.card.visualization_settings);
-        state.updateUrl(card, true);
-        return card;
+        const { qb: { card, uiControls, updateUrl } } = getState();
+        let updatedCard = updateVisualizationSettings(card, uiControls.isEditing, display, card.visualization_settings);
+        updateUrl(updatedCard, true);
+        return updatedCard;
     }
 });
 
 export const SET_CARD_VISUALIZATION_SETTING = "SET_CARD_VISUALIZATION_SETTING";
 export const setCardVisualizationSetting = createThunkAction(SET_CARD_VISUALIZATION_SETTING, (path, value) => {
     return (dispatch, getState) => {
-        const state = getState();
-        let card = updateVisualizationSettings(state.card, state.uiControls.isEditing, state.card.display, i.assocIn(state.card.visualization_settings, path, value));
-        state.updateUrl(card, true);
-        return card;
+        const { qb: { card, uiControls, updateUrl } } = getState();
+        let updatedCard = updateVisualizationSettings(card, uiControls.isEditing, card.display, i.assocIn(card.visualization_settings, path, value));
+        updateUrl(updatedCard, true);
+        return updatedCard;
     };
 });
 
 export const SET_CARD_VISUALIZATION_SETTINGS = "SET_CARD_VISUALIZATION_SETTINGS";
 export const setCardVisualizationSettings = createThunkAction(SET_CARD_VISUALIZATION_SETTINGS, (settings) => {
     return (dispatch, getState) => {
-        const state = getState();
-        let card = updateVisualizationSettings(state.card, state.uiControls.isEditing, state.card.display, settings);
-        state.updateUrl(card, true);
-        return card;
+        const { qb: { card, uiControls, updateUrl } } = getState();
+        let updatedCard = updateVisualizationSettings(card, uiControls.isEditing, card.display, settings);
+        updateUrl(updatedCard, true);
+        return updatedCard;
     };
 });
 
@@ -252,13 +253,15 @@ export const setCardVisualizationSettings = createThunkAction(SET_CARD_VISUALIZA
 export const NOTIFY_CARD_CREATED = "NOTIFY_CARD_CREATED";
 export const notifyCardCreatedFn = createThunkAction(NOTIFY_CARD_CREATED, (card) => {
     return (dispatch, getState) => {
+        const { qb: { updateUrl } } = getState();
+
         if (card && card.dataset_query && card.dataset_query.query && card.dataset_query.query.source_table) {
             dispatch(loadTableMetadata(card.dataset_query.query.source_table));
         }
 
         // we do this to force the indication of the fact that the card should not be considered dirty when the url is updated
         dispatch(runQuery(card, false));
-        getState().updateUrl(card, false);
+        updateUrl(card, false);
 
         MetabaseAnalytics.trackEvent("QueryBuilder", "Create Card", card.dataset_query.type);
 
@@ -269,13 +272,15 @@ export const notifyCardCreatedFn = createThunkAction(NOTIFY_CARD_CREATED, (card)
 export const NOTIFY_CARD_UPDATED = "NOTIFY_CARD_UPDATED";
 export const notifyCardUpdatedFn = createThunkAction("NOTIFY_CARD_UPDATED", (card) => {
     return (dispatch, getState) => {
+        const { qb: { updateUrl } } = getState();
+
         if (card && card.dataset_query && card.dataset_query.query && card.dataset_query.query.source_table) {
             dispatch(loadTableMetadata(card.dataset_query.query.source_table));
         }
 
         // we do this to force the indication of the fact that the card should not be considered dirty when the url is updated
         dispatch(runQuery(card, false));
-        getState().updateUrl(card, false);
+        updateUrl(card, false);
 
         MetabaseAnalytics.trackEvent("QueryBuilder", "Update Card", card.dataset_query.type);
 
@@ -287,7 +292,7 @@ export const notifyCardUpdatedFn = createThunkAction("NOTIFY_CARD_UPDATED", (car
 export const RELOAD_CARD = "RELOAD_CARD";
 export const reloadCard = createThunkAction(RELOAD_CARD, () => {
     return async (dispatch, getState) => {
-        const { originalCard, updateUrl } = getState();
+        const { qb: { originalCard, updateUrl } } = getState();
 
         // clone
         let card = JSON.parse(JSON.stringify(originalCard));
@@ -326,7 +331,7 @@ export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (runCard) => {
 export const SET_QUERY = "SET_QUERY";
 export const setQuery = createThunkAction(SET_QUERY, (dataset_query) => {
     return (dispatch, getState) => {
-        const { card, uiControls } = getState();
+        const { qb: { card, uiControls } } = getState();
 
         let updatedCard = JSON.parse(JSON.stringify(card));
 
@@ -347,7 +352,7 @@ export const setQuery = createThunkAction(SET_QUERY, (dataset_query) => {
 export const SET_QUERY_MODE = "SET_QUERY_MODE";
 export const setQueryMode = createThunkAction(SET_QUERY_MODE, (type) => {
     return (dispatch, getState) => {
-        const { card, queryResult, tableMetadata, uiControls } = getState();
+        const { qb: { card, queryResult, tableMetadata, uiControls } } = getState();
         
         // if the type didn't actually change then nothing has been modified
         if (type === card.dataset_query.type) {
@@ -395,7 +400,7 @@ export const setQueryMode = createThunkAction(SET_QUERY_MODE, (type) => {
 export const SET_QUERY_DATABASE = "SET_QUERY_DATABASE";
 export const setQueryDatabase = createThunkAction(SET_QUERY_DATABASE, (databaseId) => {
     return async (dispatch, getState) => {
-        const { card, databases, uiControls } = getState();
+        const { qb: { card, databases, uiControls } } = getState();
 
         // picking the same database doesn't change anything
         if (databaseId === card.dataset_query.database) {
@@ -439,7 +444,7 @@ export const setQueryDatabase = createThunkAction(SET_QUERY_DATABASE, (databaseI
 export const SET_QUERY_SOURCE_TABLE = "SET_QUERY_SOURCE_TABLE";
 export const setQuerySourceTable = createThunkAction(SET_QUERY_SOURCE_TABLE, (sourceTable) => {
     return async (dispatch, getState) => {
-        const { card, uiControls } = getState();
+        const { qb: { card, uiControls } } = getState();
 
         // this will either be the id or an object with an id
         const tableId = sourceTable.id || sourceTable;
@@ -458,7 +463,7 @@ export const setQuerySourceTable = createThunkAction(SET_QUERY_SOURCE_TABLE, (so
             databaseId = sourceTable.db_id;
         } else {
             // this is a bit hacky and slow
-            const { databases } = getState();
+            const { qb: { databases } } = getState();
             for (var i=0; i < databases.length; i++) {
                 const database = databases[i];
 
@@ -487,7 +492,7 @@ export const setQuerySourceTable = createThunkAction(SET_QUERY_SOURCE_TABLE, (so
 export const SET_QUERY_SORT = "SET_QUERY_SORT";
 export const setQuerySort = createThunkAction(SET_QUERY_SORT, (column) => {
     return (dispatch, getState) => {        
-        const { card } = getState();
+        const { qb: { card } } = getState();
 
         // NOTE: we only allow this for structured type queries & we only allow sorting by a single column
         if (card.dataset_query.type === "query") {
@@ -539,10 +544,10 @@ export const runQuery = createThunkAction(RUN_QUERY, (card, updateUrl=true) => {
         const state = getState();
 
         // if we got a query directly on the action call then use it, otherwise take whatever is in our current state
-        card = card || state.card;
+        card = card || state.qb.card;
         card = JSON.parse(JSON.stringify(card));
         let dataset_query = card.dataset_query,
-            cardIsDirty = isCardDirty(card, state.originalCard);
+            cardIsDirty = isCardDirty(card, state.qb.originalCard);
 
         if (dataset_query.query) {
             // TODO: this needs to be immutable
@@ -550,7 +555,7 @@ export const runQuery = createThunkAction(RUN_QUERY, (card, updateUrl=true) => {
         }
 
         if (updateUrl) {
-            state.updateUrl(card, cardIsDirty);
+            state.qb.updateUrl(card, cardIsDirty);
         }
 
         let cancelQueryDeferred = angularPromise();
@@ -622,7 +627,7 @@ export const queryErrored = createThunkAction(QUERY_ERRORED, (startTime, error) 
 export const CANCEL_QUERY = "CANCEL_QUERY";
 export const cancelQuery = createThunkAction(CANCEL_QUERY, () => {
     return async (dispatch, getState) => {
-        const { uiControls, queryExecutionPromise } = getState();
+        const { qb: { uiControls, queryExecutionPromise } } = getState();
 
         if (uiControls.isRunning && queryExecutionPromise) {
             queryExecutionPromise.resolve();
@@ -634,7 +639,7 @@ export const cancelQuery = createThunkAction(CANCEL_QUERY, () => {
 export const CELL_CLICKED = "CELL_CLICKED";
 export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnIndex, filter) => {
     return async (dispatch, getState) => {
-        const { card, queryResult } = getState();
+        const { qb: { card, queryResult } } = getState();
         if (!queryResult) return false;
 
         // lookup the coldef and cell value of the cell we are taking action on
@@ -705,7 +710,7 @@ export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnInde
 export const FOLLOW_FOREIGN_KEY = "FOLLOW_FOREIGN_KEY";
 export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, (fk) => {
     return async (dispatch, getState) => {
-        const { card, queryResult } = getState();
+        const { qb: { card, queryResult } } = getState();
 
         if (!queryResult || !fk) return false;
 
@@ -733,7 +738,7 @@ export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, (fk) => {
 export const LOAD_OBJECT_DETAIL_FK_REFERENCES = "LOAD_OBJECT_DETAIL_FK_REFERENCES";
 export const loadObjectDetailFKReferences = createThunkAction(LOAD_OBJECT_DETAIL_FK_REFERENCES, () => {
     return async (dispatch, getState) => {
-        const { card, queryResult, tableForeignKeys } = getState();
+        const { qb: { card, queryResult, tableForeignKeys } } = getState();
 
         function getObjectDetailIdValue(data) {
             for (var i=0; i < data.cols.length; i++) {

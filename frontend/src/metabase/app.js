@@ -21,14 +21,11 @@ import "./services";
 import "./icons";
 
 import "./auth/auth.module";
-import "./query_builder/query_builder.module"
 
-
-import { registerAnalyticsClickListener } from "metabase/lib/analytics";
 
 import React from "react";
-import { render } from "react-dom";
-import { Provider } from "react-redux";
+//import { render } from "react-dom";
+//import { Provider } from "react-redux";
 import { applyMiddleware, combineReducers, compose, createStore } from "redux";
 import { reducer as form } from "redux-form";
 import createLogger from "redux-logger";
@@ -37,7 +34,7 @@ import { reduxReactRouter, routerStateReducer } from "redux-router";
 import thunk from "redux-thunk";
 import { createHistory } from 'history';
 
-import Navbar from "./components/Navbar.jsx";
+//import Navbar from "./components/Navbar.jsx";
 import Routes from "./Routes.jsx";
 
 import dashboard from "metabase/dashboard/dashboard";
@@ -56,7 +53,9 @@ import undo from "metabase/questions/undo";
 import * as user from "metabase/user/reducers";
 import { currentUser } from "metabase/user";
 
+import { registerAnalyticsClickListener } from "metabase/lib/analytics";
 import { DEBUG } from "metabase/lib/debug";
+import { serializeCardForUrl, cleanCopyCard, urlForCardState } from "metabase/lib/card";
 
 
 const reducers = combineReducers({
@@ -105,9 +104,17 @@ var Metabase = angular.module('metabase', [
     'metabase.filters',
     'metabase.directives',
     'metabase.controllers',
-    'metabase.icons',
-    'metabase.query_builder'
+    'metabase.icons'
 ]);
+
+Metabase.run(["AppState", function(AppState) {
+    // initialize app state
+    AppState.init();
+
+    // start our analytics click listener
+    registerAnalyticsClickListener();
+}]);
+
 Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider, $locationProvider) {
     $locationProvider.html5Mode({
         enabled: true,
@@ -147,9 +154,99 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
 
                         // this is ridiculously stupid.  we have to wait (300ms) for the cookie to actually be set in the browser :(
                         return $timeout(function(){}, 1000);
+                    },
+                    broadcastEventFn: function(eventName, value) {
+                        $rootScope.$broadcast(eventName, value);
+                    },
+                    updateUrl: (card, isDirty=false, replaceState=false) => {
+                        var copy = cleanCopyCard(card);
+                        var newState = {
+                            card: copy,
+                            cardId: copy.id,
+                            serializedCard: serializeCardForUrl(copy)
+                        };
+
+                        if (angular.equals(window.history.state, newState)) {
+                            return;
+                        }
+
+                        var url = urlForCardState(newState, isDirty);
+
+                        // if the serialized card is identical replace the previous state instead of adding a new one
+                        // e.x. when saving a new card we want to replace the state and URL with one with the new card ID
+                        replaceState = replaceState || (window.history.state && window.history.state.serializedCard === newState.serializedCard);
+
+                        // ensure the digest cycle is run, otherwise pending location changes will prevent navigation away from query builder on the first click
+                        $scope.$apply(() => {
+                            // prevents infinite digest loop
+                            // https://stackoverflow.com/questions/22914228/successfully-call-history-pushstate-from-angular-without-inifinite-digest
+                            $location.url(url);
+                            $location.replace();
+                            if (replaceState) {
+                                window.history.replaceState(newState, null, $location.absUrl());
+                            } else {
+                                window.history.pushState(newState, null, $location.absUrl());
+                            }
+                        });
                     }
                 };
                 $scope.store = createMetabaseStore(reducers, {currentUser: AppState.model.currentUser});
+
+                // prevent angular route change when we manually update the url
+                // NOTE: we tried listening on $locationChangeStart and simply canceling that, but doing so prevents the history and everything
+                //       and ideally we'd simply listen on $routeChangeStart and cancel that when it's the same controller, but that doesn't work :(
+
+                // mildly hacky way to prevent reloading controllers as the URL changes
+                // this works by setting the new route to the old route and manually moving over params
+                // var route = $route.current;
+                // $scope.$on('$locationChangeSuccess', function (event) {
+                //     var newParams = $route.current.params;
+                //     var oldParams = route.params;
+
+                //     // reload the controller if:
+                //     // 1. not CardDetail
+                //     // 2. both serializedCard and cardId are not set (new card)
+                //     // TODO: is there really ever a reason to reload this route if we are going to the same place?
+                //     const serializedCard = _.isEmpty($location.hash()) ? null : $location.hash();
+                //     if ($route.current.$$route.controller === 'QB' && (serializedCard || newParams.cardId)) {
+                //         $route.current = route;
+
+                //         angular.forEach(oldParams, function(value, key) {
+                //             delete $route.current.params[key];
+                //             delete $routeParams[key];
+                //         });
+                //         angular.forEach(newParams, function(value, key) {
+                //             $route.current.params[key] = value;
+                //             $routeParams[key] = value;
+                //         });
+                //     }
+                // });
+
+                // TODO: this is a bit wonky.  we want this here to help avoid a bit of redundant route initialization, but
+                //       for some reason when we do this the normal navigation between routes is broken
+                // specifically:
+                //   1. /admin/datamodel/database/* - as you navigate around there is flicker due to route changing
+
+
+                // HACK: prevent reloading controllers as the URL changes
+                // let route = $route.current;
+                // $scope.$on('$locationChangeSuccess', function (event) {
+                //     let newParams = $route.current.params;
+                //     let oldParams = route.params;
+
+                //     if ($route.current.$$route.controller === route.controller) {
+                //         $route.current = route;
+
+                //         angular.forEach(oldParams, function(value, key) {
+                //             delete $route.current.params[key];
+                //             delete $routeParams[key];
+                //         });
+                //         angular.forEach(newParams, function(value, key) {
+                //             $route.current.params[key] = value;
+                //             $routeParams[key] = value;
+                //         });
+                //     }
+                // });
             }
         ],
         resolve: {
@@ -159,62 +256,16 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
         }
     };
 
-    const routeNoReload = {
-        template: '<div mb-redux-component class="flex flex-column spread" />',
-        controller: ['$scope', '$location', '$route', '$routeParams', '$rootScope', 'AppState',
-            function($scope, $location, $route, $routeParams, $rootScope, AppState) {
-                $scope.Component = Routes;
-                $scope.props = {
-                    onChangeLocation(url) {
-                        $scope.$apply(() => $location.url(url));
-                    },
-                    onChangeLocationSearch(name, value) {
-                        // FIXME: this doesn't seem to work
-                        $scope.$apply(() => $location.search(name, value));
-                    },
-                    onBroadcast(...args) {
-                        $scope.$apply(() => $rootScope.$broadcast(...args));
-                    }
-                };
-                $scope.store = createMetabaseStore(reducers, {currentUser: AppState.model.currentUser});
-
-                // HACK: prevent reloading controllers as the URL changes
-                let route = $route.current;
-                $scope.$on('$locationChangeSuccess', function (event) {
-                    let newParams = $route.current.params;
-                    let oldParams = route.params;
-
-                    if ($route.current.$$route.controller === route.controller) {
-                        $route.current = route;
-
-                        angular.forEach(oldParams, function(value, key) {
-                            delete $route.current.params[key];
-                            delete $routeParams[key];
-                        });
-                        angular.forEach(newParams, function(value, key) {
-                            $route.current.params[key] = value;
-                            $routeParams[key] = value;
-                        });
-                    }
-                });
-            }
-        ],
-        resolve: {
-            appState: ["AppState", function(AppState) {
-                return AppState.init();
-            }]
-        }
-    }
-
     $routeProvider.when('/', { ...route, template: '<div mb-redux-component class="full-height" />'});
 
+    $routeProvider.when('/admin/', { redirectTo: () => ('/admin/settings') });
     $routeProvider.when('/admin/databases', route);
     $routeProvider.when('/admin/databases/create', route);
     $routeProvider.when('/admin/databases/:databaseId', route);
-    $routeProvider.when('/admin/datamodel/database', { ...routeNoReload, template: '<div class="full-height spread" mb-redux-component />' });
-    $routeProvider.when('/admin/datamodel/database/:databaseId', { ...routeNoReload, template: '<div class="full-height spread" mb-redux-component />' });
-    $routeProvider.when('/admin/datamodel/database/:databaseId/:mode', { ...routeNoReload, template: '<div class="full-height spread" mb-redux-component />' });
-    $routeProvider.when('/admin/datamodel/database/:databaseId/:mode/:tableId', { ...routeNoReload, template: '<div class="full-height spread" mb-redux-component />' });
+    $routeProvider.when('/admin/datamodel/database', { ...route, template: '<div class="full-height spread" mb-redux-component />' });
+    $routeProvider.when('/admin/datamodel/database/:databaseId', { ...route, template: '<div class="full-height spread" mb-redux-component />' });
+    $routeProvider.when('/admin/datamodel/database/:databaseId/:mode', { ...route, template: '<div class="full-height spread" mb-redux-component />' });
+    $routeProvider.when('/admin/datamodel/database/:databaseId/:mode/:tableId', { ...route, template: '<div class="full-height spread" mb-redux-component />' });
     $routeProvider.when('/admin/datamodel/metric', route);
     $routeProvider.when('/admin/datamodel/metric/:segmentId', route);
     $routeProvider.when('/admin/datamodel/segment', route);
@@ -223,11 +274,20 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
     $routeProvider.when('/admin/people/', route);
     $routeProvider.when('/admin/settings/', { ...route, template: '<div class="full-height" mb-redux-component />' });
 
+    $routeProvider.when('/auth/', { redirectTo: () => ('/auth/login') });
+
+    $routeProvider.when('/card/', { redirectTo: () => ("/questions/all") });
+    $routeProvider.when('/card/:cardId', { ...route, template: '<div mb-redux-component />' });
+    $routeProvider.when('/card/:cardId/:serializedCard', { redirectTo: (routeParams) => ("/card/"+routeParams.cardId+"#"+routeParams.serializedCard) });
+
     $routeProvider.when('/dash/:dashboardId', route);
 
     $routeProvider.when('/pulse/', { ...route, template: '<div mb-redux-component />' });
     $routeProvider.when('/pulse/create', { ...route, template: '<div mb-redux-component class="flex flex-column flex-full" />' });
     $routeProvider.when('/pulse/:pulseId', { ...route, template: '<div mb-redux-component class="flex flex-column flex-full" />' });
+
+    $routeProvider.when('/q', { ...route, template: '<div mb-redux-component />' });
+    $routeProvider.when('/q/:serializedCard', { redirectTo: (routeParams) => ("/q#"+routeParams.serializedCard) });
 
     $routeProvider.when('/questions', route);
     $routeProvider.when('/questions/edit/:section', route);
@@ -244,49 +304,11 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
         controller: 'Unauthorized'
     });
 
-    $routeProvider.when('/auth/', {
-        redirectTo: function(routeParams, path, search) {
-            return '/auth/login';
-        }
-    });
-
-    $routeProvider.when('/admin/', {
-        redirectTo: function(routeParams, path, search) {
-            return '/admin/settings';
-        }
-    });
-
-    // redirect old urls to new ones with hashes
-    $routeProvider.when('/q/:serializedCard', {
-        redirectTo: function (routeParams, path, search) {
-            return "/q#"+routeParams.serializedCard;
-        }
-    });
-    $routeProvider.when('/card/:cardId/:serializedCard', {
-        redirectTo: function (routeParams, path, search) {
-            return "/card/"+routeParams.cardId+"#"+routeParams.serializedCard;
-        }
-    });
-
-    $routeProvider.when('/card/', {
-        redirectTo: function (routeParams, path, search) {
-            return "/questions/all";
-        }
-    });
-
     // TODO: we need an appropriate homepage or something to show in this situation
     $routeProvider.otherwise({
         templateUrl: '/app/not_found.html',
         controller: 'NotFound'
     });
-}]);
-
-Metabase.run(["AppState", function(AppState) {
-    // initialize app state
-    AppState.init();
-
-    // start our analytics click listener
-    registerAnalyticsClickListener();
 }]);
 
 

@@ -63,7 +63,7 @@ export default class Routes extends Component {
                 </Route>
 
 
-                <Route path="/card/:cardId" component={QueryBuilder} />
+                <Route path="/card/:cardId" component={this._forwardProps(QueryBuilder, ["onChangeLocation", "broadcastEventFn", "updateUrl"])} />
 
                 <Route path="/dash/:dashboardId" component={this._forwardProps(DashboardApp, ["onChangeLocation", "onChangeLocationSearch", "onBroadcast"])} />
 
@@ -71,7 +71,7 @@ export default class Routes extends Component {
                 <Route path="/pulse/create" component={this._forwardProps(PulseEditApp, ["onChangeLocation"])} />
                 <Route path="/pulse/:pulseId" component={this._forwardProps(PulseEditApp, ["onChangeLocation"])} />
 
-                <Route path="/q" component={QueryBuilder} />
+                <Route path="/q" component={this._forwardProps(QueryBuilder, ["onChangeLocation", "broadcastEventFn", "updateUrl"])} />
 
                 <Route path="/questions" component={EntityBrowser}>
                     <Route path="edit/labels" component={EditLabels} />
