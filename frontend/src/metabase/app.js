@@ -63,6 +63,7 @@ import { currentUser } from "metabase/user";
 import { registerAnalyticsClickListener } from "metabase/lib/analytics";
 import { DEBUG } from "metabase/lib/debug";
 import { serializeCardForUrl, cleanCopyCard, urlForCardState } from "metabase/lib/card";
+import { createStoreWithAngularScope } from "metabase/lib/redux";
 
 
 const reducers = combineReducers({
@@ -126,132 +127,7 @@ angular.module('metabase', [
 
     const route = {
         template: '<div mb-redux-component class="flex flex-column spread" />',
-        controller: ['$scope', '$location', '$route', '$routeParams', '$rootScope', '$timeout', 'ipCookie', 'AppState',
-            function($scope, $location, $route, $routeParams, $rootScope, $timeout, ipCookie, AppState) {
-                $scope.Component = Routes;
-                $scope.props = {
-                    onChangeLocation(url) {
-                        $scope.$apply(() => $location.url(url));
-                    },
-                    onChangeLocationSearch(name, value) {
-                        // FIXME: this doesn't seem to work
-                        $scope.$apply(() => $location.search(name, value));
-                    },
-                    onBroadcast(...args) {
-                        $scope.$apply(() => $rootScope.$broadcast(...args));
-                    },
-                    refreshSiteSettings() {
-                        $scope.$apply(() => AppState.refreshSiteSettings());
-                    },
-                    setSessionFn(sessionId) {
-                        // TODO - this session cookie code needs to be somewhere easily reusable
-                        var isSecure = ($location.protocol() === "https") ? true : false;
-                        ipCookie('metabase.SESSION_ID', sessionId, {
-                            path: '/',
-                            expires: 14,
-                            secure: isSecure
-                        });
-
-                        // send a login notification event
-                        $scope.$emit('appstate:login', sessionId);
-
-                        // this is ridiculously stupid.  we have to wait (300ms) for the cookie to actually be set in the browser :(
-                        return $timeout(function(){}, 1000);
-                    },
-                    broadcastEventFn: function(eventName, value) {
-                        $rootScope.$broadcast(eventName, value);
-                    },
-                    updateUrl: (card, isDirty=false, replaceState=false) => {
-                        var copy = cleanCopyCard(card);
-                        var newState = {
-                            card: copy,
-                            cardId: copy.id,
-                            serializedCard: serializeCardForUrl(copy)
-                        };
-
-                        if (angular.equals(window.history.state, newState)) {
-                            return;
-                        }
-
-                        var url = urlForCardState(newState, isDirty);
-
-                        // if the serialized card is identical replace the previous state instead of adding a new one
-                        // e.x. when saving a new card we want to replace the state and URL with one with the new card ID
-                        replaceState = replaceState || (window.history.state && window.history.state.serializedCard === newState.serializedCard);
-
-                        // ensure the digest cycle is run, otherwise pending location changes will prevent navigation away from query builder on the first click
-                        $scope.$apply(() => {
-                            // prevents infinite digest loop
-                            // https://stackoverflow.com/questions/22914228/successfully-call-history-pushstate-from-angular-without-inifinite-digest
-                            $location.url(url);
-                            $location.replace();
-                            if (replaceState) {
-                                window.history.replaceState(newState, null, $location.absUrl());
-                            } else {
-                                window.history.pushState(newState, null, $location.absUrl());
-                            }
-                        });
-                    }
-                };
-                $scope.store = createMetabaseStore(reducers, {currentUser: AppState.model.currentUser});
-
-                // prevent angular route change when we manually update the url
-                // NOTE: we tried listening on $locationChangeStart and simply canceling that, but doing so prevents the history and everything
-                //       and ideally we'd simply listen on $routeChangeStart and cancel that when it's the same controller, but that doesn't work :(
-
-                // mildly hacky way to prevent reloading controllers as the URL changes
-                // this works by setting the new route to the old route and manually moving over params
-                // var route = $route.current;
-                // $scope.$on('$locationChangeSuccess', function (event) {
-                //     var newParams = $route.current.params;
-                //     var oldParams = route.params;
-
-                //     // reload the controller if:
-                //     // 1. not CardDetail
-                //     // 2. both serializedCard and cardId are not set (new card)
-                //     // TODO: is there really ever a reason to reload this route if we are going to the same place?
-                //     const serializedCard = _.isEmpty($location.hash()) ? null : $location.hash();
-                //     if ($route.current.$$route.controller === 'QB' && (serializedCard || newParams.cardId)) {
-                //         $route.current = route;
-
-                //         angular.forEach(oldParams, function(value, key) {
-                //             delete $route.current.params[key];
-                //             delete $routeParams[key];
-                //         });
-                //         angular.forEach(newParams, function(value, key) {
-                //             $route.current.params[key] = value;
-                //             $routeParams[key] = value;
-                //         });
-                //     }
-                // });
-
-                // TODO: this is a bit wonky.  we want this here to help avoid a bit of redundant route initialization, but
-                //       for some reason when we do this the normal navigation between routes is broken
-                // specifically:
-                //   1. /admin/datamodel/database/* - as you navigate around there is flicker due to route changing
-
-
-                // HACK: prevent reloading controllers as the URL changes
-                // let route = $route.current;
-                // $scope.$on('$locationChangeSuccess', function (event) {
-                //     let newParams = $route.current.params;
-                //     let oldParams = route.params;
-
-                //     if ($route.current.$$route.controller === route.controller) {
-                //         $route.current = route;
-
-                //         angular.forEach(oldParams, function(value, key) {
-                //             delete $route.current.params[key];
-                //             delete $routeParams[key];
-                //         });
-                //         angular.forEach(newParams, function(value, key) {
-                //             $route.current.params[key] = value;
-                //             $routeParams[key] = value;
-                //         });
-                //     }
-                // });
-            }
-        ],
+        controller: 'AppController',
         resolve: {
             appState: ["AppState", function(AppState) {
                 return AppState.init();
@@ -308,6 +184,97 @@ angular.module('metabase', [
 
     $routeProvider.otherwise(route);
 }])
+.controller('AppController', ['$scope', '$location', '$route', '$routeParams', '$rootScope', '$timeout', 'ipCookie', 'AppState',
+    function($scope, $location, $route, $routeParams, $rootScope, $timeout, ipCookie, AppState) {
+        console.log("creating store");
+        $scope.Component = Routes;
+        $scope.props = {
+            onChangeLocation(url) {
+                $scope.$apply(() => $location.url(url));
+            },
+            onChangeLocationSearch(name, value) {
+                // FIXME: this doesn't seem to work
+                $scope.$apply(() => $location.search(name, value));
+            },
+            onBroadcast(...args) {
+                $scope.$apply(() => $rootScope.$broadcast(...args));
+            },
+            refreshSiteSettings() {
+                $scope.$apply(() => AppState.refreshSiteSettings());
+            },
+            setSessionFn(sessionId) {
+                // TODO - this session cookie code needs to be somewhere easily reusable
+                var isSecure = ($location.protocol() === "https") ? true : false;
+                ipCookie('metabase.SESSION_ID', sessionId, {
+                    path: '/',
+                    expires: 14,
+                    secure: isSecure
+                });
+
+                // send a login notification event
+                $scope.$emit('appstate:login', sessionId);
+
+                // this is ridiculously stupid.  we have to wait (300ms) for the cookie to actually be set in the browser :(
+                return $timeout(function(){}, 1000);
+            },
+            broadcastEventFn: function(eventName, value) {
+                $rootScope.$broadcast(eventName, value);
+            },
+            updateUrl: (card, isDirty=false, replaceState=false) => {
+                var copy = cleanCopyCard(card);
+                var newState = {
+                    card: copy,
+                    cardId: copy.id,
+                    serializedCard: serializeCardForUrl(copy)
+                };
+
+                if (angular.equals(window.history.state, newState)) {
+                    return;
+                }
+
+                var url = urlForCardState(newState, isDirty);
+
+                // if the serialized card is identical replace the previous state instead of adding a new one
+                // e.x. when saving a new card we want to replace the state and URL with one with the new card ID
+                replaceState = replaceState || (window.history.state && window.history.state.serializedCard === newState.serializedCard);
+
+                // ensure the digest cycle is run, otherwise pending location changes will prevent navigation away from query builder on the first click
+                $scope.$apply(() => {
+                    // prevents infinite digest loop
+                    // https://stackoverflow.com/questions/22914228/successfully-call-history-pushstate-from-angular-without-inifinite-digest
+                    $location.url(url);
+                    $location.replace();
+                    if (replaceState) {
+                        window.history.replaceState(newState, null, $location.absUrl());
+                    } else {
+                        window.history.pushState(newState, null, $location.absUrl());
+                    }
+                });
+            }
+        };
+        $scope.store = createStoreWithAngularScope($scope, $location, reducers, {currentUser: AppState.model.currentUser});
+
+        // HACK: prevent reloading controllers as the URL changes
+        let route = $route.current;
+        $scope.$on('$locationChangeSuccess', function (event) {
+            let newParams = $route.current.params;
+            let oldParams = route.params;
+
+            if ($route.current.$$route.controller === 'AppController') {
+                $route.current = route;
+
+                angular.forEach(oldParams, function(value, key) {
+                    delete $route.current.params[key];
+                    delete $routeParams[key];
+                });
+                angular.forEach(newParams, function(value, key) {
+                    $route.current.params[key] = value;
+                    $routeParams[key] = value;
+                });
+            }
+        });
+    }
+])
 .controller('Nav', ['$scope', '$routeParams', '$location', '$rootScope', 'AppState', 'Dashboard',
     function($scope, $routeParams, $location, $rootScope, AppState, Dashboard) {
 
