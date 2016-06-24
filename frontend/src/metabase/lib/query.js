@@ -462,7 +462,10 @@ var Query = {
             (Query.isRegularField(field)) ||
             (Query.isLocalField(field)) ||
             (Query.isForeignKeyField(field) && Query.isRegularField(field[1]) && Query.isRegularField(field[2])) ||
-            (Query.isDatetimeField(field)   && Query.isValidField(field[1]) && field[2] === "as" && typeof field[3] === "string") ||
+            (Query.isDatetimeField(field)   && Query.isValidField(field[1]) &&
+                (field.length === 4 ?
+                    (field[2] === "as" && typeof field[3] === "string") : // deprecated
+                    typeof field[2] === "string")) ||
             (Query.isExpressionField(field) && _.isString(field[1])) ||
             (Query.isAggregateField(field)  && typeof field[1] === "number")
         );
@@ -491,17 +494,20 @@ var Query = {
     },
 
     // gets the table and field definitions from from a raw, fk->, or datetime_field field
-    getFieldTarget: function(field, tableDef) {
+    getFieldTarget: function(field, tableDef, path = []) {
         if (Query.isRegularField(field)) {
-            return { table: tableDef, field: tableDef.fields_lookup && tableDef.fields_lookup[field] };
+            return { table: tableDef, field: tableDef.fields_lookup && tableDef.fields_lookup[field], path };
         } else if (Query.isLocalField(field)) {
-            return Query.getFieldTarget(field[1], tableDef);
+            return Query.getFieldTarget(field[1], tableDef, path);
         } else if (Query.isForeignKeyField(field)) {
             let fkFieldDef = tableDef.fields_lookup && tableDef.fields_lookup[field[1]];
             let targetTableDef = fkFieldDef && fkFieldDef.target.table;
-            return Query.getFieldTarget(field[2], targetTableDef);
+            return Query.getFieldTarget(field[2], targetTableDef, path.concat(fkFieldDef));
         } else if (Query.isDatetimeField(field)) {
-            return Query.getFieldTarget(field[1], tableDef);
+            return {
+                ...Query.getFieldTarget(field[1], tableDef, path),
+                unit: Query.getDatetimeUnit(field)
+            };
         } else if (Query.isExpressionField(field)) {
             // hmmm, since this is a dynamic field we'll need to build this here
             let fieldDef = {
@@ -530,6 +536,14 @@ var Query = {
         }
 
         console.warn("Unknown field type: ", field);
+    },
+
+    getDatetimeUnit(field) {
+        if (field.length === 4) {
+            return field[3]; // deprecated
+        } else {
+            return field[2];
+        }
     },
 
     getFieldOptions(fields, includeJoins = false, filterFn = (fields) => fields, usedFields = {}) {
