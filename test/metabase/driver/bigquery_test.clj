@@ -85,10 +85,10 @@
    :columns [{:name "venue_id",    :base_type :IntegerField}
              {:name "user_id",     :base_type :IntegerField}
              {:name "checkins_id", :base_type :IntegerField}]}
-  (dissoc (:data (qp/process-query {:native   {:query (apply format "SELECT [%stest_data.checkins.venue_id] AS [venue_id], [%stest_data.checkins.user_id] AS [user_id], [%stest_data.checkins.id] AS [checkins_id]
-                                                                     FROM [%stest_data.checkins]
-                                                                     LIMIT 2"
-                                                             (repeat 4 bq-data/unique-prefix))}
-                                    :type     :native
-                                    :database (data/id)}))
-          :rows))
+  (select-keys (:data (qp/process-query {:native   {:query (apply format "SELECT [%stest_data.checkins.venue_id] AS [venue_id], [%stest_data.checkins.user_id] AS [user_id], [%stest_data.checkins.id] AS [checkins_id]
+                                                                          FROM [%stest_data.checkins]
+                                                                          LIMIT 2"
+                                                                  (repeat 4 bq-data/unique-prefix))}
+                                         :type     :native
+                                         :database (data/id)}))
+               [:cols :columns]))
