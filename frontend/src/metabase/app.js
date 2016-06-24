@@ -32,19 +32,31 @@ import Navbar from "./components/Navbar.jsx";
 import Routes from "./Routes.jsx";
 
 import auth from "metabase/auth/auth";
-import dashboard from "metabase/dashboard/dashboard";
+
+/* admin */
+import settings from "metabase/admin/settings/settings";
+import * as people from "metabase/admin/people/reducers";
 import databases from "metabase/admin/databases/database";
 import datamodel from "metabase/admin/datamodel/metadata";
-import * as home from "metabase/home/reducers";
-import labels from "metabase/questions/labels";
+
+/* dashboards */
+import dashboard from "metabase/dashboard/dashboard";
 import metadata from "metabase/dashboard/metadata";
-import * as people from "metabase/admin/people/reducers";
-import * as pulse from "metabase/pulse/reducers";
-import * as qb from "metabase/query_builder/reducers";
+import * as home from "metabase/home/reducers";
+
+/* questions / query builder */
 import questions from "metabase/questions/questions";
-import settings from "metabase/admin/settings/settings";
-import * as setup from "metabase/setup/reducers";
+import labels from "metabase/questions/labels";
 import undo from "metabase/questions/undo";
+import * as qb from "metabase/query_builder/reducers";
+
+/* pulses */
+import * as pulse from "metabase/pulse/reducers";
+
+/* setup */
+import * as setup from "metabase/setup/reducers";
+
+/* user */
 import * as user from "metabase/user/reducers";
 import { currentUser } from "metabase/user";
 
