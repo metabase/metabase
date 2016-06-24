@@ -46,58 +46,53 @@ export default class ForgotPasswordApp extends Component {
         const emailConfigured = MetabaseSettings.isEmailConfigured();
 
         return (
-            <div>
-                <div className="full-height bg-white flex flex-column flex-full md-layout-centered">
-                    <div className="wrapper">
-                        <div className="Login-wrapper Grid Grid--full md-Grid--1of2">
-                            <div className="Grid-cell flex layout-centered text-brand">
-                                <LogoIcon className="Logo my4 sm-my0" width={66} height={85} />
-                            </div>
-                            { !emailConfigured ?
-                            <div className="Grid-cell">
-                                <div className="text-centered bordered rounded shadowed p4">
-                                    <h3 className="my4">Please contact an administrator to have them reset your password</h3>
-                                    <a className="link block mb4" href="/auth/login">Back to login</a>
-                                </div>
-                            </div>
-                            :
-                            <div className="Grid-cell">
-                                { !sentNotification ?
-                                <div>
-                                    <form className="ForgotForm bg-white Form-new bordered rounded shadowed" name="form" noValidate>
-                                        <h3 className="Login-header Form-offset mb3">Forgot password</h3>
+            <div className="full-height bg-white flex flex-column flex-full md-layout-centered">
+                <div className="Login-wrapper wrapper Grid Grid--full md-Grid--1of2">
+                      <div className="Grid-cell flex layout-centered text-brand">
+                          <LogoIcon className="Logo my4 sm-my0" width={66} height={85} />
+                      </div>
+                      { !emailConfigured ?
+                      <div className="Grid-cell">
+                          <div className="text-centered bordered rounded shadowed p4">
+                              <h3 className="my4">Please contact an administrator to have them reset your password</h3>
+                              <a className="link block mb4" href="/auth/login">Back to login</a>
+                          </div>
+                      </div>
+                      :
+                      <div className="Grid-cell">
+                          { !sentNotification ?
+                          <div>
+                              <form className="ForgotForm bg-white Form-new bordered rounded shadowed" name="form" noValidate>
+                                  <h3 className="Login-header Form-offset mb3">Forgot password</h3>
 
-                                        <FormMessage message={error && error.data && error.data.message}></FormMessage>
+                                  <FormMessage message={error && error.data && error.data.message}></FormMessage>
 
-                                        <FormField key="email" fieldName="email" formError={error}>
-                                            <FormLabel title={"Email address"}  fieldName={"email"} formError={error} />
-                                            <input className="Form-input Form-offset full" name="email" placeholder="The email you use for your Metabase account" type="text" onChange={(e) => this.setState({"email": e.target.value})} autoFocus />
-                                            <span className="Form-charm"></span>
-                                        </FormField>
+                                  <FormField key="email" fieldName="email" formError={error}>
+                                      <FormLabel title={"Email address"}  fieldName={"email"} formError={error} />
+                                      <input className="Form-input Form-offset full" name="email" placeholder="The email you use for your Metabase account" type="text" onChange={(e) => this.setState({"email": e.target.value})} autoFocus />
+                                      <span className="Form-charm"></span>
+                                  </FormField>
 
-                                        <div className="Form-actions">
-                                            <button className={cx("Button", {"Button--primary": valid})} onClick={(e) => this.sendResetNotification(e)} disabled={!valid}>
-                                                Send password reset email
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                                :
-                                <div>
-                                    <div className="SuccessGroup bg-white bordered rounded shadowed">
-                                        <div className="SuccessMark">
-                                            <mb-icon name="check"></mb-icon>
-                                        </div>
-                                        <p className="SuccessText">Check your email for instructions on how to reset your password.</p>
-                                    </div>
-                                </div>
-                                }
-                            </div>
-                            }
-                        </div>
+                                  <div className="Form-actions">
+                                      <button className={cx("Button", {"Button--primary": valid})} onClick={(e) => this.sendResetNotification(e)} disabled={!valid}>
+                                          Send password reset email
+                                      </button>
+                                  </div>
+                              </form>
+                          </div>
+                          :
+                          <div>
+                              <div className="SuccessGroup bg-white bordered rounded shadowed">
+                                  <div className="SuccessMark">
+                                      <mb-icon name="check"></mb-icon>
+                                  </div>
+                                  <p className="SuccessText">Check your email for instructions on how to reset your password.</p>
+                              </div>
+                          </div>
+                          }
+                      </div>
+                    }
                     </div>
-                </div>
-
                 <AuthScene />
             </div>
         );
