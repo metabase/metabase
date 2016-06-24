@@ -296,19 +296,10 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
 
     $routeProvider.when('/setup/', { ...route, template: '<div mb-redux-component class="full-height" />' });
 
+    $routeProvider.when('/unauthorized/', route);
     $routeProvider.when('/user/edit_current', route);
 
-
-    $routeProvider.when('/unauthorized/', {
-        templateUrl: '/app/unauthorized.html',
-        controller: 'Unauthorized'
-    });
-
-    // TODO: we need an appropriate homepage or something to show in this situation
-    $routeProvider.otherwise({
-        templateUrl: '/app/not_found.html',
-        controller: 'NotFound'
-    });
+    $routeProvider.otherwise(route);
 }]);
 
 

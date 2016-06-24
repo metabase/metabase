@@ -25,6 +25,9 @@ import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHist
 import AdminPeopleApp from "metabase/admin/people/containers/AdminPeopleApp.jsx";
 import SettingsEditorApp from "metabase/admin/settings/containers/SettingsEditorApp.jsx";
 
+import NotFound from "metabase/components/NotFound.jsx";
+import Unauthorized from "metabase/components/Unauthorized.jsx";
+
 
 export default class Routes extends Component {
     // this lets us forward props we've injected from the Angular controller
@@ -83,7 +86,8 @@ export default class Routes extends Component {
 
                 <Route path="/user/edit_current" component={UserSettingsApp} />
 
-                <Route path="/*"/>
+                <Route path="/unauthorized" component={Unauthorized} />
+                <Route path="/*" component={NotFound} />
             </ReduxRouter>
         );
     }
