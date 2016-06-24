@@ -532,7 +532,7 @@
 
 (defn execute-query
   "Execute a query for a Druid DB."
-  [do-query {database :database, {:keys [query query-type]} :native}]
+  [do-query {database :database, {:keys [query query-type mbql?]} :native}]
   {:pre [database query]}
   (let [details    (:details database)
         query      (if (string? query)
@@ -546,4 +546,4 @@
     {:columns   columns
      :rows      (for [row results]
                   (mapv row columns))
-     :annotate? true}))
+     :annotate? mbql?}))
