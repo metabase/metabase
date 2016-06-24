@@ -118,62 +118,57 @@ export default class PasswordResetApp extends Component {
 
         } else {
             return (
-                <div>
-                    <div className="full-height bg-white flex flex-column flex-full md-layout-centered">
-                        <div className="wrapper">
-                            <div className="Login-wrapper Grid  Grid--full md-Grid--1of2">
-                                <div className="Grid-cell flex layout-centered text-brand">
-                                    <LogoIcon className="Logo my4 sm-my0" width={66} height={85} />
-                                </div>
-                                { !resetSuccess ?
-                                <div className="Grid-cell">
-                                    <form className="ForgotForm Login-wrapper bg-white Form-new bordered rounded shadowed" name="form" onSubmit={(e) => this.formSubmitted(e)} noValidate>
-                                        <h3 className="Login-header Form-offset">New password</h3>
+                <div className="full-height bg-white flex flex-column flex-full md-layout-centered">
+                    <div className="Login-wrapper wrapper Grid  Grid--full md-Grid--1of2">
+                          <div className="Grid-cell flex layout-centered text-brand">
+                              <LogoIcon className="Logo my4 sm-my0" width={66} height={85} />
+                          </div>
+                          { !resetSuccess ?
+                          <div className="Grid-cell">
+                              <form className="ForgotForm Login-wrapper bg-white Form-new bordered rounded shadowed" name="form" onSubmit={(e) => this.formSubmitted(e)} noValidate>
+                                  <h3 className="Login-header Form-offset">New password</h3>
 
-                                        <p className="Form-offset text-grey-3 mb4">To keep your data secure, passwords {passwordComplexity}</p>
+                                  <p className="Form-offset text-grey-3 mb4">To keep your data secure, passwords {passwordComplexity}</p>
 
-                                        <FormMessage formError={resetError && resetError.data.message ? resetError : null} ></FormMessage>
+                                  <FormMessage formError={resetError && resetError.data.message ? resetError : null} ></FormMessage>
 
-                                        <FormField key="password" fieldName="password" formError={resetError}>
-                                            <FormLabel title={"Create a new password"}  fieldName={"password"} formError={resetError} />
-                                            <input className="Form-input Form-offset full" name="password" placeholder="Make sure its secure like the instructions above" type="password" onChange={(e) => this.onChange("password", e.target.value)} autoFocus />
-                                            <span className="Form-charm"></span>
-                                        </FormField>
+                                  <FormField key="password" fieldName="password" formError={resetError}>
+                                      <FormLabel title={"Create a new password"}  fieldName={"password"} formError={resetError} />
+                                      <input className="Form-input Form-offset full" name="password" placeholder="Make sure its secure like the instructions above" type="password" onChange={(e) => this.onChange("password", e.target.value)} autoFocus />
+                                      <span className="Form-charm"></span>
+                                  </FormField>
 
-                                        <FormField key="password2" fieldName="password2" formError={resetError}>
-                                            <FormLabel title={"Confirm new password"}  fieldName={"password2"} formError={resetError} />
-                                            <input className="Form-input Form-offset full" name="password2" placeholder="Make sure it matches the one you just entered" type="password" onChange={(e) => this.onChange("password2", e.target.value)} />
-                                            <span className="Form-charm"></span>
-                                        </FormField>
+                                  <FormField key="password2" fieldName="password2" formError={resetError}>
+                                      <FormLabel title={"Confirm new password"}  fieldName={"password2"} formError={resetError} />
+                                      <input className="Form-input Form-offset full" name="password2" placeholder="Make sure it matches the one you just entered" type="password" onChange={(e) => this.onChange("password2", e.target.value)} />
+                                      <span className="Form-charm"></span>
+                                  </FormField>
 
-                                        <div className="Form-actions">
-                                            <button className={cx("Button", {"Button--primary": this.state.valid})} disabled={!this.state.valid}>
-                                                Save new password
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                                :
-                                <div className="Grid-cell">
-                                    <div className="SuccessGroup bg-white bordered rounded shadowed">
-                                        <div className="SuccessMark">
-                                            <mb-icon name="check"></mb-icon>
-                                        </div>
-                                        <p>Your password has been reset.</p>
-                                        <p>
-                                            { newUserJoining ?
-                                            <a href="/?new" className="Button Button--primary">Sign in with your new password</a>
-                                            :
-                                            <a href="/" className="Button Button--primary">Sign in with your new password</a>
-                                            }
-                                        </p>
-                                    </div>
-                                </div>
-                                }
-                            </div>
-                        </div>
+                                  <div className="Form-actions">
+                                      <button className={cx("Button", {"Button--primary": this.state.valid})} disabled={!this.state.valid}>
+                                          Save new password
+                                      </button>
+                                  </div>
+                              </form>
+                          </div>
+                          :
+                          <div className="Grid-cell">
+                              <div className="SuccessGroup bg-white bordered rounded shadowed">
+                                  <div className="SuccessMark">
+                                      <mb-icon name="check"></mb-icon>
+                                  </div>
+                                  <p>Your password has been reset.</p>
+                                  <p>
+                                      { newUserJoining ?
+                                      <a href="/?new" className="Button Button--primary">Sign in with your new password</a>
+                                      :
+                                      <a href="/" className="Button Button--primary">Sign in with your new password</a>
+                                      }
+                                  </p>
+                              </div>
+                          </div>
+                          }
                     </div>
-
                     <AuthScene />
                 </div>
             );
