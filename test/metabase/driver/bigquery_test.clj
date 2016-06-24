@@ -77,3 +77,15 @@
                              :type     :native
                              :database (data/id)})
           [:data :rows]))
+
+
+;; make sure that BigQuery native queries maintain the column ordering specified in the SQL -- post-processing ordering shouldn't apply (Issue #2821)
+(expect-with-engine :bigquery
+  ["venue_id" "user_id" "checkins_id"]
+  (get-in (qp/process-query {:native   {:query (apply format "SELECT [%stest_data.checkins.venue_id] AS [venue_id], [%stest_data.checkins.user_id] AS [user_id], [%stest_data.checkins.id] AS [checkins_id]
+                                                              FROM [%stest_data.checkins]
+                                                              LIMIT 2"
+                                                      (repeat 4 bq-data/unique-prefix))}
+                             :type     :native
+                             :database (data/id)})
+          [:data :columns]))
