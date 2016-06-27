@@ -41,7 +41,7 @@ export function createQuery(type = "query", databaseId, tableId) {
     return dataset_query;
 }
 
-const mbqlCanonicalize = (a) => a.toLowerCase().replace(/_/g, "-");
+const mbqlCanonicalize = (a) => typeof a === "string" ? a.toLowerCase().replace(/_/g, "-") : a;
 const mbqlCompare = (a, b) => mbqlCanonicalize(a) === mbqlCanonicalize(b)
 
 var Query = {
