@@ -39,9 +39,10 @@ Currently in beta.  We've run Metabase on Heroku and it works just fine, but it'
 Community support only at this time, but we have reports of Metabase instances running on Cloud66!
 
 # Upgrading Metabase
-How you upgrade Metabase depends on how you are running it. 
 
-See below for information on how to update Metabase on managed platforms.
+Before you attempt to upgrade Metabase, you should make a backup of the database just in case. While it is unlikely you will need to rollback, it will do wonders for your peace of mind.
+
+How you upgrade Metabase depends on how you are running it. See below for information on how to update Metabase on managed platforms.
 
 ### Specific Platforms
 
