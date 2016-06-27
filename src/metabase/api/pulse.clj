@@ -100,7 +100,7 @@
           data      (:data result)
           card-type (render/detect-pulse-card-type card data)
           card-html (html (binding [render/*include-title* true]
-                            (render/render-pulse-card card data)))]
+                            (render/render-pulse-card card result)))]
       {:id              id
        :pulse_card_type card-type
        :pulse_card_html card-html
@@ -111,9 +111,9 @@
   [id]
   (let [card (Card id)]
     (read-check Database (:database (:dataset_query card)))
-    (let [data (:data (qp/dataset-query (:dataset_query card) {:executed_by *current-user-id*}))
+    (let [result (qp/dataset-query (:dataset_query card) {:executed_by *current-user-id*})
           ba   (binding [render/*include-title* true]
-                 (render/render-pulse-card-to-png card data))]
+                 (render/render-pulse-card-to-png card result))]
       {:status 200, :headers {"Content-Type" "image/png"}, :body (new java.io.ByteArrayInputStream ba) })))
 
 (defendpoint POST "/test"

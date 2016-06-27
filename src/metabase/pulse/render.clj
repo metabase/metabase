@@ -456,5 +456,5 @@
 (defn render-pulse-card-to-png
   "Render a PULSE-CARD as a PNG. DATA is the `:data` from a QP result (I think...)"
 
-  [pulse-card data]
-  (render-html-to-png (render-pulse-card pulse-card data) card-width))
+  [pulse-card result]
+  (render-html-to-png (render-pulse-card pulse-card result) card-width))
