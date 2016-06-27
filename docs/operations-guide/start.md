@@ -39,13 +39,19 @@ Currently in beta.  We've run Metabase on Heroku and it works just fine, but it'
 Community support only at this time, but we have reports of Metabase instances running on Cloud66!
 
 # Upgrading Metabase
-How you upgrade Metabase depends on how you are running it. If you are running it via docker, then you simply kill the docker process, and start a new container with the latest image. On startup, Metabase will perform any upgrade tasks it needs to perform, and once it is finished, you'll be running the new version.
-
-Similarly when running via the Jar distribution, you can simply shut down the process, replace the jar with a newer version, and restart the server. 
+How you upgrade Metabase depends on how you are running it. 
 
 See below for information on how to update Metabase on managed platforms.
 
 ### Specific Platforms
+
+
+#### Docker Image
+If you are running it via docker, then you simply kill the docker process, and start a new container with the latest image. On startup, Metabase will perform any upgrade tasks it needs to perform, and once it is finished, you'll be running the new version.
+
+#### Jar file
+If you are running the JVM Jar file directly, then you simply kill the process, and restart the server. On startup, Metabase will perform any upgrade tasks it needs to perform, and once it is finished, you'll be running the new version.
+
 
 #### Mac OS X Application
 If you are using the Metabase app, you will be notified when there is a new version available. You will see a dialog displaying the changes in the latest version and prompt you to upgrade.
