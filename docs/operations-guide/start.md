@@ -1,6 +1,7 @@
 
 **Covered in this guide:**  
 > [How to install Metabase](#installing-and-running-metabase)  
+> [How to upgrade Metabase](#upgrading-metabase)  
 > [Tips for troubleshooting various issues](#troubleshooting-common-problems)   
 > [Configuring the application database](#configuring-the-metabase-application-database)  
 > [Migrating from using the H2 database to MySQL or Postgres](#migrating-from-using-the-h2-database-to-mysql-or-postgres)  
@@ -24,6 +25,8 @@ Metabase provides a binary Mac OS X application for users who are interested in 
 If you are using Docker containers and prefer to manage your Metabase installation that way then we've got you covered.  This guide discusses how to use the Metabase Docker image to launch a container running Metabase.
 
 
+
+
 ### Cloud Platforms
 
 #### [Running on AWS Elastic Beanstalk](running-metabase-on-elastic-beanstalk.md)
@@ -35,6 +38,25 @@ Currently in beta.  We've run Metabase on Heroku and it works just fine, but it'
 #### [Running on Cloud66](running-metabase-on-cloud66.md)
 Community support only at this time, but we have reports of Metabase instances running on Cloud66!
 
+# Upgrading Metabase
+How you upgrade Metabase depends on how you are running it. If you are running it via docker, then you simply kill the docker process, and start a new container with the latest image. On startup, Metabase will perform any upgrade tasks it needs to perform, and once it is finished, you'll be running the new version.
+
+Similarly when running via the Jar distribution, you can simply shut down the process, replace the jar with a newer version, and restart the server. 
+
+See below for information on how to update Metabase on managed platforms.
+
+### Specific Platforms
+
+#### Mac OS X Application
+If you are using the Metabase app, you will be notified when there is a new version available. You will see a dialog displaying the changes in the latest version and prompt you to upgrade.
+
+![Autoupdate Confirmation Dialog](/images/AutoupdateScreenshot.png)
+
+#### [Upgrading AWS Elastic Beanstalk deployments](running-metabase-on-elastic-beanstalk.md#deploying-new-versions-of-metabase)
+Step-by-step instructions on how to upgrade Metabase running on Elastic Beanstalk using RDS.
+
+#### [Upgrading Heroku deployments](running-metabase-on-heroku.md#deploying-new-versions-of-metabase)
+Step-by-step instructions on how to upgrade Metabase running on Heroku.
 
 # Troubleshooting Common Problems
 
