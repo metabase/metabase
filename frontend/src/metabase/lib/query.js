@@ -41,6 +41,9 @@ export function createQuery(type = "query", databaseId, tableId) {
     return dataset_query;
 }
 
+const mbqlCanonicalize = (a) => a.toLowerCase().replace(/_/g, "-");
+const mbqlCompare = (a, b) => mbqlCanonicalize(a) === mbqlCanonicalize(b)
+
 var Query = {
 
     isStructured(dataset_query) {
@@ -438,23 +441,23 @@ var Query = {
     },
 
     isLocalField(field) {
-        return Array.isArray(field) && field[0] === "field-id";
+        return Array.isArray(field) && mbqlCompare(field[0], "field-id");
     },
 
     isForeignKeyField(field) {
-        return Array.isArray(field) && field[0] === "fk->";
+        return Array.isArray(field) && mbqlCompare(field[0], "fk->");
     },
 
     isDatetimeField(field) {
-        return Array.isArray(field) && field[0] === "datetime_field";
+        return Array.isArray(field) && mbqlCompare(field[0], "datetime-field");
     },
 
     isExpressionField(field) {
-        return Array.isArray(field) && field.length === 2 && field[0] === "expression";
+        return Array.isArray(field) && field.length === 2 && mbqlCompare(field[0], "expression");
     },
 
     isAggregateField(field) {
-        return Array.isArray(field) && field[0] === "aggregation";
+        return Array.isArray(field) && mbqlCompare(field[0], "aggregation");
     },
 
     isValidField(field) {
@@ -531,7 +534,8 @@ var Query = {
 
             return {
                 table: tableDef,
-                field: fieldDef
+                field: fieldDef,
+                path: path
             }
         }
 
