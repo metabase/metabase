@@ -396,48 +396,55 @@
            (number-field? col-2))                                  :bar
       :else                                                        :table)))
 
+(defn render-pulse-card-container
+  [card content]
+  [:a {:href   (card-href card)
+       :target "_blank"
+       :style  (style section-style
+                      {:margin          :16px
+                       :margin-bottom   :16px
+                       :display         :block
+                       :text-decoration :none})}
+   (when *include-title*
+     [:table {:style (style {:margin-bottom :8px
+                             :width         :100%})}
+      [:tbody
+       [:tr
+        [:td [:span {:style header-style}
+              (-> card :name h)]]
+        [:td {:style (style {:text-align :right})}
+         (when *include-buttons*
+           [:img {:style (style {:width :16px})
+                  :width 16
+                  :src   (render-image-with-filename "frontend_client/app/img/external_link.png")}])]]]])
+    content])
+
 (defn render-pulse-card
   "Render a single CARD for a `Pulse`. RESULT is the QP results."
   [card {:keys [data error]}]
   (try
     (when error
       (throw (Exception. (str "Card has errors: " error))))
-    [:a {:href   (card-href card)
-         :target "_blank"
-         :style  (style section-style
-                        {:margin          :16px
-                         :margin-bottom   :16px
-                         :display         :block
-                         :text-decoration :none})}
-     (when *include-title*
-       [:table {:style (style {:margin-bottom :8px
-                               :width         :100%})}
-        [:tbody
-         [:tr
-          [:td [:span {:style header-style}
-                (-> card :name h)]]
-          [:td {:style (style {:text-align :right})}
-           (when *include-buttons*
-             [:img {:style (style {:width :16px})
-                    :width 16
-                    :src   (render-image-with-filename "frontend_client/app/img/external_link.png")}])]]]])
-     (case (detect-pulse-card-type card data)
-       :empty     (render:empty     card data)
-       :scalar    (render:scalar    card data)
-       :sparkline (render:sparkline card data)
-       :bar       (render:bar       card data)
-       :table     (render:table     card data)
-       [:div {:style (style font-style
-                            {:color       "#F9D45C"
-                             :font-weight 700})}
-        "We were unable to display this card." [:br] "Please view this card in Metabase."])]
+    (let [content (case (detect-pulse-card-type card data)
+                    :empty     (render:empty     card data)
+                    :scalar    (render:scalar    card data)
+                    :sparkline (render:sparkline card data)
+                    :bar       (render:bar       card data)
+                    :table     (render:table     card data)
+                    [:div {:style (style font-style
+                                         {:color       "#F9D45C"
+                                          :font-weight 700})}
+                     "We were unable to display this card." [:br] "Please view this card in Metabase."])]
+      (render-pulse-card-container card content))
     (catch Throwable e
       (log/warn "Pulse card render error:" e)
-      [:div {:style (style font-style
-                           {:color       "#EF8C8C"
-                            :font-weight 700
-                            :padding     :16px})}
-       "An error occurred while displaying this card."])))
+      (let [content [:div {:style (style font-style
+                                         {:color       "#EF8C8C"
+                                          :font-weight 700
+                                          :padding     :16px})}
+                     "An error occurred while displaying this card."]]
+        (render-pulse-card-container card content)))))
+
 
 
 (defn render-pulse-section
