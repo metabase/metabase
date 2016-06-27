@@ -86,10 +86,10 @@
   [id]
   (let [card (Card id)]
     (read-check Database (:database (:dataset_query card)))
-    (let [data (:data (qp/dataset-query (:dataset_query card) {:executed_by *current-user-id*}))]
+    (let [result (qp/dataset-query (:dataset_query card) {:executed_by *current-user-id*})]
       {:status 200, :body (html [:html [:body {:style "margin: 0;"} (binding [render/*include-title* true
                                                                               render/*include-buttons* true]
-                                                                      (render/render-pulse-card card data))]])})))
+                                                                      (render/render-pulse-card card result))]])})))
 
 (defendpoint GET "/preview_card_info/:id"
   "Get JSON object containing HTML rendering of a `Card` with ID and other information."

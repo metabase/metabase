@@ -398,8 +398,10 @@
 
 (defn render-pulse-card
   "Render a single CARD for a `Pulse`. DATA is the `:data` from QP results (I think)."
-  [card data]
+  [card result]
   (try
+    (if (:error result) (throw (Exception. "Card has errors")))
+    (let [data (:data result)]
     [:a {:href   (card-href card)
          :target "_blank"
          :style  (style section-style
@@ -428,7 +430,7 @@
        [:div {:style (style font-style
                             {:color       "#F9D45C"
                              :font-weight 700})}
-        "We were unable to display this card." [:br] "Please view this card in Metabase."])]
+        "We were unable to display this card." [:br] "Please view this card in Metabase."])])
     (catch Throwable e
       (log/warn "Pulse card render error:" e)
       [:div {:style (style font-style
