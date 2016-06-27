@@ -68,12 +68,13 @@ export default class SettingsSingleSignOnForm extends Component {
             <form noValidate>
                 <div className="px2"
                      style={{maxWidth: "585px"}}>
-                    <h1>
-                        Sign in with Google
-                    </h1>
-                    <div className="py2">
+                    <h1>Sign in with Google</h1>
+                    <p className="text-grey-4">
                         Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password.
-                    </div>
+                    </p>
+                    <p className="text-grey-4">
+                        To allow users to sign in with Google you'll need to give Metabase a Google Apps application client ID. Instructions on how to create a key can be found <a className="link" href="https://developers.google.com/identity/sign-in/web/devconsole-project" target="_blank">here.</a>
+                    </p>
                     <Input
                         className="SettingsInput AdminInput bordered rounded h3"
                         type="text"
@@ -90,7 +91,7 @@ export default class SettingsSingleSignOnForm extends Component {
                             size={20}
                         />
                         <div className="inline-block">
-                            Allow users to sign up on their own if their Google account email address is from:
+                            <p classname="text-grey-3">Allow users to sign up on their own if their Google account email address is from:</p>
                             <div className="my2 bordered rounded">
                                 <div className="inline-block px2 h2">
                                     @
