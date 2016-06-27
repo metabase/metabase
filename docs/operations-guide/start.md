@@ -50,7 +50,7 @@ See below for information on how to update Metabase on managed platforms.
 #### Mac OS X Application
 If you are using the Metabase app, you will be notified when there is a new version available. You will see a dialog displaying the changes in the latest version and prompt you to upgrade.
 
-![Autoupdate Confirmation Dialog](/images/AutoupdateScreenshot.png)
+![Autoupdate Confirmation Dialog](images/AutoupdateScreenshot.png)
 
 #### [Upgrading AWS Elastic Beanstalk deployments](running-metabase-on-elastic-beanstalk.md#deploying-new-versions-of-metabase)
 Step-by-step instructions on how to upgrade Metabase running on Elastic Beanstalk using RDS.
