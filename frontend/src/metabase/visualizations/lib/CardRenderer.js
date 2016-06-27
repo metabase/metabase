@@ -505,6 +505,19 @@ export let CardRenderer = {
             xValues = datas.map(data => data[0][0]);
         }
 
+        // HACK: This ensures each group is sorted by the same order as xValues,
+        // otherwise we can end up with line charts with x-axis labels in the correct order
+        // but the points in the wrong order. There may be a more efficient way to do this.
+        let sortMap = new Map()
+        for (let [index, key] of xValues.entries()) {
+            sortMap.set(key, index);
+        }
+        for (let group of groups) {
+            group.forEach(g => {
+                g.all = () => g.top(Infinity).sort((a, b) => sortMap.get(a.key) - sortMap.get(b.key))
+            });
+        }
+
         let parent;
         if (groups.length > 1) {
             parent = initializeChart(series[0].card, element, "compositeChart")
