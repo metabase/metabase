@@ -20,13 +20,12 @@ import "./services";
 import React from "react";
 //import { render } from "react-dom";
 //import { Provider } from "react-redux";
-import { applyMiddleware, combineReducers, compose, createStore } from "redux";
+import { combineReducers } from "redux";
 import { reducer as form } from "redux-form";
 import createLogger from "redux-logger";
 import promise from 'redux-promise';
 import { reduxReactRouter, routerStateReducer } from "redux-router";
 import thunk from "redux-thunk";
-import { createHistory } from 'history';
 
 import Navbar from "./components/Navbar.jsx";
 import Routes from "./Routes.jsx";
@@ -97,13 +96,6 @@ let middleware = [thunk, promise];
 if (DEBUG) {
     middleware.push(createLogger());
 }
-
-// common createStore with middleware applied
-const createMetabaseStore = compose(
-  applyMiddleware(...middleware),
-  reduxReactRouter({ createHistory }),
-  window.devToolsExtension ? window.devToolsExtension() : f => f
-)(createStore);
 
 // Declare app level module which depends on filters, and services
 angular.module('metabase', [
