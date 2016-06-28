@@ -16,7 +16,7 @@ import QueryBuilderTutorial from "../../tutorial/QueryBuilderTutorial.jsx";
 import SavedQuestionIntroModal from "../SavedQuestionIntroModal.jsx";
 
 
-import { 
+import {
     card,
     originalCard,
     databases,
@@ -95,7 +95,7 @@ const mapStateToProps = (state, props) => {
         cellIsClickableFn:         (rowIndex, columnIndex) => cellIsClickable(state.qb.queryResult, rowIndex, columnIndex)
     }
 }
-            
+
 
 const mapDispatchToProps = {
     ...actions,
