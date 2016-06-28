@@ -1,21 +1,43 @@
 import React, { Component, PropTypes } from "react";
+import { connect } from "react-redux";
 import _ from "underscore";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
-import MetadataHeader from './MetadataHeader.jsx';
-import MetadataTablePicker from './MetadataTablePicker.jsx';
-import MetadataTable from './MetadataTable.jsx';
-import MetadataSchema from './MetadataSchema.jsx';
+import MetadataHeader from '../components/database/MetadataHeader.jsx';
+import MetadataTablePicker from '../components/database/MetadataTablePicker.jsx';
+import MetadataTable from '../components/database/MetadataTable.jsx';
+import MetadataSchema from '../components/database/MetadataSchema.jsx';
 
+
+import {
+    getDatabases,
+    getDatabaseIdfields,
+    getEditingDatabaseWithTableMetadataStrengths,
+    getEditingTable
+} from "../metadataSelectors";
+import * as metadataActions from "../metadata";
+
+
+const mapStateToProps = (state, props) => {
+  return {
+      databases:            getDatabases(state),
+      idfields:             getDatabaseIdfields(state),
+      databaseMetadata:     getEditingDatabaseWithTableMetadataStrengths(state),
+      editingTable:         getEditingTable(state)
+  }
+}
+
+const mapDispatchToProps = {
+    ...metadataActions
+}
+
+@connect(mapStateToProps, mapDispatchToProps)
 export default class MetadataEditor extends Component {
+
     constructor(props, context) {
         super(props, context);
         this.toggleShowSchema = this.toggleShowSchema.bind(this);
-        this.updateField = this.updateField.bind(this);
-        this.updateFieldSpecialType = this.updateFieldSpecialType.bind(this);
-        this.updateFieldTarget = this.updateFieldTarget.bind(this);
-        this.updateTable = this.updateTable.bind(this);
 
         this.state = {
             isShowingSchema: false
@@ -24,55 +46,31 @@ export default class MetadataEditor extends Component {
 
     static propTypes = {
         databaseId: PropTypes.number,
+        tableId: PropTypes.number,
         databases: PropTypes.array.isRequired,
         selectDatabase: PropTypes.func.isRequired,
         databaseMetadata: PropTypes.object,
-        tableId: PropTypes.number,
-        tables: PropTypes.object.isRequired,
         selectTable: PropTypes.func.isRequired,
         idfields: PropTypes.array.isRequired,
+        editingTable: PropTypes.number,
         updateTable: PropTypes.func.isRequired,
         updateField: PropTypes.func.isRequired,
         updateFieldSpecialType: PropTypes.func.isRequired,
         updateFieldTarget: PropTypes.func.isRequired
     };
 
+    componentWillMount() {
+        // if we know what database we are initialized with, include that
+        this.props.initializeMetadata(this.props.databaseId, this.props.tableId);
+    }
+
     toggleShowSchema() {
         this.setState({ isShowingSchema: !this.state.isShowingSchema });
         MetabaseAnalytics.trackEvent("Data Model", "Show OG Schema", !this.state.isShowingSchema);
     }
 
-    handleSaveResult(promise) {
-        this.refs.header.setSaving();
-        promise.then(() => {
-            this.refs.header.setSaved();
-        }, (error) => {
-            this.refs.header.setSaveError(error.data);
-        });
-    }
-
-    updateTable(table) {
-        this.handleSaveResult(this.props.updateTable(table));
-        MetabaseAnalytics.trackEvent("Data Model", "Update Table");
-    }
-
-    updateField(field) {
-        this.handleSaveResult(this.props.updateField(field));
-        MetabaseAnalytics.trackEvent("Data Model", "Update Field");
-    }
-
-    updateFieldSpecialType(field) {
-        this.handleSaveResult(this.props.updateFieldSpecialType(field));
-        MetabaseAnalytics.trackEvent("Data Model", "Update Field Special-Type", field.special_type);
-    }
-
-    updateFieldTarget(field) {
-        this.handleSaveResult(this.props.updateFieldTarget(field));
-        MetabaseAnalytics.trackEvent("Data Model", "Update Field Target");
-    }
-
     render() {
-        var tableMetadata = (this.props.databaseMetadata) ? _.findWhere(this.props.databaseMetadata.tables, {id: this.props.tableId}) : null;
+        var tableMetadata = (this.props.databaseMetadata) ? _.findWhere(this.props.databaseMetadata.tables, {id: this.props.editingTable}) : null;
         var content;
         if (tableMetadata) {
             if (this.state.isShowingSchema) {
@@ -82,10 +80,10 @@ export default class MetadataEditor extends Component {
                     <MetadataTable
                         tableMetadata={tableMetadata}
                         idfields={this.props.idfields}
-                        updateTable={this.updateTable}
-                        updateField={this.updateField}
-                        updateFieldSpecialType={this.updateFieldSpecialType}
-                        updateFieldTarget={this.updateFieldTarget}
+                        updateTable={(table) => this.props.updateTable(table)}
+                        updateField={(field) => this.props.updateField(field)}
+                        updateFieldSpecialType={(field) => this.props.updateFieldSpecialType(field)}
+                        updateFieldTarget={(field) => this.props.updateFieldTarget(field)}
                         onRetireSegment={this.props.onRetireSegment}
                         onRetireMetric={this.props.onRetireMetric}
                     />
@@ -102,7 +100,7 @@ export default class MetadataEditor extends Component {
             <div className="p3">
                 <MetadataHeader
                     ref="header"
-                    databaseId={this.props.databaseId}
+                    databaseId={this.props.databaseMetadata ? this.props.databaseMetadata.id : null}
                     databases={this.props.databases}
                     selectDatabase={this.props.selectDatabase}
                     isShowingSchema={this.state.isShowingSchema}
@@ -110,7 +108,7 @@ export default class MetadataEditor extends Component {
                 />
               <div style={{minHeight: "60vh"}} className="flex flex-row flex-full mt2 full-height">
                     <MetadataTablePicker
-                        tableId={this.props.tableId}
+                        tableId={this.props.editingTable}
                         tables={(this.props.databaseMetadata) ? this.props.databaseMetadata.tables : []}
                         selectTable={this.props.selectTable}
                     />
