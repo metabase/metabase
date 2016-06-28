@@ -152,7 +152,23 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, d
             }
         }, DATASET_SLOW_TIMEOUT);
 
-        result = await MetabaseApi.dataset(datasetQuery);
+
+        try {
+          // result = await MetabaseApi.dataset(datasetQuery);
+          // mocking an angular $http response 504 object
+          // not sure if this is the exact shape and content, but hopefully close enough
+          result = await Promise.reject({
+            status: 504,
+            statusText: "GATEWAY_TIMEOUT",
+            data: {
+              message: "Failed to load resource: the server responded with a status of 504 (GATEWAY_TIMEOUT)"
+            }
+          });
+        }
+        catch (error) {
+          clearTimeout(slowCardTimer);
+          return { dashcard_id: dashcard.id, card_id: card.id, result: { error } };
+        }
 
         clearTimeout(slowCardTimer);
         return { dashcard_id: dashcard.id, card_id: card.id, result };
