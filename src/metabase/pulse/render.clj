@@ -399,7 +399,6 @@
 (defn render-pulse-card
   "Render a single CARD for a `Pulse`. RESULT is the QP results."
   [card {:keys [data error]}]
-
   [:a {:href   (card-href card)
        :target "_blank"
        :style  (style section-style
