@@ -68,41 +68,41 @@ export default class SettingsSingleSignOnForm extends Component {
             <form noValidate>
                 <div className="px2"
                      style={{maxWidth: "585px"}}>
-                    <h1>Sign in with Google</h1>
+                    <h2>Sign in with Google</h2>
                     <p className="text-grey-4">
                         Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password.
                     </p>
                     <p className="text-grey-4">
-                        To allow users to sign in with Google you'll need to give Metabase a Google Apps application client ID. Instructions on how to create a key can be found <a className="link" href="https://developers.google.com/identity/sign-in/web/devconsole-project" target="_blank">here.</a>
+                        To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found <a className="link" href="https://developers.google.com/identity/sign-in/web/devconsole-project" target="_blank">here.</a>
                     </p>
                     <Input
                         className="SettingsInput AdminInput bordered rounded h3"
                         type="text"
                         value={this.state.clientID.value}
-                        placeholder="534278061337-lrsutnnp2g06ltqoql6f1p2njk8h2b4se.apps.googleusercontent.com"
+                        placeholder="Your Google client ID"
                         onBlurChange={(event) => this.updateClientID(event.target.value)}
                     />
                     <div className="py3">
-                        <CheckBox
-                            className="inline-block pr2"
-                            style={{verticalAlign: "top"}}
-                            checked={!!this.state.domain.value}
-                            onChange={this.onCheckboxClicked}
-                            size={20}
-                        />
-                        <div className="inline-block">
-                            <p className="text-grey-3">Allow users to sign up on their own if their Google account email address is from:</p>
-                            <div className="my2 bordered rounded">
-                                <div className="inline-block px2 h2">
-                                    @
-                                </div>
-                                <Input
-                                    className="SettingsInput AdminInput h3 border-left"
-                                    type="text"
-                                    value={this.state.domain.value}
-                                    onBlurChange={(event) => this.updateDomain(event.target.value)}
-                                />
-                            </div>
+                        <div className="flex align-center">
+                            <CheckBox
+                                className="inline-block pr2"
+                                style={{verticalAlign: "top"}}
+                                checked={!!this.state.domain.value}
+                                onChange={this.onCheckboxClicked}
+                                invertChecked
+                                checkColor={'#409ee3'}
+                                size={20}
+                            />
+                            <p className="text-grey-4">Allow users to sign up on their own if their Google account email address is from:</p>
+                        </div>
+                        <div className="mt1 ml4 bordered rounded inline-block">
+                            <div className="inline-block px2 h2">@</div>
+                            <Input
+                                className="SettingsInput inline-block AdminInput h3 border-left"
+                                type="text"
+                                value={this.state.domain.value}
+                                onBlurChange={(event) => this.updateDomain(event.target.value)}
+                            />
                         </div>
                     </div>
                 </div>
