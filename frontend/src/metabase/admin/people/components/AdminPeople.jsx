@@ -8,6 +8,8 @@ import Modal from "metabase/components/Modal.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
 import PasswordReveal from "metabase/components/PasswordReveal.jsx";
 import UserAvatar from "metabase/components/UserAvatar.jsx";
+import Icon from "metabase/components/Icon.jsx";
+import Tooltip from "metabase/components/Tooltip.jsx";
 
 import EditUserForm from "./EditUserForm.jsx";
 import UserActionsSelect from "./UserActionsSelect.jsx";
@@ -375,7 +377,12 @@ export default class AdminPeople extends Component {
                                 { users.map(user =>
                                 <tr>
                                     <td><span className="text-white inline-block"><UserAvatar background={(user.is_superuser) ? "bg-purple" : "bg-brand"} user={user} /></span> <span className="ml2 text-bold">{user.common_name}</span></td>
-                                    <td>{user.google_auth ? '👿' : ''}</td>
+                                    <td>
+                                      {user.google_auth ?
+                                        <Tooltip tooltip="Signed up via Google">
+                                            <Icon name='google' />
+                                        </Tooltip> : null}
+                                    </td>
                                     <td>{user.email}</td>
                                     <td>
                                         <UserRoleSelect

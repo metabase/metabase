@@ -91,7 +91,7 @@ export default class SettingsSingleSignOnForm extends Component {
                             size={20}
                         />
                         <div className="inline-block">
-                            <p classname="text-grey-3">Allow users to sign up on their own if their Google account email address is from:</p>
+                            <p className="text-grey-3">Allow users to sign up on their own if their Google account email address is from:</p>
                             <div className="my2 bordered rounded">
                                 <div className="inline-block px2 h2">
                                     @
