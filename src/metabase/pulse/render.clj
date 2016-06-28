@@ -396,7 +396,7 @@
            (number-field? col-2))                                  :bar
       :else                                                        :table)))
 
-(defn render-pulse-card-container
+(defn- render-pulse-card-container
   [card content]
   [:a {:href   (card-href card)
        :target "_blank"
