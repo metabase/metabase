@@ -413,4 +413,4 @@
     {:columns   columns
      :rows      (for [row results]
                   (mapv row columns))
-     :annotate? true}))
+     :annotate? mbql?}))

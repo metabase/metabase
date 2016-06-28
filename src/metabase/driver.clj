@@ -286,7 +286,8 @@
   (contains? (features driver) feature))
 
 (defn class->base-type
-  "Return the `Field.base_type` that corresponds to a given class returned by the DB."
+  "Return the `Field.base_type` that corresponds to a given class returned by the DB.
+   This is used to infer the types of results that come back from native queries."
   [klass]
   (or ({Boolean                         :BooleanField
         Double                          :FloatField
@@ -337,6 +338,7 @@
    This loads the corresponding driver if needed."
   (let [db-id->engine (memoize (fn [db-id] (db/select-one-field :engine Database, :id db-id)))]
     (fn [db-id]
+      {:pre [db-id]}
       (engine->driver (db-id->engine db-id)))))
 
 

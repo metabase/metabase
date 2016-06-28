@@ -35,6 +35,7 @@
       {"include": {"file": "migrations/034_add_pulse_channel_enabled_field.yaml"}},
       {"include": {"file": "migrations/035_modify_setting_value_length.yaml"}},
       {"include": {"file": "migrations/036_add_dashboard_filters_columns.yaml"}},
+      {"include": {"file": "migrations/037_add_query_hash_and_indexes.yaml"}},
       {"include": {"file": "migrations/039_add_user_google_auth_column.yaml"}}
   ]
 }

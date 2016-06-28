@@ -47,5 +47,6 @@ If you want to delete a pulse, you can find that option at the bottom of the edi
 
 ---
 
-## Next: data model references
-Sometimes you’ll need help understanding what data is available to you and what it means. Metabase provides a way for your administrators and data experts to build a [data model reference](08-data-model-reference.md) to help you make sense of your database.
+## Next: Connecting Metabase to Slack with Metabot 🤖
+
+If your team uses Slack to communicate, you can [use Metabot](10-metabot.md) to display your saved questions directly within Slack whenever you want.

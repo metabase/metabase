@@ -41,11 +41,6 @@
                                   ;; if we don't have an absolute path then make sure we start from "user.dir"
                                   [(System/getProperty "user.dir") "/" db-file-name options]))))))
 
-(defn- db-type
-  "The type of backing DB used to run Metabase. `:h2`, `:mysql`, or `:postgres`."
-  ^clojure.lang.Keyword []
-  (config/config-kw :mb-db-type))
-
 (defn parse-connection-string
   "Parse a DB connection URI like `postgres://cam@localhost.com:5432/cams_cool_db?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory` and return a broken-out map."
   [uri]
@@ -60,11 +55,20 @@
                    codec/form-decode
                    walk/keywordize-keys))))
 
+(def ^:private connection-string-details
+  (delay (when-let [uri (config/config-str :mb-db-connection-uri)]
+           (parse-connection-string uri))))
+
+(defn- db-type
+  "The type of backing DB used to run Metabase. `:h2`, `:mysql`, or `:postgres`."
+  ^clojure.lang.Keyword []
+  (or (:type @connection-string-details)
+      (config/config-kw :mb-db-type)))
+
 (def db-connection-details
   "Connection details that can be used when pretending the Metabase DB is itself a `Database`
    (e.g., to use the Generic SQL driver functions on the Metabase DB itself)."
-  (delay (or (when-let [uri (config/config-str :mb-db-connection-uri)]
-               (parse-connection-string uri))
+  (delay (or @connection-string-details
              (case (db-type)
                :h2       {:type     :h2                               ; TODO - we probably don't need to specifc `:type` here since we can just call (db-type)
                           :db       @db-file}
@@ -95,7 +99,7 @@
 
 ;; ## MIGRATE
 
-(def ^:private ^:const changelog-file
+(def ^:private ^:const ^String changelog-file
   "migrations/liquibase.json")
 
 (defn migrate
@@ -260,6 +264,32 @@
   []
   ((quoting-style) @(resolve 'honeysql.format/quote-fns)))
 
+
+(def ^:private ^:dynamic *call-count*
+  "Atom used as a counter for DB calls when enabled.
+   This number isn't *perfectly* accurate, only mostly; DB calls made directly to JDBC or via old korma patterns won't be logged."
+  nil)
+
+(defn do-with-call-counting
+  "Execute F with DB call counting enabled. F is passed a single argument, a function that can be used to retrieve the current call count.
+   (It's probably more useful to use the macro form of this function, `with-call-counting`, instead.)"
+  {:style/indent 0}
+  [f]
+  (binding [*call-count* (atom 0)]
+    (f (partial deref *call-count*))))
+
+(defmacro with-call-counting
+  "Execute BODY and track the number of DB calls made inside it. CALL-COUNT-FN-BINDING is bound to a zero-arity function that can be used to fetch the current
+   DB call count.
+
+     (db/with-call-counting [call-count]
+       ...
+       (call-count))"
+  {:style/indent 1}
+  [[call-count-fn-binding] & body]
+  `(do-with-call-counting (fn [~call-count-fn-binding] ~@body)))
+
+
 (defn- honeysql->sql
   "Compile HONEYSQL-FORM to SQL.
   This returns a vector with the SQL string as its first item and prepared statement params as the remaining items."
@@ -269,7 +299,9 @@
   (u/prog1 (binding [hformat/*subquery?* false]
              (hsql/format honeysql-form, :quoting (quoting-style), :allow-dashed-names? true))
     (when-not *disable-db-logging*
-      (log/debug (str "DB Call: " (first <>))))))
+      (log/debug (str "DB Call: " (first <>)))
+      (when *call-count*
+        (swap! *call-count* inc)))))
 
 (defn query
   "Compile HONEYSQL-FROM and call `jdbc/query` against the Metabase database.
