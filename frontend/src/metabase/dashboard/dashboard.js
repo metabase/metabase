@@ -157,8 +157,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, d
           result = await MetabaseApi.dataset(datasetQuery);
         }
         catch (error) {
-          clearTimeout(slowCardTimer);
-          return { dashcard_id: dashcard.id, card_id: card.id, result: { error } };
+          result = { error };
         }
 
         clearTimeout(slowCardTimer);
