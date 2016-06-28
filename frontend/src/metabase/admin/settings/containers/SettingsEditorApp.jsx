@@ -8,7 +8,7 @@ import SettingsEmailForm from "../components/SettingsEmailForm.jsx";
 import SettingsSlackForm from "../components/SettingsSlackForm.jsx";
 import SettingsSetupList from "../components/SettingsSetupList.jsx";
 import SettingsUpdatesForm from "../components/SettingsUpdatesForm.jsx";
-import SettingsSingleSignOnForm from "./components/SettingsSingleSignOnForm.jsx";
+import SettingsSingleSignOnForm from "../components/SettingsSingleSignOnForm.jsx";
 
 import _ from "underscore";
 import cx from 'classnames';
