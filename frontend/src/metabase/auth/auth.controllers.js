@@ -1,3 +1,5 @@
+/*global gapi*/
+
 import "./auth.services";
 
 import MetabaseSettings from "metabase/lib/settings";
@@ -56,13 +58,27 @@ AuthControllers.controller('Login', ['$scope', '$window', '$location', '$timeout
 
         $scope.enableGoogleAuth = MetabaseSettings.enableGoogleAuth();
 
-        // TODO -- is there some way we can attach this to $scope instead of $window?
-        $window.googleLogin = function(googleUser) {
-            // OK, now call the backend
-            Session.createWithGoogleAuth({
-                token: googleUser.getAuthResponse().id_token
-            }, onLoginSuccess, onLoginError);
-        };
+        function renderGoogleAuth() {
+            // if gapi or the appropriate DOM element isn't loaded yet then wait 100ms and check again. Keep doing this until we're ready
+            if (typeof gapi === 'undefined' || !gapi || !gapi.signin2 || !document.getElementById('g-signin2')) {
+                window.setTimeout(renderGoogleAuth, 100);
+                return;
+            }
+            try {
+                gapi.signin2.render('g-signin2', {
+                    width: 'auto',
+                    longtitle: true,
+                    onsuccess: function(googleUser) {
+                        Session.createWithGoogleAuth({
+                            token: googleUser.getAuthResponse().id_token
+                        }, onLoginSuccess, onLoginError);
+                    }
+                });
+            } catch (e) {
+                console.error('error rendering google auth login button: ', e);
+            }
+        }
+        if ($scope.enableGoogleAuth) renderGoogleAuth();
 
         $scope.resetPassword = function() {
             if ($window.OSX) $window.OSX.resetPassword();
