@@ -29,34 +29,31 @@
 (expect
     #{(match-$ (fetch-user :crowberto)
         {:common_name  "Crowberto Corv"
-         :date_joined  $
          :last_name    "Corv"
          :id           $
          :is_superuser true
-         :is_qbnewb    true
          :last_login   $
          :first_name   "Crowberto"
-         :email        "crowberto@metabase.com"})
+         :email        "crowberto@metabase.com"
+         :google_auth  false})
       (match-$ (fetch-user :lucky)
         {:common_name  "Lucky Pigeon"
-         :date_joined  $
          :last_name    "Pigeon"
          :id           $
          :is_superuser false
-         :is_qbnewb    true
          :last_login   $
          :first_name   "Lucky"
-         :email        "lucky@metabase.com"})
+         :email        "lucky@metabase.com"
+         :google_auth  false})
       (match-$ (fetch-user :rasta)
         {:common_name  "Rasta Toucan"
-         :date_joined  $
          :last_name    "Toucan"
          :id           $
          :is_superuser false
-         :is_qbnewb    true
          :last_login   $
          :first_name   "Rasta"
-         :email        "rasta@metabase.com"})}
+         :email        "rasta@metabase.com"
+         :google_auth  false})}
   (do
     ;; Delete all the other random Users we've created so far
     (let [user-ids (set (map user->id [:crowberto :rasta :lucky :trashbird]))]

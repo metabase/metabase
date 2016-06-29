@@ -144,10 +144,11 @@
         (throw (ex-info "Email is not verified." {:status-code 400}))))))
 
 ;; TODO - are these general enough to move to `metabase.util`?
-(defn- email->domain ^String [email]
+(defn- email->domain   "ABC" ^String
+  [email]
   (last (re-find #"^.*@(.*$)" email)))
 
-(defn- email-in-domain? [email domain]
+(defn- email-in-domain? ^Boolean [email domain]
   {:pre [(u/is-email? email)]}
   (= (email->domain email) domain))
 
@@ -185,7 +186,7 @@
   ;; Verify the token is valid with Google
   (let [{:keys [given_name family_name email]} (google-auth-token-info token)]
     (log/info "Successfully authenicated Google Auth token for:" given_name family_name)
-    (google-auth-fetch-or-create-user! first-name last-name email)))
+    (google-auth-fetch-or-create-user! given_name family_name email)))
 
 
 (define-routes)
