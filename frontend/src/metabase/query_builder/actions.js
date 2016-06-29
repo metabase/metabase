@@ -21,7 +21,7 @@ const User = new AngularResourceProxy("User", ["update_qbnewb"]);
 export const INITIALIZE_QB = "INITIALIZE_QB";
 export const initializeQB = createThunkAction(INITIALIZE_QB, (updateUrl) => {
     return async (dispatch, getState) => {
-        const { router: { location, params }, currentUser } = getState();
+        const { router: { location, params: { cardId } }, currentUser } = getState();
 
         let card, databases, originalCard, uiControls = {};
 
@@ -40,8 +40,7 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (updateUrl) => {
         }
 
         // load up or initialize the card we'll be working on
-        const cardId = params.cardId;
-        const serializedCard = _.isEmpty(location.hash) ? null : location.hash.substr(1);
+        const serializedCard = location.hash || null;
         const sampleDataset = _.findWhere(databases, { is_sample: true });
         if (cardId || serializedCard) {
             // existing card being loaded
@@ -70,6 +69,7 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (updateUrl) => {
                     MetabaseAnalytics.trackEvent("QueryBuilder", "Show Newb Modal");
                 }
             } catch(error) {
+                console.warn(error)
                 card = null;
 
                 if (error.status === 404) {
@@ -114,7 +114,7 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (updateUrl) => {
         }
 
         // if we have loaded up a card that we can run then lets kick that off as well
-        if (Query.canRun(card.dataset_query.query) || card.dataset_query.type === "native") {
+        if (card && card.dataset_query && (Query.canRun(card.dataset_query.query) || card.dataset_query.type === "native")) {
             dispatch(runQuery(card, false));
         }
 
@@ -491,7 +491,7 @@ export const setQuerySourceTable = createThunkAction(SET_QUERY_SOURCE_TABLE, (so
 // setQuerySort
 export const SET_QUERY_SORT = "SET_QUERY_SORT";
 export const setQuerySort = createThunkAction(SET_QUERY_SORT, (column) => {
-    return (dispatch, getState) => {        
+    return (dispatch, getState) => {
         const { qb: { card } } = getState();
 
         // NOTE: we only allow this for structured type queries & we only allow sorting by a single column

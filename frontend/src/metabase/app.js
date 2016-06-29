@@ -60,10 +60,8 @@ import * as user from "metabase/user/reducers";
 import { currentUser } from "metabase/user";
 
 import { registerAnalyticsClickListener } from "metabase/lib/analytics";
-import { DEBUG } from "metabase/lib/debug";
 import { serializeCardForUrl, cleanCopyCard, urlForCardState } from "metabase/lib/card";
 import { createStoreWithAngularScope } from "metabase/lib/redux";
-
 
 const reducers = combineReducers({
     form,
@@ -91,11 +89,6 @@ const reducers = combineReducers({
     people: combineReducers(people),
     settings
 });
-
-let middleware = [thunk, promise];
-if (DEBUG) {
-    middleware.push(createLogger());
-}
 
 // Declare app level module which depends on filters, and services
 angular.module('metabase', [
@@ -213,6 +206,9 @@ angular.module('metabase', [
                 $rootScope.$broadcast(eventName, value);
             },
             updateUrl: (card, isDirty=false, replaceState=false) => {
+                if (!card) {
+                    return;
+                }
                 var copy = cleanCopyCard(card);
                 var newState = {
                     card: copy,
