@@ -51,62 +51,6 @@
     {:id (create-session! user)}))
 
 
-;; TODO - Where should this go?
-(defsetting google-auth-client-id
-  "Client ID for Google Auth SSO.")
-
-(defsetting google-auth-auto-create-accounts-domain
-  "When set, allow users to sign up on their own if their Google account email address is from this domain.")
-
-(defn- google-auth-token-info [^String token]
-  (let [{:keys [status body]} (http/post (str "https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=" token))]
-    (when-not (= status 200)
-      (throw (ex-info "Invalid Google Auth token." {:status-code 400})))
-    (u/prog1 (json/parse-string body keyword)
-      (when-not (= (:email_verified <>) "true")
-        (throw (ex-info "Email is not verified." {:status-code 400}))))))
-
-(defn- email->domain ^String [email]
-  (last (re-find #"^.*@(.*$)" email)))
-
-(defn- email-in-domain? [email domain]
-  {:pre [(u/is-email? email)]}
-  (= (email->domain email) domain))
-
-(defn- autocreate-user-allowed-for-email? [email]
-  (when-let [domain (google-auth-auto-create-accounts-domain)]
-    (email-in-domain? email domain)))
-
-(defn- check-autocreate-user-allowed-for-email [email]
-  (when-not (autocreate-user-allowed-for-email? email)
-    ;; Use some wacky status code (428 - Precondition Required) so we will know when to so the error screen specific to this situation
-    (throw (ex-info "You'll need an administrator to create a Metabase account before you can use Google to log in."
-                    {:status-code 428}))))
-
-(defn- google-auth-create-new-user! [first-name last-name email]
-  (check-autocreate-user-allowed-for-email email)
-  (db/insert! User
-    :first_name  first-name
-    :last_name   last-name
-    :email       email
-    :google_auth true
-    ;; just give the user a random password; they can go reset it if they ever change their mind and want to log in without Google Auth;
-    ;; this lets us keep the NOT NULL constraints on password / salt without having to make things hairy and only enforce those for non-Google Auth users
-    :password    (str (java.util.UUID/randomUUID))))
-
-(defendpoint POST "/google_auth"
-  "Login with Google Auth."
-  [:as {{:keys [token]} :body, remote-address :remote-addr}]
-  {token [Required NonEmptyString]}
-  (throttle/check (login-throttlers :ip-address) remote-address) ; TODO - Should we throttle this? It might keep us from being slammed with calls that have to make outbound HTTP requests, etc.
-  ;; Verify the token is valid with Google
-  (let [{:keys [given_name family_name email]} (google-auth-token-info token)]
-    (log/info "Successfully authenicated Google Auth token for:" given_name family_name)
-    (if-let [user (or (db/select-one [User :id :last_login] :email email)
-                      (google-auth-create-new-user! given_name family_name email))]
-      {:id (create-session! user)})))
-
-
 (defendpoint DELETE "/"
   "Logout."
   [session_id]
@@ -181,6 +125,67 @@
   "Get all global properties and their values. These are the specific `Settings` which are meant to be public."
   []
   (setting/public-settings))
+
+
+;;; ------------------------------------------------------------ GOOGLE AUTH ------------------------------------------------------------
+
+(defsetting google-auth-client-id
+  "Client ID for Google Auth SSO.")
+
+(defsetting google-auth-auto-create-accounts-domain
+  "When set, allow users to sign up on their own if their Google account email address is from this domain.")
+
+(defn- google-auth-token-info [^String token]
+  (let [{:keys [status body]} (http/post (str "https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=" token))]
+    (when-not (= status 200)
+      (throw (ex-info "Invalid Google Auth token." {:status-code 400})))
+    (u/prog1 (json/parse-string body keyword)
+      (when-not (= (:email_verified <>) "true")
+        (throw (ex-info "Email is not verified." {:status-code 400}))))))
+
+;; TODO - are these general enough to move to `metabase.util`?
+(defn- email->domain ^String [email]
+  (last (re-find #"^.*@(.*$)" email)))
+
+(defn- email-in-domain? [email domain]
+  {:pre [(u/is-email? email)]}
+  (= (email->domain email) domain))
+
+(defn- autocreate-user-allowed-for-email? [email]
+  (when-let [domain (google-auth-auto-create-accounts-domain)]
+    (email-in-domain? email domain)))
+
+(defn- check-autocreate-user-allowed-for-email [email]
+  (when-not (autocreate-user-allowed-for-email? email)
+    ;; Use some wacky status code (428 - Precondition Required) so we will know when to so the error screen specific to this situation
+    (throw (ex-info "You'll need an administrator to create a Metabase account before you can use Google to log in."
+                    {:status-code 428}))))
+
+(defn- google-auth-create-new-user! [first-name last-name email]
+  (check-autocreate-user-allowed-for-email email)
+  (db/insert! User
+    :first_name  first-name
+    :last_name   last-name
+    :email       email
+    :google_auth true
+    ;; just give the user a random password; they can go reset it if they ever change their mind and want to log in without Google Auth;
+    ;; this lets us keep the NOT NULL constraints on password / salt without having to make things hairy and only enforce those for non-Google Auth users
+    :password    (str (java.util.UUID/randomUUID))))
+
+(defn- google-auth-fetch-or-create-user! [first-name last-name email]
+  (if-let [user (or (db/select-one [User :id :last_login] :email email)
+                    (google-auth-create-new-user! first-name last-name email))]
+    {:id (create-session! user)}))
+
+(defendpoint POST "/google_auth"
+  "Login with Google Auth."
+  [:as {{:keys [token]} :body, remote-address :remote-addr}]
+  {token [Required NonEmptyString]}
+  (throttle/check (login-throttlers :ip-address) remote-address) ; TODO - Should we throttle this? It might keep us from being slammed with calls that have to make outbound HTTP requests, etc.
+  ;; Verify the token is valid with Google
+  (let [{:keys [given_name family_name email]} (google-auth-token-info token)]
+    (log/info "Successfully authenicated Google Auth token for:" given_name family_name)
+    (google-auth-fetch-or-create-user! first-name last-name email)))
 
 
 (define-routes)
