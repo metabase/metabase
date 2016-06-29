@@ -2,11 +2,11 @@ import React, { Component, PropTypes } from 'react';
 import OnClickOut from 'react-onclickout';
 import cx from 'classnames';
 import _ from "underscore";
+import { capitalize } from "metabase/lib/formatting";
 
 import MetabaseSettings from "metabase/lib/settings";
 import Modal from "metabase/components/Modal.jsx";
 import Logs from "metabase/components/Logs.jsx";
-import Tooltip from "metabase/components/Tooltip.jsx";
 
 import UserAvatar from './UserAvatar.jsx';
 import Icon from './Icon.jsx';
@@ -50,7 +50,7 @@ export default class ProfileLink extends Component {
     render() {
         const { user, context } = this.props;
         const { modalOpen, dropdownOpen } = this.state;
-        const { tag, date } = MetabaseSettings.get('version');
+        const { tag, date, ...versionExtra } = MetabaseSettings.get('version');
 
         let dropDownClasses = cx({
             'NavDropdown': true,
@@ -133,12 +133,17 @@ export default class ProfileLink extends Component {
                                     <LogoIcon width={48} height={48} />
                                 </div>
                                 <h2 style={{fontSize: "1.75em"}} className="text-dark">Thanks for using Metabase!</h2>
-                                <Tooltip tooltip={<pre className="px2">{JSON.stringify(MetabaseSettings.get('version'), null, 2)}</pre>}>
-                                    <div className="pt2">
-                                        <h3 className="text-dark">You're on version {tag}</h3>
-                                        <p className="text-grey-3 text-bold mt1">built on {date}</p>
-                                    </div>
-                                </Tooltip>
+                                <div className="pt2">
+                                    <h3 className="text-dark mb1">You're on version {tag}</h3>
+                                    <p className="text-grey-3 text-bold">Built on {date}</p>
+                                    { !/^v\d+\.\d+\.\d+$/.test(tag) &&
+                                        <div>
+                                        { _.map(versionExtra, (value, key) =>
+                                            <p key={key} className="text-grey-3 text-bold">{capitalize(key)}: {value}</p>
+                                        ) }
+                                        </div>
+                                    }
+                                </div>
                             </div>
                             <div style={{borderWidth: "2px"}} className="p2 h5 text-centered text-grey-3 border-top">
                                 <span className="block"><span className="text-bold">Metabase</span> is a Trademark of Metabase, Inc</span>
