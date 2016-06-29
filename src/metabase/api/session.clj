@@ -20,7 +20,7 @@
 (defn- create-session!
   "Generate a new `Session` for a given `User`. Returns the newly generated session ID."
   [user]
-  {:pre  [(map? user) (integer? (:id user)) (:last_login user)]
+  {:pre  [(map? user) (integer? (:id user)) (contains? user :last_login)]
    :post [(string? %)]}
   (u/prog1 (str (java.util.UUID/randomUUID))
     (db/insert! Session
@@ -53,7 +53,7 @@
 
 ;; TODO - Where should this go?
 (defsetting google-auth-client-id
-  "Client ID for Google Auth SSO.") ; TODO - better description
+  "Client ID for Google Auth SSO.")
 
 (defsetting google-auth-auto-create-accounts-domain
   "When set, allow users to sign up on their own if their Google account email address is from this domain.")
