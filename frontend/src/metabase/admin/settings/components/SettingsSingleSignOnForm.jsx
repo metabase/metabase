@@ -1,5 +1,6 @@
 import React, { Component, PropTypes } from "react";
 
+import cx from "classnames";
 import _ from "underscore";
 
 import CheckBox from "metabase/components/CheckBox.jsx";
@@ -8,9 +9,12 @@ import Input from "metabase/components/Input.jsx";
 export default class SettingsSingleSignOnForm extends Component {
     constructor(props, context) {
         super(props, context);
-        this.updateClientID = this.updateClientID.bind(this);
-        this.updateDomain = this.updateDomain.bind(this);
-        this.onCheckboxClicked = this.onCheckboxClicked.bind(this);
+        this.updateClientID    = this.updateClientID.bind(this);
+        this.updateDomain      = this.updateDomain.bind(this);
+        this.onCheckboxClicked = this.onCheckboxClicked.bind(this),
+        this.saveChanges       = this.saveChanges.bind(this),
+        this.clientIDChanged   = this.clientIDChanged.bind(this),
+        this.domainChanged     = this.domainChanged.bind(this)
     }
 
     static propTypes = {
@@ -19,51 +23,75 @@ export default class SettingsSingleSignOnForm extends Component {
     };
 
     componentWillMount() {
-        let { elements } = this.props;
+        let { elements } = this.props,
+            clientID     = _.findWhere(elements, {key: 'google-auth-client-id'}),
+            domain       = _.findWhere(elements, {key: 'google-auth-auto-create-accounts-domain'});
 
         this.setState({
-            clientID: _.findWhere(elements, {key: 'google-auth-client-id'}),
-            domain:   _.findWhere(elements, {key: 'google-auth-auto-create-accounts-domain'})
+            clientID:      clientID,
+            domain:        domain,
+            clientIDValue: clientID.value,
+            domainValue:   domain.value
         });
     }
 
     updateClientID(newValue) {
-        if (newValue === this.state.clientID.value) return;
+        if (newValue === this.state.clientIDValue) return;
 
         this.setState({
-            clientID: {
-                value: newValue && newValue.length ? newValue : null
-            }
+            clientIDValue: newValue && newValue.length ? newValue : null
         });
-
-        this.props.updateSetting(this.state.clientID, newValue);
     }
 
     updateDomain(newValue) {
         if (newValue === this.state.domain.value) return;
 
         this.setState({
-            domain: {
-                value: newValue && newValue.length ? newValue : null
-            }
+            domainValue: newValue && newValue.length ? newValue : null
         });
+    }
 
-        this.props.updateSetting(this.state.domain, newValue);
+    clientIDChanged() {
+        return this.state.clientID.value !== this.state.clientIDValue;
+    }
+
+    domainChanged() {
+        return this.state.domain.value !== this.state.domainValue;
+    }
+
+    saveChanges() {
+        let { clientID, clientIDValue, domain, domainValue } = this.state;
+
+        if (this.clientIDChanged()) {
+            this.props.updateSetting(clientID, clientIDValue);
+            this.setState({
+                clientID: {
+                    value: clientIDValue
+                }
+            });
+        }
+
+        if (this.domainChanged()) {
+            this.props.updateSetting(domain, domainValue);
+            this.setState({
+                domain: {
+                    value: domainValue
+                }
+            });
+        }
     }
 
     onCheckboxClicked() {
-        console.log('onCheckboxClicked()');
-        // clear out the domain if one is present
-        if (!this.state.domain.value) return;
-
+        // if domain is present, clear it out; otherwise if there's no domain try to set it back to what it was
         this.setState({
-            domain: {
-                value: null
-            }
-        })
+            domainValue: this.state.domainValue ? null : this.state.domain.value
+        });
     }
 
     render() {
+        let hasChanges  = this.domainChanged() || this.clientIDChanged(),
+            hasClientID = this.state.clientIDValue;
+
         return (
             <form noValidate>
                 <div className="px2"
@@ -78,7 +106,7 @@ export default class SettingsSingleSignOnForm extends Component {
                     <Input
                         className="SettingsInput AdminInput bordered rounded h3"
                         type="text"
-                        value={this.state.clientID.value}
+                        value={this.state.clientIDValue}
                         placeholder="Your Google client ID"
                         onBlurChange={(event) => this.updateClientID(event.target.value)}
                     />
@@ -87,10 +115,10 @@ export default class SettingsSingleSignOnForm extends Component {
                             <CheckBox
                                 className="inline-block pr2"
                                 style={{verticalAlign: "top"}}
-                                checked={!!this.state.domain.value}
-                                onChange={this.onCheckboxClicked}
+                                checked={!!this.state.domainValue}
+                                onChange={hasClientID ? this.onCheckboxClicked : null}
                                 invertChecked
-                                checkColor={'#409ee3'}
+                                checkColor={hasClientID ? '#409ee3' : '#aaaaaa'}
                                 size={20}
                             />
                             <p className="text-grey-4">Allow users to sign up on their own if their Google account email address is from:</p>
@@ -100,11 +128,18 @@ export default class SettingsSingleSignOnForm extends Component {
                             <Input
                                 className="SettingsInput inline-block AdminInput h3 border-left"
                                 type="text"
-                                value={this.state.domain.value}
+                                value={this.state.domainValue}
                                 onBlurChange={(event) => this.updateDomain(event.target.value)}
+                                disabled={!hasClientID}
                             />
                         </div>
                     </div>
+
+                    <button className={cx("Button mr2", {"Button--primary": hasChanges})}
+                            disabled={!hasChanges}
+                            onClick={this.saveChanges}>
+                        Save Changes
+                    </button>
                 </div>
             </form>
         );
