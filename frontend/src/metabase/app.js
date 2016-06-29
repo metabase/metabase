@@ -22,10 +22,7 @@ import React from "react";
 //import { Provider } from "react-redux";
 import { combineReducers } from "redux";
 import { reducer as form } from "redux-form";
-import createLogger from "redux-logger";
-import promise from 'redux-promise';
 import { reduxReactRouter, routerStateReducer } from "redux-router";
-import thunk from "redux-thunk";
 
 import Navbar from "./components/Navbar.jsx";
 import Routes from "./Routes.jsx";
