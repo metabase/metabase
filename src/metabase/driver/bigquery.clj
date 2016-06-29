@@ -351,7 +351,7 @@
         results (if mbql?
                   (post-process-mbql dataset-id table-name results)
                   (update results :columns (partial map keyword)))]
-    (assoc results :annotate? true)))
+    (assoc results :annotate? mbql?)))
 
 ;; This provides an implementation of `prepare-value` that prevents HoneySQL from converting forms to prepared statement parameters (`?`)
 ;; TODO - Move this into `metabase.driver.generic-sql` and document it as an alternate implementation for `prepare-value` (?)

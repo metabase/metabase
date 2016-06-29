@@ -43,5 +43,6 @@
                                 (encode-map (cond
                                               (not (:is_superuser @*current-user*)) (dissoc db :details)
                                               (get-in db [:details :password])      (assoc-in db [:details :password] protected-password)
+                                              (get-in db [:details :pass])          (assoc-in db [:details :pass] protected-password)     ; MongoDB uses "pass" instead of password
                                               :else                                 db)
                                             json-generator)))
