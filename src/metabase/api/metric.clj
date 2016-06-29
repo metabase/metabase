@@ -33,7 +33,7 @@
    revision_message [Required NonEmptyString]
    definition       [Required Dict]}
   (check-superuser)
-  (check-404 (metric/exists-metric? id))
+  (check-404 (metric/exists? id))
   (metric/update-metric!
     {:id               id
      :name             name
@@ -48,7 +48,7 @@
   [id revision_message]
   {revision_message [Required NonEmptyString]}
   (check-superuser)
-  (check-404 (metric/exists-metric? id))
+  (check-404 (metric/exists? id))
   (metric/delete-metric! id *current-user-id* revision_message)
   {:success true})
 
@@ -57,7 +57,7 @@
   "Fetch `Revisions` for `Metric` with ID."
   [id]
   (check-superuser)
-  (check-404 (metric/exists-metric? id))
+  (check-404 (metric/exists? id))
   (revision/revisions+details Metric id))
 
 
@@ -66,8 +66,8 @@
   [id :as {{:keys [revision_id]} :body}]
   {revision_id [Required Integer]}
   (check-superuser)
-  (check-404 (metric/exists-metric? id))
-  (revision/revert
+  (check-404 (metric/exists? id))
+  (revision/revert!
     :entity      Metric
     :id          id
     :user-id     *current-user-id*

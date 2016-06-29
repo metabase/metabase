@@ -65,9 +65,9 @@
 ;; ## Related Functions
 
 (declare form-password-reset-url
-         set-user-password-reset-token)
+         set-user-password-reset-token!)
 
-(defn create-user
+(defn create-user!
   "Convenience function for creating a new `User` and sending out the welcome email."
   [first-name last-name email-address & {:keys [send-welcome invitor password]
                                          :or {send-welcome false}}]
@@ -82,17 +82,17 @@
                                       password
                                       (str (java.util.UUID/randomUUID))))]
     (when send-welcome
-      (let [reset-token (set-user-password-reset-token (:id new-user))
+      (let [reset-token (set-user-password-reset-token! (:id new-user))
             ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
             join-url    (str (form-password-reset-url reset-token) "#new")]
         (email/send-new-user-email new-user invitor join-url)))
     ;; return the newly created user
     new-user))
 
-(defn set-user-password
+(defn set-user-password!
   "Updates the stored password for a specified `User` by hashing the password with a random salt."
   [user-id password]
-  (let [salt (.toString (java.util.UUID/randomUUID))
+  (let [salt     (.toString (java.util.UUID/randomUUID))
         password (creds/hash-bcrypt (str salt password))]
     ;; NOTE: any password change expires the password reset token
     (db/update! User user-id
@@ -101,8 +101,8 @@
       :reset_token     nil
       :reset_triggered nil)))
 
-(defn set-user-password-reset-token
-  "Updates a given `User` and generates a password reset token for them to use.  Returns the url for password reset."
+(defn set-user-password-reset-token!
+  "Updates a given `User` and generates a password reset token for them to use. Returns the URL for password reset."
   [user-id]
   {:pre [(integer? user-id)]}
   (u/prog1 (str user-id \_ (java.util.UUID/randomUUID))
@@ -117,6 +117,6 @@
   (str (setting/get :-site-url) "/auth/reset_password/" reset-token))
 
 (defn instance-created-at
-  "The date the instance was created.  We use the :date_joined of the first user to determine this."
+  "The date this Metabase instance was created.  We use the `:date_joined` of the first `User` to determine this."
   []
   (db/select-one-field :date_joined User, {:order-by [[:date_joined :asc]]}))

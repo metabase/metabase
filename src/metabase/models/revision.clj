@@ -19,7 +19,7 @@
    All of these methods except for `serialize-instance` have a default implementation in `IRevisionedDefaults`."
   (serialize-instance [this id instance]
     "Prepare an instance for serialization in a `Revision`.")
-  (revert-to-revision [this id user-id serialized-instance]
+  (revert-to-revision! [this id user-id serialized-instance]
     "Return an object to the state recorded by SERIALIZED-INSTANCE.")
   (diff-map [this object1 object2]
     "Return a map describing the difference between OBJECT1 and OBJECT2.")
@@ -31,8 +31,8 @@
 
 ;; NOTE that we do not provide a base implementation for `serialize-instance`, that should be done per entity.
 
-(defn default-revert-to-revision
-  "Default implementation of `revert-to-revision` which simply does an update using the values from `serialized-instance`."
+(defn default-revert-to-revision!
+  "Default implementation of `revert-to-revision!` which simply does an update using the values from `serialized-instance`."
   [entity id user-id serialized-instance]
   (db/update! entity id, serialized-instance))
 
@@ -52,7 +52,7 @@
 
 (def IRevisionedDefaults
   "Default implementations for `IRevisioned`."
-  {:revert-to-revision default-revert-to-revision
+  {:revert-to-revision! default-revert-to-revision!
    :diff-map           default-diff-map
    :diff-str           default-diff-str})
 
@@ -79,7 +79,7 @@
              :description (diff-str entity (:object prev-revision) (:object revision)))
       ;; add revision user details
       (hydrate :user)
-      (update :user (fn [u] (select-keys u [:id :first_name :last_name :common_name])))
+      (update :user (u/rpartial select-keys [:id :first_name :last_name :common_name]))
       ;; Filter out irrelevant info
       (dissoc :model :model_id :user_id :object)))
 
@@ -100,17 +100,17 @@
         (recur (conj acc (add-revision-details entity r1 r2))
                (conj more r2))))))
 
-(defn- delete-old-revisions
+(defn- delete-old-revisions!
   "Delete old revisions of ENTITY with ID when there are more than `max-revisions` in the DB."
   [entity id]
   {:pre [(i/metabase-entity? entity) (integer? id)]}
   (when-let [old-revisions (seq (drop max-revisions (map :id (db/select [Revision :id], :model (:name entity), :model_id id, {:order-by [[:timestamp :desc]]}))))]
     (db/cascade-delete! Revision :id [:in old-revisions])))
 
-(defn push-revision
+(defn push-revision!
   "Record a new `Revision` for ENTITY with ID.
    Returns OBJECT."
-  {:arglists '([& {:keys [object entity id user-id is-creation? message]}])}
+  {:arglists '([& {:keys [object entity id user-id is-creation? message]}]), :style/indent 0}
   [& {object :object,
       :keys [entity id user-id is-creation? message],
       :or {id (:id object), is-creation? false}}]
@@ -120,8 +120,7 @@
          (integer? id)
          (db/exists? entity :id id)
          (map? object)]}
-  (let [object (dissoc object :message)
-        object (serialize-instance entity id object)]
+  (let [object (serialize-instance entity id (dissoc object :message))]
     ;; make sure we still have a map after calling out serialization function
     (assert (map? object))
     (db/insert! Revision
@@ -132,11 +131,12 @@
       :is_creation  is-creation?
       :is_reversion false
       :message      message))
-  (delete-old-revisions entity id)
+  (delete-old-revisions! entity id)
   object)
 
-(defn revert
+(defn revert!
   "Revert ENTITY with ID to a given `Revision`."
+  {:style/indent 0}
   [& {:keys [entity id user-id revision-id]}]
   {:pre [(i/metabase-entity? entity)
          (integer? id)
@@ -147,7 +147,7 @@
   (let [serialized-instance (db/select-one-field :object Revision, :model (:name entity), :model_id id, :id revision-id)]
     (kdb/transaction
       ;; Do the reversion of the object
-      (revert-to-revision entity id user-id serialized-instance)
+      (revert-to-revision! entity id user-id serialized-instance)
       ;; Push a new revision to record this change
       (let [last-revision (Revision :model (:name entity), :model_id id, {:order-by [[:id :desc]]})
             new-revision  (db/insert! Revision

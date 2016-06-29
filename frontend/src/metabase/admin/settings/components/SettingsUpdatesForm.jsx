@@ -35,8 +35,6 @@ export default class SettingsUpdatesForm extends Component {
 
         versionInfo = versionInfo ? JSON.parse(versionInfo.value) : null;
 
-        console.log(versionInfo);
-
         /*
             We expect the versionInfo to take on the JSON structure detailed below.  
             The 'older' section should contain only the last 5 previous versions, we don't need to go on forever.

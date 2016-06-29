@@ -59,7 +59,7 @@
   (-> (DashboardCard id)
       (hydrate :series)))
 
-(defn update-dashboard-card-series
+(defn update-dashboard-card-series!
   "Update the `DashboardCardSeries` for a given `DashboardCard`.
    CARD-IDS should be a definitive collection of *all* IDs of cards for the dashboard card in the desired order.
 
@@ -80,7 +80,7 @@
                              card-ids)]
       (db/insert-many! DashboardCardSeries cards))))
 
-(defn update-dashboard-card
+(defn update-dashboard-card!
   "Update an existing `DashboardCard`, including all `DashboardCardSeries`.
    Returns the updated `DashboardCard` or throws an Exception."
   [{:keys [id series parameter_mappings] :as dashboard-card}]
@@ -94,12 +94,12 @@
         (db/update-non-nil-keys! DashboardCard id, :sizeX sizeX, :sizeY sizeY, :row row, :col col, :parameter_mappings parameter_mappings))
       ;; update series (only if they changed)
       (when (not= series (map :card_id (db/select [DashboardCardSeries :card_id], :dashboardcard_id id, {:order-by [[:position :asc]]})))
-        (update-dashboard-card-series dashboard-card series))
+        (update-dashboard-card-series! dashboard-card series))
       ;; fetch the fully updated dashboard card then return it (and fire off an event)
       (->> (retrieve-dashboard-card id)
            (events/publish-event :dashboard-card-update)))))
 
-(defn create-dashboard-card
+(defn create-dashboard-card!
   "Create a new `DashboardCard` by inserting it into the database along with all associated pieces of data such as `DashboardCardSeries`.
    Returns the newly created `DashboardCard` or throws an Exception."
   [{:keys [dashboard_id card_id creator_id parameter_mappings] :as dashboard-card}]
@@ -119,14 +119,14 @@
                                               :col                col
                                               :parameter_mappings (or parameter_mappings []))]
         ;; add series to the DashboardCard
-        (update-dashboard-card-series dashboard-card series)
+        (update-dashboard-card-series! dashboard-card series)
         ;; return the full DashboardCard (and record our create event)
         (-> (retrieve-dashboard-card id)
             (assoc :actor_id creator_id)
             (->> (events/publish-event :dashboard-card-create))
             (dissoc :actor_id))))))
 
-(defn delete-dashboard-card
+(defn delete-dashboard-card!
   "Delete a `DashboardCard`."
   [dashboard-card user-id]
   {:pre [(map? dashboard-card)

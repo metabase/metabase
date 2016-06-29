@@ -8,7 +8,7 @@
             [metabase.db :as db]
             [metabase.email.messages :as email]
             [metabase.events :as events]
-            (metabase.models [user :refer [User set-user-password set-user-password-reset-token]]
+            (metabase.models [user :refer [User set-user-password! set-user-password-reset-token!]]
                              [session :refer [Session]]
                              [setting :as setting])
             [metabase.util :as u]
@@ -74,7 +74,7 @@
   (throttle/check (forgot-password-throttlers :email)      email)
   ;; Don't leak whether the account doesn't exist, just pretend everything is ok
   (when-let [user-id (db/select-one-id User, :email email)]
-    (let [reset-token        (set-user-password-reset-token user-id)
+    (let [reset-token        (set-user-password-reset-token! user-id)
           password-reset-url (str (@(ns-resolve 'metabase.core 'site-url) request) "/auth/reset_password/" reset-token)]
       (email/send-password-reset-email email server-name password-reset-url)
       (log/info password-reset-url))))
@@ -104,7 +104,7 @@
   {token    Required
    password [Required ComplexPassword]}
   (or (when-let [{user-id :id, :as user} (valid-reset-token->user token)]
-        (set-user-password user-id password)
+        (set-user-password! user-id password)
         ;; after a successful password update go ahead and offer the client a new session that they can use
         (let [session-id (create-session user-id)]
           (events/publish-event :user-login {:user_id user-id, :session_id session-id, :first_login (not (boolean (:last_login user)))})

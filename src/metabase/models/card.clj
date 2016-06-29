@@ -26,8 +26,7 @@
   "Return the number of Dashboards this Card is in."
   {:hydrate :dashboard_count}
   [{:keys [id]}]
-  (:count (db/select-one ['DashboardCard [:%count.* :count]]
-            :card_id id)))
+  (db/select-one-count 'DashboardCard, :card_id id))
 
 (defn labels
   "Return `Labels` for CARD."

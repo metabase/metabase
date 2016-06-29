@@ -153,7 +153,7 @@ export function parseFieldBucketing(field, defaultUnit = null) {
     if (Array.isArray(field)) {
         if (field[0] === "datetime_field") {
             return field[3];
-        } if (field[0] === "fk->") {
+        } if (field[0] === "fk->" || field[0] === "field-id") {
             return defaultUnit;
         } else {
             console.warn("Unknown field format", field);
@@ -163,15 +163,15 @@ export function parseFieldBucketing(field, defaultUnit = null) {
 }
 
 export function parseFieldTarget(field) {
+    if (Number.isInteger(field)) return field;
+
     if (Array.isArray(field)) {
-        if (field[0] === "datetime_field") {
-            return field[1];
-        } if (field[0] === "fk->") {
-            return field;
-        } else {
-            console.warn("Unknown field format", field);
-        }
+        if (field[0] === "field-id")       return field[1];
+        if (field[0] === "fk->")           return field[1];
+        if (field[0] === "datetime_field") return parseFieldTarget(field[1]);
     }
+
+    console.warn("Unknown field format", field);
     return field;
 }
 

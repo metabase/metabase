@@ -168,7 +168,7 @@
       (qp query))))
 
 (defn- pre-expand-resolve
-  "Transforms an MBQL into an expanded form with more information and structure.  Also resolves references to fields, tables,
+  "Transforms an MBQL into an expanded form with more information and structure. Also resolves references to fields, tables,
    etc, into their concrete details which are necessary for query formation by the executing driver."
   [qp]
   (fn [{database-id :database, :as query}]
@@ -198,14 +198,15 @@
 
 
 (defn- format-rows [{:keys [report-timezone]} rows]
-  (for [row rows]
-    (for [v row]
-      (if (u/is-temporal? v)
-        ;; NOTE: if we don't have an explicit report-timezone then use the JVM timezone
-        ;;       this ensures alignment between the way dates are processed by JDBC and our returned data
-        ;;       GH issues: #2282, #2035
-        (u/->iso-8601-datetime v (or report-timezone (System/getProperty "user.timezone")))
-        v))))
+  (let [timezone (or report-timezone (System/getProperty "user.timezone"))]
+    (for [row rows]
+      (for [v row]
+        (if (u/is-temporal? v)
+          ;; NOTE: if we don't have an explicit report-timezone then use the JVM timezone
+          ;;       this ensures alignment between the way dates are processed by JDBC and our returned data
+          ;;       GH issues: #2282, #2035
+          (u/->iso-8601-datetime v timezone)
+          v)))))
 
 (defn- post-format-rows
   "Format individual query result values as needed.  Ex: format temporal values as iso8601 strings w/ timezone."
@@ -454,6 +455,16 @@
   ^String [{{:keys [executed-by uuid query-hash query-type], :as info} :info}]
   (format "Metabase:: userID: %s executionID: %s queryType: %s queryHash: %s" executed-by uuid query-type query-hash))
 
+(defn- infer-column-types
+  "Infer the types of columns by looking at the first value for each in the results, and add the relevant information in `:cols`.
+   This is used for native queries, which don't have the type information from the original `Field` objects used in the query, which is added to the results by `annotate`."
+  [results]
+  (assoc results
+    :columns (mapv name (:columns results))
+    :cols    (vec (for [[column first-value] (partition 2 (interleave (:columns results) (first (:rows results))))]
+                    {:name      (name column)
+                     :base_type (driver/class->base-type (type first-value))}))))
+
 (defn- run-query
   "The end of the QP middleware which actually executes the query on the driver.
 
@@ -473,10 +484,7 @@
         raw-result   (driver/execute-query (:driver query) native-query)
         query-result (if-not (or (mbql-query? query)
                                  (:annotate? raw-result))
-                       (assoc raw-result :columns (mapv name (:columns raw-result))
-                                         :cols    (for [[column first-value] (partition 2 (interleave (:columns raw-result) (first (:rows raw-result))))]
-                                                    {:name      (name column)
-                                                     :base_type (driver/class->base-type (type first-value))}))
+                       (infer-column-types raw-result)
                        (annotate/annotate query raw-result))]
     (assoc query-result :native_form native-form)))
 
@@ -543,7 +551,7 @@
 ;;; |                                     DATASET-QUERY PUBLIC API                                       |
 ;;; +----------------------------------------------------------------------------------------------------+
 
-(declare query-fail query-complete save-query-execution)
+(declare query-fail query-complete save-query-execution!)
 
 (defn- assert-valid-query-result [query-result]
   (when-not (contains? query-result :status)
@@ -570,9 +578,11 @@
   [query {:keys [executed_by]}]
   {:pre [(integer? executed_by)]}
   (let [query-uuid      (.toString (java.util.UUID/randomUUID))
+        query-hash      (hash query)
         query-execution {:uuid              query-uuid
                          :executor_id       executed_by
                          :json_query        query
+                         :query_hash        query-hash
                          :query_id          nil
                          :version           0
                          :status            :starting
@@ -588,7 +598,7 @@
                          :start_time_millis (System/currentTimeMillis)}
         query           (assoc query :info {:executed-by executed_by
                                             :uuid        query-uuid
-                                            :query-hash  (hash query)
+                                            :query-hash  query-hash
                                             :query-type  (if (mbql-query? query) "MBQL" "native")})]
     (try
       (let [result (process-query query)]
@@ -598,7 +608,7 @@
         (log/error (u/format-color 'red "Query failure: %s\n%s" (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e))))
         (query-fail query-execution (.getMessage e))))))
 
-(defn query-fail
+(defn- query-fail
   "Save QueryExecution state and construct a failed query response"
   [query-execution error-message]
   (let [updates {:status       :failed
@@ -609,7 +619,7 @@
     (-> query-execution
         (dissoc :start_time_millis)
         (merge updates)
-        save-query-execution
+        save-query-execution!
         (dissoc :raw_query :result_rows :version)
         ;; this is just for the response for clien
         (assoc :error     error-message
@@ -618,7 +628,7 @@
                            :cols    []
                            :columns []}))))
 
-(defn query-complete
+(defn- query-complete
   "Save QueryExecution state and construct a completed (successful) query response"
   [query-execution query-result]
   ;; record our query execution and format response
@@ -629,12 +639,12 @@
                          (:start_time_millis query-execution))
         :result_rows  (get query-result :row_count 0))
       (dissoc :start_time_millis)
-      save-query-execution
+      save-query-execution!
       ;; at this point we've saved and we just need to massage things into our final response format
       (dissoc :error :raw_query :result_rows :version)
       (merge query-result)))
 
-(defn save-query-execution
+(defn- save-query-execution!
   "Save (or update) a `QueryExecution`."
   [{:keys [id], :as query-execution}]
   (if id

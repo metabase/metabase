@@ -1,12 +1,10 @@
-(ns metabase.models.foreign-key
+(ns ^:deprecated metabase.models.foreign-key
   (:require [metabase.models.interface :as i]
             [metabase.util :as u]))
 
-(def ^:const relationships
-  "Valid values for `ForeginKey.relationship`."
-  #{:1t1 :Mt1 :MtM})
+;; This namespace is no longer used. We need to keep it around for the time being because some data migrations still refere
 
-(i/defentity ForeignKey :metabase_foreignkey)
+(i/defentity ^:deprecated ForeignKey :metabase_foreignkey)
 
 (u/strict-extend (class ForeignKey)
   i/IEntity

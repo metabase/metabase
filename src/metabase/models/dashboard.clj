@@ -39,7 +39,7 @@
 ;;; ## ---------------------------------------- PERSISTENCE FUNCTIONS ----------------------------------------
 
 
-(defn create-dashboard
+(defn create-dashboard!
   "Create a `Dashboard`"
   [{:keys [name description parameters public_perms], :as dashboard} user-id]
   {:pre [(map? dashboard)
@@ -53,7 +53,7 @@
                    :creator_id   user-id)
        (events/publish-event :dashboard-create)))
 
-(defn update-dashboard
+(defn update-dashboard!
   "Update a `Dashboard`"
   [{:keys [id name description parameters], :as dashboard} user-id]
   {:pre [(map? dashboard)
@@ -80,7 +80,7 @@
                            (-> (select-keys dashboard-card [:sizeX :sizeY :row :col :id :card_id])
                                (assoc :series (mapv :id (dashboard-card/series dashboard-card)))))))))
 
-(defn revert-dashboard
+(defn- revert-dashboard!
   "Revert a `Dashboard` to the state defined by SERIALIZED-DASHBOARD."
   [dashboard-id user-id serialized-dashboard]
   ;; Update the dashboard description / name / permissions
@@ -97,15 +97,15 @@
             current-card    (id->current-card dashcard-id)]
         (cond
           ;; If card is in current-cards but not serialized-cards then we need to delete it
-          (not serialized-card) (dashboard-card/delete-dashboard-card current-card user-id)
+          (not serialized-card) (dashboard-card/delete-dashboard-card! current-card user-id)
 
           ;; If card is in serialized-cards but not current-cards we need to add it
-          (not current-card) (dashboard-card/create-dashboard-card (assoc serialized-card
-                                                                     :dashboard_id dashboard-id
-                                                                     :creator_id   user-id))
+          (not current-card) (dashboard-card/create-dashboard-card! (assoc serialized-card
+                                                                      :dashboard_id dashboard-id
+                                                                      :creator_id   user-id))
 
           ;; If card is in both we need to change :sizeX, :sizeY, :row, and :col to match serialized-card as needed
-          :else (dashboard-card/update-dashboard-card serialized-card)))))
+          :else (dashboard-card/update-dashboard-card! serialized-card)))))
 
   serialized-dashboard)
 
@@ -149,6 +149,6 @@
 (u/strict-extend (class Dashboard)
   revision/IRevisioned
   (merge revision/IRevisionedDefaults
-         {:serialize-instance (fn [_ _ dashboard] (serialize-dashboard dashboard))
-          :revert-to-revision (u/drop-first-arg revert-dashboard)
-          :diff-str           (u/drop-first-arg diff-dashboards-str)}))
+         {:serialize-instance  (fn [_ _ dashboard] (serialize-dashboard dashboard))
+          :revert-to-revision! (u/drop-first-arg revert-dashboard!)
+          :diff-str            (u/drop-first-arg diff-dashboards-str)}))

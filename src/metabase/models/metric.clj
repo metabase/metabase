@@ -84,7 +84,7 @@
     (-> (events/publish-event :metric-create metric)
         (hydrate :creator))))
 
-(defn exists-metric?
+(defn exists?
   "Predicate function which checks for a given `Metric` with ID.
    Returns true if `Metric` exists and is active, false otherwise."
   [id]

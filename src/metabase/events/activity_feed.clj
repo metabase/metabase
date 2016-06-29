@@ -43,7 +43,7 @@
   (let [details-fn  #(select-keys % [:name :description :public_perms])
         database-id (get-in object [:dataset_query :database])
         table-id    (get-in object [:dataset_query :query :source_table])]
-    (activity/record-activity
+    (activity/record-activity!
       :topic       topic
       :object      object
       :details-fn  details-fn
@@ -60,7 +60,7 @@
                                                           (-> (db/select-one [Card :name :description :public_perms], :id card_id)
                                                               (assoc :id id)
                                                               (assoc :card_id card_id))))))]
-    (activity/record-activity
+    (activity/record-activity!
       :topic      topic
       :object     object
       :details-fn (case topic
@@ -73,7 +73,7 @@
   (let [details-fn  #(select-keys % [:name :description :revision_message])
         table-id    (:table_id object)
         database-id (table/table-id->database-id table-id)]
-    (activity/record-activity
+    (activity/record-activity!
       :topic       topic
       :object      object
       :details-fn  details-fn
@@ -82,7 +82,7 @@
 
 (defn- process-pulse-activity [topic object]
   (let [details-fn #(select-keys % [:name :public_perms])]
-    (activity/record-activity
+    (activity/record-activity!
       :topic       topic
       :object      object
       :details-fn  details-fn)))
@@ -91,7 +91,7 @@
   (let [details-fn  #(select-keys % [:name :description :revision_message])
         table-id    (:table_id object)
         database-id (table/table-id->database-id table-id)]
-    (activity/record-activity
+    (activity/record-activity!
       :topic       topic
       :object      object
       :details-fn  details-fn
@@ -102,7 +102,7 @@
   ;; we only care about login activity when its the users first session (a.k.a. new user!)
   (when (and (= :user-login topic)
              (:first_login object))
-    (activity/record-activity
+    (activity/record-activity!
       :topic    :user-joined
       :user-id  (:user_id object)
       :model-id (:user_id object))))

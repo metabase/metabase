@@ -51,7 +51,7 @@
 
 ;; ## Persistence Functions
 
-(defn create-segment
+(defn create-segment!
   "Create a new `Segment`.
 
    Returns the newly created `Segment` or throws an Exception."
@@ -96,7 +96,7 @@
          (db/select Segment, :table_id table-id, :is_active (= :active state), {:order-by [[:name :asc]]}))
        (hydrate :creator))))
 
-(defn update-segment
+(defn update-segment!
   "Update an existing `Segment`.
 
    Returns the updated `Segment` or throws an Exception."
@@ -114,7 +114,7 @@
   (u/prog1 (retrieve-segment id)
     (events/publish-event :segment-update (assoc <> :actor_id user-id, :revision_message revision_message))))
 
-(defn delete-segment
+(defn delete-segment!
   "Delete a `Segment`.
 
    This does a soft delete and simply marks the `Segment` as deleted but does not actually remove the

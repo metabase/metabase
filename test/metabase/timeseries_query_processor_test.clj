@@ -13,11 +13,10 @@
 (def ^:private ^:const event-based-dbs
   #{:druid})
 
-;; this is a function rather than a straight delay because clojure complains when they delay gets embedding in the expanded macros below
 (def ^:private flattened-db-def
-  (let [def (delay (i/flatten-dbdef defs/test-data "checkins"))]
-    (fn []
-      @def)))
+  "The normal test-data DB definition as a flattened, single-table DB definition.
+  (this is a function rather than a straight delay because clojure complains when they delay gets embedding in expanded macros)"
+  (delay (i/flatten-dbdef defs/test-data "checkins")))
 
 ;; force loading of the flattened db definitions for the DBs that need it
 (defn- load-event-based-db-data!
@@ -25,11 +24,17 @@
   []
   (doseq [engine event-based-dbs]
     (datasets/with-engine-when-testing engine
-      (data/do-with-temp-db (flattened-db-def) (constantly nil)))))
+      (data/do-with-temp-db @flattened-db-def (constantly nil)))))
 
-(defmacro ^:private with-flattened-dbdef [& body]
-  `(data/with-temp-db [~'_ (flattened-db-def)]
-     ~@body))
+(defn do-with-flattened-dbdef
+  "Execute F with a flattened version of the test data DB as the current DB def."
+  [f]
+  (data/do-with-temp-db @flattened-db-def (u/drop-first-arg f)))
+
+(defmacro with-flattened-dbdef
+  "Execute BODY using the flattened test data DB definition."
+  [& body]
+  `(do-with-flattened-dbdef (fn [] ~@body)))
 
 (defmacro ^:private expect-with-timeseries-dbs
   {:style/indent 0}

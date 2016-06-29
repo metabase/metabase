@@ -113,6 +113,15 @@ const updateDashcardId = createAction(UPDATE_DASHCARD_ID, (oldDashcardId, newDas
 const CLEAR_CARD_DATA = "CLEAR_CARD_DATA";
 export const clearCardData = createAction(CLEAR_CARD_DATA, (cardId, dashcardId) => ({ cardId, dashcardId }));
 
+export async function fetchDataOrError(dataPromise) {
+    try {
+        return await dataPromise;
+    }
+    catch (error) {
+        return { error };
+    }
+}
+
 export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, dashcard, clearExisting = false) {
     return async function(dispatch, getState) {
         if (clearExisting) {
@@ -120,11 +129,6 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, d
         }
 
         let result = null;
-        let slowCardTimer = setTimeout(() => {
-            if (result === null) {
-                dispatch(fetchCardDuration(card));
-            }
-        }, DATASET_SLOW_TIMEOUT);
 
         // if we have a parameter, apply it to the card query before we execute
         let { dashboardId } = getState().router.params;
@@ -146,19 +150,27 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, d
             }
         }
 
-        result = await MetabaseApi.dataset({
+        let datasetQuery = {
             ...card.dataset_query,
             parameters
-        });
+        };
+
+        let slowCardTimer = setTimeout(() => {
+            if (result === null) {
+                dispatch(fetchCardDuration(card, datasetQuery));
+            }
+        }, DATASET_SLOW_TIMEOUT);
+
+        result = await fetchDataOrError(MetabaseApi.dataset(datasetQuery));
 
         clearTimeout(slowCardTimer);
         return { dashcard_id: dashcard.id, card_id: card.id, result };
     };
 });
 
-export const fetchCardDuration = createThunkAction(FETCH_CARD_DURATION, function(card) {
+export const fetchCardDuration = createThunkAction(FETCH_CARD_DURATION, function(card, datasetQuery) {
     return async function(dispatch, getState) {
-        let result = await MetabaseApi.dataset_duration(card.dataset_query);
+        let result = await MetabaseApi.dataset_duration(datasetQuery);
         return {
             id: card.id,
             result: {

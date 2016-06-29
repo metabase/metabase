@@ -35,7 +35,11 @@ export default class NativeQueryEditor extends Component {
 
         this.localUpdate = false;
 
-        _.bindAll(this, 'onChange', 'toggleEditor', 'setDatabaseID', 'setTableID');
+        _.bindAll(this, 'toggleEditor', 'setDatabaseID', 'setTableID');
+
+        // Ace sometimes fires mutliple "change" events in rapid succession
+        // e.x. https://github.com/metabase/metabase/issues/2801
+        this.onChange = _.debounce(this.onChange.bind(this), 1)
     }
 
     static propTypes = {
@@ -152,6 +156,7 @@ export default class NativeQueryEditor extends Component {
     onChange(event) {
         if (this.state.editor && !this.localUpdate) {
             var query = this.props.query;
+            // FIXME: mutation
             query.native.query = this.state.editor.getValue();
             this.setQuery(query);
         }

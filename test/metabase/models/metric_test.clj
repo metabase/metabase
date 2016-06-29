@@ -2,7 +2,7 @@
   (:require [expectations :refer :all]
             (metabase.models [database :refer [Database]]
                              [hydrate :refer :all]
-                             [metric :refer :all]
+                             [metric :refer :all, :as metric]
                              [table :refer [Table]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
@@ -40,7 +40,7 @@
     (create-metric-then-select! id "I only want *these* things" nil (user->id :rasta) {:clause ["a" "b"]})))
 
 
-;; exists-metric?
+;; exists?
 (expect
   [true
    false]
@@ -49,8 +49,8 @@
                   Metric   [{metric-id :id} {:table_id   table-id
                                              :definition {:database 45
                                                           :query    {:filter ["yay"]}}}]]
-    [(exists-metric? metric-id)
-     (exists-metric? 34)]))
+    [(metric/exists? metric-id)
+     (metric/exists? 34)]))
 
 
 ;; retrieve-metric
