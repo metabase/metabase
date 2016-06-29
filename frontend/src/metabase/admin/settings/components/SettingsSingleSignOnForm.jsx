@@ -31,7 +31,8 @@ export default class SettingsSingleSignOnForm extends Component {
             clientID:      clientID,
             domain:        domain,
             clientIDValue: clientID.value,
-            domainValue:   domain.value
+            domainValue:   domain.value,
+            recentlySaved: false
         });
     }
 
@@ -39,7 +40,8 @@ export default class SettingsSingleSignOnForm extends Component {
         if (newValue === this.state.clientIDValue) return;
 
         this.setState({
-            clientIDValue: newValue && newValue.length ? newValue : null
+            clientIDValue: newValue && newValue.length ? newValue : null,
+            recentlySaved: false
         });
     }
 
@@ -47,7 +49,8 @@ export default class SettingsSingleSignOnForm extends Component {
         if (newValue === this.state.domain.value) return;
 
         this.setState({
-            domainValue: newValue && newValue.length ? newValue : null
+            domainValue: newValue && newValue.length ? newValue : null,
+            recentlySaved: false
         });
     }
 
@@ -67,7 +70,8 @@ export default class SettingsSingleSignOnForm extends Component {
             this.setState({
                 clientID: {
                     value: clientIDValue
-                }
+                },
+                recentlySaved: true
             });
         }
 
@@ -76,7 +80,8 @@ export default class SettingsSingleSignOnForm extends Component {
             this.setState({
                 domain: {
                     value: domainValue
-                }
+                },
+                recentlySaved: true
             });
         }
     }
@@ -84,7 +89,8 @@ export default class SettingsSingleSignOnForm extends Component {
     onCheckboxClicked() {
         // if domain is present, clear it out; otherwise if there's no domain try to set it back to what it was
         this.setState({
-            domainValue: this.state.domainValue ? null : this.state.domain.value
+            domainValue: this.state.domainValue ? null : this.state.domain.value,
+            recentlySaved: false
         });
     }
 
@@ -138,7 +144,7 @@ export default class SettingsSingleSignOnForm extends Component {
                     <button className={cx("Button mr2", {"Button--primary": hasChanges})}
                             disabled={!hasChanges}
                             onClick={this.saveChanges}>
-                        Save Changes
+                        {this.state.recentlySaved ? "Changes saved!" : "Save Changes"}
                     </button>
                 </div>
             </form>
