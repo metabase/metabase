@@ -7,10 +7,13 @@
             (metabase [config :as config]
                       [db :as db])
             (metabase.models [database :refer [Database]]
+                             field
                              [query-execution :refer [QueryExecution]]
                              [setting :refer [defsetting]])
             [metabase.util :as u])
-  (:import clojure.lang.Keyword))
+  (:import clojure.lang.Keyword
+           metabase.models.database.DatabaseInstance
+           metabase.models.field.FieldInstance))
 
 
 ;;; ## INTERFACE + CONSTANTS
@@ -51,16 +54,16 @@
     "*OPTIONAL*. Return a map containing information that provides optional analysis values for TABLE.
      Output should match the `AnalyzeTable` schema.")
 
-  (can-connect? ^Boolean [this, ^Map details-map]
+  (can-connect? ^Boolean [this, ^java.util.Map details-map]
     "Check whether we can connect to a `Database` with DETAILS-MAP and perform a simple query. For example, a SQL database might
      try running a query like `SELECT 1;`. This function should return `true` or `false`.")
 
   (date-interval [this, ^Keyword unit, ^Number amount]
     "*OPTIONAL* Return an driver-appropriate representation of a moment relative to the current moment in time. By default, this returns an `Timestamp` by calling
      `metabase.util/relative-date`; but when possible drivers should return a native form so we can be sure the correct timezone is applied. For example, SQL drivers should
-     return a Korma form to call the appropriate SQL fns:
+     return a HoneySQL form to call the appropriate SQL fns:
 
-       (date-interval (PostgresDriver.) :month 1) -> (k/raw* \"(NOW() + INTERVAL '1 month')\")")
+       (date-interval (PostgresDriver.) :month 1) -> (hsql/call :+ :%now (hsql/raw \"INTERVAL '1 month'\"))")
 
   (describe-database ^java.util.Map [this, ^DatabaseInstance database]
     "Return a map containing information that describes all of the schema settings in DATABASE, most notably a set of tables.
@@ -82,33 +85,33 @@
      a `Database` `details` map, and for validating it on the Backend. It should include things like `host`,
      `port`, and other driver-specific parameters. Each field information map should have the following properties:
 
-       *  `:name`
+   *  `:name`
 
-           The key that should be used to store this property in the `details` map.
+      The key that should be used to store this property in the `details` map.
 
-       *  `:display-name`
+   *  `:display-name`
 
-           Human-readable name that should be displayed to the User in UI for editing this field.
+      Human-readable name that should be displayed to the User in UI for editing this field.
 
-       *  `:type` *(OPTIONAL)*
+   *  `:type` *(OPTIONAL)*
 
-          `:string`, `:integer`, `:boolean`, or `:password`. Defaults to `:string`.
+      `:string`, `:integer`, `:boolean`, or `:password`. Defaults to `:string`.
 
-       *  `:default` *(OPTIONAL)*
+   *  `:default` *(OPTIONAL)*
 
-           A default value for this field if the user hasn't set an explicit value. This is shown in the UI as a placeholder.
+       A default value for this field if the user hasn't set an explicit value. This is shown in the UI as a placeholder.
 
-       *  `:placeholder` *(OPTIONAL)*
+   *  `:placeholder` *(OPTIONAL)*
 
-          Placeholder value to show in the UI if user hasn't set an explicit value. Similar to `:default`, but this value is
-          *not* saved to `:details` if no explicit value is set. Since `:default` values are also shown as placeholders, you
-          cannot specify both `:default` and `:placeholder`.
+      Placeholder value to show in the UI if user hasn't set an explicit value. Similar to `:default`, but this value is
+      *not* saved to `:details` if no explicit value is set. Since `:default` values are also shown as placeholders, you
+      cannot specify both `:default` and `:placeholder`.
 
-       *  `:required` *(OPTIONAL)*
+   *  `:required` *(OPTIONAL)*
 
-          Is this property required? Defaults to `false`.")
+      Is this property required? Defaults to `false`.")
 
-  (execute-query ^java.util.Map [this, ^Map query]
+  (execute-query ^java.util.Map [this, ^java.util.Map query]
     "Execute a query against the database and return the results.
 
   The query passed in will contain:
@@ -132,7 +135,8 @@
   *  `:set-timezone` - Does this driver support setting a timezone for the query?
   *  `:standard-deviation-aggregations` - Does this driver support [standard deviation aggregations](https://github.com/metabase/metabase/wiki/Query-Language-'98#stddev-aggregation)?
   *  `:expressions` - Does this driver support [expressions](https://github.com/metabase/metabase/wiki/Query-Language-'98#expressions) (e.g. adding the values of 2 columns together)?
-  *  `:dynamic-schema` -  Does this Database have no fixed definitions of schemas? (e.g. Mongo)")
+  *  `:dynamic-schema` -  Does this Database have no fixed definitions of schemas? (e.g. Mongo)
+  *  `:native-parameters` - The driver supports parameter substitution on native queries.")
 
   (field-values-lazy-seq ^clojure.lang.Sequential [this, ^FieldInstance field]
     "Return a lazy sequence of all values of FIELD.
@@ -145,7 +149,7 @@
     "*OPTIONAL*. Return a humanized (user-facing) version of an connection error message string.
      Generic error messages are provided in the constant `connection-error-messages`; return one of these whenever possible.")
 
-  (mbql->native ^java.util.Map [this, ^Map query]
+  (mbql->native ^java.util.Map [this, ^java.util.Map query]
     "Transpile an MBQL structured query into the appropriate native query form.
 
   The input QUERY will be a [fully-expanded MBQL query](https://github.com/metabase/metabase/wiki/Expanded-Queries) with
@@ -165,7 +169,7 @@
     "*OPTIONAL*. Notify the driver that the attributes of the DATABASE have changed.  This is specifically relevant in
      the event that the driver was doing some caching or connection pooling.")
 
-  (process-query-in-context [this, ^IFn qp]
+  (process-query-in-context [this, ^clojure.lang.IFn qp]
     "*OPTIONAL*. Similar to `sync-in-context`, but for running queries rather than syncing. This should be used to do things like open DB connections
      that need to remain open for the duration of post-processing. This function follows a middleware pattern and is injected into the QP
      middleware stack immediately after the Query Expander; in other words, it will receive the expanded query.
@@ -175,7 +179,7 @@
          (fn [query]
            (qp query)))")
 
-  (sync-in-context [this, ^DatabaseInstance database, ^IFn f]
+  (sync-in-context [this, ^DatabaseInstance database, ^clojure.lang.IFn f]
     "*OPTIONAL*. Drivers may provide this function if they need to do special setup before a sync operation such as `sync-database!`. The sync
      operation itself is encapsulated as the lambda F, which must be called with no arguments.
 
@@ -183,10 +187,10 @@
          (with-connection [_ database]
            (f)))")
 
-  (table-rows-seq ^clojure.lang.Sequential [this, ^DatabaseInstance database, ^Map table]
-    "*OPTIONAL*. Return a sequence of all the rows in a given TABLE.
-     The TABLE argument is a Map that requires the `:name` key as the table name and optionally uses the `:schema` key for databases that support schemas.
-     Currently, this is only used for iterating over the values in a `_metabase_metadata` table. As such, the results are not expected to be returned lazily."))
+  (table-rows-seq ^clojure.lang.Sequential [this, ^DatabaseInstance database, ^java.util.Map table]
+    "*OPTIONAL*. Return a sequence of *all* the rows in a given TABLE, which is guaranteed to have at least `:name` and `:schema` keys.
+     Currently, this is only used for iterating over the values in a `_metabase_metadata` table. As such, the results are not expected to be returned lazily.
+     There is no expectation that the results be returned in any given order."))
 
 
 (defn- percent-valid-urls
@@ -282,7 +286,8 @@
   (contains? (features driver) feature))
 
 (defn class->base-type
-  "Return the `Field.base_type` that corresponds to a given class returned by the DB."
+  "Return the `Field.base_type` that corresponds to a given class returned by the DB.
+   This is used to infer the types of results that come back from native queries."
   [klass]
   (or ({Boolean                         :BooleanField
         Double                          :FloatField
@@ -333,6 +338,7 @@
    This loads the corresponding driver if needed."
   (let [db-id->engine (memoize (fn [db-id] (db/select-one-field :engine Database, :id db-id)))]
     (fn [db-id]
+      {:pre [db-id]}
       (engine->driver (db-id->engine db-id)))))
 
 

@@ -85,7 +85,7 @@
     (integer? card-id-or-name)     (db/select-one ['Card :id :name], :id card-id-or-name)
     (or (string? card-id-or-name)
         (symbol? card-id-or-name)) (card-with-name card-id-or-name)
-    :else                          (throw (Exception. (format "I don't know what Card `%s` is. Give me a Card ID or name.")))))
+    :else                          (throw (Exception. (format "I don't know what Card `%s` is. Give me a Card ID or name." card-id-or-name)))))
 
 (defn ^:metabot show
   "Implementation of the `metabot show card <name-or-id>` command."
@@ -141,14 +141,16 @@
   (dispatch-fn "understand" :metabot))
 
 (defn- eval-command-str [s]
-  ;; if someone just typed "metabot" (no command) act like they typed "metabot help"
-  (let [s (if (seq s)
-            s
-            "help")]
-    (when-let [tokens (seq (edn/read-string (str "(" (-> s
-                                                         (str/replace "“" "\"") ; replace smart quotes
-                                                         (str/replace "”" "\"")) ")")))]
-      (apply apply-metabot-fn tokens))))
+  (when (string? s)
+    ;; if someone just typed "metabot" (no command) act like they typed "metabot help"
+    (let [s (if (seq s)
+              s
+              "help")]
+      (log/debug "Evaluating Metabot command:" s)
+      (when-let [tokens (seq (edn/read-string (str "(" (-> s
+                                                           (str/replace "“" "\"") ; replace smart quotes
+                                                           (str/replace "”" "\"")) ")")))]
+        (apply apply-metabot-fn tokens)))))
 
 
 ;;; # ------------------------------------------------------------ Metabot Input Handling ------------------------------------------------------------

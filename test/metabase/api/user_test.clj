@@ -182,7 +182,7 @@
 
 ;; ## PUT /api/user/:id
 ;; Test that we can edit a User
-(expect-let [{old-first :first_name, last-name :last_name, old-email :email, id :id, :as user} (create-user)
+(expect-let [{old-first :first_name, last-name :last_name, old-email :email, id :id, :as user} (create-user!)
              new-first  (random-name)
              new-email  (.toLowerCase ^String (str new-first "@metabase.com"))
              fetch-user (fn [] (dissoc (into {} (db/select-one [User :first_name :last_name :is_superuser :email], :id id))
@@ -225,6 +225,23 @@
                                      :last_name  "user"
                                      :email      "abc@metabase.com"
                                      :password   "def")]
+  true
+  (do
+    ;; use API to reset the users password
+    (metabase.http-client/client creds :put 200 (format "user/%d/password" id) {:password     "abc123!!DEF"
+                                                                                :old_password (:password creds)})
+    ;; now simply grab the lastest pass from the db and compare to the one we have from before reset
+    (not= password (db/select-one-field :password User, :email (:email creds)))))
+
+;; Replicate the same test above with a superuser to ensure admins can reset their own password
+(expect-let [creds {:email    "hij@metabase.com"
+                    :password "def"}
+             {:keys [id password]} (db/insert! User
+                                     :first_name   "test"
+                                     :last_name    "user"
+                                     :email        "hij@metabase.com"
+                                     :password     "def"
+                                     :is_superuser true)]
   true
   (do
     ;; use API to reset the users password

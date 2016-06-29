@@ -11,7 +11,8 @@ import {
     getAvailableCanvasHeight,
     computeSplit,
     getFriendlyName,
-    getCardColors
+    getCardColors,
+    getXValues
 } from "./utils";
 
 import {
@@ -458,12 +459,7 @@ export let CardRenderer = {
             ])
         );
 
-        let xValues = _.chain(datas)
-            .map((data) => _.pluck(data, 0))
-            .flatten(true)
-            .sortBy(value => value)
-            .uniq(true)
-            .value();
+        let xValues = getXValues(datas, chartType);
 
         let dimension, groups, yAxisSplit;
 

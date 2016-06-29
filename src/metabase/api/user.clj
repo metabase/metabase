@@ -4,7 +4,7 @@
             [metabase.api.common :refer :all]
             [metabase.db :as db]
             [metabase.email.messages :as email]
-            [metabase.models.user :refer [User create-user set-user-password set-user-password-reset-token form-password-reset-url]]))
+            [metabase.models.user :refer [User create-user! set-user-password! set-user-password-reset-token! form-password-reset-url]]))
 
 (defn- check-self-or-superuser
   "Check that USER-ID is `*current-user-id*` or that `*current-user*` is a superuser, or throw a 403."
@@ -37,7 +37,7 @@
         ;; now return the existing user whether they were originally active or not
         (User (:id existing-user)))
     ;; new user account, so create it
-    (create-user first_name last_name email, :password password, :send-welcome true, :invitor @*current-user*)))
+    (create-user! first_name last_name email, :password password, :send-welcome true, :invitor @*current-user*)))
 
 
 (defendpoint GET "/current"
@@ -66,9 +66,8 @@
                :email        email
                :first_name   first_name
                :last_name    last_name
-               :is_superuser (if (:is_superuser @*current-user*)
-                               is_superuser
-                               nil)))
+               :is_superuser (when (:is_superuser @*current-user*)
+                               is_superuser)))
   (User id))
 
 
@@ -78,9 +77,10 @@
   {password     [Required ComplexPassword]}
   (check-self-or-superuser id)
   (let-404 [user (db/select-one [User :password_salt :password], :id id, :is_active true)]
-    (when (= id *current-user-id*)
+    (when (and (not (:is_superuser @*current-user*))
+               (= id *current-user-id*))
       (checkp (creds/bcrypt-verify (str (:password_salt user) old_password) (:password user)) "old_password" "Invalid password")))
-  (set-user-password id password)
+  (set-user-password! id password)
   (User id))
 
 
@@ -97,7 +97,7 @@
   [id]
   (check-superuser)
   (when-let [user (User :id id, :is_active true)]
-    (let [reset-token (set-user-password-reset-token id)
+    (let [reset-token (set-user-password-reset-token! id)
           ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
           join-url    (str (form-password-reset-url reset-token) "#new")]
       (email/send-new-user-email user @*current-user* join-url))))

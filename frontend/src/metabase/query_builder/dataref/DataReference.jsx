@@ -24,7 +24,6 @@ export default class DataReference extends Component {
     }
 
     static propTypes = {
-        Metabase: PropTypes.func.isRequired,
         query: PropTypes.object.isRequired,
         closeFn: PropTypes.func.isRequired,
         runQueryFn: PropTypes.func.isRequired,

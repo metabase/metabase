@@ -12,9 +12,9 @@ export default class USStateMap extends ChoroplethMap {
     static defaultProps = {
         geoJsonPath: "/app/charts/us-states.json",
         projection: d3.geo.albersUsa(),
-        getRowKey: (row) => row[0].toLowerCase(),
+        getRowKey: (row) => String(row[0]).toLowerCase(),
         getRowValue: (row) => row[1] || 0,
-        getFeatureKey: (feature) => feature.properties.name.toLowerCase(),
-        getFeatureName: (feature) => feature.properties.name
+        getFeatureKey: (feature) => String(feature.properties.name).toLowerCase(),
+        getFeatureName: (feature) => String(feature.properties.name)
     };
 }

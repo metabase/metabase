@@ -108,7 +108,10 @@
                      :series  [3 4 5]}]}))
 
 
-;; revert-dashboard
+;;; revert-dashboard!
+
+(tu/resolve-private-fns metabase.models.dashboard revert-dashboard!)
+
 (expect
   [{:name         "Test Dashboard"
     :description  nil
@@ -148,14 +151,14 @@
                                          :series  (= [series-id-1 series-id-2] series))])
           serialized-dashboard (serialize-dashboard dashboard)]
       ;; delete the dashcard and modify the dash attributes
-      (dashboard-card/delete-dashboard-card dashboard-card (user->id :rasta))
+      (dashboard-card/delete-dashboard-card! dashboard-card (user->id :rasta))
       (db/update! Dashboard dashboard-id
         :name        "Revert Test"
         :description "something")
       ;; capture our updated dashboard state
       (let [serialized-dashboard2 (serialize-dashboard (Dashboard dashboard-id))]
         ;; now do the reversion
-        (revert-dashboard dashboard-id (user->id :crowberto) serialized-dashboard)
+        (revert-dashboard! dashboard-id (user->id :crowberto) serialized-dashboard)
         ;; final output is original-state, updated-state, reverted-state
         [(update serialized-dashboard :cards check-ids)
          serialized-dashboard2

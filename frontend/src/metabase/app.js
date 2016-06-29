@@ -21,10 +21,9 @@ import "./services";
 import "./icons";
 
 import "./auth/auth.module";
-import "./card/card.module";
-import "./dashboard/dashboard.module";
 import "./home/home.module";
 import "./pulse/pulse.module";
+import "./query_builder/query_builder.module"
 import "./setup/setup.module";
 import "./user/user.module";
 
@@ -45,6 +44,8 @@ import * as datamodel from 'metabase/admin/datamodel/reducers';
 import questions from 'metabase/questions/questions';
 import labels from 'metabase/questions/labels';
 import undo from 'metabase/questions/undo';
+import metadata from 'metabase/dashboard/metadata';
+import dashboard from 'metabase/dashboard/dashboard';
 
 import { registerAnalyticsClickListener } from "metabase/lib/analytics";
 
@@ -57,10 +58,9 @@ var Metabase = angular.module('metabase', [
     'metabase.directives',
     'metabase.controllers',
     'metabase.icons',
-    'metabase.card',
-    'metabase.dashboard',
     'metabase.home',
     'metabase.pulse',
+    'metabase.query_builder',
     'metabase.setup',
     'metabase.user',
     'metabase.admin.databases',
@@ -76,15 +76,28 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
 
     const route = {
         template: '<div mb-redux-component class="flex flex-column spread" />',
-        controller: ['$scope', '$location', '$route', '$routeParams', 'AppState',
-            function($scope, $location, $route, $routeParams, AppState) {
+        controller: ['$scope', '$location', '$route', '$routeParams', '$rootScope', 'AppState',
+            function($scope, $location, $route, $routeParams, $rootScope, AppState) {
                 $scope.Component = Routes;
-                $scope.props = {};
+                $scope.props = {
+                    onChangeLocation(url) {
+                        $scope.$apply(() => $location.url(url));
+                    },
+                    onChangeLocationSearch(name, value) {
+                        // FIXME: this doesn't seem to work
+                        $scope.$apply(() => $location.search(name, value));
+                    },
+                    onBroadcast(...args) {
+                        $scope.$apply(() => $rootScope.$broadcast(...args));
+                    }
+                };
                 $scope.store = createStoreWithAngularScope($scope, $location, combineReducers({
                     // admin: {
                     //     datamodel
                     // },
                     datamodel: combineReducers(datamodel),
+                    metadata,
+                    dashboard,
                     questions,
                     labels,
                     undo,
@@ -127,6 +140,8 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
     $routeProvider.when('/reference/lists/:id', route);
     $routeProvider.when('/reference/:entity/:id/edit', route);
 
+    $routeProvider.when('/dash/:dashboardId', route);
+
     $routeProvider.when('/questions', route);
     $routeProvider.when('/questions/edit/:section', route);
     $routeProvider.when('/questions/:section', route);
@@ -155,6 +170,24 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
     $routeProvider.when('/admin/', {
         redirectTo: function(routeParams, path, search) {
             return '/admin/settings';
+        }
+    });
+
+    // redirect old urls to new ones with hashes
+    $routeProvider.when('/q/:serializedCard', {
+        redirectTo: function (routeParams, path, search) {
+            return "/q#"+routeParams.serializedCard;
+        }
+    });
+    $routeProvider.when('/card/:cardId/:serializedCard', {
+        redirectTo: function (routeParams, path, search) {
+            return "/card/"+routeParams.cardId+"#"+routeParams.serializedCard;
+        }
+    });
+
+    $routeProvider.when('/card/', {
+        redirectTo: function (routeParams, path, search) {
+            return "/questions/all";
         }
     });
 

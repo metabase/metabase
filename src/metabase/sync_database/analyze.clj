@@ -40,7 +40,7 @@
   (try
     (queries/table-row-count table)
     (catch Throwable e
-      (log/error (u/format-color 'red "Unable to determine row_count for '%s': %s" (:name table) (.getMessage e))))))
+      (log/error (u/format-color 'red "Unable to determine row count for '%s': %s\n%s" (:name table) (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e)))))))
 
 (defn test-for-cardinality?
   "Should FIELD should be tested for cardinality?"
@@ -194,8 +194,8 @@
             :special_type    special-type))
         ;; handle field values, setting them if applicable otherwise clearing them
         (if (and id values (< 0 (count (filter identity values))))
-          (field-values/save-field-values id values)
-          (field-values/clear-field-values id))))
+          (field-values/save-field-values! id values)
+          (field-values/clear-field-values! id))))
 
     ;; update :last_analyzed for all fields in the table
     (db/update-where! field/Field {:table_id        table-id

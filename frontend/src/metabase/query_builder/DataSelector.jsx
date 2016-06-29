@@ -2,7 +2,7 @@ import React, { Component, PropTypes } from "react";
 
 import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
-import AccordianList from "./AccordianList.jsx";
+import AccordianList from "metabase/components/AccordianList.jsx";
 
 import { isQueryable } from 'metabase/lib/table';
 import { titleize, humanize } from 'metabase/lib/formatting';
@@ -78,11 +78,10 @@ export default class DataSelector extends Component {
     }
 
     onChangeTable(item) {
-        if (item.database != null) {
-            this.props.setDatabaseFn(item.database.id);
-        }
         if (item.table != null) {
             this.props.setSourceTableFn(item.table.id);
+        } else if (item.database != null) {
+            this.props.setDatabaseFn(item.database.id);
         }
         this.refs.popover.toggle();
     }

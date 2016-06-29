@@ -1,22 +1,26 @@
 import "metabase/services";
-import "./settings.controllers";
+import { createStore } from "metabase/lib/redux";
+import SetttingsEditorApp from "./containers/SettingsEditorApp.jsx";
+import settingsReducers from "./settings";
 
-var SettingsAdmin = angular.module('metabase.admin.settings', [
-    'metabase.admin.settings.controllers',
-    'metabase.services'
-]);
-
-SettingsAdmin.config(['$routeProvider', function($routeProvider) {
+angular
+.module('metabase.admin.settings', ['metabase.services'])
+.config(['$routeProvider', function($routeProvider) {
     $routeProvider.when('/admin/settings/', {
-        template: '<div mb-react-component="SettingsEditor" class="full-height"></div>',
-        controller: 'SettingsEditor',
-        resolve: {
-            settings: ['Settings', async function(Settings) {
-                var settings = await Settings.list().$promise
-                return settings.map(function(setting) {
-                    setting.originalValue = setting.value;
-                    return setting;
+        template: '<div class="full-height" mb-redux-component />',
+        controller: ['$scope', '$location', 'AppState',
+            function($scope, $location, AppState) {
+                $scope.Component = SetttingsEditorApp;
+                $scope.props = {};
+                $scope.store = createStore(settingsReducers, {
+                    refreshSiteSettings: () => AppState.refreshSiteSettings(),
+                    activeSection: $location.search().section || "Setup"
                 });
+            }
+        ],
+        resolve: {
+            appState: ["AppState", function(AppState) {
+                return AppState.init();
             }]
         }
     });

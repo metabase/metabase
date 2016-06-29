@@ -1,25 +1,18 @@
 import React, { Component, PropTypes } from "react";
 
-import AccordianList from "./AccordianList.jsx";
+import AccordianList from "metabase/components/AccordianList.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import TimeGroupingPopover from "./TimeGroupingPopover.jsx";
 import QueryDefinitionTooltip from "./QueryDefinitionTooltip.jsx";
 
-import { isDate, getFieldType, DATE_TIME, NUMBER, STRING, LOCATION, COORDINATE } from 'metabase/lib/schema_metadata';
+import { isDate, getIconForField } from 'metabase/lib/schema_metadata';
 import { parseFieldBucketing, parseFieldTarget } from "metabase/lib/query_time";
 import { stripId, singularize } from "metabase/lib/formatting";
 
 import _ from "underscore";
 
-const ICON_MAPPING = {
-    [DATE_TIME]:  'calendar',
-    [LOCATION]: 'location',
-    [COORDINATE]: 'location',
-    [STRING]: 'string',
-    [NUMBER]: 'int'
-};
 
 export default class FieldList extends Component {
     constructor(props, context) {
@@ -132,7 +125,7 @@ export default class FieldList extends Component {
         if (item.segment) {
             name = "star-outline";
         } else if (item.field) {
-            name = ICON_MAPPING[getFieldType(item.field)];
+            name = getIconForField(item.field);
         } else if (item.customField) {
             // TODO: need to make this better
             name = 'int';

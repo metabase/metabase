@@ -57,13 +57,17 @@ export default class Select extends Component {
         ];
 
         return (
-            <PopoverWithTrigger ref="popover"
-                                className={this.props.className}
-                                triggerElement={triggerElement}
-                                triggerClasses={"AdminSelect " + (this.props.className || "")}>
-                <ColumnarSelector
-                    columns={columns}
-                />
+            <PopoverWithTrigger
+                ref="popover"
+                className={this.props.className}
+                triggerElement={triggerElement}
+                triggerClasses={"AdminSelect " + (this.props.className || "")}
+            >
+                <div onClick={(e) => e.stopPropagation()}>
+                    <ColumnarSelector
+                        columns={columns}
+                    />
+                </div>
             </PopoverWithTrigger>
         );
     }

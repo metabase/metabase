@@ -83,6 +83,36 @@ const FRIENDLY_NAME_MAP = {
     "stddev": "Standard Deviation"
 };
 
+export function getXValues(datas, chartType) {
+    let xValues = _.chain(datas)
+        .map((data) => _.pluck(data, 0))
+        .flatten(true)
+        .uniq()
+        .value();
+
+    // detect if every series' dimension is strictly ascending or descending and use that to sort xValues
+    let isAscending = true;
+    let isDescending = true;
+    outer: for (const rows of datas) {
+        for (let i = 1; i < rows.length; i++) {
+            isAscending = isAscending && rows[i - 1][0] <= rows[i][0];
+            isDescending = isDescending && rows[i - 1][0] >= rows[i][0];
+            if (!isAscending && !isDescending) {
+                break outer;
+            }
+        }
+    }
+    if (isDescending) {
+        // JavaScript's .sort() sorts lexicographically by default (e.x. 1, 10, 2)
+        // We could implement a comparator but _.sortBy handles strings, numbers, and dates correctly
+        xValues = _.sortBy(xValues, x => x).reverse();
+    } else if (isAscending || (chartType === "line" || chartType === "area")) {
+        // default line/area charts to ascending since otherwise lines could be wonky
+        xValues = _.sortBy(xValues, x => x);
+    }
+    return xValues;
+}
+
 export function getFriendlyName(col) {
     let name = col.display_name || col.name;
     let friendlyName = FRIENDLY_NAME_MAP[name.toLowerCase().trim()];

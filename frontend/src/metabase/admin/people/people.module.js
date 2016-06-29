@@ -7,6 +7,11 @@ var AdminPeople = angular.module('metabase.admin.people', [
 AdminPeople.config(['$routeProvider', function ($routeProvider) {
     $routeProvider.when('/admin/people/', {
         template: '<div mb-redux-component class="flex flex-column flex-full" />',
-        controller: 'PeopleList'
+        controller: 'PeopleList',
+        resolve: {
+            appState: ["AppState", function(AppState) {
+                return AppState.init();
+            }]
+        }
     });
 }]);

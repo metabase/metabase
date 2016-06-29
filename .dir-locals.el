@@ -4,6 +4,7 @@
                             (put 'defannotation 'clojure-doc-string-elt 2)
                             (put 'defendpoint 'clojure-doc-string-elt 3)
                             (put 'defsetting 'clojure-doc-string-elt 2)
+                            (put 'setting/defsetting 'clojure-doc-string-elt 2)
 
                             ;; Define custom indentation for functions inside metabase.
                             ;; This list isn't complete; add more forms as we come across them.
@@ -41,7 +42,6 @@
                               (pre-insert 1)
                               (pre-update 1)
                               (project 1)
-                              (qp-expect-with-all-engines 1)
                               (qp-expect-with-engines 1)
                               (query-with-temp-db 1)
                               (resolve-private-fns 1)

@@ -157,6 +157,15 @@
 .text-white, :local(.text-white),
 .text-white-hover:hover { color: #fff; }
 
+/* common pattern, background brand, text white when hovering or selected */
+.brand-hover:hover {
+    color: #fff;
+    background-color: var(--brand-color);
+}
+.brand-hover:hover * {
+    color: #fff;
+}
+
 .bg-white, :local(.bg-white) { background-color: #fff; }
 
 .bg-light-blue { background-color: #F5FAFC; }

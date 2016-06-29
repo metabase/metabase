@@ -200,8 +200,9 @@
                            :schema-name        :schema_name
                            :special-type       :special_type
                            :visibility-type    :visibility_type
-                           :table-id           :table_id})
-        (dissoc :position :clause-position :source :parent :parent-id :table-name :fk-field-id))))
+                           :table-id           :table_id
+                           :fk-field-id        :fk_field_id})
+        (dissoc :position :clause-position :parent :parent-id :table-name))))
 
 (defn- fk-field->dest-fn
   "Fetch fk info and return a function that returns the destination Field of a given Field."
@@ -210,13 +211,13 @@
                                        :when (= special_type :fk)]
                                    id))
        (constantly nil)))
-  ;; Fetch the ForeignKey objects whose origin is in the returned Fields, create a map of origin-field-id->destination-field-id
+  ;; Fetch the foreign key fields whose origin is in the returned Fields, create a map of origin-field-id->destination-field-id
   ([fields fk-ids]
    (when (seq fk-ids)
      (fk-field->dest-fn fields fk-ids (db/select-id->field :fk_target_field_id Field
                                         :id                 [:in fk-ids]
                                         :fk_target_field_id [:not= nil]))))
-  ;; Fetch the destination Fields referenced by the ForeignKeys
+  ;; Fetch the destination Fields referenced by the foreign keys
   ([fields fk-ids id->dest-id]
    (when (seq id->dest-id)
      (fk-field->dest-fn fields fk-ids id->dest-id (u/key-by :id (db/select [Field :id :name :display_name :table_id :description :base_type :special_type :visibility_type]
@@ -227,7 +228,7 @@
      (some-> id id->dest-id dest-id->field))))
 
 (defn- add-extra-info-to-fk-fields
-  "Add `:extra_info` about `ForeignKeys` to `Fields` whose `special_type` is `:fk`."
+  "Add `:extra_info` about foreign keys to `Fields` whose `special_type` is `:fk`."
   [fields]
   (let [field->dest (fk-field->dest-fn fields)]
     (for [field fields]

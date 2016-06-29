@@ -1,13 +1,17 @@
 
+import { inflect } from "metabase/lib/formatting";
+
 export class MinColumnsError {
     constructor(minColumns, actualColumns) {
-        this.message = "Doh! The data from your query doesn't fit the chosen display choice. This visualization requires at least " + minColumns + " columns of data.";
+        this.message = `Doh! The data from your query doesn't fit the chosen display choice. This visualization requires at least ${actualColumns} ${inflect("column", actualColumns)} of data.`;
     }
 }
 
 export class MinRowsError {
     constructor(minRows, actualRows) {
-        this.message = "No dice. We only have 1 data point to show and that's not enough for this visualization.";
+        this.message = `No dice. We have ${actualRows} data ${inflect("point", actualRows)} to show and that's not enough for this visualization.`;
+        this.minRows = minRows;
+        this.actualRows = actualRows;
     }
 }
 
