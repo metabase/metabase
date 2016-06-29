@@ -36,7 +36,7 @@ Features that are ready for design are are tagged [Design Needed](https://github
 ### D) Build the feature
 
 Once a feature is tagged [Help Wanted](https://github.com/metabase/metabase/labels/Help%20Wanted), it is considered ready to be built. A core team member (or you, awesomely helpful person that you are) can start working on it.
-Once once or more people have started to work on a feature, it should be marked [In Progress](https://github.com/metabase/metabase/labels/In%20Progress). Once there is a branch+some code, a pull request is opened, linked to the feature + any issues that were pulled together to inform the feature. 
+Once one or more people have started to work on a feature, it should be marked [In Progress](https://github.com/metabase/metabase/labels/In%20Progress). Once there is a branch+some code, a pull request is opened, linked to the feature + any issues that were pulled together to inform the feature. 
 
 ### E) Verification and merging
 
