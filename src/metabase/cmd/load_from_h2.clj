@@ -83,48 +83,38 @@
 
 ;; TODO - `e` is a bad variable name! This should be something like `entity`
 (defn- insert-entity! [e objs]
-  (print (u/format-color 'blue "Transfering %d instances of %s..." (count objs) (:name e)))
+  (print (u/format-color 'blue "Transfering %d instances of %s..." (count objs) (:name e))) ; TODO - I don't think the print+flush is working as intended :/
   (flush)
   ;; The connection closes prematurely on occasion when we're inserting thousands of rows at once. Break into smaller chunks so connection stays alive
-  (println "inserting" (count objs) "like\n" (u/pprint-to-str (first objs)) "...")
   (doseq [chunk (partition-all 300 objs)]
     (print (color/blue \.))
     (flush)
-    (apply jdbc/insert! *target-db-connection* (:table e) (condp = e
-                                                            DashboardCard
+    (apply jdbc/insert! *target-db-connection* (:table e) (if (= e DashboardCard)
                                                             ;; mini-HACK to fix h2 lowercasing these couple attributes
                                                             ;; luckily this is the only place in our schema where we have camel case names
                                                             (mapv #(set/rename-keys % {:sizex :sizeX, :sizey :sizeY}) chunk)
-
-                                                            User
-                                                            (for [user chunk]
-                                                              (dissoc user :google_auth)) ; NOCOMMIT
-
                                                             chunk)))
   (println (color/green "[OK]")))
 
 (defn- insert-self-referencing-entity! [e objs]
-  (println "insert-self-referencing-entity!" e)
-  (let [self-ref-attr    (condp = e
-                           RawColumn :fk_target_column_id
-                           Field     :fk_target_field_id)
-        self-referencing (filter self-ref-attr objs)
+  (let [self-ref-attrs   (condp = e
+                           RawColumn #{:fk_target_column_id}
+                           Field     #{:fk_target_field_id :parent_id})
+        self-referencing (for [obj   objs
+                               :when (reduce #(or %1 %2) (for [attr self-ref-attrs] ; a self-referencing object is an object where *any* of the self-referencing attributes is non-nil
+                                                           (attr obj)))]
+                           obj)
         others           (set/difference (set objs) (set self-referencing))]
     ;; first insert the non-self-referencing objects
-    (println "self-referencing:" (count self-referencing) "others:" (count others) "total:" (count objs))
-    (println "self-referencing:" (u/pprint-to-str (for [field self-referencing]
-                                                    (select-keys field [:id :fk_target_field_id]))))
     (insert-entity! e others)
-    (println "inserted others <3")
-    ;; then insert the rest, which should be safe to insert now
-    (insert-entity! e self-referencing)
-    (println "inserted self-referencing <3")))
+    ;; then insert the rest, which *should* be safe to insert now (TODO - this could break if a self-referencing entity depends on another self-referencing entity </3)
+    (insert-entity! e self-referencing)))
 
 (defn- set-postgres-sequence-values! []
   (print (u/format-color 'blue "Setting postgres sequence ids to proper values..."))
   (flush)
   (doseq [e    (filter #(not (contains? entities-without-autoinc-ids %)) entities)
-          :let [table-name (:table e)
+          :let [table-name (name (:table e))
                 seq-name   (str table-name "_id_seq")
                 sql        (format "SELECT setval('%s', COALESCE((SELECT MAX(id) FROM %s), 1), true) as val" seq-name (name table-name))]]
     (jdbc/db-query-with-resultset *target-db-connection* [sql] :val))
