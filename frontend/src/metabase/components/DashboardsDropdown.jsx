@@ -35,18 +35,18 @@ export default class DashboardsDropdown extends Component {
         dashboards: PropTypes.array.isRequired
     };
 
-    onCreateDashboard(newDashboard) {
+    async onCreateDashboard(newDashboard) {
         let { createDashboardFn } = this.props;
 
-        createDashboardFn(newDashboard).then(function() {
-            // close modal and add new dash to our dashboards list
-            this.setState({
-                dropdownOpen: false,
-                modalOpen: false
-            });
+        await createDashboardFn(newDashboard);
 
-            MetabaseAnalytics.trackEvent("Dashboard", "Create");
-        }.bind(this));
+        // close modal and add new dash to our dashboards list
+        this.setState({
+            dropdownOpen: false,
+            modalOpen: false
+        });
+
+        MetabaseAnalytics.trackEvent("Dashboard", "Create");
     }
 
     toggleModal() {
