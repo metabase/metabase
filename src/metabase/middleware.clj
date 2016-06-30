@@ -87,7 +87,7 @@
   (fn [request]
     (if-let [current-user-id (:metabase-user-id request)]
       (binding [*current-user-id* current-user-id
-                *current-user*    (delay (db/select-one (vec (concat [User :is_active :is_staff]
+                *current-user*    (delay (db/select-one (vec (concat [User :is_active :is_staff :google_auth]
                                                                      (models/default-fields User)))
                                            :id current-user-id))]
         (handler request))

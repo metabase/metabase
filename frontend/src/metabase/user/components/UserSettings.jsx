@@ -28,6 +28,7 @@ export default class UserSettings extends Component {
 
     render() {
         let { tab } = this.props;
+        const nonSSOManagedAccount = !this.props.user.google_auth
 
         let allClasses = "Grid-cell md-no-flex md-mt1 text-brand-hover bordered border-brand-hover rounded p1 md-p3 block cursor-pointer text-centered md-text-left",
             tabClasses = {};
@@ -45,17 +46,19 @@ export default class UserSettings extends Component {
                 </div>
                 <div className="mt2 md-mt4 wrapper wrapper--trim">
                     <div className="Grid Grid--gutters Grid--full md-Grid--normal md-flex-reverse">
-                        <div className="Grid-cell Grid Grid--fit md-flex-column md-Cell--1of3">
-                            <a className={cx(tabClasses['details'])}
+                        { nonSSOManagedAccount && (
+                            <div className="Grid-cell Grid Grid--fit md-flex-column md-Cell--1of3">
+                              <a className={cx(tabClasses['details'])}
                                 onClick={this.onSetTab.bind(this, 'details')}>
                                 User Details
-                            </a>
+                              </a>
 
-                            <a className={cx(tabClasses['password'])}
+                              <a className={cx(tabClasses['password'])}
                                 onClick={this.onSetTab.bind(this, 'password')}>
                                 Password
-                            </a>
-                        </div>
+                              </a>
+                            </div>
+                        )}
                         <div className="Grid-cell">
                             { tab === 'details' ?
                                 <UpdateUserDetails submitFn={this.onUpdateDetails.bind(this)} {...this.props} />
