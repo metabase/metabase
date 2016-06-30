@@ -98,7 +98,9 @@ Metabase also allows you to hit our Query API directly from Javascript to integr
 
 
 # Danger zone
-The below is a way to deploy the branch this README.md lives into Heroku. The developers use it to quickly spin up a copy of Metabase. We DO NOT recommend you using this for production, but rather using a [stable build ](www.metabase.com/start)
+
+The button below will deploy the branch where this README.md lives into Heroku. The developers use it to quickly spin up a copy of Metabase. We DO NOT recommend you using this for production, but rather using a [stable build ](www.metabase.com/start)
+
 [![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
 
 # License
