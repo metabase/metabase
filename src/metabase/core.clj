@@ -225,7 +225,7 @@
                    (db/migrate @db/db-connection-details (keyword direction)))
    :load-from-h2 (fn [& [h2-connection-string-or-nil]]
                    (require 'metabase.cmd.load-from-h2)
-                   ((resolve 'metabase.cmd.load-from-h2/load-from-h2) h2-connection-string-or-nil))})
+                   ((resolve 'metabase.cmd.load-from-h2/load-from-h2!) h2-connection-string-or-nil))})
 
 (defn- run-cmd [cmd & args]
   (let [f (or (cmd->fn cmd)
