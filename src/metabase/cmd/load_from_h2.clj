@@ -77,7 +77,7 @@
   "Entities that do NOT use an auto incrementing ID column."
   #{Setting Session})
 
-(def ^:private ^:dynamic *db-conn*
+(def ^:private ^:dynamic *target-db-connection*
   "Active database connection to the target database we are loading into."
   nil)
 
@@ -86,26 +86,39 @@
   (print (u/format-color 'blue "Transfering %d instances of %s..." (count objs) (:name e)))
   (flush)
   ;; The connection closes prematurely on occasion when we're inserting thousands of rows at once. Break into smaller chunks so connection stays alive
+  (println "inserting" (count objs) "like\n" (u/pprint-to-str (first objs)) "...")
   (doseq [chunk (partition-all 300 objs)]
     (print (color/blue \.))
     (flush)
-    (apply jdbc/insert! *db-conn* (:table e) (if (= e DashboardCard)
-                                               ;; mini-HACK to fix h2 lowercasing these couple attributes
-                                               ;; luckily this is the only place in our schema where we have camel case names
-                                               (mapv #(set/rename-keys % {:sizex :sizeX, :sizey :sizeY}) chunk)
-                                               chunk)))
+    (apply jdbc/insert! *target-db-connection* (:table e) (condp = e
+                                                            DashboardCard
+                                                            ;; mini-HACK to fix h2 lowercasing these couple attributes
+                                                            ;; luckily this is the only place in our schema where we have camel case names
+                                                            (mapv #(set/rename-keys % {:sizex :sizeX, :sizey :sizeY}) chunk)
+
+                                                            User
+                                                            (for [user chunk]
+                                                              (dissoc user :google_auth)) ; NOCOMMIT
+
+                                                            chunk)))
   (println (color/green "[OK]")))
 
 (defn- insert-self-referencing-entity! [e objs]
+  (println "insert-self-referencing-entity!" e)
   (let [self-ref-attr    (condp = e
                            RawColumn :fk_target_column_id
                            Field     :fk_target_field_id)
         self-referencing (filter self-ref-attr objs)
         others           (set/difference (set objs) (set self-referencing))]
     ;; first insert the non-self-referencing objects
+    (println "self-referencing:" (count self-referencing) "others:" (count others) "total:" (count objs))
+    (println "self-referencing:" (u/pprint-to-str (for [field self-referencing]
+                                                    (select-keys field [:id :fk_target_field_id]))))
     (insert-entity! e others)
+    (println "inserted others <3")
     ;; then insert the rest, which should be safe to insert now
-    (insert-entity! e self-referencing)))
+    (insert-entity! e self-referencing)
+    (println "inserted self-referencing <3")))
 
 (defn- set-postgres-sequence-values! []
   (print (u/format-color 'blue "Setting postgres sequence ids to proper values..."))
@@ -113,8 +126,8 @@
   (doseq [e    (filter #(not (contains? entities-without-autoinc-ids %)) entities)
           :let [table-name (:table e)
                 seq-name   (str table-name "_id_seq")
-                sql        (format "SELECT setval('%s', COALESCE((SELECT MAX(id) FROM %s), 1), true) as val" seq-name table-name)]]
-    (jdbc/db-query-with-resultset *db-conn* [sql] :val))
+                sql        (format "SELECT setval('%s', COALESCE((SELECT MAX(id) FROM %s), 1), true) as val" seq-name (name table-name))]]
+    (jdbc/db-query-with-resultset *target-db-connection* [sql] :val))
   (println (color/green "[OK]")))
 
 (defn load-from-h2!
@@ -130,20 +143,17 @@
     ;; connect to H2 database, which is what we are migrating from
     (jdbc/with-db-connection [h2-conn (db/jdbc-details {:type :h2, :db (str h2-filename ";IFEXISTS=TRUE")})]
       (jdbc/with-db-transaction [target-db-conn target-db-spec]
-        (binding [*db-conn* target-db-conn]
-          (db/transaction
-           (doseq [e     entities
-                   :let  [objs (->> (jdbc/query h2-conn [(str "SELECT * FROM " (name (:table e)))])
-                                    ;; we apply jdbc-clob->str to all row values because H2->Postgres
-                                    ;; gets messed up if the value is left as a clob
-                                    (map #(m/map-vals u/jdbc-clob->str %)))]
-                   :when (seq objs)]
-             (if-not (contains? self-referencing-entities e)
-               (insert-entity! e objs)
-               (insert-self-referencing-entity! e objs)))))))
+        (binding [*target-db-connection* target-db-conn]
+          (doseq [e     entities
+                  :let  [rows (for [row (jdbc/query h2-conn [(str "SELECT * FROM " (name (:table e)))])]
+                                (m/map-vals u/jdbc-clob->str row))]
+                  :when (seq rows)]
+            (if-not (contains? self-referencing-entities e)
+              (insert-entity! e rows)
+              (insert-self-referencing-entity! e rows))))))
 
     ;; if we are loading into a postgres db then we need to update sequence nextvals
     (when (= (config/config-str :mb-db-type) "postgres")
       (jdbc/with-db-transaction [target-db-conn target-db-spec]
-        (binding [*db-conn* target-db-conn]
+        (binding [*target-db-connection* target-db-conn]
           (set-postgres-sequence-values!))))))
