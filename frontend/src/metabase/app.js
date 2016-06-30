@@ -42,6 +42,7 @@ import { reducer as form } from "redux-form";
 
 import * as datamodel from 'metabase/admin/datamodel/reducers';
 import questions from 'metabase/questions/questions';
+import reference from 'metabase/reference/reference';
 import labels from 'metabase/questions/labels';
 import undo from 'metabase/questions/undo';
 import metadata from 'metabase/dashboard/metadata';
@@ -99,6 +100,7 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
                     metadata,
                     dashboard,
                     questions,
+                    reference,
                     labels,
                     undo,
                     form,
@@ -134,6 +136,7 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
         }
     };
     $routeProvider.when('/reference', route);
+    $routeProvider.when('/reference/gettingstarted', route);
     $routeProvider.when('/reference/metrics', route);
     $routeProvider.when('/reference/metrics/:id', route);
     $routeProvider.when('/reference/lists', route);
