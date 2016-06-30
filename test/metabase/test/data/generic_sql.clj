@@ -50,10 +50,6 @@
   (add-fk-sql ^String [this, ^DatabaseDefinition dbdef, ^TableDefinition tabledef, ^FieldDefinition fielddef]
     "*Optional* Return a `ALTER TABLE ADD CONSTRAINT FOREIGN KEY` statement.")
 
-  ;; Other optional methods
-  (korma-entity [this, ^DatabaseDefinition dbdef, ^TableDefinition tabledef]
-    "*Optional* Return an entity for TABLEDEF.")
-
   (prepare-identifier [this, ^String identifier]
     "*OPTIONAL*. Prepare an identifier, such as a Table or Field name, when it is used in a SQL query.
      This is used by drivers like H2 to transform names to upper-case.
@@ -161,11 +157,9 @@
   (let [spec (sql/connection-details->spec driver (i/database->connection-details driver context dbdef))]
     (assoc spec :make-pool? (not (:short-lived? spec)))))
 
-(defn default-korma-entity [driver {:keys [database-name], :as dbdef} {:keys [table-name]}]
-  (k/database (sql/create-entity (qualified-name-components driver database-name table-name))
-              (sql/create-db (database->spec driver :db dbdef))))
 
 ;;; Loading Table Data
+
 ;; Since different DBs have constraints on how we can do this, the logic is broken out into a few different functions
 ;; you can compose together a driver that works with a given DB.
 ;; (ex. SQL Server has a low limit on how many ? args we can have in a prepared statement, so it needs to be broken out into chunks;
@@ -239,9 +233,8 @@
    the calls the resulting function with the rows to insert."
   [& wrap-insert-fns]
   (fn [driver dbdef tabledef]
-    (let [entity  (korma-entity driver dbdef tabledef)
-          spec    (database->spec driver :db dbdef)
-          insert! ((apply comp wrap-insert-fns) (partial do-insert! driver spec (:table entity)))
+    (let [spec    (database->spec driver :db dbdef)
+          insert! ((apply comp wrap-insert-fns) (partial do-insert! driver spec (:table-name tabledef)))
           rows    (load-data-get-rows driver dbdef tabledef)]
       (insert! rows))))
 
@@ -282,7 +275,6 @@
    :drop-db-if-exists-sql     default-drop-db-if-exists-sql
    :drop-table-if-exists-sql  default-drop-table-if-exists-sql
    :execute-sql!              default-execute-sql!
-   :korma-entity              default-korma-entity
    :load-data!                load-data-chunked!
    :pk-field-name             (constantly "id")
    :prepare-identifier        (u/drop-first-arg identity)

@@ -39,12 +39,6 @@
 (defn quote-name [_ nm]
   (str \" (s/upper-case nm) \"))
 
-(defn- korma-entity [_ dbdef {:keys [table-name]}]
-  (-> (k/create-entity table-name)
-      (k/database (kdb/create-db (kdb/h2 (assoc (database->connection-details nil :db dbdef)
-                                                :naming {:keys   s/lower-case
-                                                         :fields s/upper-case}))))))
-
 (def ^:private ^:const ^String create-db-sql
   (str
    ;; We don't need to actually do anything to create a database here. Just disable the undo
@@ -79,7 +73,6 @@
                                          ;; (never try connect as GUEST, since we're not giving them priviledges to create tables / etc)
                                          (execute-sql! this :server dbdef sql))
             :field-base-type->sql-type (u/drop-first-arg field-base-type->sql-type)
-            :korma-entity              korma-entity
             :load-data!                generic/load-data-all-at-once!
             :pk-field-name             (constantly "ID")
             :pk-sql-type               (constantly "BIGINT AUTO_INCREMENT")

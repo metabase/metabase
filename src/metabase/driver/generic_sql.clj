@@ -5,8 +5,7 @@
             [clojure.tools.logging :as log]
             (honeysql [core :as hsql]
                       [format :as hformat])
-            (korma [core :as k]
-                   [db :as kdb])
+            [korma.db :as kdb]
             [metabase.driver :as driver]
             [metabase.sync-database.analyze :as analyze]
             metabase.query-processor.interface
@@ -240,8 +239,7 @@
 (defn- table-rows-seq [driver database table]
   (query driver database table {:select [:*]}))
 
-(defn- field-avg-length
-  [driver field]
+(defn- field-avg-length [driver field]
   (let [table (field/table field)
         db    (table/database table)]
     (or (some-> (query driver db table {:select [[(hsql/call :avg (string-length-fn driver (qualify+escape table field))) :len]]})
@@ -427,39 +425,3 @@
           :mbql->native            (resolve 'metabase.driver.generic-sql.query-processor/mbql->native)
           :notify-database-updated notify-database-updated
           :table-rows-seq          table-rows-seq}))
-
-
-
-;;; ### Util Fns
-
-(defn create-db
-  "Like `korma.db/create-db`, but adds a fn to unescape escaped dots when generating SQL."
-  [spec]
-  (update-in (kdb/create-db spec) [:options :naming :fields] comp hx/unescape-dots))
-
-
-(defn- db->korma-db
-  "Return a DB spec for Metabase DATABASE."
-  [{:keys [details engine], :as database}]
-  (let [spec (connection-details->spec (driver/engine->driver engine) details)]
-    (assoc (create-db spec)
-      :pool (db->jdbc-connection-spec database))))
-
-(defn create-entity
-  "Like `korma.db/create-entity`, but takes a sequence of name components instead; escapes dots in names as well."
-  [name-components]
-  (k/create-entity (apply str (interpose "." (for [s     name-components
-                                                   :when (seq s)]
-                                               (name (hx/escape-dots (name s))))))))
-
-(defn korma-entity
-  "Return a entity for [DB and] TABLE.
-
-    (-> (Table :id 100)
-        korma-entity
-        (select (aggregate (count :*) :count)))"
-  ([table]    (korma-entity (table/database table) table))
-  ([db table] (let [{schema :schema, table-name :name} table]
-                (k/database
-                  (create-entity [schema table-name])
-                  (db->korma-db db)))))
