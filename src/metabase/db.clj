@@ -137,50 +137,26 @@
 
 (defn connection-pool
   "Create a C3P0 connection pool for the given database SPEC."
-  [{:keys [subprotocol
-           subname
-           classname
-           excess-timeout
-           idle-timeout
-           initial-pool-size
-           minimum-pool-size
-           maximum-pool-size
-           test-connection-query
-           idle-connection-test-period
-           test-connection-on-checkin
-           test-connection-on-checkout]
-    :or {excess-timeout              (* 30 60)
-         idle-timeout                (* 3 60 60)
-         initial-pool-size           3
-         minimum-pool-size           3
-         maximum-pool-size           15
-         test-connection-query       nil
-         idle-connection-test-period 0
-         test-connection-on-checkin  false
-         test-connection-on-checkout false}
-    :as spec}]
+  [{:keys [subprotocol subname classname minimum-pool-size idle-connection-test-period excess-timeout]
+    :or   {minimum-pool-size           3
+           idle-connection-test-period 0
+           excess-timeout              (* 30 60)}
+    :as   spec}]
   {:datasource (doto (ComboPooledDataSource.)
                  (.setDriverClass                  classname)
                  (.setJdbcUrl                      (str "jdbc:" subprotocol ":" subname))
                  (.setMaxIdleTimeExcessConnections excess-timeout)
-                 (.setMaxIdleTime                  idle-timeout)
-                 (.setInitialPoolSize              initial-pool-size)
+                 (.setMaxIdleTime                  (* 3 60 60))
+                 (.setInitialPoolSize              3)
                  (.setMinPoolSize                  minimum-pool-size)
-                 (.setMaxPoolSize                  maximum-pool-size)
+                 (.setMaxPoolSize                  15)
                  (.setIdleConnectionTestPeriod     idle-connection-test-period)
-                 (.setTestConnectionOnCheckin      test-connection-on-checkin)
-                 (.setTestConnectionOnCheckout     test-connection-on-checkout)
-                 (.setPreferredTestQuery           test-connection-query)
+                 (.setTestConnectionOnCheckin      false)
+                 (.setTestConnectionOnCheckout     false)
+                 (.setPreferredTestQuery           nil)
                  (.setProperties                   (u/prog1 (java.util.Properties.)
-                                                     (doseq [[k v] (dissoc spec
-                                                                           :make-pool? :classname :subprotocol :subname
-                                                                           :naming :delimiters :alias-delimiter
-                                                                           :excess-timeout :idle-timeout
-                                                                           :initial-pool-size :minimum-pool-size :maximum-pool-size
-                                                                           :test-connection-query
-                                                                           :idle-connection-test-period
-                                                                           :test-connection-on-checkin
-                                                                           :test-connection-on-checkout)]
+                                                     (doseq [[k v] (dissoc spec :make-pool? :classname :subprotocol :subname :naming :delimiters :alias-delimiter
+                                                                                :excess-timeout :minimum-pool-size :idle-connection-test-period)]
                                                        (.setProperty <> (name k) (str v))))))})
 
 (def ^:private db-connection-pool
