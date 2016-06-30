@@ -295,7 +295,7 @@
                         :tag      (symbol (str (namespace-munge *ns*) \. instance))
                         :arglists ''([] [id] [& kvs])
                         :doc      (or docstr
-                                      (format "Korma entity for '%s' table; instance of %s." (name table-name) instance)))
+                                      (format "Entity for '%s' table; instance of %s." (name table-name) instance)))
          (-> (k/create-entity ~(name entity))
              (k/table ~table-name)
              (assoc ::entity true)

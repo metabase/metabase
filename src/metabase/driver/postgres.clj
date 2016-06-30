@@ -5,7 +5,7 @@
                      [string :as s])
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
-            [korma.db :as kdb]
+            [metabase.db.spec :as dbspec]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
             [metabase.util :as u]
@@ -103,7 +103,7 @@
                ssl-params
                disable-ssl-params))
       (rename-keys {:dbname :db})
-      kdb/postgres))
+      dbspec/postgres))
 
 (defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
   (case seconds-or-milliseconds

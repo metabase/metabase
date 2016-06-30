@@ -8,11 +8,11 @@
             (honeysql [core :as hsql]
                       [format :as hformat]
                       [helpers :as h])
-            (korma [core :as k]
-                   [db :as kdb])
+            [korma.db :as kdb]
             [medley.core :as m]
             [ring.util.codec :as codec]
             [metabase.config :as config]
+            [metabase.db.spec :as dbspec]
             [metabase.models.interface :as models]
             [metabase.util :as u]
             metabase.util.honeysql-extensions) ; this needs to be loaded so the `:h2` quoting style gets added
@@ -87,15 +87,15 @@
                           :password (config/config-str :mb-db-pass)}))))
 
 (defn jdbc-details
-  "Takes our own MB details map and formats them properly for connection details for Korma / JDBC."
+  "Takes our own MB details map and formats them properly for connection details for JDBC."
   [db-details]
   {:pre [(map? db-details)]}
   ;; TODO: it's probably a good idea to put some more validation here and be really strict about what's in `db-details`
   (case (:type db-details)
-    :h2       (kdb/h2       (assoc db-details :naming {:keys   s/lower-case
-                                                       :fields s/upper-case}))
-    :mysql    (kdb/mysql    (assoc db-details :db (:dbname db-details)))
-    :postgres (kdb/postgres (assoc db-details :db (:dbname db-details)))))
+    :h2       (dbspec/h2       (assoc db-details :naming {:keys   s/lower-case
+                                                          :fields s/upper-case}))
+    :mysql    (dbspec/mysql    (assoc db-details :db (:dbname db-details)))
+    :postgres (dbspec/postgres (assoc db-details :db (:dbname db-details)))))
 
 
 ;; ## MIGRATE
@@ -188,7 +188,7 @@
       (throw (java.lang.Exception. "Database requires manual upgrade."))))
   (log/info "Database Migrations Current ... ✅")
 
-  ;; Establish our 'default' Korma DB Connection
+  ;; Establish our 'default' DB Connection
   (kdb/default-connection (kdb/create-db (jdbc-details db-details)))
 
   ;; Do any custom code-based migrations now that the db structure is up to date
@@ -269,7 +269,7 @@
 
 (def ^:private ^:dynamic *call-count*
   "Atom used as a counter for DB calls when enabled.
-   This number isn't *perfectly* accurate, only mostly; DB calls made directly to JDBC or via old korma patterns won't be logged."
+   This number isn't *perfectly* accurate, only mostly; DB calls made directly to JDBC won't be logged."
   nil)
 
 (defn do-with-call-counting

@@ -52,7 +52,7 @@
 
   ;; Other optional methods
   (korma-entity [this, ^DatabaseDefinition dbdef, ^TableDefinition tabledef]
-    "*Optional* Return a korma-entity for TABLEDEF.")
+    "*Optional* Return an entity for TABLEDEF.")
 
   (prepare-identifier [this, ^String identifier]
     "*OPTIONAL*. Prepare an identifier, such as a Table or Field name, when it is used in a SQL query.
@@ -172,7 +172,7 @@
 ;;  Oracle doesn't understand the normal syntax for inserting multiple rows at a time so we'll insert them one-at-a-time instead)
 
 (defn load-data-get-rows
-  "Get a sequence of row maps for use in a korma `insert` when loading table data."
+  "Get a sequence of row maps for use in a `insert!` when loading table data."
   [driver dbdef tabledef]
   (let [fields-for-insert (mapv (comp keyword :field-name)
                                 (:field-definitions tabledef))]

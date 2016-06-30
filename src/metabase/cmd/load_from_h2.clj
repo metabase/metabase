@@ -91,7 +91,7 @@
     (print (color/blue \.))
     (flush)
     (k/insert e (k/values (if (= e DashboardCard)
-                            ;; mini-HACK to fix korma/h2 lowercasing these couple attributes
+                            ;; mini-HACK to fix h2 lowercasing these couple attributes
                             ;; luckily this is the only place in our schema where we have camel case names
                             (mapv #(set/rename-keys % {:sizex :sizeX, :sizey :sizeY}) chunk)
                             chunk))))

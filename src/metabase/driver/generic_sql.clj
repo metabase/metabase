@@ -53,10 +53,10 @@
     "Given a `Database` DETAILS-MAP, return a JDBC connection spec.")
 
   (current-datetime-fn [this]
-    "*OPTIONAL*. Korma form that should be used to get the current `DATETIME` (or equivalent). Defaults to `:%now`.")
+    "*OPTIONAL*. HoneySQL form that should be used to get the current `DATETIME` (or equivalent). Defaults to `:%now`.")
 
   (date [this, ^Keyword unit, field-or-value]
-    "Return a korma form for truncating a date or timestamp field or value to a given resolution, or extracting a date component.")
+    "Return a HoneySQL form for truncating a date or timestamp field or value to a given resolution, or extracting a date component.")
 
   (excluded-schemas ^java.util.Set [this]
     "*OPTIONAL*. Set of string names of schemas to skip syncing tables from.")
@@ -73,9 +73,9 @@
      Return `nil` to prevent FIELD from being aliased.")
 
   (prepare-value [this, ^Value value]
-    "*OPTIONAL*. Prepare a value (e.g. a `String` or `Integer`) that will be used in a korma form. By default, this returns VALUE's `:value` as-is, which
+    "*OPTIONAL*. Prepare a value (e.g. a `String` or `Integer`) that will be used in a HoneySQL form. By default, this returns VALUE's `:value` as-is, which
      is eventually passed as a parameter in a prepared statement. Drivers such as BigQuery that don't support prepared statements can skip this
-     behavior by returning a korma `raw` form instead, or other drivers can perform custom type conversion as appropriate.")
+     behavior by returning a HoneySQL `raw` form instead, or other drivers can perform custom type conversion as appropriate.")
 
   (quote-style ^clojure.lang.Keyword [this]
     "*OPTIONAL*. Return the quoting style that should be used by [HoneySQL](https://github.com/jkk/honeysql) when building a SQL statement.
@@ -99,7 +99,7 @@
       (hsql/call :length (hx/cast :VARCHAR field-key))")
 
   (unix-timestamp->timestamp [this, field-or-value, ^Keyword seconds-or-milliseconds]
-    "Return a korma form appropriate for converting a Unix timestamp integer field or value to an proper SQL `Timestamp`.
+    "Return a HoneySQL form appropriate for converting a Unix timestamp integer field or value to an proper SQL `Timestamp`.
      SECONDS-OR-MILLISECONDS refers to the resolution of the int in question and with be either `:seconds` or `:milliseconds`."))
 
 
@@ -159,7 +159,7 @@
 
 
 (defn escape-field-name
-  "Escape dots in a field name so Korma doesn't get confused and separate them. Returns a keyword."
+  "Escape dots in a field name so HoneySQL doesn't get confused and separate them. Returns a keyword."
   ^clojure.lang.Keyword [k]
   (keyword (hx/escape-dots (name k))))
 
@@ -439,7 +439,7 @@
 
 
 (defn- db->korma-db
-  "Return a Korma DB spec for Metabase DATABASE."
+  "Return a DB spec for Metabase DATABASE."
   [{:keys [details engine], :as database}]
   (let [spec (connection-details->spec (driver/engine->driver engine) details)]
     (assoc (create-db spec)
@@ -453,7 +453,7 @@
                                                (name (hx/escape-dots (name s))))))))
 
 (defn korma-entity
-  "Return a Korma entity for [DB and] TABLE.
+  "Return a entity for [DB and] TABLE.
 
     (-> (Table :id 100)
         korma-entity
