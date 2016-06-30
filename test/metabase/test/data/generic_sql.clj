@@ -6,8 +6,6 @@
             (honeysql [core :as hsql]
                       [format :as hformat]
                       [helpers :as h])
-            (korma [core :as k]
-                   [db :as kdb])
             [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]

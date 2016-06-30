@@ -135,39 +135,53 @@
 ;;; |                                           DB CONNECTION / TRANSACTION STUFF                                            |
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 
-(set! *warn-on-reflection* true)
-
 (defn connection-pool
   "Create a connection pool for the given database spec."
-  [{:keys [subprotocol subname classname], :as spec}]
+  [{:keys [subprotocol
+           subname
+           classname
+           excess-timeout
+           idle-timeout
+           initial-pool-size
+           minimum-pool-size
+           maximum-pool-size
+           test-connection-query
+           idle-connection-test-period
+           test-connection-on-checkin
+           test-connection-on-checkout]
+    :or {excess-timeout              (* 30 60)
+         idle-timeout                (* 3 60 60)
+         initial-pool-size           3
+         minimum-pool-size           3
+         maximum-pool-size           15
+         test-connection-query       nil
+         idle-connection-test-period 0
+         test-connection-on-checkin  false
+         test-connection-on-checkout false}
+    :as spec}]
   {:datasource (doto (ComboPooledDataSource.)
-                 (.setDriverClass classname)
-                 (.setJdbcUrl (str "jdbc:" subprotocol ":" subname))
-                 (.setMaxIdleTimeExcessConnections (* 30 60))
-                 (.setMaxIdleTime (* 3 60 60))
-                 (.setInitialPoolSize 3)
-                 (.setMinPoolSize 3)
-                 (.setMaxPoolSize 15)
-                 (.setIdleConnectionTestPeriod 0)
-                 (.setTestConnectionOnCheckin false)
-                 (.setTestConnectionOnCheckout false)
-                 (.setPreferredTestQuery nil)
-                 (.setProperties (u/prog1 (java.util.Properties.)
-                                   (doseq [[k v] (dissoc spec
-                                                         :make-pool? :classname :subprotocol :subname
-                                                         :naming :delimiters :alias-delimiter
-                                                         :excess-timeout :idle-timeout
-                                                         :initial-pool-size :minimum-pool-size :maximum-pool-size
-                                                         :test-connection-query
-                                                         :idle-connection-test-period
-                                                         :test-connection-on-checkin
-                                                         :test-connection-on-checkout)]
-                                     (.setProperty <> (name k) (str v))))))})
-
-(defn delay-pool
-  "Return a delay for creating a connection pool for the given spec."
-  [spec]
-  (delay (connection-pool spec)))
+                 (.setDriverClass                  classname)
+                 (.setJdbcUrl                      (str "jdbc:" subprotocol ":" subname))
+                 (.setMaxIdleTimeExcessConnections excess-timeout)
+                 (.setMaxIdleTime                  idle-timeout)
+                 (.setInitialPoolSize              initial-pool-size)
+                 (.setMinPoolSize                  minimum-pool-size)
+                 (.setMaxPoolSize                  maximum-pool-size)
+                 (.setIdleConnectionTestPeriod     idle-connection-test-period)
+                 (.setTestConnectionOnCheckin      test-connection-on-checkin)
+                 (.setTestConnectionOnCheckout     test-connection-on-checkout)
+                 (.setPreferredTestQuery           test-connection-query)
+                 (.setProperties                   (u/prog1 (java.util.Properties.)
+                                                     (doseq [[k v] (dissoc spec
+                                                                           :make-pool? :classname :subprotocol :subname
+                                                                           :naming :delimiters :alias-delimiter
+                                                                           :excess-timeout :idle-timeout
+                                                                           :initial-pool-size :minimum-pool-size :maximum-pool-size
+                                                                           :test-connection-query
+                                                                           :idle-connection-test-period
+                                                                           :test-connection-on-checkin
+                                                                           :test-connection-on-checkout)]
+                                                       (.setProperty <> (name k) (str v))))))})
 
 (defn create-db
   "Create a db connection object manually instead of using defdb. This is often
@@ -179,7 +193,7 @@
    If the spec includes `:make-pool? true` makes a connection pool from the spec."
   [spec]
   {:pool (if (:make-pool? spec)
-           (delay-pool spec)
+           (delay (connection-pool spec))
            spec)})
 
 (def _connection

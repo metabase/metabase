@@ -3,8 +3,7 @@
   ;; TODO - rework this namespace to use `u/drop-first-arg` where appropriate
   (:require [clojure.core.reducers :as r]
             [clojure.string :as s]
-            (korma [core :as k]
-                   [db :as kdb])
+            [metabase.db.spec :as dbspec]
             metabase.driver.h2
             (metabase.test.data [generic-sql :as generic]
                                 [interface :as i])
@@ -66,7 +65,7 @@
     (merge mixin
            {:create-db-sql             (constantly create-db-sql)
             :create-table-sql          create-table-sql
-            :database->spec            (comp kdb/h2 i/database->connection-details) ; Don't use the h2 driver implementation, which makes the connection string read-only & if-exists only
+            :database->spec            (comp dbspec/h2 i/database->connection-details) ; Don't use the h2 driver implementation, which makes the connection string read-only & if-exists only
             :drop-db-if-exists-sql     (constantly nil)
             :execute-sql!              (fn [this _ dbdef sql]
                                          ;; we always want to use 'server' context when execute-sql! is called

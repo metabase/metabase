@@ -5,13 +5,13 @@
             [clojure.tools.logging :as log]
             (honeysql [core :as hsql]
                       [format :as hformat])
-            [korma.db :as kdb]
-            [metabase.driver :as driver]
-            [metabase.sync-database.analyze :as analyze]
-            metabase.query-processor.interface
+            (metabase [db :as db]
+                      [driver :as driver])
             (metabase.models [field :as field]
                              raw-table
                              [table :as table])
+            metabase.query-processor.interface
+            [metabase.sync-database.analyze :as analyze]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
   (:import java.sql.DatabaseMetaData
@@ -117,11 +117,12 @@
   [{:keys [id engine details]}]
   (log/debug (u/format-color 'magenta "Creating new connection pool for database %d ..." id))
   (let [spec (connection-details->spec (driver/engine->driver engine) details)]
-    (kdb/connection-pool (assoc spec :minimum-pool-size           1
-                                     ;; prevent broken connections closed by dbs by testing them every 3 mins
-                                     :idle-connection-test-period (* 3 60)
-                                     ;; prevent overly large pools by condensing them when connections are idle for 15m+
-                                     :excess-timeout              (* 15 60)))))
+    (db/connection-pool (assoc spec
+                          :minimum-pool-size           1
+                          ;; prevent broken connections closed by dbs by testing them every 3 mins
+                          :idle-connection-test-period (* 3 60)
+                          ;; prevent overly large pools by condensing them when connections are idle for 15m+
+                          :excess-timeout              (* 15 60)))))
 
 (defn- notify-database-updated
   "We are being informed that a DATABASE has been updated, so lets shut down the connection pool (if it exists) under
