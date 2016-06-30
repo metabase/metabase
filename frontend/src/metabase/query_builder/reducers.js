@@ -130,8 +130,9 @@ export const tableForeignKeyReferences = handleActions({
 
 // the result of a query execution.  optionally an error if the query fails to complete successfully.
 export const queryResult = handleActions({
-    [QUERY_COMPLETED]: { next: (state, { payload }) => payload.queryResult},
-    [QUERY_ERRORED]: { next: (state, { payload }) => payload ? payload : state}
+    [QUERY_COMPLETED]: { next: (state, { payload }) => payload.queryResult },
+    [QUERY_ERRORED]: { next: (state, { payload }) => payload ? payload : state },
+    [INITIALIZE_QB]: { next: (state, { payload }) => null }
 }, null);
 
 // promise used for tracking a query execution in progress.  when a query is started we capture this.
