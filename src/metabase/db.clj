@@ -136,7 +136,7 @@
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 
 (defn connection-pool
-  "Create a connection pool for the given database spec."
+  "Create a C3P0 connection pool for the given database SPEC."
   [{:keys [subprotocol
            subname
            classname
@@ -183,53 +183,39 @@
                                                                            :test-connection-on-checkout)]
                                                        (.setProperty <> (name k) (str v))))))})
 
-(defn create-db
-  "Create a db connection object manually instead of using defdb. This is often
-   useful for creating connections dynamically, and probably should be followed
-   up with:
-
-   (set-default-connection! my-new-conn)
-
-   If the spec includes `:make-pool? true` makes a connection pool from the spec."
-  [spec]
-  {:pool (if (:make-pool? spec)
-           (delay (connection-pool spec))
-           spec)})
-
-(def _connection
+(def ^:private db-connection-pool
   (atom nil))
 
-(defn set-default-connection!
-  "Set the database connection that Korma should use by default when no
-  alternative is specified."
-  [conn]
-  (reset! _connection conn))
+(defn- create-connection-pool!
+  [spec]
+  (reset! db-connection-pool (connection-pool spec)))
 
-(def ^:dynamic *current-conn* nil)
+(def ^:private ^:dynamic *transaction-connection*
+  "Transaction connection to the *Metabase* backing DB connection pool. Used internally by `transaction`."
+  nil)
+
+(declare setup-db-if-needed)
+
+(defn- db-connection
+  "Get a JDBC connection spec for the Metabase DB."
+  []
+  (setup-db-if-needed)
+  (or *transaction-connection*
+      @db-connection-pool
+      (throw (Exception. "DB is not setup."))))
+
+(defn do-in-transaction
+  "Execute F inside a DB transaction. Prefer macro form `transaction` to using this directly."
+  [f]
+  (jdbc/with-db-transaction [conn (db-connection)]
+    (binding [*transaction-connection* conn]
+      (f))))
 
 (defmacro transaction
-  "Execute all queries within the body in a single transaction.
-  Optionally takes as a first argument a map to specify the :isolation and :read-only? properties of the transaction."
+  "Execute all queries within the body in a single transaction."
   {:arglists '([body] [options & body])}
   [& body]
-  (let [options (first body)
-        check-options (and (-> body rest seq)
-                           (map? options))
-        {:keys [isolation read-only?]} (when check-options options)
-        body (if check-options (rest body) body)]
-    `(jdbc/with-db-transaction [conn# (or *current-conn* (get-connection @_connection)) :isolation ~isolation :read-only? ~read-only?]
-       (binding [*current-conn* conn#]
-         ~@body))))
-
-(defn get-connection
-  "Get a connection from the potentially delayed connection object."
-  [db]
-  (let [db (or (:pool db) db)]
-    (if-not db
-      (throw (Exception. "No valid DB connection selected."))
-      (if (delay? db)
-        @db
-        db))))
+  `(do-in-transaction (fn [] ~@body)))
 
 
 ;;; +------------------------------------------------------------------------------------------------------------------------+
@@ -293,7 +279,7 @@
   (log/info "Database Migrations Current ... ✅")
 
   ;; Establish our 'default' DB Connection
-  (set-default-connection! (create-db (jdbc-details db-details)))
+  (create-connection-pool! (jdbc-details db-details))
 
   ;; Do any custom code-based migrations now that the db structure is up to date
   ;; NOTE: we use dynamic resolution to prevent circular dependencies
@@ -349,13 +335,6 @@
     (vector? entity)                           (resolve-entity (first entity))
     (symbol? entity)                           (resolve-entity-from-symbol entity)
     :else                                      (throw (Exception. (str "Invalid entity:" entity)))))
-
-(defn- db-connection
-  "Get a JDBC connection spec for the Metabase DB."
-  []
-  (setup-db-if-needed)
-  (or *current-conn*
-      (get-connection @_connection)))
 
 (defn- quoting-style
   "Style of `:quoting` that should be passed to HoneySQL `format`."
