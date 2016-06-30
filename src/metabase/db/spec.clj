@@ -1,6 +1,18 @@
 (ns metabase.db.spec
   "Functions for creating JDBC DB specs for a given engine.")
 
+(defn h2
+  "Create a database specification for a h2 database. Opts should include a key
+  for :db which is the path to the database file."
+  [{:keys [db make-pool?]
+    :or {db "h2.db", make-pool? true}
+    :as opts}]
+  (merge {:classname "org.h2.Driver" ; must be in classpath
+          :subprotocol "h2"
+          :subname db
+          :make-pool? make-pool?}
+         (dissoc opts :db)))
+
 (defn postgres
   "Create a database specification for a postgres database. Opts should include
   keys for :db, :user, and :password. You can also optionally set host and
@@ -28,6 +40,9 @@
           :make-pool? make-pool?}
          (dissoc opts :host :port :db)))
 
+
+;; TODO - These other ones can acutally be moved directly into their respective drivers themselves since they're not supported as backing DBs
+
 (defn mssql
   "Create a database specification for a mssql database. Opts should include keys
   for :db, :user, and :password. You can also optionally set host and port."
@@ -48,18 +63,6 @@
     :as opts}]
   (merge {:classname "org.sqlite.JDBC" ; must be in classpath
           :subprotocol "sqlite"
-          :subname db
-          :make-pool? make-pool?}
-         (dissoc opts :db)))
-
-(defn h2
-  "Create a database specification for a h2 database. Opts should include a key
-  for :db which is the path to the database file."
-  [{:keys [db make-pool?]
-    :or {db "h2.db", make-pool? true}
-    :as opts}]
-  (merge {:classname "org.h2.Driver" ; must be in classpath
-          :subprotocol "h2"
           :subname db
           :make-pool? make-pool?}
          (dissoc opts :db)))

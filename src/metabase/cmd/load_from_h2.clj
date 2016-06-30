@@ -3,8 +3,7 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.set :as set]
             [colorize.core :as color]
-            (korma [core :as k]
-                   [db :as kdb])
+            [korma.core :as k]
             [medley.core :as m]
             [metabase.config :as config]
             [metabase.db :as db]
@@ -129,7 +128,7 @@
     ;; NOTE: would be nice to add `ACCESS_MODE_DATA=r` but it doesn't work with `AUTO_SERVER=TRUE`
     ;; connect to H2 database, which is what we are migrating from
     (jdbc/with-db-connection [h2-conn (db/jdbc-details {:type :h2, :db (str h2-filename ";IFEXISTS=TRUE")})]
-      (kdb/transaction
+      (db/transaction
         (doseq [e     entities
                 :let  [objs (->> (jdbc/query h2-conn [(str "SELECT * FROM " (:table e))])
                                  ;; we apply jdbc-clob->str to all row values because H2->Postgres

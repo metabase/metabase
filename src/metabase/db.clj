@@ -8,7 +8,6 @@
             (honeysql [core :as hsql]
                       [format :as hformat]
                       [helpers :as h])
-            [korma.db :as kdb]
             [medley.core :as m]
             [ring.util.codec :as codec]
             [metabase.config :as config]
@@ -18,6 +17,7 @@
             metabase.util.honeysql-extensions) ; this needs to be loaded so the `:h2` quoting style gets added
   (:import java.io.StringWriter
            java.sql.Connection
+           com.mchange.v2.c3p0.ComboPooledDataSource
            liquibase.Liquibase
            (liquibase.database DatabaseFactory Database)
            liquibase.database.jvm.JdbcConnection
@@ -131,7 +131,97 @@
       (throw (DatabaseException. e)))))
 
 
-;; ## SETUP-DB
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                           DB CONNECTION / TRANSACTION STUFF                                            |
+;;; +------------------------------------------------------------------------------------------------------------------------+
+
+(set! *warn-on-reflection* true)
+
+(defn connection-pool
+  "Create a connection pool for the given database spec."
+  [{:keys [subprotocol subname classname], :as spec}]
+  {:datasource (doto (ComboPooledDataSource.)
+                 (.setDriverClass classname)
+                 (.setJdbcUrl (str "jdbc:" subprotocol ":" subname))
+                 (.setMaxIdleTimeExcessConnections (* 30 60))
+                 (.setMaxIdleTime (* 3 60 60))
+                 (.setInitialPoolSize 3)
+                 (.setMinPoolSize 3)
+                 (.setMaxPoolSize 15)
+                 (.setIdleConnectionTestPeriod 0)
+                 (.setTestConnectionOnCheckin false)
+                 (.setTestConnectionOnCheckout false)
+                 (.setPreferredTestQuery nil)
+                 (.setProperties (u/prog1 (java.util.Properties.)
+                                   (doseq [[k v] (dissoc spec
+                                                         :make-pool? :classname :subprotocol :subname
+                                                         :naming :delimiters :alias-delimiter
+                                                         :excess-timeout :idle-timeout
+                                                         :initial-pool-size :minimum-pool-size :maximum-pool-size
+                                                         :test-connection-query
+                                                         :idle-connection-test-period
+                                                         :test-connection-on-checkin
+                                                         :test-connection-on-checkout)]
+                                     (.setProperty <> (name k) (str v))))))})
+
+(defn delay-pool
+  "Return a delay for creating a connection pool for the given spec."
+  [spec]
+  (delay (connection-pool spec)))
+
+(defn create-db
+  "Create a db connection object manually instead of using defdb. This is often
+   useful for creating connections dynamically, and probably should be followed
+   up with:
+
+   (set-default-connection! my-new-conn)
+
+   If the spec includes `:make-pool? true` makes a connection pool from the spec."
+  [spec]
+  {:pool (if (:make-pool? spec)
+           (delay-pool spec)
+           spec)})
+
+(def _connection
+  (atom nil))
+
+(defn set-default-connection!
+  "Set the database connection that Korma should use by default when no
+  alternative is specified."
+  [conn]
+  (reset! _connection conn))
+
+(def ^:dynamic *current-conn* nil)
+
+(defmacro transaction
+  "Execute all queries within the body in a single transaction.
+  Optionally takes as a first argument a map to specify the :isolation and :read-only? properties of the transaction."
+  {:arglists '([body] [options & body])}
+  [& body]
+  (let [options (first body)
+        check-options (and (-> body rest seq)
+                           (map? options))
+        {:keys [isolation read-only?]} (when check-options options)
+        body (if check-options (rest body) body)]
+    `(jdbc/with-db-transaction [conn# (or *current-conn* (get-connection @_connection)) :isolation ~isolation :read-only? ~read-only?]
+       (binding [*current-conn* conn#]
+         ~@body))))
+
+(defn get-connection
+  "Get a connection from the potentially delayed connection object."
+  [db]
+  (let [db (or (:pool db) db)]
+    (if-not db
+      (throw (Exception. "No valid DB connection selected."))
+      (if (delay? db)
+        @db
+        db))))
+
+
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                                 DB SETUP & MIGRATIONS                                                  |
+;;; +------------------------------------------------------------------------------------------------------------------------+
+
 
 (def ^:private setup-db-has-been-called?
   (atom false))
@@ -189,7 +279,7 @@
   (log/info "Database Migrations Current ... ✅")
 
   ;; Establish our 'default' DB Connection
-  (kdb/default-connection (kdb/create-db (jdbc-details db-details)))
+  (set-default-connection! (create-db (jdbc-details db-details)))
 
   ;; Do any custom code-based migrations now that the db structure is up to date
   ;; NOTE: we use dynamic resolution to prevent circular dependencies
@@ -250,8 +340,8 @@
   "Get a JDBC connection spec for the Metabase DB."
   []
   (setup-db-if-needed)
-  (or korma.db/*current-conn*
-      (korma.db/get-connection (or korma.db/*current-db* @korma.db/_default))))
+  (or *current-conn*
+      (get-connection @_connection)))
 
 (defn- quoting-style
   "Style of `:quoting` that should be passed to HoneySQL `format`."

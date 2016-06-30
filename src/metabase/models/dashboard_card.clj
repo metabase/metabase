@@ -1,6 +1,5 @@
 (ns metabase.models.dashboard-card
   (:require [clojure.set :as set]
-            [korma.db :as kdb]
             [metabase.db :as db]
             [metabase.events :as events]
             [metabase.models.card :refer [Card]]
@@ -88,7 +87,7 @@
          (u/nil-or-sequence-of-maps? parameter_mappings)
          (every? integer? series)]}
   (let [{:keys [sizeX sizeY row col series]} (merge {:series []} dashboard-card)]
-    (kdb/transaction
+    (db/transaction
       ;; update the dashcard itself (positional attributes)
       (when (and sizeX sizeY row col)
         (db/update-non-nil-keys! DashboardCard id, :sizeX sizeX, :sizeY sizeY, :row row, :col col, :parameter_mappings parameter_mappings))
@@ -109,7 +108,7 @@
          (u/nil-or-sequence-of-maps? parameter_mappings)]}
   (let [{:keys [sizeX sizeY row col series]} (merge {:sizeX 2, :sizeY 2, :series []}
                                                     dashboard-card)]
-    (kdb/transaction
+    (db/transaction
       (let [{:keys [id] :as dashboard-card} (db/insert! DashboardCard
                                               :dashboard_id       dashboard_id
                                               :card_id            card_id
