@@ -4,6 +4,8 @@ import { handleActions, combineReducers, AngularResourceProxy, createThunkAction
 import MetabaseCookies from "metabase/lib/cookies";
 import MetabaseUtils from "metabase/lib/utils";
 
+import { clearGoogleAuthCredentials } from "metabase/lib/auth";
+
 
 // resource wrappers
 const SessionApi = new AngularResourceProxy("Session", ["create", "createWithGoogleAuth", "delete", "reset_password"]);
@@ -50,6 +52,7 @@ export const loginGoogle = createThunkAction("AUTH_LOGIN_GOOGLE", function(googl
             setTimeout(() => onChangeLocation("/"), 300);
 
         } catch (error) {
+            clearGoogleAuthCredentials();
             // If we see a 428 ("Precondition Required") that means we need to show the "No Metabase account exists for this Google Account" page
             if (error.status === 428) {
                 onChangeLocation('/auth/google_no_mb_account');
