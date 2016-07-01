@@ -205,7 +205,7 @@
 (defn- do-insert!
   "Insert ROWS-OR-ROWS into TABLE-NAME for the DRIVER database defined by SPEC."
   [driver spec table-name row-or-rows]
-  (let [prepare-key (comp keyword (partial prepare-identifier driver) hx/escape-dots name)
+  (let [prepare-key (comp keyword (partial prepare-identifier driver) name)
         rows        (if (sequential? row-or-rows)
                       row-or-rows
                       [row-or-rows])
@@ -230,17 +230,18 @@
   "Create a `load-data!` function. This creates a function to actually insert a row or rows, wraps it with any WRAP-INSERT-FNS,
    the calls the resulting function with the rows to insert."
   [& wrap-insert-fns]
-  (fn [driver dbdef tabledef]
-    (let [spec    (database->spec driver :db dbdef)
-          insert! ((apply comp wrap-insert-fns) (partial do-insert! driver spec (:table-name tabledef)))
-          rows    (load-data-get-rows driver dbdef tabledef)]
+  (fn [driver {:keys [database-name], :as dbdef} {:keys [table-name], :as tabledef}]
+    (let [spec       (database->spec driver :db dbdef)
+          table-name (apply hx/qualify-and-escape-dots (qualified-name-components driver database-name table-name))
+          insert!    ((apply comp wrap-insert-fns) (partial do-insert! driver spec table-name))
+          rows       (load-data-get-rows driver dbdef tabledef)]
       (insert! rows))))
 
-(def load-data-all-at-once!             "Insert all rows at once."                             (make-load-data-fn))
-(def load-data-chunked!                 "Insert rows in chunks of 200 at a time."              (make-load-data-fn load-data-chunked))
-(def load-data-one-at-a-time!           "Insert rows one at a time."                           (make-load-data-fn load-data-one-at-a-time))
-(def load-data-chunked-parallel!        "Insert rows in chunks of 200 at a time, in parallel." (make-load-data-fn load-data-add-ids (partial load-data-chunked pmap)))
-(def load-data-one-at-a-time-parallel!  "Insert rows one at a time, in parallel."              (make-load-data-fn load-data-add-ids (partial load-data-one-at-a-time pmap)))
+(def load-data-all-at-once!            "Insert all rows at once."                             (make-load-data-fn))
+(def load-data-chunked!                "Insert rows in chunks of 200 at a time."              (make-load-data-fn load-data-chunked))
+(def load-data-one-at-a-time!          "Insert rows one at a time."                           (make-load-data-fn load-data-one-at-a-time))
+(def load-data-chunked-parallel!       "Insert rows in chunks of 200 at a time, in parallel." (make-load-data-fn load-data-add-ids (partial load-data-chunked pmap)))
+(def load-data-one-at-a-time-parallel! "Insert rows one at a time, in parallel."              (make-load-data-fn load-data-add-ids (partial load-data-one-at-a-time pmap)))
 
 
 (defn default-execute-sql! [driver context dbdef sql]
