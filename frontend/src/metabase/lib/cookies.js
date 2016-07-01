@@ -34,6 +34,8 @@ var MetabaseCookies = {
 
             // send a logout notification event
             mb_cookies.scope.$broadcast('appstate:logout', sessionId);
+
+            return sessionId;
         }
     }
 }

@@ -8,10 +8,10 @@ import Query from "metabase/lib/query";
 import { parseFieldTarget } from "metabase/lib/query_time";
 
 
-export const uiControls                = state => state.uiControls;
+export const uiControls                = state => state.qb.uiControls;
 
-export const card                      = state => state.card;
-export const originalCard              = state => state.originalCard;
+export const card                      = state => state.qb.card;
+export const originalCard              = state => state.qb.originalCard;
 export const isDirty = createSelector(
 	[card, originalCard],
 	(card, originalCard) => {
@@ -19,10 +19,10 @@ export const isDirty = createSelector(
 	}
 );
 
-export const databases                 = state => state.databases;
-export const tableMetadata             = state => state.tableMetadata;
-export const tableForeignKeys          = state => state.tableForeignKeys;
-export const tableForeignKeyReferences = state => state.tableForeignKeyReferences;
+export const databases                 = state => state.qb.databases;
+export const tableMetadata             = state => state.qb.tableMetadata;
+export const tableForeignKeys          = state => state.qb.tableForeignKeys;
+export const tableForeignKeyReferences = state => state.qb.tableForeignKeyReferences;
 export const tables = createSelector(
 	[card, databases],
     (card, databases) => {
@@ -39,7 +39,7 @@ export const tables = createSelector(
 );
 
 export const isObjectDetail = createSelector(
-	[state => state.queryResult],
+	[state => state.qb.queryResult],
 	(queryResult) => {
 		if (!queryResult || !queryResult.json_query) {
 			return false;
@@ -94,7 +94,7 @@ export const isObjectDetail = createSelector(
 );
 
 export const queryResult = createSelector(
-	[state => state.queryResult, isObjectDetail],
+	[state => state.qb.queryResult, isObjectDetail],
 	(queryResult, isObjectDetail) => {
 		// if we are display bare rows, filter out columns with visibility_type = details-only
         if (queryResult && queryResult.json_query && !isObjectDetail &&

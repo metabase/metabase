@@ -3,6 +3,7 @@
 import React, { Component, PropTypes } from "react";
 
 import _ from "underscore";
+import { assocIn } from "icepick";
 
 import DataSelector from './DataSelector.jsx';
 import Icon from "metabase/components/Icon.jsx";
@@ -149,16 +150,13 @@ export default class NativeQueryEditor extends Component {
         });
     }
 
-    setQuery(dataset_query) {
-        this.props.setQueryFn(dataset_query);
-    }
-
     onChange(event) {
         if (this.state.editor && !this.localUpdate) {
-            var query = this.props.query;
-            // FIXME: mutation
-            query.native.query = this.state.editor.getValue();
-            this.setQuery(query);
+            const { query } = this.props;
+            const { editor } = this.state;
+            if (query.native.query !== editor.getValue()) {
+                this.props.setQueryFn(assocIn(query, ["native", "query"], editor.getValue()));
+            }
         }
     }
 
@@ -177,9 +175,10 @@ export default class NativeQueryEditor extends Component {
             table = database ? _.findWhere(database.tables, { id: tableID }) : null;
 
         if (table) {
-            let query = this.props.query;
-            query.native.collection = table.name;
-            this.setQuery(query);
+            const { query } = this.props;
+            if (query.native.collection !== table.name) {
+                this.props.setQueryFn(assocIn(query, ["native", "collection"], table.name));
+            }
         }
     }
 
