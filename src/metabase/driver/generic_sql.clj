@@ -5,14 +5,13 @@
             [clojure.tools.logging :as log]
             (honeysql [core :as hsql]
                       [format :as hformat])
-            (korma [core :as k]
-                   [db :as kdb])
-            [metabase.driver :as driver]
-            [metabase.sync-database.analyze :as analyze]
-            metabase.query-processor.interface
+            (metabase [db :as db]
+                      [driver :as driver])
             (metabase.models [field :as field]
                              raw-table
                              [table :as table])
+            metabase.query-processor.interface
+            [metabase.sync-database.analyze :as analyze]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
   (:import java.sql.DatabaseMetaData
@@ -53,10 +52,10 @@
     "Given a `Database` DETAILS-MAP, return a JDBC connection spec.")
 
   (current-datetime-fn [this]
-    "*OPTIONAL*. Korma form that should be used to get the current `DATETIME` (or equivalent). Defaults to `:%now`.")
+    "*OPTIONAL*. HoneySQL form that should be used to get the current `DATETIME` (or equivalent). Defaults to `:%now`.")
 
   (date [this, ^Keyword unit, field-or-value]
-    "Return a korma form for truncating a date or timestamp field or value to a given resolution, or extracting a date component.")
+    "Return a HoneySQL form for truncating a date or timestamp field or value to a given resolution, or extracting a date component.")
 
   (excluded-schemas ^java.util.Set [this]
     "*OPTIONAL*. Set of string names of schemas to skip syncing tables from.")
@@ -73,9 +72,9 @@
      Return `nil` to prevent FIELD from being aliased.")
 
   (prepare-value [this, ^Value value]
-    "*OPTIONAL*. Prepare a value (e.g. a `String` or `Integer`) that will be used in a korma form. By default, this returns VALUE's `:value` as-is, which
+    "*OPTIONAL*. Prepare a value (e.g. a `String` or `Integer`) that will be used in a HoneySQL form. By default, this returns VALUE's `:value` as-is, which
      is eventually passed as a parameter in a prepared statement. Drivers such as BigQuery that don't support prepared statements can skip this
-     behavior by returning a korma `raw` form instead, or other drivers can perform custom type conversion as appropriate.")
+     behavior by returning a HoneySQL `raw` form instead, or other drivers can perform custom type conversion as appropriate.")
 
   (quote-style ^clojure.lang.Keyword [this]
     "*OPTIONAL*. Return the quoting style that should be used by [HoneySQL](https://github.com/jkk/honeysql) when building a SQL statement.
@@ -99,7 +98,7 @@
       (hsql/call :length (hx/cast :VARCHAR field-key))")
 
   (unix-timestamp->timestamp [this, field-or-value, ^Keyword seconds-or-milliseconds]
-    "Return a korma form appropriate for converting a Unix timestamp integer field or value to an proper SQL `Timestamp`.
+    "Return a HoneySQL form appropriate for converting a Unix timestamp integer field or value to an proper SQL `Timestamp`.
      SECONDS-OR-MILLISECONDS refers to the resolution of the int in question and with be either `:seconds` or `:milliseconds`."))
 
 
@@ -118,11 +117,12 @@
   [{:keys [id engine details]}]
   (log/debug (u/format-color 'magenta "Creating new connection pool for database %d ..." id))
   (let [spec (connection-details->spec (driver/engine->driver engine) details)]
-    (kdb/connection-pool (assoc spec :minimum-pool-size           1
-                                     ;; prevent broken connections closed by dbs by testing them every 3 mins
-                                     :idle-connection-test-period (* 3 60)
-                                     ;; prevent overly large pools by condensing them when connections are idle for 15m+
-                                     :excess-timeout              (* 15 60)))))
+    (db/connection-pool (assoc spec
+                          :minimum-pool-size           1
+                          ;; prevent broken connections closed by dbs by testing them every 3 mins
+                          :idle-connection-test-period (* 3 60)
+                          ;; prevent overly large pools by condensing them when connections are idle for 15m+
+                          :excess-timeout              (* 15 60)))))
 
 (defn- notify-database-updated
   "We are being informed that a DATABASE has been updated, so lets shut down the connection pool (if it exists) under
@@ -159,7 +159,7 @@
 
 
 (defn escape-field-name
-  "Escape dots in a field name so Korma doesn't get confused and separate them. Returns a keyword."
+  "Escape dots in a field name so HoneySQL doesn't get confused and separate them. Returns a keyword."
   ^clojure.lang.Keyword [k]
   (keyword (hx/escape-dots (name k))))
 
@@ -183,13 +183,14 @@
   "Convert HONEYSQL-FORM to a vector of SQL string and params, like you'd pass to JDBC."
   [driver honeysql-form]
   {:pre [(map? honeysql-form)]}
-  (try (binding [hformat/*subquery?* false]
-         (hsql/format honeysql-form
-           :quoting             (quote-style driver)
-           :allow-dashed-names? true))
-       (catch Throwable e
-         (log/error (u/format-color 'red "Invalid HoneySQL form:\n%s" (u/pprint-to-str honeysql-form)))
-         (throw e))))
+  (let [[sql & args] (try (binding [hformat/*subquery?* false]
+                            (hsql/format honeysql-form
+                              :quoting             (quote-style driver)
+                              :allow-dashed-names? true))
+                          (catch Throwable e
+                            (log/error (u/format-color 'red "Invalid HoneySQL form:\n%s" (u/pprint-to-str honeysql-form)))
+                            (throw e)))]
+    (into [(hx/unescape-dots sql)] args)))
 
 (defn- qualify+escape ^clojure.lang.Keyword
   ([table]
@@ -240,8 +241,7 @@
 (defn- table-rows-seq [driver database table]
   (query driver database table {:select [:*]}))
 
-(defn- field-avg-length
-  [driver field]
+(defn- field-avg-length [driver field]
   (let [table (field/table field)
         db    (table/database table)]
     (or (some-> (query driver db table {:select [[(hsql/call :avg (string-length-fn driver (qualify+escape table field))) :len]]})
@@ -427,39 +427,3 @@
           :mbql->native            (resolve 'metabase.driver.generic-sql.query-processor/mbql->native)
           :notify-database-updated notify-database-updated
           :table-rows-seq          table-rows-seq}))
-
-
-
-;;; ### Util Fns
-
-(defn create-db
-  "Like `korma.db/create-db`, but adds a fn to unescape escaped dots when generating SQL."
-  [spec]
-  (update-in (kdb/create-db spec) [:options :naming :fields] comp hx/unescape-dots))
-
-
-(defn- db->korma-db
-  "Return a Korma DB spec for Metabase DATABASE."
-  [{:keys [details engine], :as database}]
-  (let [spec (connection-details->spec (driver/engine->driver engine) details)]
-    (assoc (create-db spec)
-      :pool (db->jdbc-connection-spec database))))
-
-(defn create-entity
-  "Like `korma.db/create-entity`, but takes a sequence of name components instead; escapes dots in names as well."
-  [name-components]
-  (k/create-entity (apply str (interpose "." (for [s     name-components
-                                                   :when (seq s)]
-                                               (name (hx/escape-dots (name s))))))))
-
-(defn korma-entity
-  "Return a Korma entity for [DB and] TABLE.
-
-    (-> (Table :id 100)
-        korma-entity
-        (select (aggregate (count :*) :count)))"
-  ([table]    (korma-entity (table/database table) table))
-  ([db table] (let [{schema :schema, table-name :name} table]
-                (k/database
-                  (create-entity [schema table-name])
-                  (db->korma-db db)))))

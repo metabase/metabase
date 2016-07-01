@@ -1,5 +1,6 @@
 (ns metabase.sample-dataset.generate
-  (:require [clojure.java.io :as io]
+  (:require (clojure.java [io :as io]
+                          [jdbc :as jdbc])
             [clojure.math.numeric-tower :as math]
             [clojure.string :as s]
             (faker [address :as address]
@@ -8,8 +9,7 @@
                    [internet :as internet]
                    [name :as name])
             [incanter.distributions :as dist]
-            (korma [core :as k]
-                   [db :as kdb])
+            [metabase.db.spec :as dbspec]
             [metabase.util :as u])
   (:import java.util.Date))
 
@@ -369,52 +369,48 @@
    (io/delete-file (str filename ".mv.db") :silently)
    (io/delete-file (str filename ".trace.db") :silently)
    (println "Creating db...")
-   (let [db (kdb/h2 {:db         (format "file:%s;UNDO_LOG=0;CACHE_SIZE=131072;QUERY_CACHE_SIZE=128;COMPRESS=TRUE;MULTI_THREADED=TRUE;MVCC=TRUE;DEFRAG_ALWAYS=TRUE;MAX_COMPACT_TIME=5000;ANALYZE_AUTO=100"
-                                         filename)
-                     :make-pool? false})]
+   (let [db (dbspec/h2 {:db         (format "file:%s;UNDO_LOG=0;CACHE_SIZE=131072;QUERY_CACHE_SIZE=128;COMPRESS=TRUE;MULTI_THREADED=TRUE;MVCC=TRUE;DEFRAG_ALWAYS=TRUE;MAX_COMPACT_TIME=5000;ANALYZE_AUTO=100"
+                                            filename)
+                        :make-pool? false})]
      (doseq [[table-name field->type] (seq tables)]
-       (k/exec-raw db (create-table-sql table-name field->type)))
+       (jdbc/execute! db [(create-table-sql table-name field->type)]))
 
      ;; Add FK constraints
      (println "Adding FKs...")
      (doseq [{:keys [source-table field dest-table]} fks]
-       (k/exec-raw db (format "ALTER TABLE \"%s\" ADD CONSTRAINT \"FK_%s_%s_%s\" FOREIGN KEY (\"%s\") REFERENCES \"%s\" (\"ID\");"
-                              source-table
-                              source-table field dest-table
-                              field
-                              dest-table)))
+       (jdbc/execute! db [(format "ALTER TABLE \"%s\" ADD CONSTRAINT \"FK_%s_%s_%s\" FOREIGN KEY (\"%s\") REFERENCES \"%s\" (\"ID\");"
+                                  source-table
+                                  source-table field dest-table
+                                  field
+                                  dest-table)]))
 
      ;; Insert the data
      (println "Inserting data...")
      (doseq [[table rows] (seq data)]
        (assert (keyword? table))
        (assert (sequential? rows))
-       (let [entity (-> (k/create-entity (s/upper-case (name table)))
-                        (k/database db))]
-         (k/insert entity (k/values (for [row rows]
-                                      (->> (for [[k v] (seq row)]
-                                             [(s/upper-case (name k)) v])
-                                           (into {})))))))
+       (let [table-name (s/upper-case (name table))]
+         (apply jdbc/insert! db table-name (for [row rows]
+                                             (into {} (for [[k v] (seq row)]
+                                                        {(s/upper-case (name k)) v}))))))
 
      ;; Insert the _metabase_metadata table
      (println "Inserting _metabase_metadata...")
-     (k/exec-raw db (format "CREATE TABLE \"_METABASE_METADATA\" (\"keypath\" VARCHAR(255),  \"value\" VARCHAR(255), PRIMARY KEY (\"keypath\"));"))
-     (-> (k/create-entity "_METABASE_METADATA")
-         (k/database db)
-         (k/insert (k/values (reduce concat (for [[table-name {table-description :description, columns :columns}] annotations]
-                                              (let [table-name (s/upper-case (name table-name))]
-                                                (conj (for [[column-name kvs] columns
-                                                            [k v]             kvs]
-                                                        {:keypath (format "%s.%s.%s" table-name (s/upper-case (name column-name)) (name k))
-                                                         :value   (name v)})
-                                                      {:keypath (format "%s.description" table-name)
-                                                       :value table-description})))))))
+     (jdbc/execute! db ["CREATE TABLE \"_METABASE_METADATA\" (\"KEYPATH\" VARCHAR(255), \"VALUE\" VARCHAR(255), PRIMARY KEY (\"KEYPATH\"));"])
+     (apply jdbc/insert! db "_METABASE_METADATA" (reduce concat (for [[table-name {table-description :description, columns :columns}] annotations]
+                                                                  (let [table-name (s/upper-case (name table-name))]
+                                                                    (conj (for [[column-name kvs] columns
+                                                                                [k v]             kvs]
+                                                                            {:keypath (format "%s.%s.%s" table-name (s/upper-case (name column-name)) (name k))
+                                                                             :value   (name v)})
+                                                                          {:keypath (format "%s.description" table-name)
+                                                                           :value table-description})))))
 
      ;; Create the 'GUEST' user
      (println "Preparing database for export...")
-     (k/exec-raw db "CREATE USER GUEST PASSWORD 'guest';")
+     (jdbc/execute! db ["CREATE USER GUEST PASSWORD 'guest';"])
      (doseq [table (conj (keys data) "_METABASE_METADATA")]
-       (k/exec-raw db (format "GRANT SELECT ON %s TO GUEST;" (s/upper-case (name table)))))
+       (jdbc/execute! db [(format "GRANT SELECT ON %s TO GUEST;" (s/upper-case (name table)))]))
 
      (println "Done."))))
 

@@ -43,12 +43,12 @@
                   "v2-rev300-1.22.0"]
                  [com.h2database/h2 "1.4.191"]                        ; embedded SQL database
                  [com.mattbertolini/liquibase-slf4j "2.0.0"]          ; Java Migrations lib
+                 [com.mchange/c3p0 "0.9.5.2"]                         ; connection pooling library
                  [com.novemberain/monger "3.0.2"]                     ; MongoDB Driver
                  [compojure "1.5.0"]                                  ; HTTP Routing library built on Ring
                  [environ "1.0.3"]                                    ; easy environment management
                  [hiccup "1.0.5"]                                     ; HTML templating
                  [honeysql "0.6.3"]                                   ; Transform Clojure data structures to SQL
-                 [korma "0.4.2"]                                      ; SQL generation
                  [log4j/log4j "1.2.17"                                ; logging framework
                   :exclusions [javax.mail/mail
                                javax.jms/jms

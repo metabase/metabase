@@ -8,16 +8,16 @@
             (honeysql [core :as hsql]
                       [format :as hformat]
                       [helpers :as h])
-            (korma [core :as k]
-                   [db :as kdb])
             [medley.core :as m]
             [ring.util.codec :as codec]
             [metabase.config :as config]
+            [metabase.db.spec :as dbspec]
             [metabase.models.interface :as models]
             [metabase.util :as u]
             metabase.util.honeysql-extensions) ; this needs to be loaded so the `:h2` quoting style gets added
   (:import java.io.StringWriter
            java.sql.Connection
+           com.mchange.v2.c3p0.ComboPooledDataSource
            liquibase.Liquibase
            (liquibase.database DatabaseFactory Database)
            liquibase.database.jvm.JdbcConnection
@@ -87,15 +87,15 @@
                           :password (config/config-str :mb-db-pass)}))))
 
 (defn jdbc-details
-  "Takes our own MB details map and formats them properly for connection details for Korma / JDBC."
+  "Takes our own MB details map and formats them properly for connection details for JDBC."
   [db-details]
   {:pre [(map? db-details)]}
   ;; TODO: it's probably a good idea to put some more validation here and be really strict about what's in `db-details`
   (case (:type db-details)
-    :h2       (kdb/h2       (assoc db-details :naming {:keys   s/lower-case
-                                                       :fields s/upper-case}))
-    :mysql    (kdb/mysql    (assoc db-details :db (:dbname db-details)))
-    :postgres (kdb/postgres (assoc db-details :db (:dbname db-details)))))
+    :h2       (dbspec/h2       (assoc db-details :naming {:keys   s/lower-case
+                                                          :fields s/upper-case}))
+    :mysql    (dbspec/mysql    (assoc db-details :db (:dbname db-details)))
+    :postgres (dbspec/postgres (assoc db-details :db (:dbname db-details)))))
 
 
 ;; ## MIGRATE
@@ -131,7 +131,73 @@
       (throw (DatabaseException. e)))))
 
 
-;; ## SETUP-DB
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                           DB CONNECTION / TRANSACTION STUFF                                            |
+;;; +------------------------------------------------------------------------------------------------------------------------+
+
+(defn connection-pool
+  "Create a C3P0 connection pool for the given database SPEC."
+  [{:keys [subprotocol subname classname minimum-pool-size idle-connection-test-period excess-timeout]
+    :or   {minimum-pool-size           3
+           idle-connection-test-period 0
+           excess-timeout              (* 30 60)}
+    :as   spec}]
+  {:datasource (doto (ComboPooledDataSource.)
+                 (.setDriverClass                  classname)
+                 (.setJdbcUrl                      (str "jdbc:" subprotocol ":" subname))
+                 (.setMaxIdleTimeExcessConnections excess-timeout)
+                 (.setMaxIdleTime                  (* 3 60 60))
+                 (.setInitialPoolSize              3)
+                 (.setMinPoolSize                  minimum-pool-size)
+                 (.setMaxPoolSize                  15)
+                 (.setIdleConnectionTestPeriod     idle-connection-test-period)
+                 (.setTestConnectionOnCheckin      false)
+                 (.setTestConnectionOnCheckout     false)
+                 (.setPreferredTestQuery           nil)
+                 (.setProperties                   (u/prog1 (java.util.Properties.)
+                                                     (doseq [[k v] (dissoc spec :make-pool? :classname :subprotocol :subname :naming :delimiters :alias-delimiter
+                                                                                :excess-timeout :minimum-pool-size :idle-connection-test-period)]
+                                                       (.setProperty <> (name k) (str v))))))})
+
+(def ^:private db-connection-pool
+  (atom nil))
+
+(defn- create-connection-pool!
+  [spec]
+  (reset! db-connection-pool (connection-pool spec)))
+
+(def ^:private ^:dynamic *transaction-connection*
+  "Transaction connection to the *Metabase* backing DB connection pool. Used internally by `transaction`."
+  nil)
+
+(declare setup-db-if-needed)
+
+(defn- db-connection
+  "Get a JDBC connection spec for the Metabase DB."
+  []
+  (setup-db-if-needed)
+  (or *transaction-connection*
+      @db-connection-pool
+      (throw (Exception. "DB is not setup."))))
+
+(defn do-in-transaction
+  "Execute F inside a DB transaction. Prefer macro form `transaction` to using this directly."
+  [f]
+  (jdbc/with-db-transaction [conn (db-connection)]
+    (binding [*transaction-connection* conn]
+      (f))))
+
+(defmacro transaction
+  "Execute all queries within the body in a single transaction."
+  {:arglists '([body] [options & body])}
+  [& body]
+  `(do-in-transaction (fn [] ~@body)))
+
+
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                                 DB SETUP & MIGRATIONS                                                  |
+;;; +------------------------------------------------------------------------------------------------------------------------+
+
 
 (def ^:private setup-db-has-been-called?
   (atom false))
@@ -188,8 +254,8 @@
       (throw (java.lang.Exception. "Database requires manual upgrade."))))
   (log/info "Database Migrations Current ... ✅")
 
-  ;; Establish our 'default' Korma DB Connection
-  (kdb/default-connection (kdb/create-db (jdbc-details db-details)))
+  ;; Establish our 'default' DB Connection
+  (create-connection-pool! (jdbc-details db-details))
 
   ;; Do any custom code-based migrations now that the db structure is up to date
   ;; NOTE: we use dynamic resolution to prevent circular dependencies
@@ -246,13 +312,6 @@
     (symbol? entity)                           (resolve-entity-from-symbol entity)
     :else                                      (throw (Exception. (str "Invalid entity:" entity)))))
 
-(defn- db-connection
-  "Get a JDBC connection spec for the Metabase DB."
-  []
-  (setup-db-if-needed)
-  (or korma.db/*current-conn*
-      (korma.db/get-connection (or korma.db/*current-db* @korma.db/_default))))
-
 (defn- quoting-style
   "Style of `:quoting` that should be passed to HoneySQL `format`."
   ^clojure.lang.Keyword []
@@ -269,7 +328,7 @@
 
 (def ^:private ^:dynamic *call-count*
   "Atom used as a counter for DB calls when enabled.
-   This number isn't *perfectly* accurate, only mostly; DB calls made directly to JDBC or via old korma patterns won't be logged."
+   This number isn't *perfectly* accurate, only mostly; DB calls made directly to JDBC won't be logged."
   nil)
 
 (defn do-with-call-counting

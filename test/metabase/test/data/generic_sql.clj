@@ -6,8 +6,6 @@
             (honeysql [core :as hsql]
                       [format :as hformat]
                       [helpers :as h])
-            (korma [core :as k]
-                   [db :as kdb])
             [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
@@ -45,14 +43,10 @@
     "*Optional* Return a `CREATE TABLE` statement.")
 
   (drop-table-if-exists-sql ^String [this, ^DatabaseDefinition dbdef, ^TableDefinition tabledef]
-     "*Optional* Return a `DROP TABLE IF EXISTS` statement.")
+    "*Optional* Return a `DROP TABLE IF EXISTS` statement.")
 
   (add-fk-sql ^String [this, ^DatabaseDefinition dbdef, ^TableDefinition tabledef, ^FieldDefinition fielddef]
     "*Optional* Return a `ALTER TABLE ADD CONSTRAINT FOREIGN KEY` statement.")
-
-  ;; Other optional methods
-  (korma-entity [this, ^DatabaseDefinition dbdef, ^TableDefinition tabledef]
-    "*Optional* Return a korma-entity for TABLEDEF.")
 
   (prepare-identifier [this, ^String identifier]
     "*OPTIONAL*. Prepare an identifier, such as a Table or Field name, when it is used in a SQL query.
@@ -91,7 +85,7 @@
     "*Optional*. Load the rows for a specific table into a DB. `load-data-chunked` is the default implementation.")
 
   (execute-sql! [driver ^Keyword context, ^DatabaseDefinition dbdef, ^String sql]
-    "Execute a string of raw SQL. Context is either `:server` or `:db`."))
+    "*Optional*. Execute a string of raw SQL. Context is either `:server` or `:db`."))
 
 
 (defn- default-create-db-sql [driver {:keys [database-name]}]
@@ -161,18 +155,16 @@
   (let [spec (sql/connection-details->spec driver (i/database->connection-details driver context dbdef))]
     (assoc spec :make-pool? (not (:short-lived? spec)))))
 
-(defn default-korma-entity [driver {:keys [database-name], :as dbdef} {:keys [table-name]}]
-  (k/database (sql/create-entity (qualified-name-components driver database-name table-name))
-              (sql/create-db (database->spec driver :db dbdef))))
 
 ;;; Loading Table Data
+
 ;; Since different DBs have constraints on how we can do this, the logic is broken out into a few different functions
 ;; you can compose together a driver that works with a given DB.
 ;; (ex. SQL Server has a low limit on how many ? args we can have in a prepared statement, so it needs to be broken out into chunks;
 ;;  Oracle doesn't understand the normal syntax for inserting multiple rows at a time so we'll insert them one-at-a-time instead)
 
 (defn load-data-get-rows
-  "Get a sequence of row maps for use in a korma `insert` when loading table data."
+  "Get a sequence of row maps for use in a `insert!` when loading table data."
   [driver dbdef tabledef]
   (let [fields-for-insert (mapv (comp keyword :field-name)
                                 (:field-definitions tabledef))]
@@ -238,18 +230,18 @@
   "Create a `load-data!` function. This creates a function to actually insert a row or rows, wraps it with any WRAP-INSERT-FNS,
    the calls the resulting function with the rows to insert."
   [& wrap-insert-fns]
-  (fn [driver dbdef tabledef]
-    (let [entity  (korma-entity driver dbdef tabledef)
-          spec    (database->spec driver :db dbdef)
-          insert! ((apply comp wrap-insert-fns) (partial do-insert! driver spec (:table entity)))
-          rows    (load-data-get-rows driver dbdef tabledef)]
+  (fn [driver {:keys [database-name], :as dbdef} {:keys [table-name], :as tabledef}]
+    (let [spec       (database->spec driver :db dbdef)
+          table-name (apply hx/qualify-and-escape-dots (qualified-name-components driver database-name table-name))
+          insert!    ((apply comp wrap-insert-fns) (partial do-insert! driver spec table-name))
+          rows       (load-data-get-rows driver dbdef tabledef)]
       (insert! rows))))
 
-(def load-data-all-at-once!             "Insert all rows at once."                             (make-load-data-fn))
-(def load-data-chunked!                 "Insert rows in chunks of 200 at a time."              (make-load-data-fn load-data-chunked))
-(def load-data-one-at-a-time!           "Insert rows one at a time."                           (make-load-data-fn load-data-one-at-a-time))
-(def load-data-chunked-parallel!        "Insert rows in chunks of 200 at a time, in parallel." (make-load-data-fn load-data-add-ids (partial load-data-chunked pmap)))
-(def load-data-one-at-a-time-parallel!  "Insert rows one at a time, in parallel."              (make-load-data-fn load-data-add-ids (partial load-data-one-at-a-time pmap)))
+(def load-data-all-at-once!            "Insert all rows at once."                             (make-load-data-fn))
+(def load-data-chunked!                "Insert rows in chunks of 200 at a time."              (make-load-data-fn load-data-chunked))
+(def load-data-one-at-a-time!          "Insert rows one at a time."                           (make-load-data-fn load-data-one-at-a-time))
+(def load-data-chunked-parallel!       "Insert rows in chunks of 200 at a time, in parallel." (make-load-data-fn load-data-add-ids (partial load-data-chunked pmap)))
+(def load-data-one-at-a-time-parallel! "Insert rows one at a time, in parallel."              (make-load-data-fn load-data-add-ids (partial load-data-one-at-a-time pmap)))
 
 
 (defn default-execute-sql! [driver context dbdef sql]
@@ -282,7 +274,6 @@
    :drop-db-if-exists-sql     default-drop-db-if-exists-sql
    :drop-table-if-exists-sql  default-drop-table-if-exists-sql
    :execute-sql!              default-execute-sql!
-   :korma-entity              default-korma-entity
    :load-data!                load-data-chunked!
    :pk-field-name             (constantly "id")
    :prepare-identifier        (u/drop-first-arg identity)
@@ -315,8 +306,8 @@
 
     ;; Add the SQL for creating each Table
     (doseq [tabledef table-definitions]
-      (swap! statements conj (drop-table-if-exists-sql driver dbdef tabledef))
-      (swap! statements conj (create-table-sql driver dbdef tabledef)))
+      (swap! statements conj (drop-table-if-exists-sql driver dbdef tabledef)
+                             (create-table-sql driver dbdef tabledef)))
 
     ;; Add the SQL for adding FK constraints
     (doseq [{:keys [field-definitions], :as tabledef} table-definitions]

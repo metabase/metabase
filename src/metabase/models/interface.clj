@@ -1,7 +1,6 @@
 (ns metabase.models.interface
   (:require [clojure.tools.logging :as log]
             [cheshire.core :as json]
-            [korma.core :as k]
             (metabase [config :as config]
                       [util :as u])
             [metabase.models.common :as common]))
@@ -295,8 +294,7 @@
                         :tag      (symbol (str (namespace-munge *ns*) \. instance))
                         :arglists ''([] [id] [& kvs])
                         :doc      (or docstr
-                                      (format "Korma entity for '%s' table; instance of %s." (name table-name) instance)))
-         (-> (k/create-entity ~(name entity))
-             (k/table ~table-name)
-             (assoc ::entity true)
-             ~map->instance)))))
+                                      (format "Entity for '%s' table; instance of %s." (name table-name) instance)))
+         (~map->instance {:table   ~table-name
+                          :name    ~(name entity)
+                          ::entity true})))))
