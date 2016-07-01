@@ -43,7 +43,6 @@ export default class Activity extends Component {
             for (var item of activity) {
                 if (!(item.user_id in userColors)) {
                     // assign the user a color
-                    console.log("user", user)
                     if (item.user_id === user.id) {
                         userColors[item.user_id] = 0;
                     } else if (item.user_id === null) {
