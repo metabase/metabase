@@ -76,10 +76,10 @@
   (throttle/check (forgot-password-throttlers :ip-address) remote-address)
   (throttle/check (forgot-password-throttlers :email)      email)
   ;; Don't leak whether the account doesn't exist, just pretend everything is ok
-  (when-let [user-id (db/select-one-id User, :email email)]
+  (when-let [{user-id :id, google-auth :google_auth} (db/select-one ['User :id :google_auth] :email email)]
     (let [reset-token        (set-user-password-reset-token! user-id)
           password-reset-url (str ((resolve 'metabase.core/site-url) request) "/auth/reset_password/" reset-token)]
-      (email/send-password-reset-email email server-name password-reset-url)
+      (email/send-password-reset-email email google-auth server-name password-reset-url)
       (log/info password-reset-url))))
 
 
