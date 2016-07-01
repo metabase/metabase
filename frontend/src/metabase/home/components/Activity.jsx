@@ -39,33 +39,33 @@ export default class Activity extends Component {
         const maxColorUsed = (_.isEmpty(userColors)) ? 0 : _.max(_.values(userColors));
         var currColor =  (maxColorUsed && maxColorUsed < colors.length) ? maxColorUsed : 0;
 
-        for (var item of activity) {
-            if (!(item.user_id in userColors)) {
-                // assign the user a color
-                if (item.user_id === user.id) {
-                    userColors[item.user_id] = 0;
-                } else if (item.user_id === null) {
-                    // just skip this scenario, we handle this differently
-                } else {
-                    userColors[item.user_id] = colors[currColor];
-                    currColor++;
+        if (user) {
+            for (var item of activity) {
+                if (!(item.user_id in userColors)) {
+                    // assign the user a color
+                    console.log("user", user)
+                    if (item.user_id === user.id) {
+                        userColors[item.user_id] = 0;
+                    } else if (item.user_id === null) {
+                        // just skip this scenario, we handle this differently
+                    } else {
+                        userColors[item.user_id] = colors[currColor];
+                        currColor++;
 
-                    // if we hit the end of the colors list then just go back to the beginning again
-                    if (currColor >= colors.length) {
-                        currColor = 0;
+                        // if we hit the end of the colors list then just go back to the beginning again
+                        if (currColor >= colors.length) {
+                            currColor = 0;
+                        }
                     }
                 }
             }
         }
 
-        this.setState({
-            'error': this.state.error,
-            'userColors': userColors
-        });
+        this.setState({ userColors });
     }
 
     userName(user, currentUser) {
-        if (user && user.id === currentUser.id) {
+        if (user && currentUser && user.id === currentUser.id) {
             return "You";
         } else if (user) {
             return user.first_name;
