@@ -1642,7 +1642,7 @@
                       "version": "1.0.1",
                       "dependencies": {
                         "binary-extensions": {
-                          "version": "1.4.1"
+                          "version": "1.5.0"
                         }
                       }
                     },
@@ -1658,7 +1658,7 @@
                       "version": "1.0.0"
                     },
                     "readdirp": {
-                      "version": "2.0.1",
+                      "version": "2.1.0",
                       "dependencies": {
                         "minimatch": {
                           "version": "3.0.2",
@@ -1698,6 +1698,9 @@
                               "version": "1.0.2"
                             }
                           }
+                        },
+                        "set-immediate-shim": {
+                          "version": "1.0.1"
                         }
                       }
                     }
@@ -12095,7 +12098,7 @@
                       "version": "1.0.1",
                       "dependencies": {
                         "binary-extensions": {
-                          "version": "1.4.1"
+                          "version": "1.5.0"
                         }
                       }
                     },
@@ -12111,7 +12114,7 @@
                       "version": "1.0.0"
                     },
                     "readdirp": {
-                      "version": "2.0.1",
+                      "version": "2.1.0",
                       "dependencies": {
                         "minimatch": {
                           "version": "3.0.2",
@@ -12151,6 +12154,9 @@
                               "version": "1.0.2"
                             }
                           }
+                        },
+                        "set-immediate-shim": {
+                          "version": "1.0.1"
                         }
                       }
                     }
@@ -17266,7 +17272,7 @@
                       "version": "1.0.1",
                       "dependencies": {
                         "binary-extensions": {
-                          "version": "1.4.1"
+                          "version": "1.5.0"
                         }
                       }
                     },
@@ -17282,7 +17288,7 @@
                       "version": "1.0.0"
                     },
                     "readdirp": {
-                      "version": "2.0.1",
+                      "version": "2.1.0",
                       "dependencies": {
                         "minimatch": {
                           "version": "3.0.2",
@@ -17322,6 +17328,9 @@
                               "version": "1.0.2"
                             }
                           }
+                        },
+                        "set-immediate-shim": {
+                          "version": "1.0.1"
                         }
                       }
                     }
