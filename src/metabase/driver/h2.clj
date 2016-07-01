@@ -104,8 +104,9 @@
                                                           "ACCESS_MODE_DATA" "r"}))))
 
 (defn- connection-details->spec [_ details]
-  (dbspec/h2 (if db/*allow-potentailly-unsafe-connections* details
-                 (update details :db connection-string-set-safe-options))))
+  (dbspec/h2 (if db/*allow-potentailly-unsafe-connections*
+               details
+               (update details :db connection-string-set-safe-options))))
 
 
 (defn- unix-timestamp->timestamp [_ expr seconds-or-milliseconds]

@@ -43,7 +43,7 @@
     "*Optional* Return a `CREATE TABLE` statement.")
 
   (drop-table-if-exists-sql ^String [this, ^DatabaseDefinition dbdef, ^TableDefinition tabledef]
-     "*Optional* Return a `DROP TABLE IF EXISTS` statement.")
+    "*Optional* Return a `DROP TABLE IF EXISTS` statement.")
 
   (add-fk-sql ^String [this, ^DatabaseDefinition dbdef, ^TableDefinition tabledef, ^FieldDefinition fielddef]
     "*Optional* Return a `ALTER TABLE ADD CONSTRAINT FOREIGN KEY` statement.")
@@ -85,7 +85,7 @@
     "*Optional*. Load the rows for a specific table into a DB. `load-data-chunked` is the default implementation.")
 
   (execute-sql! [driver ^Keyword context, ^DatabaseDefinition dbdef, ^String sql]
-    "Execute a string of raw SQL. Context is either `:server` or `:db`."))
+    "*Optional*. Execute a string of raw SQL. Context is either `:server` or `:db`."))
 
 
 (defn- default-create-db-sql [driver {:keys [database-name]}]
@@ -205,7 +205,7 @@
 (defn- do-insert!
   "Insert ROWS-OR-ROWS into TABLE-NAME for the DRIVER database defined by SPEC."
   [driver spec table-name row-or-rows]
-  (let [prepare-key (comp keyword (partial prepare-identifier driver) name)
+  (let [prepare-key (comp keyword (partial prepare-identifier driver) hx/escape-dots name)
         rows        (if (sequential? row-or-rows)
                       row-or-rows
                       [row-or-rows])
@@ -305,8 +305,8 @@
 
     ;; Add the SQL for creating each Table
     (doseq [tabledef table-definitions]
-      (swap! statements conj (drop-table-if-exists-sql driver dbdef tabledef))
-      (swap! statements conj (create-table-sql driver dbdef tabledef)))
+      (swap! statements conj (drop-table-if-exists-sql driver dbdef tabledef)
+                             (create-table-sql driver dbdef tabledef)))
 
     ;; Add the SQL for adding FK constraints
     (doseq [{:keys [field-definitions], :as tabledef} table-definitions]
