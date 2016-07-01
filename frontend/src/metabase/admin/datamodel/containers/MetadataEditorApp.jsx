@@ -15,17 +15,20 @@ import {
     getDatabaseIdfields,
     getEditingDatabaseWithTableMetadataStrengths,
     getEditingTable
-} from "../metadataSelectors";
+} from "../selectors";
 import * as metadataActions from "../metadata";
 
 
 const mapStateToProps = (state, props) => {
-  return {
-      databases:            getDatabases(state),
-      idfields:             getDatabaseIdfields(state),
-      databaseMetadata:     getEditingDatabaseWithTableMetadataStrengths(state),
-      editingTable:         getEditingTable(state)
-  }
+    return {
+        databaseId:           state.router && state.router.params && parseInt(state.router.params.databaseId),
+        tableId:              state.router && state.router.params && parseInt(state.router.params.tableId),
+        onChangeLocation:     props.onChangeLocation,
+        databases:            getDatabases(state),
+        idfields:             getDatabaseIdfields(state),
+        databaseMetadata:     getEditingDatabaseWithTableMetadataStrengths(state),
+        editingTable:         getEditingTable(state)
+    }
 }
 
 const mapDispatchToProps = {
@@ -61,7 +64,7 @@ export default class MetadataEditor extends Component {
 
     componentWillMount() {
         // if we know what database we are initialized with, include that
-        this.props.initializeMetadata(this.props.databaseId, this.props.tableId);
+        this.props.initializeMetadata(this.props.databaseId, this.props.tableId, this.props.onChangeLocation);
     }
 
     toggleShowSchema() {

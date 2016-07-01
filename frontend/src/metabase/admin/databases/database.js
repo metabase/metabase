@@ -26,11 +26,15 @@ export const fetchDatabases = createThunkAction("FETCH_DATABASES", function() {
 });
 
 // initializeDatabase
-export const initializeDatabase = createThunkAction("INITIALIZE_DATABASE", function(databaseId) {
+export const initializeDatabase = createThunkAction("INITIALIZE_DATABASE", function(databaseId, onChangeLocation) {
     return async function(dispatch, getState) {
         if (databaseId) {
             try {
-                return await MetabaseApi.db_get({"dbId": databaseId});
+                let database = await MetabaseApi.db_get({"dbId": databaseId});
+                return {
+                    database,
+                    onChangeLocation
+                }
             } catch (error) {
                 if (error.status == 404) {
                     //$location.path('/admin/databases/');
@@ -41,11 +45,14 @@ export const initializeDatabase = createThunkAction("INITIALIZE_DATABASE", funct
 
         } else {
             return {
-                name: '',
-                engine: Object.keys(MetabaseSettings.get('engines'))[0],
-                details: {},
-                created: false
-            };
+                database: {
+                    name: '',
+                    engine: Object.keys(MetabaseSettings.get('engines'))[0],
+                    details: {},
+                    created: false
+                },
+                onChangeLocation
+            }
         }
     }
 })
@@ -68,7 +75,7 @@ export const addSampleDataset = createThunkAction("ADD_SAMPLE_DATASET", function
 // saveDatabase
 export const saveDatabase = createThunkAction("SAVE_DATABASE", function(database, details) {
     return async function(dispatch, getState) {
-        const { onChangeLocation } = getState();
+        const { databases: { onChangeLocation } } = getState();
 
         let savedDatabase, formState;
 
@@ -107,7 +114,7 @@ export const saveDatabase = createThunkAction("SAVE_DATABASE", function(database
 // deleteDatabase
 export const deleteDatabase = createThunkAction("DELETE_DATABASE", function(databaseId, redirect=false) {
     return async function(dispatch, getState) {
-        const { onChangeLocation } = getState();
+        const { databases: { onChangeLocation } } = getState();
 
         try {
             console.log("deleting database", databaseId);
@@ -141,7 +148,9 @@ export const syncDatabase = createThunkAction("SYNC_DATABASE", function(database
 // reducers
 
 // this is a backwards compatibility thing with angular to allow programmatic route changes.  remove/change this when going to ReduxRouter
-const onChangeLocation = handleActions({}, () => null);
+const onChangeLocation = handleActions({
+    ["INITIALIZE_DATABASE"]: { next: (state, { payload }) => payload ? payload.onChangeLocation : state },
+}, () => null);
 
 const databases = handleActions({
     ["FETCH_DATABASES"]: { next: (state, { payload }) => payload },
@@ -150,7 +159,7 @@ const databases = handleActions({
 }, null);
 
 const editingDatabase = handleActions({
-    ["INITIALIZE_DATABASE"]: { next: (state, { payload }) => payload ? payload : state },
+    ["INITIALIZE_DATABASE"]: { next: (state, { payload }) => payload ? payload.database : state },
     ["SAVE_DATABASE"]: { next: (state, { payload }) => payload.database || state },
     ["DELETE_DATABASE"]: { next: (state, { payload }) => null },
     ["SELECT_ENGINE"]: { next: (state, { payload }) => ({...state, engine: payload }) }

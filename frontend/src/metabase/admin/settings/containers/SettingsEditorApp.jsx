@@ -21,14 +21,15 @@ import {
 } from "../selectors";
 import * as settingsActions from "../settings";
 
-
 const mapStateToProps = (state, props) => {
-  return {
-      settings:            getSettings(state),
-      sections:            getSections(state),
-      activeSection:       getActiveSection(state),
-      newVersionAvailable: getNewVersionAvailable(state)
-  }
+    return {
+        initialSection:      state.router && state.router.location && state.router.location.query.section,
+        refreshSiteSettings: props.refreshSiteSettings,
+        settings:            getSettings(state),
+        sections:            getSections(state),
+        activeSection:       getActiveSection(state),
+        newVersionAvailable: getNewVersionAvailable(state)
+    }
 }
 
 const mapDispatchToProps = {
@@ -53,7 +54,7 @@ export default class SettingsEditorApp extends Component {
     };
 
     componentWillMount() {
-        this.props.initializeSettings();
+        this.props.initializeSettings(this.props.initialSection, this.props.refreshSiteSettings);
     }
 
     updateSetting(setting, value) {
