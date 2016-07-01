@@ -15,3 +15,13 @@ export const getSection = createSelector(
     [getSectionId, getSections],
     (sectionId, sections) => sections[sectionId]
 );
+
+const getDatabases = (state) => state;
+
+export const getEntityIds = createSelector(
+    [getSectionId, getDatabases],
+    (sectionId, databases) => {
+        console.log(databases);
+        return databases;
+    }
+);

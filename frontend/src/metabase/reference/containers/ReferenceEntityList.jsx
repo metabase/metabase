@@ -9,11 +9,13 @@ import Icon from "metabase/components/Icon.jsx";
 
 
 import {
-    getSection
+    getSection,
+    getEntityIds
 } from "../selectors";
 
 const mapStateToProps = (state, props) => ({
-    section: getSection(state)
+    section: getSection(state),
+    entityIds: getEntityIds(state)
 });
 
 const mapDispatchToProps = {};
@@ -37,6 +39,7 @@ export default class ReferenceEntityList extends Component {
                     </div>
                 </div>
             </div>
+
         )
     }
 }
