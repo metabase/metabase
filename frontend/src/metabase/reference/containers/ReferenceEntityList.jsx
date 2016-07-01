@@ -1,35 +1,42 @@
-import React from "react";
-import { Link } from "react-router"
+/* eslint "react/prop-types": "warn" */
+import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
+import { connect } from "react-redux";
 
-import { Text } from "../ReferenceApp.jsx"
+import S from "../components/List.css";
+import List from "../components/List.jsx";
+import Icon from "metabase/components/Icon.jsx";
 
-import { INSIGHTS } from "../fixture_data.delete.js";
 
-const EntityTitle=({children}) => <h2>{children}</h2>
+import {
+    getSection
+} from "../selectors";
 
-const ReferenceEntityListItem = ({name, href, description}) =>
-  <Link to={href} className="py2 block border-bottom link">
-    <EntityTitle>{name}</EntityTitle>
-    <Text className="text-normal text-grey-1">{description}</Text>
-  </Link>
+const mapStateToProps = (state, props) => ({
+    section: getSection(state)
+});
 
-const ReferenceEntityList = ({entities, params}) => {
-    const href = `${params.entity}/1`
-    return (
-        <ul className="wrapper">
-            {
-              entities.map((insight, index) =>
-                <li key={index}>
-                  <ReferenceEntityListItem {...insight} href={href} />
-                </li>
-              )
-            }
-        </ul>
-    )
+const mapDispatchToProps = {};
+
+@connect(mapStateToProps, mapDispatchToProps)
+export default class ReferenceEntityList extends Component {
+    static propTypes = {
+        style: PropTypes.object.isRequired,
+        section: PropTypes.object.isRequired
+    };
+
+    render() {
+        const {
+            style, section
+        } = this.props;
+        return (
+            <div style={style} className="full">
+                <div className="wrapper wrapper--trim">
+                    <div className={S.header}>
+                        {section.name}
+                    </div>
+                </div>
+            </div>
+        )
+    }
 }
-
-ReferenceEntityList.defaultProps = {
-  entities: INSIGHTS
-}
-
-export default ReferenceEntityList

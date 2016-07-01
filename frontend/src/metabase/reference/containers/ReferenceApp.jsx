@@ -9,7 +9,7 @@ import Sidebar from '../components/Sidebar.jsx';
 import SidebarLayout from 'metabase/components/SidebarLayout.jsx';
 
 import * as referenceActions from '../reference';
-import { getSections } from '../selectors';
+import { getSectionId, getSections } from '../selectors';
 
 const mapStateToProps = (state, props) => ({
     sections: getSections(state)
@@ -26,18 +26,8 @@ export default class ReferenceApp extends Component {
         selectSection:  PropTypes.func.isRequired,
         children:       PropTypes.any.isRequired,
 
-        sections:       PropTypes.array.isRequired
+        sections:       PropTypes.object.isRequired
     };
-
-    componentWillMount() {
-        this.props.selectSection(this.props.params.section);
-    }
-
-    componentWillReceiveProps(newProps) {
-        if (this.props.params.section !== newProps.params.section) {
-            this.props.selectSection(newProps.params.section);
-        }
-    }
 
     render() {
         return (

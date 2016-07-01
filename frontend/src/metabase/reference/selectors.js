@@ -1,10 +1,17 @@
 import { createSelector } from 'reselect';
 
-const sections = [
-    { id: "gettingstarted", name: "Understanding our data", icon: "all" },
-    { id: "metrics", name: "Metrics", icon: "star" },
-    { id: "lists", name: "Lists", icon: "recents" },
-    { id: "databases", name: "Databases and tables", icon: "mine" }
-];
+const sections = {
+    guide: { id: "guide", name: "Understanding our data", icon: "all" },
+    metrics: { id: "metrics", name: "Metrics", icon: "star" },
+    lists: { id: "lists", name: "Lists", icon: "recents" },
+    databases: { id: "databases", name: "Databases and tables", icon: "mine" }
+};
 
 export const getSections = (state) => sections;
+
+export const getSectionId = (state) => state.router.params.section;
+
+export const getSection = createSelector(
+    [getSectionId, getSections],
+    (sectionId, sections) => sections[sectionId]
+);

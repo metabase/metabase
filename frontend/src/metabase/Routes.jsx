@@ -14,6 +14,7 @@ import EntityList from "metabase/questions/containers/EntityList.jsx";
 import EditLabels from "metabase/questions/containers/EditLabels.jsx";
 
 import ReferenceApp from "metabase/reference/containers/ReferenceApp.jsx";
+import ReferenceEntityList from "metabase/reference/containers/ReferenceEntityList.jsx";
 import ReferenceGettingStartedGuide from "metabase/reference/containers/ReferenceGettingStartedGuide.jsx";
 
 export default class Routes extends Component {
@@ -43,7 +44,9 @@ export default class Routes extends Component {
                 </Route>
 
                 <Route path="/reference" component={ReferenceApp}>
-                    <Route path="gettingstarted" component={ReferenceGettingStartedGuide} />
+                    //FIXME: this route triggers ReferenceEntityList when app starts at any path under /reference than /reference/guide
+                    <Route path="guide" component={ReferenceGettingStartedGuide} />
+                    <Route path=":section" component={ReferenceEntityList} />
                 </Route>
 
                 <Route path="/questions" component={EntityBrowser}>

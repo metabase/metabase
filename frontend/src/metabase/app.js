@@ -136,7 +136,9 @@ Metabase.config(['$routeProvider', '$locationProvider', function($routeProvider,
         }
     };
     $routeProvider.when('/reference', route);
-    $routeProvider.when('/reference/gettingstarted', route);
+    $routeProvider.when('/reference/guide', route);
+    $routeProvider.when('/reference/databases', route);
+    $routeProvider.when('/reference/databases/:id', route);
     $routeProvider.when('/reference/metrics', route);
     $routeProvider.when('/reference/metrics/:id', route);
     $routeProvider.when('/reference/lists', route);
