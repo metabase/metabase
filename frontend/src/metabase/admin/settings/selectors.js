@@ -129,7 +129,7 @@ const SECTIONS = [
     }
 ];
 
-export const getSettings = state => state.settings;
+export const getSettings = state => state.settings.settings;
 
 export const getNewVersionAvailable = createSelector(
     getSettings,
@@ -163,7 +163,7 @@ export const getSections = createSelector(
 );
 
 export const getActiveSection = createSelector(
-    state => state.activeSection,
+    state => state.settings.activeSection,
     getSections,
     (section, sections) => {
         if (sections) {

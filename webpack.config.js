@@ -235,15 +235,15 @@ if (NODE_ENV === "development" || NODE_ENV === "hot") {
             config.resolve.alias[name] = unminified;
         }
     }
+}
 
-    // config.plugins.push(new FlowStatusWebpackPlugin())
+if (process.env.ENABLE_FLOW) {
+    config.plugins.push(new FlowStatusWebpackPlugin());
 }
 
 if (NODE_ENV === "hot" || isWatching) {
     // enable "cheap" source maps in hot or watch mode since re-build speed overhead is < 1 second
     config.devtool = "eval-cheap-module-source-map";
-}
-
-if (NODE_ENV === "production") {
+} else if (NODE_ENV === "production") {
     config.devtool = "source-map";
 }

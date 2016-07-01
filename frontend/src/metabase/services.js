@@ -104,7 +104,7 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
                 $rootScope.$broadcast('appstate:context-changed', service.model.appContext);
             },
 
-            routeChanged: function(event) {
+            locationChanged: function(event) {
                 // establish our application context based on the route (URI)
                 // valid app contexts are: 'setup', 'auth', 'main', 'admin', or 'unknown'
                 var routeContext;
@@ -129,16 +129,16 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
                 // code meant to establish app context based on the current route
                 if (currentUserPromise) {
                     currentUserPromise.then(function(user) {
-                        service.routeChangedImpl(event);
+                        service.locationChangedImpl(event);
                     }, function(error) {
-                        service.routeChangedImpl(event);
+                        service.locationChangedImpl(event);
                     });
                 } else {
-                    service.routeChangedImpl(event);
+                    service.locationChangedImpl(event);
                 }
             },
 
-            routeChangedImpl: function(event) {
+            locationChangedImpl: function(event) {
                 // whenever we have a route change (including initial page load) we need to establish some context
 
                 // handle routing protections for /setup/
@@ -188,13 +188,11 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
         };
 
         // listen for location changes and use that as a trigger for page view tracking
-        $rootScope.$on('$locationChangeSuccess', function() {
+        $rootScope.$on('$locationChangeSuccess', function(event) {
+        service.locationChanged(event);
             // NOTE: we are only taking the path right now to avoid accidentally grabbing sensitive data like table/field ids
             MetabaseAnalytics.trackPageView($location.path());
         });
-
-        // listen for all route changes so that we can update organization as appropriate
-        $rootScope.$on('$routeChangeSuccess', service.routeChanged);
 
         // login just took place, so lets force a refresh of the current user
         $rootScope.$on("appstate:login", function(event, session_id) {

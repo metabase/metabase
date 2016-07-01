@@ -450,7 +450,7 @@
                         :background-color :white
                         :box-shadow       "0 1px 2px rgba(0, 0, 0, .08)"})}
    (binding [*include-title* true]
-     (render-pulse-card card (:data result)))])
+     (render-pulse-card card result))])
 
 (defn render-pulse-card-to-png
   "Render a PULSE-CARD as a PNG. DATA is the `:data` from a QP result (I think...)"
