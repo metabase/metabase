@@ -4,7 +4,15 @@ import { connect } from "react-redux";
 import AdminPeople from "../components/AdminPeople.jsx";
 import { adminPeopleSelectors } from "../selectors";
 
-@connect(adminPeopleSelectors)
+
+const mapStateToProps = (state, props) => {
+    return {
+        ...adminPeopleSelectors(state),
+        user: state.currentUser
+    }
+}
+
+@connect(mapStateToProps)
 export default class AdminPeopleApp extends Component {
     render() {
         return <AdminPeople {...this.props} />;

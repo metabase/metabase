@@ -22,7 +22,7 @@ export default class AddToDashSelectDashModal extends Component {
 
     static propTypes = {
         card: PropTypes.object.isRequired,
-        dashboardApi: PropTypes.func.isRequired,
+        dashboardApi: PropTypes.object.isRequired,
         closeFn: PropTypes.func.isRequired,
         onChangeLocation: PropTypes.func.isRequired
     };
