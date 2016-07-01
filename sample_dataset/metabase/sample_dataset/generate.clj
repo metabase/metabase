@@ -390,14 +390,14 @@
        (assert (keyword? table))
        (assert (sequential? rows))
        (let [table-name (s/upper-case (name table))]
-         (apply jdbc/insert! db table-name (for [row rows]
+         (jdbc/insert-multi! db table-name (for [row rows]
                                              (into {} (for [[k v] (seq row)]
                                                         {(s/upper-case (name k)) v}))))))
 
      ;; Insert the _metabase_metadata table
      (println "Inserting _metabase_metadata...")
      (jdbc/execute! db ["CREATE TABLE \"_METABASE_METADATA\" (\"KEYPATH\" VARCHAR(255), \"VALUE\" VARCHAR(255), PRIMARY KEY (\"KEYPATH\"));"])
-     (apply jdbc/insert! db "_METABASE_METADATA" (reduce concat (for [[table-name {table-description :description, columns :columns}] annotations]
+     (jdbc/insert-multi! db "_METABASE_METADATA" (reduce concat (for [[table-name {table-description :description, columns :columns}] annotations]
                                                                   (let [table-name (s/upper-case (name table-name))]
                                                                     (conj (for [[column-name kvs] columns
                                                                                 [k v]             kvs]

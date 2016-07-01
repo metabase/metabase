@@ -367,8 +367,8 @@
 (defn query
   "Compile HONEYSQL-FROM and call `jdbc/query` against the Metabase database.
    Options are passed along to `jdbc/query`."
-  [honeysql-form & options]
-  (apply jdbc/query (db-connection) (honeysql->sql honeysql-form) options))
+  [honeysql-form & {:as options}]
+  (jdbc/query (db-connection) (honeysql->sql honeysql-form) options))
 
 
 (defn entity->table-name
@@ -445,8 +445,8 @@
 (defn execute!
   "Compile HONEYSQL-FORM and call `jdbc/execute!` against the Metabase DB.
    OPTIONS are passed directly to `jdbc/execute!` and can be things like `:multi?` (default `false`) or `:transaction?` (default `true`)."
-  [honeysql-form & options]
-  (apply jdbc/execute! (db-connection) (honeysql->sql honeysql-form) options))
+  [honeysql-form & {:as options}]
+  (jdbc/execute! (db-connection) (honeysql->sql honeysql-form) options))
 
 (defn- where
   "Generate a HoneySQL `where` form using key-value args.
@@ -577,7 +577,7 @@
   {:pre [(sequential? row-maps) (every? map? row-maps)]}
   (when (seq row-maps)
     (let [entity (resolve-entity entity)]
-      (map (insert-id-key) (apply jdbc/insert! (db-connection) (entity->table-name entity) (concat row-maps [:entities (quote-fn)]))))))
+      (map (insert-id-key) (jdbc/insert-multi! (db-connection) (entity->table-name entity) row-maps {:entities (quote-fn)})))))
 
 (defn insert-many!
   "Insert several new rows into the Database. Resolves ENTITY, and calls `pre-insert` on each of the ROW-MAPS.
