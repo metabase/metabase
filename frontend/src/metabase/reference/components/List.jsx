@@ -9,14 +9,13 @@ import ReferenceEntity from "../containers/ReferenceEntity.jsx";
 const List = ({ entityType, entityIds, setItemSelected }) =>
     <ul className={S.list}>
         { entityIds.map(entityId =>
-            <ReferenceEntity key={entityId} entityType={entityType} entityId={entityId} setItemSelected={setItemSelected} />
+            <ReferenceEntity key={entityId} entityType={entityType} entityId={entityId} />
         )}
     </ul>
 
 List.propTypes = {
     entityType:         PropTypes.string.isRequired,
     entityIds:          PropTypes.array.isRequired,
-    setItemSelected:    PropTypes.func.isRequired,
 };
 
 export default pure(List);

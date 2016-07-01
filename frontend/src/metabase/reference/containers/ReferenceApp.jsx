@@ -23,7 +23,6 @@ const mapDispatchToProps = {
 export default class ReferenceApp extends Component {
     static propTypes = {
         params:         PropTypes.object.isRequired,
-        selectSection:  PropTypes.func.isRequired,
         children:       PropTypes.any.isRequired,
 
         sections:       PropTypes.object.isRequired

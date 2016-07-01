@@ -117,14 +117,7 @@ angular.module('metabase', [
         }
     };
     $routeProvider.when('/reference', route);
-    $routeProvider.when('/reference/guide', route);
-    $routeProvider.when('/reference/databases', route);
-    $routeProvider.when('/reference/databases/:id', route);
-    $routeProvider.when('/reference/metrics', route);
-    $routeProvider.when('/reference/metrics/:id', route);
-    $routeProvider.when('/reference/lists', route);
-    $routeProvider.when('/reference/lists/:id', route);
-    $routeProvider.when('/reference/:entity/:id/edit', route);
+    $routeProvider.when('/reference/:section', route);
 
     $routeProvider.when('/', { ...route, template: '<div mb-redux-component class="full-height" />'});
 
