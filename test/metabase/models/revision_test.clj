@@ -1,30 +1,13 @@
 (ns metabase.models.revision-test
   (:require [expectations :refer :all]
-            [korma.core :refer [table]]
             [medley.core :as m]
             [metabase.db :as db]
             (metabase.models [card :refer [Card]]
                              [interface :refer [defentity]]
                              [revision :refer :all])
             [metabase.test.data.users :refer :all]
+            [metabase.test.util :refer [with-temp]]
             [metabase.util :as u]))
-
-(defn fake-card [& {:as kwargs}]
-  (m/mapply db/ins Card (merge {:name (str (java.util.UUID/randomUUID))
-                                :display                :table
-                                :public_perms           0
-                                :dataset_query          {}
-                                :visualization_settings 0
-                                :creator_id             (user->id :rasta)}
-                               kwargs)))
-
-(defmacro with-fake-card [[binding & [options]] & body]
-  `(let [card# (fake-card ~@(flatten (seq options)))
-         ~binding card#]
-     (try
-       ~@body
-       (finally
-         (db/cascade-delete Card :id (:id card#))))))
 
 (def ^:private reverted-to
   (atom nil))
@@ -35,7 +18,7 @@
   IRevisioned
   (serialize-instance [_ _ obj]
     (assoc obj :serialized true))
-  (revert-to-revision [_ _ _ serialized-instance]
+  (revert-to-revision! [_ _ _ serialized-instance]
     (reset! reverted-to (dissoc serialized-instance :serialized)))
   (diff-map [_ o1 o2]
     {:o1 o1, :o2 o2})
@@ -44,7 +27,7 @@
       (str "BEFORE=" o1 ",AFTER=" o2))))
 
 (defn- push-fake-revision [card-id & {:keys [message] :as object}]
-  (push-revision
+  (push-revision!
     :entity   FakedCard
     :id       card-id
     :user-id  (user->id :rasta)
@@ -85,25 +68,27 @@
                     {:name "Spots by State", :private true, :priority "Regular"}))
 
 
-;;; # REVISIONS + PUSH-REVISION
+;;; # REVISIONS + PUSH-REVISION!
 
 ;; Test that a newly created Card doesn't have any revisions
-(expect []
-  (with-fake-card [{card-id :id}]
+(expect
+  []
+  (with-temp Card [{card-id :id}]
     (revisions FakedCard card-id)))
 
 ;; Test that we can add a revision
-(expect [(map->RevisionInstance
-          {:model        "FakedCard"
-           :user_id      (user->id :rasta)
-           :object       {:name "Tips Created by Day", :serialized true}
-           :is_reversion false
-           :is_creation  false
-           :message      "yay!"})]
-  (with-fake-card [{card-id :id}]
+(expect
+  [(map->RevisionInstance
+    {:model        "FakedCard"
+     :user_id      (user->id :rasta)
+     :object       {:name "Tips Created by Day", :serialized true}
+     :is_reversion false
+     :is_creation  false
+     :message      "yay!"})]
+  (with-temp Card [{card-id :id}]
     (push-fake-revision card-id, :name "Tips Created by Day", :message "yay!")
-    (->> (revisions FakedCard card-id)
-         (map (u/rpartial dissoc :timestamp :id :model_id)))))
+    (for [revision (revisions FakedCard card-id)]
+      (dissoc revision :timestamp :id :model_id))))
 
 ;; Test that revisions are sorted in reverse chronological order
 (expect [(map->RevisionInstance
@@ -120,7 +105,7 @@
            :is_reversion false
            :is_creation  false
            :message      nil})]
-  (with-fake-card [{card-id :id}]
+  (with-temp Card [{card-id :id}]
     (push-fake-revision card-id, :name "Tips Created by Day")
     (push-fake-revision card-id, :name "Spots Created by Day")
     (->> (revisions FakedCard card-id)
@@ -128,7 +113,7 @@
 
 ;; Check that old revisions get deleted
 (expect max-revisions
-  (with-fake-card [{card-id :id}]
+  (with-temp Card [{card-id :id}]
     ;; e.g. if max-revisions is 15 then insert 16 revisions
     (dorun (repeatedly (inc max-revisions) #(push-fake-revision card-id, :name "Tips Created by Day")))
     (count (revisions FakedCard card-id))))
@@ -145,7 +130,7 @@
    :diff         {:o1 {:name "Initial Name", :serialized true}
                   :o2 {:name "Modified Name", :serialized true}}
    :description  "BEFORE={:name \"Initial Name\", :serialized true},AFTER={:name \"Modified Name\", :serialized true}"}
-  (with-fake-card [{card-id :id}]
+  (with-temp Card [{card-id :id}]
     (push-fake-revision card-id, :name "Initial Name")
     (push-fake-revision card-id, :name "Modified Name")
     (let [revisions (revisions FakedCard card-id)]
@@ -162,7 +147,7 @@
            :diff         {:o1 nil
                           :o2 {:name "Tips Created by Day", :serialized true}}
            :description  nil})]
-  (with-fake-card [{card-id :id}]
+  (with-temp Card [{card-id :id}]
     (push-fake-revision card-id, :name "Tips Created by Day")
     (->> (revisions+details FakedCard card-id)
          (map (u/rpartial dissoc :timestamp :id :model_id)))))
@@ -184,7 +169,7 @@
            :diff         {:o1 nil
                           :o2 {:name "Tips Created by Day", :serialized true}}
            :description  nil})]
-  (with-fake-card [{card-id :id}]
+  (with-temp Card [{card-id :id}]
     (push-fake-revision card-id, :name "Tips Created by Day")
     (push-fake-revision card-id, :name "Spots Created by Day")
     (->> (revisions+details FakedCard card-id)
@@ -192,23 +177,23 @@
 
 ;;; # REVERT
 
-;; Check that revert defers to revert-to-revision
+;; Check that revert defers to revert-to-revision!
 (expect {:name "Tips Created by Day"}
-  (with-fake-card [{card-id :id}]
+  (with-temp Card [{card-id :id}]
     (push-fake-revision card-id, :name "Tips Created by Day")
     (let [[{revision-id :id}] (revisions FakedCard card-id)]
-      (revert :entity FakedCard, :id card-id, :user-id (user->id :rasta), :revision-id revision-id)
+      (revert! :entity FakedCard, :id card-id, :user-id (user->id :rasta), :revision-id revision-id)
       @reverted-to)))
 
-;; Check default impl of revert-to-revision just does mapply upd
+;; Check default impl of revert-to-revision! just does mapply upd
 (expect ["Spots Created By Day"
          "Tips Created by Day"]
-  (with-fake-card [{card-id :id} {:name "Spots Created By Day"}]
-    (push-revision :entity Card, :id card-id, :user-id (user->id :rasta), :object {:name "Tips Created by Day"})
-    (push-revision :entity Card, :id card-id, :user-id (user->id :rasta), :object {:name "Spots Created by Day"})
+  (with-temp Card [{card-id :id} {:name "Spots Created By Day"}]
+    (push-revision! :entity Card, :id card-id, :user-id (user->id :rasta), :object {:name "Tips Created by Day"})
+    (push-revision! :entity Card, :id card-id, :user-id (user->id :rasta), :object {:name "Spots Created by Day"})
     [(:name (Card card-id))
      (let [[_ {old-revision-id :id}] (revisions Card card-id)]
-       (revert :entity Card, :id card-id, :user-id (user->id :rasta), :revision-id old-revision-id)
+       (revert! :entity Card, :id card-id, :user-id (user->id :rasta), :revision-id old-revision-id)
        (:name (Card card-id)))]))
 
 ;; Check that reverting to a previous revision adds an appropriate revision
@@ -233,10 +218,10 @@
            :is_reversion false
            :is_creation  false
            :message      nil})]
-  (with-fake-card [{card-id :id}]
+  (with-temp Card [{card-id :id}]
     (push-fake-revision card-id, :name "Tips Created by Day")
     (push-fake-revision card-id, :name "Spots Created by Day")
     (let [[_ {old-revision-id :id}] (revisions FakedCard card-id)]
-      (revert :entity FakedCard, :id card-id, :user-id (user->id :rasta), :revision-id old-revision-id)
+      (revert! :entity FakedCard, :id card-id, :user-id (user->id :rasta), :revision-id old-revision-id)
       (->> (revisions FakedCard card-id)
            (map (u/rpartial dissoc :timestamp :id :model_id))))))

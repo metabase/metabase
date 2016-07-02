@@ -89,8 +89,35 @@ If you add more dimensions, you will add columns to the left of the dimension.
 ---
 Click on the three dots on the far right hand side of the question builder bar to open up these additional settings:
 
-* Limit your results to 1, 10, 25, 100, or more rows.
+![Context Menu](images/custom-fields/context-menu.png)
+
 * Sort by a column: either by clicking on the column header or by selecting the column in the advanced section.
+* Limit your results to 1, 10, 25, 100, or more rows.
+* Create a custom field using math
+
+#### Creating a custom field
+A custom field is helpful if you need to create a new field based on a calculation, such as subtracting the value of one field from another.
+
+![Custom fields](images/custom-fields/blank-formula.png)
+
+Say we had a table of individual baseball games, and we wanted to figure out how many more runs the home team scored than the away team (the “run differential”). If we have one field with the home team’s score, and another field with the away team’s score, we could type a formula like this:
+
+![Formula](images/custom-fields/filled-formula.png)
+
+The words in the quotes are the names of the fields in our table. If you start typing in this box, Metabase will show you fields in the current table that match what you’ve typed, and you can select from this list to autocomplete the field name.
+
+Right now, you can only use the following math operators in your formulas: +, –, * (multiplication), and / (division). You can also use parentheses to clarify the order of operations.
+
+Once you’ve written your formula and given your new field a name, select `Raw Data` for your view, and click the `Get Answer` button to see your new field appended to your current table. It’ll be on the far right of the table. **Note that this new field is NOT permanently added to this table.** It will only be kept if you save a question that uses it.
+
+Here’s our result:
+
+![New field](images/custom-fields/query-result.png)
+
+Now we can use this new field just like any other field, meaning we can use it to filter our question, add a grouping with it, or find out things like the average of this field. You can add multiple custom fields, and they’ll all show up at the top of drop downs within the question builder:
+
+![Field in dropdown](images/custom-fields/field-in-dropdown.png)
+
 
 ### Digging into Individual Records
 ---
@@ -119,4 +146,7 @@ To try it out, type the command `select sum(subtotal), created_at from orders gr
 
 Questions asked using SQL can be saved, downloaded, or added to a dashboard just like questions asked using the question builder.
 
+---
+
+## Next: Creating charts
 Once you have an answer to your question, you can now learn more about [visualizing answers](04-visualizing-results.md).

@@ -6,15 +6,13 @@
             [clojure.tools.logging :as log]
             [aleph.http :as aleph]
             [cheshire.core :as json]
-            [korma.core :as k]
             (manifold [bus :as bus]
                       [deferred :as d]
                       [stream :as s])
-            [metabase.api.common :refer [let-404]]
-            [metabase.db :refer [sel]]
+            [metabase.db :as db]
             [metabase.integrations.slack :as slack]
             [metabase.models.setting :as setting]
-            [metabase.task.send-pulses :as pulses]
+            [metabase.pulse :as pulse]
             [metabase.util :as u]
             [metabase.util.urls :as urls]))
 
@@ -58,11 +56,10 @@
   (str "Uh oh! :cry:\n>" (.getMessage e)))
 
 (defmacro ^:private do-async {:style/indent 0} [& body]
-  `(do (future (try ~@body
-                    (catch Throwable e#
-                      (log/error (u/format-color '~'red (u/filtered-stacktrace e#)))
-                      (slack/post-chat-message! *channel-id* (format-exception e#)))))
-       nil))
+  `(future (try ~@body
+                (catch Throwable e#
+                  (log/error (u/format-color '~'red (u/filtered-stacktrace e#)))
+                  (slack/post-chat-message! *channel-id* (format-exception e#))))))
 
 (defn- format-cards
   "Format a sequence of Cards as a nice multiline list for use in responses."
@@ -74,38 +71,38 @@
 (defn ^:metabot list
   "Implementation of the `metabot list cards` command."
   [& _]
-  (let [cards (sel :many :fields ['Card :id :name] (k/order :id :DESC) (k/limit 20))]
+  (let [cards (db/select ['Card :id :name], {:order-by [[:id :desc]], :limit 20})]
     (str "Here's your " (count cards) " most recent cards:\n" (format-cards cards))))
 
 (defn- card-with-name [card-name]
-  (first (u/prog1 (sel :many :fields ['Card :id :name], (k/where {(k/sqlfn :LOWER :name) [like (str \% (str/lower-case card-name) \%)]}))
+  (first (u/prog1 (db/select ['Card :id :name], :%lower.name [:like (str \% (str/lower-case card-name) \%)])
            (when (> (count <>) 1)
              (throw (Exception. (str "Could you be a little more specific? I found these cards with names that matched:\n"
                                      (format-cards <>))))))))
 
 (defn- id-or-name->card [card-id-or-name]
   (cond
-    (integer? card-id-or-name)     (sel :one :fields ['Card :id :name], :id card-id-or-name)
+    (integer? card-id-or-name)     (db/select-one ['Card :id :name], :id card-id-or-name)
     (or (string? card-id-or-name)
         (symbol? card-id-or-name)) (card-with-name card-id-or-name)
-    :else                          (throw (Exception. (format "I don't know what Card `%s` is. Give me a Card ID or name.")))))
+    :else                          (throw (Exception. (format "I don't know what Card `%s` is. Give me a Card ID or name." card-id-or-name)))))
 
 (defn ^:metabot show
   "Implementation of the `metabot show card <name-or-id>` command."
   ([]
    "Show which card? Give me a part of a card name or its ID and I can show it to you. If you don't know which card you want, try `metabot list`.")
-  ([card-id-or-name & _]
-   (let-404 [{card-id :id, card-name :name} (id-or-name->card card-id-or-name)]
-     (do-async (pulses/send-pulse! {:name     card-name
-                                    :cards    [{:id card-id}]
-                                    :channels [{:channel_type   "slack"
-                                                :recipients     []
-                                                :details        {:channel *channel-id*}
-                                                :schedule_type  "hourly"
-                                                :schedule_day   "mon"
-                                                :schedule_hour  8
-                                                :schedule_frame "first"}]})))
-   "Ok, just a second..."))
+  ([card-id-or-name]
+   (if-let [{card-id :id} (id-or-name->card card-id-or-name)]
+     (do
+       (do-async (let [attachments (pulse/create-and-upload-slack-attachments! [(pulse/execute-card card-id)])]
+                   (slack/post-chat-message! *channel-id*
+                                             nil
+                                             attachments)))
+       "Ok, just a second...")
+     (throw (Exception. "Not Found"))))
+  ;; If the card name comes without spaces, e.g. (show 'my 'wacky 'card) turn it into a string an recur: (show "my wacky card")
+  ([word & more]
+   (show (apply str (interpose " " (cons word more))))))
 
 
 (defn meme:up-and-to-the-right
@@ -144,18 +141,27 @@
   (dispatch-fn "understand" :metabot))
 
 (defn- eval-command-str [s]
-  (when (seq s)
-    (when-let [tokens (seq (edn/read-string (str "(" (-> s
-                                                         (str/replace "“" "\"") ; replace smart quotes
-                                                         (str/replace "”" "\"")) ")")))]
-      (apply apply-metabot-fn tokens))))
+  (when (string? s)
+    ;; if someone just typed "metabot" (no command) act like they typed "metabot help"
+    (let [s (if (seq s)
+              s
+              "help")]
+      (log/debug "Evaluating Metabot command:" s)
+      (when-let [tokens (seq (edn/read-string (str "(" (-> s
+                                                           (str/replace "“" "\"") ; replace smart quotes
+                                                           (str/replace "”" "\"")) ")")))]
+        (apply apply-metabot-fn tokens)))))
 
 
 ;;; # ------------------------------------------------------------ Metabot Input Handling ------------------------------------------------------------
 
-(defn- message->command-str [{:keys [text]}]
+(defn- message->command-str
+  "Get the command portion of a message *event* directed at Metabot.
+
+     (message->command-str {:text \"metabot list\"}) -> \"list\""
+  [{:keys [text]}]
   (when (seq text)
-    (second (re-matches #"^mea?ta?boa?t\s+(.*)$" text))))
+    (second (re-matches #"^mea?ta?boa?t\s*(.*)$" text)))) ; handle typos like metaboat or meatbot
 
 (defn- respond-to-message! [message response]
   (when response
@@ -167,11 +173,15 @@
 (defn- handle-slack-message [message]
   (respond-to-message! message (eval-command-str (message->command-str message))))
 
-(defn- human-message? [{event-type :type, subtype :subtype}]
+(defn- human-message?
+  "Was this Slack WebSocket event one about a *human* sending a message?"
+  [{event-type :type, subtype :subtype}]
   (and (= event-type "message")
        (not (contains? #{"bot_message" "message_changed" "message_deleted"} subtype))))
 
-(defn- event-timestamp-ms [{:keys [ts], :or {ts "0"}}]
+(defn- event-timestamp-ms
+  "Get the UNIX timestamp of a Slack WebSocket event, in milliseconds."
+  [{:keys [ts], :or {ts "0"}}]
   (* (Double/parseDouble ts) 1000))
 
 
@@ -184,10 +194,15 @@
     (throw (Exception.)))
 
   (when-let [event (json/parse-string event keyword)]
+    ;; Only respond to events where a *human* sends a message that have happened *after* the MetaBot launches
     (when (and (human-message? event)
                (> (event-timestamp-ms event) start-time))
       (binding [*channel-id* (:channel event)]
-        (do-async (handle-slack-message event))))))
+        (do (future (try
+                      (handle-slack-message event)
+                      (catch Throwable t
+                        (slack/post-chat-message! *channel-id* (format-exception t)))))
+            nil)))))
 
 
 ;;; # ------------------------------------------------------------ Websocket Connection Stuff ------------------------------------------------------------
@@ -235,7 +250,7 @@
    This will spin up a background thread that opens and maintains a Slack WebSocket connection."
   []
   (when (and (setting/get :slack-token)
-             (= "true" (setting/get :metabot-enabled)))
+             (= "true" (metabot-enabled)))
     (log/info "Starting MetaBot WebSocket monitor thread...")
     (start-websocket-monitor!)))
 

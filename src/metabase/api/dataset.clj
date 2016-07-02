@@ -1,20 +1,22 @@
 (ns metabase.api.dataset
   "/api/dataset endpoints."
   (:require [clojure.data.csv :as csv]
+            [cheshire.core :as json]
             [compojure.core :refer [GET POST]]
             [metabase.api.common :refer :all]
-            (metabase [db :as db]
-                      [driver :as driver])
+            [metabase.db :as db]
             (metabase.models [card :refer [Card]]
                              [database :refer [Database]]
-                             [hydrate :refer [hydrate]])
+                             [hydrate :refer [hydrate]]
+                             [query-execution :refer [QueryExecution]])
+            [metabase.query-processor :as qp]
             [metabase.util :as u]))
 
-(def ^:const api-max-results-bare-rows
+(def ^:private ^:const api-max-results-bare-rows
   "Maximum number of rows to return specifically on :rows type queries via the API."
   2000)
 
-(def ^:const api-max-results
+(def ^:private ^:const api-max-results
   "General maximum number of rows to return from an API query."
   10000)
 
@@ -29,15 +31,29 @@
   (read-check Database database)
   ;; add sensible constraints for results limits on our query
   (let [query (assoc body :constraints dataset-query-api-constraints)]
-    (driver/dataset-query query {:executed_by *current-user-id*})))
+    (qp/dataset-query query {:executed_by *current-user-id*})))
 
+ (defendpoint POST "/duration"
+   "Get historical query execution duration."
+   [:as {{:keys [database] :as body} :body}]
+   (read-check Database database)
+   ;; add sensible constraints for results limits on our query
+   (let [query         (assoc body :constraints dataset-query-api-constraints)
+         running-times (db/select-field :running_time QueryExecution
+                         :query_hash (hash query)
+                         {:order-by [[:started_at :desc]]
+                          :limit    10})]
+     {:average (if (empty? running-times)
+                   0
+                   (float (/ (reduce + running-times)
+                             (count running-times))))}))
 
 (defendpoint POST "/csv"
   "Execute an MQL query and download the result data as a CSV file."
   [query]
   {query [Required String->Dict]}
   (read-check Database (:database query))
-  (let [{{:keys [columns rows]} :data :keys [status] :as response} (driver/dataset-query query {:executed_by *current-user-id*})
+  (let [{{:keys [columns rows]} :data :keys [status] :as response} (qp/dataset-query query {:executed_by *current-user-id*})
         columns (map name columns)] ; turn keywords into strings, otherwise we get colons in our output
     (if (= status :completed)
       ;; successful query, send CSV file
@@ -51,11 +67,12 @@
        :body   (:error response)})))
 
 
+;; TODO - AFAIK this endpoint is no longer used. Remove it? </3
 (defendpoint GET "/card/:id"
   "Execute the MQL query for a given `Card` and retrieve both the `Card` and the execution results as JSON.
    This is a convenience endpoint which simplifies the normal 2 api calls to fetch the `Card` then execute its query."
   [id]
-  (let-404 [{:keys [dataset_query] :as card} (db/sel :one Card :id id)]
+  (let-404 [{:keys [dataset_query] :as card} (Card id)]
     (read-check card)
     (read-check Database (:database dataset_query))
     ;; add sensible constraints for results limits on our query
@@ -63,7 +80,7 @@
     (let [query   (assoc dataset_query :constraints dataset-query-api-constraints)
           options {:executed_by *current-user-id*}]
       {:card   (hydrate card :creator)
-       :result (driver/dataset-query query options)})))
+       :result (qp/dataset-query query options)})))
 
 
 (define-routes)

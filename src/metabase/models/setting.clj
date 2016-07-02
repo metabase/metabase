@@ -1,10 +1,10 @@
 (ns metabase.models.setting
   (:refer-clojure :exclude [get set])
-  (:require [clojure.string :as s]
+  (:require (clojure [string :as s]
+                     [walk :as walk])
             [environ.core :as env]
-            [korma.core :as k]
             [metabase.config :as config]
-            [metabase.db :refer [exists? sel del]]
+            [metabase.db :as db]
             [metabase.events :as events]
             [metabase.models [common :as common]
                              [interface :as i]]
@@ -71,7 +71,7 @@
   (restore-cache-if-needed)
   (if (contains? @cached-setting->value k)
     (@cached-setting->value k)
-    (let [v (sel :one :field [Setting :value] :key (name k))]
+    (let [v (db/select-one-field :value Setting, :key (name k))]
       (swap! cached-setting->value assoc k v)
       v)))
 
@@ -90,6 +90,7 @@
 
 ;;; ### SET / DELETE
 
+;; TODO - rename this `set!`
 (defn set
   "Set the value of a `Setting`.
 
@@ -99,26 +100,28 @@
 
      (mandrill-api-key \"xyz123\")"
   [k v]
-  {:pre [(keyword? k)
-         (string? v)]}
-  (if (get k) (k/update Setting
-                        (k/set-fields {:value v})
-                        (k/where {:key (name k)}))
-      (k/insert Setting
-                (k/values {:key   (name k)
-                           :value v})))
+  {:pre [(keyword? k) (string? v)]}
+  (if (get k)
+    (db/update-where! Setting {:key (name k)}
+      :value v)
+    (db/insert! Setting
+      :key   (name k)
+      :value v))
   (restore-cache-if-needed)
   (swap! cached-setting->value assoc k v)
   v)
 
+;; TODO - this should be renamed `delete!`
 (defn delete
-  "Delete a `Setting`."
+  "Clear the value of a `Setting`."
   [k]
   {:pre [(keyword? k)]}
   (restore-cache-if-needed)
   (swap! cached-setting->value dissoc k)
-  (del Setting :key (name k)))
+  (db/delete! Setting, :key (name k))
+  {:status 204, :body nil})
 
+;; TODO - rename this `set-all!`
 (defn set-all
   "Set the value of several `Settings` at once.
 
@@ -131,6 +134,7 @@
       (delete k)))
   (events/publish-event :settings-update settings))
 
+;; TODO - Rename to `set!*`
 (defn set*
   "Set the value of a `Setting`, deleting it if VALUE is `nil` or an empty string."
   [setting-key value]
@@ -217,13 +221,18 @@
                        :value (k settings))))
          (sort-by :key))))
 
-(def ^:private short-timezone-name
+(def ^:private ^{:arglists '([timezone-name])} short-timezone-name
   "Get a short display name (e.g. `PST`) for `report-timezone`, or fall back to the System default if it's not set."
   (memoize (fn [^String timezone-name]
              (let [^TimeZone timezone (or (when (seq timezone-name)
                                             (TimeZone/getTimeZone timezone-name))
                                           (TimeZone/getDefault))]
                (.getDisplayName timezone (.inDaylightTime timezone (java.util.Date.)) TimeZone/SHORT)))))
+
+
+(defsetting check-for-updates "Identify when new versions of Metabase are available." "true")
+(defsetting version-info "Information about available versions of Metabase." "{}")
+
 
 (defn public-settings
   "Return a simple map of key/value pairs which represent the public settings for the front-end application."
@@ -241,15 +250,15 @@
    :admin_email           (get :admin-email)
    :report_timezone       (get :report-timezone)
    :timezone_short        (short-timezone-name (get :report-timezone))
-   :has_sample_dataset    (exists? 'Database, :is_sample true)})
+   :has_sample_dataset    (db/exists? 'Database, :is_sample true)})
 
 
 ;;; # IMPLEMENTATION
 
 (defn- restore-cache-if-needed []
   (when-not @cached-setting->value
-    (reset! cached-setting->value (into {} (for [{k :key, v :value} (sel :many Setting)]
-                                             {(keyword k) v})))))
+    (db/setup-db-if-needed)
+    (reset! cached-setting->value (walk/keywordize-keys (db/select-field->field :key :value Setting)))))
 
 (def ^:private cached-setting->value
   "Map of setting name (keyword) -> string value, as they exist in the DB."
@@ -258,6 +267,11 @@
 (i/defentity Setting
   "The model that underlies `defsetting`."
   :setting)
+
+(u/strict-extend (class Setting)
+  i/IEntity
+  (merge i/IEntityDefaults
+         {:types (constantly {:value :clob})}))
 
 (defn- settings-list
   "Return a list of all Settings (as created with `defsetting`).

@@ -1,34 +1,34 @@
 (ns metabase.driver.redshift
   "Amazon Redshift Driver."
   (:require [clojure.java.jdbc :as jdbc]
-            (korma [core :as k]
-                   [db :as kdb])
-            (metabase [config :as config]
-                      [driver :as driver])
+            [honeysql.core :as hsql]
+            [metabase.config :as config]
+            [metabase.db.spec :as dbspec]
+            [metabase.driver :as driver]
             (metabase.driver [generic-sql :as sql]
                              [postgres :as postgres])
             [metabase.util :as u]
-            [metabase.util.korma-extensions :as kx]))
+            [metabase.util.honeysql-extensions :as hx]))
 
-(defn- connection-details->spec [_ details]
-  (kdb/postgres (merge details postgres/ssl-params))) ; always connect to redshift over SSL
+(defn- connection-details->spec [details]
+  (dbspec/postgres (merge details postgres/ssl-params))) ; always connect to redshift over SSL
 
-(defn- date-interval [_ unit amount]
-  (k/raw (format "(GETDATE() + INTERVAL '%d %s')" (int amount) (name unit))))
+(defn- date-interval [unit amount]
+  (hsql/call :+ :%getdate (hsql/raw (format "INTERVAL '%d %s'" (int amount) (name unit)))))
 
-(defn- unix-timestamp->timestamp [_ expr seconds-or-milliseconds]
+(defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
   (case seconds-or-milliseconds
-    :seconds      (kx/+ (k/raw "TIMESTAMP '1970-01-01T00:00:00Z'")
-                        (kx/* expr
-                              (k/raw "INTERVAL '1 second'")))
-    :milliseconds (recur nil (kx// expr 1000) :seconds)))
+    :seconds      (hx/+ (hsql/raw "TIMESTAMP '1970-01-01T00:00:00Z'")
+                        (hx/* expr
+                              (hsql/raw "INTERVAL '1 second'")))
+    :milliseconds (recur (hx// expr 1000) :seconds)))
 
 ;; The Postgres JDBC .getImportedKeys method doesn't work for Redshift, and we're not allowed to access information_schema.constraint_column_usage,
 ;; so we'll have to use this custom query instead
 ;; See also: [Related Postgres JDBC driver issue on GitHub](https://github.com/pgjdbc/pgjdbc/issues/79)
 ;;           [How to access the equivalent of information_schema.constraint_column_usage in Redshift](https://forums.aws.amazon.com/thread.jspa?threadID=133514)
-(defn- describe-table-fks [_ table]
-  (set (for [fk (jdbc/query (sql/db->jdbc-connection-spec @(:db table))
+(defn- describe-table-fks [database table]
+  (set (for [fk (jdbc/query (sql/db->jdbc-connection-spec database)
                             ["SELECT source_column.attname AS \"fk-column-name\",
                                      dest_table.relname    AS \"dest-table-name\",
                                      dest_table_ns.nspname AS \"dest-table-schema\",
@@ -47,9 +47,9 @@
                                      AND dest_column.attnum   = ANY(c.confkey)"
                              (:name table)
                              (:schema table)])]
-         {:fk-column-name (:fk-column-name fk)
-          :dest-table {:name   (:dest-table-name fk)
-                       :schema (:dest-table-schema fk)}
+         {:fk-column-name   (:fk-column-name fk)
+          :dest-table       {:name   (:dest-table-name fk)
+                             :schema (:dest-table-schema fk)}
           :dest-column-name (:dest-column-name fk)})))
 
 (defrecord RedshiftDriver []
@@ -59,8 +59,8 @@
 (u/strict-extend RedshiftDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {:date-interval       date-interval
-          :describe-table-fks  describe-table-fks
+         {:date-interval       (u/drop-first-arg date-interval)
+          :describe-table-fks  (u/drop-first-arg describe-table-fks)
           :details-fields      (constantly [{:name         "host"
                                              :display-name "Host"
                                              :placeholder  "my-cluster-name.abcd1234.us-east-1.redshift.amazonaws.com"
@@ -85,10 +85,10 @@
 
   sql/ISQLDriver
   (merge postgres/PostgresISQLDriverMixin
-         {:connection-details->spec  connection-details->spec
-          :current-datetime-fn       (constantly (k/sqlfn* :GETDATE))
+         {:connection-details->spec  (u/drop-first-arg connection-details->spec)
+          :current-datetime-fn       (constantly :%getdate)
           :set-timezone-sql          (constantly nil)
-          :unix-timestamp->timestamp unix-timestamp->timestamp}
+          :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}
          ;; HACK ! When we test against Redshift we use a session-unique schema so we can run simultaneous tests against a single remote host;
          ;; when running tests tell the sync process to ignore all the other schemas
          (when config/is-test?

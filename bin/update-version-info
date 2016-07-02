@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+
+# Generate the version-info.json file which provides basic information about the latest versions of Metabase available.
+# This is used inside the Metabase application as a simple mechanism to be aware if an upgrade is available.
+
+build() {
+echo '{
+    "latest": {
+        "version": "v0.18.0",
+        "released": "2016-05-04T21:09:36.358Z",
+        "patch": false,
+        "highlights": [
+            "Notifications about available Metabase updates"
+        ]
+    },
+    "older": [
+        {
+            "version": "v0.17.1",
+            "released": "2016-05-04T21:09:36.358Z",
+            "patch": true,
+            "highlights": [
+                ""
+            ]
+        },
+        {
+            "version": "v0.17.0",
+            "released": "2016-05-04T21:09:36.358Z",
+            "patch": false,
+            "highlights": [
+                "Tags + Search for Saved Questions", 
+                "Calculated columns", 
+                "Faster Syncing of Metadata",
+                "Lots of database driver improvements and bug fixes"
+            ]
+        },
+        {
+            "version": "v0.16.1",
+            "released": "2016-05-04T21:09:36.358Z",
+            "patch": true,
+            "highlights": [
+                "Fixes for several time alignment issues (timezones)", 
+                "Resolved problem with SQL Server db connections"
+            ]
+        },
+        {
+            "version": "v0.16.0",
+            "released": "2016-05-04T21:09:36.358Z",
+            "patch": false,
+            "highlights": [
+                "Fullscreen (and fabulous) Dashboards", 
+                "Say hello to Metabot in Slack"
+            ]
+        }
+    ]
+}' > /tmp/version-info.json
+}
+
+upload() {
+    # send the current file to s3
+    aws s3 cp /tmp/version-info.json "s3://static.metabase.com/version-info.json"
+}
+
+publish() {
+    build && upload && rm /tmp/version-info.json 2> /dev/null
+}
+
+if [ "$1" ]; then
+    $1
+else
+    publish
+fi

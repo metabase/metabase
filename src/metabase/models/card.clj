@@ -1,25 +1,13 @@
 (ns metabase.models.card
-  (:require [korma.core :as k]
-            [medley.core :as m]
+  (:require [medley.core :as m]
             [metabase.db :as db]
-            (metabase.models [dependency :as dependency]
+            (metabase.models [card-label :refer [CardLabel]]
+                             [dependency :as dependency]
                              [interface :as i]
+                             [label :refer [Label]]
                              [revision :as revision])
             (metabase [query :as q]
                       [util :as u])))
-
-(def ^:const display-types
-  "Valid values of `Card.display_type`."
-  #{:area
-    :bar
-    :country
-    :line
-    :pie
-    :pin_map
-    :scalar
-    :state
-    :table
-    :timeseries})
 
 (i/defentity Card :report_card)
 
@@ -38,18 +26,23 @@
   "Return the number of Dashboards this Card is in."
   {:hydrate :dashboard_count}
   [{:keys [id]}]
-  (-> (k/select @(ns-resolve 'metabase.models.dashboard-card 'DashboardCard)
-                (k/aggregate (count :*) :dashboards)
-                (k/where {:card_id id}))
-      first
-      :dashboards))
+  (db/select-one-count 'DashboardCard, :card_id id))
+
+(defn labels
+  "Return `Labels` for CARD."
+  {:hydrate :labels}
+  [{:keys [id]}]
+  (if-let [label-ids (seq (db/select-field :label_id CardLabel, :card_id id))]
+    (db/select Label, :id [:in label-ids], {:order-by [:%lower.name]})
+    []))
 
 (defn- pre-cascade-delete [{:keys [id]}]
-  (db/cascade-delete 'PulseCard :card_id id)
-  (db/cascade-delete 'Revision :model "Card" :model_id id)
-  (db/cascade-delete 'DashboardCardSeries :card_id id)
-  (db/cascade-delete 'DashboardCard :card_id id)
-  (db/cascade-delete 'CardFavorite :card_id id))
+  (db/cascade-delete! 'PulseCard :card_id id)
+  (db/cascade-delete! 'Revision :model "Card", :model_id id)
+  (db/cascade-delete! 'DashboardCardSeries :card_id id)
+  (db/cascade-delete! 'DashboardCard :card_id id)
+  (db/cascade-delete! 'CardFavorite :card_id id)
+  (db/cascade-delete! 'CardLabel :card_id id))
 
 
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------
@@ -60,7 +53,7 @@
   [_ _ instance]
   (->> (dissoc instance :created_at :updated_at)
        (into {})                                 ; if it's a record type like CardInstance we need to convert it to a regular map or filter-vals won't work
-       (m/filter-vals (complement delay?))))
+       (m/filter-vals (complement delay?))))     ; TODO - I don't think this is necessary anymore !
 
 
 ;;; ## ---------------------------------------- DEPENDENCIES ----------------------------------------

@@ -16,6 +16,7 @@
                       [db :as db]
                       [driver :as driver]
                       [events :as events]
+                      [logger :as logger]
                       [metabot :as metabot]
                       [middleware :as mb-middleware]
                       [routes :as routes]
@@ -76,22 +77,22 @@
   (atom 0))
 
 (defn initialized?
-  "Metabase is initialized and ready to be served"
+  "Is Metabase initialized and ready to be served?"
   []
   (= @metabase-initialization-progress 1.0))
 
 (defn initialization-progress
-  "Get the current progress of the Metabase initialize"
+  "Get the current progress of Metabase initialization."
   []
   @metabase-initialization-progress)
 
 (defn initialization-complete!
-  "Complete the Metabase initialization by setting its progress to 100%"
+  "Complete the Metabase initialization by setting its progress to 100%."
   []
   (reset! metabase-initialization-progress 1.0))
 
 (defn- -init-create-setup-token
-  "Create and set a new setup token, and open the setup URL on the user's system."
+  "Create and set a new setup token and log it."
   []
   (let [setup-token (setup/token-create)                    ; we need this here to create the initial token
         hostname    (or (config/config-str :mb-jetty-host) "localhost")
@@ -113,7 +114,8 @@
 (defn init!
   "General application initialization function which should be run once at application startup."
   []
-  (log/info (format "Starting Metabase version %s..." config/mb-version-string))
+  (log/info (format "Starting Metabase version %s ..." config/mb-version-string))
+  (log/info (format "System timezone is '%s' ..." (System/getProperty "user.timezone")))
   (reset! metabase-initialization-progress 0.1)
 
   ;; First of all, lets register a shutdown hook that will tidy things up for us on app exit
@@ -223,7 +225,7 @@
                    (db/migrate @db/db-connection-details (keyword direction)))
    :load-from-h2 (fn [& [h2-connection-string-or-nil]]
                    (require 'metabase.cmd.load-from-h2)
-                   ((resolve 'metabase.cmd.load-from-h2/load-from-h2) h2-connection-string-or-nil))})
+                   ((resolve 'metabase.cmd.load-from-h2/load-from-h2!) h2-connection-string-or-nil))})
 
 (defn- run-cmd [cmd & args]
   (let [f (or (cmd->fn cmd)

@@ -25,5 +25,12 @@ if [ ! -z "$RDS_HOSTNAME" ]; then
 fi
 
 
+# Setup Java Options
+JAVA_OPTS="-Dlogfile.path=target/log -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC"
+
+if [ ! -z "$JAVA_TIMEZONE" ]; then
+  JAVA_OPTS="${JAVA_OPTS} -Duser.timezone=${JAVA_TIMEZONE}"
+fi
+
 # Launch the application
-exec java -Dlogfile.path=target/log -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC -jar /app/metabase.jar
+exec java $JAVA_OPTS -jar /app/metabase.jar

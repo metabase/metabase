@@ -1,14 +1,15 @@
 
 **Covered in this guide:**  
 > [How to install Metabase](#installing-and-running-metabase)  
+> [How to upgrade Metabase](#upgrading-metabase)  
 > [Tips for troubleshooting various issues](#troubleshooting-common-problems)   
 > [Configuring the application database](#configuring-the-metabase-application-database)  
 > [Migrating from using the H2 database to MySQL or Postgres](#migrating-from-using-the-h2-database-to-mysql-or-postgres)  
 > [Running database migrations manually](#running-metabase-database-migrations-manually)  
 > [Backing up Metabase Application Data](#backing-up-metabase-application-data)  
 > [Customizing the Metabase Jetty Webserver](#customizing-the-metabase-jetty-webserver)  
-> [Changing password complexity](#changing-metabase-password-complexity)
-
+> [Changing password complexity](#changing-metabase-password-complexity)  
+> [Handling Timezones](#handling-timezones-in-metabase)
 
 # Installing and Running Metabase
 
@@ -24,6 +25,8 @@ Metabase provides a binary Mac OS X application for users who are interested in 
 If you are using Docker containers and prefer to manage your Metabase installation that way then we've got you covered.  This guide discusses how to use the Metabase Docker image to launch a container running Metabase.
 
 
+
+
 ### Cloud Platforms
 
 #### [Running on AWS Elastic Beanstalk](running-metabase-on-elastic-beanstalk.md)
@@ -35,6 +38,32 @@ Currently in beta.  We've run Metabase on Heroku and it works just fine, but it'
 #### [Running on Cloud66](running-metabase-on-cloud66.md)
 Community support only at this time, but we have reports of Metabase instances running on Cloud66!
 
+# Upgrading Metabase
+
+Before you attempt to upgrade Metabase, you should make a backup of the database just in case. While it is unlikely you will need to rollback, it will do wonders for your peace of mind.
+
+How you upgrade Metabase depends on how you are running it. See below for information on how to update Metabase on managed platforms.
+
+### Specific Platforms
+
+
+#### Docker Image
+If you are running it via docker, then you simply kill the docker process, and start a new container with the latest image. On startup, Metabase will perform any upgrade tasks it needs to perform, and once it is finished, you'll be running the new version.
+
+#### Jar file
+If you are running the JVM Jar file directly, then you simply kill the process, and restart the server. On startup, Metabase will perform any upgrade tasks it needs to perform, and once it is finished, you'll be running the new version.
+
+
+#### Mac OS X Application
+If you are using the Metabase app, you will be notified when there is a new version available. You will see a dialog displaying the changes in the latest version and prompt you to upgrade.
+
+![Autoupdate Confirmation Dialog](images/AutoupdateScreenshot.png)
+
+#### [Upgrading AWS Elastic Beanstalk deployments](running-metabase-on-elastic-beanstalk.md#deploying-new-versions-of-metabase)
+Step-by-step instructions on how to upgrade Metabase running on Elastic Beanstalk using RDS.
+
+#### [Upgrading Heroku deployments](running-metabase-on-heroku.md#deploying-new-versions-of-metabase)
+Step-by-step instructions on how to upgrade Metabase running on Heroku.
 
 # Troubleshooting Common Problems
 
@@ -231,3 +260,26 @@ The settings above can be used independently, so it's fine to use only one or th
 * `weak` = no character constraints
 * `normal` = at least 1 digit
 * `strong` = minimum 8 characters w/ 2 lowercase, 2 uppercase, 1 digit, and 1 special character
+
+
+# Handling timezones in Metabase
+
+Metabase does its best to ensure proper and accurate reporting in whatever timezone you desire, but timezones are a complicated beast so it's important to abide by some recommendations listed below to ensure your reports come out as intended.
+
+The following places where timezones are set can all impact the data you see:
+
+* `Database` - includes global database timezone settings, specific column type settings, and even individual data values.
+* `OS & JVM` - on whatever system is running Metabase the timezone settings of the Operating System as well as the Java Virtual Machine can impact your reports.
+* `Metabase` - inside Metabase the reporting timezone setting (if set) will influence how your data is reported.
+
+To ensure proper reporting it's important that timezones be set consistently in all places.  Metabase recommends the following settings:
+
+* Make sure all of your database columns are properly setup to include timezone awareness.
+* Unless you have a special need it's best to set your database reporting timezone to UTC and store all of your date/time related values in UTC.
+* Configure your JVM to use the same timezone you want to use for reporting, which ideally should also match the timezone of your database.
+* Set the Metabase `Report Timezone` to match the timezone you want to see your reports in, again, this should match the rest of the timezone settings you've made.
+
+
+Common Pitfalls:
+1. Your database is using date/time columns without any timezone information.  Typically when this happens your database will assume all the data is from whatever timezone the database is configured in or possible just default to UTC (check your database vendor to be sure).
+2. Your JVM timezone is not the same as your Metabase `Report Timezone` choice.  This is a very common issue and can be corrected by launching java with the `-Duser.timezone=<timezone>` option properly set to match your Metabase report timezone.

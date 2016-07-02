@@ -2,19 +2,20 @@
   "Tests for /api/session"
   (:require [cemerick.friend.credentials :as creds]
             [expectations :refer :all]
-            [metabase.db :refer :all]
+            [metabase.db :as db]
             [metabase.http-client :refer :all]
             (metabase.models [session :refer [Session]]
                              [user :refer [User]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
+            [metabase.util :as u]
             [metabase.test.util :refer [random-name expect-eval-actual-first]]))
 
 ;; ## POST /api/session
 ;; Test that we can login
 (expect-eval-actual-first
-    (sel :one :fields [Session :id] :user_id (user->id :rasta))
-  (do (del Session :user_id (user->id :rasta))                  ; delete all other sessions for the bird first
+  (db/select-one [Session :id], :user_id (user->id :rasta))
+  (do (db/delete! Session, :user_id (user->id :rasta))             ; delete all other sessions for the bird first
       (client :post 200 "session" (user->credentials :rasta))))
 
 ;; Test for required params
@@ -62,10 +63,10 @@
 (expect
     true
   (let [reset-fields-set? (fn []
-                            (let [{:keys [reset_token reset_triggered]} (sel :one :fields [User :reset_token :reset_triggered] :id (user->id :rasta))]
+                            (let [{:keys [reset_token reset_triggered]} (db/select-one [User :reset_token :reset_triggered], :id (user->id :rasta))]
                               (boolean (and reset_token reset_triggered))))]
     ;; make sure user is starting with no values
-    (upd User (user->id :rasta) :reset_token nil :reset_triggered nil)
+    (db/update! User (user->id :rasta), :reset_token nil, :reset_triggered nil)
     (assert (not (reset-fields-set?)))
     ;; issue reset request (token & timestamp should be saved)
     ((user->client :rasta) :post 200 "session/forgot_password" {:email (:email (user->credentials :rasta))})
@@ -89,9 +90,9 @@
   (let [user-last-name     (random-name)
         password           {:old "password"
                             :new "whateverUP12!!"}
-        {:keys [email id]} (create-user :password (:old password), :last_name user-last-name, :reset_triggered (System/currentTimeMillis))
-        token              (str id "_" (java.util.UUID/randomUUID))
-        _                  (upd User id :reset_token token)
+        {:keys [email id]} (create-user! :password (:old password), :last_name user-last-name, :reset_triggered (System/currentTimeMillis))
+        token              (u/prog1 (str id "_" (java.util.UUID/randomUUID))
+                             (db/update! User id, :reset_token <>))
         creds              {:old {:password (:old password)
                                   :email    email}
                             :new {:password (:new password)
@@ -108,18 +109,18 @@
     ;; New creds *should* work
     (client :post 200 "session" (:new creds))
     ;; Double check that reset token was cleared
-    (sel :one :fields [User :reset_token :reset_triggered] :id id)))
+    (db/select-one [User :reset_token :reset_triggered], :id id)))
 
 ;; Check that password reset returns a valid session token
 (let [user-last-name (random-name)]
   (expect-eval-actual-first
-    (let [{:keys [id]} (sel :one :fields [User :id] :last_name user-last-name)
-          session (sel :one :fields [Session :id] :user_id id)]
+    (let [id         (db/select-one-id User, :last_name user-last-name)
+          session-id (db/select-one-id Session, :user_id id)]
       {:success    true
-       :session_id (:id session)})
-    (let [{:keys [email id]} (create-user :password "password", :last_name user-last-name, :reset_triggered (System/currentTimeMillis))
-          token              (str id "_" (java.util.UUID/randomUUID))
-          _                  (upd User id :reset_token token)]
+       :session_id session-id})
+    (let [{:keys [email id]} (create-user! :password "password", :last_name user-last-name, :reset_triggered (System/currentTimeMillis))
+          token              (u/prog1 (str id "_" (java.util.UUID/randomUUID))
+                               (db/update! User id, :reset_token <>))]
       ;; run the password reset
       (client :post 200 "session/reset_password" {:token    token
                                                   :password "whateverUP12!!"}))))
@@ -144,7 +145,7 @@
 ;; Test that an expired token doesn't work
 (expect {:errors {:password "Invalid reset token"}}
   (let [token (str (user->id :rasta) "_" (java.util.UUID/randomUUID))]
-    (upd User (user->id :rasta) :reset_token token, :reset_triggered 0)
+    (db/update! User (user->id :rasta), :reset_token token, :reset_triggered 0)
     (client :post 400 "session/reset_password" {:token token
                                                 :password "whateverUP12!!"})))
 
@@ -154,7 +155,7 @@
 ;; Check that a valid, unexpired token returns true
 (expect {:valid true}
   (let [token (str (user->id :rasta) "_" (java.util.UUID/randomUUID))]
-    (upd User (user->id :rasta) :reset_token token, :reset_triggered (dec (System/currentTimeMillis)))
+    (db/update! User (user->id :rasta), :reset_token token, :reset_triggered (dec (System/currentTimeMillis)))
     (client :get 200 "session/password_reset_token_valid", :token token)))
 
 ;; Check than an made-up token returns false
@@ -164,7 +165,7 @@
 ;; Check that an expired but valid token returns false
 (expect {:valid false}
   (let [token (str (user->id :rasta) "_" (java.util.UUID/randomUUID))]
-    (upd User (user->id :rasta) :reset_token token, :reset_triggered 0)
+    (db/update! User (user->id :rasta), :reset_token token, :reset_triggered 0)
     (client :get 200 "session/password_reset_token_valid", :token token)))
 
 

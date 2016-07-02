@@ -4,7 +4,6 @@
             [clojure.java.io :as io]
             [clojure.set :as set]
             [clojure.tools.logging :as log]
-            [colorize.core :as color]
             [expectations :refer :all]
             (metabase [core :as core]
                       [db :as db]
@@ -67,8 +66,7 @@
 
 ;; # ------------------------------ FUNCTIONS THAT GET RUN ON TEST SUITE START / STOP ------------------------------
 
-;; this is a little odd, but our normal `test-startup` function won't work for loading the drivers because
-;; they need to be available at evaluation time for some of the unit tests work work properly, so we put this here
+;; `test-startup` function won't work for loading the drivers because they need to be available at evaluation time for some of the unit tests work work properly
 (driver/find-and-load-drivers!)
 
 (defn test-startup
@@ -83,9 +81,17 @@
       (db/setup-db :auto-migrate true)
       (setting/set :site-name "Metabase Test")
       (core/initialization-complete!)
+
+      ;; make sure the driver test extensions are loaded before running the tests. :reload them because otherwise we get wacky 'method in protocol not implemented' errors
+      ;; when running tests against an individual namespace
+      (doseq [engine (keys (driver/available-drivers))
+              :let   [driver-test-ns (symbol (str "metabase.test.data." (name engine)))]]
+        (u/ignore-exceptions
+          (require driver-test-ns :reload)))
+
       ;; If test setup fails exit right away
       (catch Throwable e
-        (log/error (u/format-color 'red "Test setup failed: %s\n%s" e (u/pprint-to-str (.getStackTrace e))))
+        (log/error (u/format-color 'red "Test setup failed: %s\n%s" e (u/pprint-to-str (vec (.getStackTrace e)))))
         (System/exit -1)))
 
     @start-jetty!))

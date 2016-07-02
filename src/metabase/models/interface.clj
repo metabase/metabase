@@ -1,7 +1,6 @@
 (ns metabase.models.interface
   (:require [clojure.tools.logging :as log]
             [cheshire.core :as json]
-            [korma.core :as k]
             (metabase [config :as config]
                       [util :as u])
             [metabase.models.common :as common]))
@@ -42,42 +41,29 @@
   "Methods model classes should implement; all except for `can-read?` and `can-write?` have default implementations in `IEntityDefaults`.
    Internal models that don't participate in permissions checking don't need to implement `can-read?`/`can-write?`."
   (pre-insert [this]
-    "Gets called by `ins` immediately before inserting a new object immediately before the korma `insert` call.
+    "Gets called by `insert!` immediately before inserting a new object immediately before the SQL `INSERT` call.
      This provides an opportunity to do things like encode JSON or provide default values for certain fields.
 
          (pre-insert [_ query]
            (let [defaults {:version 1}]
              (merge defaults query))) ; set some default values")
 
-  (post-insert [this]
-    "Gets called by `ins` after an object is inserted into the DB. (This object is fetched via `sel`).
-     A good place to do asynchronous tasks such as creating related objects.
-     Implementations should return the newly created object.")
-
   (pre-update [this]
-    "Called by `upd` before DB operations happen. A good place to set updated values for fields like `updated_at`, or serialize maps into JSON.")
-
-  (post-update [this]
-    "Called by `upd` after a SQL `UPDATE` *succeeds*. (This gets called with whatever the output of `pre-update` was).
-
-     A good place to schedule asynchronous tasks, such as creating a `FieldValues` object for a `Field`
-     when it is marked with `special_type` `:category`.
-
-     The output of this function is ignored.")
+    "Called by `update!` before DB operations happen. A good place to set updated values for fields like `updated_at`.")
 
   (post-select [this]
-    "Called on the results from a call to `sel`. Default implementation doesn't do anything, but
+    "Called on the results from a call to `select`. Default implementation doesn't do anything, but
      you can provide custom implementations to do things like add hydrateable keys or remove sensitive fields.")
 
   (pre-cascade-delete [this]
-    "Called by `cascade-delete` for each matching object that is about to be deleted.
+    "Called by `cascade-delete!` for each matching object that is about to be deleted.
      Implementations should delete any objects related to this object by recursively
-     calling `cascade-delete`.
+     calling `cascade-delete!`.
 
      The output of this function is ignored.
 
         (pre-cascade-delete [_ {database-id :id :as database}]
-          (cascade-delete Card :database_id database-id)
+          (cascade-delete! Card :database_id database-id)
           ...)")
 
   (^{:hydrate :can_read} can-read? ^Boolean [instance], ^Boolean [entity, ^Integer id]
@@ -95,10 +81,10 @@
      *  `publicly-writeable?`")
 
   (default-fields ^clojure.lang.Sequential [this]
-    "Return a sequence of keyword field names that should be fetched by default when calling `sel` or invoking the entity (e.g., `(Database 1)`).")
+    "Return a sequence of keyword field names that should be fetched by default when calling `select` or invoking the entity (e.g., `(Database 1)`).")
 
   (timestamped? ^Boolean [this]
-    "Should `:created_at` and `:updated_at` be updated when calling `ins`, and `:updated_at` when calling `upd`? Default is `false`.")
+    "Should `:created_at` and `:updated_at` be updated when calling `insert!`, and `:updated_at` when calling `update!`? Default is `false`.")
 
   (hydration-keys ^clojure.lang.Sequential [this]
     "Return a sequence of keyword field names that should be hydrated to this model. For example, `User` might inclide `:creator`, which means `hydrate`
@@ -192,30 +178,22 @@
    :can-read?          (fn [this & _] (throw (UnsupportedOperationException. (format "No implementation of can-read? for %s; please provide one."  (class this)))))
    :can-write?         (fn [this & _] (throw (UnsupportedOperationException. (format "No implementation of can-write? for %s; please provide one." (class this)))))
    :pre-insert         identity
-   :post-insert        identity
    :pre-update         identity
-   :post-update        (constantly nil)
    :post-select        identity
    :pre-cascade-delete (constantly nil)})
 
 (defn- invoke-entity
   "Fetch an object with a specific ID or all objects of type ENTITY from the DB.
-
-     (invoke-entity Database)   -> seq of all databases
-     (invoke-entity Database 1) -> Database w/ ID 1"
+     (invoke-entity Database)           -> seq of all databases
+     (invoke-entity Database 1)         -> Database w/ ID 1
+     (invoke-entity Database :id 1 ...) -> A single Database matching some key-value args"
   ([entity]
-   (for [obj (k/select (assoc entity :fields (default-fields entity)))]
-     (do-post-select entity obj)))
+   ((resolve 'metabase.db/select) entity))
   ([entity id]
    (when id
-     (when (and id
-                (config/config-bool :mb-db-logging)
-                (not @(resolve 'metabase.db/*sel-disable-logging*)))
-       (log/debug "DB CALL:" (:name entity) id))
-     (when-let [[obj] (seq (k/select (assoc entity :fields (default-fields entity))
-                                     (k/where {:id id})
-                                     (k/limit 1)))]
-       (do-post-select entity obj)))))
+     (invoke-entity entity :id id)))
+  ([entity k v & more]
+   (apply (resolve 'metabase.db/select-one) entity k v more)))
 
 (def ^:const ^{:arglists '([entity])} ^Boolean metabase-entity?
   "Is ENTITY a valid metabase model entity?"
@@ -238,14 +216,13 @@
    and have their own unique record type.
 
    `defentity` defines a backing record type following the format `<entity>Instance`. For example, the class associated with
-   `User` is `metabase.models.user/UserInstance`. This class is used for both the titular korma entity (e.g. `User`) and
+   `User` is `metabase.models.user/UserInstance`. This class is used for both the titular entity (e.g. `User`) and
    for objects that are fetched from the DB. This means they can share the `IEntity` protocol and simplifies the interface
    somewhat; functions like `types` work on either the entity or instances fetched from the DB.
 
-     (defentity User :metabase_user)  ; creates class `UserInstance` and korma entity `User`
+     (defentity User :metabase_user) ; creates class `UserInstance` and DB entity `User`
 
-     (metabase.db/sel :one User, ...) ; use with `metabase.db` functions. All results are instances of `UserInstance`
-     (korma.core/select User ...)     ; use with korma functions. Results will be regular maps
+     (metabase.db/select User, ...)  ; use with `metabase.db` functions. All results are instances of `UserInstance`
 
    The record type automatically extends `IEntity` with `IEntityDefaults`, but you may call `extend` again if you need to
    override default behaviors:
@@ -259,17 +236,55 @@
 
      (Database)                       ; return a seq of *all* Databases (as instances of `DatabaseInstance`)
      (Database 1)                     ; return Database 1"
-  {:arglist      '([entity table-name] [entity docstr? table-name & korma-forms])
-   :style/indent 1}
+  {:arglist      '([entity table-name] [entity docstr? table-name])
+   :style/indent 2}
   [entity & args]
-  (let [[docstr [table-name & korma-forms]] (u/optional string? args)
-        instance                            (symbol (str entity "Instance"))
-        map->instance                       (symbol (str "map->" instance))]
+  (let [[docstr [table-name]] (u/optional string? args)
+        instance              (symbol (str entity "Instance"))
+        map->instance         (symbol (str "map->" instance))]
     `(do
        (defrecord ~instance []
          clojure.lang.IFn
-         (~'invoke [this#]     (invoke-entity-or-instance this#))
-         (~'invoke [this# id#] (invoke-entity-or-instance this# id#)))
+         (~'invoke [this#]
+          (invoke-entity-or-instance this#))
+         (~'invoke [this# id#]
+          (invoke-entity-or-instance this# id#))
+         (~'invoke [this# arg1# arg2#]
+          (invoke-entity-or-instance this# arg1# arg2#))
+         (~'invoke [this# arg1# arg2# arg3#]
+          (invoke-entity-or-instance this# arg1# arg2# arg3#))
+         (~'invoke [this# arg1# arg2# arg3# arg4#]
+          (invoke-entity-or-instance this# arg1# arg2# arg3# arg4#))
+         (~'invoke [this# arg1# arg2# arg3# arg4# arg5#]
+          (invoke-entity-or-instance this# arg1# arg2# arg3# arg4# arg5#))
+         (~'invoke [this# arg1# arg2# arg3# arg4# arg5# arg6#]
+          (invoke-entity-or-instance this# arg1# arg2# arg3# arg4# arg5# arg6#))
+         (~'invoke [this# arg1# arg2# arg3# arg4# arg5# arg6# arg7#]
+          (invoke-entity-or-instance this# arg1# arg2# arg3# arg4# arg5# arg6# arg7#))
+         (~'invoke [this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8#]
+          (invoke-entity-or-instance this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8#))
+         (~'invoke [this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9#]
+          (invoke-entity-or-instance this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9#))
+         (~'invoke [this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10#]
+          (invoke-entity-or-instance this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10#))
+         (~'invoke [this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11#]
+          (invoke-entity-or-instance this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11#))
+         (~'invoke [this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11# arg12#]
+          (invoke-entity-or-instance this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11# arg12#))
+         (~'invoke [this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11# arg12# arg13#]
+          (invoke-entity-or-instance this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11# arg12# arg13#))
+         (~'invoke [this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11# arg12# arg13# arg14#]
+          (invoke-entity-or-instance this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11# arg12# arg13# arg14#))
+         (~'invoke [this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11# arg12# arg13# arg14# arg15#]
+          (invoke-entity-or-instance this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11# arg12# arg13# arg14# arg15#))
+         (~'invoke [this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11# arg12# arg13# arg14# arg15# arg16#]
+          (invoke-entity-or-instance this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11# arg12# arg13# arg14# arg15# arg16#))
+         (~'invoke [this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11# arg12# arg13# arg14# arg15# arg16# arg17#]
+          (invoke-entity-or-instance this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11# arg12# arg13# arg14# arg15# arg16# arg17#))
+         (~'invoke [this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11# arg12# arg13# arg14# arg15# arg16# arg17# arg18#]
+          (invoke-entity-or-instance this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11# arg12# arg13# arg14# arg15# arg16# arg17# arg18#))
+         (~'invoke [this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11# arg12# arg13# arg14# arg15# arg16# arg17# arg18# arg19#]
+          (invoke-entity-or-instance this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11# arg12# arg13# arg14# arg15# arg16# arg17# arg18# arg19#)))
 
        (u/strict-extend ~instance
          IEntity        IEntityDefaults
@@ -277,11 +292,9 @@
 
        (def ~(vary-meta entity assoc
                         :tag      (symbol (str (namespace-munge *ns*) \. instance))
-                        :arglists ''([] [id])
+                        :arglists ''([] [id] [& kvs])
                         :doc      (or docstr
-                                      (format "Korma entity for '%s' table; instance of %s." (name table-name) instance)))
-         (-> (k/create-entity ~(name entity))
-             (k/table ~table-name)
-             ~@korma-forms
-             (assoc ::entity true)
-             ~map->instance)))))
+                                      (format "Entity for '%s' table; instance of %s." (name table-name) instance)))
+         (~map->instance {:table   ~table-name
+                          :name    ~(name entity)
+                          ::entity true})))))

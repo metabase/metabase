@@ -1,7 +1,10 @@
-FROM java:openjdk-7-jre-alpine
+FROM java:openjdk-8-jre-alpine
 
-# need bash
-RUN apk add --update bash
+ENV FC_LANG en-US
+ENV LC_CTYPE en_US.UTF-8
+
+# dependencies
+RUN apk add --update bash ttf-dejavu fontconfig
 
 # fix broken cacerts
 RUN apk add --update java-cacerts && \

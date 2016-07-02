@@ -10,14 +10,18 @@
 
 > [How to visualize the answers to questions](04-visualizing-results.md)
 
-> [How to share answers with others through dashboards](05-sharing-answers.md)
+> [Sharing and organizing your saved questions](05-sharing-answers.md)
 
-> [Tips on creating useful dashboards](06-dashboard-tips.md)
+> [Creating dashboards](06-dashboards.md)
 
-> [Using Pulses for daily emails](07-pulses.md)
+> [Adding filters to dashboards](07-dashboard-filters.md)
 
-> [Some helpful tips on building your data model](08-data-model-reference.md)
+> [Creating charts with multiple series](08-multi-series-charting.md)
 
-> [Visualizing multiple series](09-data-model-reference.md)
+> [Using Pulses for daily emails](09-pulses.md)
+
+> [Get answers in Slack with Metabot](10-metabot.md)
+
+> [Some helpful tips on building your data model](11-data-model-reference.md)
 
 Let's get started with an overview of [What Metabase does](01-what-is-metabase.md).

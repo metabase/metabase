@@ -1,11 +1,11 @@
 (ns metabase.db.metadata-queries
   "Predefined MBQL queries for getting metadata about an external database."
-  (:require [metabase.driver :as driver]
-            [metabase.driver.query-processor.expand :as ql]
-            [metabase.models.field :as field]))
+  (:require [metabase.models.field :as field]
+            [metabase.query-processor :as qp]
+            [metabase.query-processor.expand :as ql]))
 
 (defn- qp-query [db-id query]
-  (-> (driver/process-query
+  (-> (qp/process-query
        {:type     :query
         :database db-id
         :query    query})
@@ -31,7 +31,7 @@
   "Return the distinct values of FIELD.
    This is used to create a `FieldValues` object for `:category` Fields."
   ([field]
-    (field-distinct-values field @(resolve 'metabase.driver.sync/low-cardinality-threshold)))
+    (field-distinct-values field @(resolve 'metabase.sync-database.analyze/low-cardinality-threshold)))
   ([{field-id :id :as field} max-results]
    {:pre [(integer? max-results)]}
    (mapv first (field-query field (-> {}

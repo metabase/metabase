@@ -5,7 +5,7 @@
             [stencil.core :as stencil]
             [metabase.email :as email]
             [metabase.models.setting :as setting]
-            [metabase.pulse :as p]
+            [metabase.pulse.render :as render]
             [metabase.util :as u]
             (metabase.util [quotation :as quotation]
                            [urls :as url])))
@@ -88,6 +88,34 @@
       :message-type :html
       :message      message-body)))
 
+(defn send-follow-up-email
+  "Format and Send an email to the system admin following up on the installation."
+  [email msg-type]
+  {:pre [(string? email)
+         (u/is-email? email)
+         (contains? #{"abandon" "follow-up"} msg-type)]}
+  (let [subject       (if (= "abandon" msg-type)
+                        "[Metabase] Help make Metabase better."
+                        "[Metabase] Tell us how things are going.")
+        data-quote    (quotation/random-quote)
+        context       (merge {:emailType       "notification"
+                              :logoHeader      true
+                              :quotation       (:quote data-quote)
+                              :quotationAuthor (:author data-quote)}
+                             (if (= "abandon" msg-type)
+                               {:heading "We’d love your feedback."
+                                :callToAction "It looks like Metabase wasn’t quite a match for you. Would you mind taking a fast 5 question survey to help the Metabase team understand why and make things better in the future?"
+                                :link         "http://www.metabase.com/feedback/inactive"}
+                               {:heading "We hope you've been enjoying Metabase."
+                                :callToAction "Would you mind taking a fast 6 question survey to tell us how it’s going?"
+                                :link         "http://www.metabase.com/feedback/active"}))
+        message-body  (stencil/render-file "metabase/email/follow_up_email" context)]
+    (email/send-message
+      :subject      subject
+      :recipients   [email]
+      :message-type :html
+      :message      message-body)))
+
 ;; HACK: temporary workaround to postal requiring a file as the attachment
 (defn- write-byte-array-to-temp-file
   [^bytes img-bytes]
@@ -108,17 +136,17 @@
   "Take a pulse object and list of results, returns an array of attachment objects for an email"
   [pulse results]
   (let [images       (atom [])
-        body         (binding [p/*include-title* true
-                               p/*render-img-fn* (partial render-image images)]
+        body         (binding [render/*include-title* true
+                               render/*render-img-fn* (partial render-image images)]
                        (vec (cons :div (for [result results]
-                                         (p/render-pulse-section result)))))
+                                         (render/render-pulse-section result)))))
         data-quote   (quotation/random-quote)
         message-body (stencil/render-file "metabase/email/pulse"
                                           {:emailType       "pulse"
                                            :pulse           (html body)
                                            :pulseName       (:name pulse)
-                                           :sectionStyle    p/section-style
-                                           :colorGrey4      p/color-gray-4
+                                           :sectionStyle    render/section-style
+                                           :colorGrey4      render/color-gray-4
                                            :quotation       (:quote data-quote)
                                            :quotationAuthor (:author data-quote)
                                            :logoFooter      true})]

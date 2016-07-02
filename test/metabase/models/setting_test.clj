@@ -1,7 +1,7 @@
 (ns metabase.models.setting-test
   (:require [expectations :refer :all]
             [medley.core :as m]
-            [metabase.db :refer [sel]]
+            [metabase.db :as db]
             [metabase.models.setting :refer [defsetting Setting] :as setting]
             (metabase.test [data :refer :all]
                            [util :refer :all])))
@@ -21,10 +21,10 @@
 (defn db-fetch-setting
   "Fetch `Setting` value from the DB to verify things work as we expect."
   [setting-name]
-  (sel :one :field [Setting :value] :key (name setting-name)))
+  (db/select-one-field :value Setting, :key (name setting-name)))
 
 (defn setting-exists? [setting-name]
-  (boolean (sel :one Setting :key (name setting-name))))
+  (boolean (Setting :key (name setting-name))))
 
 (defn set-settings [setting-1-value setting-2-value]
   (test-setting-1 setting-1-value)

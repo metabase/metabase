@@ -1,0 +1,45 @@
+:local .popover {
+  padding: 1em;
+  min-width: 200px;
+}
+
+:local .title {
+  color: color(var(--base-grey) shade(40%));
+  font-weight: bold;
+  font-size: 0.75em;
+  text-transform: uppercase;
+  margin-bottom: 1em;
+  margin-left: 0.5em;
+}
+
+:local .option {
+  composes: cursor-pointer from "style";
+
+  color: var(--default-font-color);
+  font-weight: bold;
+  padding-top: 0.5em;
+  padding-bottom: 0.5em;
+}
+:local .option:hover,
+:local .option:hover .valueLabel  {
+  color: var(--brand-color) !important;
+}
+:local .option.on.selected,
+:local .option.on.selected .valueLabel {
+  color: var(--green-color);
+}
+
+:local .option :global(.Icon) {
+  visibility: hidden;
+  margin-right: 0.5em;
+}
+:local .option:hover :global(.Icon) {
+  visibility: visible;
+}
+:local .option.selected :global(.Icon) {
+  visibility: visible;
+}
+
+:local .option .valueLabel {
+  color: color(var(--base-grey) shade(40%));
+}

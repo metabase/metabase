@@ -34,18 +34,22 @@
         "react/display-name": 1,
         "react/prop-types": 0,
         "react/no-did-mount-set-state": 0,
-        "react/no-did-update-set-state": 0
+        "react/no-did-update-set-state": 0,
+        "flow-vars/define-flow-type": 1,
+        "flow-vars/use-flow-type": 1
     },
     "globals": {
         "angular": false
     },
     "env": {
         "browser": true,
-        "es6": true
+        "es6": true,
+        "commonjs": true
     },
     "parser": "babel-eslint",
     "plugins": [
-        "react"
+        "react",
+        "flow-vars"
     ],
     "extends": ["eslint:recommended", "plugin:react/recommended"]
 }

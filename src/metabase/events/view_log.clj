@@ -24,7 +24,7 @@
   "Simple base function for recording a view of a given `model` and `model-id` by a certain `user`."
   [model model-id user-id]
   ;; TODO - we probably want a little code that prunes old entries so that this doesn't get too big
-  (db/ins ViewLog
+  (db/insert! ViewLog
     :user_id  user-id
     :model    model
     :model_id model-id))

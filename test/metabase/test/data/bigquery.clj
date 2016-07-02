@@ -14,7 +14,7 @@
            (com.google.api.services.bigquery.model Dataset DatasetReference QueryRequest Table TableDataInsertAllRequest TableDataInsertAllRequest$Rows TableFieldSchema TableReference TableRow TableSchema)
            metabase.driver.bigquery.BigQueryDriver))
 
-(resolve-private-fns metabase.driver.bigquery execute post-process-native)
+(resolve-private-fns metabase.driver.bigquery execute execute-no-auto-retry post-process-native)
 
 ;;; # ------------------------------------------------------------ CONNECTION DETAILS ------------------------------------------------------------
 
@@ -28,7 +28,7 @@
 ;; We'll add a unique prefix like "NR_" to every database we create for this test run so multiple tests running at the same time won't stop over each other
 ;; This gives us 676 possible prefixes. This should prevent clashes but still recycle prefixes often enough that the code that destroys the test databases
 ;; (ran at the end of the test suite) will still eventually run and clean up after tests that fail for one reason or another without cleaning up after themselves.
-(defonce ^:private ^:const ^String unique-prefix
+(defonce ^:const ^String unique-prefix
   (str (apply str (take 2 (shuffle (map char (range (int \A) (inc (int \Z))))))) \_))
 
 (def ^:private ^:const details
@@ -67,8 +67,8 @@
 
 (defn- destroy-dataset! [^String dataset-id]
   {:pre [(seq dataset-id)]}
-  (execute (doto (.delete (.datasets bigquery) project-id dataset-id)
-             (.setDeleteContents true)))
+  (execute-no-auto-retry (doto (.delete (.datasets bigquery) project-id dataset-id)
+                           (.setDeleteContents true)))
   (println (u/format-color 'red "Deleted BigQuery dataset '%s'." dataset-id)))
 
 (def ^:private ^:const valid-field-types
@@ -95,36 +95,35 @@
                                                                (.setQuery (format "SELECT COUNT(*) FROM [%s.%s]" dataset-id table-id))))))))))
 
 ;; This is a dirty HACK
-(defn- ^DateTime timestamp-korma-form->GoogleDateTime
-  "Convert the korma form we normally use to wrap a `Timestamp` to a Google `DateTime`."
-  [{[{^String s :korma.sql.utils/generated}] :korma.sql.utils/args}]
-  {:pre [(seq s)]}
+(defn- ^DateTime timestamp-honeysql-form->GoogleDateTime
+  "Convert the HoneySQL form we normally use to wrap a `Timestamp` to a Google `DateTime`."
+  [{[{s :literal}] :args}]
+  {:pre [(string? s) (seq s)]}
   (DateTime. (u/->Timestamp (s/replace s #"'" ""))))
 
-(defn- insert-data! [^String dataset-id, ^String table-id, row-maps]
-  {:pre [(seq dataset-id) (seq table-id) (sequential? row-maps) (seq row-maps) (every? map? row-maps)]}
-  (execute (.insertAll (.tabledata bigquery) project-id dataset-id table-id
-                       (doto (TableDataInsertAllRequest.)
-                         (.setRows (for [row-map row-maps]
-                                     (let [data (TableRow.)]
-                                       (doseq [[k v] row-map
-                                               :let [v (if (:korma.sql.utils/func v)
-                                                         (timestamp-korma-form->GoogleDateTime v)
-                                                         v)]]
-                                         #_(println "V->" v)
-                                         (.set data (name k) v))
-                                       (doto (TableDataInsertAllRequest$Rows.)
-                                         (.setJson data))))))))
-  ;; Wait up to 30 seconds for all the rows to be loaded and become available by BigQuery
-  (let [expected-row-count (count row-maps)]
-    (loop [seconds-to-wait-for-load 30]
-      (let [actual-row-count (table-row-count dataset-id table-id)]
-        (cond
-          (= expected-row-count actual-row-count) :ok
-          (> seconds-to-wait-for-load 0)          (do (Thread/sleep 1000)
-                                                      (recur (dec seconds-to-wait-for-load)))
-          :else                                   (throw (Exception. (format "Failed to load table data for %s.%s: expected %d rows, loaded %d"
-                                                                             dataset-id table-id expected-row-count actual-row-count))))))))
+  (defn- insert-data! [^String dataset-id, ^String table-id, row-maps]
+    {:pre [(seq dataset-id) (seq table-id) (sequential? row-maps) (seq row-maps) (every? map? row-maps)]}
+    (execute (.insertAll (.tabledata bigquery) project-id dataset-id table-id
+                         (doto (TableDataInsertAllRequest.)
+                           (.setRows (for [row-map row-maps]
+                                       (let [data (TableRow.)]
+                                         (doseq [[k v] row-map
+                                                 :let [v (if (instance? honeysql.types.SqlCall v)
+                                                           (timestamp-honeysql-form->GoogleDateTime v)
+                                                           v)]]
+                                           (.set data (name k) v))
+                                         (doto (TableDataInsertAllRequest$Rows.)
+                                           (.setJson data))))))))
+    ;; Wait up to 30 seconds for all the rows to be loaded and become available by BigQuery
+    (let [expected-row-count (count row-maps)]
+      (loop [seconds-to-wait-for-load 30]
+        (let [actual-row-count (table-row-count dataset-id table-id)]
+          (cond
+            (= expected-row-count actual-row-count) :ok
+            (> seconds-to-wait-for-load 0)          (do (Thread/sleep 1000)
+                                                        (recur (dec seconds-to-wait-for-load)))
+            :else                                   (throw (Exception. (format "Failed to load table data for %s.%s: expected %d rows, loaded %d"
+                                                                               dataset-id table-id expected-row-count actual-row-count))))))))
 
 (def ^:private ^:const base-type->bigquery-type
   {:BigIntegerField :INTEGER
@@ -161,7 +160,7 @@
              :id (inc i)))))
 
 (defn- load-tabledef! [dataset-name {:keys [table-name field-definitions], :as tabledef}]
-  (let [table-name  (normalize-name table-name)]
+  (let [table-name (normalize-name table-name)]
     (create-table! dataset-name table-name (fielddefs->field-name->base-type field-definitions))
     (insert-data!  dataset-name table-name (tabledef->prepared-rows tabledef))))
 
@@ -173,18 +172,21 @@
   {:expectations-options :after-run}
   []
   (u/pdoseq [db-name @created-databases]
-    (u/try-apply destroy-dataset! db-name)))
+    (u/ignore-exceptions
+      (destroy-dataset! db-name))))
 
 (defn- create-db! [{:keys [database-name table-definitions]}]
   {:pre [(seq database-name) (sequential? table-definitions)]}
   (let [database-name (normalize-name-and-add-prefix database-name)]
-    (swap! created-databases conj database-name)
-    (try (destroy-dataset! database-name)
-         (catch Throwable _))
-    (create-dataset! database-name)
-    (doseq [tabledef table-definitions]
-      (load-tabledef! database-name tabledef)))
-  (println (u/format-color 'green "[OK]")))
+    (when-not (contains? @created-databases database-name)
+      (u/auto-retry 5
+        (u/ignore-exceptions
+          (destroy-dataset! database-name))
+        (create-dataset! database-name)
+        (u/pdoseq [tabledef table-definitions]
+          (load-tabledef! database-name tabledef))
+        (swap! created-databases conj database-name)
+        (println (u/format-color 'green "[OK]"))))))
 
 
 ;;; # ------------------------------------------------------------ IDatasetLoader ------------------------------------------------------------

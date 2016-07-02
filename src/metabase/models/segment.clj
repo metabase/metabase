@@ -1,5 +1,5 @@
 (ns metabase.models.segment
-  (:require [korma.core :as k]
+  (:require [medley.core :as m]
             [metabase.db :as db]
             [metabase.events :as events]
             (metabase.models [hydrate :refer [hydrate]]
@@ -29,14 +29,14 @@
 (defn- diff-segments [this segment1 segment2]
   (if-not segment1
     ;; this is the first version of the segment
-    (u/update-values (select-keys segment2 [:name :description :definition]) (fn [v] {:after v}))
+    (m/map-vals (fn [v] {:after v}) (select-keys segment2 [:name :description :definition]))
     ;; do our diff logic
     (let [base-diff (revision/default-diff-map this
                                                (select-keys segment1 [:name :description :definition])
                                                (select-keys segment2 [:name :description :definition]))]
       (cond-> (merge-with merge
-                          (u/update-values (:after base-diff) (fn [v] {:after v}))
-                          (u/update-values (:before base-diff) (fn [v] {:before v})))
+                          (m/map-vals (fn [v] {:after v}) (:after base-diff))
+                          (m/map-vals (fn [v] {:before v}) (:before base-diff)))
               (or (get-in base-diff [:after :definition])
                   (get-in base-diff [:before :definition])) (assoc :definition {:before (get-in segment1 [:definition])
                                                                                 :after  (get-in segment2 [:definition])})))))
@@ -51,7 +51,7 @@
 
 ;; ## Persistence Functions
 
-(defn create-segment
+(defn create-segment!
   "Create a new `Segment`.
 
    Returns the newly created `Segment` or throws an Exception."
@@ -60,7 +60,7 @@
          (string? segment-name)
          (integer? creator-id)
          (map? definition)]}
-  (let [segment (db/ins Segment
+  (let [segment (db/insert! Segment
                   :table_id    table-id
                   :creator_id  creator-id
                   :name        segment-name
@@ -75,13 +75,13 @@
    Returns true if `Segment` exists and is active, false otherwise."
   [id]
   {:pre [(integer? id)]}
-  (db/exists? Segment :id id :is_active true))
+  (db/exists? Segment, :id id, :is_active true))
 
 (defn retrieve-segment
   "Fetch a single `Segment` by its ID value."
   [id]
   {:pre [(integer? id)]}
-  (-> (db/sel :one Segment :id id)
+  (-> (Segment id)
       (hydrate :creator)))
 
 (defn retrieve-segments
@@ -90,14 +90,13 @@
   ([table-id]
     (retrieve-segments table-id :active))
   ([table-id state]
-   {:pre [(integer? table-id)
-          (keyword? state)]}
+   {:pre [(integer? table-id) (keyword? state)]}
    (-> (if (= :all state)
-         (db/sel :many Segment :table_id table-id (k/order :name :ASC))
-         (db/sel :many Segment :table_id table-id :is_active (if (= :active state) true false) (k/order :name :ASC)))
+         (db/select Segment, :table_id table-id, {:order-by [[:name :asc]]})
+         (db/select Segment, :table_id table-id, :is_active (= :active state), {:order-by [[:name :asc]]}))
        (hydrate :creator))))
 
-(defn update-segment
+(defn update-segment!
   "Update an existing `Segment`.
 
    Returns the updated `Segment` or throws an Exception."
@@ -108,17 +107,14 @@
          (integer? user-id)
          (string? revision_message)]}
   ;; update the segment itself
-  (db/upd Segment id
+  (db/update! Segment id
     :name        name
     :description description
     :definition  definition)
-  (let [segment (retrieve-segment id)]
-    ;; fire off an event
-    (events/publish-event :segment-update (assoc segment :actor_id user-id :revision_message revision_message))
-    ;; return the updated segment
-    segment))
+  (u/prog1 (retrieve-segment id)
+    (events/publish-event :segment-update (assoc <> :actor_id user-id, :revision_message revision_message))))
 
-(defn delete-segment
+(defn delete-segment!
   "Delete a `Segment`.
 
    This does a soft delete and simply marks the `Segment` as deleted but does not actually remove the
@@ -130,10 +126,7 @@
          (integer? user-id)
          (string? revision-message)]}
   ;; make Segment not active
-  (db/upd Segment id :is_active false)
+  (db/update! Segment id, :is_active false)
   ;; retrieve the updated segment (now retired)
-  (let [segment (retrieve-segment id)]
-    ;; fire off an event
-    (events/publish-event :segment-delete (assoc segment :actor_id user-id :revision_message revision-message))
-    ;; return the updated segment
-    segment))
+  (u/prog1 (retrieve-segment id)
+    (events/publish-event :segment-delete (assoc <> :actor_id user-id, :revision_message revision-message))))

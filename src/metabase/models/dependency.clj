@@ -1,6 +1,5 @@
 (ns metabase.models.dependency
   (:require [clojure.set :as set]
-            [korma.core :as k]
             [metabase.db :as db]
             [metabase.models.interface :as i]
             [metabase.util :as u]))
@@ -30,9 +29,9 @@
   [entity id]
   {:pre [(i/metabase-entity? entity)
          (integer? id)]}
-  (db/sel :many Dependency :model (:name entity) :model_id id))
+  (db/select Dependency, :model (:name entity), :model_id id))
 
-(defn update-dependencies
+(defn update-dependencies!
   "Update the set of `Dependency` objects for a given entity."
   [entity id deps]
   {:pre [(i/metabase-entity? entity)
@@ -44,7 +43,7 @@
                            (when (every? integer? (k deps))
                              (for [val (k deps)]
                                {:dependent_on_model (name k), :dependent_on_id val})))
-        dependencies-old (set (db/sel :many :fields [Dependency :dependent_on_model :dependent_on_id] :model entity-name :model_id id))
+        dependencies-old (set (db/select [Dependency :dependent_on_model :dependent_on_id], :model entity-name, :model_id id))
         dependencies-new (->> (mapv dependency-set (keys deps))
                               (filter identity)
                               flatten
@@ -53,11 +52,12 @@
         dependencies-    (set/difference dependencies-old dependencies-new)]
     (when (seq dependencies+)
       (let [vs (map #(merge % {:model entity-name, :model_id id, :created_at (u/new-sql-timestamp)}) dependencies+)]
-        (k/insert Dependency (k/values vs))))
+        (db/insert-many! Dependency vs)))
     (when (seq dependencies-)
       (doseq [{:keys [dependent_on_model dependent_on_id]} dependencies-]
         ;; batch delete would be nice here, but it's tougher with multiple conditions
-        (k/delete Dependency (k/where {:model              entity-name
-                                       :model_id           id
-                                       :dependent_on_model dependent_on_model
-                                       :dependent_on_id    dependent_on_id}))))))
+        (db/delete! Dependency
+          :model              entity-name
+          :model_id           id
+          :dependent_on_model dependent_on_model
+          :dependent_on_id    dependent_on_id)))))

@@ -1,18 +1,18 @@
 (ns metabase.driver.druid.query-processor
   (:require [clojure.core.match :refer [match]]
             [clojure.string :as s]
-            [clojure.tools.logging]
             [clojure.tools.logging :as log]
-            [metabase.driver.query-processor :as qp]
-            [metabase.driver.query-processor.interface :as i]
+            [cheshire.core :as json]
+            [metabase.query-processor :as qp]
+            [metabase.query-processor.interface :as i]
             [metabase.util :as u])
   (:import clojure.lang.Keyword
-           (metabase.driver.query_processor.interface AgFieldRef
-                                                      DateTimeField
-                                                      DateTimeValue
-                                                      Field
-                                                      RelativeDateTimeValue
-                                                      Value)))
+           (metabase.query_processor.interface AgFieldRef
+                                               DateTimeField
+                                               DateTimeValue
+                                               Field
+                                               RelativeDateTimeValue
+                                               Value)))
 
 ;;             +-----> ::select
 ;; ::query ----|                     +----> ::timeseries
@@ -26,7 +26,10 @@
 (derive ::topN             ::grouped-ag-query)
 (derive ::groupBy          ::grouped-ag-query)
 
-(def ^:private ^:dynamic *query* nil)
+(def ^:private ^:dynamic *query*
+  "The INNER part of the query currently being processed.
+   (`:settings` is merged in from the outer query as well so we can access timezone info)."
+  nil)
 
 (defn- query-type-dispatch-fn [query-type & _] query-type)
 
@@ -59,7 +62,7 @@
 
 
 (def ^:private ^:const query-type->default-query
-  (let [defaults {:intervals   ["-5000/5000"]
+  (let [defaults {:intervals   ["1900-01-01/2100-01-01"]
                   :granularity :all
                   :context     {:timeout 60000}}]
     {::select     (merge defaults {:queryType  :select
@@ -109,11 +112,11 @@
 
 (defn- ag:doubleMax [field]
   (case (dimension-or-metric? field)
-    :metric    {:type      :doubleMin
-                :name      :min
+    :metric    {:type      :doubleMax
+                :name      :max
                 :fieldName (->rvalue field)}
     :dimension {:type        :javascript
-                :name        :min
+                :name        :max
                 :fieldNames  [(->rvalue field)]
                 :fnReset     "function() { return Number.MIN_VALUE ; }"
                 :fnAggregate "function(current, x) { return Math.max(current, (parseFloat(x) || Number.MIN_VALUE)); }"
@@ -164,7 +167,8 @@
   {:pre [(string? format-str)]}
   {:type     :timeFormat
    :format   format-str
-   :timeZone "US/Pacific" ; TODO - should we use `report-timezone` instead (?)
+   :timeZone (or (get-in *query* [:settings :report-timezone])
+                 "UTC")
    :locale   "en-US"})
 
 (defn- extract:js [& function-str-parts]
@@ -172,41 +176,43 @@
   {:type     :javascript
    :function (s/replace (apply str function-str-parts) #"\s+" " ")})
 
-(def ^:private ^:const unit->extractionFn
+(defn- unit->extractionFn
   "JODA date format strings for each datetime unit. [Described here.](http://www.joda.org/joda-time/apidocs/org/joda/time/format/DateTimeFormat.html)."
-  {:default         (extract:timeFormat "yyyy-MM-dd'T'HH:mm:ssZ")
-   :minute          (extract:timeFormat "yyyy-MM-dd'T'HH:mm:00Z")
-   :minute-of-hour  (extract:timeFormat "mm")
-   :hour            (extract:timeFormat "yyyy-MM-dd'T'HH:00:00Z")
-   :hour-of-day     (extract:timeFormat "HH")
-   :day             (extract:timeFormat "yyyy-MM-ddZ")
-   :day-of-week     (extract:js "function (timestamp) {"
-                                "  var date = new Date(timestamp);"
-                                "  return date.getDay() + 1;"
-                                "}")
-   :day-of-month    (extract:timeFormat "dd")
-   :day-of-year     (extract:timeFormat "DDD")
-   :week            (extract:js "function (timestamp) {"
-                                "  var date     = new Date(timestamp);"
-                                "  var firstDOW = new Date(date - (date.getDay() * 86400000));"
-                                "  var month    = firstDOW.getMonth() + 1;"
-                                "  var day      = firstDOW.getDate();"
-                                "  return '' + firstDOW.getFullYear() + '-' + (month < 10 ? '0' : '') + month + '-' + (day < 10 ? '0' : '') + day;"
-                                "}")
-   :week-of-year    (extract:timeFormat "ww")
-   :month           (extract:timeFormat "yyyy-MM-01")
-   :month-of-year   (extract:timeFormat "MM")
-   :quarter         (extract:js "function (timestamp) {"
-                                "  var date         = new Date(timestamp);"
-                                "  var month        = date.getMonth() + 1;" ; js months are 0 - 11
-                                "  var quarterMonth = month - ((month - 1) % 3);"
-                                "  return '' + date.getFullYear() + '-' + (quarterMonth < 10 ? '0' : '') + quarterMonth + '-01';"
-                                "}")
-   :quarter-of-year (extract:js "function (timestamp) {"
-                                "  var date = new Date(timestamp);"
-                                "  return Math.floor((date.getMonth() + 3) / 3);"
-                                "}")
-   :year            (extract:timeFormat "yyyy")})
+  [unit]
+  (case unit
+    :default         (extract:timeFormat "yyyy-MM-dd'T'HH:mm:ssZ")
+    :minute          (extract:timeFormat "yyyy-MM-dd'T'HH:mm:00Z")
+    :minute-of-hour  (extract:timeFormat "mm")
+    :hour            (extract:timeFormat "yyyy-MM-dd'T'HH:00:00Z")
+    :hour-of-day     (extract:timeFormat "HH")
+    :day             (extract:timeFormat "yyyy-MM-ddZ")
+    :day-of-week     (extract:js "function (timestamp) {"
+                                 "  var date = new Date(timestamp);"
+                                 "  return date.getDay() + 1;"
+                                 "}")
+    :day-of-month    (extract:timeFormat "dd")
+    :day-of-year     (extract:timeFormat "DDD")
+    :week            (extract:js "function (timestamp) {"
+                                 "  var date     = new Date(timestamp);"
+                                 "  var firstDOW = new Date(date - (date.getDay() * 86400000));"
+                                 "  var month    = firstDOW.getMonth() + 1;"
+                                 "  var day      = firstDOW.getDate();"
+                                 "  return '' + firstDOW.getFullYear() + '-' + (month < 10 ? '0' : '') + month + '-' + (day < 10 ? '0' : '') + day;"
+                                 "}")
+    :week-of-year    (extract:timeFormat "ww")
+    :month           (extract:timeFormat "yyyy-MM-01")
+    :month-of-year   (extract:timeFormat "MM")
+    :quarter         (extract:js "function (timestamp) {"
+                                 "  var date         = new Date(timestamp);"
+                                 "  var month        = date.getMonth() + 1;" ; js months are 0 - 11
+                                 "  var quarterMonth = month - ((month - 1) % 3);"
+                                 "  return '' + date.getFullYear() + '-' + (quarterMonth < 10 ? '0' : '') + quarterMonth + '-01';"
+                                 "}")
+    :quarter-of-year (extract:js "function (timestamp) {"
+                                 "  var date = new Date(timestamp);"
+                                 "  return Math.floor((date.getMonth() + 3) / 3);"
+                                 "}")
+    :year            (extract:timeFormat "yyyy")))
 
 (extend-protocol IDimension
   nil    (->dimension-rvalue [this] (->rvalue this))
@@ -371,7 +377,7 @@
 (defmulti ^:private handle-order-by query-type-dispatch-fn)
 
 (defmethod handle-order-by ::query [_ _ _]
-  (log/warn (u/format-color 'red "Sorting with Druid is only allowed in queries that have one or more breakout columns. Ignoring :order_by clause.")))
+  (log/warn (u/format-color 'red "Sorting with Druid is only allowed in queries that have one or more breakout columns. Ignoring :order-by clause.")))
 
 (defmethod handle-order-by ::topN [_ {{ag-type :aggregation-type} :aggregation, [breakout-field] :breakout, [{field :field, direction :direction}] :order-by} druid-query]
   (let [field             (->rvalue field)
@@ -462,10 +468,6 @@
       [:many     _] ::groupBy)))
 
 
-(defn- log-druid-query [druid-query]
-  (log/debug (u/format-color 'blue "DRUID QUERY:😋\n%s\n" (u/pprint-to-str druid-query))))
-
-
 (defn- build-druid-query [query]
   {:pre [(map? query)]}
   (let [query-type (druid-query-type query)]
@@ -494,6 +496,14 @@
 (defmethod post-process ::topN       [_ results] (-> results first :result))
 (defmethod post-process ::groupBy    [_ results] (map :event results))
 
+(defn post-process-native
+  "Post-process the results of a *native* Druid query.
+   The appropriate ns-qualified query type keyword (e.g. `::select`, used for mutlimethod dispatch) is inferred from the query itself."
+  [{:keys [queryType], :as query} results]
+  {:pre [queryType]}
+  (post-process (keyword "metabase.driver.druid.query-processor" (name queryType))
+                results))
+
 
 (defn- remove-bonus-keys
   "Remove keys that start with `___` from the results -- they were temporary, and we don't want to return them."
@@ -507,14 +517,33 @@
         (apply dissoc result keys-to-remove)))))
 
 
-;;; ### process-structured-query
+;;; ### MBQL Processor
 
-(defn process-structured-query
-  "Process a structured query for a Druid DB."
-  [do-query query]
-  (binding [*query* query]
-    (let [[query-type druid-query] (build-druid-query query)]
-      (log-druid-query druid-query)
-      (->> (do-query druid-query)
-           (post-process query-type)
-           remove-bonus-keys))))
+(defn mbql->native
+  "Transpile an MBQL (inner) query into a native form suitable for a Druid DB."
+  [query]
+  ;; Merge `:settings` into the inner query dict so the QP has access to it
+  (let [mbql-query (assoc (:query query)
+                     :settings (:settings query))]
+    (binding [*query* mbql-query]
+      (let [[query-type druid-query] (build-druid-query mbql-query)]
+        {:query      druid-query
+         :query-type query-type}))))
+
+(defn execute-query
+  "Execute a query for a Druid DB."
+  [do-query {database :database, {:keys [query query-type mbql?]} :native}]
+  {:pre [database query]}
+  (let [details    (:details database)
+        query      (if (string? query)
+                     (json/parse-string query keyword)
+                     query)
+        query-type (or query-type (keyword "metabase.driver.druid.query-processor" (name (:queryType query))))
+        results    (->> (do-query details query)
+                        (post-process query-type)
+                        remove-bonus-keys)
+        columns    (vec (keys (first results)))]
+    {:columns   columns
+     :rows      (for [row results]
+                  (mapv row columns))
+     :annotate? mbql?}))

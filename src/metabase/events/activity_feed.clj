@@ -43,7 +43,7 @@
   (let [details-fn  #(select-keys % [:name :description :public_perms])
         database-id (get-in object [:dataset_query :database])
         table-id    (get-in object [:dataset_query :query :source_table])]
-    (activity/record-activity
+    (activity/record-activity!
       :topic       topic
       :object      object
       :details-fn  details-fn
@@ -55,12 +55,12 @@
         add-remove-card-details (fn [{:keys [dashcards] :as obj}]
                                   ;; we expect that the object has just a dashboard :id at the top level
                                   ;; plus a `:dashcards` attribute which is a vector of the cards added/removed
-                                  (-> (db/sel :one [Dashboard :description :name :public_perms], :id (events/object->model-id topic obj))
+                                  (-> (db/select-one [Dashboard :description :name :public_perms], :id (events/object->model-id topic obj))
                                       (assoc :dashcards (for [{:keys [id card_id]} dashcards]
-                                                          (-> (db/sel :one [Card :name :description :public_perms], :id card_id)
+                                                          (-> (db/select-one [Card :name :description :public_perms], :id card_id)
                                                               (assoc :id id)
                                                               (assoc :card_id card_id))))))]
-    (activity/record-activity
+    (activity/record-activity!
       :topic      topic
       :object     object
       :details-fn (case topic
@@ -73,7 +73,7 @@
   (let [details-fn  #(select-keys % [:name :description :revision_message])
         table-id    (:table_id object)
         database-id (table/table-id->database-id table-id)]
-    (activity/record-activity
+    (activity/record-activity!
       :topic       topic
       :object      object
       :details-fn  details-fn
@@ -82,7 +82,7 @@
 
 (defn- process-pulse-activity [topic object]
   (let [details-fn #(select-keys % [:name :public_perms])]
-    (activity/record-activity
+    (activity/record-activity!
       :topic       topic
       :object      object
       :details-fn  details-fn)))
@@ -91,7 +91,7 @@
   (let [details-fn  #(select-keys % [:name :description :revision_message])
         table-id    (:table_id object)
         database-id (table/table-id->database-id table-id)]
-    (activity/record-activity
+    (activity/record-activity!
       :topic       topic
       :object      object
       :details-fn  details-fn
@@ -101,8 +101,8 @@
 (defn- process-user-activity [topic object]
   ;; we only care about login activity when its the users first session (a.k.a. new user!)
   (when (and (= :user-login topic)
-             (= (:session_id object) (first-session-for-user (:user_id object))))
-    (activity/record-activity
+             (:first_login object))
+    (activity/record-activity!
       :topic    :user-joined
       :user-id  (:user_id object)
       :model-id (:user_id object))))
@@ -116,8 +116,8 @@
       (case (events/topic->model topic)
         "card"      (process-card-activity topic object)
         "dashboard" (process-dashboard-activity topic object)
-        "install"   (when-not (db/sel :one :fields [Activity :id])
-                      (db/ins Activity :topic "install" :model "install"))
+        "install"   (when-not (db/exists? Activity)
+                      (db/insert! Activity, :topic "install", :model "install"))
         "metric"    (process-metric-activity topic object)
         "pulse"     (process-pulse-activity topic object)
         "segment"   (process-segment-activity topic object)

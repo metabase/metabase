@@ -1,0 +1,60 @@
+.scroll-y, :local(.scroll-y) { overflow-y: auto; }
+.scroll-x { overflow-x: auto; }
+
+.scroll-show::-webkit-scrollbar {
+    width: 15px;
+    height: 18px;
+}
+
+.scroll-show--hover::-webkit-scrollbar {
+    display: none;
+}
+.scroll-show--hover:hover::-webkit-scrollbar {
+    display: inherit;
+}
+
+.scroll-show--horizontal::-webkit-scrollbar {
+    height: 6px;
+}
+
+.scroll-show::-webkit-scrollbar-thumb {
+    height: 6px;
+    border: 4px solid transparent;
+    border-radius: 7px;
+    background-clip: padding-box;
+    background-color: #c2c2c2;
+}
+
+.scroll-show::-webkit-scrollbar-button {
+    width: 0;
+    height: 0;
+    display: none;
+}
+.scroll-show::-webkit-scrollbar-corner {
+    background-color: transparent;
+}
+
+.scroll-show:hover::-webkit-scrollbar-thumb {
+    background-color: #7d7d7d;
+}
+.scroll-show::-webkit-scrollbar-thumb:horizontal:hover,
+.scroll-show::-webkit-scrollbar-thumb:vertical:hover {
+    background-color: #7d7d7d;
+}
+.scroll-show::-webkit-scrollbar-thumb:horizontal:active,
+.scroll-show::-webkit-scrollbar-thumb:vertical:active {
+    background-color: #7d7d7d;
+}
+
+/* scroll light */
+.scroll-show.scroll--light::-webkit-scrollbar-thumb {
+    border-radius: 0;
+    background-color: #CFE4F5;
+}
+
+.scroll-show.scroll--light::-webkit-scrollbar-thumb:horizontal:hover,
+.scroll-show.scroll--light::-webkit-scrollbar-thumb:vertical:hover,
+.scroll-show.scroll--light::-webkit-scrollbar-thumb:horizontal:active,
+.scroll-show.scroll--light::-webkit-scrollbar-thumb:vertical:active {
+    background-color: #C7D9E4;
+}

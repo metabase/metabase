@@ -2,9 +2,9 @@
   (:require [clojure.core.async :as async]
             [clojure.tools.logging :as log]
             [metabase.db :as db]
-            [metabase.driver :as driver]
             [metabase.events :as events]
-            [metabase.models.database :refer [Database]]))
+            [metabase.models.database :refer [Database]]
+            [metabase.sync-database :as sync-database]))
 
 
 (def ^:const sync-database-topics
@@ -26,10 +26,10 @@
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
   (try
     (when-let [{topic :topic object :item} sync-database-event]
-      (when-let [database (db/sel :one Database :id (events/object->model-id topic object))]
+      (when-let [database (Database (events/object->model-id topic object))]
         ;; just kick off a sync on another thread
         (future (try
-                  (driver/sync-database! database)
+                  (sync-database/sync-database! database)
                   (catch Throwable t
                     (log/error (format "Error syncing Database: %d" (:id database)) t))))))
     (catch Throwable e

@@ -14,8 +14,7 @@
   "env": {
   },
   "addons": [
-    "heroku-postgresql",
-    "mailgun"
+    "heroku-postgresql"
   ],
   "buildpacks": [
     { "url": "https://github.com/heroku/heroku-buildpack-nodejs" },

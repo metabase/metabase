@@ -8,7 +8,7 @@
                           [dataset :as dataset]
                           [email :as email]
                           [field :as field]
-                          [foreignkey :as fk]
+                          [label :as label]
                           [metric :as metric]
                           [notify :as notify]
                           [pulse :as pulse]
@@ -40,10 +40,10 @@
   (context "/dataset"      [] (+auth dataset/routes))
   (context "/email"        [] (+auth email/routes))
   (context "/field"        [] (+auth field/routes))
-  (context "/foreignkey"   [] (+auth fk/routes))
   (GET     "/health"       [] (if ((resolve 'metabase.core/initialized?))
                                 {:status 200 :body {:status "ok"}}
                                 {:status 503 :body {:status "initializing" :progress ((resolve 'metabase.core/initialization-progress))}}))
+  (context "/label"        [] (+auth label/routes))
   (context "/metric"       [] (+auth metric/routes))
   (context "/notify"       [] (+apikey notify/routes))
   (context "/pulse"        [] (+auth pulse/routes))

@@ -1,33 +1,31 @@
 (ns metabase.api.segment-test
   "Tests for /api/segment endpoints."
-  (:require [clojure.tools.macro :refer [symbol-macrolet]]
-            [expectations :refer :all]
+  (:require [expectations :refer :all]
             (metabase [http-client :as http]
                       [middleware :as middleware])
             (metabase.models [database :refer [Database]]
                              [revision :refer [Revision]]
-                             [segment :refer [Segment]]
+                             [segment :refer [Segment], :as segment]
                              [table :refer [Table]])
-            [metabase.test.util :as tu]
             [metabase.test.data.users :refer :all]
             [metabase.test.data :refer :all]
-            [metabase.models.segment :as segment]))
+            [metabase.test.util :as tu]))
 
 ;; ## Helper Fns
 
-(defn user-details [user]
+(defn- user-details [user]
   (tu/match-$ user
-    {:id $
-     :email $
-     :date_joined $
-     :first_name $
-     :last_name $
-     :last_login $
+    {:id           $
+     :email        $
+     :date_joined  $
+     :first_name   $
+     :last_name    $
+     :last_login   $
      :is_superuser $
-     :is_qbnewb $
-     :common_name $}))
+     :is_qbnewb    $
+     :common_name  $}))
 
-(defn segment-response [{:keys [created_at updated_at] :as segment}]
+(defn- segment-response [{:keys [created_at updated_at] :as segment}]
   (-> (into {} segment)
       (dissoc :id :table_id)
       (update :creator #(into {} %))
@@ -81,18 +79,13 @@
    :is_active    true
    :definition   {:database 21
                   :query    {:filter ["abc"]}}}
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{:keys [id]} {:name   "Stuff"
-                                       :db_id  database-id
-                                       :active true}]
-      (segment-response ((user->client :crowberto) :post 200 "segment" {:name        "A Segment"
-                                                                        :description "I did it!"
-                                                                        :table_id    id
-                                                                        :definition  {:database 21
-                                                                                      :query    {:filter ["abc"]}}})))))
+  (tu/with-temp* [Database [{database-id :id}]
+                  Table    [{:keys [id]} {:db_id database-id}]]
+    (segment-response ((user->client :crowberto) :post 200 "segment" {:name        "A Segment"
+                                                                      :description "I did it!"
+                                                                      :table_id    id
+                                                                      :definition  {:database 21
+                                                                                    :query    {:filter ["abc"]}}}))))
 
 
 ;; ## PUT /api/segment
@@ -124,7 +117,7 @@
                                                    :definition       "foobar"}))
 
 (expect
-  {:name         "Tatooine"
+  {:name         "Costa Rica"
    :description  nil
    :creator_id   (user->id :rasta)
    :creator      (user-details (fetch-user :rasta))
@@ -132,26 +125,17 @@
    :updated_at   true
    :is_active    true
    :definition   {:database 2
-                  :query    {:filter ["not" "the droids you're looking for"]}}}
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{table-id :id} {:name   "Stuff"
-                                         :db_id  database-id
-                                         :active true}]
-      (tu/with-temp Segment [{:keys [id]} {:creator_id  (user->id :rasta)
-                                           :table_id    table-id
-                                           :name        "Droids in the desert"
-                                           :description "Lookin' for a jedi"
-                                           :definition  {}}]
-        (segment-response ((user->client :crowberto) :put 200 (format "segment/%d" id) {:id               id
-                                                                                        :name             "Tatooine"
-                                                                                        :description      nil
-                                                                                        :table_id         456
-                                                                                        :revision_message "I got me some revisions"
-                                                                                        :definition       {:database 2
-                                                                                                           :query    {:filter ["not" "the droids you're looking for"]}}}))))))
+                  :query    {:filter ["not" "the toucans you're looking for"]}}}
+  (tu/with-temp* [Database [{database-id :id}]
+                  Table    [{table-id :id} {:db_id database-id}]
+                  Segment  [{:keys [id]}   {:table_id table-id}]]
+    (segment-response ((user->client :crowberto) :put 200 (format "segment/%d" id) {:id               id
+                                                                                    :name             "Costa Rica"
+                                                                                    :description      nil
+                                                                                    :table_id         456
+                                                                                    :revision_message "I got me some revisions"
+                                                                                    :definition       {:database 2
+                                                                                                       :query    {:filter ["not" "the toucans you're looking for"]}}}))))
 
 
 ;; ## DELETE /api/segment/:id
@@ -170,28 +154,19 @@
 
 (expect
   [{:success true}
-   {:name         "Droids in the desert"
-    :description  "Lookin' for a jedi"
+   {:name         "Toucans in the rainforest"
+    :description  "Lookin' for a blueberry"
     :creator_id   (user->id :rasta)
     :creator      (user-details (fetch-user :rasta))
     :created_at   true
     :updated_at   true
     :is_active    false
     :definition   {}}]
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{table-id :id} {:name   "Stuff"
-                                         :db_id  database-id
-                                         :active true}]
-      (tu/with-temp Segment [{:keys [id]} {:creator_id  (user->id :rasta)
-                                           :table_id    table-id
-                                           :name        "Droids in the desert"
-                                           :description "Lookin' for a jedi"
-                                           :definition  {}}]
-        [((user->client :crowberto) :delete 200 (format "segment/%d" id) :revision_message "carryon")
-         (segment-response (segment/retrieve-segment id))]))))
+  (tu/with-temp* [Database [{database-id :id}]
+                  Table    [{table-id :id} {:db_id database-id}]
+                  Segment  [{:keys [id]} {:table_id table-id}]]
+    [((user->client :crowberto) :delete 200 (format "segment/%d" id) :revision_message "carryon")
+     (segment-response (segment/retrieve-segment id))]))
 
 
 ;; ## GET /api/segment/:id
@@ -202,8 +177,8 @@
 
 
 (expect
-  {:name         "One Segment to rule them all, one segment to define them"
-   :description  "One segment to bring them all, and in the DataModel bind them"
+  {:name         "Toucans in the rainforest"
+   :description  "Lookin' for a blueberry"
    :creator_id   (user->id :crowberto)
    :creator      (user-details (fetch-user :crowberto))
    :created_at   true
@@ -211,20 +186,13 @@
    :is_active    true
    :definition   {:database 123
                   :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{table-id :id} {:name   "Stuff"
-                                         :db_id  database-id
-                                         :active true}]
-      (tu/with-temp Segment [{:keys [id]} {:creator_id  (user->id :crowberto)
-                                           :table_id    table-id
-                                           :name        "One Segment to rule them all, one segment to define them"
-                                           :description "One segment to bring them all, and in the DataModel bind them"
-                                           :definition  {:database 123
-                                                         :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}]
-        (segment-response ((user->client :crowberto) :get 200 (format "segment/%d" id)))))))
+  (tu/with-temp* [Database [{database-id :id}]
+                  Table    [{table-id :id} {:db_id database-id}]
+                  Segment  [{:keys [id]}   {:creator_id (user->id :crowberto)
+                                            :table_id   table-id
+                                            :definition {:database 123
+                                                         :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}]]
+    (segment-response ((user->client :crowberto) :get 200 (format "segment/%d" id)))))
 
 
 ;; ## GET /api/segment/:id/revisions
@@ -250,36 +218,25 @@
     :diff         {:name       {:after "b"}
                    :definition {:after {:filter ["AND" [">" 1 25]]}}}
     :description  nil}]
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{table-id :id} {:name   "Stuff"
-                                         :db_id  database-id
-                                         :active true}]
-      (tu/with-temp Segment [{:keys [id]} {:creator_id  (user->id :crowberto)
-                                           :table_id    table-id
-                                           :name        "One Segment to rule them all, one segment to define them"
-                                           :description "One segment to bring them all, and in the DataModel bind them"
-                                           :definition  {:database 123
-                                                         :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}]
-        (tu/with-temp Revision [_ {:model        "Segment"
-                                   :model_id     id
-                                   :user_id      (user->id :rasta)
-                                   :object       {:name "b"
-                                                  :definition {:filter ["AND" [">" 1 25]]}}
-                                   :is_creation  true
-                                   :is_reversion false}]
-          (tu/with-temp Revision [_ {:model        "Segment"
-                                     :model_id     id
-                                     :user_id      (user->id :crowberto)
-                                     :object       {:name "c"
-                                                    :definition {:filter ["AND" [">" 1 25]]}}
-                                     :is_creation  false
-                                     :is_reversion false
-                                     :message      "updated"}]
-            (->> ((user->client :crowberto) :get 200 (format "segment/%d/revisions" id))
-                 (mapv #(dissoc % :timestamp :id)))))))))
+  (tu/with-temp* [Database [{database-id :id}]
+                  Table    [{table-id :id} {:db_id database-id}]
+                  Segment  [{:keys [id]} {:creator_id  (user->id :crowberto)
+                                          :table_id    table-id
+                                          :definition  {:database 123
+                                                        :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}]
+                  Revision [_ {:model        "Segment"
+                               :model_id     id
+                               :object       {:name "b"
+                                              :definition {:filter ["AND" [">" 1 25]]}}
+                               :is_creation  true}]
+                  Revision [_ {:model        "Segment"
+                               :model_id     id
+                               :user_id      (user->id :crowberto)
+                               :object       {:name "c"
+                                              :definition {:filter ["AND" [">" 1 25]]}}
+                               :message      "updated"}]]
+    (doall (for [revision ((user->client :crowberto) :get 200 (format "segment/%d/revisions" id))]
+             (dissoc revision :timestamp :id)))))
 
 
 ;; ## POST /api/segment/:id/revert
@@ -297,7 +254,7 @@
 
 
 (expect
-  [;; the api response
+  [ ;; the api response
    {:is_reversion true
     :is_creation  false
     :message      nil
@@ -333,47 +290,37 @@
                     :definition  {:after {:database 123
                                           :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}}
      :description  nil}]]
-  (tu/with-temp Database [{database-id :id} {:name      "Hillbilly"
-                                             :engine    :yeehaw
-                                             :details   {}
-                                             :is_sample false}]
-    (tu/with-temp Table [{table-id :id} {:name   "Stuff"
-                                         :db_id  database-id
-                                         :active true}]
-      (tu/with-temp Segment [{:keys [id]} {:creator_id  (user->id :crowberto)
-                                           :table_id    table-id
-                                           :name        "One Segment to rule them all, one segment to define them"
-                                           :description "One segment to bring them all, and in the DataModel bind them"
-                                           :definition  {:creator_id  (user->id :crowberto)
-                                                         :table_id    table-id
-                                                         :name        "Reverted Segment Name"
-                                                         :description nil
-                                                         :definition  {:database 123
-                                                                       :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}}]
-        (tu/with-temp Revision [{revision-id :id} {:model        "Segment"
-                                                   :model_id     id
-                                                   :user_id      (user->id :rasta)
-                                                   :object       {:creator_id  (user->id :crowberto)
-                                                                  :table_id    table-id
-                                                                  :name        "One Segment to rule them all, one segment to define them"
-                                                                  :description "One segment to bring them all, and in the DataModel bind them"
-                                                                  :definition  {:database 123
-                                                                                :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}
-                                                   :is_creation  true
-                                                   :is_reversion false}]
-          (tu/with-temp Revision [_ {:model        "Segment"
-                                     :model_id     id
-                                     :user_id      (user->id :crowberto)
-                                     :object       {:creator_id  (user->id :crowberto)
-                                                    :table_id    table-id
-                                                    :name        "Changed Segment Name"
-                                                    :description "One segment to bring them all, and in the DataModel bind them"
-                                                    :definition  {:database 123
-                                                                  :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}
-                                     :is_creation  false
-                                     :is_reversion false
-                                     :message      "updated"}]
-            [(-> ((user->client :crowberto) :post 200 (format "segment/%d/revert" id) {:revision_id revision-id})
-                 (dissoc :id :timestamp))
-             (->> ((user->client :crowberto) :get 200 (format "segment/%d/revisions" id))
-                  (mapv #(dissoc % :timestamp :id)))]))))))
+  (tu/with-temp* [Database [{database-id :id}]
+                  Table    [{table-id :id}    {:db_id database-id}]
+                  Segment  [{:keys [id]}      {:creator_id  (user->id :crowberto)
+                                               :table_id    table-id
+                                               :name        "One Segment to rule them all, one segment to define them"
+                                               :description "One segment to bring them all, and in the DataModel bind them"
+                                               :definition  {:creator_id  (user->id :crowberto)
+                                                             :table_id    table-id
+                                                             :name        "Reverted Segment Name"
+                                                             :description nil
+                                                             :definition  {:database 123
+                                                                           :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}}]
+                  Revision [{revision-id :id} {:model        "Segment"
+                                               :model_id     id
+                                               :object       {:creator_id  (user->id :crowberto)
+                                                              :table_id    table-id
+                                                              :name        "One Segment to rule them all, one segment to define them"
+                                                              :description "One segment to bring them all, and in the DataModel bind them"
+                                                              :definition  {:database 123
+                                                                            :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}
+                                               :is_creation  true}]
+                  Revision [_                 {:model        "Segment"
+                                               :model_id     id
+                                               :user_id      (user->id :crowberto)
+                                               :object       {:creator_id  (user->id :crowberto)
+                                                              :table_id    table-id
+                                                              :name        "Changed Segment Name"
+                                                              :description "One segment to bring them all, and in the DataModel bind them"
+                                                              :definition  {:database 123
+                                                                            :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}
+                                               :message      "updated"}]]
+    [(dissoc ((user->client :crowberto) :post 200 (format "segment/%d/revert" id) {:revision_id revision-id}) :id :timestamp)
+     (doall (for [revision ((user->client :crowberto) :get 200 (format "segment/%d/revisions" id))]
+              (dissoc revision :timestamp :id)))]))

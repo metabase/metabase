@@ -3,6 +3,7 @@
 > [Upgrading to new versions of Metabase](#deploying-new-versions-of-metabase)  
 > [Retaining Metabase logs on S3](#retaining-metabase-logs)  
 > [Running Metabase over HTTPS](#running-metabase-over-https)  
+> [Setting the Java timezone](#setting-the-jvm-timezone)  
 > [Using Papertrail for logging](#running-metabase-with-papertrail-on-aws)  
 > [Protecting invalid hostname access](#protecting-against-invalid-hostname-access)
 
@@ -16,7 +17,7 @@ The Metabase team runs a number of production installations on AWS using Elastic
 
 Metabase provides an Elastic Beanstalk pre-configured launch url to help new installations getting started.  If you are starting fresh we recommend you follow this link to begin creating the Elastic Beanstalk deployment with a few choices pre-filled.
 
-[Launch Metabase on Elastic Beanstalk](http://downloads.metabase.com/v0.15.1/launch-aws-eb.html)
+[Launch Metabase on Elastic Beanstalk](http://downloads.metabase.com/v0.17.1/launch-aws-eb.html)
 
 The rest of this guide will follow each phase of the Elastic Beanstalk setup step-by-step.
 
@@ -53,7 +54,7 @@ When your environment type settings look like the above then go ahead and click 
 
 The application version describes the exact binary you wish to deploy to your Elastic Beanstalk application.  Metabase provides a pre-built AWS Elastic Beanstalk application version which can be linked to directly.  Simply enter the following url in the `S3 URL` textbox:
 
-https://s3.amazonaws.com/downloads.metabase.com/v0.15.1/metabase-aws-eb.zip
+http://downloads.metabase.com/v0.17.1/metabase-aws-eb.zip
 
 Leave all the settings under Deployment Limits on their defaults.  These settings won't impact Metabase.
 
@@ -186,7 +187,7 @@ Here's each step:
 1. Go to Elastic Beanstalk and select your `Metabase` application
 * Click on `Application Versions` on the left nav (you can also choose `Application Versions` from the dropdown at the top of the page)
 * Download the latest Metabase Elastic Beanstalk deployment file
-  * https://s3.amazonaws.com/downloads.metabase.com/v0.15.1/metabase-aws-eb.zip
+  * http://downloads.metabase.com/v0.17.1/metabase-aws-eb.zip
 * Upload a new Application Version
 	* Click the `Upload` button on the upper right side of the listing
 		* Give the new version a name, ideally including the Metabase version number (e.g. v0.13.0)
@@ -260,6 +261,18 @@ Once your application is working properly over HTTPS we recommend setting an add
 1. Click on `Configuration` on the left hand sidebar
 * Scroll down to `Software Configuration` under the _Web Tier_ section and click the gear icon to edit those settings.
 * Under `Environment Properties` add an entry for `NGINX_FORCE_SSL` with a value of `1`
+* Scroll to the bottom of the page and click `Apply` in the lower right, then wait for your application to update.
+
+
+
+# Setting the JVM Timezone
+
+It's best to set your JVM timezone to match the timezone you'd like all your reports to come in.  You can do this by adding the `JAVA_TIMEZONE` environment variable.
+
+1. Click on `Configuration` on the left hand sidebar
+* Scroll down to `Software Configuration` under the _Web Tier_ section and click the gear icon to edit those settings.
+* Under `Environment Properties` add the following
+   * `JAVA_TIMEZONE` with a value such as `US/Pacific`
 * Scroll to the bottom of the page and click `Apply` in the lower right, then wait for your application to update.
 
 

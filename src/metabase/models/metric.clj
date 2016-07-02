@@ -1,5 +1,5 @@
 (ns metabase.models.metric
-  (:require [korma.core :as k]
+  (:require [medley.core :as m]
             [metabase.db :as db]
             [metabase.events :as events]
             (metabase.models [dependency :as dependency]
@@ -30,17 +30,17 @@
 (defn- diff-metrics [this metric1 metric2]
   (if-not metric1
     ;; this is the first version of the metric
-    (u/update-values (select-keys metric2 [:name :description :definition]) (fn [v] {:after v}))
+    (m/map-vals (fn [v] {:after v}) (select-keys metric2 [:name :description :definition]))
     ;; do our diff logic
     (let [base-diff (revision/default-diff-map this
                                                (select-keys metric1 [:name :description :definition])
                                                (select-keys metric2 [:name :description :definition]))]
       (cond-> (merge-with merge
-                          (u/update-values (:after base-diff) (fn [v] {:after v}))
-                          (u/update-values (:before base-diff) (fn [v] {:before v})))
-              (or (get-in base-diff [:after :definition])
-                  (get-in base-diff [:before :definition])) (assoc :definition {:before (get-in metric1 [:definition])
-                                                                                :after  (get-in metric2 [:definition])})))))
+                          (m/map-vals (fn [v] {:after v}) (:after base-diff))
+                          (m/map-vals (fn [v] {:before v}) (:before base-diff)))
+        (or (get-in base-diff [:after :definition])
+            (get-in base-diff [:before :definition])) (assoc :definition {:before (get-in metric1 [:definition])
+                                                                          :after  (get-in metric2 [:definition])})))))
 
 (u/strict-extend (class Metric)
   revision/IRevisioned
@@ -65,7 +65,7 @@
 
 ;; ## Persistence Functions
 
-(defn create-metric
+(defn create-metric!
   "Create a new `Metric`.
 
    Returns the newly created `Metric` or throws an Exception."
@@ -74,17 +74,17 @@
          (string? metric-name)
          (integer? creator-id)
          (map? definition)]}
-  (let [metric (db/ins Metric
-                  :table_id    table-id
-                  :creator_id  creator-id
-                  :name        metric-name
-                  :description description
-                  :is_active   true
-                  :definition  definition)]
+  (let [metric (db/insert! Metric
+                 :table_id    table-id
+                 :creator_id  creator-id
+                 :name        metric-name
+                 :description description
+                 :is_active   true
+                 :definition  definition)]
     (-> (events/publish-event :metric-create metric)
         (hydrate :creator))))
 
-(defn exists-metric?
+(defn exists?
   "Predicate function which checks for a given `Metric` with ID.
    Returns true if `Metric` exists and is active, false otherwise."
   [id]
@@ -107,11 +107,11 @@
    {:pre [(integer? table-id)
           (keyword? state)]}
    (-> (if (= :all state)
-         (db/sel :many Metric :table_id table-id, (k/order :name :ASC))
-         (db/sel :many Metric :table_id table-id, :is_active (if (= :active state) true false), (k/order :name :ASC)))
+         (db/select Metric, :table_id table-id, {:order-by [[:name :asc]]})
+         (db/select Metric, :table_id table-id, :is_active (= :active state), {:order-by [[:name :asc]]}))
        (hydrate :creator))))
 
-(defn update-metric
+(defn update-metric!
   "Update an existing `Metric`.
 
    Returns the updated `Metric` or throws an Exception."
@@ -122,14 +122,14 @@
          (integer? user-id)
          (string? revision_message)]}
   ;; update the metric itself
-  (db/upd Metric id
+  (db/update! Metric id
     :name        name
     :description description
     :definition  definition)
   (u/prog1 (retrieve-metric id)
     (events/publish-event :metric-update (assoc <> :actor_id user-id, :revision_message revision_message))))
 
-(defn delete-metric
+(defn delete-metric!
   "Delete a `Metric`.
 
    This does a soft delete and simply marks the `Metric` as deleted but does not actually remove the
@@ -141,7 +141,7 @@
          (integer? user-id)
          (string? revision-message)]}
   ;; make Metric not active
-  (db/upd Metric id :is_active false)
+  (db/update! Metric id, :is_active false)
   ;; retrieve the updated metric (now retired)
   (u/prog1 (retrieve-metric id)
     (events/publish-event :metric-delete (assoc <> :actor_id user-id, :revision_message revision-message))))

@@ -3,7 +3,7 @@
             [clojure.java.io :as io]
             [compojure.core :refer [GET]]
             [metabase.api.common :refer :all]
-            [metabase.driver :as driver])
+            [metabase.query-processor :as qp])
   (:import java.awt.Color
            java.awt.image.BufferedImage
            (java.io ByteArrayOutputStream IOException)
@@ -119,8 +119,8 @@
    lon-col-idx String->Integer
    query       String->Dict}
   (let [updated-query (update query :query #(query-with-inside-filter % lat-field lon-field x y zoom))
-        result        (driver/dataset-query updated-query {:executed_by   *current-user-id*
-                                                           :synchronously true})
+        result        (qp/dataset-query updated-query {:executed_by   *current-user-id*
+                                                       :synchronously true})
         points        (for [row (-> result :data :rows)]
                         [(nth row lat-col-idx) (nth row lon-col-idx)])]
     ;; manual ring response here.  we simply create an inputstream from the byte[] of our image

@@ -1,6 +1,6 @@
 # Running Metabase on Heroku
 
-Metabase is currently offering beta support for Heroku deployments and planning to improve support for Heroku going forward.  Metabase will deploy and run fine on Heroku but there are a few limitations.
+Heroku is a great place to evaluate Metabase and take it for a quick spin with just a click of a button and a couple minutes of waiting time.  If you decide to keep your Metabase running long term we recommend some upgrades as noted below to avoid limitations of the Heroku free tier.
 
 
 ### Launching Metabase
@@ -14,10 +14,19 @@ If you've got a Heroku account then all there is to do is follow this one-click 
 This will launch a Heroku deployment using a github repository that Metabase maintains.
 
 
-### Known Issues
+### Upgrading beyond the `Free` tier
+
+Heroku is very kind and offers a free tier to be used for very small/non-critical workloads which is great if you just want to evaluate Metabase and see what it looks like.  If you like what you see and decide to use Metabase as an ongoing part of your analytics workflow we recommend these upgrades which are quite affordable and will allow you to fully utilize all of Metabase's capabilities without running into annoying limitations.
+
+1. Upgrade your dyno to the `Hobby` tier or one of the professional `Standard` 1x/2x dynos.  The most important reason for this is that your dyno will never sleep and that allows Metabase to run all of its background work such as sending Pulses, syncing metadata, etc, in a reliable fashion.
+
+2. Upgrade your Postgres database to the `Basic` package or for more peace of mind go for the `Standard 0` package.  The primary reason for this upgrade is to get more than the minimum number of database rows offered in the free tier (10k), which we've had some users exhaust within a week.  You'll also get better overall performance along with backups, which we think is worth it.
+
+
+### Known Limitations
 
  * Heroku’s 30 second timeouts on all web requests can cause a few issues if you happen to have longer running database queries.  Most people don’t run into this but be aware that it’s possible.
- * If you don’t access the application for a while Heroku will sleep your Metabase environment.  This prevents things like Pulses and Metabase background tasks from running when scheduled and at times makes the app appear to be slow when really it's just Heroku reloading your app.
+ * When using the `free` tier, if you don’t access the application for a while Heroku will sleep your Metabase environment.  This prevents things like Pulses and Metabase background tasks from running when scheduled and at times makes the app appear to be slow when really it's just Heroku reloading your app.  You can resolve this by upgrading to the `hobby` tier or higher.
 
 Now that you’ve installed Metabase, it’s time to [set it up and connect it to your database](../setting-up-metabase.md).
 
@@ -35,16 +44,16 @@ Upgrading to the next version of Metabase is a simple process where you will gra
 Here's each step:
 
 * Clone the latest version to your local machine:
-```
-git clone https://github.com/metabase/metabase-deploy.git
-cd metabase-deploy
-```
+
+    git clone https://github.com/metabase/metabase-deploy.git  
+    cd metabase-deploy
+
 * Add a git remote with your metabase setup:
-```
-git remote add heroku https://git.heroku.com/your-metabase-app.git
-```
+
+    git remote add heroku https://git.heroku.com/your-metabase-app.git
+
 * Force push the new version to Heroku:
-```
-git push -f heroku master
-```
+
+    git push -f heroku master
+
 * Wait for the deploy to finish

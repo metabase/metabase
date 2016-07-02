@@ -1,6 +1,5 @@
 (ns metabase.models.dependency-test
   (:require [expectations :refer :all]
-            [korma.core :as k]
             [metabase.db :as db]
             (metabase.models [dependency :refer :all]
                              [interface :as i])
@@ -46,27 +45,27 @@
      :model_id           4
      :dependent_on_model "foobar"
      :dependent_on_id    13}}
-  (tu/with-temp Dependency [_ {:model              "Mock"
-                               :model_id           4
-                               :dependent_on_model "test"
-                               :dependent_on_id    1
-                               :created_at         (u/new-sql-timestamp)}]
-    (tu/with-temp Dependency [_ {:model              "Mock"
+  (tu/with-temp* [Dependency [_ {:model              "Mock"
+                                 :model_id           4
+                                 :dependent_on_model "test"
+                                 :dependent_on_id    1
+                                 :created_at         (u/new-sql-timestamp)}]
+                  Dependency [_ {:model              "Mock"
                                  :model_id           4
                                  :dependent_on_model "foobar"
                                  :dependent_on_id    13
-                                 :created_at         (u/new-sql-timestamp)}]
-      (format-dependencies (retrieve-dependencies Mock 4)))))
+                                 :created_at         (u/new-sql-timestamp)}]]
+    (format-dependencies (retrieve-dependencies Mock 4))))
 
 
-;; update-dependencies
+;; update-dependencies!
 
 ;; we skip over values which aren't integers
 (expect
   #{}
   (do
-    (update-dependencies Mock 2 {:test ["a" "b" "c"]})
-    (set (db/sel :many Dependency :model "Mock" :model_id 2))))
+    (update-dependencies! Mock 2 {:test ["a" "b" "c"]})
+    (set (db/select Dependency, :model "Mock", :model_id 2))))
 
 ;; valid working dependencies list
 (expect
@@ -83,8 +82,8 @@
      :dependent_on_model "test"
      :dependent_on_id    3}}
   (do
-    (update-dependencies Mock 7 {:test [1 2 3]})
-    (format-dependencies (db/sel :many Dependency :model "Mock" :model_id 7))))
+    (update-dependencies! Mock 7 {:test [1 2 3]})
+    (format-dependencies (db/select Dependency, :model "Mock", :model_id 7))))
 
 ;; delete dependencies that are no longer in the list
 (expect
@@ -97,11 +96,11 @@
      :dependent_on_model "test"
      :dependent_on_id    2}}
   (do
-    (db/ins Dependency
+    (db/insert! Dependency
       :model              "Mock"
       :model_id           1
       :dependent_on_model "test"
       :dependent_on_id    5
       :created_at         (u/new-sql-timestamp))
-    (update-dependencies Mock 1 {:test [1 2]})
-    (format-dependencies (db/sel :many Dependency :model "Mock" :model_id 1))))
+    (update-dependencies! Mock 1 {:test [1 2]})
+    (format-dependencies (db/select Dependency, :model "Mock", :model_id 1))))

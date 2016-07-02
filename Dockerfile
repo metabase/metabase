@@ -4,8 +4,12 @@ ENV JAVA_HOME=/usr/lib/jvm/default-jvm
 ENV PATH /usr/local/bin:$PATH
 ENV LEIN_ROOT 1
 
+ENV FC_LANG en-US
+ENV LC_CTYPE en_US.UTF-8
+
 # install core build tools
-RUN apk add --update nodejs git wget bash python make g++ java-cacerts && \
+RUN apk add --update nodejs git wget bash python make g++ java-cacerts ttf-dejavu fontconfig && \
+    npm install -g npm@2 && \
     ln -sf "${JAVA_HOME}/bin/"* "/usr/bin/"
 
 # fix broken cacerts

@@ -118,3 +118,11 @@
     (defendpoint GET "/:id" [id]
       {id Required}
       (->404 (sel :one Card :id id)))))
+
+
+;;; ------------------------------------------------------------ ANNOTATION TESTS ------------------------------------------------------------
+
+(expect true  (annotation:Boolean 'archived true))
+(expect false (annotation:Boolean 'archived false))
+(expect nil   (annotation:Boolean 'archived nil))
+(expect clojure.lang.ExceptionInfo (annotation:Boolean 'archived 1))

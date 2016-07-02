@@ -1,11 +1,10 @@
 (ns metabase.models.card-test
   (:require [expectations :refer :all]
-            (metabase.api [card-test :refer [post-card]])
-            [metabase.db :refer [ins]]
+            [metabase.db :as db]
             (metabase.models [card :refer :all]
                              [dashboard-card :refer [DashboardCard]])
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [random-name]]))
+            [metabase.test.util :refer [random-name with-temp]]))
 
 
 (defn create-dash [dash-name]
@@ -13,15 +12,16 @@
                                                 :public_perms 0}))
 
 ;; Check that the :dashboard_count delay returns the correct count of Dashboards a Card is in
-(expect [0 1 2]
-  (let [{card-id :id}       (post-card (random-name))
-        get-dashboard-count (fn [] (dashboard-count (Card card-id)))]
+(expect
+  [0 1 2]
+  (with-temp Card [{card-id :id}]
+    (let [get-dashboard-count (fn [] (dashboard-count (Card card-id)))]
 
-    [(get-dashboard-count)
-     (do (ins DashboardCard :card_id card-id, :dashboard_id (:id (create-dash (random-name))))
-         (get-dashboard-count))
-     (do (ins DashboardCard :card_id card-id, :dashboard_id (:id (create-dash (random-name))))
-         (get-dashboard-count))]))
+      [(get-dashboard-count)
+       (do (db/insert! DashboardCard :card_id card-id, :dashboard_id (:id (create-dash (random-name))), :parameter_mappings [])
+           (get-dashboard-count))
+       (do (db/insert! DashboardCard :card_id card-id, :dashboard_id (:id (create-dash (random-name))), :parameter_mappings [])
+           (get-dashboard-count))])))
 
 
 ;; card-dependencies

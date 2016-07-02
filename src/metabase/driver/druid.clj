@@ -3,12 +3,9 @@
   (:require [clojure.tools.logging :as log]
             [clj-http.client :as http]
             [cheshire.core :as json]
-            [metabase.api.common :refer [let-404]]
-            [metabase.db :refer [sel]]
             [metabase.driver :as driver]
             [metabase.driver.druid.query-processor :as qp]
-            (metabase.models [database :refer [Database]]
-                             [field :as field]
+            (metabase.models [field :as field]
                              [table :as table])
             [metabase.util :as u]))
 
@@ -45,11 +42,8 @@
 
 ;;; ### Misc. Driver Fns
 
-(defn- can-connect?
-  ([_ details]
-   (can-connect? details))
-  ([details]
-   (= 200 (:status (http/get (details->url details "/status"))))))
+(defn- can-connect? [details]
+  (= 200 (:status (http/get (details->url details "/status")))))
 
 
 ;;; ### Query Processing
@@ -58,28 +52,14 @@
   {:pre [(map? query)]}
   (try (vec (POST (details->url details "/druid/v2"), :body query))
        (catch Throwable e
-         ;; try to print the error
-         (try (log/error (u/format-color 'red "Error running query:\n  %s"
-                           (:error (json/parse-string (:body (:object (ex-data e))) keyword)))) ; TODO - log/error
-              (catch Throwable _))
-         ;; re-throw exception either way
-         (throw e))))
+         ;; try to extract the error
+         (let [message (or (u/ignore-exceptions
+                             (:error (json/parse-string (:body (:object (ex-data e))) keyword)))
+                           (.getMessage e))]
 
-
-(defn- process-structured
-  ([_ expanded-query-map]
-   (process-structured {:details (-> expanded-query-map :database :details)
-                        :query   (-> expanded-query-map :query)}))
-  ([{:keys [details query]}]
-   (qp/process-structured-query (partial do-query details) query)))
-
-(defn- process-native
-  ([_ query]
-   (process-native query))
-  ([{database-id :database, {query :query} :native}]
-   {:pre [(integer? database-id)]}
-   (let-404 [details (sel :one :field [Database :details] :id database-id)]
-     (do-query details query))))
+           (log/error (u/format-color 'red "Error running query:\n%s" message))
+           ;; Re-throw a new exception with `message` set to the extracted message
+           (throw (Exception. message e))))))
 
 
 ;;; ### Sync
@@ -89,14 +69,14 @@
          ;; all dimensions are Strings, and all metrics as JS Numbers, I think (?)
          ;; string-encoded booleans + dates are treated as strings (!)
          (if (= :metric druid-field-type)
-           {:field-type :metric, :base-type :FloatField}
+           {:field-type :metric,    :base-type :FloatField}
            {:field-type :dimension, :base-type :TextField})))
 
-(defn- describe-table [table]
-  (let [details                      (:details (table/database table))
-        {:keys [dimensions metrics]} (GET (details->url details "/druid/v2/datasources/" (:name table) "?interval=-5000/5000"))]
-    (clojure.pprint/pprint dimensions)
-    {:name   (:name table)
+(defn- describe-table [database table]
+  (let [details                      (:details database)
+        {:keys [dimensions metrics]} (GET (details->url details "/druid/v2/datasources/" (:name table) "?interval=1900-01-01/2100-01-01"))]
+    {:schema nil
+     :name   (:name table)
      :fields (set (concat
                     ;; every Druid table is an event stream w/ a timestamp field
                     [{:name       "timestamp"
@@ -111,7 +91,7 @@
   (let [details           (:details database)
         druid-datasources (GET (details->url details "/druid/v2/datasources"))]
     {:tables (set (for [table-name druid-datasources]
-                    {:name table-name}))}))
+                    {:schema nil, :name table-name}))}))
 
 
 ;;; ### field-values-lazy-seq
@@ -120,7 +100,7 @@
   {:pre [(map? details) (or (string? table-name) (keyword? table-name)) (or (string? field-name) (keyword? field-name)) (or (nil? paging-identifiers) (map? paging-identifiers))]}
   (let [[{{:keys [pagingIdentifiers events]} :result}] (do-query details {:queryType   :select
                                                                           :dataSource  table-name
-                                                                          :intervals   ["-5000/5000"]
+                                                                          :intervals   ["1900-01-01/2100-01-01"]
                                                                           :granularity :all
                                                                           :dimensions  [field-name]
                                                                           :metrics     []
@@ -137,7 +117,7 @@
        (get-in event [:event (keyword field-name)]))]))
 
 (defn- field-values-lazy-seq
-  ([_ field]
+  ([field]
    (field-values-lazy-seq (:details (table/database (field/table field)))
                           (:name (field/table field))
                           (:name field)
@@ -168,7 +148,7 @@
 (u/strict-extend DruidDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:can-connect?          can-connect?
+         {:can-connect?          (u/drop-first-arg can-connect?)
           :describe-database     (u/drop-first-arg describe-database)
           :describe-table        (u/drop-first-arg describe-table)
           :details-fields        (constantly [{:name         "host"
@@ -178,8 +158,9 @@
                                                :display-name "Broker node port"
                                                :type         :integer
                                                :default      8082}])
-          :field-values-lazy-seq field-values-lazy-seq
-          :process-native        process-native
-          :process-structured    process-structured}))
+          :execute-query         (fn [_ query] (qp/execute-query do-query query))
+          :features              (constantly #{:set-timezone})
+          :field-values-lazy-seq (u/drop-first-arg field-values-lazy-seq)
+          :mbql->native          (u/drop-first-arg qp/mbql->native)}))
 
 (driver/register-driver! :druid (DruidDriver.))

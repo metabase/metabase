@@ -1,14 +1,14 @@
 (ns metabase.test.data.sqlite
   (:require [clojure.string :as s]
-            [korma.core :as k]
+            [honeysql.core :as hsql]
             metabase.driver.sqlite
             (metabase.test.data [generic-sql :as generic]
                                 [interface :as i])
-            [metabase.util :as u])
+            [metabase.util :as u]
+            [metabase.util.honeysql-extensions :as hx])
   (:import metabase.driver.sqlite.SQLiteDriver))
 
-(defn- database->connection-details
-  [_ context {:keys [short-lived?], :as dbdef}]
+(defn- database->connection-details [context {:keys [short-lived?], :as dbdef}]
   {:short-lived? short-lived?
    :db           (str (i/escaped-name dbdef) ".sqlite")})
 
@@ -25,13 +25,14 @@
    :TimeField       "TIME"})
 
 (defn- load-data-stringify-dates
-  "Our SQLite JDBC driver doesn't seem to handle Dates/Timestamps correctly so just convert them to string before INSERTing them into the Database."
+  "Our SQLite JDBC driver doesn't seem to like Dates/Timestamps so just convert them to strings before INSERTing them into the Database."
   [insert!]
   (fn [rows]
     (insert! (for [row rows]
                (into {} (for [[k v] row]
-                          [k (u/cond-as-> v v
-                               (instance? java.util.Date v) (k/raw (format "DATETIME('%s')" (u/date->iso-8601 v))))]))))))
+                          [k (if-not (instance? java.util.Date v)
+                               v
+                               (hsql/call :datetime (hx/literal (u/date->iso-8601 v))))]))))))
 
 (u/strict-extend SQLiteDriver
   generic/IGenericSQLDatasetLoader
@@ -42,9 +43,8 @@
           :execute-sql!              generic/sequentially-execute-sql!
           :load-data!                (generic/make-load-data-fn load-data-stringify-dates generic/load-data-chunked)
           :pk-sql-type               (constantly "INTEGER")
-          :field-base-type->sql-type (fn [_ base-type]
-                                       (field-base-type->sql-type base-type))})
+          :field-base-type->sql-type (u/drop-first-arg field-base-type->sql-type)})
   i/IDatasetLoader
   (merge generic/IDatasetLoaderMixin
-         {:database->connection-details database->connection-details
+         {:database->connection-details (u/drop-first-arg database->connection-details)
           :engine                       (constantly :sqlite)}))

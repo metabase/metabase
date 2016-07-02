@@ -1,0 +1,66 @@
+:root {
+  --default-font-family: "Lato";
+  --default-font-size: 0.875em;
+  --default-font-color: #727479;
+}
+
+html {
+    height: 100%; /* ensure the entire page will fill the window */
+}
+
+body {
+    font-family: var(--default-font-family), "Helvetica Neue", Helvetica, sans-serif;
+    font-size: var(--default-font-size);
+    color: var(--default-font-color);
+    margin: 0;
+    height: 100%; /* ensure the entire page will fill the window */
+    display: flex;
+    flex-direction: column;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+}
+
+/*
+  override default padding and margin on lists
+  in most cases we won't be using list-style so
+  the padding isn't necessary
+*/
+ul,
+ol {
+    padding: 0;
+    margin: 0;
+    list-style-type: none;
+}
+
+/* reset button element */
+button {
+    font-size: 100%;
+    -webkit-appearance: none;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    outline: none;
+}
+
+a {
+    color: inherit;
+    cursor: pointer;
+}
+
+input,
+textarea {
+    font-family: var(--default-font-family), "Helvetica Neue", Helvetica, sans-serif;
+}
+
+.disabled, :local(.disabled) {
+  pointer-events: none;
+  opacity: 0.4;
+}
+
+.MB-lightBG {
+  background-color: #f9fbfc;
+}
+
+.undefined {
+    border: 1px solid red !important;
+}

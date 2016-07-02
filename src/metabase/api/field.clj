@@ -1,13 +1,11 @@
 (ns metabase.api.field
   (:require [compojure.core :refer [GET PUT POST]]
-            [medley.core :as m]
             [metabase.api.common :refer :all]
-            [metabase.db :refer :all]
+            [metabase.db :as db]
             [metabase.db.metadata-queries :as metadata]
             (metabase.models [hydrate :refer [hydrate]]
                              [field :refer [Field] :as field]
-                             [field-values :refer [FieldValues create-field-values-if-needed field-should-have-field-values?]]
-                             [foreign-key :refer [ForeignKey] :as fk])))
+                             [field-values :refer [FieldValues create-field-values-if-needed! field-should-have-field-values?]])))
 
 (defannotation FieldSpecialType
   "Param must be a valid `Field` special type."
@@ -24,12 +22,6 @@
   [symb value :nillable]
   (checkp-contains? field/field-types symb (keyword value)))
 
-(defannotation ForeignKeyRelationship
-  "Param must be a valid `ForeignKey` relationship: one of `1t1` (one-to-one)m
-   `Mt1` (many-to-one), or `MtM` (many-to-many)."
-  [symb value :nillable]
-  (checkp-contains? fk/relationships symb (keyword value)))
-
 (defendpoint GET "/:id"
   "Get `Field` with ID."
   [id]
@@ -39,20 +31,31 @@
 
 (defendpoint PUT "/:id"
   "Update `Field` with ID."
-  [id :as {{:keys [special_type visibility_type description display_name]} :body}]
+  [id :as {{:keys [special_type visibility_type fk_target_field_id description display_name], :as body} :body}]
   {special_type    FieldSpecialType
    visibility_type FieldVisibilityType
    display_name    NonEmptyString}
   (let-404 [field (Field id)]
     (write-check field)
-    (let [special_type    (or special_type (:special_type field))
-          visibility_type (or visibility_type (:visibility_type field))]
+    (let [special_type       (if (contains? body :special_type) special_type (:special_type field))
+          visibility_type    (or visibility_type (:visibility_type field))
+          fk_target_field_id (when (= :fk special_type)
+                               ;; only let target field be set for :fk type fields,
+                               ;; and if it's not in the payload then leave the current value
+                               (if (contains? body :fk_target_field_id)
+                                 fk_target_field_id
+                                 (:fk_target_field_id field)))]
       (check-400 (field/valid-metadata? (:base_type field) (:field_type field) special_type visibility_type))
+      ;; validate that fk_target_field_id is a valid Field within the same database as our field
+      (when fk_target_field_id
+        (checkp (db/exists? Field :id fk_target_field_id)
+          :fk_target_field_id "Invalid target field"))
       ;; update the Field.  start with keys that may be set to NULL then conditionally add other keys if they have values
-      (check-500 (m/mapply upd Field id (merge {:description     description
-                                                :special_type    special_type
-                                                :visibility_type visibility_type}
-                                               (when display_name {:display_name display_name}))))
+      (check-500 (db/update! Field id (merge {:description        description
+                                              :special_type       special_type
+                                              :visibility_type    visibility_type
+                                              :fk_target_field_id fk_target_field_id}
+                                             (when display_name {:display_name display_name}))))
       (Field id))))
 
 (defendpoint GET "/:id/summary"
@@ -64,27 +67,6 @@
      [:distincts (metadata/field-distinct-count field)]]))
 
 
-(defendpoint GET "/:id/foreignkeys"
-  "Get `ForeignKeys` whose origin is `Field` with ID."
-  [id]
-  (read-check Field id)
-  (-> (sel :many ForeignKey :origin_id id)
-      (hydrate [:origin :table] [:destination :table])))
-
-
-(defendpoint POST "/:id/foreignkeys"
-  "Create a new `ForeignKey` relationgship with `Field` with ID as the origin."
-  [id :as {{:keys [target_field relationship]} :body}]
-  {target_field Required, relationship [Required ForeignKeyRelationship]}
-  (write-check Field id)
-  (write-check Field target_field)
-  (-> (ins ForeignKey
-        :origin_id id
-        :destination_id target_field
-        :relationship relationship)
-      (hydrate [:origin :table] [:destination :table])))
-
-
 (defendpoint GET "/:id/values"
   "If `Field`'s special type is `category`/`city`/`state`/`country`, or its base type is `BooleanField`, return
    all distinct values of the field, and a map of human-readable values defined by the user."
@@ -93,7 +75,7 @@
     (read-check field)
     (if-not (field-should-have-field-values? field)
       {:values {} :human_readable_values {}}
-      (create-field-values-if-needed field))))
+      (create-field-values-if-needed! field))))
 
 
 (defendpoint POST "/:id/value_map_update"
@@ -105,10 +87,10 @@
     (write-check field)
     (check (field-should-have-field-values? field)
       [400 "You can only update the mapped values of a Field whose 'special_type' is 'category'/'city'/'state'/'country' or whose 'base_type' is 'BooleanField'."])
-    (if-let [field-values-id (sel :one :id FieldValues :field_id id)]
-      (check-500 (upd FieldValues field-values-id
+    (if-let [field-values-id (db/select-one-id FieldValues, :field_id id)]
+      (check-500 (db/update! FieldValues field-values-id
                    :human_readable_values values_map))
-      (create-field-values-if-needed field values_map)))
+      (create-field-values-if-needed! field values_map)))
   {:status :success})
 
 

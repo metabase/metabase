@@ -14,8 +14,7 @@
   "Prefix to automatically prepend to the URL of calls made with `client`."
   (str "http://localhost:" (config/config-str :mb-jetty-port) "/api/"))
 
-(defn
-  client
+(defn client
   "Perform an API call and return the response (for test purposes).
    The first arg after URL will be passed as a JSON-encoded body if it is a map.
    Other &rest kwargs will be passed as `GET` parameters.
@@ -36,9 +35,9 @@
    *  URL-KWARGS            key-value pairs that will be encoded and added to the URL as GET params"
   {:arglists '([credentials? method expected-status-code? url http-body-map? & url-kwargs])}
   [& args]
-  (let [[credentials [method & args]] (u/optional #(or (map? %)
-                                                       (string? %)) args)
-        [expected-status [url & args]] (u/optional integer? args)
+  (let [[credentials [method & args]]     (u/optional #(or (map? %)
+                                                           (string? %)) args)
+        [expected-status [url & args]]    (u/optional integer? args)
         [body [& {:as url-param-kwargs}]] (u/optional map? args)]
     (-client credentials method expected-status url body url-param-kwargs)))
 
@@ -104,7 +103,7 @@
   (try
     (:id (client :post 200 "session" credentials))
     (catch Throwable e
-      (log/error "Failed to authenticate with email:" email "and password:" password ". Does user exist?"))))
+      (log/error "Failed to authenticate with email:" email "and password:" password ":" (.getMessage e)))))
 
 (defn- build-url [url url-param-kwargs]
   {:pre [(string? url)
@@ -124,7 +123,7 @@
 ;; ## AUTO-DESERIALIZATION
 
 (def ^:private ^:const auto-deserialize-dates-keys
-  #{:created_at :updated_at :last_login :date_joined :started_at :finished_at})
+  #{:created_at :updated_at :last_login :date_joined :started_at :finished_at :last_analyzed})
 
 (defn- auto-deserialize-dates
   "Automatically recurse over RESPONSE and look for keys that are known to correspond to dates.

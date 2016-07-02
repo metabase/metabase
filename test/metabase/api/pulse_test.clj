@@ -1,8 +1,6 @@
 (ns metabase.api.pulse-test
   "Tests for /api/pulse endpoints."
-  (:require [clojure.tools.macro :refer [symbol-macrolet]]
-            [expectations :refer :all]
-            [korma.core :as k]
+  (:require [expectations :refer :all]
             [metabase.db :as db]
             (metabase [http-client :as http]
                       [middleware :as middleware])
@@ -17,8 +15,8 @@
 
 ;; ## Helper Fns
 
-(defn- new-card []
-  (db/ins Card
+(defn- new-card! []
+  (db/insert! Card
     :name                   (random-name)
     :creator_id             (user->id :crowberto)
     :public_perms           common/perms-readwrite
@@ -26,19 +24,16 @@
     :dataset_query          {}
     :visualization_settings {}))
 
-(defn new-pulse [& {:keys [name cards channels]
-                    :or   {name     (random-name)
-                           cards    nil
-                           channels nil}}]
-  (let [cards    (or cards [(new-card), (new-card)])
+(defn- new-pulse! [& {:keys [name cards channels]
+                      :or   {name     (random-name)
+                             cards    nil
+                             channels nil}}]
+  (let [cards    (or cards [(new-card!)
+                            (new-card!)])
         card-ids (filter identity (map :id cards))]
     (pulse/create-pulse name (user->id :crowberto) card-ids [])))
 
-(defn delete-existing-pulses []
-  (->> (db/sel :many :field [Pulse :id])
-       (mapv #(db/cascade-delete Pulse :id %))))
-
-(defn user-details [user]
+(defn- user-details [user]
   (match-$ user
     {:id $
      :email $
@@ -50,14 +45,15 @@
      :is_qbnewb $
      :common_name $}))
 
-(defn pulse-card-details [card]
+(defn- pulse-card-details [card]
   (-> (select-keys card [:id :name :description])
       (assoc :display (name (:display card)))))
 
-(defn pulse-channel-details [channel]
+(defn- pulse-channel-details [channel]
   (match-$ channel
     {:id               $
      :pulse_id         $
+     :enabled          $
      :channel_type     $
      :details          $
      :schedule_type    $
@@ -65,7 +61,7 @@
      :created_at       $
      :updated_at       $}))
 
-(defn pulse-details [pulse]
+(defn- pulse-details [pulse]
   (match-$ pulse
     {:id           $
      :name         $
@@ -77,7 +73,7 @@
      :cards        (mapv pulse-card-details (:cards pulse))
      :channels     (mapv pulse-channel-details (:channels pulse))}))
 
-(defn pulse-response [{:keys [created_at updated_at] :as pulse}]
+(defn- pulse-response [{:keys [created_at updated_at] :as pulse}]
   (-> pulse
       (dissoc :id)
       (assoc :created_at (not (nil? created_at)))
@@ -122,8 +118,8 @@
                                             :cards    [{:id 100} {:id 200}]
                                             :channels ["abc"]}))
 
-(expect-let [card1 (new-card)
-             card2 (new-card)]
+(expect-let [card1 (new-card!)
+             card2 (new-card!)]
   {:name         "A Pulse"
    :public_perms common/perms-readwrite
    :creator_id   (user->id :rasta)
@@ -131,7 +127,8 @@
    :created_at   true
    :updated_at   true
    :cards        (mapv pulse-card-details [card1 card2])
-   :channels     [{:channel_type  "email"
+   :channels     [{:enabled       true
+                   :channel_type  "email"
                    :schedule_type "daily"
                    :schedule_hour 12
                    :schedule_day  nil
@@ -139,7 +136,8 @@
                    :recipients    []}]}
   (-> (pulse-response ((user->client :rasta) :post 200 "pulse" {:name     "A Pulse"
                                                                 :cards    [{:id (:id card1)} {:id (:id card2)}]
-                                                                :channels [{:channel_type  "email"
+                                                                :channels [{:enabled       true
+                                                                            :channel_type  "email"
                                                                             :schedule_type "daily"
                                                                             :schedule_hour 12
                                                                             :schedule_day  nil
@@ -178,12 +176,13 @@
                                              :cards    [{:id 100} {:id 200}]
                                              :channels ["abc"]}))
 
-(expect-let [pulse (new-pulse :channels [{:channel_type  "email"
+(expect-let [pulse (new-pulse! :channels [{:enabled       true
+                                          :channel_type  "email"
                                           :schedule_type "daily"
                                           :schedule_hour 12
                                           :schedule_day  nil
                                           :recipients    []}])
-             card  (new-card)]
+             card  (new-card!)]
   {:name         "Updated Pulse"
    :public_perms common/perms-readwrite
    :creator_id   (user->id :crowberto)
@@ -191,7 +190,8 @@
    :created_at   true
    :updated_at   true
    :cards        [(pulse-card-details card)]
-   :channels     [{:channel_type  "slack"
+   :channels     [{:enabled       true
+                   :channel_type  "slack"
                    :schedule_type "hourly"
                    :schedule_hour nil
                    :schedule_day  nil
@@ -200,7 +200,8 @@
                    :recipients    []}]}
   (-> (pulse-response ((user->client :rasta) :put 200 (format "pulse/%d" (:id pulse)) {:name     "Updated Pulse"
                                                                                        :cards    [{:id (:id card)}]
-                                                                                       :channels [{:channel_type  "slack"
+                                                                                       :channels [{:enabled       true
+                                                                                                   :channel_type  "slack"
                                                                                                    :schedule_type "hourly"
                                                                                                    :schedule_hour 12
                                                                                                    :schedule_day  "mon"
@@ -211,7 +212,8 @@
 
 
 ;; ## DELETE /api/pulse/:id
-(expect-let [pulse (new-pulse :channels [{:channel_type  "email"
+(expect-let [pulse (new-pulse! :channels [{:enabled       true
+                                          :channel_type  "email"
                                           :schedule_type "daily"
                                           :schedule_hour 12
                                           :schedule_day  nil
@@ -224,9 +226,9 @@
 
 ;; ## GET /api/pulse
 
-(expect-let [_      (delete-existing-pulses)
-             pulse1 (new-pulse :name "ABC")
-             pulse2 (new-pulse :name "DEF")]
+(expect-let [_      (db/cascade-delete! Pulse)
+             pulse1 (new-pulse! :name "ABC")
+             pulse2 (new-pulse! :name "DEF")]
   [(pulse-details pulse1)
    (pulse-details pulse2)]
   ((user->client :rasta) :get 200 "pulse"))
@@ -234,6 +236,6 @@
 
 ;; ## GET /api/pulse/:id
 
-(expect-let [pulse1 (new-pulse)]
+(expect-let [pulse1 (new-pulse!)]
   (pulse-details pulse1)
   ((user->client :rasta) :get 200 (format "pulse/%d" (:id pulse1))))

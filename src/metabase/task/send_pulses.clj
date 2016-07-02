@@ -6,19 +6,11 @@
             [clojurewerkz.quartzite.schedule.cron :as cron]
             (clj-time [core :as time]
                       [predicates :as timepr])
-            [metabase.api.common :refer [let-404]]
-            (metabase [driver :as driver]
-                      [email :as email])
-            [metabase.email.messages :as messages]
-            [metabase.integrations.slack :as slack]
-            (metabase.models [card :refer [Card]]
-                             [pulse :refer [Pulse], :as pulse]
+            (metabase.models [pulse :refer [Pulse], :as pulse]
                              [pulse-channel :as pulse-channel]
                              [setting :as setting])
-            (metabase [pulse :as p]
-                      [task :as task]
-                      [util :as u])
-            [metabase.util.urls :as urls]))
+            [metabase.pulse :as p]
+            [metabase.task :as task]))
 
 
 (declare send-pulses!)
@@ -54,7 +46,9 @@
                              (time/now)
                              (time/to-time-zone (time/now) (time/time-zone-for-id reporting-timezone)))
         curr-hour          (time/hour now)
-        curr-weekday       (->> (time/day-of-week now)
+                           ;; joda time produces values of 1-7 here (Mon -> Sun) and we subtract 1 from it to
+                           ;; make the values zero based to correspond to the indexes in pulse-channel/days-of-week
+        curr-weekday       (->> (- (time/day-of-week now) 1)
                                 (get pulse-channel/days-of-week)
                                 :id)
         curr-monthday      (monthday now)
@@ -82,78 +76,13 @@
 ;;; ## ---------------------------------------- PULSE SENDING ----------------------------------------
 
 
-;; TODO: this is probably something that could live somewhere else and just be reused by us
-(defn- execute-card
-  "Execute the query for a single card."
-  [card-id]
-  {:pre [(integer? card-id)]}
-  (let-404 [card (Card card-id)]
-    (let [{:keys [creator_id dataset_query]} card]
-      (try
-        {:card card :result (driver/dataset-query dataset_query {:executed_by creator_id})}
-        (catch Throwable t
-          (log/warn (format "Error running card query (%n)" card-id) t))))))
-
-(defn- send-email-pulse!
-  "Send a `Pulse` email given a list of card results to render and a list of recipients to send to."
-  [{:keys [id name] :as pulse} results recipients]
-  (log/debug (format "Sending Pulse (%d: %s) via Channel :email" id name))
-  (let [email-subject    (str "Pulse: " name)
-        email-recipients (filterv u/is-email? (map :email recipients))]
-    (email/send-message
-      :subject      email-subject
-      :recipients   email-recipients
-      :message-type :attachments
-      :message      (messages/render-pulse-email pulse results))))
-
-(defn- create-and-upload-slack-attachment!
-  "Create an attachment in Slack for a given Card by rendering its result into an image and uploading it."
-  [channel-id {{card-id :id, card-name :name, :as card} :card, {:keys [data]} :result}]
-  (let [image-byte-array (p/render-pulse-card-to-png card data)
-        slack-file-url   (slack/upload-file! image-byte-array "image.png" channel-id)]
-    {:title      card-name
-     :title_link (urls/card-url card-id)
-     :image_url  slack-file-url
-     :fallback   card-name}))
-
-(defn send-slack-pulse!
-  "Post a `Pulse` to a slack channel given a list of card results to render and details about the slack destination."
-  [pulse results channel-id]
-  {:pre [(string? channel-id)]}
-  (log/debug (u/format-color 'cyan "Sending Pulse (%d: %s) via Slack" (:id pulse) (:name pulse)))
-  (when-let [metabase-files-channel (slack/get-or-create-files-channel!)]
-    (let [attachments (doall (for [result results]
-                               (create-and-upload-slack-attachment! (:id metabase-files-channel) result)))]
-      (slack/post-chat-message! channel-id
-                                (str "Pulse: " (:name pulse))
-                                attachments))))
-
-(defn send-pulse!
-  "Execute and Send a `Pulse`, optionally specifying the specific `PulseChannels`.  This includes running each
-   `PulseCard`, formatting the results, and sending the results to any specified destination.
-
-   Example:
-       (send-pulse! pulse)                       Send to all Channels
-       (send-pulse! pulse :channel-ids [312])    Send only to Channel with :id = 312"
-  [{:keys [cards] :as pulse} & {:keys [channel-ids]}]
-  {:pre [(map? pulse) (every? map? cards) (every? :id cards)]}
-  (let [results     (for [card cards]
-                      (execute-card (:id card)))
-        channel-ids (or channel-ids (mapv :id (:channels pulse)))]
-    (doseq [channel-id channel-ids]
-      (let [{:keys [channel_type details recipients]} (some #(when (= channel-id (:id %)) %)
-                                                            (:channels pulse))]
-        (condp = (keyword channel_type)
-          :email (send-email-pulse! pulse results recipients)
-          :slack (send-slack-pulse! pulse results (:channel details)))))))
-
 (defn- send-pulses!
   "Send any `Pulses` which are scheduled to run in the current day/hour.  We use the current time and determine the
    hour of the day and day of the week according to the defined reporting timezone, or UTC.  We then find all `Pulses`
    that are scheduled to run and send them."
   [hour weekday monthday monthweek]
   {:pre [(integer? hour)
-         (and (<= 0 hour) (> 23 hour))
+         (and (<= 0 hour) (>= 23 hour))
          (pulse-channel/day-of-week? weekday)
          (contains? #{:first :last :mid :other} monthday)
          (contains? #{:first :last :other} monthweek)]}
@@ -162,7 +91,7 @@
       (try
         (log/debug (format "Starting Pulse Execution: %d" pulse-id))
         (when-let [pulse (pulse/retrieve-pulse pulse-id)]
-          (send-pulse! pulse :channel-ids (mapv :id (get channels-by-pulse pulse-id))))
+          (p/send-pulse! pulse :channel-ids (mapv :id (get channels-by-pulse pulse-id))))
         (log/debug (format "Finished Pulse Execution: %d" pulse-id))
         (catch Throwable e
           (log/error "Error sending pulse:" pulse-id e))))))

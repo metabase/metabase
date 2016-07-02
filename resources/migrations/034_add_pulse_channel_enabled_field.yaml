@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - changeSet:
+      id: 34
+      author: tlrobinson
+      changes:
+        ######################################## add enabled column to pulse_channel ########################################
+        - addColumn:
+            tableName: pulse_channel
+            columns:
+              - column:
+                  name: enabled
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false

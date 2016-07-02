@@ -4,7 +4,6 @@
             [hiccup.core :refer [html]]
             [metabase.api.common :refer :all]
             [metabase.db :as db]
-            [metabase.driver :as driver]
             [metabase.email :as email]
             [metabase.events :as events]
             [metabase.integrations.slack :as slack]
@@ -12,8 +11,9 @@
                              [database :refer [Database]]
                              [pulse :refer [Pulse retrieve-pulse] :as pulse]
                              [pulse-channel :refer [channel-types]])
+            [metabase.query-processor :as qp]
             [metabase.pulse :as p]
-            [metabase.task.send-pulses :refer [send-pulse!]]
+            [metabase.pulse.render :as render]
             [metabase.util :as u]))
 
 
@@ -49,10 +49,10 @@
   (check-404 (db/exists? Pulse :id id))
   ;; prevent more than 5 cards
   ;; limit channel types to :email and :slack
-  (pulse/update-pulse {:id       id
-                       :name     name
-                       :cards    (filter identity (map :id cards))
-                       :channels channels})
+  (pulse/update-pulse! {:id       id
+                        :name     name
+                        :cards    (filter identity (map :id cards))
+                        :channels channels})
   (pulse/retrieve-pulse id))
 
 
@@ -60,7 +60,7 @@
   "Delete a `Pulse`."
   [id]
   (let-404 [pulse (Pulse id)]
-    (u/prog1 (db/cascade-delete Pulse :id id)
+    (u/prog1 (db/cascade-delete! Pulse :id id)
       (events/publish-event :pulse-delete (assoc pulse :actor_id *current-user-id*)))))
 
 
@@ -86,21 +86,21 @@
   [id]
   (let [card (Card id)]
     (read-check Database (:database (:dataset_query card)))
-    (let [data (:data (driver/dataset-query (:dataset_query card) {:executed_by *current-user-id*}))]
-      {:status 200, :body (html [:html [:body {:style "margin: 0;"} (binding [p/*include-title* true
-                                                                              p/*include-buttons* true]
-                                                                      (p/render-pulse-card card data))]])})))
+    (let [result (qp/dataset-query (:dataset_query card) {:executed_by *current-user-id*})]
+      {:status 200, :body (html [:html [:body {:style "margin: 0;"} (binding [render/*include-title* true
+                                                                              render/*include-buttons* true]
+                                                                      (render/render-pulse-card card result))]])})))
 
 (defendpoint GET "/preview_card_info/:id"
   "Get JSON object containing HTML rendering of a `Card` with ID and other information."
   [id]
   (let [card (Card id)]
     (read-check Database (:database (:dataset_query card)))
-    (let [result    (driver/dataset-query (:dataset_query card) {:executed_by *current-user-id*})
+    (let [result    (qp/dataset-query (:dataset_query card) {:executed_by *current-user-id*})
           data      (:data result)
-          card-type (p/detect-pulse-card-type card data)
-          card-html (html (binding [p/*include-title* true]
-                            (p/render-pulse-card card data)))]
+          card-type (render/detect-pulse-card-type card data)
+          card-html (html (binding [render/*include-title* true]
+                            (render/render-pulse-card card result)))]
       {:id              id
        :pulse_card_type card-type
        :pulse_card_html card-html
@@ -111,9 +111,9 @@
   [id]
   (let [card (Card id)]
     (read-check Database (:database (:dataset_query card)))
-    (let [data (:data (driver/dataset-query (:dataset_query card) {:executed_by *current-user-id*}))
-          ba   (binding [p/*include-title* true]
-                 (p/render-pulse-card-to-png card data))]
+    (let [result (qp/dataset-query (:dataset_query card) {:executed_by *current-user-id*})
+          ba   (binding [render/*include-title* true]
+                 (render/render-pulse-card-to-png card result))]
       {:status 200, :headers {"Content-Type" "image/png"}, :body (new java.io.ByteArrayInputStream ba) })))
 
 (defendpoint POST "/test"
@@ -122,7 +122,7 @@
   {name     [Required NonEmptyString]
    cards    [Required ArrayOfMaps]
    channels [Required ArrayOfMaps]}
-  (send-pulse! body)
+  (p/send-pulse! body)
   {:ok true})
 
 (define-routes)

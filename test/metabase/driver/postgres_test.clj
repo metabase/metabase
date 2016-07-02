@@ -1,10 +1,17 @@
 (ns metabase.driver.postgres-test
-  (:require [expectations :refer :all]
+  (:require [clojure.java.jdbc :as jdbc]
+            [expectations :refer :all]
+            [honeysql.core :as hsql]
+            (metabase [db :as db]
+                      [driver :as driver])
             [metabase.driver.generic-sql :as sql]
-            [metabase.driver.query-processor.expand :as ql]
+            (metabase.models [database :refer [Database]]
+                             [field :refer [Field]])
+            [metabase.query-processor.expand :as ql]
             [metabase.test.data :as data]
             (metabase.test.data [datasets :refer [expect-with-engine]]
-                                [interface :refer [def-database-definition]])
+                                [interface :as i])
+            [metabase.test.util :as tu]
             [metabase.util :as u])
   (:import metabase.driver.postgres.PostgresDriver))
 
@@ -38,8 +45,21 @@
                                                    :port   5432
                                                    :dbname "bird_sightings"
                                                    :user   "camsaul"}))
+
+;; Verify that we identify JSON columns and mark metadata properly during sync
+(expect-with-engine :postgres
+  :json
+  (data/with-temp-db
+    [_
+     (i/create-database-definition "Postgres with a JSON Field"
+       ["venues"
+        [{:field-name "address", :base-type {:native "json"}}]
+        [[(hsql/raw "to_json('{\"street\": \"431 Natoma\", \"city\": \"San Francisco\", \"state\": \"CA\", \"zip\": 94103}'::text)")]]])]
+    (db/select-one-field :special_type Field, :id (data/id :venues :address))))
+
+
 ;;; # UUID Support
-(def-database-definition ^:const ^:private with-uuid
+(i/def-database-definition ^:const ^:private with-uuid
   ["users"
    [{:field-name "user_id", :base-type :UUIDField}]
    [[#uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]
@@ -70,7 +90,7 @@
 
 
 ;;; # Make sure that Tables / Fields with dots in their names get escaped properly
-(def-database-definition ^:const ^:private dots-in-names
+(i/def-database-definition ^:const ^:private dots-in-names
   ["objects.stuff"
    [{:field-name "dotted.name", :base-type :TextField}]
    [["toucan_cage"]
@@ -84,11 +104,11 @@
              [3 "ouija_board"]]}
   (-> (data/dataset metabase.driver.postgres-test/dots-in-names
         (data/run-query objects.stuff))
-      :data (dissoc :cols)))
+      :data (dissoc :cols :native_form)))
 
 
 ;;; # Make sure that duplicate column names (e.g. caused by using a FK) still return both columns
-(def-database-definition duplicate-names
+(i/def-database-definition ^:const ^:private duplicate-names
   ["birds"
    [{:field-name "name", :base-type :TextField}]
    [["Rasta"]
@@ -104,4 +124,22 @@
   (-> (data/dataset metabase.driver.postgres-test/duplicate-names
         (data/run-query people
           (ql/fields $name $bird_id->birds.name)))
-      :data (dissoc :cols)))
+      :data (dissoc :cols :native_form)))
+
+
+;; Check that we properly fetch materialized views.
+;; As discussed in #2355 they don't come back from JDBC `DatabaseMetadata` so we have to fetch them manually.
+(expect-with-engine :postgres
+  {:tables #{{:schema "public", :name "test_mview"}}}
+  (let [driver (PostgresDriver.)]
+    (jdbc/execute! (sql/connection-details->spec driver (i/database->connection-details driver :server nil))
+                   ["DROP DATABASE IF EXISTS materialized_views_test;
+                     CREATE DATABASE materialized_views_test;"]
+                   {:transaction? false})
+    (let [details (i/database->connection-details driver :db {:database-name "materialized_views_test", :short-lived? true})]
+      (jdbc/execute! (sql/connection-details->spec driver details)
+                     ["DROP MATERIALIZED VIEW IF EXISTS test_mview;
+                       CREATE MATERIALIZED VIEW test_mview AS
+                       SELECT 'Toucans are the coolest type of bird.' AS true_facts;"])
+      (tu/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "materialized_views_test")}]
+        (driver/describe-database driver database)))))

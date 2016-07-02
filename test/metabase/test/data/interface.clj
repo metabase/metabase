@@ -4,8 +4,8 @@
    Objects that implement `IDatasetLoader` know how to load a `DatabaseDefinition` into an
    actual physical RDMS database. This functionality allows us to easily test with multiple datasets."
   (:require [clojure.string :as s]
-            [metabase.db :refer :all]
-            [metabase.driver :as driver]
+            (metabase [db :as db]
+                      [driver :as driver])
             (metabase.models [database :refer [Database]]
                              [field :refer [Field] :as field]
                              [table :refer [Table]]))
@@ -43,20 +43,18 @@
 (extend-protocol IMetabaseInstance
   FieldDefinition
   (metabase-instance [this table]
-    (sel :one Field :table_id (:id table), :name [in #{(s/lower-case (:field-name this)) ; HACKY!
-                                                       (s/upper-case (:field-name this))}]))
+    (Field :table_id (:id table), :%lower.name (s/lower-case (:field-name this))))
 
   TableDefinition
   (metabase-instance [this database]
-    (sel :one Table :db_id (:id database), :name [in #{(s/lower-case (:table-name this))
-                                                       (s/upper-case (:table-name this))}]))
+    (Table :db_id (:id database), :%lower.name (s/lower-case (:table-name this))))
 
   DatabaseDefinition
   (metabase-instance [{:keys [database-name]} engine-kw]
     (assert (string? database-name))
     (assert (keyword? engine-kw))
-    (setup-db-if-needed :auto-migrate true)
-    (sel :one Database :name database-name, :engine (name engine-kw))))
+    (db/setup-db-if-needed :auto-migrate true)
+    (Database :name database-name, :engine (name engine-kw))))
 
 
 ;; ## IDatasetLoader

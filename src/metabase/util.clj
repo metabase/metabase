@@ -2,12 +2,13 @@
   "Common utility functions useful throughout the codebase."
   (:require [clojure.data :as data]
             [clojure.java.jdbc :as jdbc]
+            [clojure.math.numeric-tower :as math]
             (clojure [pprint :refer [pprint]]
                      [string :as s])
             [clojure.tools.logging :as log]
-            [clj-time.core :as t]
-            [clj-time.coerce :as coerce]
-            [clj-time.format :as time]
+            (clj-time [core :as t]
+                      [coerce :as coerce]
+                      [format :as time])
             colorize.core
             [metabase.config :as config])
   (:import clojure.lang.Keyword
@@ -103,7 +104,8 @@
    DATE is anything that can coerced to a `Timestamp` via `->Timestamp`, such as a `Date`, `Timestamp`,
    `Long` (ms since the epoch), or an ISO-8601 `String`. DATE defaults to the current moment in time.
 
-   DATE-FORMAT is anything that can be passed to `->DateTimeFormatter`, such as `String`, `Keyword`, or `DateTimeFormatter`.
+   DATE-FORMAT is anything that can be passed to `->DateTimeFormatter`, such as `String` (using [the usual date format args](http://docs.oracle.com/javase/7/docs/api/java/text/SimpleDateFormat.html)),
+   `Keyword`, or `DateTimeFormatter`.
 
 
      (format-date \"yyyy-MM-dd\")                        -> \"2015-11-18\"
@@ -113,10 +115,6 @@
    (format-date date-format (System/currentTimeMillis)))
   (^String [date-format date]
    (time/unparse (->DateTimeFormatter date-format) (coerce/from-long (.getTime (->Timestamp date))))))
-
-(def ^{:arglists '([] [date])} date->yyyy-mm-dd
-  "Format DATE as a `YYYY-MM-DD` string."
-  (partial format-date "yyyy-MM-dd"))
 
 (def ^{:arglists '([] [date])} date->iso-8601
   "Format DATE a an ISO-8601 string."
@@ -240,8 +238,8 @@
 (defn format-nanoseconds
   "Format a time interval in nanoseconds to something more readable (µs/ms/etc.)
    Useful for logging elapsed time when using `(System/nanotime)`"
-  [nanoseconds]
-  (loop [n nanoseconds, [[unit divisor] & more] [[:ns 1000] [:µs 1000] [:ms 1000] [:s 1000] [:mins 60] [:hours 60]]]
+  ^String [nanoseconds]
+  (loop [n nanoseconds, [[unit divisor] & more] [[:ns 1000] [:µs 1000] [:ms 1000] [:s 60] [:mins 60] [:hours Integer/MAX_VALUE]]]
     (if (and (> n divisor)
              (seq more))
       (recur (/ n divisor) more)
@@ -249,35 +247,6 @@
 
 
 ;;; ## Etc
-
-(defmacro assoc<>
-  "Like `assoc`, but associations happen sequentially; i.e. each successive binding can build
-   upon the result of the previous one using `<>`.
-
-    (assoc<> {}
-       :a 100
-       :b (+ 100 (:a <>)) ; -> {:a 100 :b 200}"
-  {:style/indent 1}
-  [object & kvs]
-  ;; wrap in a `fn` so this can be used in `->`/`->>` forms
-  `((fn [~'<>]
-      (let [~@(apply concat (for [[k v] (partition 2 kvs)]
-                              ['<> `(assoc ~'<> ~k ~v)]))]
-        ~'<>))
-    ~object))
-
-(defn format-num
-  "format a number into a more human readable form."
-  [number]
-  {:pre [(number? number)]}
-  (let [decimal-type? #(or (float? %) (decimal? %))]
-    (cond
-      ;; looks like this is a decimal number, format with precision of 2
-      (and (decimal-type? number) (not (zero? (mod number 1)))) (format "%,.2f" number)
-      ;; this is a decimal type number with no actual decimal value, so treat it as a whole number
-      (decimal-type? number) (format "%,d" (long number))
-      ;; otherwise this is a whole number
-      :else (format "%,d" number))))
 
 (defprotocol ^:private IClobToStr
   (jdbc-clob->str ^String [this]
@@ -337,19 +306,6 @@
   (if (pred? (first args)) [(first args) (next args)]
       [default args]))
 
-;; provided courtesy of Jay Fields http://blog.jayfields.com/2011/08/clojure-apply-function-to-each-value-of.html
-(defn update-values
-  "Update the values of a map by applying the given function.
-   Function expects the map value as an arg and optionally accepts additional args as passed."
-  [m f & args]
-  (reduce (fn [r [k v]] (assoc r k (apply f v args))) {} m))
-
-(defn filter-nil-values
-  "Remove any keys from a MAP when the value is `nil`."
-  [m]
-  (into {} (for [[k v] m
-                 :when (not (nil? v))]
-             {k v})))
 
 (defn is-email?
   "Is STRING a valid email address?"
@@ -365,8 +321,16 @@
              (when-let [^java.net.URL url (try (java.net.URL. string)
                                                (catch java.net.MalformedURLException _
                                                  nil))]
-               (and (re-matches #"^https?$" (.getProtocol url))          ; these are both automatically downcased
-                    (re-matches #"^.+\..{2,}$" (.getAuthority url))))))) ; this is the part like 'google.com'. Make sure it contains at least one period and 2+ letter TLD
+               (when (and (.getProtocol url) (.getAuthority url))
+                 (and (re-matches #"^https?$" (.getProtocol url))           ; these are both automatically downcased
+                      (re-matches #"^.+\..{2,}$" (.getAuthority url)))))))) ; this is the part like 'google.com'. Make sure it contains at least one period and 2+ letter TLD
+
+(defn nil-or-sequence-of-maps?
+  "Is VALUE either nil or sequential? such that every item is a map?"
+  [v]
+  (or (nil? v)
+      (and (sequential? v)
+           (every? map? v))))
 
 (def ^:private ^:const host-up-timeout
   "Timeout (in ms) for checking if a host is available with `host-up?` and `host-port-up?`."
@@ -402,8 +366,8 @@
 
 (defmacro pdoseq
   "(Almost) just like `doseq` but runs in parallel. Doesn't support advanced binding forms like `:let` or `:when` and only supports a single binding </3"
-  [[binding collection] & body]
   {:style/indent 1}
+  [[binding collection] & body]
   `(dorun (pmap (fn [~binding]
                   ~@body)
                 ~collection)))
@@ -432,14 +396,16 @@
      (find-or-add 200) -> 1
      (find-or-add 100) -> 0
 
-   The result of FIRST-FIRST is bound to the anaphor `<>`, which is convenient for logging:
+   The result of FIRST-FORM is bound to the anaphor `<>`, which is convenient for logging:
 
      (prog1 (some-expression)
        (println \"RESULTS:\" <>))
 
   `prog1` is an anaphoric version of the traditional macro of the same name in
    [Emacs Lisp](http://www.gnu.org/software/emacs/manual/html_node/elisp/Sequencing.html#index-prog1)
-   and [Common Lisp](http://www.lispworks.com/documentation/HyperSpec/Body/m_prog1c.htm#prog1)."
+   and [Common Lisp](http://www.lispworks.com/documentation/HyperSpec/Body/m_prog1c.htm#prog1).
+
+  Style note: Prefer `doto` when appropriate, e.g. when dealing with Java objects."
   {:style/indent 1}
   [first-form & body]
   `(let [~'<> ~first-form]
@@ -476,12 +442,35 @@
   ([color-symb x]
    ((ns-resolve 'colorize.core color-symb) (pprint-to-str x))))
 
-(defmacro cond-let
-  "Like `if-let` or `when-let`, but for `cond`."
-  [binding-form then-form & more]
-  `(if-let ~binding-form ~then-form
-           ~(when (seq more)
-              `(cond-let ~@more))))
+(def emoji-progress-bar
+  "Create a string that shows progress for something, e.g. a database sync process.
+
+     (emoji-progress-bar 10 40)
+       -> \"[************······································] 😒   25%"
+  (let [^:const meter-width    50
+        ^:const progress-emoji ["😱"  ; face screaming in fear
+                                "😢"  ; crying face
+                                "😞"  ; disappointed face
+                                "😒"  ; unamused face
+                                "😕"  ; confused face
+                                "😐"  ; neutral face
+                                "😬"  ; grimacing face
+                                "😌"  ; relieved face
+                                "😏"  ; smirking face
+                                "😋"  ; face savouring delicious food
+                                "😊"  ; smiling face with smiling eyes
+                                "😍"  ; smiling face with heart shaped eyes
+                                "😎"] ; smiling face with sunglasses
+        percent-done->emoji    (fn [percent-done]
+                                 (progress-emoji (int (math/round (* percent-done (dec (count progress-emoji)))))))]
+    (fn [completed total]
+      (let [percent-done (float (/ completed total))
+            filleds      (int (* percent-done meter-width))
+            blanks       (- meter-width filleds)]
+        (str "["
+             (apply str (repeat filleds "*"))
+             (apply str (repeat blanks "·"))
+             (format "] %s  %3.0f%%" (percent-done->emoji percent-done) (* percent-done 100.0)))))))
 
 (defn filtered-stacktrace
   "Get the stack trace associated with E and return it as a vector with non-metabase frames filtered out."
@@ -532,46 +521,11 @@
                                                      (last args)
                                                      [(last args)]))))
 
-(defmacro try-ignore-exceptions
+(defmacro ignore-exceptions
   "Simple macro which wraps the given expression in a try/catch block and ignores the exception if caught."
+  {:style/indent 0}
   [& body]
   `(try ~@body (catch Throwable ~'_)))
-
-
-(defn wrap-try-catch!
-  "Re-intern FN-SYMB as a new fn that wraps the original with a `try-catch`. Intended for debugging.
-
-     (defn z [] (throw (Exception. \"!\")))
-     (z) ; -> exception
-
-     (wrap-try-catch! 'z)
-     (z) ; -> nil; exception logged with log/error"
-  [fn-symb]
-  {:pre [(symbol? fn-symb)
-         (fn? @(resolve fn-symb))]}
-  (let [varr                    (resolve fn-symb)
-        {nmspc :ns, symb :name} (meta varr)]
-    (println (format "wrap-try-catch! %s/%s" nmspc symb))
-    (intern nmspc symb (wrap-try-catch @varr fn-symb))))
-
-(defn ns-wrap-try-catch!
-  "Re-intern all functions in NAMESPACE as ones that wrap the originals with a `try-catch`.
-   Defaults to the current namespace. You may optionally exclude a set of symbols using the kwarg `:exclude`.
-
-     (ns-wrap-try-catch!)
-     (ns-wrap-try-catch! 'metabase.driver)
-     (ns-wrap-try-catch! 'metabase.driver :exclude 'query-complete)
-
-   Intended for debugging."
-  {:arglists '([namespace? :exclude & excluded-symbs])}
-  [& args]
-  (let [[nmspc args] (optional #(try-apply the-ns [%]) args *ns*)
-        excluded     (when (= (first args) :exclude)
-                       (set (rest args)))]
-    (doseq [[symb varr] (ns-interns nmspc)]
-      (when (fn? @varr)
-        (when-not (contains? excluded symb)
-          (wrap-try-catch! (symbol (str (ns-name nmspc) \/ symb))))))))
 
 (defn deref-with-timeout
   "Call `deref` on a FUTURE and throw an exception if it takes more than TIMEOUT-MS."
@@ -644,3 +598,57 @@
   (extend atype protocol method-map)
   (when (seq more)
     (apply strict-extend atype more)))
+
+(def ^:private ^:const slugify-valid-chars
+  #{\a \b \c \d \e \f \g \h \i \j \k \l \m \n \o \p \q \r \s \t \u \v \w \x \y \z
+    \0 \1 \2 \3 \4 \5 \6 \7 \8 \9
+    \_})
+
+(defn slugify
+  "Return a version of `String` S appropriate for use as a URL slug.
+   Downcase the name and replace non-alphanumeric characters with underscores."
+  ^String [s]
+  (when (seq s)
+    (apply str (for [c (s/lower-case (name s))]
+                 (if (contains? slugify-valid-chars c)
+                   c
+                   \_)))))
+
+(defn do-with-auto-retries
+  "Execute F, a function that takes no arguments, and return the results.
+   If F fails with an exception, retry F up to NUM-RETRIES times until it succeeds.
+
+   Consider using the `auto-retry` macro instead of calling this function directly."
+  {:style/indent 1}
+  [num-retries f]
+  (if (<= num-retries 0)
+    (f)
+    (try (f)
+         (catch Throwable e
+           (log/warn (format-color 'red "auto-retry %s: %s" f (.getMessage e)))
+           (do-with-auto-retries (dec num-retries) f)))))
+
+(defmacro auto-retry
+  "Execute BODY and return the results.
+   If BODY fails with an exception, retry execution up to NUM-RETRIES times until it succeeds."
+  {:style/indent 1}
+  [num-retries & body]
+  `(do-with-auto-retries ~num-retries
+     (fn [] ~@body)))
+
+(defn string-or-keyword?
+  "Is X a `String` or a `Keyword`?"
+  [x]
+  (or (string? x)
+      (keyword? x)))
+
+(defn key-by
+  "Convert a sequential COLL to a map of `(f item)` -> `item`.
+   This is similar to `group-by`, but the resultant map's values are single items from COLL rather than sequences of items.
+   (Because only a single item is kept for each value of `f`,  items producing duplicate values will be discarded).
+
+     (key-by :id [{:id 1, :name :a} {:id 2, :name :b}]) -> {1 {:id 1, :name :a}, 2 {:id 2, :name :b}}"
+  {:style/indent 1}
+  [f coll]
+  (into {} (for [item coll]
+             {(f item) item})))

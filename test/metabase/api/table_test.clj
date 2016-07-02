@@ -1,17 +1,18 @@
 (ns metabase.api.table-test
   "Tests for /api/table endpoints."
   (:require [expectations :refer :all]
-            [metabase.db :refer :all]
-            (metabase [http-client :as http]
+            (metabase [db :as db]
+                      [driver :as driver]
+                      [http-client :as http]
                       [middleware :as middleware])
             (metabase.models [field :refer [Field]]
-                             [foreign-key :refer [ForeignKey]]
                              [table :refer [Table]])
             [metabase.test.data :refer :all]
             (metabase.test.data [dataset-definitions :as defs]
                                 [datasets :as datasets]
                                 [users :refer :all])
-            [metabase.test.util :refer [match-$ expect-eval-actual-first resolve-private-fns]]))
+            [metabase.test.util :refer [match-$ expect-eval-actual-first resolve-private-fns]]
+            [metabase.util :as u]))
 
 (resolve-private-fns metabase.models.table pk-field-id)
 
@@ -37,39 +38,39 @@
      :is_full_sync    true
      :organization_id nil
      :description     nil
-     :features        (mapv name (metabase.driver/features (metabase.driver/engine->driver :h2)))}))
+     :features        (mapv name (driver/features (driver/engine->driver :h2)))}))
 
 
-;; ## GET /api/table?org
+;; ## GET /api/table
 ;; These should come back in alphabetical order and include relevant metadata
 (expect
-  #{{:name                (format-name "categories")
-     :display_name        "Categories"
-     :db_id               (id)
-     :active              true
-     :rows                75
-     :id                  (id :categories)}
-    {:name                (format-name "checkins")
-     :display_name        "Checkins"
-     :db_id               (id)
-     :active              true
-     :rows                1000
-     :id                  (id :checkins)}
-    {:name                (format-name "users")
-     :display_name        "Users"
-     :db_id               (id)
-     :active              true
-     :rows                15
-     :id                  (id :users)}
-    {:name                (format-name "venues")
-     :display_name        "Venues"
-     :db_id               (id)
-     :active              true
-     :rows                100
-     :id                  (id :venues)}}
+  #{{:name         (format-name "categories")
+     :display_name "Categories"
+     :db_id        (id)
+     :active       true
+     :rows         75
+     :id           (id :categories)}
+    {:name         (format-name "checkins")
+     :display_name "Checkins"
+     :db_id        (id)
+     :active       true
+     :rows         1000
+     :id           (id :checkins)}
+    {:name         (format-name "users")
+     :display_name "Users"
+     :db_id        (id)
+     :active       true
+     :rows         15
+     :id           (id :users)}
+    {:name         (format-name "venues")
+     :display_name "Venues"
+     :db_id        (id)
+     :active       true
+     :rows         100
+     :id           (id :venues)}}
   (->> ((user->client :rasta) :get 200 "table")
        (filter #(= (:db_id %) (id)))                        ; prevent stray tables from affecting unit test results
-       (map #(dissoc % :db :created_at :updated_at :schema :entity_name :description :entity_type :visibility_type))
+       (map #(dissoc % :raw_table_id :db :created_at :updated_at :schema :entity_name :description :entity_type :visibility_type))
        set))
 
 ;; ## GET /api/table/:id
@@ -89,6 +90,7 @@
        :pk_field        (pk-field-id $$)
        :id              (id :venues)
        :db_id           (id)
+       :raw_table_id    $
        :created_at      $})
     ((user->client :rasta) :get 200 (format "table/%d" (id :venues))))
 
@@ -98,7 +100,7 @@
             :table_id            (id :categories)
             :special_type        "id"
             :name                "ID"
-            :display_name        "Id"
+            :display_name        "ID"
             :updated_at          $
             :active              true
             :id                  (id :categories :id)
@@ -108,7 +110,10 @@
             :created_at          $
             :base_type           "BigIntegerField"
             :visibility_type     "normal"
-            :parent_id           nil})
+            :fk_target_field_id  $
+            :parent_id           nil
+            :raw_column_id       $
+            :last_analyzed       $})
          (match-$ (Field (id :categories :name))
            {:description         nil
             :table_id            (id :categories)
@@ -124,7 +129,10 @@
             :created_at          $
             :base_type           "TextField"
             :visibility_type     "normal"
-            :parent_id           nil})]
+            :fk_target_field_id  $
+            :parent_id           nil
+            :raw_column_id       $
+            :last_analyzed       $})]
   ((user->client :rasta) :get 200 (format "table/%d/fields" (id :categories))))
 
 ;; ## GET /api/table/:id/query_metadata
@@ -142,7 +150,7 @@
                             :table_id        (id :categories)
                             :special_type    "id"
                             :name            "ID"
-                            :display_name    "Id"
+                            :display_name    "ID"
                             :updated_at      $
                             :active          true
                             :id              $
@@ -153,7 +161,10 @@
                             :created_at      $
                             :base_type       "BigIntegerField"
                             :visibility_type "normal"
-                            :parent_id       nil})
+                            :fk_target_field_id $
+                            :parent_id       nil
+                            :raw_column_id   $
+                            :last_analyzed   $})
                          (match-$ (Field (id :categories :name))
                            {:description     nil
                             :table_id        (id :categories)
@@ -170,7 +181,10 @@
                             :created_at      $
                             :base_type       "TextField"
                             :visibility_type "normal"
-                            :parent_id       nil})]
+                            :fk_target_field_id $
+                            :parent_id       nil
+                            :raw_column_id   $
+                            :last_analyzed   $})]
        :field_values    {}
        :rows            75
        :updated_at      $
@@ -178,6 +192,7 @@
        :active          true
        :id              (id :categories)
        :db_id           (id)
+       :raw_table_id    $
        :segments        []
        :metrics         []
        :created_at      $})
@@ -205,7 +220,7 @@
 ;;; GET api/table/:id/query_metadata?include_sensitive_fields
 ;;; Make sure that getting the User table *does* include info about the password field, but not actual values themselves
 (expect
-    (match-$ (sel :one Table :id (id :users))
+    (match-$ (Table (id :users))
       {:description     nil
        :entity_type     nil
        :visibility_type nil
@@ -213,12 +228,12 @@
        :schema          "PUBLIC"
        :name            "USERS"
        :display_name    "Users"
-       :fields          [(match-$ (sel :one Field :id (id :users :id))
+       :fields          [(match-$ (Field (id :users :id))
                            {:description     nil
                             :table_id        (id :users)
                             :special_type    "id"
                             :name            "ID"
-                            :display_name    "Id"
+                            :display_name    "ID"
                             :updated_at      $
                             :active          true
                             :id              $
@@ -229,8 +244,11 @@
                             :created_at      $
                             :base_type       "BigIntegerField"
                             :visibility_type "normal"
-                            :parent_id       nil})
-                         (match-$ (sel :one Field :id (id :users :last_login))
+                            :fk_target_field_id $
+                            :parent_id       nil
+                            :raw_column_id   $
+                            :last_analyzed   $})
+                         (match-$ (Field (id :users :last_login))
                            {:description     nil
                             :table_id        (id :users)
                             :special_type    nil
@@ -246,8 +264,11 @@
                             :created_at      $
                             :base_type       "DateTimeField"
                             :visibility_type "normal"
-                            :parent_id       nil})
-                         (match-$ (sel :one Field :id (id :users :name))
+                            :fk_target_field_id $
+                            :parent_id       nil
+                            :raw_column_id   $
+                            :last_analyzed   $})
+                         (match-$ (Field (id :users :name))
                            {:description     nil
                             :table_id        (id :users)
                             :special_type    "name"
@@ -263,8 +284,11 @@
                             :created_at      $
                             :base_type       "TextField"
                             :visibility_type "normal"
-                            :parent_id       nil})
-                         (match-$ (sel :one Field :table_id (id :users) :name "PASSWORD")
+                            :fk_target_field_id $
+                            :parent_id       nil
+                            :raw_column_id   $
+                            :last_analyzed   $})
+                         (match-$ (Field :table_id (id :users), :name "PASSWORD")
                            {:description     nil
                             :table_id        (id :users)
                             :special_type    "category"
@@ -280,13 +304,17 @@
                             :created_at      $
                             :base_type       "TextField"
                             :visibility_type "sensitive"
-                            :parent_id       nil})]
+                            :fk_target_field_id $
+                            :parent_id       nil
+                            :raw_column_id   $
+                            :last_analyzed   $})]
        :rows            15
        :updated_at      $
        :entity_name     nil
        :active          true
        :id              (id :users)
        :db_id           (id)
+       :raw_table_id    $
        :field_values    {(keyword (str (id :users :name)))
                          ["Broen Olujimi"
                           "Conchúr Tihomir"
@@ -324,7 +352,7 @@
                             :table_id        (id :users)
                             :special_type    "id"
                             :name            "ID"
-                            :display_name    "Id"
+                            :display_name    "ID"
                             :updated_at      $
                             :active          true
                             :id              $
@@ -335,7 +363,10 @@
                             :created_at      $
                             :base_type       "BigIntegerField"
                             :visibility_type "normal"
-                            :parent_id       nil})
+                            :fk_target_field_id $
+                            :parent_id       nil
+                            :raw_column_id   $
+                            :last_analyzed   $})
                          (match-$ (Field (id :users :last_login))
                            {:description     nil
                             :table_id        (id :users)
@@ -352,7 +383,10 @@
                             :created_at      $
                             :base_type       "DateTimeField"
                             :visibility_type "normal"
-                            :parent_id       nil})
+                            :fk_target_field_id $
+                            :parent_id       nil
+                            :raw_column_id   $
+                            :last_analyzed   $})
                          (match-$ (Field (id :users :name))
                            {:description     nil
                             :table_id        (id :users)
@@ -369,13 +403,17 @@
                             :created_at      $
                             :base_type       "TextField"
                             :visibility_type "normal"
-                            :parent_id       nil})]
+                            :fk_target_field_id $
+                            :parent_id       nil
+                            :raw_column_id   $
+                            :last_analyzed   $})]
        :rows            15
        :updated_at      $
        :entity_name     nil
        :active          true
        :id              (id :users)
        :db_id           (id)
+       :raw_table_id    $
        :field_values    {(keyword (str (id :users :name)))
                          ["Broen Olujimi"
                           "Conchúr Tihomir"
@@ -400,10 +438,9 @@
 
 ;; ## PUT /api/table/:id
 (expect-eval-actual-first
-    (match-$ (let [table (Table (id :users))]
+    (match-$ (u/prog1 (Table (id :users))
                ;; reset Table back to its original state
-               (upd Table (id :users) :display_name "Users" :entity_type nil :visibility_type nil :description nil)
-               table)
+               (db/update! Table (id :users), :display_name "Users", :entity_type nil, :visibility_type nil, :description nil))
       {:description     "What a nice table!"
        :entity_type     "person"
        :visibility_type "hidden"
@@ -418,7 +455,7 @@
                            :id              $
                            :engine          "h2"
                            :created_at      $
-                           :features        (mapv name (metabase.driver/features (metabase.driver/engine->driver :h2)))})
+                           :features        (mapv name (driver/features (driver/engine->driver :h2)))})
        :schema          "PUBLIC"
        :name            "USERS"
        :rows            15
@@ -429,6 +466,7 @@
        :pk_field        (pk-field-id $$)
        :id              $
        :db_id           (id)
+       :raw_table_id    $
        :created_at      $})
     (do ((user->client :crowberto) :put 200 (format "table/%d" (id :users)) {:display_name "Userz"
                                                                              :entity_type "person"
@@ -439,21 +477,19 @@
 
 ;; ## GET /api/table/:id/fks
 ;; We expect a single FK from CHECKINS.USER_ID -> USERS.ID
-(expect-let [checkins-user-field (sel :one Field :table_id (id :checkins) :name "USER_ID")
-             users-id-field (sel :one Field :table_id (id :users) :name "ID")]
-  [(match-$ (sel :one ForeignKey :destination_id (:id users-id-field))
-     {:id             $
-      :origin_id      (:id checkins-user-field)
+(expect
+  (let [checkins-user-field (Field :table_id (id :checkins), :name "USER_ID")
+        users-id-field (Field :table_id (id :users), :name "ID")]
+    [{:origin_id      (:id checkins-user-field)
       :destination_id (:id users-id-field)
       :relationship   "Mt1"
-      :created_at     $
-      :updated_at     $
       :origin         (match-$ checkins-user-field
                         {:id              $
                          :table_id        $
+                         :raw_column_id   $
                          :parent_id       nil
                          :name            "USER_ID"
-                         :display_name    "User Id"
+                         :display_name    "User ID"
                          :description     nil
                          :base_type       "IntegerField"
                          :visibility_type "normal"
@@ -462,8 +498,10 @@
                          :field_type      "info"
                          :active          true
                          :special_type    "fk"
+                         :fk_target_field_id $
                          :created_at      $
                          :updated_at      $
+                         :last_analyzed   $
                          :table           (match-$ (Table (id :checkins))
                                             {:description     nil
                                              :entity_type     nil
@@ -477,14 +515,16 @@
                                              :active          true
                                              :id              $
                                              :db_id           $
+                                             :raw_table_id    $
                                              :created_at      $
                                              :db              (db-details)})})
       :destination    (match-$ users-id-field
                         {:id              $
                          :table_id        $
+                         :raw_column_id   $
                          :parent_id       nil
                          :name            "ID"
-                         :display_name    "Id"
+                         :display_name    "ID"
                          :description     nil
                          :base_type       "BigIntegerField"
                          :visibility_type "normal"
@@ -493,8 +533,10 @@
                          :field_type      "info"
                          :active          true
                          :special_type    "id"
+                         :fk_target_field_id $
                          :created_at      $
                          :updated_at      $
+                         :last_analyzed   $
                          :table           (match-$ (Table (id :users))
                                             {:description     nil
                                              :entity_type     nil
@@ -508,22 +550,23 @@
                                              :active          true
                                              :id              $
                                              :db_id           $
-                                             :created_at      $})})})]
+                                             :raw_table_id    $
+                                             :created_at      $})})}])
   ((user->client :rasta) :get 200 (format "table/%d/fks" (id :users))))
 
 
 ;; ## POST /api/table/:id/reorder
 (expect-eval-actual-first
     {:result "success"}
-  (let [categories-id-field   (sel :one Field :table_id (id :categories) :name "ID")
-        categories-name-field (sel :one Field :table_id (id :categories) :name "NAME")
+  (let [categories-id-field   (Field :table_id (id :categories), :name "ID")
+        categories-name-field (Field :table_id (id :categories), :name "NAME")
         api-response          ((user->client :crowberto) :post 200 (format "table/%d/reorder" (id :categories))
                                {:new_order [(:id categories-name-field) (:id categories-id-field)]})]
     ;; check the modified values (have to do it here because the api response tells us nothing)
-    (assert (= 0 (:position (sel :one :fields [Field :position] :id (:id categories-name-field)))))
-    (assert (= 1 (:position (sel :one :fields [Field :position] :id (:id categories-id-field)))))
+    (assert (= 0 (db/select-one-field :position Field, :id (:id categories-name-field))))
+    (assert (= 1 (db/select-one-field :position Field, :id (:id categories-id-field))))
     ;; put the values back to their previous state
-    (upd Field (:id categories-name-field) :position 0)
-    (upd Field (:id categories-id-field) :position 0)
+    (db/update! Field (:id categories-name-field), :position 0)
+    (db/update! Field (:id categories-id-field),   :position 0)
     ;; return our origin api response for validation
     api-response))

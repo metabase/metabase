@@ -3,15 +3,16 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as s]
             [clojure.tools.logging :as log]
-            (korma [core :as k]
-                   [db :as kdb])
+            (honeysql [core :as hsql]
+                      [format :as hformat]
+                      [helpers :as h])
             [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
             (metabase.test.data [datasets :as datasets]
                                 [interface :as i])
             [metabase.util :as u]
-            [metabase.util.korma-extensions :as kx])
+            [metabase.util.honeysql-extensions :as hx])
   (:import clojure.lang.Keyword
            (metabase.test.data.interface DatabaseDefinition
                                          FieldDefinition
@@ -42,14 +43,15 @@
     "*Optional* Return a `CREATE TABLE` statement.")
 
   (drop-table-if-exists-sql ^String [this, ^DatabaseDefinition dbdef, ^TableDefinition tabledef]
-     "*Optional* Return a `DROP TABLE IF EXISTS` statement.")
+    "*Optional* Return a `DROP TABLE IF EXISTS` statement.")
 
   (add-fk-sql ^String [this, ^DatabaseDefinition dbdef, ^TableDefinition tabledef, ^FieldDefinition fielddef]
     "*Optional* Return a `ALTER TABLE ADD CONSTRAINT FOREIGN KEY` statement.")
 
-  ;; Other optional methods
-  (korma-entity [this, ^DatabaseDefinition dbdef, ^TableDefinition tabledef]
-    "*Optional* Return a korma-entity for TABLEDEF.")
+  (prepare-identifier [this, ^String identifier]
+    "*OPTIONAL*. Prepare an identifier, such as a Table or Field name, when it is used in a SQL query.
+     This is used by drivers like H2 to transform names to upper-case.
+     The default implementation is `identity`.")
 
   (pk-field-name ^String [this]
     "*Optional* Name of a PK field. Defaults to `\"id\"`.")
@@ -80,10 +82,10 @@
      Uses `sql/connection-details->spec` by default.")
 
   (load-data! [this, ^DatabaseDefinition dbdef, ^TableDefinition tabledef]
-    "*Optional*. Load the rows for a specific table into a DB.")
+    "*Optional*. Load the rows for a specific table into a DB. `load-data-chunked` is the default implementation.")
 
   (execute-sql! [driver ^Keyword context, ^DatabaseDefinition dbdef, ^String sql]
-    "Execute a string of raw SQL. Context is either `:server` or `:db`."))
+    "*Optional*. Execute a string of raw SQL. Context is either `:server` or `:db`."))
 
 
 (defn- default-create-db-sql [driver {:keys [database-name]}]
@@ -138,10 +140,8 @@
   (str \" nm \"))
 
 (defn- quote+combine-names [driver names]
-  (->> names
-       (map (partial quote-name driver))
-       (interpose \.)
-       (apply str)))
+  (apply str (interpose \. (for [n names]
+                             (name (hx/qualify-and-escape-dots (quote-name driver n)))))))
 
 (defn- default-qualify+quote-name
   ([driver db-name]
@@ -155,18 +155,16 @@
   (let [spec (sql/connection-details->spec driver (i/database->connection-details driver context dbdef))]
     (assoc spec :make-pool? (not (:short-lived? spec)))))
 
-(defn default-korma-entity [driver {:keys [database-name], :as dbdef} {:keys [table-name]}]
-  (k/database (kx/create-entity (qualified-name-components driver database-name table-name))
-              (kx/create-db (database->spec driver :db dbdef))))
 
 ;;; Loading Table Data
+
 ;; Since different DBs have constraints on how we can do this, the logic is broken out into a few different functions
 ;; you can compose together a driver that works with a given DB.
 ;; (ex. SQL Server has a low limit on how many ? args we can have in a prepared statement, so it needs to be broken out into chunks;
 ;;  Oracle doesn't understand the normal syntax for inserting multiple rows at a time so we'll insert them one-at-a-time instead)
 
 (defn load-data-get-rows
-  "Get a sequence of row maps for use in a korma `insert` when loading table data."
+  "Get a sequence of row maps for use in a `insert!` when loading table data."
   [driver dbdef tabledef]
   (let [fields-for-insert (mapv (comp keyword :field-name)
                                 (:field-definitions tabledef))]
@@ -180,12 +178,8 @@
   "Add IDs to each row, presumabily for doing a parallel insert. This arg should go before `load-data-chunked` or `load-data-one-at-a-time`."
   [insert!]
   (fn [rows]
-    (insert! (pmap (fn [[i row]]
-                     (assoc row :id (inc i)))
-                   (m/indexed rows)))
-    ;; (insert! (vec (for [[i row] (m/indexed rows)]
-    ;;                 (assoc row :id (inc i)))))
-    ))
+    (insert! (vec (for [[i row] (m/indexed rows)]
+                    (assoc row :id (inc i)))))))
 
 (defn load-data-chunked
   "Insert rows in chunks, which default to 200 rows each."
@@ -208,38 +202,46 @@
     (into {} (for [[k v] row-or-rows]
                {(sql/escape-field-name k) v}))))
 
-(defn load-data-with-debug-logging
-  "Add debug logging to the data loading fn. This should passed as the first arg to `make-load-data-fn`."
-  [insert!]
-  (fn [rows]
-    (println (u/format-color 'blue "Inserting %d rows like:\n%s" (count rows) (s/replace (k/sql-only (k/insert :some-table (k/values (escape-field-names (first rows)))))
-                                                                                         #"\"SOME-TABLE\""
-                                                                                         "[table]")))
-    (let [start-time (System/currentTimeMillis)]
-      (insert! rows)
-      (println (u/format-color 'green "Inserting %d rows took %d ms." (count rows) (- (System/currentTimeMillis) start-time))))))
+(defn- do-insert!
+  "Insert ROWS-OR-ROWS into TABLE-NAME for the DRIVER database defined by SPEC."
+  [driver spec table-name row-or-rows]
+  (let [prepare-key (comp keyword (partial prepare-identifier driver) name)
+        rows        (if (sequential? row-or-rows)
+                      row-or-rows
+                      [row-or-rows])
+        columns     (keys (first rows))
+        values      (for [row rows]
+                      (for [value (map row columns)]
+                        (sql/prepare-value driver {:value value})))
+        hsql-form   (-> (apply h/columns (for [column columns]
+                                           (hx/qualify-and-escape-dots (prepare-key column))))
+                        (h/insert-into (prepare-key table-name))
+                        (h/values values))
+        sql+args    (hx/unescape-dots (binding [hformat/*subquery?* false]
+                                        (hsql/format hsql-form
+                                          :quoting             (sql/quote-style driver)
+                                          :allow-dashed-names? true)))]
+    (try (jdbc/execute! spec sql+args)
+         (catch java.sql.SQLException e
+           (println (u/format-color 'red "INSERT FAILED: \n%s\n" sql+args))
+           (jdbc/print-sql-exception-chain e)))))
 
 (defn make-load-data-fn
   "Create a `load-data!` function. This creates a function to actually insert a row or rows, wraps it with any WRAP-INSERT-FNS,
    the calls the resulting function with the rows to insert."
   [& wrap-insert-fns]
-  (fn [driver dbdef tabledef]
-    (let [entity  (korma-entity driver dbdef tabledef)
-          ;; _       (assert (or (delay? (:pool (:db entity)))
-          ;;                     (println "Expected pooled connection:" (u/pprint-to-str 'cyan entity))))
-          insert! ((apply comp wrap-insert-fns) (fn [row-or-rows]
-                                                  ;; (let [id (:id row-or-rows)]
-                                                  ;;   (when (zero? (mod id 50))
-                                                  ;;     (println id)))
-                                                  (k/insert entity (k/values (escape-field-names row-or-rows)))))
-          rows    (load-data-get-rows driver dbdef tabledef)]
+  (fn [driver {:keys [database-name], :as dbdef} {:keys [table-name], :as tabledef}]
+    (let [spec       (database->spec driver :db dbdef)
+          table-name (apply hx/qualify-and-escape-dots (qualified-name-components driver database-name table-name))
+          insert!    ((apply comp wrap-insert-fns) (partial do-insert! driver spec table-name))
+          rows       (load-data-get-rows driver dbdef tabledef)]
       (insert! rows))))
 
-(def load-data-all-at-once!             "Insert all rows at once."                             (make-load-data-fn))
-(def load-data-chunked!                 "Insert rows in chunks of 200 at a time."              (make-load-data-fn load-data-chunked))
-(def load-data-one-at-a-time!           "Insert rows one at a time."                           (make-load-data-fn load-data-one-at-a-time))
-(def load-data-chunked-parallel!        "Insert rows in chunks of 200 at a time, in parallel." (make-load-data-fn load-data-add-ids (partial load-data-chunked pmap)))
-(def load-data-one-at-a-time-parallel!  "Insert rows one at a time, in parallel."              (make-load-data-fn load-data-add-ids (partial load-data-one-at-a-time pmap)))
+(def load-data-all-at-once!            "Insert all rows at once."                             (make-load-data-fn))
+(def load-data-chunked!                "Insert rows in chunks of 200 at a time."              (make-load-data-fn load-data-chunked))
+(def load-data-one-at-a-time!          "Insert rows one at a time."                           (make-load-data-fn load-data-one-at-a-time))
+(def load-data-chunked-parallel!       "Insert rows in chunks of 200 at a time, in parallel." (make-load-data-fn load-data-add-ids (partial load-data-chunked pmap)))
+(def load-data-one-at-a-time-parallel! "Insert rows one at a time, in parallel."              (make-load-data-fn load-data-add-ids (partial load-data-one-at-a-time pmap)))
 
 
 (defn default-execute-sql! [driver context dbdef sql]
@@ -249,9 +251,8 @@
                (not (s/blank? (s/replace sql #";" ""))))
       ;; Remove excess semicolons, otherwise snippy DBs like Oracle will barf
       (let [sql (s/replace sql #";+" ";")]
-        ;; (println (u/format-color 'blue "[SQL] <<<%s>>>" sql))
         (try
-          (jdbc/execute! (database->spec driver context dbdef) [sql] :transaction? false, :multi? true)
+          (jdbc/execute! (database->spec driver context dbdef) [sql] {:transaction? false, :multi? true})
           (catch java.sql.SQLException e
             (println "Error executing SQL:" sql)
             (println (format "Caught SQLException:\n%s"
@@ -261,9 +262,7 @@
             (println "Error executing SQL:" sql)
             (println (format "Caught Exception: %s %s\n%s" (class e) (.getMessage e)
                              (with-out-str (.printStackTrace e))))
-            (throw e)))
-        ;; (println (u/format-color 'blue "[OK]"))
-        ))))
+            (throw e)))))))
 
 
 (def DefaultsMixin
@@ -275,9 +274,9 @@
    :drop-db-if-exists-sql     default-drop-db-if-exists-sql
    :drop-table-if-exists-sql  default-drop-table-if-exists-sql
    :execute-sql!              default-execute-sql!
-   :korma-entity              default-korma-entity
    :load-data!                load-data-chunked!
    :pk-field-name             (constantly "id")
+   :prepare-identifier        (u/drop-first-arg identity)
    :qualified-name-components default-qualified-name-components
    :qualify+quote-name        default-qualify+quote-name
    :quote-name                default-quote-name})
@@ -307,8 +306,8 @@
 
     ;; Add the SQL for creating each Table
     (doseq [tabledef table-definitions]
-      (swap! statements conj (drop-table-if-exists-sql driver dbdef tabledef))
-      (swap! statements conj (create-table-sql driver dbdef tabledef)))
+      (swap! statements conj (drop-table-if-exists-sql driver dbdef tabledef)
+                             (create-table-sql driver dbdef tabledef)))
 
     ;; Add the SQL for adding FK constraints
     (doseq [{:keys [field-definitions], :as tabledef} table-definitions]
@@ -317,7 +316,7 @@
           (swap! statements conj (add-fk-sql driver dbdef tabledef fielddef)))))
 
     ;; exec the combined statement
-    (execute-sql! driver :db dbdef (apply str (interpose ";\n" @statements))))
+    (execute-sql! driver :db dbdef (apply str (interpose ";\n" (map hx/unescape-dots @statements)))))
 
   ;; Now load the data for each Table
   (doseq [tabledef table-definitions]
@@ -338,8 +337,19 @@
 (defn execute-when-testing!
   "Execute a prepared SQL-AND-ARGS against Database with spec returned by GET-CONNECTION-SPEC only when running tests against ENGINE.
    Useful for doing engine-specific setup or teardown."
+  {:style/indent 2}
   [engine get-connection-spec & sql-and-args]
   (datasets/when-testing-engine engine
     (println (u/format-color 'blue "[%s] %s" (name engine) (first sql-and-args)))
     (jdbc/execute! (get-connection-spec) sql-and-args)
     (println (u/format-color 'blue "[OK]"))))
+
+(defn query-when-testing!
+  "Execute a prepared SQL-AND-ARGS **query** against Database with spec returned by GET-CONNECTION-SPEC only when running tests against ENGINE.
+   Useful for doing engine-specific setup or teardown where `execute-when-testing!` won't work because the query returns results."
+  {:style/indent 2}
+  [engine get-connection-spec & sql-and-args]
+  (datasets/when-testing-engine engine
+    (println (u/format-color 'blue "[%s] %s" (name engine) (first sql-and-args)))
+    (u/prog1 (jdbc/query (get-connection-spec) sql-and-args)
+      (println (u/format-color 'blue "[OK] -> %s" (vec <>))))))

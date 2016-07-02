@@ -1,13 +1,15 @@
 (ns metabase.driver.postgres
-  (:require (clojure [set :refer [rename-keys]]
+  ;; TODO - rework this to be like newer-style namespaces that use `u/drop-first-arg`
+  (:require [clojure.java.jdbc :as jdbc]
+            (clojure [set :refer [rename-keys], :as set]
                      [string :as s])
-            (korma [core :as k]
-                   [db :as kdb])
-            [korma.sql.utils :as kutils]
+            [clojure.tools.logging :as log]
+            [honeysql.core :as hsql]
+            [metabase.db.spec :as dbspec]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
             [metabase.util :as u]
-            [metabase.util.korma-extensions :as kx])
+            [metabase.util.honeysql-extensions :as hx])
   ;; This is necessary for when NonValidatingFactory is passed in the sslfactory connection string argument,
   ;; e.x. when connecting to a Heroku Postgres database from outside of Heroku.
   (:import org.postgresql.ssl.NonValidatingFactory))
@@ -15,7 +17,7 @@
 (defn- column->base-type
   "Map of Postgres column types -> Field base types.
    Add more mappings here as you come across them."
-  [_ column-type]
+  [column-type]
   ({:bigint        :BigIntegerField
     :bigserial     :BigIntegerField
     :bit           :UnknownField
@@ -76,7 +78,7 @@
 
 (defn- column->special-type
   "Attempt to determine the special-type of a Field given its name and Postgres column type."
-  [_ column-name column-type]
+  [column-name column-type]
   ;; this is really, really simple right now.  if its postgres :json type then it's :json special-type
   (when (= column-type :json)
     :json))
@@ -91,7 +93,7 @@
   "Params to include in the JDBC connection spec to disable SSL."
   {:sslmode "disable"})
 
-(defn- connection-details->spec [_ {:keys [ssl] :as details-map}]
+(defn- connection-details->spec [{:keys [ssl] :as details-map}]
   (-> details-map
       (update :port (fn [port]
                       (if (string? port) (Integer/parseInt port)
@@ -101,47 +103,46 @@
                ssl-params
                disable-ssl-params))
       (rename-keys {:dbname :db})
-      kdb/postgres))
+      dbspec/postgres))
 
-(defn- unix-timestamp->timestamp [_ expr seconds-or-milliseconds]
+(defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
   (case seconds-or-milliseconds
-    :seconds      (k/sqlfn :TO_TIMESTAMP expr)
-    :milliseconds (recur nil (kx// expr 1000) :seconds)))
+    :seconds      (hsql/call :to_timestamp expr)
+    :milliseconds (recur (hx// expr 1000) :seconds)))
 
-(defn- date-trunc [unit expr] (k/sqlfn :DATE_TRUNC (kx/literal unit) expr))
-(defn- extract    [unit expr] (kutils/func (format "EXTRACT(%s FROM %%s)" (name unit))
-                                           [expr]))
+(defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) expr))
+(defn- extract    [unit expr] (hsql/call :extract    unit              expr))
 
-(def ^:private extract-integer (comp kx/->integer extract))
+(def ^:private extract-integer (comp hx/->integer extract))
 
-(def ^:private ^:const one-day (k/raw "INTERVAL '1 day'"))
+(def ^:private ^:const one-day (hsql/raw "INTERVAL '1 day'"))
 
-(defn- date [_ unit expr]
+(defn- date [unit expr]
   (case unit
-    :default         (kx/->timestamp expr)
+    :default         expr
     :minute          (date-trunc :minute expr)
     :minute-of-hour  (extract-integer :minute expr)
     :hour            (date-trunc :hour expr)
     :hour-of-day     (extract-integer :hour expr)
-    :day             (kx/->date expr)
+    :day             (hx/->date expr)
     ;; Postgres DOW is 0 (Sun) - 6 (Sat); increment this to be consistent with Java, H2, MySQL, and Mongo (1-7)
-    :day-of-week     (kx/inc (extract-integer :dow expr))
+    :day-of-week     (hx/inc (extract-integer :dow expr))
     :day-of-month    (extract-integer :day expr)
     :day-of-year     (extract-integer :doy expr)
     ;; Postgres weeks start on Monday, so shift this date into the proper bucket and then decrement the resulting day
-    :week            (kx/- (date-trunc :week (kx/+ expr one-day))
+    :week            (hx/- (date-trunc :week (hx/+ expr one-day))
                            one-day)
-    :week-of-year    (extract-integer :week (kx/+ expr one-day))
+    :week-of-year    (extract-integer :week (hx/+ expr one-day))
     :month           (date-trunc :month expr)
     :month-of-year   (extract-integer :month expr)
     :quarter         (date-trunc :quarter expr)
     :quarter-of-year (extract-integer :quarter expr)
     :year            (extract-integer :year expr)))
 
-(defn- date-interval [_ unit amount]
-  (k/raw (format "(NOW() + INTERVAL '%d %s')" (int amount) (name unit))))
+(defn- date-interval [unit amount]
+  (hsql/raw (format "(NOW() + INTERVAL '%d %s')" (int amount) (name unit))))
 
-(defn- humanize-connection-error-message [_ message]
+(defn- humanize-connection-error-message [message]
   (condp re-matches message
     #"^FATAL: database \".*\" does not exist$"
     (driver/connection-error-messages :database-name-incorrect)
@@ -170,6 +171,27 @@
     (java.util.UUID/fromString value)
     value))
 
+
+(defn- materialized-views
+  "Fetch the Materialized Views for a Postgres DATABASE.
+   These are returned as a set of maps, the same format as `:tables` returned by `describe-database`."
+  [database]
+  (try (set (jdbc/query (sql/db->jdbc-connection-spec database)
+                        ["SELECT schemaname AS \"schema\", matviewname AS \"name\" FROM pg_matviews;"]))
+       (catch Throwable e
+         (log/error "Failed to fetch materialized views for this database:" (.getMessage e)))))
+
+(defn- describe-database
+  "Custom implementation of `describe-database` for Postgres.
+   Postgres Materialized Views are not returned by normal JDBC methods: see [issue #2355](https://github.com/metabase/metabase/issues/2355); we have to manually fetch them.
+   This implementation combines the results from the generic SQL default implementation with materialized views fetched from `materialized-views`."
+  [driver database]
+  (update (sql/describe-database driver database) :tables (u/rpartial set/union (materialized-views database))))
+
+(defn- string-length-fn [field-key]
+  (hsql/call :char_length (hx/cast :VARCHAR field-key)))
+
+
 (defrecord PostgresDriver []
   clojure.lang.Named
   (getName [_] "PostgreSQL"))
@@ -177,19 +199,20 @@
 (def PostgresISQLDriverMixin
   "Implementations of `ISQLDriver` methods for `PostgresDriver`."
   (merge (sql/ISQLDriverDefaultsMixin)
-         {:column->base-type         column->base-type
-          :column->special-type      column->special-type
-          :connection-details->spec  connection-details->spec
-          :date                      date
+         {:column->base-type         (u/drop-first-arg column->base-type)
+          :column->special-type      (u/drop-first-arg column->special-type)
+          :connection-details->spec  (u/drop-first-arg connection-details->spec)
+          :date                      (u/drop-first-arg date)
           :prepare-value             (u/drop-first-arg prepare-value)
           :set-timezone-sql          (constantly "UPDATE pg_settings SET setting = ? WHERE name ILIKE 'timezone';")
-          :string-length-fn          (constantly :CHAR_LENGTH)
-          :unix-timestamp->timestamp unix-timestamp->timestamp}))
+          :string-length-fn          (u/drop-first-arg string-length-fn)
+          :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
 (u/strict-extend PostgresDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {:date-interval                     date-interval
+         {:date-interval                     (u/drop-first-arg date-interval)
+          :describe-database                 describe-database
           :details-fields                    (constantly [{:name         "host"
                                                            :display-name "Host"
                                                            :default      "localhost"}
@@ -213,7 +236,7 @@
                                                            :display-name "Use a secure connection (SSL)?"
                                                            :type         :boolean
                                                            :default      false}])
-          :humanize-connection-error-message humanize-connection-error-message})
+          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
 
   sql/ISQLDriver PostgresISQLDriverMixin)
 

@@ -40,7 +40,7 @@
 
 ;; ## Persistence Functions
 
-(defn record-activity
+(defn record-activity!
   "Inserts a new `Activity` entry.
 
    Takes the following kwargs:
@@ -53,16 +53,17 @@
      :model          Optional.  name of the model representing the activity.  defaults to (events/topic->model topic)
      :model-id       Optional.  ID of the model representing the activity.  defaults to (events/object->model-id topic object)
 
-   ex: (record-activity
+   ex: (record-activity!
          :topic       :segment-update
          :object      segment
          :database-id 1
          :table-id    13
          :details-fn  #(dissoc % :some-key))"
+  {:style/indent 0}
   [& {:keys [topic object details-fn database-id table-id user-id model model-id]}]
   {:pre [(keyword? topic)]}
   (let [object (or object {})]
-    (db/ins Activity
+    (db/insert! Activity
       :topic       topic
       :user_id     (or user-id (events/object->user-id object))
       :model       (or model (events/topic->model topic))

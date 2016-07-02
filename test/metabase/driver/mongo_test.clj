@@ -1,11 +1,12 @@
 (ns metabase.driver.mongo-test
   "Tests for Mongo driver."
   (:require [expectations :refer :all]
-            [korma.core :as k]
-            [metabase.db :refer :all]
+            [metabase.db :as db]
             [metabase.driver :as driver]
-            (metabase.models [field :refer [Field]]
+            (metabase.models [database :refer [Database]]
+                             [field :refer [Field]]
                              [table :refer [Table] :as table])
+            [metabase.query-processor :as qp]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
             [metabase.test.util :refer [expect-eval-actual-first resolve-private-fns]])
@@ -13,7 +14,7 @@
 
 ;; ## Logic for selectively running mongo
 
-(defmacro expect-when-testing-mongo [expected actual]
+(defmacro expect-when-testing-mongo {:style/indent 0} [expected actual]
   `(datasets/expect-when-testing-engine :mongo
      ~expected
      ~actual))
@@ -66,20 +67,41 @@
                                             :port 3000
                                             :dbname "bad-db-name?connectTimeoutMS=50"}))
 
+(def ^:const ^:private native-query
+  "[{\"$project\": {\"_id\": \"$_id\"}},
+    {\"$match\": {\"_id\": {\"$eq\": 1}}},
+    {\"$group\": {\"_id\": null, \"count\": {\"$sum\": 1}}},
+    {\"$sort\": {\"_id\": 1}},
+    {\"$project\": {\"_id\": false, \"count\": true}}]")
+
+(expect-when-testing-mongo
+  {:status    :completed
+   :row_count 1
+   :data      {:rows        [[1]]
+               :annotate?   nil
+               :columns     ["count"]
+               :cols        [{:name "count", :base_type :IntegerField}]
+               :native_form {:collection "venues"
+                             :query      native-query}}}
+  (qp/process-query {:native   {:query      native-query
+                                :collection "venues"}
+                     :type     :native
+                     :database (:id (mongo-db))}))
 
 ;; ## Tests for individual syncing functions
 
 ;; DESCRIBE-DATABASE
 (expect-when-testing-mongo
-    {:tables #{{:name "checkins"}
-               {:name "categories"}
-               {:name "users"}
-               {:name "venues"}}}
-    (driver/describe-database (MongoDriver.) (mongo-db)))
+  {:tables #{{:schema nil, :name "checkins"}
+             {:schema nil, :name "categories"}
+             {:schema nil, :name "users"}
+             {:schema nil, :name "venues"}}}
+  (driver/describe-database (MongoDriver.) (mongo-db)))
 
 ;; DESCRIBE-TABLE
 (expect-when-testing-mongo
-  {:name   "venues"
+  {:schema nil
+   :name   "venues"
    :fields #{{:name "name",
               :base-type :TextField}
              {:name "latitude",
@@ -93,7 +115,7 @@
              {:name "_id",
               :base-type :IntegerField,
               :pk? true}}}
-  (driver/describe-table (MongoDriver.) (table-name->table :venues)))
+  (driver/describe-table (MongoDriver.) (mongo-db) (table-name->table :venues)))
 
 ;; ANALYZE-TABLE
 (expect-when-testing-mongo
@@ -116,7 +138,10 @@
      {:rows 1000, :active true, :name "checkins"}
      {:rows 15,   :active true, :name "users"}
      {:rows 100,  :active true, :name "venues"}]
-  (sel :many :fields [Table :name :active :rows] :db_id (:id (mongo-db)) (k/order :name)))
+  (for [field (db/select [Table :name :active :rows]
+                :db_id (:id (mongo-db))
+                {:order-by [:name]})]
+    (into {} field)))
 
 ;; Test that Fields got synced correctly, and types are correct
 (expect-when-testing-mongo
@@ -137,5 +162,8 @@
       {:special_type :name,      :base_type :TextField,     :name "name"}
       {:special_type :category,  :base_type :IntegerField,  :name "price"}]]
     (for [nm table-names]
-      (sel :many :fields [Field :name :base_type :special_type], :active true, :table_id (:id (table-name->table nm))
-           (k/order :name))))
+      (for [field (db/select [Field :name :base_type :special_type]
+                    :active   true
+                    :table_id (:id (table-name->table nm))
+                    {:order-by [:name]})]
+        (into {} field))))

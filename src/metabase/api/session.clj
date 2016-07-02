@@ -3,26 +3,25 @@
   (:require [clojure.tools.logging :as log]
             [cemerick.friend.credentials :as creds]
             [compojure.core :refer [defroutes GET POST DELETE]]
-            [korma.core :as k]
             [throttle.core :as throttle]
             [metabase.api.common :refer :all]
-            [metabase.db :refer :all]
+            [metabase.db :as db]
             [metabase.email.messages :as email]
             [metabase.events :as events]
-            (metabase.models [user :refer [User set-user-password set-user-password-reset-token]]
+            (metabase.models [user :refer [User set-user-password! set-user-password-reset-token!]]
                              [session :refer [Session]]
                              [setting :as setting])
+            [metabase.util :as u]
             [metabase.util.password :as pass]))
 
 
 (defn- create-session
   "Generate a new `Session` for a given `User`.  Returns the newly generated session id value."
   [user-id]
-  (let [session-id (str (java.util.UUID/randomUUID))]
-    (ins Session
-         :id session-id
-         :user_id user-id)
-    session-id))
+  (u/prog1 (str (java.util.UUID/randomUUID))
+    (db/insert! Session
+      :id      <>
+      :user_id user-id)))
 
 
 ;;; ## API Endpoints
@@ -38,14 +37,14 @@
    password [Required NonEmptyString]}
   (throttle/check (login-throttlers :ip-address) remote-address)
   (throttle/check (login-throttlers :email)      email)
-  (let [user (sel :one :fields [User :id :password_salt :password], :email email (k/where {:is_active true}))]
+  (let [user (db/select-one [User :id :password_salt :password :last_login], :email email, :is_active true)]
     ;; Don't leak whether the account doesn't exist or the password was incorrect
     (when-not (and user
                    (pass/verify-password password (:password_salt user) (:password user)))
       (throw (ex-info "Password did not match stored password." {:status-code 400
                                                                  :errors      {:password "did not match stored password"}})))
     (let [session-id (create-session (:id user))]
-      (events/publish-event :user-login {:user_id (:id user) :session_id session-id})
+      (events/publish-event :user-login {:user_id (:id user), :session_id session-id, :first_login (not (boolean (:last_login user)))})
       {:id session-id})))
 
 
@@ -54,7 +53,7 @@
   [session_id]
   {session_id [Required NonEmptyString]}
   (check-exists? Session session_id)
-  (del Session :id session_id))
+  (db/cascade-delete! Session, :id session_id))
 
 ;; Reset tokens:
 ;; We need some way to match a plaintext token with the a user since the token stored in the DB is hashed.
@@ -74,8 +73,8 @@
   (throttle/check (forgot-password-throttlers :ip-address) remote-address)
   (throttle/check (forgot-password-throttlers :email)      email)
   ;; Don't leak whether the account doesn't exist, just pretend everything is ok
-  (when-let [user-id (sel :one :id User :email email)]
-    (let [reset-token        (set-user-password-reset-token user-id)
+  (when-let [user-id (db/select-one-id User, :email email)]
+    (let [reset-token        (set-user-password-reset-token! user-id)
           password-reset-url (str (@(ns-resolve 'metabase.core 'site-url) request) "/auth/reset_password/" reset-token)]
       (email/send-password-reset-email email server-name password-reset-url)
       (log/info password-reset-url))))
@@ -85,30 +84,30 @@
   "Number of milliseconds a password reset is considered valid."
   (* 48 60 60 1000)) ; token considered valid for 48 hours
 
-(defn- valid-reset-token->user-id
+(defn- valid-reset-token->user
   "Check if a password reset token is valid. If so, return the `User` ID it corresponds to."
   [^String token]
   (when-let [[_ user-id] (re-matches #"(^\d+)_.+$" token)]
     (let [user-id (Integer/parseInt user-id)]
-      (when-let [{:keys [reset_token reset_triggered]} (sel :one :fields [User :reset_triggered :reset_token] :id user-id)]
+      (when-let [{:keys [reset_token reset_triggered], :as user} (db/select-one [User :id :last_login :reset_triggered :reset_token], :id user-id)]
         ;; Make sure the plaintext token matches up with the hashed one for this user
-        (when (try (creds/bcrypt-verify token reset_token)
-                   (catch Throwable _))
+        (when (u/ignore-exceptions
+                (creds/bcrypt-verify token reset_token))
           ;; check that the reset was triggered within the last 48 HOURS, after that the token is considered expired
           (let [token-age (- (System/currentTimeMillis) reset_triggered)]
             (when (< token-age reset-token-ttl-ms)
-              user-id)))))))
+              user)))))))
 
 (defendpoint POST "/reset_password"
   "Reset password with a reset token."
   [:as {{:keys [token password]} :body}]
   {token    Required
    password [Required ComplexPassword]}
-  (or (when-let [user-id (valid-reset-token->user-id token)]
-        (set-user-password user-id password)
+  (or (when-let [{user-id :id, :as user} (valid-reset-token->user token)]
+        (set-user-password! user-id password)
         ;; after a successful password update go ahead and offer the client a new session that they can use
         (let [session-id (create-session user-id)]
-          (events/publish-event :user-login {:user_id user-id :session_id session-id})
+          (events/publish-event :user-login {:user_id user-id, :session_id session-id, :first_login (not (boolean (:last_login user)))})
           {:success    true
            :session_id session-id}))
       (throw (invalid-param-exception :password "Invalid reset token"))))
@@ -118,7 +117,7 @@
   "Check is a password reset token is valid and isn't expired."
   [token]
   {token Required}
-  {:valid (boolean (valid-reset-token->user-id token))})
+  {:valid (boolean (valid-reset-token->user token))})
 
 
 (defendpoint GET "/properties"

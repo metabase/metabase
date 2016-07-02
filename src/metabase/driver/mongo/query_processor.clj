@@ -4,24 +4,26 @@
                      [string :as s])
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
+            [cheshire.core :as json]
             (monger [collection :as mc]
                     [operators :refer :all])
-            [metabase.driver.query-processor :as qp]
-            (metabase.driver.query-processor [annotate :as annotate]
-                                             [interface :refer [qualified-name-components map->DateTimeField map->DateTimeValue]])
             [metabase.driver.mongo.util :refer [with-mongo-connection *mongo-connection* values->base-type]]
+            [metabase.models.table :refer [Table]]
+            [metabase.query-processor :as qp]
+            (metabase.query-processor [annotate :as annotate]
+                                      [interface :refer [qualified-name-components map->DateTimeField map->DateTimeValue]])
             [metabase.util :as u])
   (:import java.sql.Timestamp
            java.util.Date
            (com.mongodb CommandResult DB)
            clojure.lang.PersistentArrayMap
            org.bson.types.ObjectId
-           (metabase.driver.query_processor.interface AgFieldRef
-                                                      DateTimeField
-                                                      DateTimeValue
-                                                      Field
-                                                      RelativeDateTimeValue
-                                                      Value)))
+           (metabase.query_processor.interface AgFieldRef
+                                               DateTimeField
+                                               DateTimeValue
+                                               Field
+                                               RelativeDateTimeValue
+                                               Value)))
 
 (def ^:private ^:const $subtract :$subtract)
 
@@ -36,29 +38,6 @@
                  (->> form
                       (walk/postwalk #(if (symbol? %) (symbol (name %)) %)) ; strip namespace qualifiers from Monger form
                       u/pprint-to-str) "\n"))))
-
-;; # NATIVE QUERY PROCESSOR
-
-(defn- eval-raw-command
-  "Evaluate raw MongoDB javascript code. This must be ran insided the body of a `with-mongo-connection`.
-
-     (with-mongo-connection [_ \"mongodb://localhost/test\"]
-       (eval-raw-command \"db.zips.findOne()\"))
-     -> {\"_id\" \"01001\", \"city\" \"AGAWAM\", ...}"
-  [^String command]
-  (assert *mongo-connection* "eval-raw-command must be ran inside the body of with-mongo-connection.")
-  (let [^CommandResult result (.doEval ^DB *mongo-connection* command nil)]
-      (when-not (.ok result)
-        (throw (.getException result)))
-      (let [{result "retval"} (PersistentArrayMap/create (.toMap result))]
-        result)))
-
-(defn process-and-run-native
-  "Process and run a native MongoDB query."
-  [_ query]
-  (let [results (eval-raw-command (:query (:native query)))]
-    (if (sequential? results) results
-        [results])))
 
 
 ;;; # STRUCTURED QUERY PROCESSOR
@@ -347,7 +326,9 @@
 
 ;;; # process + run
 
-(defn- generate-aggregation-pipeline [query]
+(defn- generate-aggregation-pipeline
+  "Generate the aggregation pipeline. Returns a sequence of maps representing each stage."
+  [query]
   (loop [pipeline [], [f & more] [add-initial-projection
                                   handle-filter
                                   handle-breakout+aggregation
@@ -396,16 +377,40 @@
                     (u/->Timestamp (:___date v))
                     v)}))))
 
-(defn process-and-run-structured
-  "Process and run a structured MongoDB query."
-  [_ {database :database, {{source-table-name :name} :source-table} :query, :as query}]
+
+(defn mbql->native
+  "Process and run an MBQL query."
+  [{database :database, {{source-table-name :name} :source-table} :query, :as query}]
   {:pre [(map? database)
          (string? source-table-name)]}
   (binding [*query* query]
     (let [generated-pipeline (generate-aggregation-pipeline (:query query))]
       (log-monger-form generated-pipeline)
-      (->> (with-mongo-connection [_ database]
-             (mc/aggregate *mongo-connection* source-table-name generated-pipeline
-                           :allow-disk-use true))
-           unescape-names
-           unstringify-dates))))
+      {:query      generated-pipeline
+       :collection source-table-name
+       :mbql?      true})))
+
+(defn execute-query
+  "Process and run a native MongoDB query."
+  [{{:keys [collection query mbql?]} :native, database :database}]
+  {:pre [query
+         (string? collection)
+         (map? database)]}
+  (let [query   (if (string? query)
+                  (json/parse-string query keyword)
+                  query)
+        results (mc/aggregate *mongo-connection* collection query
+                              :allow-disk-use true)
+        results (if (sequential? results)
+                  results
+                  [results])
+        ;; if we formed the query using MBQL then we apply a couple post processing functions
+        results (if-not mbql? results
+                              (-> results
+                                  unescape-names
+                                  unstringify-dates))
+        columns (vec (keys (first results)))]
+    {:columns   columns
+     :rows      (for [row results]
+                  (mapv row columns))
+     :annotate? mbql?}))
