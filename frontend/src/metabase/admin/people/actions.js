@@ -72,11 +72,8 @@ export const fetchUsers = createThunkAction(FETCH_USERS, function() {
 
 export const grantAdmin = createThunkAction(GRANT_ADMIN, function(user) {
     return async function(dispatch, getState) {
-        // give this user admin perms
-        user.is_superuser = true;
-
         // do the update
-        let updatedUser = await UserApi.update(user);
+        let updatedUser = await UserApi.update({...user, is_superuser: true});
         updatedUser.date_joined = (updatedUser.date_joined) ? moment(updatedUser.date_joined) : null;
         updatedUser.last_login = (updatedUser.last_login) ? moment(updatedUser.last_login) : null;
 
@@ -109,11 +106,8 @@ export const resetPasswordViaEmail = createThunkAction(RESET_PASSWORD_EMAIL, fun
 
 export const revokeAdmin = createThunkAction(REVOKE_ADMIN, function(user) {
     return async function(dispatch, getState) {
-        // remove user admin perms
-        user.is_superuser = false;
-
         // do the update
-        let updatedUser = await UserApi.update(user);
+        let updatedUser = await UserApi.update({...user, is_superuser: false});
         updatedUser.date_joined = (updatedUser.date_joined) ? moment(updatedUser.date_joined) : null;
         updatedUser.last_login = (updatedUser.last_login) ? moment(updatedUser.last_login) : null;
 

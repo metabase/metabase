@@ -1,12 +1,12 @@
 import { createSelector } from 'reselect';
 
 
-const activeStepSelector          = state => state.activeStep;
-const userDetailsSelector         = state => state.userDetails;
-const databaseDetailsSelector     = state => state.databaseDetails;
-const allowTrackingSelector       = state => state.allowTracking;
-const setupErrorSelector          = state => state.setupError;
-const setupCompleteSelector       = state => state.setupComplete;
+const activeStepSelector          = state => state.setup.activeStep;
+const userDetailsSelector         = state => state.setup.userDetails;
+const databaseDetailsSelector     = state => state.setup.databaseDetails;
+const allowTrackingSelector       = state => state.setup.allowTracking;
+const setupErrorSelector          = state => state.setup.setupError;
+const setupCompleteSelector       = state => state.setup.setupComplete;
 
 
 // our master selector which combines all of our partial selectors above

@@ -97,6 +97,12 @@ Metabase also allows you to hit our Query API directly from Javascript to integr
 * Provide a specialized customer lookup application for the people in your company
 
 
+# Danger zone
+
+The button below will deploy the branch where this README.md lives into Heroku. The developers use it to quickly spin up a copy of Metabase. We DO NOT recommend you using this for production, but rather using a [stable build](http://metabase.com/start)
+
+[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
+
 # License
 
 Unless otherwise noted, all Metabase source files are made available under the terms of the GNU Affero General Public License (AGPL).

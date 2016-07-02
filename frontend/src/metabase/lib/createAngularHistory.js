@@ -23,6 +23,10 @@ export const createAngularHistory = ($scope, $location) => {
         return history.createHref(...args);
     }
 
+    angularHistory.replaceState = (...args) => {
+        return history.replaceState(...args);
+    }
+
     angularHistory.listen = (listener) => {
         const handler = () => {
             listener({

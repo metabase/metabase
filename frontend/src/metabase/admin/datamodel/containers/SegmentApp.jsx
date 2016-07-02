@@ -5,7 +5,7 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 import SegmentForm from "./SegmentForm.jsx";
 
 import { segmentEditSelectors } from "../selectors";
-import * as actions from "../actions";
+import * as actions from "../metadata";
 
 import { connect } from "react-redux";
 

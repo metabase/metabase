@@ -4,7 +4,15 @@ import { connect } from "react-redux";
 import PulseEdit from "../components/PulseEdit.jsx";
 import { editPulseSelectors } from "../selectors";
 
-@connect(editPulseSelectors)
+const mapStateToProps = (state, props) => {
+    return {
+        ...editPulseSelectors(state),
+        user: state.currentUser
+        // onChangeLocation: onChangeLocation
+    }
+}
+
+@connect(mapStateToProps)
 export default class PulseEditApp extends Component {
     render() {
         return (
