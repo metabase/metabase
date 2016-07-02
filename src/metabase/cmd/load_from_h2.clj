@@ -89,7 +89,7 @@
   (doseq [chunk (partition-all 300 objs)]
     (print (color/blue \.))
     (flush)
-    (apply jdbc/insert! *target-db-connection* (:table e) (if (= e DashboardCard)
+    (jdbc/insert-multi! *target-db-connection* (:table e) (if (= e DashboardCard)
                                                             ;; mini-HACK to fix h2 lowercasing these couple attributes
                                                             ;; luckily this is the only place in our schema where we have camel case names
                                                             (mapv #(set/rename-keys % {:sizex :sizeX, :sizey :sizeY}) chunk)

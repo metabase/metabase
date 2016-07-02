@@ -252,7 +252,7 @@
       ;; Remove excess semicolons, otherwise snippy DBs like Oracle will barf
       (let [sql (s/replace sql #";+" ";")]
         (try
-          (jdbc/execute! (database->spec driver context dbdef) [sql] :transaction? false, :multi? true)
+          (jdbc/execute! (database->spec driver context dbdef) [sql] {:transaction? false, :multi? true})
           (catch java.sql.SQLException e
             (println "Error executing SQL:" sql)
             (println (format "Caught SQLException:\n%s"
