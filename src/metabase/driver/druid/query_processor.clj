@@ -514,9 +514,8 @@
 (defmethod post-process ::groupBy    [_ results] (map :event results))
 
 (defmethod post-process ::grouped-timeseries [_ results]
-  (->> results
-    (map (fn [event]
-      (conj {:timestamp (:timestamp event)} (:result event)))))
+  (map (fn [event]
+    (conj {:timestamp (:timestamp event)} (:result event))) results))
 
 (defn post-process-native
   "Post-process the results of a *native* Druid query.
