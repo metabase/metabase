@@ -69,12 +69,15 @@
   (let [defaults {:intervals   ["1900-01-01/2100-01-01"]
                   :granularity :all
                   :context     {:timeout 60000}}]
-    {::select     (merge defaults {:queryType  :select
-                                   :pagingSpec {:threshold qp/absolute-max-results}})
-     ::timeseries (merge defaults {:queryType :timeseries})
-     ::topN       (merge defaults {:queryType :topN
-                                   :threshold qp/absolute-max-results})
-     ::groupBy    (merge defaults {:queryType :groupBy})}))
+    {::select             (merge defaults {:queryType  :select
+                                           :pagingSpec {:threshold qp/absolute-max-results}})
+     ::total              (merge defaults {:queryType :timeseries})
+     ::grouped-timeseries (merge defaults {:queryType :timeseries})
+     ::topN               (merge defaults {:queryType :topN
+                                           :threshold qp/absolute-max-results})
+     ::groupBy            (merge defaults {:queryType :groupBy})}))
+
+
 
 
 ;;; ### handle-source-table
@@ -218,6 +221,21 @@
                                  "}")
     :year            (extract:timeFormat "yyyy")))
 
+(defn- unit->granularity
+  [unit]
+  (let [iso-period (case unit
+                  :minute  "PT1M"
+                  :hour    "PT1H"
+                  :day     "P1D"
+                  :week    "P1W"
+                  :month   "P1M"
+                  :quarter "P3M"
+                  :year    "P1Y")]
+  {:type      "period"
+   :period    iso-period
+   :timeZone  (or (get-in *query* [:settings :report-timezone])
+                 "UTC")}))
+
 (extend-protocol IDimension
   nil    (->dimension-rvalue [this] (->rvalue this))
   Object (->dimension-rvalue [this] (->rvalue this))
@@ -234,7 +252,7 @@
 (defmethod handle-breakout ::query [_ _ _]) ; only topN , grouped-timeseries & groupBy handle breakouts
 
 (defmethod handle-breakout ::grouped-timeseries [_ {[breakout-field] :breakout} druid-query]
-  (assoc druid-query :granularity (:unit breakout-field)))
+  (assoc druid-query :granularity (unit->granularity (:unit breakout-field))))
 
 (defmethod handle-breakout ::topN [_ {[breakout-field] :breakout} druid-query]
   (assoc druid-query :dimension (->dimension-rvalue breakout-field)))
@@ -471,12 +489,15 @@
 (defn- druid-query-type
   "What type of Druid query type should we perform?"
   [{breakout-fields :breakout, {ag-type :aggregation-type} :aggregation}]
-  (let [breakouts (condp = (count breakout-fields)
-                    0 :none
-                    1 :one
-                      :many)
-        agg?      (boolean (and ag-type (not= ag-type :rows)))
-        ts?       (boolean (some #(instance? DateTimeField %) breakout-fields))]
+  (let [breakouts   (condp = (count breakout-fields)
+                      0 :none
+                      1 :one
+                        :many)
+        agg?        (boolean (and ag-type (not= ag-type :rows)))
+        period-set  #{:minute :hour :day :week :month :quarter :year}
+        ts?         (and (instance? DateTimeField (first breakout-fields))        ;; Checks whether the query is a timeseries (excludes x-of-y type breakouts)
+                         (contains? period-set (:unit (first breakout-fields))))]
+
     (match [breakouts agg? ts?]
       [:none  false    _] ::select
       [:none  true     _] ::total
