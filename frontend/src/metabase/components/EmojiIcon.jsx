@@ -1,6 +1,6 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
-//FIXME: straight up copy-paste from /questions. refactor into common component
+
 import { emoji } from "metabase/lib/emoji";
 
 const EmojiIcon = ({ size = 18, style, className, name }) =>
