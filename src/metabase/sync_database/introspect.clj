@@ -2,7 +2,6 @@
   "Functions which handle the raw sync process."
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
-            [korma.db :as kdb]
             [schema.core :as schema]
             (metabase [db :as db]
                       [driver :as driver])
@@ -22,7 +21,7 @@
    NOTE: this function assumes that FKS is the complete set of fks in the RAW-TABLE."
   [{table-id :id, database-id :database_id, :as table} fks]
   {:pre [(integer? table-id) (integer? database-id)]}
-  (kdb/transaction
+  (db/transaction
    ;; start by simply resetting all fks and then we'll add them back as defined
    (db/update-where! RawColumn {:raw_table_id table-id}
      :fk_target_column_id nil)
@@ -41,7 +40,7 @@
    NOTE: this function assumes that COLUMNS is the complete set of columns in the RAW-TABLE."
   [{:keys [id]} columns]
   {:pre [(integer? id) (coll? columns) (every? map? columns)]}
-  (kdb/transaction
+  (db/transaction
     (let [raw-column-name->id (db/select-field->id :name RawColumn, :raw_table_id id)]
 
       ;; deactivate any columns which were removed
@@ -100,7 +99,7 @@
   [table-ids]
   {:pre [(coll? table-ids) (every? integer? table-ids)]}
   (let [table-ids (filter identity table-ids)]
-    (kdb/transaction
+    (db/transaction
      ;; disable the tables
      (db/update-where! RawTable {:id [:in table-ids]}
        :active false)

@@ -1,6 +1,5 @@
 (ns metabase.models.pulse
-  (:require [korma.db :as kdb]
-            [medley.core :as m]
+  (:require [medley.core :as m]
             [metabase.db :as db]
             [metabase.events :as events]
             (metabase.models [card :refer [Card]]
@@ -135,7 +134,7 @@
          (every? integer? cards)
          (coll? channels)
          (every? map? channels)]}
-  (kdb/transaction
+  (db/transaction
     ;; update the pulse itself
     (db/update! Pulse id, :name name)
     ;; update cards (only if they changed)
@@ -161,7 +160,7 @@
          (every? integer? card-ids)
          (coll? channels)
          (every? map? channels)]}
-  (kdb/transaction
+  (db/transaction
     (let [{:keys [id] :as pulse} (db/insert! Pulse
                                    :creator_id creator-id
                                    :name pulse-name)]

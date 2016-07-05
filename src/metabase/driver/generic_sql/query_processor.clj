@@ -297,7 +297,7 @@
   [{sql :query, params :params, remark :remark} connection]
   (let [sql              (str "-- " remark "\n" (hx/unescape-dots sql))
         statement        (into [sql] params)
-        [columns & rows] (jdbc/query connection statement, :identifiers identity, :as-arrays? true)]
+        [columns & rows] (jdbc/query connection statement {:identifiers identity, :as-arrays? true})]
     {:rows    (or rows [])
      :columns columns}))
 

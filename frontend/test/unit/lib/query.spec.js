@@ -241,6 +241,83 @@ describe('Query', () => {
             expect(query.order_by).toBe(undefined);
         });
     });
+
+    describe('getFieldTarget', () => {
+        let field2 = {
+            display_name: "field2",
+        }
+        let table2 = {
+            display_name: "table2",
+            fields_lookup: {
+                2: field2
+            }
+        }
+        let field1 = {
+            display_name: "field1",
+            target: {
+                table: table2
+            }
+        }
+        let table1 = {
+            display_name: "table1",
+            fields_lookup: {
+                1: field1
+            }
+        }
+
+        it('should return field object for old-style local field', () => {
+            let target = Query.getFieldTarget(1, table1);
+            expect(target.table).toEqual(table1);
+            expect(target.field).toEqual(field1);
+            expect(target.path).toEqual([]);
+            expect(target.unit).toEqual(undefined);
+        });
+        it('should return field object for new-style local field', () => {
+            let target = Query.getFieldTarget(["field-id", 1], table1);
+            expect(target.table).toEqual(table1);
+            expect(target.field).toEqual(field1);
+            expect(target.path).toEqual([]);
+            expect(target.unit).toEqual(undefined);
+        });
+        it('should return unit object for old-style datetime_field', () => {
+            let target = Query.getFieldTarget(["datetime-field", 1, "as", "day"], table1);
+            expect(target.table).toEqual(table1);
+            expect(target.field).toEqual(field1);
+            expect(target.path).toEqual([]);
+            expect(target.unit).toEqual("day");
+        });
+        it('should return unit object for new-style datetime_field', () => {
+            let target = Query.getFieldTarget(["datetime-field", 1, "as", "day"], table1);
+            expect(target.table).toEqual(table1);
+            expect(target.field).toEqual(field1);
+            expect(target.path).toEqual([]);
+            expect(target.unit).toEqual("day");
+        });
+
+        it('should return field object and table for fk field', () => {
+            let target = Query.getFieldTarget(["fk->", 1, 2], table1);
+            expect(target.table).toEqual(table2);
+            expect(target.field).toEqual(field2);
+            expect(target.path).toEqual([field1]);
+            expect(target.unit).toEqual(undefined);
+        });
+
+        it('should return field object and table and unit for fk + datetime field', () => {
+            let target = Query.getFieldTarget(["datetime-field", ["fk->", 1, 2], "day"], table1);
+            expect(target.table).toEqual(table2);
+            expect(target.field).toEqual(field2);
+            expect(target.path).toEqual([field1]);
+            expect(target.unit).toEqual("day");
+        });
+
+        it('should return field object and table for expression', () => {
+            let target = Query.getFieldTarget(["expression", "foo"], table1);
+            expect(target.table).toEqual(table1);
+            expect(target.field.display_name).toEqual("foo");
+            expect(target.path).toEqual([]);
+            expect(target.unit).toEqual(undefined);
+        });
+    })
 });
 
 

@@ -36,8 +36,9 @@ import {
 
 
 // TODO: these are here as work arounds until we are transitioned over to ReduxRouter and using their history approach
-export const router = handleActions({}, {location: {query: {}}, search: {}, params: {}});
-export const updateUrl = handleActions({}, () => null);
+export const updateUrl = handleActions({
+    [INITIALIZE_QB]: { next: (state, { payload }) => payload ? payload.updateUrl : state }
+}, () => console.log("default"));
 
 // TODO: once we are using the global redux store we can get this from there
 export const user = handleActions({
@@ -138,8 +139,9 @@ export const tableForeignKeyReferences = handleActions({
 
 // the result of a query execution.  optionally an error if the query fails to complete successfully.
 export const queryResult = handleActions({
-    [QUERY_COMPLETED]: { next: (state, { payload }) => payload.queryResult},
-    [QUERY_ERRORED]: { next: (state, { payload }) => payload ? payload : state}
+    [QUERY_COMPLETED]: { next: (state, { payload }) => payload.queryResult },
+    [QUERY_ERRORED]: { next: (state, { payload }) => payload ? payload : state },
+    [INITIALIZE_QB]: { next: (state, { payload }) => null }
 }, null);
 
 // promise used for tracking a query execution in progress.  when a query is started we capture this.

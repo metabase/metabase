@@ -1,7 +1,7 @@
 (ns metabase.driver.sqlserver
   (:require [clojure.string :as s]
             [honeysql.core :as hsql]
-            [korma.db :as kdb]
+            [metabase.db.spec :as dbspec]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
             [metabase.util :as u]
@@ -50,9 +50,9 @@
 
 (defn- connection-details->spec [{:keys [domain instance ssl], :as details}]
   (-> ;; Having the `:ssl` key present, even if it is `false`, will make the driver attempt to connect with SSL
-      (kdb/mssql (if ssl
-                   details
-                   (dissoc details :ssl)))
+      (dbspec/mssql (if ssl
+                      details
+                      (dissoc details :ssl)))
       ;; swap out Microsoft Driver details for jTDS ones
       (assoc :classname   "net.sourceforge.jtds.jdbc.Driver"
              :subprotocol "jtds:sqlserver")

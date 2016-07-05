@@ -510,3 +510,25 @@ export const ICON_MAPPING = {
 export function getIconForField(field) {
     return ICON_MAPPING[getFieldType(field)];
 }
+
+export function computeMetadataStrength(table) {
+    var total = 0;
+    var completed = 0;
+    function score(value) {
+        total++;
+        if (value) { completed++; }
+    }
+
+    score(table.description);
+    if (table.fields) {
+        table.fields.forEach(function(field) {
+            score(field.description);
+            score(field.special_type);
+            if (field.special_type === "fk") {
+                score(field.target);
+            }
+        });
+    }
+
+    return (completed / total);
+}

@@ -119,6 +119,7 @@
   (i/format-name *driver* (name nm)))
 
 (defn- get-table-id-or-explode [db-id table-name]
+  {:pre [(integer? db-id) (u/string-or-keyword? table-name)]}
   (let [table-name (format-name table-name)]
     (or (db/select-one-id Table, :db_id db-id, :name table-name)
         (throw (Exception. (format "No Table '%s' found for Database %d.\nFound: %s" table-name db-id
@@ -240,7 +241,9 @@
   (reset! loader->loaded-db-def #{}))
 
 
-(defn do-with-temp-db [^DatabaseDefinition dbdef f]
+(defn do-with-temp-db
+  "Execute F with DBDEF loaded as the current dataset. F takes a single argument, the `DatabaseInstance` that was loaded and synced from DBDEF."
+  [^DatabaseDefinition dbdef, f]
   (let [loader *driver*
         dbdef  (i/map->DatabaseDefinition (assoc dbdef :short-lived? true))]
     (swap! loader->loaded-db-def conj [loader dbdef])

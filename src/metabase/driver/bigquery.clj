@@ -5,10 +5,9 @@
             [clojure.tools.logging :as log]
             (honeysql [core :as hsql]
                       [helpers :as h])
-            [korma.db :as kdb]
-            (metabase [config :as config]
-                      [db :as db]
-                      [driver :as driver])
+            [metabase.config :as config]
+            [metabase.db :as db]
+            [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
             (metabase.models [database :refer [Database]]
@@ -351,7 +350,7 @@
         results (if mbql?
                   (post-process-mbql dataset-id table-name results)
                   (update results :columns (partial map keyword)))]
-    (assoc results :annotate? true)))
+    (assoc results :annotate? mbql?)))
 
 ;; This provides an implementation of `prepare-value` that prevents HoneySQL from converting forms to prepared statement parameters (`?`)
 ;; TODO - Move this into `metabase.driver.generic-sql` and document it as an alternate implementation for `prepare-value` (?)

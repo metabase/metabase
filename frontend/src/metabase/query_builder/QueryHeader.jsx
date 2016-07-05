@@ -44,9 +44,9 @@ export default class QueryHeader extends Component {
         originalCard: PropTypes.object,
         isEditing: PropTypes.bool.isRequired,
         tableMetadata: PropTypes.object, // can't be required, sometimes null
-        cardApi: PropTypes.func.isRequired,
-        dashboardApi: PropTypes.func.isRequired,
-        revisionApi: PropTypes.func.isRequired,
+        cardApi: PropTypes.object.isRequired,
+        dashboardApi: PropTypes.object.isRequired,
+        revisionApi: PropTypes.object.isRequired,
         onSetCardAttribute: PropTypes.func.isRequired,
         reloadCardFn: PropTypes.func.isRequired,
         setQueryModeFn: PropTypes.func.isRequired,
