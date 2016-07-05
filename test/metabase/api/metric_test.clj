@@ -329,9 +329,4 @@
                       Metric [_        {:is_active false}]] ; inactive metrics shouldn't show up
   (tu/mappify (hydrate [metric-1
                         metric-2] :creator))
-  ((user->client :crowberto) :get 200 "metric/"))
-
-;; non-admin users shouldn't be allowed to use this endpoint -- should get a 403
-(expect
-  "You don't have permissions to do that."
-  ((user->client :rasta) :get 403 "metric/"))
+  ((user->client :rasta) :get 200 "metric/"))

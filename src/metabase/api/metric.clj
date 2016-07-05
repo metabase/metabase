@@ -27,11 +27,10 @@
   (check-404 (metric/retrieve-metric id)))
 
 (defendpoint GET "/"
-  "Fetch all `Metrics`. You must be a superuser to do this."
+  "Fetch *all* `Metrics`."
   [id]
-  (check-superuser)
-  (check-404 (-> (db/select Metric, :is_active true)
-                 (hydrate :creator))))
+  (-> (db/select Metric, :is_active true)
+      (hydrate :creator)))
 
 
 (defendpoint PUT "/:id"

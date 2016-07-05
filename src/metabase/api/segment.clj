@@ -27,9 +27,8 @@
   (check-404 (segment/retrieve-segment id)))
 
 (defendpoint GET "/"
-  "Fetch *all* `Segments`. You must be a superuser."
+  "Fetch *all* `Segments`."
   []
-  (check-superuser)
   (-> (db/select Segment, :is_active true)
       (hydrate :creator)))
 

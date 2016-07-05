@@ -334,9 +334,4 @@
                       Segment [_          {:is_active false}]] ; inactive segments shouldn't show up
   (tu/mappify (hydrate [segment-1
                         segment-2] :creator))
-  ((user->client :crowberto) :get 200 "segment/"))
-
-;; non-admin users shouldn't be allowed to use this endpoint -- should get a 403
-(expect
-  "You don't have permissions to do that."
-  ((user->client :rasta) :get 403 "segment/"))
+  ((user->client :rasta) :get 200 "segment/"))
