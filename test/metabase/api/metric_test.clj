@@ -4,11 +4,12 @@
             (metabase [http-client :as http]
                       [middleware :as middleware])
             (metabase.models [database :refer [Database]]
-                             [revision :refer [Revision]]
+                             [hydrate :refer [hydrate]]
                              [metric :refer [Metric], :as metric]
+                             [revision :refer [Revision]]
                              [table :refer [Table]])
-            [metabase.test.data.users :refer :all]
             [metabase.test.data :refer :all]
+            [metabase.test.data.users :refer :all]
             [metabase.test.util :as tu]))
 
 ;; ## Helper Fns
@@ -319,3 +320,18 @@
     [(dissoc ((user->client :crowberto) :post 200 (format "metric/%d/revert" id) {:revision_id revision-id}) :id :timestamp)
      (doall (for [revision ((user->client :crowberto) :get 200 (format "metric/%d/revisions" id))]
               (dissoc revision :timestamp :id)))]))
+
+
+;;; GET /api/metric/
+
+(tu/expect-with-temp [Metric [metric-1]
+                      Metric [metric-2]
+                      Metric [_        {:is_active false}]] ; inactive metrics shouldn't show up
+  (tu/mappify (hydrate [metric-1
+                        metric-2] :creator))
+  ((user->client :crowberto) :get 200 "metric/"))
+
+;; non-admin users shouldn't be allowed to use this endpoint -- should get a 403
+(expect
+  "You don't have permissions to do that."
+  ((user->client :rasta) :get 403 "metric/"))

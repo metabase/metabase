@@ -3,7 +3,8 @@
   (:require [compojure.core :refer [defroutes GET PUT POST DELETE]]
             [metabase.api.common :refer :all]
             [metabase.db :as db]
-            (metabase.models [revision :as revision]
+            (metabase.models [hydrate :refer [hydrate]]
+                             [revision :as revision]
                              [segment :refer [Segment] :as segment]
                              [table :refer [Table]])))
 
@@ -25,6 +26,13 @@
   (check-superuser)
   (check-404 (segment/retrieve-segment id)))
 
+(defendpoint GET "/"
+  "Fetch *all* `Segments`. You must be a superuser."
+  []
+  (check-superuser)
+  (-> (db/select Segment, :is_active true)
+      (hydrate :creator)))
+
 
 (defendpoint PUT "/:id"
   "Update a `Segment` with ID."
@@ -33,7 +41,7 @@
    revision_message [Required NonEmptyString]
    definition       [Required Dict]}
   (check-superuser)
-  (check-404 (segment/exists-segment? id))
+  (check-404 (segment/exists? id))
   (segment/update-segment!
     {:id               id
      :name             name
@@ -48,7 +56,7 @@
   [id revision_message]
   {revision_message [Required NonEmptyString]}
   (check-superuser)
-  (check-404 (segment/exists-segment? id))
+  (check-404 (segment/exists? id))
   (segment/delete-segment! id *current-user-id* revision_message)
   {:success true})
 
@@ -57,7 +65,7 @@
   "Fetch `Revisions` for `Segment` with ID."
   [id]
   (check-superuser)
-  (check-404 (segment/exists-segment? id))
+  (check-404 (segment/exists? id))
   (revision/revisions+details Segment id))
 
 
@@ -66,7 +74,7 @@
   [id :as {{:keys [revision_id]} :body}]
   {revision_id [Required Integer]}
   (check-superuser)
-  (check-404 (segment/exists-segment? id))
+  (check-404 (segment/exists? id))
   (revision/revert!
     :entity      Segment
     :id          id

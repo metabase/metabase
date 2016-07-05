@@ -85,14 +85,13 @@
         (hydrate :creator))))
 
 (defn exists?
-  "Predicate function which checks for a given `Metric` with ID.
-   Returns true if `Metric` exists and is active, false otherwise."
-  [id]
+  "Does an *active* `Metric` with ID exist?"
+  ^Boolean [id]
   {:pre [(integer? id)]}
   (db/exists? Metric :id id, :is_active true))
 
 (defn retrieve-metric
-  "Fetch a single `Metric` by its ID value."
+  "Fetch a single `Metric` by its ID value. Hydrates its `:creator`."
   [id]
   {:pre [(integer? id)]}
   (-> (Metric id)
