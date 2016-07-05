@@ -225,7 +225,7 @@
   (assert (binding [*allow-potentailly-unsafe-connections* true]
             (require 'metabase.driver)
             ((resolve 'metabase.driver/can-connect-with-details?) engine details))
-    "Unable to connect to Metabase DB.")
+    (format "Unable to connect to Metabase %s DB." (name engine)))
   (log/info (str "Verify Database Connection ... ✅")))
 
 (defn setup-db
