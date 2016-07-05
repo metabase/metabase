@@ -26,7 +26,8 @@
 (defn- pre-cascade-delete [{:keys [id]}]
   (db/cascade-delete! Segment :table_id id)
   (db/cascade-delete! Metric :table_id id)
-  (db/cascade-delete! Field :table_id id))
+  (db/cascade-delete! Field :table_id id)
+  (db/cascade-delete! 'Card :table_id id))
 
 (defn ^:hydrate fields
   "Return the `FIELDS` belonging to TABLE."

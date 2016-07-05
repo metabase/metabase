@@ -13,7 +13,8 @@
                              [view-log :refer [ViewLog]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [match-$ expect-eval-actual-first random-name with-temp with-temp* obj->json->obj expect-with-temp]]))
+            [metabase.test.util :refer [match-$ expect-eval-actual-first random-name with-temp with-temp* obj->json->obj expect-with-temp]]
+            [metabase.util :as u]))
 
 ;; # CARD LIFECYCLE
 
@@ -75,11 +76,11 @@
                    Card     [{card-3-id :id}]
                    Card     [{card-4-id :id}]
                    ;; 3 was viewed most recently, followed by 4, then 1. Card 2 was viewed by a different user so shouldn't be returned
-                   ViewLog  [_               {:model "card", :model_id card-1-id, :user_id (user->id :rasta),     :timestamp #inst "2015-12-01"}]
-                   ViewLog  [_               {:model "card", :model_id card-2-id, :user_id (user->id :trashbird), :timestamp #inst "2016-01-01"}]
-                   ViewLog  [_               {:model "card", :model_id card-3-id, :user_id (user->id :rasta),     :timestamp #inst "2016-02-01"}]
-                   ViewLog  [_               {:model "card", :model_id card-4-id, :user_id (user->id :rasta),     :timestamp #inst "2016-03-01"}]
-                   ViewLog  [_               {:model "card", :model_id card-3-id, :user_id (user->id :rasta),     :timestamp #inst "2016-04-01"}]]
+                   ViewLog  [_               {:model "card", :model_id card-1-id, :user_id (user->id :rasta),     :timestamp (u/->Timestamp #inst "2015-12-01")}]
+                   ViewLog  [_               {:model "card", :model_id card-2-id, :user_id (user->id :trashbird), :timestamp (u/->Timestamp #inst "2016-01-01")}]
+                   ViewLog  [_               {:model "card", :model_id card-3-id, :user_id (user->id :rasta),     :timestamp (u/->Timestamp #inst "2016-02-01")}]
+                   ViewLog  [_               {:model "card", :model_id card-4-id, :user_id (user->id :rasta),     :timestamp (u/->Timestamp #inst "2016-03-01")}]
+                   ViewLog  [_               {:model "card", :model_id card-3-id, :user_id (user->id :rasta),     :timestamp (u/->Timestamp #inst "2016-04-01")}]]
   [card-3-id card-4-id card-1-id]
   (mapv :id ((user->client :rasta) :get 200 "card", :f :recent)))
 

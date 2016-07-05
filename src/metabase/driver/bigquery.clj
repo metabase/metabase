@@ -5,10 +5,9 @@
             [clojure.tools.logging :as log]
             (honeysql [core :as hsql]
                       [helpers :as h])
-            [korma.db :as kdb]
-            (metabase [config :as config]
-                      [db :as db]
-                      [driver :as driver])
+            [metabase.config :as config]
+            [metabase.db :as db]
+            [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
             (metabase.models [database :refer [Database]]

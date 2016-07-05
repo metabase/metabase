@@ -40,12 +40,12 @@
   [_ {:keys [database], {sql :query, params :params} :native}]
   (try (let [db-conn (sql/db->jdbc-connection-spec database)]
          (jdbc/with-db-connection [t-conn db-conn]
-           (let [statement (if params
-                             (into [sql] params)
-                             sql)]
-             (let [[columns & rows] (jdbc/query t-conn statement, :identifiers identity, :as-arrays? true)]
-               {:rows    (or rows [])
-                :columns columns}))))
+           (let [statement        (if params
+                                    (into [sql] params)
+                                    sql)
+                 [columns & rows] (jdbc/query t-conn statement {:identifiers identity, :as-arrays? true})]
+             {:rows    (or rows [])
+              :columns columns})))
        (catch java.sql.SQLException e
          (let [^String message (or (->> (.getMessage e)     ; error message comes back like 'Column "ZID" not found; SQL statement: ... [error-code]' sometimes
                                         (re-find #"^(.*);") ; the user already knows the SQL, and error code is meaningless

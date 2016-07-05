@@ -135,7 +135,7 @@
     (jdbc/execute! (sql/connection-details->spec driver (i/database->connection-details driver :server nil))
                    ["DROP DATABASE IF EXISTS materialized_views_test;
                      CREATE DATABASE materialized_views_test;"]
-                   :transaction? false)
+                   {:transaction? false})
     (let [details (i/database->connection-details driver :db {:database-name "materialized_views_test", :short-lived? true})]
       (jdbc/execute! (sql/connection-details->spec driver details)
                      ["DROP MATERIALIZED VIEW IF EXISTS test_mview;
