@@ -37,12 +37,7 @@
 
          let googleAuthClientID = window.MetabaseBootstrap.google_auth_client_id;
          if (googleAuthClientID) {
-             var meta = document.createElement('meta');
-             meta.name = 'google-signin-client_id';
-             meta.content = googleAuthClientID;
-             document.head.appendChild(meta);
-
-             loadScript('https://apis.google.com/js/platform.js');
+             loadScript('https://apis.google.com/js/api:client.js');
          }
      })();
     </script>
