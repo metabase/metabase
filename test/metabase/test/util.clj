@@ -16,7 +16,8 @@
                              [raw-table :refer [RawTable]]
                              [revision :refer [Revision]]
                              [segment :refer [Segment]]
-                             [table :refer [Table]])
+                             [table :refer [Table]]
+                             [user :refer [User]])
             [metabase.test.data :as data]
             [metabase.util :as u]))
 
@@ -112,11 +113,15 @@
 
 (u/strict-extend Object
   WithTempDefaults
-  {:with-temp-defaults (constantly nil)})
+  {:with-temp-defaults (constantly {})})
+
+(defn- rasta-id []
+  (require 'metabase.test.data.users)
+  ((resolve 'metabase.test.data.users/user->id) :rasta))
 
 (u/strict-extend (class Card)
   WithTempDefaults
-  {:with-temp-defaults (fn [_] {:creator_id             ((resolve 'metabase.test.data.users/user->id) :rasta)
+  {:with-temp-defaults (fn [_] {:creator_id             (rasta-id)
                                 :dataset_query          {}
                                 :display                :table
                                 :name                   (random-name)
@@ -125,7 +130,7 @@
 
 (u/strict-extend (class Dashboard)
   WithTempDefaults
-  {:with-temp-defaults (fn [_] {:creator_id   ((resolve 'metabase.test.data.users/user->id) :rasta)
+  {:with-temp-defaults (fn [_] {:creator_id   (rasta-id)
                                 :name         (random-name)
                                 :public_perms 0})})
 
@@ -147,7 +152,7 @@
 
 (u/strict-extend (class Metric)
   WithTempDefaults
-  {:with-temp-defaults (fn [_] {:creator_id  ((resolve 'metabase.test.data.users/user->id) :rasta)
+  {:with-temp-defaults (fn [_] {:creator_id  (rasta-id)
                                 :definition  {}
                                 :description "Lookin' for a blueberry"
                                 :name        "Toucans in the rainforest"
@@ -155,7 +160,7 @@
 
 (u/strict-extend (class Pulse)
   WithTempDefaults
-  {:with-temp-defaults (fn [_] {:creator_id ((resolve 'metabase.test.data.users/user->id) :rasta)
+  {:with-temp-defaults (fn [_] {:creator_id (rasta-id)
                                 :name       (random-name)})})
 
 (u/strict-extend (class PulseChannel)
@@ -177,13 +182,13 @@
 
 (u/strict-extend (class Revision)
   WithTempDefaults
-  {:with-temp-defaults (fn [_] {:user_id      ((resolve 'metabase.test.data.users/user->id) :rasta)
+  {:with-temp-defaults (fn [_] {:user_id      (rasta-id)
                                 :is_creation  false
                                 :is_reversion false})})
 
 (u/strict-extend (class Segment)
   WithTempDefaults
-  {:with-temp-defaults (fn [_] {:creator_id ((resolve 'metabase.test.data.users/user->id) :rasta)
+  {:with-temp-defaults (fn [_] {:creator_id (rasta-id)
                                 :definition  {}
                                 :description "Lookin' for a blueberry"
                                 :name        "Toucans in the rainforest"
@@ -195,6 +200,13 @@
   WithTempDefaults
   {:with-temp-defaults (fn [_] {:active true
                                 :name   (random-name)})})
+
+(u/strict-extend (class User)
+  WithTempDefaults
+  {:with-temp-defaults (fn [_] {:email      (str (random-name) "@metabase.com")
+                                :password   (random-name)
+                                :first_name (random-name)
+                                :last_name  (random-name)})})
 
 
 (defn do-with-temp

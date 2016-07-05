@@ -15,7 +15,7 @@
                              [user :refer [User]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer [user->id]]
-            [metabase.test.util :refer [random-name], :as tu]
+            [metabase.test.util :as tu]
             [metabase.test-setup :refer :all]))
 
 (defn- do-with-temp-activities [f]
