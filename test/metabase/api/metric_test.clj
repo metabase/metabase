@@ -47,8 +47,8 @@
 ;; test security.  requires superuser perms
 (expect "You don't have permissions to do that."
   ((user->client :rasta) :post 403 "metric" {:name       "abc"
-                                              :table_id   123
-                                              :definition {}}))
+                                             :table_id   123
+                                             :definition {}}))
 
 ;; test validations
 (expect {:errors {:name "field is a required param."}}
@@ -59,16 +59,16 @@
 
 (expect {:errors {:table_id "Invalid value 'foobar' for 'table_id': value must be an integer."}}
   ((user->client :crowberto) :post 400 "metric" {:name     "abc"
-                                                  :table_id "foobar"}))
+                                                 :table_id "foobar"}))
 
 (expect {:errors {:definition "field is a required param."}}
   ((user->client :crowberto) :post 400 "metric" {:name     "abc"
-                                                  :table_id 123}))
+                                                 :table_id 123}))
 
 (expect {:errors {:definition "Invalid value 'foobar' for 'definition': value must be a dictionary."}}
   ((user->client :crowberto) :post 400 "metric" {:name       "abc"
-                                                  :table_id   123
-                                                  :definition "foobar"}))
+                                                 :table_id   123
+                                                 :definition "foobar"}))
 
 (expect
   {:name         "A Metric"
@@ -94,8 +94,8 @@
 ;; test security.  requires superuser perms
 (expect "You don't have permissions to do that."
   ((user->client :rasta) :put 403 "metric/1" {:name             "abc"
-                                               :definition       {}
-                                               :revision_message "something different"}))
+                                              :definition       {}
+                                              :revision_message "something different"}))
 
 ;; test validations
 (expect {:errors {:name "field is a required param."}}

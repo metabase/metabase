@@ -189,6 +189,8 @@
                                 :name        "Toucans in the rainforest"
                                 :table_id    (data/id :venues)})})
 
+;; TODO - `with-temp` doesn't return `Sessions`, probably because their ID is a string?
+
 (u/strict-extend (class Table)
   WithTempDefaults
   {:with-temp-defaults (fn [_] {:active true
