@@ -27,8 +27,8 @@ const Item = ({ id, name, description, url, icon }) =>
 Item.propTypes = {
     id:                 PropTypes.number.isRequired,
     name:               PropTypes.string.isRequired,
-    description:        PropTypes.string.isRequired,
     url:                PropTypes.string.isRequired,
+    description:        PropTypes.string,
     icon:               PropTypes.string
 };
 

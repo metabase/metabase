@@ -15,7 +15,7 @@ import {
     getEntities
 } from "../selectors";
 
-import * as metadataActions from "metabase/dashboard/metadata";
+import * as metadataActions from "metabase/redux/metadata";
 
 const mapStateToProps = (state, props) => ({
     onChangeLocation: props.onChangeLocation,
@@ -66,7 +66,7 @@ export default class ReferenceEntityList extends Component {
                                         id={entity.id}
                                         name={entity.name}
                                         description={entity.description}
-                                        url="test"
+                                        url={`${section.id}/${entity.id}`}
                                         icon="star"
                                     />
                                 </li>

@@ -29,6 +29,9 @@ import Routes from "./Routes.jsx";
 
 import auth from "metabase/auth/auth";
 
+/* ducks */
+import metadata from "metabase/redux/metadata";
+
 /* admin */
 import settings from "metabase/admin/settings/settings";
 import * as people from "metabase/admin/people/reducers";
@@ -37,7 +40,6 @@ import datamodel from "metabase/admin/datamodel/metadata";
 
 /* dashboards */
 import dashboard from "metabase/dashboard/dashboard";
-import metadata from "metabase/dashboard/metadata";
 import * as home from "metabase/home/reducers";
 
 /* questions / query builder */
@@ -117,6 +119,7 @@ angular.module('metabase', [
         }
     };
     $routeProvider.when('/reference', route);
+    $routeProvider.when('/reference/guide', route);
     $routeProvider.when('/reference/:section', route);
 
     $routeProvider.when('/', { ...route, template: '<div mb-redux-component class="full-height" />'});

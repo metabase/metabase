@@ -1,4 +1,3 @@
-
 import { handleActions, combineReducers, AngularResourceProxy, createAction, createThunkAction } from "metabase/lib/redux";
 import i from "icepick";
 
@@ -17,10 +16,13 @@ const getDatabaseMetadata = async dbId => await MetabaseApi.db_metadata({ dbId }
 export const fetchDatabases = createThunkAction(FETCH_DATABASES, () => {
     return async (dispatch, getState) => {
         try {
+            //TODO: add loading indicators, see fetchDatabaseMetadata
             const databases = await MetabaseApi.db_list();
-            
+
             return databases
                 .filter(database => database.id !== undefined)
+                //TODO: think about returning a map directly from the backend?
+                // for constant time random access
                 .reduce((databaseMap, database) => i.assoc(databaseMap, database.id, database), {});
         }
         catch(error) {

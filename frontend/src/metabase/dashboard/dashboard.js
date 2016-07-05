@@ -9,7 +9,7 @@ import { normalize, Schema, arrayOf } from "normalizr";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
 
-import { fetchDatabaseMetadata } from "./metadata";
+import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 
 const DATASET_SLOW_TIMEOUT   = 15 * 1000;
 const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;

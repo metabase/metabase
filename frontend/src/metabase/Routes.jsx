@@ -77,6 +77,7 @@ export default class Routes extends Component {
 
                 <Route path="/reference" component={this._forwardProps(ReferenceApp, ["onChangeLocation"])}>
                     <Route path="guide" component={this._forwardProps(ReferenceGettingStartedGuide, ["onChangeLocation"])} />
+                    //FIXME: refreshing at a :section route makes subsequent navigation attempts fail
                     <Route path=":section" component={this._forwardProps(ReferenceEntityList, ["onChangeLocation"])} />
                 </Route>
 

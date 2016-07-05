@@ -8,8 +8,9 @@ import Icon from "metabase/components/Icon.jsx";
 import AccordianList from "metabase/components/AccordianList.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 
+import { fetchDatabaseMetadata } from "metabase/redux/metadata";
+
 import { getEditingParameter, getParameterTarget, makeGetParameterMappingOptions, getMappingsByParameter } from "../selectors";
-import { fetchDatabaseMetadata } from "../metadata";
 import { setParameterMapping } from "../dashboard";
 
 import _ from "underscore";
