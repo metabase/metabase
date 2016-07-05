@@ -92,8 +92,7 @@
   {:pre [(map? db-details)]}
   ;; TODO: it's probably a good idea to put some more validation here and be really strict about what's in `db-details`
   (case (:type db-details)
-    :h2       (dbspec/h2       (assoc db-details :naming {:keys   s/lower-case
-                                                          :fields s/upper-case}))
+    :h2       (dbspec/h2       db-details)
     :mysql    (dbspec/mysql    (assoc db-details :db (:dbname db-details)))
     :postgres (dbspec/postgres (assoc db-details :db (:dbname db-details)))))
 
