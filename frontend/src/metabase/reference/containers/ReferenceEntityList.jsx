@@ -3,15 +3,16 @@ import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 import { connect } from "react-redux";
 
-import S from "../components/List.css";
-import List from "../components/List.jsx";
+import S from "metabase/components/List.css";
+import List from "metabase/components/List.jsx";
 import Icon from "metabase/components/Icon.jsx";
-import EmptyState from "../components/EmptyState.jsx";
+import Item from "metabase/components/Item.jsx";
+import EmptyState from "metabase/components/EmptyState.jsx";
 
 
 import {
     getSection,
-    getEntityIds
+    getEntities
 } from "../selectors";
 
 import * as metadataActions from "metabase/dashboard/metadata";
@@ -19,7 +20,7 @@ import * as metadataActions from "metabase/dashboard/metadata";
 const mapStateToProps = (state, props) => ({
     onChangeLocation: props.onChangeLocation,
     section: getSection(state),
-    entityIds: getEntityIds(state)
+    entities: getEntities(state)
 });
 
 const mapDispatchToProps = {
@@ -30,7 +31,7 @@ const mapDispatchToProps = {
 export default class ReferenceEntityList extends Component {
     static propTypes = {
         style: PropTypes.object.isRequired,
-        entityIds: PropTypes.array.isRequired,
+        entities: PropTypes.object.isRequired,
         section: PropTypes.object.isRequired
     };
 
@@ -40,7 +41,7 @@ export default class ReferenceEntityList extends Component {
 
     render() {
         const {
-            entityIds,
+            entities,
             style,
             section
         } = this.props;
@@ -56,18 +57,28 @@ export default class ReferenceEntityList extends Component {
                         {section.name}
                     </div>
                 </div>
-                { () => entityIds.length > 0 ? (
-                        <div className="wrapper wrapper--trim">
-                            <List entityType={section.id} entityIds={entityIds} />
-                        </div>
-                    ) : (
-                        <div className={S.empty}>
-                          <EmptyState message={empty.message} icon={empty.icon} />
-                        </div>
-                    )
+                { Object.keys(entities).length > 0 ?
+                    <div className="wrapper wrapper--trim">
+                        <List>
+                            { Object.values(entities).map(entity =>
+                                <li className="relative" key={entity.id}>
+                                    <Item
+                                        id={entity.id}
+                                        name={entity.name}
+                                        description={entity.description}
+                                        url="test"
+                                        icon="star"
+                                    />
+                                </li>
+                            )}
+                        </List>
+                    </div>
+                    :
+                    <div className={S.empty}>
+                      <EmptyState message={empty.message} icon={empty.icon} />
+                    </div>
                 }
             </div>
-
         )
     }
 }

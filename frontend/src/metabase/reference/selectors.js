@@ -18,9 +18,10 @@ export const getSection = createSelector(
 
 const getDatabases = (state) => state.metadata.databases;
 
-export const getEntityIds = createSelector(
+export const getEntities = createSelector(
     [getSectionId, getDatabases],
     (sectionId, databases) => {
-        return Object.keys(databases);
+        console.log(databases)
+        return databases;
     }
 );

@@ -75,7 +75,8 @@ export default class Routes extends Component {
                     <Route path="settings" component={this._forwardProps(SettingsEditorApp, ["refreshSiteSettings"])} />
                 </Route>
 
-                <Route path="/reference/" component={this._forwardProps(ReferenceApp, ["onChangeLocation"])}>
+                <Route path="/reference" component={this._forwardProps(ReferenceApp, ["onChangeLocation"])}>
+                    <Route path="guide" component={this._forwardProps(ReferenceGettingStartedGuide, ["onChangeLocation"])} />
                     <Route path=":section" component={this._forwardProps(ReferenceEntityList, ["onChangeLocation"])} />
                 </Route>
 

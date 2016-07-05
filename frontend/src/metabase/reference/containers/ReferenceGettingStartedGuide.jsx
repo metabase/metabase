@@ -5,7 +5,7 @@ import { pure } from "recompose";
 
 const ReferenceGettingStartedGuide = () =>
     <div>
-        Guide
+        WIP
     </div>
 
 export default pure(ReferenceGettingStartedGuide);

@@ -15,7 +15,7 @@ const Sidebar = ({ app, sections, labels, labelsLoading, labelsError, style, cla
     <div className={cx(S.sidebar, className)} style={style}>
         <ul>
             {Object.values(sections).map(section =>
-                <QuestionSidebarItem key={section.id} href={`/${app}/${section.id}`} {...section} />
+                <SidebarItem key={section.id} href={`/${app}/${section.id}`} {...section} />
             )}
         </ul>
     </div>
@@ -55,17 +55,17 @@ Sidebar.propTypes = {
     labelsError:    PropTypes.any,
 };
 
-const QuestionSidebarSectionTitle = ({ name, href }) =>
+const SidebarSectionTitle = ({ name, href }) =>
     <li>
         <Link to={href} className={S.sectionTitle} activeClassName={S.selected}>{name}</Link>
     </li>
 
-QuestionSidebarSectionTitle.propTypes = {
+SidebarSectionTitle.propTypes = {
     name:  PropTypes.string.isRequired,
     href:  PropTypes.string.isRequired,
 };
 
-const QuestionSidebarItem = ({ name, icon, href }) =>
+const SidebarItem = ({ name, icon, href }) =>
     <li>
         <Link to={href} className={S.item} activeClassName={S.selected}>
             <LabelIcon className={S.icon} icon={icon}/>
@@ -73,7 +73,7 @@ const QuestionSidebarItem = ({ name, icon, href }) =>
         </Link>
     </li>
 
-QuestionSidebarItem.propTypes = {
+SidebarItem.propTypes = {
     name:  PropTypes.string.isRequired,
     icon:  PropTypes.string.isRequired,
     href:  PropTypes.string.isRequired,
