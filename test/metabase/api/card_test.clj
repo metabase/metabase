@@ -13,7 +13,7 @@
                              [view-log :refer [ViewLog]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [match-$ expect-eval-actual-first random-name with-temp with-temp* obj->json->obj expect-with-temp]]
+            [metabase.test.util :refer [match-$ random-name with-temp with-temp* obj->json->obj expect-with-temp]]
             [metabase.util :as u]))
 
 ;; # CARD LIFECYCLE
