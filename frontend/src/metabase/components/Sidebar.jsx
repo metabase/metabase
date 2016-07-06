@@ -15,7 +15,7 @@ const Sidebar = ({ app, sections, labels, labelsLoading, labelsError, style, cla
     <div className={cx(S.sidebar, className)} style={style}>
         <ul>
             {Object.values(sections).map(section =>
-                <SidebarItem key={section.id} href={`/${app}/${section.id}`} {...section} />
+                <SidebarItem key={section.id} href={`/${app}/${section.path || section.id}`} {...section} />
             )}
         </ul>
     </div>

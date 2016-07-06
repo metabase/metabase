@@ -43,11 +43,11 @@ export default class ReferenceApp extends Component {
             return;
         }
 
-        if (this.props.databaseId) {
-            return this.props.fetchDatabaseMetadata(this.props.databaseId);
+        if (newProps.databaseId) {
+            return newProps.fetchDatabaseMetadata(newProps.databaseId);
         }
 
-        return this.props.fetchDatabases();
+        return newProps.fetchDatabases();
     }
 
     render() {

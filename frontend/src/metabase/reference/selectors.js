@@ -1,7 +1,7 @@
 import { createSelector } from 'reselect';
 import i from "icepick";
 
-const sections = {
+const referenceSections = {
     guide: { id: "guide", name: "Understanding our data", icon: "all" },
     metrics: { id: "metrics", name: "Metrics", icon: "star" },
     lists: { id: "lists", name: "Lists", icon: "recents" },
@@ -12,12 +12,23 @@ export const getEntitiesLoading = (state) => i.getIn(state, ['metadata', 'reques
 
 export const getEntitiesError = (state) => i.getIn(state, ['metadata', 'requestState', 'databases', 'error']);
 
-export const getSections = (state) => sections;
+export const getDatabaseId = (state) => state.router.params.databaseId;
+
+const getReferenceSections = (state) => referenceSections;
+
+const getDatabaseSections = (id) => ({
+    details: { id: "details", name: "Details", icon: "all", path: "databases/" + id },
+    tables: { id: "tables", name: "Tables in this database", icon: "star", path: `databases/${id}/tables` }
+});
+
+export const getSections = createSelector(
+    [getDatabaseId, getReferenceSections],
+    (databaseId, referenceSections) => databaseId ? getDatabaseSections(databaseId) : referenceSections
+);
 
 export const getSectionId = (state) => state.router.params.section ||
     i.getIn(state, ['router', 'routes', 2, 'path']);
 
-export const getDatabaseId = (state) => state.router.params.databaseId;
 
 export const getSection = createSelector(
     [getSectionId, getSections],
