@@ -7,6 +7,8 @@ export function parseTimestamp(value) {
         return value;
     } else if (typeof value === "string" && /(Z|[+-]\d\d:\d\d)$/.test(value)) {
         return moment.parseZone(value);
+    } else if (typeof value === "string" && /\d\d$/.test(value)) {
+        return moment().hour(value);
     } else {
         return moment.utc(value);
     }
