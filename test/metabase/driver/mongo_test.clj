@@ -133,10 +133,10 @@
 
 ;; Test that Tables got synced correctly, and row counts are correct
 (expect-when-testing-mongo
-    [{:rows 75,   :active true, :name "categories"}
-     {:rows 1000, :active true, :name "checkins"}
-     {:rows 15,   :active true, :name "users"}
-     {:rows 100,  :active true, :name "venues"}]
+  [{:rows 75,   :active true, :name "categories"}
+   {:rows 1000, :active true, :name "checkins"}
+   {:rows 15,   :active true, :name "users"}
+   {:rows 100,  :active true, :name "venues"}]
   (for [field (db/select [Table :name :active :rows]
                 :db_id (:id (mongo-db))
                 {:order-by [:name]})]
@@ -144,25 +144,25 @@
 
 ;; Test that Fields got synced correctly, and types are correct
 (expect-when-testing-mongo
-    [[{:special_type :id,        :base_type :IntegerField,  :name "_id"}
-      {:special_type :name,      :base_type :TextField,     :name "name"}]
-     [{:special_type :id,        :base_type :IntegerField,  :name "_id"}
-      {:special_type nil,        :base_type :DateTimeField, :name "date"}
-      {:special_type :category,  :base_type :IntegerField,  :name "user_id"}
-      {:special_type nil,        :base_type :IntegerField,  :name "venue_id"}]
-     [{:special_type :id,        :base_type :IntegerField,  :name "_id"}
-      {:special_type nil,        :base_type :DateTimeField, :name "last_login"}
-      {:special_type :name,      :base_type :TextField,     :name "name"}
-      {:special_type :category,  :base_type :TextField,     :name "password"}]
-     [{:special_type :id,        :base_type :IntegerField,  :name "_id"}
-      {:special_type :category,  :base_type :IntegerField,  :name "category_id"}
-      {:special_type :latitude,  :base_type :FloatField,    :name "latitude"}
-      {:special_type :longitude, :base_type :FloatField,    :name "longitude"}
-      {:special_type :name,      :base_type :TextField,     :name "name"}
-      {:special_type :category,  :base_type :IntegerField,  :name "price"}]]
-    (for [nm table-names]
-      (for [field (db/select [Field :name :base_type :special_type]
-                    :active   true
-                    :table_id (:id (table-name->table nm))
-                    {:order-by [:name]})]
-        (into {} field))))
+  [[{:special_type :id,        :base_type :IntegerField,  :name "_id"}
+    {:special_type :name,      :base_type :TextField,     :name "name"}]
+   [{:special_type :id,        :base_type :IntegerField,  :name "_id"}
+    {:special_type nil,        :base_type :DateTimeField, :name "date"}
+    {:special_type :category,  :base_type :IntegerField,  :name "user_id"}
+    {:special_type nil,        :base_type :IntegerField,  :name "venue_id"}]
+   [{:special_type :id,        :base_type :IntegerField,  :name "_id"}
+    {:special_type nil,        :base_type :DateTimeField, :name "last_login"}
+    {:special_type :name,      :base_type :TextField,     :name "name"}
+    {:special_type :category,  :base_type :TextField,     :name "password"}]
+   [{:special_type :id,        :base_type :IntegerField,  :name "_id"}
+    {:special_type :category,  :base_type :IntegerField,  :name "category_id"}
+    {:special_type :latitude,  :base_type :FloatField,    :name "latitude"}
+    {:special_type :longitude, :base_type :FloatField,    :name "longitude"}
+    {:special_type :name,      :base_type :TextField,     :name "name"}
+    {:special_type :category,  :base_type :IntegerField,  :name "price"}]]
+  (for [nm table-names]
+    (for [field (db/select [Field :name :base_type :special_type]
+                  :active   true
+                  :table_id (:id (table-name->table nm))
+                  {:order-by [:name]})]
+      (into {} field))))

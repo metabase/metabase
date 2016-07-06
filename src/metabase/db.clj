@@ -226,7 +226,7 @@
             (require 'metabase.driver)
             ((resolve 'metabase.driver/can-connect-with-details?) engine details))
     (format "Unable to connect to Metabase %s DB." (name engine)))
-  (log/info (str "Verify Database Connection ... ✅")))
+  (log/info (format "Verify %s Database Connection ... ✅" (name engine))))
 
 (defn setup-db
   "Do general preparation of database by validating that we can connect.
@@ -309,7 +309,7 @@
     (:metabase.models.interface/entity entity) entity
     (vector? entity)                           (resolve-entity (first entity))
     (symbol? entity)                           (resolve-entity-from-symbol entity)
-    :else                                      (throw (Exception. (str "Invalid entity:" entity)))))
+    :else                                      (throw (Exception. (str "Invalid entity: " entity)))))
 
 (defn- quoting-style
   "Style of `:quoting` that should be passed to HoneySQL `format`."
