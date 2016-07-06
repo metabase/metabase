@@ -7,7 +7,7 @@ machine:
   python:
     version: 2.7.3
   node:
-    version: 4.4.3
+    version: 4.4.7
 dependencies:
   override:
     - sudo apt-get purge mongodb-org*
@@ -23,7 +23,7 @@ dependencies:
     - lein deps
     - pip install awscli==1.7.3
     - npm cache clean
-    - npm install -g npm@2.15.3
+    - npm install -g npm@2.15.9
 database:
   post:
     # MySQL doesn't load named timezone information automatically, you have to run this command to load it
