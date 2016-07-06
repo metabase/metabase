@@ -14,7 +14,6 @@ import cx from 'classnames';
 import { pure } from "recompose";
 
 const Sidebar = ({
-    app,
     sections,
     labels,
     breadcrumbs,
@@ -34,7 +33,7 @@ const Sidebar = ({
                 </div>
             </li>
             {Object.values(sections).map(section =>
-                <SidebarItem key={section.id} href={`/${app}/${section.path || section.id}`} {...section} />
+                <SidebarItem key={section.id} href={section.id} {...section} />
             )}
         </ul>
     </div>
