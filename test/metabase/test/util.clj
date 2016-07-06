@@ -1,6 +1,7 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
-  (:require [cheshire.core :as json]
+  (:require [clojure.walk :as walk]
+            [cheshire.core :as json]
             [expectations :refer :all]
             [metabase.db :as db]
             (metabase.models [card :refer [Card]]
@@ -15,7 +16,9 @@
                              [raw-table :refer [RawTable]]
                              [revision :refer [Revision]]
                              [segment :refer [Segment]]
-                             [table :refer [Table]])
+                             [table :refer [Table]]
+                             [user :refer [User]])
+            [metabase.test.data :as data]
             [metabase.util :as u]))
 
 (declare $->prop)
@@ -62,7 +65,7 @@
 ;; By default `expect` evaluates EXPECTED first. This isn't always what we want; for example, sometime API tests affect the DB
 ;; and we'd like to check the results.
 
-(defmacro -doexpect [e a]
+(defmacro ^:deprecated -doexpect [e a]
   `(let [a# (try ~a (catch java.lang.Throwable t# t#))
          e# (try ~e (catch java.lang.Throwable t# t#))]
      (report
@@ -70,8 +73,9 @@
            (catch java.lang.Throwable e2#
              (compare-expr e2# a# '~e '~a))))))
 
-(defmacro expect-eval-actual-first
-  "Identical to `expect` but evaluates `actual` first (instead of evaluating `expected` first)."
+(defmacro ^:deprecated expect-eval-actual-first
+  "Identical to `expect` but evaluates `actual` first (instead of evaluating `expected` first).
+   DEPRECATED: You shouldn't need to use this when writing new tests. `expect-with-temp` should be used instead, as it handles cleaning up after itself."
   {:style/indent 0}
   [expected actual]
   (let [fn-name (gensym)]
@@ -110,11 +114,15 @@
 
 (u/strict-extend Object
   WithTempDefaults
-  {:with-temp-defaults (constantly nil)})
+  {:with-temp-defaults (constantly {})})
+
+(defn- rasta-id []
+  (require 'metabase.test.data.users)
+  ((resolve 'metabase.test.data.users/user->id) :rasta))
 
 (u/strict-extend (class Card)
   WithTempDefaults
-  {:with-temp-defaults (fn [_] {:creator_id             ((resolve 'metabase.test.data.users/user->id) :rasta)
+  {:with-temp-defaults (fn [_] {:creator_id             (rasta-id)
                                 :dataset_query          {}
                                 :display                :table
                                 :name                   (random-name)
@@ -123,7 +131,7 @@
 
 (u/strict-extend (class Dashboard)
   WithTempDefaults
-  {:with-temp-defaults (fn [_] {:creator_id   ((resolve 'metabase.test.data.users/user->id) :rasta)
+  {:with-temp-defaults (fn [_] {:creator_id   (rasta-id)
                                 :name         (random-name)
                                 :public_perms 0})})
 
@@ -145,14 +153,15 @@
 
 (u/strict-extend (class Metric)
   WithTempDefaults
-  {:with-temp-defaults (fn [_] {:creator_id  ((resolve 'metabase.test.data.users/user->id) :rasta)
+  {:with-temp-defaults (fn [_] {:creator_id  (rasta-id)
                                 :definition  {}
                                 :description "Lookin' for a blueberry"
-                                :name        "Toucans in the rainforest"})})
+                                :name        "Toucans in the rainforest"
+                                :table_id    (data/id :venues)})})
 
 (u/strict-extend (class Pulse)
   WithTempDefaults
-  {:with-temp-defaults (fn [_] {:creator_id ((resolve 'metabase.test.data.users/user->id) :rasta)
+  {:with-temp-defaults (fn [_] {:creator_id (rasta-id)
                                 :name       (random-name)})})
 
 (u/strict-extend (class PulseChannel)
@@ -174,21 +183,31 @@
 
 (u/strict-extend (class Revision)
   WithTempDefaults
-  {:with-temp-defaults (fn [_] {:user_id      ((resolve 'metabase.test.data.users/user->id) :rasta)
+  {:with-temp-defaults (fn [_] {:user_id      (rasta-id)
                                 :is_creation  false
                                 :is_reversion false})})
 
 (u/strict-extend (class Segment)
   WithTempDefaults
-  {:with-temp-defaults (fn [_] {:creator_id ((resolve 'metabase.test.data.users/user->id) :rasta)
+  {:with-temp-defaults (fn [_] {:creator_id (rasta-id)
                                 :definition  {}
                                 :description "Lookin' for a blueberry"
-                                :name        "Toucans in the rainforest"})})
+                                :name        "Toucans in the rainforest"
+                                :table_id    (data/id :venues)})})
+
+;; TODO - `with-temp` doesn't return `Sessions`, probably because their ID is a string?
 
 (u/strict-extend (class Table)
   WithTempDefaults
   {:with-temp-defaults (fn [_] {:active true
                                 :name   (random-name)})})
+
+(u/strict-extend (class User)
+  WithTempDefaults
+  {:with-temp-defaults (fn [_] {:email      (str (random-name) "@metabase.com")
+                                :password   (random-name)
+                                :first_name (random-name)
+                                :last_name  (random-name)})})
 
 
 (defn do-with-temp
@@ -253,8 +272,9 @@
     `(let [~with-temp-form (delay (with-temp* ~with-temp*-form
                                     [~expected ~actual]))]
        (expect
-         (first  @~with-temp-form)
-         (second @~with-temp-form)))))
+         (u/ignore-exceptions
+           (first @~with-temp-form))   ; if dereferencing with-temp-form throws an exception then expect Exception <-> Exception will pass; we don't want that, so make sure the expected
+         (second @~with-temp-form))))) ; case is nil if we encounter an exception so the two don't match and the test doesn't succeed
 
 ;; ## resolve-private-fns
 
@@ -276,9 +296,21 @@
 
 (defn obj->json->obj
   "Convert an object to JSON and back again. This can be done to ensure something will match its serialized + deserialized form,
-   e.g. keywords that aren't map keys:
+   e.g. keywords that aren't map keys, record types vs. plain map types, or timestamps vs ISO-8601 strings:
 
      (obj->json->obj {:type :query}) -> {:type \"query\"}"
   {:style/indent 0}
   [obj]
   (json/parse-string (json/generate-string obj) keyword))
+
+
+(defn mappify
+  "Walk COLL and convert all record types to plain Clojure maps.
+   Useful because expectations will consider an instance of a record type to be different from a plain Clojure map, even if all keys & values are the same."
+  [coll]
+  {:style/indent 0}
+  (walk/postwalk (fn [x]
+                   (if (map? x)
+                     (into {} x)
+                     x))
+                 coll))

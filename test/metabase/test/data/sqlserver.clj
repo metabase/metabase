@@ -117,7 +117,6 @@
         (doseq [db leftover-dbs]
           (try
             (println (format "Deleting leftover SQL Server DB '%s'..." db))
-            ;; (jdbc/execute! connection-spec [(drop-db-if-exists-sql nil {:database-name db})])
             ;; Don't try to kill other connections to this DB with SET SINGLE_USER -- some other instance (eg CI) might be using it
             (jdbc/execute! connection-spec [(format "DROP DATABASE \"%s\";" db)])
             (println "[ok]")

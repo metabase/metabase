@@ -2,8 +2,8 @@
   (:require [clojure.set :as set]
             (honeysql [core :as hsql]
                       [format :as hformat])
-            [korma.db :as kdb]
             [metabase.config :as config]
+            [metabase.db.spec :as dbspec]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
             [metabase.util :as u]
@@ -143,7 +143,7 @@
   (merge (sql/ISQLDriverDefaultsMixin)
          {:active-tables             sql/post-filtered-active-tables
           :column->base-type         (sql/pattern-based-column->base-type pattern->type)
-          :connection-details->spec  (u/drop-first-arg kdb/sqlite3)
+          :connection-details->spec  (u/drop-first-arg dbspec/sqlite3)
           :current-datetime-fn       (constantly (hsql/raw "datetime('now')"))
           :date                      (u/drop-first-arg date)
           :prepare-value             (u/drop-first-arg prepare-value)
