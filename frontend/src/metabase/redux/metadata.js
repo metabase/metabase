@@ -9,24 +9,30 @@ import { augmentDatabase } from "metabase/lib/table";
 
 const MetabaseApi = new AngularResourceProxy("Metabase", ["db_list", "dataset", "dataset_duration", "db_metadata"]);
 
-const setRequestState = createAction(SET_REQUEST_STATE);
+const setRequestState = createAction(SET_REQUEST_STATE, undefined, (payload, meta) => meta);
 
-const getDatabaseMetadata = async dbId => await MetabaseApi.db_metadata({ dbId });
-
-export const fetchDatabases = createThunkAction(FETCH_DATABASES, () => {
+export const fetchDatabases = createThunkAction(FETCH_DATABASES, (reload = false) => {
     return async (dispatch, getState) => {
         try {
-            //TODO: add loading indicators, see fetchDatabaseMetadata
-            const databases = await MetabaseApi.db_list();
+            const requestState = i.getIn(getState(), ["metadata", "requestState", "databases"]);
+            if (requestState == null || reload) {
+                dispatch(setRequestState({ type: "databases", state: "LOADING" }));
+                const databases = await MetabaseApi.db_list();
+                const databaseMap = databases
+                    .filter(database => database.id !== undefined)
+                    //TODO: think about returning a map directly from the backend?
+                    // for constant time random access by id
+                    .reduce((map, database) => i.assoc(map, database.id, database), {});
+                dispatch(setRequestState({ type: "databases", state: "LOADED" }));
 
-            return databases
-                .filter(database => database.id !== undefined)
-                //TODO: think about returning a map directly from the backend?
-                // for constant time random access
-                .reduce((databaseMap, database) => i.assoc(databaseMap, database.id, database), {});
+                return databaseMap;
+            }
+
+            const existingDatabases = i.getIn(getState(), ["metadata", "databases"])
+            return existingDatabases;
         }
         catch(error) {
-            console.log("error fetching databases", error);
+            dispatch(setRequestState(error, { type: 'databases' }));
             return {};
         }
     };
@@ -34,14 +40,22 @@ export const fetchDatabases = createThunkAction(FETCH_DATABASES, () => {
 
 export const fetchDatabaseMetadata = createThunkAction(FETCH_DATABASE_METADATA, function(dbId, reload = false) {
     return async function(dispatch, getState) {
-        const requestState = i.getIn(getState(), ["metadata", "requestState", "database", dbId]);
-        if (requestState == null || reload) {
-            dispatch(setRequestState({ type: "database", id: dbId, state: "LOADING" }));
-            let databaseMetadata = await MetabaseApi.db_metadata({ dbId });
-            augmentDatabase(databaseMetadata);
-            dispatch(setRequestState({ type: "database", id: dbId, state: "LOADED" }));
-            return databaseMetadata;
-        } else {
+        try {
+            const requestState = i.getIn(getState(), ["metadata", "requestState", "database", dbId]);
+            if (!requestState || reload) {
+                dispatch(setRequestState({ type: "database", id: dbId, state: "LOADING" }));
+                let databaseMetadata = await MetabaseApi.db_metadata({ dbId });
+                augmentDatabase(databaseMetadata);
+                dispatch(setRequestState({ type: "database", id: dbId, state: "LOADED" }));
+
+                return databaseMetadata;
+            }
+
+            const existingDatabase = i.getIn(getState(), ["metadata", "databases", dbId]);
+            return existingDatabase;
+        }
+        catch(error) {
+            dispatch(setRequestState(error, { type: 'database', id: dbId }));
             return {};
         }
     };
@@ -53,7 +67,14 @@ const databases = handleActions({
 }, {});
 
 const requestState = handleActions({
-    [SET_REQUEST_STATE]: { next: (state, { payload }) => i.assocIn(state, [payload.type, payload.id], payload.state) }
+    [SET_REQUEST_STATE]: {
+        next: (state, { payload }) => payload.id ?
+            i.assocIn(state, [payload.type, payload.id], payload.state) :
+            i.assoc(state, payload.type, payload.state),
+        throw: (state, { payload, meta, error }) => meta.id ?
+            i.assocIn(state, [meta.type, meta.id, 'error'], payload) :
+            i.assocIn(state, [meta.type, 'error'], payload)
+    }
 }, {});
 
 export default combineReducers({

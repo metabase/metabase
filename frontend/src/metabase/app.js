@@ -120,6 +120,8 @@ angular.module('metabase', [
     };
     $routeProvider.when('/reference', route);
     $routeProvider.when('/reference/guide', route);
+    $routeProvider.when('/reference/databases', route);
+    $routeProvider.when('/reference/databases/:databaseId', route);
     $routeProvider.when('/reference/:section', route);
 
     $routeProvider.when('/', { ...route, template: '<div mb-redux-component class="full-height" />'});

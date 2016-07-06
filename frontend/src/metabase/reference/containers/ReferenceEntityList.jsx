@@ -9,18 +9,22 @@ import Icon from "metabase/components/Icon.jsx";
 import Item from "metabase/components/Item.jsx";
 import EmptyState from "metabase/components/EmptyState.jsx";
 
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
 import {
     getSection,
-    getEntities
+    getEntities,
+    getEntitiesError,
+    getEntitiesLoading
 } from "../selectors";
 
 import * as metadataActions from "metabase/redux/metadata";
 
 const mapStateToProps = (state, props) => ({
-    onChangeLocation: props.onChangeLocation,
     section: getSection(state),
-    entities: getEntities(state)
+    entities: getEntities(state),
+    loading: getEntitiesLoading(state),
+    error: getEntitiesError(state)
 });
 
 const mapDispatchToProps = {
@@ -32,18 +36,18 @@ export default class ReferenceEntityList extends Component {
     static propTypes = {
         style: PropTypes.object.isRequired,
         entities: PropTypes.object.isRequired,
-        section: PropTypes.object.isRequired
+        section: PropTypes.object.isRequired,
+        loading: PropTypes.bool,
+        error: PropTypes.object
     };
-
-    componentWillMount() {
-        this.props.fetchDatabases();
-    }
 
     render() {
         const {
             entities,
             style,
-            section
+            section,
+            error,
+            loading
         } = this.props;
 
         const empty = {
@@ -57,7 +61,8 @@ export default class ReferenceEntityList extends Component {
                         {section.name}
                     </div>
                 </div>
-                { Object.keys(entities).length > 0 ?
+                <LoadingAndErrorWrapper loading={!error && loading} error={error}>
+                { () => Object.keys(entities).length > 0 ?
                     <div className="wrapper wrapper--trim">
                         <List>
                             { Object.values(entities).map(entity =>
@@ -78,6 +83,7 @@ export default class ReferenceEntityList extends Component {
                       <EmptyState message={empty.message} icon={empty.icon} />
                     </div>
                 }
+                </LoadingAndErrorWrapper>
             </div>
         )
     }

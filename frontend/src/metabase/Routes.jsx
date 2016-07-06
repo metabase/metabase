@@ -36,6 +36,7 @@ import Unauthorized from "metabase/components/Unauthorized.jsx";
 
 
 import ReferenceApp from "metabase/reference/containers/ReferenceApp.jsx";
+import ReferenceEntity from "metabase/reference/containers/ReferenceEntity.jsx";
 import ReferenceEntityList from "metabase/reference/containers/ReferenceEntityList.jsx";
 import ReferenceGettingStartedGuide from "metabase/reference/containers/ReferenceGettingStartedGuide.jsx";
 
@@ -75,10 +76,13 @@ export default class Routes extends Component {
                     <Route path="settings" component={this._forwardProps(SettingsEditorApp, ["refreshSiteSettings"])} />
                 </Route>
 
-                <Route path="/reference" component={this._forwardProps(ReferenceApp, ["onChangeLocation"])}>
-                    <Route path="guide" component={this._forwardProps(ReferenceGettingStartedGuide, ["onChangeLocation"])} />
+                <Route path="/reference" component={ReferenceApp}>
+                    <Route path="guide" component={ReferenceGettingStartedGuide} />
+                    <Route path="databases" component={ReferenceEntityList} />
+                    <Route path="databases/:databaseId" component={ReferenceEntity} />
+                    <Route path="databases/:databaseId/tables" component={ReferenceEntityList} />
                     //FIXME: refreshing at a :section route makes subsequent navigation attempts fail
-                    <Route path=":section" component={this._forwardProps(ReferenceEntityList, ["onChangeLocation"])} />
+                    <Route path=":section" component={ReferenceEntityList} />
                 </Route>
 
                 <Route path="/auth/forgot_password" component={ForgotPasswordApp} />
