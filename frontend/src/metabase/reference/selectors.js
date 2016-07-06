@@ -29,10 +29,16 @@ export const getSectionId = (state) => state.router.params.section || stripBasep
 
 const getDatabases = (state) => state.metadata.databases;
 
+const getTables = (database) => database && database.tables ?
+    database.tables.reduce((tableMap, table) => i.assoc(tableMap, table.id, table), {}) :
+    {};
+
 export const getEntities = createSelector(
-    [getSectionId, getDatabases],
-    (sectionId, databases) => {
-        // console.log(databases)
+    [getSectionId, getDatabaseId, getDatabases],
+    (sectionId, databaseId, databases) => {
+        if (sectionId === `databases/${databaseId}/tables`) {
+            return getTables(databases[databaseId]);
+        }
         return databases;
     }
 );
