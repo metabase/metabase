@@ -83,6 +83,7 @@ export default class Routes extends Component {
                     <Route path="databases" component={ReferenceEntityList} />
                     <Route path="databases/:databaseId" component={ReferenceEntity} />
                     <Route path="databases/:databaseId/tables" component={ReferenceEntityList} />
+                    <Route path="databases/:databaseId/tables/:tableId" component={ReferenceEntity} />
                     <Route path=":section" component={ReferenceEntityList} />
                 </Route>
 
