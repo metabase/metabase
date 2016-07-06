@@ -217,7 +217,7 @@ export default class QueryVisualizationObjectDetailTable extends Component {
                         <div className="p4 flex align-center text-bold text-grey-3">
                             <Icon name="connections" width="17px" height="20px" />
                             <div className="ml2">
-                                This <span className="text-dark">{tableName}</span> is connected to.
+                                This <span className="text-dark">{tableName}</span> is connected to:
                             </div>
                         </div>
                     </div>
