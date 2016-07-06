@@ -6,8 +6,8 @@
   "repository": "https://github.com/metabase/metabase",
   "license": "private",
   "engines": {
-    "node": "4.4.3",
-    "npm": "2.15.3"
+    "node": "4.4.7",
+    "npm": "2.15.9"
   },
   "dependencies": {
     "ace-builds": "^1.2.2",
