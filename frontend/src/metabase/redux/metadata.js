@@ -15,6 +15,8 @@ export const fetchDatabases = createThunkAction(FETCH_DATABASES, (reload = false
     return async (dispatch, getState) => {
         try {
             const requestState = i.getIn(getState(), ["metadata", "requestState", "databases"]);
+            const existingDatabases = i.getIn(getState(), ["metadata", "databases"]);
+
             if (requestState == null || reload) {
                 dispatch(setRequestState({ type: "databases", state: "LOADING" }));
                 const databases = await MetabaseApi.db_list();
@@ -25,10 +27,10 @@ export const fetchDatabases = createThunkAction(FETCH_DATABASES, (reload = false
                     .reduce((map, database) => i.assoc(map, database.id, database), {});
                 dispatch(setRequestState({ type: "databases", state: "LOADED" }));
 
-                return databaseMap;
+                // to ensure existing databases with fetched metadata doesn't get overwritten
+                return {...databaseMap, ...existingDatabases};
             }
 
-            const existingDatabases = i.getIn(getState(), ["metadata", "databases"])
             return existingDatabases;
         }
         catch(error) {

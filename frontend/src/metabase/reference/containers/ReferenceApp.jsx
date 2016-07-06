@@ -40,6 +40,7 @@ export default class ReferenceApp extends Component {
     }
 
     componentWillReceiveProps(newProps) {
+        console.log(newProps);
         if (this.props.location.pathname === newProps.location.pathname) {
             return;
         }

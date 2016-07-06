@@ -75,13 +75,13 @@ export const getEntityError = createSelector(
 
 export const getBreadcrumbs = (state) => {
     const sectionId = getSectionId(state);
-    console.log(sectionId);
+    // console.log(sectionId);
 
     if (referenceSections[sectionId]) {
         return [];
     }
 
     const databaseName = i.getIn(getEntity(state), ['name']);
-    console.log(state);
+    // console.log(state);
     return [['Data', '/reference/databases'], databaseName];
 };
