@@ -25,7 +25,7 @@ export default class TablePane extends Component {
 
     static propTypes = {
         query: PropTypes.object.isRequired,
-        loadTableFn: PropTypes.func.isRequired,
+        loadTableAndForeignKeysFn: PropTypes.func.isRequired,
         show: PropTypes.func.isRequired,
         closeFn: PropTypes.func.isRequired,
         setCardAndRun: PropTypes.func.isRequired,
@@ -33,7 +33,7 @@ export default class TablePane extends Component {
     };
 
     componentWillMount() {
-        this.props.loadTableFn(this.props.table.id).then((result) => {
+        this.props.loadTableAndForeignKeysFn(this.props.table.id).then((result) => {
             this.setState({
                 table: result.table,
                 tableForeignKeys: result.foreignKeys
