@@ -221,12 +221,12 @@
   "Test connection to database with DETAILS and throw an exception if we have any troubles connecting."
   [engine details]
   {:pre [(keyword? engine) (map? details)]}
-  (log/info (u/format-color 'cyan "Verifying Database Connection ..."))
+  (log/info (u/format-color 'cyan "Verifying %s Database Connection ..." (name engine)))
   (assert (binding [*allow-potentailly-unsafe-connections* true]
             (require 'metabase.driver)
             ((resolve 'metabase.driver/can-connect-with-details?) engine details))
     (format "Unable to connect to Metabase %s DB." (name engine)))
-  (log/info (str "Verify Database Connection ... ✅")))
+  (log/info "Verify Database Connection ... ✅"))
 
 (defn setup-db
   "Do general preparation of database by validating that we can connect.
@@ -309,7 +309,7 @@
     (:metabase.models.interface/entity entity) entity
     (vector? entity)                           (resolve-entity (first entity))
     (symbol? entity)                           (resolve-entity-from-symbol entity)
-    :else                                      (throw (Exception. (str "Invalid entity:" entity)))))
+    :else                                      (throw (Exception. (str "Invalid entity: " entity)))))
 
 (defn- quoting-style
   "Style of `:quoting` that should be passed to HoneySQL `format`."
