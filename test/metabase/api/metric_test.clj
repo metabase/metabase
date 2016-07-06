@@ -4,11 +4,12 @@
             (metabase [http-client :as http]
                       [middleware :as middleware])
             (metabase.models [database :refer [Database]]
-                             [revision :refer [Revision]]
+                             [hydrate :refer [hydrate]]
                              [metric :refer [Metric], :as metric]
+                             [revision :refer [Revision]]
                              [table :refer [Table]])
-            [metabase.test.data.users :refer :all]
             [metabase.test.data :refer :all]
+            [metabase.test.data.users :refer :all]
             [metabase.test.util :as tu]))
 
 ;; ## Helper Fns
@@ -46,8 +47,8 @@
 ;; test security.  requires superuser perms
 (expect "You don't have permissions to do that."
   ((user->client :rasta) :post 403 "metric" {:name       "abc"
-                                              :table_id   123
-                                              :definition {}}))
+                                             :table_id   123
+                                             :definition {}}))
 
 ;; test validations
 (expect {:errors {:name "field is a required param."}}
@@ -58,16 +59,16 @@
 
 (expect {:errors {:table_id "Invalid value 'foobar' for 'table_id': value must be an integer."}}
   ((user->client :crowberto) :post 400 "metric" {:name     "abc"
-                                                  :table_id "foobar"}))
+                                                 :table_id "foobar"}))
 
 (expect {:errors {:definition "field is a required param."}}
   ((user->client :crowberto) :post 400 "metric" {:name     "abc"
-                                                  :table_id 123}))
+                                                 :table_id 123}))
 
 (expect {:errors {:definition "Invalid value 'foobar' for 'definition': value must be a dictionary."}}
   ((user->client :crowberto) :post 400 "metric" {:name       "abc"
-                                                  :table_id   123
-                                                  :definition "foobar"}))
+                                                 :table_id   123
+                                                 :definition "foobar"}))
 
 (expect
   {:name         "A Metric"
@@ -93,8 +94,8 @@
 ;; test security.  requires superuser perms
 (expect "You don't have permissions to do that."
   ((user->client :rasta) :put 403 "metric/1" {:name             "abc"
-                                               :definition       {}
-                                               :revision_message "something different"}))
+                                              :definition       {}
+                                              :revision_message "something different"}))
 
 ;; test validations
 (expect {:errors {:name "field is a required param."}}
@@ -319,3 +320,13 @@
     [(dissoc ((user->client :crowberto) :post 200 (format "metric/%d/revert" id) {:revision_id revision-id}) :id :timestamp)
      (doall (for [revision ((user->client :crowberto) :get 200 (format "metric/%d/revisions" id))]
               (dissoc revision :timestamp :id)))]))
+
+
+;;; GET /api/metric/
+
+(tu/expect-with-temp [Metric [metric-1]
+                      Metric [metric-2]
+                      Metric [_        {:is_active false}]] ; inactive metrics shouldn't show up
+  (tu/mappify (hydrate [metric-1
+                        metric-2] :creator))
+  ((user->client :rasta) :get 200 "metric/"))
