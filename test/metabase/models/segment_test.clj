@@ -2,7 +2,7 @@
   (:require [expectations :refer :all]
             (metabase.models [database :refer [Database]]
                              [hydrate :refer :all]
-                             [segment :refer :all]
+                             [segment :refer :all, :as segment]
                              [table :refer [Table]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
@@ -41,15 +41,15 @@
     (create-segment-then-select! table-id "I only want *these* things" nil (user->id :rasta) {:clause ["a" "b"]})))
 
 
-;; exists-segment?
+;; exists?
 (expect
   [true
    false]
   (tu/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}   {:db_id database-id}]
                   Segment  [{segment-id :id} {:table_id table-id}]]
-    [(exists-segment? segment-id)
-     (exists-segment? 3400)]))
+    [(segment/exists? segment-id)
+     (segment/exists? 3400)]))
 
 
 ;; retrieve-segment

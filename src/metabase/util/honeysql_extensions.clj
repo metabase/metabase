@@ -32,7 +32,7 @@
 ;; TODO - Maybe instead of this lozengey hackiness it would make more sense just to add a new "identifier" record type that implements `ToSql` in a more intelligent way
 (defn escape-dots
   "Replace dots in a string with WHITE MEDIUM LOZENGES (⬨)."
-  ^clojure.lang.Keyword [s]
+  ^String [s]
   (s/replace (name s) #"\." "⬨"))
 
 (defn qualify-and-escape-dots

@@ -25,7 +25,6 @@
 (defendpoint GET "/recent_views"
   "Get the list of 15 things the current user has been viewing most recently."
   []
-  ;; use a custom Korma query because we are doing some groupings and aggregations
   ;; expected output of the query is a single row per unique model viewed by the current user
   ;; including a `:max_ts` which has the most recent view timestamp of the item and `:cnt` which has total views
   ;; and we order the results by most recently viewed then hydrate the basic details of the model
