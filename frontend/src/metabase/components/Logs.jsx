@@ -1,5 +1,6 @@
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
+import fetch from 'isomorphic-fetch';
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
