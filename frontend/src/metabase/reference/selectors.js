@@ -15,13 +15,13 @@ export const getEntitiesError = (state) => i.getIn(state, ['metadata', 'requestS
 export const getSections = (state) => sections;
 
 export const getSectionId = (state) => state.router.params.section ||
-    state.router.routes[2].path;
+    i.getIn(state, ['router', 'routes', 2, 'path']);
 
 export const getDatabaseId = (state) => state.router.params.databaseId;
 
 export const getSection = createSelector(
     [getSectionId, getSections],
-    (sectionId, sections) => sections[sectionId]
+    (sectionId, sections) => sections[sectionId] || {}
 );
 
 const getDatabases = (state) => state.metadata.databases;

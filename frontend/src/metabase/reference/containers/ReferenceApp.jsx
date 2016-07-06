@@ -53,7 +53,7 @@ export default class ReferenceApp extends Component {
     render() {
         return (
             <SidebarLayout
-                sidebar={<Sidebar {...this.props} app="reference" children={undefined} />}
+                sidebar={<Sidebar {...this.props} app="reference" />}
             >
                 {this.props.children}
             </SidebarLayout>

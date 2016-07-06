@@ -3,6 +3,8 @@ import React, { Component, PropTypes } from "react";
 import { Route } from 'react-router';
 import { ReduxRouter } from 'redux-router';
 
+import Sidebar from "metabase/components/Sidebar.jsx";
+
 // auth containers
 import ForgotPasswordApp from "metabase/auth/containers/ForgotPasswordApp.jsx";
 import LoginApp from "metabase/auth/containers/LoginApp.jsx";

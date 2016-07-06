@@ -118,11 +118,6 @@ angular.module('metabase', [
             }]
         }
     };
-    $routeProvider.when('/reference', route);
-    $routeProvider.when('/reference/guide', route);
-    $routeProvider.when('/reference/databases', route);
-    $routeProvider.when('/reference/databases/:databaseId', route);
-    $routeProvider.when('/reference/:section', route);
 
     $routeProvider.when('/', { ...route, template: '<div mb-redux-component class="full-height" />'});
 
@@ -141,6 +136,12 @@ angular.module('metabase', [
     $routeProvider.when('/admin/datamodel/:objectType/:objectId/revisions', route);
     $routeProvider.when('/admin/people/', route);
     $routeProvider.when('/admin/settings/', { ...route, template: '<div class="full-height" mb-redux-component />' });
+
+    $routeProvider.when('/reference', route);
+    $routeProvider.when('/reference/guide', route);
+    $routeProvider.when('/reference/databases', route);
+    $routeProvider.when('/reference/databases/:databaseId', route);
+    $routeProvider.when('/reference/:section', route);
 
     $routeProvider.when('/auth/', { redirectTo: () => ('/auth/login') });
     $routeProvider.when('/auth/forgot_password', { ...route, template: '<div mb-redux-component class="full-height" />' });
