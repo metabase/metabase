@@ -17,18 +17,6 @@
                   :details {}}]
     (merge defaults activity)))
 
-(defn model-exists?
-  "Does the object associated with this `Activity` exist in the DB?"
-  {:hydrate :model_exists, :arglists '([activity])}
-  [{:keys [model model_id]}]
-  (case model
-    "card"      (db/exists? Card,      :id model_id)
-    "dashboard" (db/exists? Dashboard, :id model_id)
-    "metric"    (db/exists? Metric,    :id model_id, :is_active true)
-    "pulse"     (db/exists? Pulse,     :id model_id)
-    "segment"   (db/exists? Segment,   :id model_id, :is_active true)
-                 nil))
-
 (u/strict-extend (class Activity)
   i/IEntity
   (merge i/IEntityDefaults

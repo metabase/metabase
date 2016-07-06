@@ -178,11 +178,14 @@
    (let [entity     (@hydration-key->entity dest-key)
          source-key (k->k_id dest-key)
          ids        (set (for [result results
-                               :when  (not (get result dest-key))]
-                           (source-key result)))
-         objs       (when (seq ids)
-                      (u/key-by :id (db/select entity, :id [:in ids])))]
-     (for [{source-id source-key :as result} results]
+                               :when  (not (get result dest-key))
+                               :let   [k (source-key result)]
+                               :when  k]
+                           k))
+         objs       (if (seq ids)
+                      (u/key-by :id (db/select entity, :id [:in ids]))
+                      (constantly nil))]
+     (for [{source-id source-key, :as result} results]
        (if (get result dest-key)
          result
          (assoc result dest-key (objs source-id)))))))
