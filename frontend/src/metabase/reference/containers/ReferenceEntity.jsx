@@ -4,6 +4,7 @@ import ReactDOM from "react-dom";
 import { connect } from "react-redux";
 
 import S from "metabase/components/List.css";
+import List from "metabase/components/List.jsx";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
@@ -40,7 +41,7 @@ export default class EntityItem extends Component {
             loading
         } = this.props;
 
-        // TODO: style this properly
+        // TODO: style this properly, currently just reusing list style
         return (
             <div className="full">
                 <LoadingAndErrorWrapper loading={!error && loading} error={error}>
@@ -52,14 +53,22 @@ export default class EntityItem extends Component {
                             </div>
                         </div>
                         <div className="wrapper wrapper--trim">
-                            <div className={S.itemBody}>
-                                <div className={S.itemTitle}>
-                                    Description
-                                </div>
-                                <div className={cx(S.itemSubtitle, { "mt1" : true })}>
-                                    {entity.description || 'No description'}
-                                </div>
-                            </div>
+                            <List>
+                                <li className="relative">
+                                    <div className={cx(S.item)}>
+                                        <div className={S.leftIcons}>
+                                        </div>
+                                        <div className={S.itemBody}>
+                                            <div className={S.itemTitle}>
+                                                Description
+                                            </div>
+                                            <div className={cx(S.itemSubtitle, { "mt1" : true })}>
+                                                {entity.description || 'No description'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+                            </List>
                         </div>
                     </div> :
                     null
