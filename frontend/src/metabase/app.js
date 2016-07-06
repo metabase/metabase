@@ -141,6 +141,7 @@ angular.module('metabase', [
     $routeProvider.when('/reference/guide', route);
     $routeProvider.when('/reference/databases', route);
     $routeProvider.when('/reference/databases/:databaseId', route);
+    $routeProvider.when('/reference/databases/:databaseId/tables', route);
     $routeProvider.when('/reference/:section', route);
 
     $routeProvider.when('/auth/', { redirectTo: () => ('/auth/login') });

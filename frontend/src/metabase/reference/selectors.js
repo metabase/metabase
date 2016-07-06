@@ -16,24 +16,16 @@ export const getDatabaseId = (state) => state.router.params.databaseId;
 
 const getReferenceSections = (state) => referenceSections;
 
-const getDatabaseSections = (id) => ({
-    details: { id: "details", name: "Details", icon: "all", path: "databases/" + id },
-    tables: { id: "tables", name: "Tables in this database", icon: "star", path: `databases/${id}/tables` }
-});
+const getDatabaseSections = (database) => database ? {
+    [`databases/${database.id}`]: { id: `databases/${database.id}`, name: "Details", icon: "all", parent: referenceSections.database },
+    [`databases/${database.id}/tables`]: { id: `databases/${database.id}/tables`, name: `Tables in ${database.name}`, icon: "star", parent: referenceSections.database }
+} : {};
 
-export const getSections = createSelector(
-    [getDatabaseId, getReferenceSections],
-    (databaseId, referenceSections) => databaseId ? getDatabaseSections(databaseId) : referenceSections
-);
+const getSectionByPath = (sections, path) => sections.find(section => section.path === path || section.id === path);
 
-export const getSectionId = (state) => state.router.params.section ||
-    i.getIn(state, ['router', 'routes', 2, 'path']);
+const stripBasepath = (path) => path.slice('/reference/'.length);
 
-
-export const getSection = createSelector(
-    [getSectionId, getSections],
-    (sectionId, sections) => sections[sectionId] || {}
-);
+export const getSectionId = (state) => state.router.params.section || stripBasepath(state.router.location.pathname);
 
 const getDatabases = (state) => state.metadata.databases;
 
@@ -48,9 +40,19 @@ export const getEntities = createSelector(
 export const getEntity = createSelector(
     [getSectionId, getDatabases, getDatabaseId],
     (sectionId, databases, databaseId) => {
-        console.log(databases)
+        // console.log(databases)
         return databases[databaseId];
     }
+);
+
+export const getSections = createSelector(
+    [getSectionId, getEntity, getReferenceSections],
+    (sectionId, entity, referenceSections) => referenceSections[sectionId] ? referenceSections : getDatabaseSections(entity)
+);
+
+export const getSection = createSelector(
+    [getSectionId, getSections],
+    (sectionId, sections) => sections[sectionId] || {}
 );
 
 const getEntityRequestStates = (state) => i.getIn(state, ['metadata', 'requestState', 'database']);
@@ -67,12 +69,13 @@ export const getEntityError = createSelector(
 
 export const getBreadcrumbs = (state) => {
     const sectionId = getSectionId(state);
+    console.log(sectionId);
 
-    if (sectionId === 'guide' || sectionId === 'metrics' || sectionId === 'lists' || sectionId === 'databases') {
+    if (referenceSections[sectionId]) {
         return [];
     }
 
     const databaseName = i.getIn(getEntity(state), ['name']);
-    console.log(sectionId);
+    console.log(state);
     return [['Data', '/reference/databases'], databaseName];
 };

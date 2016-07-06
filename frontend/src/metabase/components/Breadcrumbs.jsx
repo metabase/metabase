@@ -16,7 +16,6 @@ export default class Breadcrumbs extends Component {
         const children = [];
         // TODO: maybe refactor this a bit to make it clearer how to use?
         for (let [index, crumb] of this.props.crumbs.entries()) {
-            console.log(crumb)
             crumb = Array.isArray(crumb) ? crumb : [crumb];
             if (crumb.length > 1) {
                 children.push(<a className="Breadcrumb Breadcrumb--path" href={crumb[1]}>{crumb[0]}</a>);
