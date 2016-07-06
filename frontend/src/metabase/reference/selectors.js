@@ -25,7 +25,7 @@ const getSectionByPath = (sections, path) => sections.find(section => section.pa
 
 const stripBasepath = (path) => path.slice('/reference/'.length);
 
-export const getSectionId = (state) => state.router.params.section || state.router.location.pathname;
+export const getSectionId = (state) => state.router.location.pathname;
 
 const getDatabases = (state) => state.metadata.databases;
 
