@@ -9,7 +9,7 @@
                              [view-log :refer [ViewLog]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [match-$ expect-eval-actual-first random-name expect-with-temp]]
+            [metabase.test.util :refer [match-$ random-name expect-with-temp]]
             [metabase.util :as u]))
 
 ;; GET /

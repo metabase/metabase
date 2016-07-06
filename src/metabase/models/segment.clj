@@ -70,15 +70,14 @@
     (-> (events/publish-event :segment-create segment)
         (hydrate :creator))))
 
-(defn exists-segment?
-  "Predicate function which checks for a given `Segment` with ID.
-   Returns true if `Segment` exists and is active, false otherwise."
-  [id]
+(defn exists?
+  "Does an *active* `Segment` with ID exist?"
+  ^Boolean [id]
   {:pre [(integer? id)]}
   (db/exists? Segment, :id id, :is_active true))
 
 (defn retrieve-segment
-  "Fetch a single `Segment` by its ID value."
+  "Fetch a single `Segment` by its ID value. Hydrates the Segment's `:creator`."
   [id]
   {:pre [(integer? id)]}
   (-> (Segment id)

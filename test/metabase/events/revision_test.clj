@@ -1,7 +1,7 @@
 (ns metabase.events.revision-test
   (:require [expectations :refer :all]
             [metabase.db :as db]
-            [metabase.events.revision :refer :all]
+            [metabase.events.revision :refer [process-revision-event]]
             (metabase.models [card :refer [Card]]
                              [dashboard :refer [Dashboard]]
                              [dashboard-card :refer [DashboardCard]]
@@ -12,173 +12,174 @@
                              [table :refer [Table]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [expect-eval-actual-first random-name]]
-            [metabase.test-setup :refer :all]
             [metabase.test.util :as tu]
             [metabase.util :as u]))
 
-(defn- create-test-card []
-  (let [rand-name (random-name)]
-    (db/insert! Card
-      :name                   rand-name
-      :description            rand-name
-      :public_perms           2
-      :display                "table"
-      :dataset_query          {:database (id)
-                               :type     "query"
-                               :query    {:aggregation ["rows"]
-                                          :source_table (id :categories)}}
-      :parameters             []
-      :visualization_settings {}
-      :creator_id             (user->id :crowberto))))
+(defn- card-properties
+  "Some default properties for `Cards` for use in tests in this namespace."
+  []
+  {:public_perms           2
+   :display                "table"
+   :dataset_query          {:database (id)
+                            :type     "query"
+                            :query    {:aggregation ["rows"]
+                                       :source_table (id :categories)}}
+   :parameters             []
+   :visualization_settings {}
+   :creator_id             (user->id :crowberto)})
 
-(defn- test-card-object [card]
-  {:description            (:name card)
+(defn- card->revision-object [card]
+  {:description            nil
    :table_id               (id :categories)
    :database_id            (id)
    :organization_id        nil
    :query_type             "query"
    :name                   (:name card)
-   :creator_id             (user->id :crowberto)
+   :creator_id             (:creator_id card)
    :dataset_query          (:dataset_query card)
    :id                     (:id card)
    :display                "table"
    :visualization_settings {}
    :parameters             []
-   :public_perms           2
+   :public_perms           (:public_perms card)
    :archived               false})
 
-(defn- create-test-dashboard []
-  (let [rand-name (random-name)]
-    (db/insert! Dashboard
-      :name                   rand-name
-      :description            rand-name
-      :public_perms           2
-      :creator_id             (user->id :crowberto))))
-
-(defn- test-dashboard-object [dashboard]
-  {:description (:name dashboard),
-   :name (:name dashboard),
-   :public_perms 2})
+(defn- dashboard->revision-object [dashboard]
+  {:description  nil
+   :name         (:name dashboard)
+   :public_perms (:public_perms dashboard)})
 
 
 ;; :card-create
-(expect-let [{card-id :id :as card} (create-test-card)]
+(tu/expect-with-temp [Card [{card-id :id, :as card} (card-properties)]]
   {:model        "Card"
    :model_id     card-id
    :user_id      (user->id :crowberto)
-   :object       (test-card-object card)
+   :object       (card->revision-object card)
    :is_reversion false
    :is_creation  true}
   (do
     (process-revision-event {:topic :card-create
                              :item  card})
-    (-> (Revision :model "Card", :model_id card-id)
-        (select-keys [:model :model_id :user_id :object :is_reversion :is_creation]))))
+    (db/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+      :model       "Card"
+      :model_id    card-id)))
+
 
 ;; :card-update
-(expect-let [{card-id :id :as card} (create-test-card)]
+(tu/expect-with-temp [Card [{card-id :id, :as card} (card-properties)]]
   {:model        "Card"
    :model_id     card-id
    :user_id      (user->id :crowberto)
-   :object       (test-card-object card)
+   :object       (card->revision-object card)
    :is_reversion false
    :is_creation  false}
   (do
     (process-revision-event {:topic :card-update
                              :item  card})
-    (-> (Revision :model "Card", :model_id card-id)
-        (select-keys [:model :model_id :user_id :object :is_reversion :is_creation]))))
+    (db/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+      :model       "Card"
+      :model_id    card-id)))
+
 
 ;; :dashboard-create
-(expect-let [{dashboard-id :id :as dashboard} (create-test-dashboard)]
+(tu/expect-with-temp [Dashboard [{dashboard-id :id, :as dashboard}]]
   {:model        "Dashboard"
    :model_id     dashboard-id
-   :user_id      (user->id :crowberto)
-   :object       (assoc (test-dashboard-object dashboard) :cards [])
+   :user_id      (user->id :rasta)
+   :object       (assoc (dashboard->revision-object dashboard) :cards [])
    :is_reversion false
    :is_creation  true}
   (do
     (process-revision-event {:topic :dashboard-create
                              :item  dashboard})
-    (-> (Revision :model "Dashboard", :model_id dashboard-id)
-        (select-keys [:model :model_id :user_id :object :is_reversion :is_creation]))))
+    (db/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+      :model    "Dashboard"
+      :model_id dashboard-id)))
+
 
 ;; :dashboard-update
-(expect-let [{dashboard-id :id :as dashboard} (create-test-dashboard)]
+(tu/expect-with-temp [Dashboard [{dashboard-id :id, :as dashboard}]]
   {:model        "Dashboard"
    :model_id     dashboard-id
-   :user_id      (user->id :crowberto)
-   :object       (assoc (test-dashboard-object dashboard) :cards [])
+   :user_id      (user->id :rasta)
+   :object       (assoc (dashboard->revision-object dashboard) :cards [])
    :is_reversion false
    :is_creation  false}
   (do
     (process-revision-event {:topic :dashboard-update
                              :item  dashboard})
-    (-> (Revision :model "Dashboard", :model_id dashboard-id)
-        (select-keys [:model :model_id :user_id :object :is_reversion :is_creation]))))
+    (db/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+      :model    "Dashboard"
+      :model_id dashboard-id)))
+
 
 ;; :dashboard-add-cards
-(expect-let [{dashboard-id :id :as dashboard} (create-test-dashboard)
-             {card-id :id}                    (create-test-card)
-             dashcard                         (db/insert! DashboardCard :card_id card-id :dashboard_id dashboard-id)]
+(tu/expect-with-temp [Dashboard     [{dashboard-id :id, :as dashboard}]
+                      Card          [{card-id :id}                     (card-properties)]
+                      DashboardCard [dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]]
   {:model        "Dashboard"
    :model_id     dashboard-id
-   :user_id      (user->id :crowberto)
-   :object       (assoc (test-dashboard-object dashboard) :cards [(assoc (select-keys dashcard [:id :card_id :sizeX :sizeY :row :col]) :series [])])
+   :user_id      (user->id :rasta)
+   :object       (assoc (dashboard->revision-object dashboard) :cards [(assoc (select-keys dashcard [:id :card_id :sizeX :sizeY :row :col]) :series [])])
    :is_reversion false
    :is_creation  false}
   (do
     (process-revision-event {:topic :dashboard-add-cards
-                             :item  {:id       dashboard-id
-                                     :actor_id (user->id :crowberto)
+                             :item  {:id        dashboard-id
+                                     :actor_id  (user->id :rasta)
                                      :dashcards [dashcard]}})
-    (-> (Revision :model "Dashboard", :model_id dashboard-id)
-        (select-keys [:model :model_id :user_id :object :is_reversion :is_creation]))))
+    (db/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+      :model    "Dashboard"
+      :model_id dashboard-id)))
+
 
 ;; :dashboard-remove-cards
-(expect-let [{dashboard-id :id :as dashboard} (create-test-dashboard)
-             {card-id :id}                    (create-test-card)
-             dashcard                         (db/insert! DashboardCard :card_id card-id :dashboard_id dashboard-id)
-             _                                (db/delete! DashboardCard, :id (:id dashcard))]
+(tu/expect-with-temp [Dashboard     [{dashboard-id :id, :as dashboard}]
+                      Card          [{card-id :id}                     (card-properties)]
+                      DashboardCard [dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]]
   {:model        "Dashboard"
    :model_id     dashboard-id
-   :user_id      (user->id :crowberto)
-   :object       (assoc (test-dashboard-object dashboard) :cards [])
+   :user_id      (user->id :rasta)
+   :object       (assoc (dashboard->revision-object dashboard) :cards [])
    :is_reversion false
    :is_creation  false}
   (do
+    (db/delete! DashboardCard, :id (:id dashcard))
     (process-revision-event {:topic :dashboard-remove-cards
                              :item  {:id       dashboard-id
-                                     :actor_id (user->id :crowberto)
+                                     :actor_id (user->id :rasta)
                                      :dashcards [dashcard]}})
-    (-> (Revision :model "Dashboard", :model_id dashboard-id)
-        (select-keys [:model :model_id :user_id :object :is_reversion :is_creation]))))
+    (db/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+      :model    "Dashboard"
+      :model_id dashboard-id)))
+
 
 ;; :dashboard-reposition-cards
-(expect-let [{dashboard-id :id :as dashboard} (create-test-dashboard)
-             {card-id :id}                    (create-test-card)
-             dashcard                         (u/prog1 (db/insert! DashboardCard :card_id card-id :dashboard_id dashboard-id)
-                                                (db/update! DashboardCard (:id <>), :sizeX 4))]
+(tu/expect-with-temp [Dashboard     [{dashboard-id :id, :as dashboard}]
+                      Card          [{card-id :id}                     (card-properties)]
+                      DashboardCard [dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]]
   {:model        "Dashboard"
    :model_id     dashboard-id
    :user_id      (user->id :crowberto)
-   :object       (assoc (test-dashboard-object dashboard) :cards [{:id      (:id dashcard)
-                                                                   :card_id card-id
-                                                                   :sizeX   4
-                                                                   :sizeY   2
-                                                                   :row     nil
-                                                                   :col     nil
-                                                                   :series  []}])
+   :object       (assoc (dashboard->revision-object dashboard) :cards [{:id      (:id dashcard)
+                                                                        :card_id card-id
+                                                                        :sizeX   4
+                                                                        :sizeY   2
+                                                                        :row     nil
+                                                                        :col     nil
+                                                                        :series  []}])
    :is_reversion false
    :is_creation  false}
   (do
+    (db/update! DashboardCard (:id dashcard), :sizeX 4)
     (process-revision-event {:topic :dashboard-reeposition-cards
-                             :item  {:id       dashboard-id
-                                     :actor_id (user->id :crowberto)
+                             :item  {:id        dashboard-id
+                                     :actor_id  (user->id :crowberto)
                                      :dashcards [(assoc dashcard :sizeX 4)]}})
-    (-> (Revision :model "Dashboard", :model_id dashboard-id)
-        (select-keys [:model :model_id :user_id :object :is_reversion :is_creation]))))
+    (db/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+      :model    "Dashboard"
+      :model_id dashboard-id)))
 
 
 ;; :metric-create
@@ -202,6 +203,7 @@
     (let [revision (db/select-one [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Metric", :model_id (:id metric))]
       (assoc revision :object (dissoc (:object revision) :id :table_id)))))
 
+
 ;; :metric-update
 (expect
   {:model        "Metric"
@@ -223,6 +225,7 @@
                                            :revision_message "updated")})
     (let [revision (db/select-one [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Metric", :model_id (:id metric))]
       (assoc revision :object (dissoc (:object revision) :id :table_id)))))
+
 
 ;; :metric-delete
 (expect
