@@ -1,15 +1,21 @@
-/*global google*/
+/*global PruneClusterForLeaflet*/
+/*global PruneCluster*/
 
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
-import { getSettingsForVisualization, setLatitudeAndLongitude } from "metabase/lib/visualization_settings";
+import { getSettingsForVisualization, setLatitudeAndLongitude, setCategory } from "metabase/lib/visualization_settings";
 import { hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 
 import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
+import categoryClusterIcon from "metabase/visualizations/lib/categoryClusterIcon";
 
 import _ from "underscore";
 import cx from "classnames";
+import L from "leaflet";
+import tinycolor from "tinycolor2";
+import ColorHash from "color-hash";
+const ch = new ColorHash();
 
 export default class PinMap extends Component {
     static displayName = "Pin Map";
@@ -55,97 +61,88 @@ export default class PinMap extends Component {
         this.setState({ zoom });
     }
 
-    getTileUrl(settings, coord, zoom) {
-        let query = this.props.series[0].card.dataset_query;
-
-        let latitude_dataset_col_index = settings.map.latitude_dataset_col_index;
-        let longitude_dataset_col_index = settings.map.longitude_dataset_col_index;
-        let latitude_source_table_field_id = settings.map.latitude_source_table_field_id;
-        let longitude_source_table_field_id = settings.map.longitude_source_table_field_id;
-
-        if (latitude_dataset_col_index == null || longitude_dataset_col_index == null) {
-            return;
-        }
-
-        if (latitude_source_table_field_id == null || longitude_source_table_field_id == null) {
-            throw ("Map ERROR: latitude and longitude column indices must be specified");
-        }
-        if (latitude_dataset_col_index == null || longitude_dataset_col_index == null) {
-            throw ("Map ERROR: unable to find specified latitude / longitude columns in source table");
-        }
-
-        return '/api/tiles/' + zoom + '/' + coord.x + '/' + coord.y + '/' +
-            latitude_source_table_field_id + '/' + longitude_source_table_field_id + '/' +
-            latitude_dataset_col_index + '/' + longitude_dataset_col_index + '/' +
-            '?query=' + encodeURIComponent(JSON.stringify(query))
+    genMarker(color="#3090e9"){
+        return L.VectorMarkers.icon({ markerColor: color });
     }
 
+    genPopup(row, cols) {
+        let popup = document.createElement("div");
+        ReactDOM.render(<ObjectDetailTooltip row={row} cols={cols} />, popup);
+        return popup
+    }
     componentDidMount() {
-        if (typeof google === undefined) {
-            setTimeout(() => this.componentDidMount(), 500);
-            return;
-        }
-
         try {
             let element = ReactDOM.findDOMNode(this.refs.map);
-
             let { card, data } = this.props.series[0];
-
             let settings = card.visualization_settings;
 
             settings = getSettingsForVisualization(settings, "pin_map");
             settings = setLatitudeAndLongitude(settings, data.cols);
+            settings = setCategory(settings, data.cols);
 
-            let mapOptions = {
-                zoom: settings.map.zoom,
-                center: new google.maps.LatLng(settings.map.center_latitude, settings.map.center_longitude),
-                mapTypeId: google.maps.MapTypeId.MAP,
-                scrollwheel: false
-            };
+            let {
+                center_latitude,
+                center_longitude,
+                latitude_dataset_col_index: latColIndex,
+                longitude_dataset_col_index: lonColIndex,
+                category_dataset_col_index: catColIndex,
+            } = settings.map;
 
-            let map = this.map = new google.maps.Map(element, mapOptions);
+            center_latitude = center_latitude ? center_latitude : average(_.pluck(data.rows, latColIndex));
+            center_longitude = center_longitude ? center_longitude : average(_.pluck(data.rows, lonColIndex));
 
-            if (data.rows.length < 2000) {
-                let tooltip = new google.maps.InfoWindow();
-                let latColIndex = settings.map.latitude_dataset_col_index;
-                let lonColIndex = settings.map.longitude_dataset_col_index;
-                for (let row of data.rows) {
-                    let marker = new google.maps.Marker({
-                        position: new google.maps.LatLng(row[latColIndex], row[lonColIndex]),
-                        map: map,
-                        icon: "/app/img/pin.png"
-                    });
-                    marker.addListener("click", () => {
-                        let tooltipElement = document.createElement("div");
-                        ReactDOM.render(<ObjectDetailTooltip row={row} cols={data.cols} />, tooltipElement);
-                        tooltip.setContent(tooltipElement);
-                        tooltip.open(map, marker);
-                    });
-                }
-            } else {
-                map.overlayMapTypes.push(new google.maps.ImageMapType({
-                    getTileUrl: this.getTileUrl.bind(this, settings),
-                    tileSize: new google.maps.Size(256, 256)
-                }));
+            let map = L.map(element).setView([center_latitude, center_longitude], settings.map.zoom);
+
+            L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+                attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a>',
+                maxZoom: 18,
+            }).addTo(map);
+
+            let pruneCluster = new PruneClusterForLeaflet();
+
+            let catColorMap;
+            if (catColIndex) {
+                catColorMap = genCatColorMap(_.union(_.pluck(data.rows, catColIndex)));
+
+                pruneCluster.BuildLeafletClusterIcon = function(cluster) {
+                    L.Icon.MarkerCluster = categoryClusterIcon(catColorMap);
+
+                    let e = new L.Icon.MarkerCluster();
+                    e.stats = cluster.stats;
+                    e.population = cluster.population;
+                    return e;
+                };
             }
 
-            map.addListener("center_changed", () => {
+            for (let row of data.rows) {
+                let marker = new PruneCluster.Marker(row[latColIndex], row[lonColIndex]);
+
+                if(catColIndex){
+                    let category = _.findWhere(catColorMap, {name: row[catColIndex]})
+                    marker.data.icon = this.genMarker(category.color);
+                    marker.category = category.id;
+                } else {
+                    marker.data.icon = this.genMarker('#3090e9');
+                }
+
+                marker.data.popup = this.genPopup(row, data.cols);
+                pruneCluster.RegisterMarker(marker);
+            }
+
+            map.addLayer(pruneCluster);
+
+            map.on('moveend', () => {
                 let center = map.getCenter();
-                this.onMapCenterChange(center.lat(), center.lng());
+                this.onMapCenterChange(center.lat, center.lng);
             });
 
-            map.addListener("zoom_changed", () => {
+            map.on('zoomend', () => {
                 this.onMapZoomChange(map.getZoom());
-            });
+            })
+
         } catch (err) {
             console.error(err);
             this.props.onRenderError(err.message || err);
-        }
-    }
-
-    componentDidUpdate() {
-        if (typeof google !== "undefined") {
-            google.maps.event.trigger(this.map, "resize");
         }
     }
 
@@ -164,6 +161,30 @@ export default class PinMap extends Component {
             </div>
         );
     }
+}
+
+const genColorCode = function(string){
+    let color;
+    let truthy = /^(?:yes|true|on|1|ok)$/i;
+    let falsy = /^(?:no|false|off|0|wrong)$/i;
+    if (_.isString(string)){
+        if (string.search(truthy) > -1){
+            color = "#c7f464"
+        } else if (string.search(falsy) > -1){
+            color = "#ea4444"
+        }
+    }
+    return color ? color : tinycolor(ch.hex(string)).monochromatic()[3].toHexString()
+}
+
+const genCatColorMap = function(cats){
+    return _.map(cats, (cat, index) => {
+        return {'name': cat, 'color': genColorCode(cat), 'id': index}
+    })
+}
+
+const average = function(list) {
+    return _.reduce(list, (memo, num) => {return memo + num}, 0) / list.length;
 }
 
 const ObjectDetailTooltip = ({ row, cols }) =>

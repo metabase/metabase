@@ -8,6 +8,9 @@
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <title>Metabase</title>
 
+        <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" />
+        <link rel="stylesheet" href="https://cdn.rawgit.com/hiasinho/Leaflet.vector-markers/0.0.5/dist/leaflet-vector-markers.css" />
+        <link rel="stylesheet" href="https://cdn.rawgit.com/SINTEF-9012/PruneCluster/1.1.0/dist/LeafletStyleSheet.css" />
         <script>
             window.MetabaseBootstrap = {{{bootstrap_json}}};
         </script>
@@ -31,7 +34,8 @@
          loadScript('https://ajax.googleapis.com/ajax/libs/webfont/1.4.7/webfont.js', function () {
              WebFont.load({ google: { families: ["Lato:n3,n4,n7"] } });
          });
-         loadScript('https://maps.googleapis.com/maps/api/js');
+         loadScript('https://cdn.rawgit.com/hiasinho/Leaflet.vector-markers/0.0.5/dist/leaflet-vector-markers.min.js');
+         loadScript('https://cdn.rawgit.com/SINTEF-9012/PruneCluster/1.1.0/dist/PruneCluster.min.js');
      })();
     </script>
 
