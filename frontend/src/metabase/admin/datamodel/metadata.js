@@ -311,7 +311,7 @@ const metrics = handleActions({
 
 const tableMetadata = handleActions({
     [LOAD_TABLE_METADATA]: {
-        next: (state, { payload }) => payload,
+        next: (state, { payload }) => (payload && payload.table) ? payload.table : null,
         throw: (state, action) => null
     }
 }, null);
