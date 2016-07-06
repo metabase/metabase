@@ -1,8 +1,6 @@
 (ns metabase.sync-database.sync-test
   (:require [expectations :refer :all]
             [metabase.db :as db]
-            (metabase.mock [moviedb :as moviedb]
-                           [schema-per-customer :as schema-per-customer])
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [hydrate :as hydrate]
@@ -13,6 +11,8 @@
                                     [sync :refer :all])
             [metabase.test.data :as data]
             [metabase.test.data.interface :as i]
+            (metabase.test.mock [moviedb :as moviedb]
+                                [schema-per-customer :as schema-per-customer])
             [metabase.test.util :as tu]))
 
 (tu/resolve-private-fns metabase.sync-database.sync
