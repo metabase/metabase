@@ -48,7 +48,7 @@ export const getEntities = createSelector(
 export const getEntity = createSelector(
     [getSectionId, getDatabases, getDatabaseId],
     (sectionId, databases, databaseId) => {
-        // console.log(databases)
+        console.log(databases)
         return databases[databaseId];
     }
 );

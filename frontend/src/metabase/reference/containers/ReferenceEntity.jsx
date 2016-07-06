@@ -7,6 +7,8 @@ import S from "metabase/components/List.css";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
+import cx from "classnames";
+
 import {
     getEntity,
     getEntityError,
@@ -38,15 +40,29 @@ export default class EntityItem extends Component {
             loading
         } = this.props;
 
+        // TODO: style this properly
         return (
             <div className="full">
                 <LoadingAndErrorWrapper loading={!error && loading} error={error}>
                 { () => entity ?
-                    <div className="wrapper wrapper--trim">
-                        <div className={S.header}>
-                            {entity.name}
+                    <div>
+                        <div className="wrapper wrapper--trim">
+                            <div className={S.header}>
+                                {entity.name}
+                            </div>
                         </div>
-                    </div> : null
+                        <div className="wrapper wrapper--trim">
+                            <div className={S.itemBody}>
+                                <div className={S.itemTitle}>
+                                    Description
+                                </div>
+                                <div className={cx(S.itemSubtitle, { "mt1" : true })}>
+                                    {entity.description || 'No description'}
+                                </div>
+                            </div>
+                        </div>
+                    </div> :
+                    null
                 }
                 </LoadingAndErrorWrapper>
             </div>
