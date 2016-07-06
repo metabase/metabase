@@ -6,13 +6,30 @@ import S from "./Sidebar.css";
 import Icon from "./Icon.jsx";
 import LoadingAndErrorWrapper from "./LoadingAndErrorWrapper.jsx";
 
+import Breadcrumbs from "./Breadcrumbs.jsx";
+
 import LabelIcon from "./LabelIcon.jsx";
 
 import cx from 'classnames';
 import { pure } from "recompose";
 
-const Sidebar = ({ app, sections, labels, labelsLoading, labelsError, style, className }) =>
+const Sidebar = ({
+    app,
+    sections,
+    labels,
+    breadcrumbs,
+    labelsLoading,
+    labelsError,
+    style,
+    className
+}) =>
     <div className={cx(S.sidebar, className)} style={style}>
+        {
+            breadcrumbs && breadcrumbs.length > 0 ?
+                //TODO: figure out how to override default breadcrumbs styling
+                <Breadcrumbs crumbs={breadcrumbs} /> :
+                null
+        }
         <ul>
             {Object.values(sections).map(section =>
                 <SidebarItem key={section.id} href={`/${app}/${section.path || section.id}`} {...section} />

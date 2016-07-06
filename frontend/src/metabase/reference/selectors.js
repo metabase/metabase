@@ -64,3 +64,15 @@ export const getEntityError = createSelector(
     [getDatabaseId, getEntityRequestStates],
     (databaseId, entityRequestStates) => i.getIn(entityRequestStates, [databaseId, 'error'])
 )
+
+export const getBreadcrumbs = (state) => {
+    const sectionId = getSectionId(state);
+
+    if (sectionId === 'guide' || sectionId === 'metrics' || sectionId === 'lists' || sectionId === 'databases') {
+        return [];
+    }
+
+    const databaseName = i.getIn(getEntity(state), ['name']);
+    console.log(sectionId);
+    return [['Data', '/reference/databases'], databaseName];
+};

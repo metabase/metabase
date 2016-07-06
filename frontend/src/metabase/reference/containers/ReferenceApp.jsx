@@ -8,12 +8,13 @@ import SidebarLayout from 'metabase/components/SidebarLayout.jsx';
 
 import * as metadataActions from 'metabase/redux/metadata';
 
-import { getDatabaseId, getSectionId, getSections } from '../selectors';
+import { getDatabaseId, getSectionId, getSections, getBreadcrumbs } from '../selectors';
 
 const mapStateToProps = (state, props) => ({
     sectionId: getSectionId(state),
     databaseId: getDatabaseId(state),
-    sections: getSections(state)
+    sections: getSections(state),
+    breadcrumbs: getBreadcrumbs(state)
 });
 
 const mapDispatchToProps = {

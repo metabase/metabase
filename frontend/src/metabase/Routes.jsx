@@ -83,7 +83,6 @@ export default class Routes extends Component {
                     <Route path="databases" component={ReferenceEntityList} />
                     <Route path="databases/:databaseId" component={ReferenceEntity} />
                     <Route path="databases/:databaseId/tables" component={ReferenceEntityList} />
-                    //FIXME: refreshing at a :section route makes subsequent navigation attempts fail
                     <Route path=":section" component={ReferenceEntityList} />
                 </Route>
 
