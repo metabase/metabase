@@ -65,7 +65,7 @@
 ;; By default `expect` evaluates EXPECTED first. This isn't always what we want; for example, sometime API tests affect the DB
 ;; and we'd like to check the results.
 
-(defmacro -doexpect [e a]
+(defmacro ^:deprecated -doexpect [e a]
   `(let [a# (try ~a (catch java.lang.Throwable t# t#))
          e# (try ~e (catch java.lang.Throwable t# t#))]
      (report
@@ -73,8 +73,9 @@
            (catch java.lang.Throwable e2#
              (compare-expr e2# a# '~e '~a))))))
 
-(defmacro expect-eval-actual-first
-  "Identical to `expect` but evaluates `actual` first (instead of evaluating `expected` first)."
+(defmacro ^:deprecated expect-eval-actual-first
+  "Identical to `expect` but evaluates `actual` first (instead of evaluating `expected` first).
+   DEPRECATED: You shouldn't need to use this when writing new tests. `expect-with-temp` should be used instead, as it handles cleaning up after itself."
   {:style/indent 0}
   [expected actual]
   (let [fn-name (gensym)]

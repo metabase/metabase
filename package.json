@@ -6,8 +6,8 @@
   "repository": "https://github.com/metabase/metabase",
   "license": "private",
   "engines": {
-    "node": "4.4.3",
-    "npm": "2.15.3"
+    "node": "4.4.7",
+    "npm": "2.15.9"
   },
   "dependencies": {
     "ace-builds": "^1.2.2",
@@ -29,6 +29,7 @@
     "humanize-plus": "^1.8.1",
     "icepick": "^1.1.0",
     "inflection": "^1.7.1",
+    "isomorphic-fetch": "^2.2.1",
     "moment": "^2.12.0",
     "node-libs-browser": "^0.5.3",
     "normalizr": "^2.0.0",

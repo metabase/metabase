@@ -8,7 +8,7 @@
                              [common :as common]
                              [database :refer [Database]]
                              [pulse :refer [Pulse create-pulse] :as pulse])
-            [metabase.test.util :refer [match-$ expect-eval-actual-first random-name with-temp]]
+            [metabase.test.util :refer [match-$ random-name with-temp]]
             [metabase.test.data.users :refer :all]
             [metabase.test.data :refer :all]
             [metabase.util :as u]))

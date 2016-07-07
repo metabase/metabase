@@ -25,14 +25,14 @@ export default class MetricPane extends Component {
     static propTypes = {
         metric: PropTypes.object.isRequired,
         query: PropTypes.object,
-        loadTableFn: PropTypes.func.isRequired,
+        loadTableAndForeignKeysFn: PropTypes.func.isRequired,
         runQueryFn: PropTypes.func.isRequired,
         setQueryFn: PropTypes.func.isRequired,
         setCardAndRun: PropTypes.func.isRequired
     };
 
     componentWillMount() {
-        this.props.loadTableFn(this.props.metric.table_id).then((result) => {
+        this.props.loadTableAndForeignKeysFn(this.props.metric.table_id).then((result) => {
             this.setState({
                 table: result.table,
                 tableForeignKeys: result.foreignKeys

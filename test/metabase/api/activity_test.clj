@@ -9,7 +9,7 @@
                              [view-log :refer [ViewLog]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [match-$ expect-eval-actual-first random-name expect-with-temp]]
+            [metabase.test.util :refer [match-$ random-name expect-with-temp resolve-private-fns]]
             [metabase.util :as u]))
 
 ;; GET /
@@ -78,7 +78,7 @@
                        :common_name  $})
       :model        $
       :model_id     $
-      :model_exists nil
+      :model_exists false
       :database_id  nil
       :database     nil
       :table_id     nil
@@ -92,7 +92,7 @@
       :user         nil
       :model        $
       :model_id     $
-      :model_exists nil
+      :model_exists false
       :database_id  nil
       :database     nil
       :table_id     nil
@@ -168,3 +168,47 @@
       (create-view (user->id :rasta) "card" (:id card1))
       (->> ((user->client :crowberto) :get 200 "activity/recent_views")
            (map #(dissoc % :max_ts))))))
+
+
+;;; activities->referenced-objects, referenced-objects->existing-objects, add-model-exists-info
+
+(resolve-private-fns metabase.api.activity activities->referenced-objects referenced-objects->existing-objects add-model-exists-info)
+
+(def ^:private ^:const fake-activities
+  [{:model "dashboard", :model_id  43, :topic :dashboard-create,    :details {}}
+   {:model "dashboard", :model_id  42, :topic :dashboard-create,    :details {}}
+   {:model "card",      :model_id 114, :topic :card-create,         :details {}}
+   {:model "card",      :model_id 113, :topic :card-create,         :details {}}
+   {:model "card",      :model_id 112, :topic :card-create,         :details {}}
+   {:model "card",      :model_id 111, :topic :card-create,         :details {}}
+   {:model "dashboard", :model_id  41, :topic :dashboard-add-cards, :details {:dashcards [{:card_id 109}]}}
+   {:model "card",      :model_id 109, :topic :card-create,         :details {}}
+   {:model "dashboard", :model_id  41, :topic :dashboard-add-cards, :details {:dashcards [{:card_id 108}]}}
+   {:model "dashboard", :model_id  41, :topic :dashboard-create,    :details {}}
+   {:model "card",      :model_id 108, :topic :card-create,         :details {}}
+   {:model "user",      :model_id  90, :topic :user-joined,         :details {}}
+   {:model nil,         :model_id nil, :topic :install,             :details {}}])
+
+(expect
+  {"dashboard" #{41 43 42}
+   "card"      #{113 108 109 111 112 114}
+   "user"      #{90}}
+  (activities->referenced-objects fake-activities))
+
+
+(expect-with-temp [Dashboard [{dashboard-id :id}]]
+  {"dashboard" #{dashboard-id}, "card" nil}
+  (referenced-objects->existing-objects {"dashboard" #{dashboard-id 0}
+                                         "card"      #{0}}))
+
+
+(expect-with-temp [Dashboard [{dashboard-id :id}]
+                   Card      [{card-id :id}]]
+  [{:model "dashboard", :model_id dashboard-id, :model_exists true}
+   {:model "card",      :model_id 0,            :model_exists false}
+   {:model "dashboard", :model_id 0,            :model_exists false, :topic :dashboard-remove-cards, :details {:dashcards [{:card_id card-id, :exists true}
+                                                                                                                           {:card_id 0,       :exists false}]}}]
+  (add-model-exists-info [{:model "dashboard", :model_id dashboard-id}
+                          {:model "card",      :model_id 0}
+                          {:model "dashboard", :model_id 0, :topic :dashboard-remove-cards, :details {:dashcards [{:card_id card-id}
+                                                                                                                  {:card_id 0}]}}]))
