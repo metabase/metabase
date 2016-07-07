@@ -28,7 +28,7 @@ const resourceListToMap = (resources) => resources
     .reduce((map, resource) => i.assoc(map, resource.id, resource), {});
 
 const FETCH_METRICS = "metabase/metadata/FETCH_METRICS";
-
+//TODO: refactor fetching actions with similar logic
 export const fetchMetrics = createThunkAction(FETCH_METRICS, (reload = false) => {
     return async (dispatch, getState) => {
         try {
@@ -49,6 +49,7 @@ export const fetchMetrics = createThunkAction(FETCH_METRICS, (reload = false) =>
         }
         catch(error) {
             dispatch(setRequestState(error, { type: 'metrics' }));
+            return {};
         }
     };
 });
@@ -58,6 +59,31 @@ const metrics = handleActions({
 }, {});
 
 const FETCH_LISTS = "metabase/metadata/FETCH_LISTS";
+
+export const fetchLists = createThunkAction(FETCH_LISTS, (reload = false) => {
+    return async (dispatch, getState) => {
+        try {
+            const requestState = i.getIn(getState(), ["metadata", "requestState", "lists"]);
+            const existingLists = i.getIn(getState(), ["metadata", "lists"]);
+
+            if (!requestState || reload) {
+                dispatch(setRequestState({ type: "lists", state: "LOADING" }));
+
+                const lists = await SegmentApi.list();
+                const listMap = resourceListToMap(lists);
+                dispatch(setRequestState({ type: "lists", state: "LOADED" }));
+
+                return listMap;
+            }
+
+            return existingLists;
+        }
+        catch(error) {
+            dispatch(setRequestState(error, { type: 'lists' }));
+            return {};
+        }
+    };
+});
 
 const lists = handleActions({
     [FETCH_LISTS]: { next: (state, { payload }) => payload }

@@ -25,6 +25,8 @@ const referenceSections = {
         id: `/reference/lists`,
         name: "Lists",
         breadcrumb: "Lists",
+        fetch: 'fetchLists',
+        get: 'getLists',
         icon: "recents"
     },
     [`/reference/databases`]: {
@@ -70,6 +72,8 @@ const getListSections = (list) => list ? {
         id: `/reference/lists/${list.id}`,
         name: "Details",
         breadcrumb: `${list.name}`,
+        fetch: 'fetchLists',
+        get: 'getList',
         icon: "all",
         parent: referenceSections[`/reference/lists`]
     },
@@ -254,11 +258,13 @@ export const getData = (state) => {
 
     return selector(state);
 };
-
+//TODO: move into metadata duck?
 const mapFetchToRequestStatePath = (fetch, fetchArgs = []) => {
     switch(fetch) {
         case 'fetchMetrics':
             return ['metrics'];
+        case 'fetchLists':
+            return ['lists'];
         case 'fetchDatabases':
             return ['databases'];
         case 'fetchDatabaseMetadata':
