@@ -173,10 +173,12 @@ export const getSections = createSelector(
     }
 );
 
+export const getActiveSectionName = (state) => state.router && state.router.location && state.router.location.query.section
+
 export const getActiveSection = createSelector(
-    state => state.settings.activeSection,
+    getActiveSectionName,
     getSections,
-    (section, sections) => {
+    (section = "Setup", sections) => {
         if (sections) {
             return _.findWhere(sections, {name: section});
         } else {

@@ -24,7 +24,6 @@ import * as settingsActions from "../settings";
 
 const mapStateToProps = (state, props) => {
     return {
-        initialSection:      state.router && state.router.location && state.router.location.query.section,
         refreshSiteSettings: props.refreshSiteSettings,
         settings:            getSettings(state),
         sections:            getSections(state),
@@ -55,7 +54,7 @@ export default class SettingsEditorApp extends Component {
     };
 
     componentWillMount() {
-        this.props.initializeSettings(this.props.initialSection, this.props.refreshSiteSettings);
+        this.props.initializeSettings(this.props.refreshSiteSettings);
     }
 
     updateSetting(setting, value) {
@@ -144,7 +143,7 @@ export default class SettingsEditorApp extends Component {
     }
 
     renderSettingsSections() {
-        const { sections, activeSection, selectSection, newVersionAvailable } = this.props;
+        const { sections, activeSection, newVersionAvailable } = this.props;
 
         const renderedSections = _.map(sections, (section, idx) => {
             const classes = cx("AdminList-item", "flex", "align-center", "justify-between", "no-decoration", {
@@ -161,7 +160,7 @@ export default class SettingsEditorApp extends Component {
 
             return (
                 <li key={section.name}>
-                    <a href="#" className={classes} onClick={() => selectSection(section.name)}>
+                    <a href={"/admin/settings/?section=" + section.name} className={classes}>
                         <span>{section.name}</span>
                         {newVersionIndicator}
                     </a>
