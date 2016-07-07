@@ -17,7 +17,6 @@
                              [dependency :refer [Dependency]]
                              [field :refer [Field]]
                              [field-values :refer [FieldValues]]
-                             [foreign-key :refer [ForeignKey]]
                              [label :refer [Label]]
                              [metric :refer [Metric]]
                              [pulse :refer [Pulse]]
@@ -49,7 +48,6 @@
    Table
    Field
    FieldValues
-   ForeignKey
    Segment
    Metric
    Revision
