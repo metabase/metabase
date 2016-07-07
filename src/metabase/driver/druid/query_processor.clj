@@ -180,40 +180,42 @@
   {:type     :javascript
    :function (s/replace (apply str function-str-parts) #"\s+" " ")})
 
-(def ^:private ^:const unit->extraction-fn
-  {:default         (extract:timeFormat "yyyy-MM-dd'T'HH:mm:ssZ")
-   :minute          (extract:timeFormat "yyyy-MM-dd'T'HH:mm:00Z")
-   :minute-of-hour  (extract:timeFormat "mm")
-   :hour            (extract:timeFormat "yyyy-MM-dd'T'HH:00:00Z")
-   :hour-of-day     (extract:timeFormat "HH")
-   :day             (extract:timeFormat "yyyy-MM-ddZ")
-   :day-of-week     (extract:js "function (timestamp) {"
-                                "  var date = new Date(timestamp);"
-                                "  return date.getDay() + 1;"
-                                "}")
-   :day-of-month    (extract:timeFormat "dd")
-   :day-of-year     (extract:timeFormat "DDD")
-   :week            (extract:js "function (timestamp) {"
-                                "  var date     = new Date(timestamp);"
-                                "  var firstDOW = new Date(date - (date.getDay() * 86400000));"
-                                "  var month    = firstDOW.getMonth() + 1;"
-                                "  var day      = firstDOW.getDate();"
-                                "  return '' + firstDOW.getFullYear() + '-' + (month < 10 ? '0' : '') + month + '-' + (day < 10 ? '0' : '') + day;"
-                                "}")
-   :week-of-year    (extract:timeFormat "ww")
-   :month           (extract:timeFormat "yyyy-MM-01")
-   :month-of-year   (extract:timeFormat "MM")
-   :quarter         (extract:js "function (timestamp) {"
-                                "  var date         = new Date(timestamp);"
-                                "  var month        = date.getMonth() + 1;" ; js months are 0 - 11
-                                "  var quarterMonth = month - ((month - 1) % 3);"
-                                "  return '' + date.getFullYear() + '-' + (quarterMonth < 10 ? '0' : '') + quarterMonth + '-01';"
-                                "}")
-   :quarter-of-year (extract:js "function (timestamp) {"
-                                "  var date = new Date(timestamp);"
-                                "  return Math.floor((date.getMonth() + 3) / 3);"
-                                "}")
-   :year            (extract:timeFormat "yyyy")})
+;; don't try to make this a ^:const map -- extract:timeFormat looks up timezone info at query time
+(defn- unit->extraction-fn [unit]
+  (case unit
+    :default         (extract:timeFormat "yyyy-MM-dd'T'HH:mm:ssZ")
+    :minute          (extract:timeFormat "yyyy-MM-dd'T'HH:mm:00Z")
+    :minute-of-hour  (extract:timeFormat "mm")
+    :hour            (extract:timeFormat "yyyy-MM-dd'T'HH:00:00Z")
+    :hour-of-day     (extract:timeFormat "HH")
+    :day             (extract:timeFormat "yyyy-MM-ddZ")
+    :day-of-week     (extract:js "function (timestamp) {"
+                                 "  var date = new Date(timestamp);"
+                                 "  return date.getDay() + 1;"
+                                 "}")
+    :day-of-month    (extract:timeFormat "dd")
+    :day-of-year     (extract:timeFormat "DDD")
+    :week            (extract:js "function (timestamp) {"
+                                 "  var date     = new Date(timestamp);"
+                                 "  var firstDOW = new Date(date - (date.getDay() * 86400000));"
+                                 "  var month    = firstDOW.getMonth() + 1;"
+                                 "  var day      = firstDOW.getDate();"
+                                 "  return '' + firstDOW.getFullYear() + '-' + (month < 10 ? '0' : '') + month + '-' + (day < 10 ? '0' : '') + day;"
+                                 "}")
+    :week-of-year    (extract:timeFormat "ww")
+    :month           (extract:timeFormat "yyyy-MM-01")
+    :month-of-year   (extract:timeFormat "MM")
+    :quarter         (extract:js "function (timestamp) {"
+                                 "  var date         = new Date(timestamp);"
+                                 "  var month        = date.getMonth() + 1;" ; js months are 0 - 11
+                                 "  var quarterMonth = month - ((month - 1) % 3);"
+                                 "  return '' + date.getFullYear() + '-' + (quarterMonth < 10 ? '0' : '') + quarterMonth + '-01';"
+                                 "}")
+    :quarter-of-year (extract:js "function (timestamp) {"
+                                 "  var date = new Date(timestamp);"
+                                 "  return Math.floor((date.getMonth() + 3) / 3);"
+                                 "}")
+    :year            (extract:timeFormat "yyyy")))
 
 (def ^:private ^:const units-that-need-post-processing-int-parsing
   "`extract:timeFormat` always returns a string; there are cases where we'd like to return an integer instead, such as `:day-of-month`.
