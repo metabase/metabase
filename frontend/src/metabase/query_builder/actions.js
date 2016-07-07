@@ -256,7 +256,7 @@ export const setCardVisualizationSettings = createThunkAction(SET_CARD_VISUALIZA
 export const UPDATE_PARAMETER = "UPDATE_PARAMETER";
 export const updateParameter = createThunkAction(UPDATE_PARAMETER, (parameter) => {
     return (dispatch, getState) => {
-        const { card, uiControls } = getState();
+        const { qb: { card, uiControls } } = getState();
 
         let updatedCard = JSON.parse(JSON.stringify(card));
 
@@ -277,7 +277,7 @@ export const updateParameter = createThunkAction(UPDATE_PARAMETER, (parameter) =
 export const SET_PARAMETER_VALUE = "SET_PARAMETER_VALUE";
 export const setParameterValue = createThunkAction(SET_PARAMETER_VALUE, (parameterId, value) => {
     return (dispatch, getState) => {
-        let { parameterValues } = getState();
+        let { qb: { parameterValues } } = getState();
 
         // always clone before modifying
         parameterValues = JSON.parse(JSON.stringify(parameterValues));
@@ -450,7 +450,7 @@ export const SET_QUERY_MODE = "SET_QUERY_MODE";
 export const setQueryMode = createThunkAction(SET_QUERY_MODE, (type) => {
     return (dispatch, getState) => {
         const { qb: { card, queryResult, tableMetadata, uiControls } } = getState();
-        
+
         // if the type didn't actually change then nothing has been modified
         if (type === card.dataset_query.type) {
             return card;

@@ -546,6 +546,10 @@
     overflow: hidden;
 }
 
+.QueryBuilder--showSideDrawer .SideDrawer {
+    z-index: 0;
+}
+
 .DataReference-container {
     width: 300px;
 }

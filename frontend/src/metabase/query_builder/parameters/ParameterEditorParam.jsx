@@ -4,6 +4,7 @@ import React, { Component, PropTypes } from "react";
 import ParameterTypePicker from "./ParameterTypePicker.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import Input from "metabase/components/Input.jsx";
+import Toggle from "metabase/components/Toggle.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import Select from "metabase/components/Select.jsx";
 import { PARAMETER_OPTIONS } from "metabase/meta/Dashboard";
@@ -25,9 +26,20 @@ export default class ParameterEditorParam extends Component {
     setParameterAttribute(attr, val) {
         // only register an update if the value actually changes
         if (this.props.parameter[attr] !== val) {
-            let param = JSON.parse(JSON.stringify(this.props.parameter));
-            param[attr] = val;
-            this.props.onUpdate(param);
+            this.props.onUpdate({
+                ...this.props.parameter,
+                [attr]: val
+            });
+        }
+    }
+
+    setRequired(val) {
+        if (this.props.parameter.required !== val) {
+            this.props.onUpdate({
+                ...this.props.parameter,
+                required: val,
+                default: undefined
+            });
         }
     }
 
@@ -53,7 +65,7 @@ export default class ParameterEditorParam extends Component {
                     />
                 </div>
 
-                <div>
+                <div className="pb2">
                     <h5 className="pb1 text-normal">Type</h5>
                     <PopoverWithTrigger
                         ref="popover"
@@ -73,6 +85,28 @@ export default class ParameterEditorParam extends Component {
                         />
                     </PopoverWithTrigger>
                 </div>
+
+                <div className="flex align-center pb2">
+                    <h5 className="text-normal mr1">Required?</h5>
+                    <Toggle value={parameter.required} onChange={(value) => this.setRequired(value)} />
+                </div>
+
+                { parameter.required &&
+                    <div className="pb2">
+                        <h5 className="pb1 text-normal">Default Value</h5>
+                        <input
+                            type="text"
+                            defaultValue={parameter.default}
+                            className="p1 text-bold text-grey-4 bordered border-med rounded full"
+                            onKeyUp={(e) => {
+                                if (e.keyCode === 13) {
+                                    e.target.blur();
+                                }
+                            }}
+                            onBlur={(e) => this.setParameterAttribute("default", e.target.value)}
+                        />
+                    </div>
+                }
             </div>
         );
     }
