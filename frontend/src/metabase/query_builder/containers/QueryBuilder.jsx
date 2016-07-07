@@ -90,7 +90,7 @@ const mapStateToProps = (state, props) => {
         cardApi:                   cardApi,
         dashboardApi:              dashboardApi,
         revisionApi:               revisionApi,
-        loadTableAndForeignKeysFn:               loadTableAndForeignKeys,
+        loadTableAndForeignKeysFn: loadTableAndForeignKeys,
         autocompleteResultsFn:     (prefix) => autocompleteResults(state.qb.card, prefix),
         cellIsClickableFn:         (rowIndex, columnIndex) => cellIsClickable(state.qb.queryResult, rowIndex, columnIndex)
     }
