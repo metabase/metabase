@@ -80,6 +80,10 @@ export default class Routes extends Component {
 
                 <Route path="/reference" component={ReferenceApp}>
                     <Route path="guide" component={ReferenceGettingStartedGuide} />
+                    <Route path="metrics" component={ReferenceEntityList} />
+                    <Route path="metrics/:metricId" component={ReferenceEntity} />
+                    <Route path="lists" component={ReferenceEntityList} />
+                    <Route path="lists/:listId" component={ReferenceEntity} />
                     <Route path="databases" component={ReferenceEntityList} />
                     <Route path="databases/:databaseId" component={ReferenceEntity} />
                     <Route path="databases/:databaseId/tables" component={ReferenceEntityList} />
