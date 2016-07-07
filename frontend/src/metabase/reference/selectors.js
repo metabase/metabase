@@ -1,7 +1,7 @@
 import { createSelector } from 'reselect';
 import i from "icepick";
 
-//TODO: think about memoizing some of these for perf
+//TODO: definitely lots of memoization opportunities here
 
 // there might be a better way to organize sections
 // maybe merge all of them into a single map for simpler lookup?
@@ -16,6 +16,8 @@ const referenceSections = {
         id: `/reference/metrics`,
         name: "Metrics",
         breadcrumb: "Metrics",
+        // seems to work well but might be a bit naive?
+        fetch: 'fetchMetrics',
         icon: "star"
     },
     [`/reference/lists`]: {
@@ -28,6 +30,7 @@ const referenceSections = {
         id: `/reference/databases`,
         name: "Databases and tables",
         breadcrumb: "Databases",
+        fetch: 'fetchDatabases',
         icon: "mine"
     }
 };
@@ -87,6 +90,8 @@ const getDatabaseSections = (database) => database ? {
         id: `/reference/databases/${database.id}`,
         name: "Details",
         breadcrumb: `${database.name}`,
+        fetch: 'fetchDatabaseMetadata',
+        fetchArgs: [database.id],
         icon: "all",
         parent: referenceSections[`/reference/databases`]
     },
@@ -94,6 +99,8 @@ const getDatabaseSections = (database) => database ? {
         id: `/reference/databases/${database.id}/tables`,
         name: `Tables in this database`,
         breadcrumb: `${database.name}`,
+        fetch: 'fetchDatabaseMetadata',
+        fetchArgs: [database.id],
         icon: "star",
         parent: referenceSections[`/reference/databases`]
     }
@@ -104,6 +111,8 @@ const getTableSections = (database, table) => database && table ? {
         id: `/reference/databases/${database.id}/tables/${table.id}`,
         name: "Details",
         breadcrumb: `${table.name}`,
+        fetch: 'fetchDatabaseMetadata',
+        fetchArgs: [database.id],
         icon: "all",
         parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
     },
@@ -111,6 +120,8 @@ const getTableSections = (database, table) => database && table ? {
         id: `/reference/databases/${database.id}/tables/${table.id}/fields`,
         name: `Fields in this table`,
         breadcrumb: `${table.name}`,
+        fetch: 'fetchDatabaseMetadata',
+        fetchArgs: [database.id],
         icon: "star",
         parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
     },
@@ -118,6 +129,8 @@ const getTableSections = (database, table) => database && table ? {
         id: `/reference/databases/${database.id}/tables/${table.id}/questions`,
         name: `Questions about this table`,
         breadcrumb: `${table.name}`,
+        fetch: 'fetchDatabaseMetadata',
+        fetchArgs: [database.id],
         icon: "star",
         parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
     },
@@ -125,6 +138,8 @@ const getTableSections = (database, table) => database && table ? {
         id: `/reference/databases/${database.id}/tables/${table.id}/history`,
         name: `Revision history`,
         breadcrumb: `${table.name}`,
+        fetch: 'fetchDatabaseMetadata',
+        fetchArgs: [database.id],
         icon: "star",
         parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
     }
@@ -195,23 +210,23 @@ export const getSections = createSelector(
             return referenceSections;
         }
 
-        const metricSections = getMetricSections(metric)[sectionId];
-        if (metricSections) {
+        const metricSections = getMetricSections(metric);
+        if (metricSections[sectionId]) {
             return metricSections;
         }
 
-        const listSections = getListSections(list)[sectionId];
-        if (listSections) {
+        const listSections = getListSections(list);
+        if (listSections[sectionId]) {
             return listSections;
         }
 
-        const databaseSections = getDatabaseSections(database)[sectionId];
-        if (databaseSections) {
+        const databaseSections = getDatabaseSections(database);
+        if (databaseSections[sectionId]) {
             return databaseSections;
         }
 
-        const tableSections = getTableSections(database, table)[sectionId];
-        if (tableSections) {
+        const tableSections = getTableSections(database, table);
+        if (tableSections[sectionId]) {
             return tableSections;
         }
 

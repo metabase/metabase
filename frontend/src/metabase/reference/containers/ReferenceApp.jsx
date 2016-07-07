@@ -8,12 +8,19 @@ import SidebarLayout from 'metabase/components/SidebarLayout.jsx';
 
 import * as metadataActions from 'metabase/redux/metadata';
 
-import { getDatabaseId, getSectionId, getSections, getBreadcrumbs } from '../selectors';
+import {
+    getDatabaseId,
+    getSectionId,
+    getSections,
+    getSection,
+    getBreadcrumbs
+} from '../selectors';
 
 const mapStateToProps = (state, props) => ({
     sectionId: getSectionId(state),
     databaseId: getDatabaseId(state),
     sections: getSections(state),
+    section: getSection(state),
     breadcrumbs: getBreadcrumbs(state)
 });
 
@@ -27,29 +34,29 @@ export default class ReferenceApp extends Component {
         params:         PropTypes.object.isRequired,
         children:       PropTypes.any.isRequired,
         sections:       PropTypes.object.isRequired,
+        section:       PropTypes.object.isRequired,
         sectionId:       PropTypes.string.isRequired,
         databaseId:       PropTypes.string
     };
 
     componentWillMount() {
-        if (this.props.databaseId) {
-            return this.props.fetchDatabaseMetadata(this.props.databaseId);
+        if (this.props.section && this.props.section.fetch) {
+            const fetchData = this.props[this.props.section.fetch];
+            const fetchArgs = this.props.section.fetchArgs || [];
+            fetchData(...fetchArgs);
         }
-
-        return this.props.fetchDatabases();
     }
 
     componentWillReceiveProps(newProps) {
-        console.log(newProps);
         if (this.props.location.pathname === newProps.location.pathname) {
             return;
         }
 
-        if (newProps.databaseId) {
-            return newProps.fetchDatabaseMetadata(newProps.databaseId);
+        if (newProps.section && newProps.section.fetch) {
+            const fetchData = newProps[newProps.section.fetch];
+            const fetchArgs = newProps.section.fetchArgs || [];
+            fetchData(...fetchArgs);
         }
-
-        return newProps.fetchDatabases();
     }
 
     render() {

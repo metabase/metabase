@@ -24,14 +24,14 @@ const Sidebar = ({
 }) =>
     <div className={cx(S.sidebar, className)} style={style}>
         <ul>
-            <li>
-                <div className={S.item}>
-                    { breadcrumbs && breadcrumbs.length > 1 ?
-                    //TODO: figure out how to properly override breadcrumbs styling
-                            <Breadcrumbs crumbs={breadcrumbs} /> : null
-                    }
-                </div>
-            </li>
+            { breadcrumbs && breadcrumbs.length > 1 ?
+                <li>
+                    <div className={S.item}>
+                        <Breadcrumbs crumbs={breadcrumbs} />
+                    </div>
+                </li> :
+                null
+            }
             {Object.values(sections).map(section =>
                 <SidebarItem key={section.id} href={section.id} {...section} />
             )}

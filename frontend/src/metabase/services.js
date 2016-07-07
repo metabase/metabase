@@ -640,6 +640,11 @@ CoreServices.factory('Pulse', ['$resource', '$cookies', function($resource, $coo
 
 CoreServices.factory('Segment', ['$resource', '$cookies', function($resource, $cookies) {
     return $resource('/api/segment/:segmentId', {}, {
+        list: {
+            url: '/api/segment',
+            method: 'GET',
+            isArray: true
+        },
         create: {
             url: '/api/segment',
             method: 'POST'
@@ -661,6 +666,11 @@ CoreServices.factory('Segment', ['$resource', '$cookies', function($resource, $c
 
 CoreServices.factory('Metric', ['$resource', '$cookies', function($resource, $cookies) {
     return $resource('/api/metric/:metricId', {}, {
+        list: {
+            url: '/api/metric',
+            method: 'GET',
+            isArray: true
+        },
         create: {
             url: '/api/metric',
             method: 'POST'
