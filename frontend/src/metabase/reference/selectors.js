@@ -120,9 +120,11 @@ export const getEntities = createSelector(
 );
 
 export const getEntity = createSelector(
-    [getSectionId, getDatabases, getDatabaseId],
-    (sectionId, databases, databaseId) => {
-        // console.log(databases)
+    [getSectionId, getTableId, getDatabases, getDatabaseId],
+    (sectionId, tableId, databases, databaseId) => {
+        if (sectionId === `/reference/databases/${databaseId}/tables/${tableId}`) {
+            return getTables(databases[databaseId])[tableId];
+        }
         return databases[databaseId];
     }
 );
@@ -171,16 +173,3 @@ export const getBreadcrumbs = createSelector(
     [getSection],
     buildBreadcrumbs
 )
-
-// (state) => {
-//     const sectionId = getSectionId(state);
-//     // console.log(sectionId);
-//
-//     if (referenceSections[sectionId]) {
-//         return [];
-//     }
-//
-//     const databaseName = i.getIn(getEntity(state), ['name']);
-//     // console.log(state);
-//     return [['Data', '/reference/databases'], databaseName];
-// };

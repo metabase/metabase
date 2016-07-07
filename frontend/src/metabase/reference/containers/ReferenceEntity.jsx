@@ -44,33 +44,32 @@ export default class EntityItem extends Component {
         // TODO: style this properly, currently just reusing list style
         return (
             <div className="full">
+                <div className="wrapper wrapper--trim">
+                    <div className={S.header}>
+                        {entity ? entity.name : ''}
+                    </div>
+                </div>
                 <LoadingAndErrorWrapper loading={!error && loading} error={error}>
                 { () => entity ?
-                    <div>
-                        <div className="wrapper wrapper--trim">
-                            <div className={S.header}>
-                                {entity.name}
-                            </div>
-                        </div>
-                        <div className="wrapper wrapper--trim">
-                            <List>
-                                <li className="relative">
-                                    <div className={cx(S.item)}>
-                                        <div className={S.leftIcons}>
+                    <div className="wrapper wrapper--trim">
+                        <List>
+                            <li className="relative">
+                                <div className={cx(S.item)}>
+                                    <div className={S.leftIcons}>
+                                    </div>
+                                    <div className={S.itemBody}>
+                                        <div className={S.itemTitle}>
+                                            Description
                                         </div>
-                                        <div className={S.itemBody}>
-                                            <div className={S.itemTitle}>
-                                                Description
-                                            </div>
-                                            <div className={cx(S.itemSubtitle, { "mt1" : true })}>
-                                                {entity.description || 'No description'}
-                                            </div>
+                                        <div className={cx(S.itemSubtitle, { "mt1" : true })}>
+                                            {entity.description || 'No description'}
                                         </div>
                                     </div>
-                                </li>
-                            </List>
-                        </div>
-                    </div> :
+                                </div>
+                            </li>
+                        </List>
+                    </div>
+                    :
                     null
                 }
                 </LoadingAndErrorWrapper>
