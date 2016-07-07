@@ -147,7 +147,7 @@ export default class LoginApp extends Component {
 
                             <div className="Form-field">
                                 <ul className="Form-offset">
-                                    <input name="remember" type="checkbox" ng-init="remember_me = true" checked /> <label className="inline-block">Remember Me:</label>
+                                    <input name="remember" type="checkbox" defaultChecked /> <label className="inline-block">Remember Me:</label>
                                 </ul>
                             </div>
 
