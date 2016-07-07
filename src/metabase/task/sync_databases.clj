@@ -28,7 +28,7 @@
         ;; at midnight we run the full sync
         (sync-database/sync-database! database :full-sync? true))
       (catch Throwable e
-        (log/error "Error syncing database: " (:id database) e)))))
+        (log/error (format "Error syncing database %d: " (:id database)) e)))))
 
 (defn task-init
   "Automatically called during startup; start the job for syncing databases."
