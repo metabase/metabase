@@ -11,17 +11,17 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.j
 import cx from "classnames";
 
 import {
-    getEntity,
-    getEntityError,
-    getEntityLoading
+    getData,
+    getError,
+    getLoading
 } from "../selectors";
 
 import * as metadataActions from "metabase/redux/metadata";
 
 const mapStateToProps = (state, props) => ({
-    entity: getEntity(state),
-    loading: getEntityLoading(state),
-    error: getEntityError(state)
+    entity: getData(state),
+    loading: getLoading(state),
+    error: getError(state)
 });
 
 const mapDispatchToProps = {

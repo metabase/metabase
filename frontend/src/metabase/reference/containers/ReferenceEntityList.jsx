@@ -13,18 +13,18 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.j
 
 import {
     getSection,
-    getEntities,
-    getEntitiesError,
-    getEntitiesLoading
+    getData,
+    getError,
+    getLoading
 } from "../selectors";
 
 import * as metadataActions from "metabase/redux/metadata";
 
 const mapStateToProps = (state, props) => ({
     section: getSection(state),
-    entities: getEntities(state),
-    loading: getEntitiesLoading(state),
-    error: getEntitiesError(state)
+    entities: getData(state),
+    loading: getLoading(state),
+    error: getError(state)
 });
 
 const mapDispatchToProps = {
@@ -66,15 +66,17 @@ export default class ReferenceEntityList extends Component {
                     <div className="wrapper wrapper--trim">
                         <List>
                             { Object.values(entities).map(entity =>
-                                <li className="relative" key={entity.id}>
-                                    <Item
-                                        id={entity.id}
-                                        name={entity.name}
-                                        description={entity.description}
-                                        url={`${section.id}/${entity.id}`}
-                                        icon="star"
-                                    />
-                                </li>
+                                entity && entity.id && entity.name ?
+                                    <li className="relative" key={entity.id}>
+                                        <Item
+                                            id={entity.id}
+                                            name={entity.name}
+                                            description={entity.description}
+                                            url={`${section.id}/${entity.id}`}
+                                            icon="star"
+                                        />
+                                    </li>
+                                    : null
                             )}
                         </List>
                     </div>

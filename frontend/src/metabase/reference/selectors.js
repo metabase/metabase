@@ -18,6 +18,7 @@ const referenceSections = {
         breadcrumb: "Metrics",
         // seems to work well but might be a bit naive?
         fetch: 'fetchMetrics',
+        get: 'getMetrics',
         icon: "star"
     },
     [`/reference/lists`]: {
@@ -31,6 +32,7 @@ const referenceSections = {
         name: "Databases and tables",
         breadcrumb: "Databases",
         fetch: 'fetchDatabases',
+        get: 'getDatabases',
         icon: "mine"
     }
 };
@@ -42,19 +44,24 @@ const getMetricSections = (metric) => metric ? {
         id: `/reference/metrics/${metric.id}`,
         name: "Details",
         breadcrumb: `${metric.name}`,
-        icon: "all"
+        fetch: 'fetchMetrics',
+        get: 'getMetric',
+        icon: "all",
+        parent: referenceSections[`/reference/metrics`]
     },
     [`/reference/metrics/${metric.id}/questions`]: {
         id: `/reference/metrics/${metric.id}/questions`,
         name: "Questions about this metric",
         breadcrumb: `${metric.name}`,
-        icon: "all"
+        icon: "all",
+        parent: referenceSections[`/reference/metrics`]
     },
     [`/reference/metrics/${metric.id}/history`]: {
         id: `/reference/metrics/${metric.id}/history`,
         name: "Revision history",
         breadcrumb: `${metric.name}`,
-        icon: "all"
+        icon: "all",
+        parent: referenceSections[`/reference/metrics`]
     }
 } : {};
 
@@ -63,25 +70,29 @@ const getListSections = (list) => list ? {
         id: `/reference/lists/${list.id}`,
         name: "Details",
         breadcrumb: `${list.name}`,
-        icon: "all"
+        icon: "all",
+        parent: referenceSections[`/reference/lists`]
     },
     [`/reference/lists/${list.id}/fields`]: {
         id: `/reference/lists/${list.id}/fields`,
         name: "Fields in this list",
         breadcrumb: `${list.name}`,
-        icon: "all"
+        icon: "all",
+        parent: referenceSections[`/reference/lists`]
     },
     [`/reference/lists/${list.id}/questions`]: {
         id: `/reference/lists/${list.id}/questions`,
         name: "Questions about this list",
         breadcrumb: `${list.name}`,
-        icon: "all"
+        icon: "all",
+        parent: referenceSections[`/reference/lists`]
     },
     [`/reference/lists/${list.id}/history`]: {
         id: `/reference/lists/${list.id}/history`,
         name: "Revision history",
         breadcrumb: `${list.name}`,
-        icon: "all"
+        icon: "all",
+        parent: referenceSections[`/reference/lists`]
     }
 } : {};
 
@@ -92,6 +103,7 @@ const getDatabaseSections = (database) => database ? {
         breadcrumb: `${database.name}`,
         fetch: 'fetchDatabaseMetadata',
         fetchArgs: [database.id],
+        get: 'getDatabase',
         icon: "all",
         parent: referenceSections[`/reference/databases`]
     },
@@ -101,6 +113,7 @@ const getDatabaseSections = (database) => database ? {
         breadcrumb: `${database.name}`,
         fetch: 'fetchDatabaseMetadata',
         fetchArgs: [database.id],
+        get: 'getTables',
         icon: "star",
         parent: referenceSections[`/reference/databases`]
     }
@@ -113,6 +126,7 @@ const getTableSections = (database, table) => database && table ? {
         breadcrumb: `${table.name}`,
         fetch: 'fetchDatabaseMetadata',
         fetchArgs: [database.id],
+        get: 'getTable',
         icon: "all",
         parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
     },
@@ -145,62 +159,51 @@ const getTableSections = (database, table) => database && table ? {
     }
 } : {};
 
-export const getEntitiesLoading = (state) => i.getIn(state, ['metadata', 'requestState', 'databases']) === "LOADING";
-
-export const getEntitiesError = (state) => i.getIn(state, ['metadata', 'requestState', 'databases', 'error']);
-
 export const getSectionId = (state) => state.router.location.pathname;
 
 export const getMetricId = (state) => state.router.params.metricId;
 const getMetrics = (state) => state.metadata.metrics;
 const getMetric = createSelector(
     [getMetricId, getMetrics],
-    (metricId, metrics) => metrics[metricId]
+    (metricId, metrics) => metrics[metricId] || { id: metricId }
 );
 
 export const getListId = (state) => state.router.params.listId;
-const getLists = (state) => state.metadata.metrics;
+const getLists = (state) => state.metadata.lists;
 const getList = createSelector(
     [getListId, getLists],
-    (listId, lists) => lists[listId]
+    (listId, lists) => lists[listId] || { id: listId }
 );
 
 export const getDatabaseId = (state) => state.router.params.databaseId;
 const getDatabases = (state) => state.metadata.databases;
 const getDatabase = createSelector(
     [getDatabaseId, getDatabases],
-    (databaseId, databases) => databases[databaseId]
+    (databaseId, databases) => databases[databaseId] || { id: databaseId }
 );
 
 export const getTableId = (state) => state.router.params.tableId;
-const getTables = (database) => database && database.tables ?
-    database.tables.reduce((tableMap, table) => i.assoc(tableMap, table.id, table), {}) :
-    {};
+const getTables = createSelector(
+    [getDatabase],
+    (database) => database && database.tables ?
+        database.tables.reduce((tableMap, table) => i.assoc(tableMap, table.id, table), {}) : {}
+);
 
 const getTable = createSelector(
-    [getTableId, getDatabase],
-    (tableId, database) => getTables(database)[tableId]
+    [getTableId, getTables],
+    (tableId, tables) => tables[tableId] || { id: tableId }
 );
 
-export const getEntities = createSelector(
-    [getSectionId, getDatabaseId, getDatabases],
-    (sectionId, databaseId, databases) => {
-        if (sectionId === `/reference/databases/${databaseId}/tables`) {
-            return getTables(databases[databaseId]);
-        }
-        return databases;
-    }
-);
-
-export const getEntity = createSelector(
-    [getSectionId, getTableId, getDatabases, getDatabaseId],
-    (sectionId, tableId, databases, databaseId) => {
-        if (sectionId === `/reference/databases/${databaseId}/tables/${tableId}`) {
-            return getTables(databases[databaseId])[tableId];
-        }
-        return databases[databaseId];
-    }
-);
+const dataSelectors = {
+    getMetric,
+    getMetrics,
+    getList,
+    getLists,
+    getDatabase,
+    getDatabases,
+    getTable,
+    getTables
+};
 
 export const getSections = createSelector(
     [getSectionId, getMetric, getList, getDatabase, getTable, getReferenceSections],
@@ -239,16 +242,49 @@ export const getSection = createSelector(
     (sectionId, sections) => sections[sectionId] || {}
 );
 
-const getEntityRequestStates = (state) => i.getIn(state, ['metadata', 'requestState', 'database']);
+export const getData = (state) => {
+    const section = getSection(state);
+    if (!section) {
+        return {};
+    }
+    const selector = dataSelectors[section.get];
+    if (!selector) {
+        return {};
+    }
 
-export const getEntityLoading = createSelector(
-    [getDatabaseId, getEntityRequestStates],
-    (databaseId, entityRequestStates) => entityRequestStates[databaseId] === 'LOADING'
+    return selector(state);
+};
+
+const mapFetchToRequestStatePath = (fetch, fetchArgs = []) => {
+    switch(fetch) {
+        case 'fetchMetrics':
+            return ['metrics'];
+        case 'fetchDatabases':
+            return ['databases'];
+        case 'fetchDatabaseMetadata':
+            return ['database'].concat(fetchArgs);
+        default:
+            return [];
+    }
+};
+
+const getRequestStates = (state) => i.getIn(state, ['metadata', 'requestState']);
+
+const getRequestStatePath = createSelector(
+    [getSection],
+    (section) => mapFetchToRequestStatePath(section.fetch, section.fetchArgs)
+);
+
+export const getLoading = createSelector(
+    [getRequestStatePath, getRequestStates],
+    (requestStatePath, requestStates) => requestStates &&
+        i.getIn(requestStates, requestStatePath) === 'LOADING'
 )
 
-export const getEntityError = createSelector(
-    [getDatabaseId, getEntityRequestStates],
-    (databaseId, entityRequestStates) => i.getIn(entityRequestStates, [databaseId, 'error'])
+export const getError = createSelector(
+    [getRequestStatePath, getRequestStates],
+    (requestStatePath, requestStates) => requestStates ?
+        i.getIn(requestStates, requestStatePath.concat('error')) : false
 )
 
 const getBreadcrumb = (section, index, sections) => index !== sections.length - 1 ?
