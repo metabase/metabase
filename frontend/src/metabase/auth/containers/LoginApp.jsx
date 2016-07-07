@@ -89,6 +89,14 @@ export default class LoginApp extends Component {
         this.validateForm();
     }
 
+    componentWillReceiveProps(newProps) {
+        const { user, onChangeLocation } = newProps;
+            // if we already have a user then we shouldn't be logging in
+        if (user) {
+            onChangeLocation("/");
+        }
+    }
+
     onChange(fieldName, fieldValue) {
         this.setState({ credentials: { ...this.state.credentials, [fieldName]: fieldValue }});
     }
@@ -104,12 +112,7 @@ export default class LoginApp extends Component {
 
     render() {
 
-        const { loginError, user } = this.props;
-
-        if (user) {
-            // if we already have a user then we shouldn't be logging in
-            this.props.onChangeLocation("/");
-        }
+        const { loginError } = this.props;
 
         return (
             <div className="full-height full bg-white flex flex-column flex-full md-layout-centered">
