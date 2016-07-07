@@ -26,7 +26,7 @@ const Sidebar = ({
         <ul>
             <li>
                 <div className={S.item}>
-                    { breadcrumbs && breadcrumbs.length > 0 ?
+                    { breadcrumbs && breadcrumbs.length > 1 ?
                     //TODO: figure out how to properly override breadcrumbs styling
                             <Breadcrumbs crumbs={breadcrumbs} /> : null
                     }

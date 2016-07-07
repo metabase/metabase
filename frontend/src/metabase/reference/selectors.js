@@ -4,24 +4,46 @@ import i from "icepick";
 //TODO: think about memoizing some of these for perf
 
 const referenceSections = {
-    [`/reference/guide`]: { id: `/reference/guide`, name: "Understanding our data", icon: "all" },
-    [`/reference/metrics`]: { id: `/reference/metrics`, name: "Metrics", icon: "star" },
-    [`/reference/lists`]: { id: `/reference/lists`, name: "Lists", icon: "recents" },
-    [`/reference/databases`]: { id: `/reference/databases`, name: "Databases and tables", icon: "mine" }
+    [`/reference/guide`]: {
+        id: `/reference/guide`,
+        name: "Understanding our data",
+        breadcrumb: "Guide",
+        icon: "all"
+    },
+    [`/reference/metrics`]: {
+        id: `/reference/metrics`,
+        name: "Metrics",
+        breadcrumb: "Metrics",
+        icon: "star"
+    },
+    [`/reference/lists`]: {
+        id: `/reference/lists`,
+        name: "Lists",
+        breadcrumb: "Lists",
+        icon: "recents"
+    },
+    [`/reference/databases`]: {
+        id: `/reference/databases`,
+        name: "Databases and tables",
+        breadcrumb: "Databases",
+        icon: "mine"
+    }
 };
 
 const getDatabaseSections = (database) => database ? {
     [`/reference/databases/${database.id}`]: {
         id: `/reference/databases/${database.id}`,
         name: "Details",
+        breadcrumb: `${database.name}`,
         icon: "all",
-        parentId: referenceSections[`/reference/databases`].id
+        parent: referenceSections[`/reference/databases`]
     },
     [`/reference/databases/${database.id}/tables`]: {
         id: `/reference/databases/${database.id}/tables`,
         name: `Tables in ${database.name}`,
+        breadcrumb: `${database.name}`,
         icon: "star",
-        parentId: referenceSections[`/reference/databases`].id
+        parent: referenceSections[`/reference/databases`]
     }
 } : {};
 
@@ -29,26 +51,30 @@ const getTableSections = (database, table) => database && table ? {
     [`/reference/databases/${database.id}/tables/${table.id}`]: {
         id: `/reference/databases/${database.id}/tables/${table.id}`,
         name: "Details",
+        breadcrumb: `${table.name}`,
         icon: "all",
-        parentId: getDatabaseSections(database).id
+        parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
     },
     [`/reference/databases/${database.id}/tables/${table.id}/fields`]: {
         id: `/reference/databases/${database.id}/tables/${table.id}/fields`,
         name: `Fields in ${table.name}`,
+        breadcrumb: `${table.name}`,
         icon: "star",
-        parentId: getDatabaseSections(database).id
+        parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
     },
     [`/reference/databases/${database.id}/tables/${table.id}/questions`]: {
         id: `/reference/databases/${database.id}/tables/${table.id}/questions`,
         name: `Questions about ${table.name}`,
+        breadcrumb: `${table.name}`,
         icon: "star",
-        parentId: getDatabaseSections(database).id
+        parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
     },
     [`/reference/databases/${database.id}/tables/${table.id}/history`]: {
         id: `/reference/databases/${database.id}/tables/${table.id}/history`,
         name: `Revision history`,
+        breadcrumb: `${table.name}`,
         icon: "star",
-        parentId: getDatabaseSections(database).id
+        parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
     }
 } : {};
 
@@ -126,15 +152,35 @@ export const getEntityError = createSelector(
     (databaseId, entityRequestStates) => i.getIn(entityRequestStates, [databaseId, 'error'])
 )
 
-export const getBreadcrumbs = (state) => {
-    const sectionId = getSectionId(state);
-    // console.log(sectionId);
+const getBreadcrumb = (section, index, sections) => index !== sections.length - 1 ? [section.breadcrumb, section.id] : [section.breadcrumb];
 
-    if (referenceSections[sectionId]) {
-        return [];
+const getParentSections = (section) => {
+    if (!section.parent) {
+        return [section];
     }
 
-    const databaseName = i.getIn(getEntity(state), ['name']);
-    // console.log(state);
-    return [['Data', '/reference/databases'], databaseName];
+    const parentSections = []
+        .concat(getParentSections(section.parent), section);
+
+    return parentSections;
 };
+
+const buildBreadcrumbs = (section) => getParentSections(section).map(getBreadcrumb);
+
+export const getBreadcrumbs = createSelector(
+    [getSection],
+    buildBreadcrumbs
+)
+
+// (state) => {
+//     const sectionId = getSectionId(state);
+//     // console.log(sectionId);
+//
+//     if (referenceSections[sectionId]) {
+//         return [];
+//     }
+//
+//     const databaseName = i.getIn(getEntity(state), ['name']);
+//     // console.log(state);
+//     return [['Data', '/reference/databases'], databaseName];
+// };
