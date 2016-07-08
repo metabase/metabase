@@ -5,6 +5,7 @@ import i from "icepick";
 
 // there might be a better way to organize sections
 // maybe merge all of them into a single map for simpler lookup?
+// there might also be similar functionality in redux-router that could replace all of this
 const referenceSections = {
     [`/reference/guide`]: {
         id: `/reference/guide`,
@@ -55,6 +56,8 @@ const getMetricSections = (metric) => metric ? {
         id: `/reference/metrics/${metric.id}/questions`,
         name: "Questions about this metric",
         breadcrumb: `${metric.name}`,
+        fetch: 'fetchQuestions',
+        get: 'getMetricQuestions',
         icon: "all",
         parent: referenceSections[`/reference/metrics`]
     },
@@ -86,8 +89,10 @@ const getListSections = (list) => list ? {
     },
     [`/reference/lists/${list.id}/questions`]: {
         id: `/reference/lists/${list.id}/questions`,
-        name: "Questions about this list",
+        name: `Questions about ${list.name}`,
         breadcrumb: `${list.name}`,
+        fetch: 'fetchQuestions',
+        get: 'getListQuestions',
         icon: "all",
         parent: referenceSections[`/reference/lists`]
     },
@@ -198,16 +203,48 @@ const getTable = createSelector(
     (tableId, tables) => tables[tableId] || { id: tableId }
 );
 
-const dataSelectors = {
-    getMetric,
-    getMetrics,
-    getList,
-    getLists,
-    getDatabase,
-    getDatabases,
-    getTable,
-    getTables
+const getQuestions = (state) => i.getIn(state, ['questions', 'entities', 'cards']) || {};
+// TODO: get someone to look over this
+// probably not be the best way to determine which questions are associated
+// with a particular metric/list, but seems to work
+const filterMetricQuestions = (metricId, question) => {
+    const aggregation = i.getIn(question, ['dataset_query', 'query', 'aggregation']);
+    if (!aggregation) {
+        return false;
+    }
+
+    return aggregation[0] === "METRIC" && aggregation[1].toString() === metricId;
 };
+
+const getMetricQuestions = createSelector(
+    [getMetricId, getQuestions],
+    (metricId, questions) => Object.values(questions)
+        .filter(question => filterMetricQuestions(metricId, question))
+        .reduce((map, question) => i.assoc(map, question.id, question), {})
+);
+
+const filterListQuestions = (listId, question) => {
+    const filter = i.getIn(question, ['dataset_query', 'query', 'filter']);
+    if (!filter) {
+        return false;
+    }
+    if (filter[0] === "AND") {
+        const filters = filter.slice(1);
+        const matchingFilters = filters
+            .filter(filter => filter[0] === "SEGMENT" && filter[1].toString() === listId);
+
+        return matchingFilters.length === 1;
+    }
+
+    return filter[0] === "SEGMENT" && filter[1].toString() === listId;
+};
+
+const getListQuestions = createSelector(
+    [getListId, getQuestions],
+    (listId, questions) => Object.values(questions)
+        .filter(question => filterListQuestions(listId, question))
+        .reduce((map, question) => i.assoc(map, question.id, question), {})
+);
 
 export const getSections = createSelector(
     [getSectionId, getMetric, getList, getDatabase, getTable, getReferenceSections],
@@ -246,6 +283,19 @@ export const getSection = createSelector(
     (sectionId, sections) => sections[sectionId] || {}
 );
 
+const dataSelectors = {
+    getMetric,
+    getMetricQuestions,
+    getMetrics,
+    getList,
+    getListQuestions,
+    getLists,
+    getDatabase,
+    getDatabases,
+    getTable,
+    getTables,
+};
+
 export const getData = (state) => {
     const section = getSection(state);
     if (!section) {
@@ -261,6 +311,10 @@ export const getData = (state) => {
 //TODO: move into metadata duck?
 const mapFetchToRequestStatePath = (fetch, fetchArgs = []) => {
     switch(fetch) {
+        case 'fetchQuestions':
+            // questions section handles loading & errors a bit differently
+            // FIXME: think of a better solution to bridge this inconsistency
+            return false;
         case 'fetchMetrics':
             return ['metrics'];
         case 'fetchLists':
@@ -283,14 +337,14 @@ const getRequestStatePath = createSelector(
 
 export const getLoading = createSelector(
     [getRequestStatePath, getRequestStates],
-    (requestStatePath, requestStates) => requestStates &&
+    (requestStatePath, requestStates) => requestStates && requestStatePath &&
         i.getIn(requestStates, requestStatePath) === 'LOADING'
 )
 
 export const getError = createSelector(
     [getRequestStatePath, getRequestStates],
-    (requestStatePath, requestStates) => requestStates ?
-        i.getIn(requestStates, requestStatePath.concat('error')) : false
+    (requestStatePath, requestStates) => requestStates && requestStatePath ?
+        i.getIn(requestStates, requestStatePath.concat('error')) : undefined
 )
 
 const getBreadcrumb = (section, index, sections) => index !== sections.length - 1 ?

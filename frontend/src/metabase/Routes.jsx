@@ -1,6 +1,6 @@
 import React, { Component, PropTypes } from "react";
 
-import { Route } from 'react-router';
+import { Route, Redirect } from 'react-router';
 import { ReduxRouter } from 'redux-router';
 
 import Sidebar from "metabase/components/Sidebar.jsx";
@@ -82,8 +82,14 @@ export default class Routes extends Component {
                     <Route path="guide" component={ReferenceGettingStartedGuide} />
                     <Route path="metrics" component={ReferenceEntityList} />
                     <Route path="metrics/:metricId" component={ReferenceEntity} />
+                    <Route path="metrics/:metricId/questions" component={ReferenceEntityList} />
+                    //FIXME: has some intermittent issues with the angular integration
+                    // Uncaught Error: [$rootScope:infdig] 10 $digest() iterations reached. Aborting!
+                    <Redirect from="metrics/:metricId/questions/:cardId" to="/card/:cardId"/>
                     <Route path="lists" component={ReferenceEntityList} />
                     <Route path="lists/:listId" component={ReferenceEntity} />
+                    <Route path="lists/:listId/questions" component={ReferenceEntityList} />
+                    <Redirect from="lists/:listId/questions/:cardId" to="/card/:cardId"/>
                     <Route path="databases" component={ReferenceEntityList} />
                     <Route path="databases/:databaseId" component={ReferenceEntity} />
                     <Route path="databases/:databaseId/tables" component={ReferenceEntityList} />

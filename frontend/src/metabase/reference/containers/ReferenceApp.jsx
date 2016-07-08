@@ -16,6 +16,10 @@ import {
     getBreadcrumbs
 } from '../selectors';
 
+import {
+    selectSection as fetchQuestions
+} from 'metabase/questions/questions';
+
 const mapStateToProps = (state, props) => ({
     sectionId: getSectionId(state),
     databaseId: getDatabaseId(state),
@@ -25,6 +29,7 @@ const mapStateToProps = (state, props) => ({
 });
 
 const mapDispatchToProps = {
+    fetchQuestions,
     ...metadataActions
 };
 

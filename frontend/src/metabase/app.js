@@ -141,13 +141,16 @@ angular.module('metabase', [
     $routeProvider.when('/reference/guide', route);
     $routeProvider.when('/reference/metrics', route);
     $routeProvider.when('/reference/metrics/:metricId', route);
+    $routeProvider.when('/reference/metrics/:metricId/questions', route);
+    $routeProvider.when('/reference/metrics/:metricId/questions/:cardId', route);
     $routeProvider.when('/reference/lists', route);
     $routeProvider.when('/reference/lists/:listId', route);
+    $routeProvider.when('/reference/lists/:listId/questions', route);
+    $routeProvider.when('/reference/lists/:listId/questions/:cardId', route);
     $routeProvider.when('/reference/databases', route);
     $routeProvider.when('/reference/databases/:databaseId', route);
     $routeProvider.when('/reference/databases/:databaseId/tables', route);
     $routeProvider.when('/reference/databases/:databaseId/tables/:tableId', route);
-    $routeProvider.when('/reference/:section', route);
 
     $routeProvider.when('/auth/', { redirectTo: () => ('/auth/login') });
     $routeProvider.when('/auth/forgot_password', { ...route, template: '<div mb-redux-component class="full-height" />' });
