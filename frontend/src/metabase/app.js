@@ -31,6 +31,7 @@ import auth from "metabase/auth/auth";
 
 /* ducks */
 import metadata from "metabase/redux/metadata";
+import requests from "metabase/redux/requests";
 
 /* admin */
 import settings from "metabase/admin/settings/settings";
@@ -70,6 +71,7 @@ const reducers = combineReducers({
     auth,
     currentUser,
     metadata,
+    requests,
 
     // main app reducers
     dashboard,
@@ -151,6 +153,8 @@ angular.module('metabase', [
     $routeProvider.when('/reference/databases/:databaseId', route);
     $routeProvider.when('/reference/databases/:databaseId/tables', route);
     $routeProvider.when('/reference/databases/:databaseId/tables/:tableId', route);
+    $routeProvider.when('/reference/databases/:databaseId/tables/:tableId/questions', route);
+    $routeProvider.when('/reference/databases/:databaseId/tables/:tableId/questions/:cardId', route);
 
     $routeProvider.when('/auth/', { redirectTo: () => ('/auth/login') });
     $routeProvider.when('/auth/forgot_password', { ...route, template: '<div mb-redux-component class="full-height" />' });

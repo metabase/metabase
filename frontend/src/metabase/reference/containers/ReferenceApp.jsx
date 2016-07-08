@@ -46,9 +46,12 @@ export default class ReferenceApp extends Component {
 
     componentWillMount() {
         if (this.props.section && this.props.section.fetch) {
-            const fetchData = this.props[this.props.section.fetch];
-            const fetchArgs = this.props.section.fetchArgs || [];
-            fetchData(...fetchArgs);
+            const fetch = this.props.section.fetch;
+            Object.keys(fetch).forEach((fetchPropName) => {
+                const fetchData = this.props[fetchPropName];
+                const fetchArgs = fetch[fetchPropName] || [];
+                fetchData(...fetchArgs);
+            });
         }
     }
 
@@ -58,9 +61,12 @@ export default class ReferenceApp extends Component {
         }
 
         if (newProps.section && newProps.section.fetch) {
-            const fetchData = newProps[newProps.section.fetch];
-            const fetchArgs = newProps.section.fetchArgs || [];
-            fetchData(...fetchArgs);
+            const fetch = newProps.section.fetch;
+            Object.keys(fetch).forEach((fetchPropName) => {
+                const fetchData = newProps[fetchPropName];
+                const fetchArgs = fetch[fetchPropName] || [];
+                fetchData(...fetchArgs);
+            });
         }
     }
 

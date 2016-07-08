@@ -5,7 +5,7 @@ import i from "icepick";
 
 // there might be a better way to organize sections
 // maybe merge all of them into a single map for simpler lookup?
-// there might also be similar functionality in redux-router that could replace all of this
+// there might also be similar functionality in react/redux-router that could replace all of this
 const referenceSections = {
     [`/reference/guide`]: {
         id: `/reference/guide`,
@@ -17,8 +17,8 @@ const referenceSections = {
         id: `/reference/metrics`,
         name: "Metrics",
         breadcrumb: "Metrics",
-        // seems to work well but might be a bit naive?
-        fetch: 'fetchMetrics',
+        // mapping of propname to args of dispatch function
+        fetch: {fetchMetrics: []},
         get: 'getMetrics',
         icon: "star"
     },
@@ -26,7 +26,7 @@ const referenceSections = {
         id: `/reference/lists`,
         name: "Lists",
         breadcrumb: "Lists",
-        fetch: 'fetchLists',
+        fetch: {fetchLists: []},
         get: 'getLists',
         icon: "recents"
     },
@@ -34,7 +34,7 @@ const referenceSections = {
         id: `/reference/databases`,
         name: "Databases and tables",
         breadcrumb: "Databases",
-        fetch: 'fetchDatabases',
+        fetch: {fetchDatabases: []},
         get: 'getDatabases',
         icon: "mine"
     }
@@ -47,7 +47,7 @@ const getMetricSections = (metric) => metric ? {
         id: `/reference/metrics/${metric.id}`,
         name: "Details",
         breadcrumb: `${metric.name}`,
-        fetch: 'fetchMetrics',
+        fetch: {fetchMetrics: []},
         get: 'getMetric',
         icon: "all",
         parent: referenceSections[`/reference/metrics`]
@@ -56,7 +56,7 @@ const getMetricSections = (metric) => metric ? {
         id: `/reference/metrics/${metric.id}/questions`,
         name: "Questions about this metric",
         breadcrumb: `${metric.name}`,
-        fetch: 'fetchQuestions',
+        fetch: {fetchQuestions: []},
         get: 'getMetricQuestions',
         icon: "all",
         parent: referenceSections[`/reference/metrics`]
@@ -75,7 +75,7 @@ const getListSections = (list) => list ? {
         id: `/reference/lists/${list.id}`,
         name: "Details",
         breadcrumb: `${list.name}`,
-        fetch: 'fetchLists',
+        fetch: {fetchLists: []},
         get: 'getList',
         icon: "all",
         parent: referenceSections[`/reference/lists`]
@@ -91,7 +91,7 @@ const getListSections = (list) => list ? {
         id: `/reference/lists/${list.id}/questions`,
         name: `Questions about ${list.name}`,
         breadcrumb: `${list.name}`,
-        fetch: 'fetchQuestions',
+        fetch: {fetchQuestions: []},
         get: 'getListQuestions',
         icon: "all",
         parent: referenceSections[`/reference/lists`]
@@ -110,8 +110,7 @@ const getDatabaseSections = (database) => database ? {
         id: `/reference/databases/${database.id}`,
         name: "Details",
         breadcrumb: `${database.name}`,
-        fetch: 'fetchDatabaseMetadata',
-        fetchArgs: [database.id],
+        fetch: {fetchDatabaseMetadata: [database.id]},
         get: 'getDatabase',
         icon: "all",
         parent: referenceSections[`/reference/databases`]
@@ -120,8 +119,7 @@ const getDatabaseSections = (database) => database ? {
         id: `/reference/databases/${database.id}/tables`,
         name: `Tables in this database`,
         breadcrumb: `${database.name}`,
-        fetch: 'fetchDatabaseMetadata',
-        fetchArgs: [database.id],
+        fetch: {fetchDatabaseMetadata: [database.id]},
         get: 'getTables',
         icon: "star",
         parent: referenceSections[`/reference/databases`]
@@ -133,8 +131,7 @@ const getTableSections = (database, table) => database && table ? {
         id: `/reference/databases/${database.id}/tables/${table.id}`,
         name: "Details",
         breadcrumb: `${table.name}`,
-        fetch: 'fetchDatabaseMetadata',
-        fetchArgs: [database.id],
+        fetch: {fetchDatabaseMetadata: [database.id]},
         get: 'getTable',
         icon: "all",
         parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
@@ -143,8 +140,7 @@ const getTableSections = (database, table) => database && table ? {
         id: `/reference/databases/${database.id}/tables/${table.id}/fields`,
         name: `Fields in this table`,
         breadcrumb: `${table.name}`,
-        fetch: 'fetchDatabaseMetadata',
-        fetchArgs: [database.id],
+        fetch: {fetchDatabaseMetadata: [database.id]},
         icon: "star",
         parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
     },
@@ -152,8 +148,8 @@ const getTableSections = (database, table) => database && table ? {
         id: `/reference/databases/${database.id}/tables/${table.id}/questions`,
         name: `Questions about this table`,
         breadcrumb: `${table.name}`,
-        fetch: 'fetchDatabaseMetadata',
-        fetchArgs: [database.id],
+        //TODO: make this more flexible, needs to fetch both questions and database metadata
+        fetch: {fetchDatabaseMetadata: [database.id], fetchQuestions: []},
         icon: "star",
         parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
     },
@@ -161,8 +157,7 @@ const getTableSections = (database, table) => database && table ? {
         id: `/reference/databases/${database.id}/tables/${table.id}/history`,
         name: `Revision history`,
         breadcrumb: `${table.name}`,
-        fetch: 'fetchDatabaseMetadata',
-        fetchArgs: [database.id],
+        fetch: {fetchDatabaseMetadata: [database.id]},
         icon: "star",
         parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
     }
@@ -308,43 +303,43 @@ export const getData = (state) => {
 
     return selector(state);
 };
-//TODO: move into metadata duck?
-const mapFetchToRequestStatePath = (fetch, fetchArgs = []) => {
-    switch(fetch) {
-        case 'fetchQuestions':
-            // questions section handles loading & errors a bit differently
-            // FIXME: think of a better solution to bridge this inconsistency
-            return false;
-        case 'fetchMetrics':
-            return ['metrics'];
-        case 'fetchLists':
-            return ['lists'];
-        case 'fetchDatabases':
-            return ['databases'];
-        case 'fetchDatabaseMetadata':
-            return ['database'].concat(fetchArgs);
-        default:
-            return [];
-    }
+
+const mapFetchToRequestStatePaths = (fetch) => {
+    return Object.keys(fetch).map(key => {
+        switch(key) {
+            case 'fetchQuestions':
+                return ['questions/all'];
+            case 'fetchMetrics':
+                return ['metadata/metrics'];
+            case 'fetchLists':
+                return ['metadata/lists'];
+            case 'fetchDatabases':
+                return ['metadata/databases'];
+            case 'fetchDatabaseMetadata':
+                return ['metadata/database'].concat(fetch[key]);
+            default:
+                return [];
+        }
+    });
 };
 
-const getRequestStates = (state) => i.getIn(state, ['metadata', 'requestState']);
+const getRequests = (state) => i.getIn(state, ['metadata', 'requestState']);
 
-const getRequestStatePath = createSelector(
+const getRequestPaths = createSelector(
     [getSection],
-    (section) => mapFetchToRequestStatePath(section.fetch, section.fetchArgs)
+    (section) => mapFetchToRequestStatePaths(section.fetch)
 );
 
 export const getLoading = createSelector(
-    [getRequestStatePath, getRequestStates],
-    (requestStatePath, requestStates) => requestStates && requestStatePath &&
-        i.getIn(requestStates, requestStatePath) === 'LOADING'
+    [getRequestPaths, getRequests],
+    (requestPaths, requests) => requestPaths
+        .reduce((isLoading, requestPath) => isLoading || i.getIn(requests, requestPath) === 'LOADING', false)
 )
 
 export const getError = createSelector(
-    [getRequestStatePath, getRequestStates],
-    (requestStatePath, requestStates) => requestStates && requestStatePath ?
-        i.getIn(requestStates, requestStatePath.concat('error')) : undefined
+    [getRequestPaths, getRequests],
+    (requestPaths, requests) => requestPaths
+        .reduce((error, requestPath) => error || i.getIn(requests, requestPath.concat('error')), false)
 )
 
 const getBreadcrumb = (section, index, sections) => index !== sections.length - 1 ?

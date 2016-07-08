@@ -83,7 +83,7 @@ export default class Routes extends Component {
                     <Route path="metrics" component={ReferenceEntityList} />
                     <Route path="metrics/:metricId" component={ReferenceEntity} />
                     <Route path="metrics/:metricId/questions" component={ReferenceEntityList} />
-                    //FIXME: has some intermittent issues with the angular integration
+                    //FIXME: has some intermittent issues with the angular routing integration
                     // Uncaught Error: [$rootScope:infdig] 10 $digest() iterations reached. Aborting!
                     <Redirect from="metrics/:metricId/questions/:cardId" to="/card/:cardId"/>
                     <Route path="lists" component={ReferenceEntityList} />
@@ -94,7 +94,8 @@ export default class Routes extends Component {
                     <Route path="databases/:databaseId" component={ReferenceEntity} />
                     <Route path="databases/:databaseId/tables" component={ReferenceEntityList} />
                     <Route path="databases/:databaseId/tables/:tableId" component={ReferenceEntity} />
-                    <Route path=":section" component={ReferenceEntityList} />
+                    <Route path="databases/:databaseId/tables/:tableId/questions" component={ReferenceEntityList} />
+                    <Redirect from="databases/:databaseId/tables/:tableId/questions/:cardId" to="/card/:cardId"/>
                 </Route>
 
                 <Route path="/auth/forgot_password" component={ForgotPasswordApp} />

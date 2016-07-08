@@ -1,26 +1,13 @@
 import { handleActions, combineReducers, AngularResourceProxy, createAction, createThunkAction } from "metabase/lib/redux";
 import i from "icepick";
 
+import { setRequest } from "./requests";
+
 import { augmentDatabase } from "metabase/lib/table";
 
 const MetabaseApi = new AngularResourceProxy("Metabase", ["db_list", "dataset", "dataset_duration", "db_metadata"]);
 const MetricApi = new AngularResourceProxy("Metric", ["list", "get"]);
 const SegmentApi = new AngularResourceProxy("Segment", ["list", "get"]);
-
-const SET_REQUEST_STATE = "metabase/metadata/SET_REQUEST_STATE";
-
-const setRequestState = createAction(SET_REQUEST_STATE, undefined, (payload, meta) => meta);
-
-const requestState = handleActions({
-    [SET_REQUEST_STATE]: {
-        next: (state, { payload }) => payload.id ?
-            i.assocIn(state, [payload.type, payload.id], payload.state) :
-            i.assoc(state, payload.type, payload.state),
-        throw: (state, { payload, meta, error }) => meta.id ?
-            i.assocIn(state, [meta.type, meta.id, 'error'], payload) :
-            i.assocIn(state, [meta.type, 'error'], payload)
-    }
-}, {});
 
 const resourceListToMap = (resources) => resources
     //filters out angular cruft
@@ -32,15 +19,15 @@ const FETCH_METRICS = "metabase/metadata/FETCH_METRICS";
 export const fetchMetrics = createThunkAction(FETCH_METRICS, (reload = false) => {
     return async (dispatch, getState) => {
         try {
-            const requestState = i.getIn(getState(), ["metadata", "requestState", "metrics"]);
+            const requestState = i.getIn(getState(), ["requests", "metadata/metrics"]);
             const existingMetrics = i.getIn(getState(), ["metadata", "metrics"]);
 
             if (!requestState || reload) {
-                dispatch(setRequestState({ type: "metrics", state: "LOADING" }));
+                dispatch(setRequest({ type: "metadata/metrics", state: "LOADING" }));
 
                 const metrics = await MetricApi.list();
                 const metricMap = resourceListToMap(metrics);
-                dispatch(setRequestState({ type: "metrics", state: "LOADED" }));
+                dispatch(setRequest({ type: "metadata/metrics", state: "LOADED" }));
 
                 return metricMap;
             }
@@ -48,7 +35,7 @@ export const fetchMetrics = createThunkAction(FETCH_METRICS, (reload = false) =>
             return existingMetrics;
         }
         catch(error) {
-            dispatch(setRequestState(error, { type: 'metrics' }));
+            dispatch(setRequest(error, { type: 'metadata/metrics' }));
             return {};
         }
     };
@@ -63,15 +50,15 @@ const FETCH_LISTS = "metabase/metadata/FETCH_LISTS";
 export const fetchLists = createThunkAction(FETCH_LISTS, (reload = false) => {
     return async (dispatch, getState) => {
         try {
-            const requestState = i.getIn(getState(), ["metadata", "requestState", "lists"]);
+            const requestState = i.getIn(getState(), ["requests", "metadata/lists"]);
             const existingLists = i.getIn(getState(), ["metadata", "lists"]);
 
             if (!requestState || reload) {
-                dispatch(setRequestState({ type: "lists", state: "LOADING" }));
+                dispatch(setRequest({ type: "metadata/lists", state: "LOADING" }));
 
                 const lists = await SegmentApi.list();
                 const listMap = resourceListToMap(lists);
-                dispatch(setRequestState({ type: "lists", state: "LOADED" }));
+                dispatch(setRequest({ type: "metadata/lists", state: "LOADED" }));
 
                 return listMap;
             }
@@ -79,7 +66,7 @@ export const fetchLists = createThunkAction(FETCH_LISTS, (reload = false) => {
             return existingLists;
         }
         catch(error) {
-            dispatch(setRequestState(error, { type: 'lists' }));
+            dispatch(setRequest(error, { type: 'metadata/lists' }));
             return {};
         }
     };
@@ -95,15 +82,15 @@ const FETCH_DATABASE_METADATA = "metabase/metadata/FETCH_DATABASE_METADATA";
 export const fetchDatabases = createThunkAction(FETCH_DATABASES, (reload = false) => {
     return async (dispatch, getState) => {
         try {
-            const requestState = i.getIn(getState(), ["metadata", "requestState", "databases"]);
+            const requestState = i.getIn(getState(), ["requests", "metadata/databases"]);
             const existingDatabases = i.getIn(getState(), ["metadata", "databases"]);
 
             if (!requestState || reload) {
-                dispatch(setRequestState({ type: "databases", state: "LOADING" }));
+                dispatch(setRequest({ type: "metadata/databases", state: "LOADING" }));
                 const databases = await MetabaseApi.db_list();
                 const databaseMap = resourceListToMap(databases);
 
-                dispatch(setRequestState({ type: "databases", state: "LOADED" }));
+                dispatch(setRequest({ type: "metadata/databases", state: "LOADED" }));
 
                 if (reload) {
                     return databaseMap;
@@ -117,7 +104,7 @@ export const fetchDatabases = createThunkAction(FETCH_DATABASES, (reload = false
             return existingDatabases;
         }
         catch(error) {
-            dispatch(setRequestState(error, { type: 'databases' }));
+            dispatch(setRequest(error, { type: 'metadata/databases' }));
             return {};
         }
     };
@@ -126,12 +113,12 @@ export const fetchDatabases = createThunkAction(FETCH_DATABASES, (reload = false
 export const fetchDatabaseMetadata = createThunkAction(FETCH_DATABASE_METADATA, function(dbId, reload = false) {
     return async function(dispatch, getState) {
         try {
-            const requestState = i.getIn(getState(), ["metadata", "requestState", "database", dbId]);
+            const requestState = i.getIn(getState(), ["requests", "metadata/database", dbId]);
             if (!requestState || reload) {
-                dispatch(setRequestState({ type: "database", id: dbId, state: "LOADING" }));
+                dispatch(setRequest({ type: "metadata/database", id: dbId, state: "LOADING" }));
                 let databaseMetadata = await MetabaseApi.db_metadata({ dbId });
                 augmentDatabase(databaseMetadata);
-                dispatch(setRequestState({ type: "database", id: dbId, state: "LOADED" }));
+                dispatch(setRequest({ type: "metadata/database", id: dbId, state: "LOADED" }));
                 return databaseMetadata;
             }
 
@@ -139,7 +126,7 @@ export const fetchDatabaseMetadata = createThunkAction(FETCH_DATABASE_METADATA, 
             return existingDatabase;
         }
         catch(error) {
-            dispatch(setRequestState(error, { type: 'database', id: dbId }));
+            dispatch(setRequest(error, { type: 'metadata/database', id: dbId }));
             return {};
         }
     };
@@ -151,7 +138,6 @@ const databases = handleActions({
 }, {});
 
 export default combineReducers({
-    requestState,
     metrics,
     lists,
     databases
