@@ -21,7 +21,7 @@ export const fetchMetrics = createThunkAction(FETCH_METRICS, (reload = false) =>
         try {
             const requestState = i.getIn(getState(), ["requests", "metadata/metrics"]);
             const existingMetrics = i.getIn(getState(), ["metadata", "metrics"]);
-
+            // FIXME: might also want to retry when requestState is an error
             if (!requestState || reload) {
                 dispatch(setRequest({ type: "metadata/metrics", state: "LOADING" }));
 
@@ -93,6 +93,8 @@ export const fetchDatabases = createThunkAction(FETCH_DATABASES, (reload = false
                 dispatch(setRequest({ type: "metadata/databases", state: "LOADED" }));
 
                 if (reload) {
+                    // FIXME: might want to clear requeststates for database metadata when this happens
+                    // reload param isn't actually being used with fetchDatabases yet though
                     return databaseMap;
                 }
 

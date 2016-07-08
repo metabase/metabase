@@ -83,16 +83,17 @@ SidebarSectionTitle.propTypes = {
     href:  PropTypes.string.isRequired,
 };
 
-const SidebarItem = ({ name, icon, href }) =>
+const SidebarItem = ({ name, sidebar, icon, href }) =>
     <li>
         <Link to={href} className={S.item} activeClassName={S.selected}>
             <LabelIcon className={S.icon} icon={icon}/>
-            <span className={S.name}>{name}</span>
+            <span className={S.name}>{sidebar || name}</span>
         </Link>
     </li>
 
 SidebarItem.propTypes = {
     name:  PropTypes.string.isRequired,
+    sidebar:  PropTypes.string,
     icon:  PropTypes.string.isRequired,
     href:  PropTypes.string.isRequired,
 };

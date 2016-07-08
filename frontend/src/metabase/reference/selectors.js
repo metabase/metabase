@@ -54,7 +54,8 @@ const getMetricSections = (metric) => metric ? {
     },
     [`/reference/metrics/${metric.id}/questions`]: {
         id: `/reference/metrics/${metric.id}/questions`,
-        name: "Questions about this metric",
+        name: `Questions about ${metric.name}`,
+        sidebar: 'Questions about this metric',
         breadcrumb: `${metric.name}`,
         fetch: {fetchMetrics: [], fetchQuestions: []},
         get: 'getMetricQuestions',
@@ -82,7 +83,8 @@ const getListSections = (list) => list ? {
     },
     [`/reference/lists/${list.id}/fields`]: {
         id: `/reference/lists/${list.id}/fields`,
-        name: "Fields in this list",
+        name: `Fields in ${list.name}`,
+        sidebar: 'Fields in this list',
         breadcrumb: `${list.name}`,
         icon: "all",
         parent: referenceSections[`/reference/lists`]
@@ -90,6 +92,7 @@ const getListSections = (list) => list ? {
     [`/reference/lists/${list.id}/questions`]: {
         id: `/reference/lists/${list.id}/questions`,
         name: `Questions about ${list.name}`,
+        sidebar: 'Questions about this list',
         breadcrumb: `${list.name}`,
         fetch: {fetchLists: [], fetchQuestions: []},
         get: 'getListQuestions',
@@ -117,7 +120,8 @@ const getDatabaseSections = (database) => database ? {
     },
     [`/reference/databases/${database.id}/tables`]: {
         id: `/reference/databases/${database.id}/tables`,
-        name: `Tables in this database`,
+        name: `Tables in ${database.name}`,
+        sidebar: 'Tables in this database',
         breadcrumb: `${database.name}`,
         fetch: {fetchDatabaseMetadata: [database.id]},
         get: 'getTables',
@@ -138,7 +142,8 @@ const getTableSections = (database, table) => database && table ? {
     },
     [`/reference/databases/${database.id}/tables/${table.id}/fields`]: {
         id: `/reference/databases/${database.id}/tables/${table.id}/fields`,
-        name: `Fields in this table`,
+        name: `Fields in ${table.name}`,
+        sidebar: 'Fields in this table',
         breadcrumb: `${table.name}`,
         fetch: {fetchDatabaseMetadata: [database.id]},
         icon: "star",
@@ -146,7 +151,8 @@ const getTableSections = (database, table) => database && table ? {
     },
     [`/reference/databases/${database.id}/tables/${table.id}/questions`]: {
         id: `/reference/databases/${database.id}/tables/${table.id}/questions`,
-        name: `Questions about this table`,
+        name: `Questions about ${table.name}`,
+        sidebar: 'Questions about this table',
         breadcrumb: `${table.name}`,
         fetch: {fetchDatabaseMetadata: [database.id], fetchQuestions: []},
         get: 'getTableQuestions',
