@@ -9,7 +9,7 @@
                              [view-log :refer [ViewLog]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [match-$ expect-with-temp resolve-private-fns]]]]
+            [metabase.test.util :refer [match-$ expect-with-temp resolve-private-fns]]
             [metabase.util :as u]))
 
 ;; GET /
