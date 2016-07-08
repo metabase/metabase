@@ -118,18 +118,9 @@ export default class SettingsSingleSignOnForm extends Component {
                     />
                     <div className="py3">
                         <div className="flex align-center">
-                            <CheckBox
-                                className="inline-block pr2"
-                                style={{verticalAlign: "top"}}
-                                checked={!!this.state.domainValue}
-                                onChange={hasClientID ? this.onCheckboxClicked : null}
-                                invertChecked
-                                checkColor={hasClientID ? '#409ee3' : '#aaaaaa'}
-                                size={20}
-                            />
                             <p className="text-grey-4">Allow users to sign up on their own if their Google account email address is from:</p>
                         </div>
-                        <div className="mt1 ml4 bordered rounded inline-block">
+                        <div className="mt1 bordered rounded inline-block">
                             <div className="inline-block px2 h2">@</div>
                             <Input
                                 className="SettingsInput inline-block AdminInput h3 border-left"
