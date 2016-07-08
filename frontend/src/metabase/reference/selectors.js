@@ -323,7 +323,7 @@ const mapFetchToRequestStatePaths = (fetch) => {
     });
 };
 
-const getRequests = (state) => i.getIn(state, ['metadata', 'requestState']);
+const getRequests = (state) => i.getIn(state, ['requests']);
 
 const getRequestPaths = createSelector(
     [getSection],
