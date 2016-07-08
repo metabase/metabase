@@ -56,7 +56,7 @@ const getMetricSections = (metric) => metric ? {
         id: `/reference/metrics/${metric.id}/questions`,
         name: "Questions about this metric",
         breadcrumb: `${metric.name}`,
-        fetch: {fetchQuestions: []},
+        fetch: {fetchMetrics: [], fetchQuestions: []},
         get: 'getMetricQuestions',
         icon: "all",
         parent: referenceSections[`/reference/metrics`]
@@ -91,7 +91,7 @@ const getListSections = (list) => list ? {
         id: `/reference/lists/${list.id}/questions`,
         name: `Questions about ${list.name}`,
         breadcrumb: `${list.name}`,
-        fetch: {fetchQuestions: []},
+        fetch: {fetchLists: [], fetchQuestions: []},
         get: 'getListQuestions',
         icon: "all",
         parent: referenceSections[`/reference/lists`]
@@ -148,8 +148,8 @@ const getTableSections = (database, table) => database && table ? {
         id: `/reference/databases/${database.id}/tables/${table.id}/questions`,
         name: `Questions about this table`,
         breadcrumb: `${table.name}`,
-        //TODO: make this more flexible, needs to fetch both questions and database metadata
         fetch: {fetchDatabaseMetadata: [database.id], fetchQuestions: []},
+        get: 'getTableQuestions',
         icon: "star",
         parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
     },
@@ -241,6 +241,12 @@ const getListQuestions = createSelector(
         .reduce((map, question) => i.assoc(map, question.id, question), {})
 );
 
+const getTableQuestions = createSelector(
+    [getTable, getQuestions],
+    (table, questions) => Object.values(questions)
+        .filter(question => question.table_id === table.id)
+);
+
 export const getSections = createSelector(
     [getSectionId, getMetric, getList, getDatabase, getTable, getReferenceSections],
     (sectionId, metric, list, database, table, referenceSections) => {
@@ -288,6 +294,7 @@ const dataSelectors = {
     getDatabase,
     getDatabases,
     getTable,
+    getTableQuestions,
     getTables,
 };
 
@@ -304,8 +311,8 @@ export const getData = (state) => {
     return selector(state);
 };
 
-const mapFetchToRequestStatePaths = (fetch) => {
-    return Object.keys(fetch).map(key => {
+const mapFetchToRequestStatePaths = (fetch) => fetch ?
+    Object.keys(fetch).map(key => {
         switch(key) {
             case 'fetchQuestions':
                 return ['questions/all'];
@@ -320,8 +327,7 @@ const mapFetchToRequestStatePaths = (fetch) => {
             default:
                 return [];
         }
-    });
-};
+    }) : [];
 
 const getRequests = (state) => i.getIn(state, ['requests']);
 
