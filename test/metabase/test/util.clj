@@ -207,7 +207,7 @@
   WithTempDefaults
   {:with-temp-defaults (fn [_] {:first_name (random-name)
                                 :last_name  (random-name)
-                                :email      (random-name)
+                                :email      (str (random-name) "@metabase.com")
                                 :password   (random-name)})})
 
 
