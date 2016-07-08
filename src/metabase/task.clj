@@ -34,7 +34,7 @@
   (when-not @quartz-scheduler
     (log/debug "Starting Quartz Scheduler")
     ;; keep a reference to our scheduler
-    (reset! quartz-scheduler (-> (qs/initialize) qs/start))
+    (reset! quartz-scheduler (qs/start (qs/initialize)))
     ;; look for job/trigger definitions
     (find-and-load-tasks!)))
 

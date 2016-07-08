@@ -89,7 +89,7 @@
      :is_full_sync    false
      :organization_id nil
      :description     nil
-     :features        (into [] (driver/features (driver/engine->driver :postgres)))})
+     :features        (vec (driver/features (driver/engine->driver :postgres)))})
   (Database (:id db)))
 
 
