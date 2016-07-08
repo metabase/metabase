@@ -5,7 +5,6 @@
             [metabase.db :as db]
             (metabase.models [common :as common]
                              [field-values :refer [FieldValues]]
-                             [foreign-key :refer [ForeignKey]]
                              [interface :as i])
             [metabase.util :as u]))
 
@@ -88,8 +87,6 @@
 
 (defn- pre-cascade-delete [{:keys [id]}]
   (db/cascade-delete! Field :parent_id id)
-  (db/cascade-delete! ForeignKey {:where [:or [:= :origin_id id]
-                                              [:= :destination_id id]]})
   (db/cascade-delete! 'FieldValues :field_id id))
 
 (defn ^:hydrate target
