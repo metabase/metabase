@@ -25,6 +25,21 @@
 (defmethod hformat/fn-handler "extract" [_ unit expr]
   (str "extract(" (name unit) " from " (hformat/to-sql expr) ")"))
 
+;; we use :in all over the place and occasionally run into issues where queries barf because the values arg is nil/empty (SQL WHERE x IN () is invalid)
+;; or where the query is "hairier" than it needs to be, such as duplicate values (SQL WHERE x IN (1, 1, 1, 2, 3))
+;; So override the default handling of `in` and work our own magic
+;; (It's still better not to run the query in the first place, but better to do an extra query than to barf)
+(defmethod hformat/fn-handler "in" [_ column values]
+  (if-not (seq values)
+    (hformat/to-sql false) ; WHERE x IN (), if valid, could never be true; so just put a WHERE FALSE here instead
+    (str "(" (hformat/to-sql column) " in " (hformat/to-sql (set values)) ")")))
+
+;; do the same for not-in (alias for "not in")
+(defmethod hformat/fn-handler "not in" [_ column values]
+  (if-not (seq values)
+    (hformat/to-sql true)
+    (str "(" (hformat/to-sql column) " not in " (hformat/to-sql (set values)) ")")))
+
 ;; HoneySQL automatically assumes that dots within keywords are used to separate schema / table / field / etc.
 ;; To handle weird situations where people actually put dots *within* a single identifier we'll replace those dots with lozenges,
 ;; let HoneySQL do its thing, then switch them back at the last second
