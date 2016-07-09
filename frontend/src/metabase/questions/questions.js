@@ -63,8 +63,7 @@ export const selectSection = createThunkAction(SELECT_SECTION, (section = "all",
         if (slug) {
             section += "-" + slug;
         }
-        console.log(response);
-        console.log({ type, section, ...normalize(response, arrayOf(card)) });
+        
         return { type, section, ...normalize(response, arrayOf(card)) };
     }
 });

@@ -63,9 +63,10 @@ const getMetricSections = (metric) => metric ? {
     },
     [`/reference/metrics/${metric.id}/revisions`]: {
         id: `/reference/metrics/${metric.id}/revisions`,
-        name: "Revision history",
+        name: `Revision history for ${metric.name}`,
+        sidebar: 'Revision history',
         breadcrumb: `${metric.name}`,
-        fetch: {fetchMetrics: [], fetchRevisions: ['metric', metric.id]},
+        fetch: {fetchMetrics: [], fetchRevisions: ['metric', metric.id], fetchTableMetadata: [metric.table_id]},
         get: 'getMetricRevisions',
         icon: "all",
         parent: referenceSections[`/reference/metrics`]
@@ -203,7 +204,7 @@ export const getSectionId = (state) => state.router.location.pathname;
 
 export const getMetricId = (state) => state.router.params.metricId;
 const getMetrics = (state) => state.metadata.metrics;
-const getMetric = createSelector(
+export const getMetric = createSelector(
     [getMetricId, getMetrics],
     (metricId, metrics) => metrics[metricId] || { id: metricId }
 );
@@ -223,7 +224,7 @@ const getDatabase = createSelector(
 );
 
 export const getTableId = (state) => state.router.params.tableId;
-const getTables = (state) => state.metadata.tables;
+export const getTables = (state) => state.metadata.tables;
 const getTablesByDatabase = createSelector(
     [getTables, getDatabase],
     (tables, database) => tables && database ? Object.values(tables)
@@ -284,7 +285,7 @@ const getRevisions = (state) => {console.log(state.metadata); return state.metad
 
 const getMetricRevisions = createSelector(
     [getMetricId, getRevisions],
-    (metricId, revisions) => i.getIn(revisions, ['metric', metricId])
+    (metricId, revisions) => i.getIn(revisions, ['metric', metricId]) || {}
 );
 
 const filterListQuestions = (listId, question) => {
@@ -460,3 +461,5 @@ export const getBreadcrumbs = createSelector(
     [getSection],
     buildBreadcrumbs
 )
+
+export const getUser = (state) => state.currentUser;

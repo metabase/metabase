@@ -2,7 +2,7 @@ import { handleActions, combineReducers, AngularResourceProxy, createAction, cre
 import { normalize, Schema, arrayOf } from 'normalizr';
 import i from "icepick";
 
-import { augmentDatabase } from "metabase/lib/table";
+import { augmentDatabase, loadTableAndForeignKeys } from "metabase/lib/table";
 import { setRequest } from "./requests";
 
 const database = new Schema('databases');
@@ -26,9 +26,9 @@ const FETCH_METRICS = "metabase/metadata/FETCH_METRICS";
 //TODO: refactor fetching actions with similar logic
 export const fetchMetrics = createThunkAction(FETCH_METRICS, (reload = false) => {
     return async (dispatch, getState) => {
+        const existingMetrics = i.getIn(getState(), ["metadata", "metrics"]);
         try {
             const requestState = i.getIn(getState(), ["requests", "metadata/metrics"]);
-            const existingMetrics = i.getIn(getState(), ["metadata", "metrics"]);
 
             if (!requestState || requestState.error || reload) {
                 dispatch(setRequest({ type: "metadata/metrics", state: "LOADING" }));
@@ -44,7 +44,7 @@ export const fetchMetrics = createThunkAction(FETCH_METRICS, (reload = false) =>
         }
         catch(error) {
             dispatch(setRequest(error, { type: 'metadata/metrics' }));
-            return {};
+            return existingMetrics;
         }
     };
 });
@@ -57,9 +57,9 @@ const FETCH_LISTS = "metabase/metadata/FETCH_LISTS";
 
 export const fetchLists = createThunkAction(FETCH_LISTS, (reload = false) => {
     return async (dispatch, getState) => {
+        const existingLists = i.getIn(getState(), ["metadata", "lists"]);
         try {
             const requestState = i.getIn(getState(), ["requests", "metadata/lists"]);
-            const existingLists = i.getIn(getState(), ["metadata", "lists"]);
 
             if (!requestState || requestState.error || reload) {
                 dispatch(setRequest({ type: "metadata/lists", state: "LOADING" }));
@@ -75,7 +75,7 @@ export const fetchLists = createThunkAction(FETCH_LISTS, (reload = false) => {
         }
         catch(error) {
             dispatch(setRequest(error, { type: 'metadata/lists' }));
-            return {};
+            return existingLists;
         }
     };
 });
@@ -89,9 +89,9 @@ const FETCH_DATABASE_METADATA = "metabase/metadata/FETCH_DATABASE_METADATA";
 
 export const fetchDatabases = createThunkAction(FETCH_DATABASES, (reload = false) => {
     return async (dispatch, getState) => {
+        const existingDatabases = i.getIn(getState(), ["metadata", "databases"]);
         try {
             const requestState = i.getIn(getState(), ["requests", "metadata/databases"]);
-            const existingDatabases = i.getIn(getState(), ["metadata", "databases"]);
 
             if (!requestState || requestState.error || reload) {
                 dispatch(setRequest({ type: "metadata/databases", state: "LOADING" }));
@@ -115,13 +115,14 @@ export const fetchDatabases = createThunkAction(FETCH_DATABASES, (reload = false
         }
         catch(error) {
             dispatch(setRequest(error, { type: 'metadata/databases' }));
-            return {};
+            return existingDatabases;
         }
     };
 });
 
 export const fetchDatabaseMetadata = createThunkAction(FETCH_DATABASE_METADATA, function(dbId, reload = false) {
     return async function(dispatch, getState) {
+        const existingMetadata = i.getIn(getState(), ["metadata"]);
         try {
             const requestState = i.getIn(getState(), ["requests", "metadata/database", dbId]);
             if (!requestState || requestState.error || reload) {
@@ -133,12 +134,11 @@ export const fetchDatabaseMetadata = createThunkAction(FETCH_DATABASE_METADATA, 
                 return normalize(databaseMetadata, database).entities;
             }
 
-            const existingMetadata = i.getIn(getState(), ["metadata"]);
             return existingMetadata;
         }
         catch(error) {
             dispatch(setRequest(error, { type: 'metadata/database', id: dbId }));
-            return {};
+            return existingMetadata;
         }
     };
 });
@@ -149,46 +149,73 @@ const databases = handleActions({
 }, {});
 
 const FETCH_TABLE_FIELDS = "metabase/metadata/FETCH_TABLE_FIELDS";
+const FETCH_TABLE_METADATA = "metabase/metadata/FETCH_TABLE_METADATA";
 
 export const fetchTableFields = createThunkAction(FETCH_TABLE_FIELDS, (tableId, reload = false) => {
     return async (dispatch, getState) => {
+        const existingTables = i.getIn(getState(), ["metadata", "tables"]);
         try {
             const requestState = i.getIn(getState(), ["requests", "metadata/table_fields", tableId]);
-            const existingTable = i.getIn(getState(), ["metadata", "tables", tableId]);
 
             if (!tableId) {
-                return existingTable;
+                return existingTables;
             }
 
             // no need to replace existing table since it would already have fields metadata
-            if (!requestState || !existingTable || requestState.error || reload) {
+            if (!requestState || !existingTables[tableId] || requestState.error || reload) {
                 dispatch(setRequest({ type: "metadata/table_fields", id: tableId, state: "LOADING" }));
                 const tableFields = await MetabaseApi.table_fields({ tableId });
+                const fields = tableFields
+                    .filter(resource => resource.id !== undefined);
+                const tables = i.assocIn(existingTables, [tableId], {id: tableId, fields});
+
                 dispatch(setRequest({ type: "metadata/table_fields", id: tableId, state: "LOADED" }));
 
-                const table = {
-                    id: tableId,
-                    fields: tableFields
-                        .filter(resource => resource.id !== undefined)
-                };
-
-                console.log(table);
-
-                return table;
+                return tables;
             }
 
-            return existingTable;
+            return existingTables;
         }
         catch(error) {
             dispatch(setRequest(error, { type: 'metadata/table_fields', id: tableId }));
-            return {};
+            return existingTables;
+        }
+    };
+});
+
+export const fetchTableMetadata = createThunkAction(FETCH_TABLE_METADATA, function(tableId, reload = false) {
+    return async function(dispatch, getState) {
+        console.log('test')
+        const existingTables = i.getIn(getState(), ["metadata", 'tables']);
+        const requestType = "metadata/table";
+
+        if (!tableId) {
+            return existingTables;
+        }
+
+        try {
+            const requestState = i.getIn(getState(), ["requests", requestType, tableId]);
+            if (!requestState || requestState.error || reload) {
+                dispatch(setRequest({ type: requestType, id: tableId, state: "LOADING" }));
+                const { table } = await loadTableAndForeignKeys(tableId);
+                const tables = i.assoc(existingTables, tableId, table);
+                dispatch(setRequest({ type: requestType, id: tableId, state: "LOADED" }));
+
+                return tables;
+            }
+
+            return existingTables;
+        }
+        catch(error) {
+            dispatch(setRequest(error, { type: requestType, id: tableId }));
+            return existingTables;
         }
     };
 });
 
 const tables = handleActions({
-    [FETCH_TABLE_FIELDS]: { next: (state, { payload }) => payload && payload.id ?
-        { ...state, [payload.id]: payload } : state },
+    [FETCH_TABLE_FIELDS]: { next: (state, { payload }) => payload },
+    [FETCH_TABLE_METADATA]: { next: (state, { payload }) => payload },
     [FETCH_DATABASE_METADATA]: { next: (state, { payload }) => ({ ...state, ...payload.tables }) }
 }, {});
 
@@ -206,6 +233,7 @@ export const fetchRevisions = createThunkAction(FETCH_REVISIONS, (type, id, relo
                 dispatch(setRequest({ type: requestType, id, state: "LOADING" }));
                 const revisions = await RevisionApi.get({id, entity: revisionType});
                 const revisionMap = resourceListToMap(revisions);
+                console.log(revisionMap);
                 dispatch(setRequest({ type: requestType, id, state: "LOADED" }));
 
                 return i.assocIn(existingRevisions, [revisionType, id], revisionMap);
