@@ -14,6 +14,8 @@ database.define({
 const MetabaseApi = new AngularResourceProxy("Metabase", ["db_list", "db_metadata", "table_fields"]);
 const MetricApi = new AngularResourceProxy("Metric", ["list"]);
 const SegmentApi = new AngularResourceProxy("Segment", ["list"]);
+const RevisionApi = new AngularResourceProxy("Revisions", ["get"]);
+
 
 const resourceListToMap = (resources) => resources
     //filters out angular cruft
@@ -27,7 +29,7 @@ export const fetchMetrics = createThunkAction(FETCH_METRICS, (reload = false) =>
         try {
             const requestState = i.getIn(getState(), ["requests", "metadata/metrics"]);
             const existingMetrics = i.getIn(getState(), ["metadata", "metrics"]);
-            // FIXME: might also want to retry when requestState is an error
+
             if (!requestState || requestState.error || reload) {
                 dispatch(setRequest({ type: "metadata/metrics", state: "LOADING" }));
 
@@ -124,7 +126,7 @@ export const fetchDatabaseMetadata = createThunkAction(FETCH_DATABASE_METADATA, 
             const requestState = i.getIn(getState(), ["requests", "metadata/database", dbId]);
             if (!requestState || requestState.error || reload) {
                 dispatch(setRequest({ type: "metadata/database", id: dbId, state: "LOADING" }));
-                let databaseMetadata = await MetabaseApi.db_metadata({ dbId });
+                const databaseMetadata = await MetabaseApi.db_metadata({ dbId });
                 augmentDatabase(databaseMetadata);
                 dispatch(setRequest({ type: "metadata/database", id: dbId, state: "LOADED" }));
 
@@ -161,10 +163,7 @@ export const fetchTableFields = createThunkAction(FETCH_TABLE_FIELDS, (tableId, 
             // no need to replace existing table since it would already have fields metadata
             if (!requestState || !existingTable || requestState.error || reload) {
                 dispatch(setRequest({ type: "metadata/table_fields", id: tableId, state: "LOADING" }));
-                console.log(tableId);
-                console.log(typeof tableId);
                 const tableFields = await MetabaseApi.table_fields({ tableId });
-                console.log(tableFields);
                 dispatch(setRequest({ type: "metadata/table_fields", id: tableId, state: "LOADED" }));
 
                 const table = {
@@ -193,9 +192,42 @@ const tables = handleActions({
     [FETCH_DATABASE_METADATA]: { next: (state, { payload }) => ({ ...state, ...payload.tables }) }
 }, {});
 
+const FETCH_REVISIONS = "metabase/metadata/FETCH_REVISIONS";
+
+export const fetchRevisions = createThunkAction(FETCH_REVISIONS, (type, id, reload = false) => {
+    return async (dispatch, getState) => {
+        const existingRevisions = i.getIn(getState(), ["metadata", "revisions"]);
+        const revisionType = type === 'list' ? 'segment' : type;
+        const requestType = `metadata/revisions/${revisionType}`;
+        try {
+            const requestState = i.getIn(getState(), ["requests", requestType, id]);
+
+            if (!requestState || requestState.error || reload) {
+                dispatch(setRequest({ type: requestType, id, state: "LOADING" }));
+                const revisions = await RevisionApi.get({id, entity: revisionType});
+                const revisionMap = resourceListToMap(revisions);
+                dispatch(setRequest({ type: requestType, id, state: "LOADED" }));
+
+                return i.assocIn(existingRevisions, [revisionType, id], revisionMap);
+            }
+
+            return existingRevisions;
+        }
+        catch(error) {
+            dispatch(setRequest(error, { type: requestType, id }));
+            return existingRevisions;
+        }
+    };
+});
+
+const revisions = handleActions({
+    [FETCH_REVISIONS]: { next: (state, { payload }) => payload }
+}, {});
+
 export default combineReducers({
     metrics,
     lists,
     databases,
-    tables
+    tables,
+    revisions
 });

@@ -61,10 +61,12 @@ const getMetricSections = (metric) => metric ? {
         icon: "all",
         parent: referenceSections[`/reference/metrics`]
     },
-    [`/reference/metrics/${metric.id}/history`]: {
-        id: `/reference/metrics/${metric.id}/history`,
+    [`/reference/metrics/${metric.id}/revisions`]: {
+        id: `/reference/metrics/${metric.id}/revisions`,
         name: "Revision history",
         breadcrumb: `${metric.name}`,
+        fetch: {fetchMetrics: [], fetchRevisions: ['metric', metric.id]},
+        get: 'getMetricRevisions',
         icon: "all",
         parent: referenceSections[`/reference/metrics`]
     }
@@ -102,8 +104,8 @@ const getListSections = (list) => list ? {
         icon: "all",
         parent: referenceSections[`/reference/lists`]
     },
-    [`/reference/lists/${list.id}/history`]: {
-        id: `/reference/lists/${list.id}/history`,
+    [`/reference/lists/${list.id}/revisions`]: {
+        id: `/reference/lists/${list.id}/revisions`,
         name: "Revision history",
         breadcrumb: `${list.name}`,
         icon: "all",
@@ -175,8 +177,8 @@ const getTableSections = (database, table) => database && table ? {
         icon: "star",
         parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
     },
-    [`/reference/databases/${database.id}/tables/${table.id}/history`]: {
-        id: `/reference/databases/${database.id}/tables/${table.id}/history`,
+    [`/reference/databases/${database.id}/tables/${table.id}/revisions`]: {
+        id: `/reference/databases/${database.id}/tables/${table.id}/revisions`,
         name: `Revision history`,
         breadcrumb: `${table.display_name}`,
         fetch: {fetchDatabaseMetadata: [database.id]},
@@ -278,6 +280,13 @@ const getMetricQuestions = createSelector(
         .reduce((map, question) => i.assoc(map, question.id, question), {})
 );
 
+const getRevisions = (state) => {console.log(state.metadata); return state.metadata.revisions;}
+
+const getMetricRevisions = createSelector(
+    [getMetricId, getRevisions],
+    (metricId, revisions) => i.getIn(revisions, ['metric', metricId])
+);
+
 const filterListQuestions = (listId, question) => {
     const filter = i.getIn(question, ['dataset_query', 'query', 'filter']);
     if (!filter) {
@@ -357,6 +366,7 @@ export const getSection = createSelector(
 const dataSelectors = {
     getMetric,
     getMetricQuestions,
+    getMetricRevisions,
     getMetrics,
     getList,
     getListQuestions,
@@ -393,6 +403,9 @@ const mapFetchToRequestStatePaths = (fetch) => fetch ?
                 return ['questions/all'];
             case 'fetchMetrics':
                 return ['metadata/metrics'];
+            case 'fetchMetricRevisions':
+                // this is getting a bit messy
+                return [`metadata/metrics/${fetch[key[0]]}`].concat(fetch[key[1]]);
             case 'fetchLists':
                 return ['metadata/lists'];
             case 'fetchDatabases':
