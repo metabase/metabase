@@ -121,6 +121,7 @@ export const fetchDatabaseMetadata = createThunkAction(FETCH_DATABASE_METADATA, 
                 let databaseMetadata = await MetabaseApi.db_metadata({ dbId });
                 augmentDatabase(databaseMetadata);
                 dispatch(setRequest({ type: "metadata/database", id: dbId, state: "LOADED" }));
+                console.log(databaseMetadata);
                 return databaseMetadata;
             }
 

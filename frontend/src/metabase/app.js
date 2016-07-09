@@ -153,6 +153,7 @@ angular.module('metabase', [
     $routeProvider.when('/reference/databases/:databaseId', route);
     $routeProvider.when('/reference/databases/:databaseId/tables', route);
     $routeProvider.when('/reference/databases/:databaseId/tables/:tableId', route);
+    $routeProvider.when('/reference/databases/:databaseId/tables/:tableId/fields', route);
     $routeProvider.when('/reference/databases/:databaseId/tables/:tableId/questions', route);
     $routeProvider.when('/reference/databases/:databaseId/tables/:tableId/questions/:cardId', route);
 

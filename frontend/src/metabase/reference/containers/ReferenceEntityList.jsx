@@ -70,7 +70,7 @@ export default class ReferenceEntityList extends Component {
                                     <li className="relative" key={entity.id}>
                                         <Item
                                             id={entity.id}
-                                            name={entity.name}
+                                            name={entity.display_name || entity.name}
                                             description={entity.description}
                                             url={`${section.id}/${entity.id}`}
                                             icon="star"

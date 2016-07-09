@@ -134,7 +134,7 @@ const getTableSections = (database, table) => database && table ? {
     [`/reference/databases/${database.id}/tables/${table.id}`]: {
         id: `/reference/databases/${database.id}/tables/${table.id}`,
         name: "Details",
-        breadcrumb: `${table.name}`,
+        breadcrumb: `${table.display_name}`,
         fetch: {fetchDatabaseMetadata: [database.id]},
         get: 'getTable',
         icon: "all",
@@ -142,18 +142,19 @@ const getTableSections = (database, table) => database && table ? {
     },
     [`/reference/databases/${database.id}/tables/${table.id}/fields`]: {
         id: `/reference/databases/${database.id}/tables/${table.id}/fields`,
-        name: `Fields in ${table.name}`,
+        name: `Fields in ${table.display_name}`,
         sidebar: 'Fields in this table',
-        breadcrumb: `${table.name}`,
+        breadcrumb: `${table.display_name}`,
         fetch: {fetchDatabaseMetadata: [database.id]},
+        get: "getFields",
         icon: "star",
         parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
     },
     [`/reference/databases/${database.id}/tables/${table.id}/questions`]: {
         id: `/reference/databases/${database.id}/tables/${table.id}/questions`,
-        name: `Questions about ${table.name}`,
+        name: `Questions about ${table.display_name}`,
         sidebar: 'Questions about this table',
-        breadcrumb: `${table.name}`,
+        breadcrumb: `${table.display_name}`,
         fetch: {fetchDatabaseMetadata: [database.id], fetchQuestions: []},
         get: 'getTableQuestions',
         icon: "star",
@@ -162,7 +163,7 @@ const getTableSections = (database, table) => database && table ? {
     [`/reference/databases/${database.id}/tables/${table.id}/history`]: {
         id: `/reference/databases/${database.id}/tables/${table.id}/history`,
         name: `Revision history`,
-        breadcrumb: `${table.name}`,
+        breadcrumb: `${table.display_name}`,
         fetch: {fetchDatabaseMetadata: [database.id]},
         icon: "star",
         parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
@@ -202,6 +203,16 @@ const getTables = createSelector(
 const getTable = createSelector(
     [getTableId, getTables],
     (tableId, tables) => tables[tableId] || { id: tableId }
+);
+
+const getFields = createSelector(
+    [getTable],
+    (table) => table && table.fields ?
+        table.fields.reduce((fieldMap, field) => i.assoc(fieldMap, field.id, field), {}) : {}
+);
+const getField = createSelector(
+    [getFieldId, getFields],
+    (fieldId, fields) => fields[fieldId] || { id: fieldId }
 );
 
 const getQuestions = (state) => i.getIn(state, ['questions', 'entities', 'cards']) || {};
@@ -302,6 +313,8 @@ const dataSelectors = {
     getTable,
     getTableQuestions,
     getTables,
+    getField,
+    getFields
 };
 
 export const getData = (state) => {

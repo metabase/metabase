@@ -46,7 +46,7 @@ export default class EntityItem extends Component {
             <div className="full">
                 <div className="wrapper wrapper--trim">
                     <div className={S.header}>
-                        {entity ? entity.name : ''}
+                        {entity ? entity.display_name || entity.name : ''}
                     </div>
                 </div>
                 <LoadingAndErrorWrapper loading={!error && loading} error={error}>
