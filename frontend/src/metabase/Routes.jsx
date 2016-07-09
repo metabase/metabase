@@ -88,6 +88,8 @@ export default class Routes extends Component {
                     <Redirect from="metrics/:metricId/questions/:cardId" to="/card/:cardId"/>
                     <Route path="lists" component={ReferenceEntityList} />
                     <Route path="lists/:listId" component={ReferenceEntity} />
+                    <Route path="lists/:listId/fields" component={ReferenceEntityList} />
+                    <Route path="lists/:listId/fields/:fieldId" component={ReferenceEntity} />
                     <Route path="lists/:listId/questions" component={ReferenceEntityList} />
                     <Redirect from="lists/:listId/questions/:cardId" to="/card/:cardId"/>
                     <Route path="databases" component={ReferenceEntityList} />

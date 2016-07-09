@@ -84,6 +84,10 @@ const getListSections = (list) => list ? {
         id: `/reference/lists/${list.id}/fields`,
         name: `Fields in ${list.name}`,
         sidebar: 'Fields in this list',
+        // FIXME: breaks if we refresh on this route, looks like a race condition
+        // fixed once we navigate away and back though
+        fetch: {fetchLists: [], fetchTableFields: [list.table_id]},
+        get: "getFieldsByList",
         breadcrumb: `${list.name}`,
         icon: "all",
         parent: referenceSections[`/reference/lists`]
@@ -107,6 +111,18 @@ const getListSections = (list) => list ? {
     }
 } : {};
 
+const getListFieldSections = (list, field) => list && field ? {
+    [`/reference/lists/${list.id}/fields/${field.id}`]: {
+        id: `/reference/lists/${list.id}/fields/${field.id}`,
+        name: `Details`,
+        breadcrumb: `${field.display_name}`,
+        fetch: {fetchLists: [], fetchTableFields: [list.table_id]},
+        get: "getFieldByList",
+        icon: "star",
+        parent: getListSections(list)[`/reference/lists/${list.id}/fields`]
+    }
+} : {};
+
 const getDatabaseSections = (database) => database ? {
     [`/reference/databases/${database.id}`]: {
         id: `/reference/databases/${database.id}`,
@@ -123,7 +139,7 @@ const getDatabaseSections = (database) => database ? {
         sidebar: 'Tables in this database',
         breadcrumb: `${database.name}`,
         fetch: {fetchDatabaseMetadata: [database.id]},
-        get: 'getTables',
+        get: 'getTablesByDatabase',
         icon: "star",
         parent: referenceSections[`/reference/databases`]
     }
@@ -205,15 +221,21 @@ const getDatabase = createSelector(
 );
 
 export const getTableId = (state) => state.router.params.tableId;
-const getTables = createSelector(
-    [getDatabase],
-    (database) => database && database.tables ?
-        database.tables.reduce((tableMap, table) => i.assoc(tableMap, table.id, table), {}) : {}
+const getTables = (state) => state.metadata.tables;
+const getTablesByDatabase = createSelector(
+    [getTables, getDatabase],
+    (tables, database) => tables && database ? Object.values(tables)
+        .filter(table => table.db_id === database.id)
+        .reduce((tableMap, table) => i.assoc(tableMap, table.id, table), {}) : {}
 );
 
 const getTable = createSelector(
     [getTableId, getTables],
     (tableId, tables) => tables[tableId] || { id: tableId }
+);
+const getTableByList = createSelector(
+    [getList, getTables],
+    (list, tables) => list ? tables[list.table_id] : {}
 );
 
 export const getFieldId = (state) => state.router.params.fieldId;
@@ -222,9 +244,18 @@ const getFields = createSelector(
     (table) => table && table.fields ?
         table.fields.reduce((fieldMap, field) => i.assoc(fieldMap, field.id, field), {}) : {}
 );
+const getFieldsByList = createSelector(
+    [getTableByList],
+    (table) => table && table.fields ?
+        table.fields.reduce((fieldMap, field) => i.assoc(fieldMap, field.id, field), {}) : {}
+);
 const getField = createSelector(
     [getFieldId, getFields],
     (fieldId, fields) => fields[fieldId] || { id: fieldId }
+);
+const getFieldByList = createSelector(
+    [getFieldId, getFieldsByList],
+    (fieldId, fields) => {console.log(fields); return fields[fieldId] || { id: fieldId }}
 );
 
 const getQuestions = (state) => i.getIn(state, ['questions', 'entities', 'cards']) || {};
@@ -294,6 +325,11 @@ export const getSections = createSelector(
             return listSections;
         }
 
+        const listFieldSections = getListFieldSections(list, field);
+        if (listFieldSections[sectionId]) {
+            return listFieldSections;
+        }
+
         const databaseSections = getDatabaseSections(database);
         if (databaseSections[sectionId]) {
             return databaseSections;
@@ -330,8 +366,11 @@ const dataSelectors = {
     getTable,
     getTableQuestions,
     getTables,
+    getTablesByDatabase,
     getField,
-    getFields
+    getFieldByList,
+    getFields,
+    getFieldsByList
 };
 
 export const getData = (state) => {
@@ -360,6 +399,8 @@ const mapFetchToRequestStatePaths = (fetch) => fetch ?
                 return ['metadata/databases'];
             case 'fetchDatabaseMetadata':
                 return ['metadata/database'].concat(fetch[key]);
+            case 'fetchTableFields':
+                return ['metadata/table_fields'].concat(fetch[key]);
             default:
                 return [];
         }
@@ -381,7 +422,7 @@ export const getLoading = createSelector(
 export const getError = createSelector(
     [getRequestPaths, getRequests],
     (requestPaths, requests) => requestPaths
-        .reduce((error, requestPath) => error || i.getIn(requests, requestPath.concat('error')), false)
+        .reduce((error, requestPath) => error || i.getIn(requests, requestPath.concat('error')), undefined)
 )
 
 const getBreadcrumb = (section, index, sections) => index !== sections.length - 1 ?

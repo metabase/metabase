@@ -147,6 +147,8 @@ angular.module('metabase', [
     $routeProvider.when('/reference/metrics/:metricId/questions/:cardId', route);
     $routeProvider.when('/reference/lists', route);
     $routeProvider.when('/reference/lists/:listId', route);
+    $routeProvider.when('/reference/lists/:listId/fields', route);
+    $routeProvider.when('/reference/lists/:listId/fields/:fieldId', route);
     $routeProvider.when('/reference/lists/:listId/questions', route);
     $routeProvider.when('/reference/lists/:listId/questions/:cardId', route);
     $routeProvider.when('/reference/databases', route);
