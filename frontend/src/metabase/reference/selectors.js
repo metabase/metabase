@@ -255,7 +255,7 @@ const getField = createSelector(
 );
 const getFieldByList = createSelector(
     [getFieldId, getFieldsByList],
-    (fieldId, fields) => {console.log(fields); return fields[fieldId] || { id: fieldId }}
+    (fieldId, fields) => fields[fieldId] || { id: fieldId }
 );
 
 const getQuestions = (state) => i.getIn(state, ['questions', 'entities', 'cards']) || {};
@@ -308,8 +308,8 @@ const getTableQuestions = createSelector(
 );
 
 export const getSections = createSelector(
-    [getSectionId, getMetric, getList, getDatabase, getTable, getField, getReferenceSections],
-    (sectionId, metric, list, database, table, field, referenceSections) => {
+    [getSectionId, getMetric, getList, getDatabase, getTable, getField, getFieldByList, getReferenceSections],
+    (sectionId, metric, list, database, table, field, fieldByList, referenceSections) => {
         // can be simplified if we had a single map of all sections
         if (referenceSections[sectionId]) {
             return referenceSections;
@@ -325,7 +325,7 @@ export const getSections = createSelector(
             return listSections;
         }
 
-        const listFieldSections = getListFieldSections(list, field);
+        const listFieldSections = getListFieldSections(list, fieldByList);
         if (listFieldSections[sectionId]) {
             return listFieldSections;
         }
