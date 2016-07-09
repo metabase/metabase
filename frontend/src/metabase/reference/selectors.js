@@ -4,8 +4,7 @@ import i from "icepick";
 //TODO: definitely lots of memoization opportunities here
 
 // there might be a better way to organize sections
-// maybe merge all of them into a single map for simpler lookup?
-// there might also be similar functionality in react/redux-router that could replace all of this
+// it feels like I'm duplicating a lot of routing logic here
 const referenceSections = {
     [`/reference/guide`]: {
         id: `/reference/guide`,
@@ -170,6 +169,18 @@ const getTableSections = (database, table) => database && table ? {
     }
 } : {};
 
+const getTableFieldSections = (database, table, field) => database && table && field ? {
+    [`/reference/databases/${database.id}/tables/${table.id}/fields/${field.id}`]: {
+        id: `/reference/databases/${database.id}/tables/${table.id}/fields/${field.id}`,
+        name: `Details`,
+        breadcrumb: `${field.display_name}`,
+        fetch: {fetchDatabaseMetadata: [database.id]},
+        get: "getField",
+        icon: "star",
+        parent: getTableSections(database, table)[`/reference/databases/${database.id}/tables/${table.id}/fields`]
+    }
+} : {};
+
 export const getSectionId = (state) => state.router.location.pathname;
 
 export const getMetricId = (state) => state.router.params.metricId;
@@ -205,6 +216,7 @@ const getTable = createSelector(
     (tableId, tables) => tables[tableId] || { id: tableId }
 );
 
+export const getFieldId = (state) => state.router.params.fieldId;
 const getFields = createSelector(
     [getTable],
     (table) => table && table.fields ?
@@ -265,8 +277,8 @@ const getTableQuestions = createSelector(
 );
 
 export const getSections = createSelector(
-    [getSectionId, getMetric, getList, getDatabase, getTable, getReferenceSections],
-    (sectionId, metric, list, database, table, referenceSections) => {
+    [getSectionId, getMetric, getList, getDatabase, getTable, getField, getReferenceSections],
+    (sectionId, metric, list, database, table, field, referenceSections) => {
         // can be simplified if we had a single map of all sections
         if (referenceSections[sectionId]) {
             return referenceSections;
@@ -290,6 +302,11 @@ export const getSections = createSelector(
         const tableSections = getTableSections(database, table);
         if (tableSections[sectionId]) {
             return tableSections;
+        }
+
+        const tableFieldSections = getTableFieldSections(database, table, field);
+        if (tableFieldSections[sectionId]) {
+            return tableFieldSections;
         }
 
         return {};
