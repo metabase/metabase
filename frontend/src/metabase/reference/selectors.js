@@ -398,7 +398,9 @@ const getParentSections = (section) => {
     return parentSections;
 };
 
-const buildBreadcrumbs = (section) => getParentSections(section).map(getBreadcrumb);
+const buildBreadcrumbs = (section) => getParentSections(section)
+    .map(getBreadcrumb)
+    .slice(-3);
 
 export const getBreadcrumbs = createSelector(
     [getSection],
