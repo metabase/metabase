@@ -95,6 +95,7 @@ export default class RevisionHistoryApp extends Component {
                             {Object.values(revisions)
                                 .map(revision => revision && revision.diff ?
                                     <Revision
+                                        key={revision.id}
                                         revision={revision || {}}
                                         tableMetadata={tables[entity.table_id] || {}}
                                         objectName={entity.name}
