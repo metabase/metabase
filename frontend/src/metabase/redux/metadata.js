@@ -185,7 +185,6 @@ export const fetchTableFields = createThunkAction(FETCH_TABLE_FIELDS, (tableId, 
 
 export const fetchTableMetadata = createThunkAction(FETCH_TABLE_METADATA, function(tableId, reload = false) {
     return async function(dispatch, getState) {
-        console.log('test')
         const existingTables = i.getIn(getState(), ["metadata", 'tables']);
         const requestType = "metadata/table";
 
@@ -224,19 +223,18 @@ const FETCH_REVISIONS = "metabase/metadata/FETCH_REVISIONS";
 export const fetchRevisions = createThunkAction(FETCH_REVISIONS, (type, id, reload = false) => {
     return async (dispatch, getState) => {
         const existingRevisions = i.getIn(getState(), ["metadata", "revisions"]);
-        const revisionType = type === 'list' ? 'segment' : type;
-        const requestType = `metadata/revisions/${revisionType}`;
+        const requestType = `metadata/revisions/${type}`;
         try {
             const requestState = i.getIn(getState(), ["requests", requestType, id]);
 
             if (!requestState || requestState.error || reload) {
                 dispatch(setRequest({ type: requestType, id, state: "LOADING" }));
+                const revisionType = type === 'list' ? 'segment' : type;
                 const revisions = await RevisionApi.get({id, entity: revisionType});
                 const revisionMap = resourceListToMap(revisions);
-                console.log(revisionMap);
                 dispatch(setRequest({ type: requestType, id, state: "LOADED" }));
 
-                return i.assocIn(existingRevisions, [revisionType, id], revisionMap);
+                return i.assocIn(existingRevisions, [type, id], revisionMap);
             }
 
             return existingRevisions;
@@ -249,7 +247,7 @@ export const fetchRevisions = createThunkAction(FETCH_REVISIONS, (type, id, relo
 });
 
 const revisions = handleActions({
-    [FETCH_REVISIONS]: { next: (state, { payload }) => payload }
+    [FETCH_REVISIONS]: { next: (state, { payload }) => {console.log(payload);return payload} }
 }, {});
 
 export default combineReducers({

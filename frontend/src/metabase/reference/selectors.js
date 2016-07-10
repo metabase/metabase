@@ -88,7 +88,8 @@ const getListSections = (list) => list ? {
         name: `Fields in ${list.name}`,
         sidebar: 'Fields in this list',
         // FIXME: breaks if we refresh on this route, looks like a race condition
-        // fixed once we navigate away and back though
+        // due to fetchTableFields being dependent on list.table_id from fetchLists
+        // resolves itself once we navigate away and back though
         fetch: {fetchLists: [], fetchTableFields: [list.table_id]},
         get: "getFieldsByList",
         breadcrumb: `${list.name}`,
@@ -107,8 +108,11 @@ const getListSections = (list) => list ? {
     },
     [`/reference/lists/${list.id}/revisions`]: {
         id: `/reference/lists/${list.id}/revisions`,
-        name: "Revision history",
+        name: `Revision history for ${list.name}`,
+        sidebar: 'Revision history',
         breadcrumb: `${list.name}`,
+        fetch: {fetchLists: [], fetchRevisions: ['list', list.id], fetchTableMetadata: [list.table_id]},
+        get: 'getListRevisions',
         icon: "all",
         parent: referenceSections[`/reference/lists`]
     }
@@ -211,7 +215,7 @@ export const getMetric = createSelector(
 
 export const getListId = (state) => state.router.params.listId;
 const getLists = (state) => state.metadata.lists;
-const getList = createSelector(
+export const getList = createSelector(
     [getListId, getLists],
     (listId, lists) => lists[listId] || { id: listId }
 );
@@ -281,11 +285,16 @@ const getMetricQuestions = createSelector(
         .reduce((map, question) => i.assoc(map, question.id, question), {})
 );
 
-const getRevisions = (state) => {console.log(state.metadata); return state.metadata.revisions;}
+const getRevisions = (state) => state.metadata.revisions;
 
 const getMetricRevisions = createSelector(
     [getMetricId, getRevisions],
     (metricId, revisions) => i.getIn(revisions, ['metric', metricId]) || {}
+);
+
+const getListRevisions = createSelector(
+    [getListId, getRevisions],
+    (listId, revisions) => i.getIn(revisions, ['list', listId]) || {}
 );
 
 const filterListQuestions = (listId, question) => {
@@ -371,6 +380,7 @@ const dataSelectors = {
     getMetrics,
     getList,
     getListQuestions,
+    getListRevisions,
     getLists,
     getDatabase,
     getDatabases,

@@ -12,6 +12,7 @@ import {
     getSection,
     getData,
     getMetric,
+    getList,
     getTables,
     getUser,
     getLoading,
@@ -27,6 +28,7 @@ const mapStateToProps = (state, props) => {
         section: getSection(state),
         revisions: getData(state),
         metric: getMetric(state),
+        list: getList(state),
         tables: getTables(state),
         user: getUser(state),
         loading: getLoading(state),
@@ -45,6 +47,7 @@ export default class RevisionHistoryApp extends Component {
         section: PropTypes.object.isRequired,
         revisions: PropTypes.object.isRequired,
         metric: PropTypes.object.isRequired,
+        list: PropTypes.object.isRequired,
         tables: PropTypes.object.isRequired,
         user: PropTypes.object.isRequired,
         loading: PropTypes.bool,
@@ -57,11 +60,15 @@ export default class RevisionHistoryApp extends Component {
             section,
             revisions,
             metric,
+            list,
             tables,
             user,
             loading,
             error
         } = this.props;
+
+        const entity = metric.id !== undefined ? metric : list;
+        console.log(entity);
 
         const empty = {
             icon: 'mine',
@@ -83,18 +90,20 @@ export default class RevisionHistoryApp extends Component {
                     </div>
                 </div>
                 <LoadingAndErrorWrapper loading={!error && loading} error={error}>
-                    { () => Object.keys(revisions).length > 0 && tables[metric.table_id] ?
+                    { () => Object.keys(revisions).length > 0 && tables[entity.table_id] ?
                         <div className="wrapper wrapper--trim">
                             {Object.values(revisions)
                                 .map(revision => revision && revision.diff ?
                                     <Revision
                                         revision={revision || {}}
-                                        tableMetadata={tables[metric.table_id] || {}}
-                                        objectName={metric.name}
+                                        tableMetadata={tables[entity.table_id] || {}}
+                                        objectName={entity.name}
                                         currentUser={user || {}}
                                         userColor={userColorAssignments[i.getIn(revision, ['user', 'id'])]}
-                                    /> : null
-                            )}
+                                    /> :
+                                    null)
+                                .reverse()
+                            }
                         </div>
                         :
                         <div className={S.empty}>
