@@ -6,12 +6,12 @@ import i from "icepick";
 // there might be a better way to organize sections
 // it feels like I'm duplicating a lot of routing logic here
 const referenceSections = {
-    [`/reference/guide`]: {
-        id: `/reference/guide`,
-        name: "Understanding our data",
-        breadcrumb: "Guide",
-        icon: "all"
-    },
+    // [`/reference/guide`]: {
+    //     id: `/reference/guide`,
+    //     name: "Understanding our data",
+    //     breadcrumb: "Guide",
+    //     icon: "all"
+    // },
     [`/reference/metrics`]: {
         id: `/reference/metrics`,
         name: "Metrics",
