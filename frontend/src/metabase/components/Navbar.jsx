@@ -36,7 +36,7 @@ export default class Navbar extends Component {
     }
 
     isActive(path) {
-        return this.props.location.path().indexOf(path) >= 0;
+        return this.props.location.path().startsWith(path);
     }
 
     renderAdminNav() {
