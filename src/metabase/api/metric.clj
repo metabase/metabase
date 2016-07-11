@@ -65,9 +65,8 @@
     (when (seq fields-to-remove)
       (db/delete! 'MetricImportantField {:metric_id id, :field_id [:in fields-to-remove]}))
     ;; add new fields as needed
-    (when (seq fields-to-add)
-      (db/insert-many! 'MetricImportantField (for [field-id fields-to-add]
-                                               {:metric_id id, :field_id field-id})))
+    (db/insert-many! 'MetricImportantField (for [field-id fields-to-add]
+                                             {:metric_id id, :field_id field-id}))
     ;; we're done (TODO - Do we want to return anything here?)
     {:success true}))
 

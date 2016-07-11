@@ -30,6 +30,7 @@
 
 ;; TODO - Endpoint for editing the settings above? Or just edit them the normal way via PUT /api/setting/:key ?
 ;; TODO - Endpoint for setting most_important_dashboard (?) Or just have people set it the normal way via PUT /api/dashboard/:id ?
+;;        If we keep the existing endpoint it might make sense to clear `show_in_getting_started` for other Dashboards whenever this is set
 ;; TODO - Endpoints for setting most important metrics / tables / segments ? Or just have people set them the normal way via PUT /api/.../:id ?
 
 (define-routes)
