@@ -5,6 +5,7 @@ import { connect } from "react-redux";
 
 import S from "metabase/components/List.css";
 import List from "metabase/components/List.jsx";
+import Item from "metabase/components/Item.jsx";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
@@ -19,7 +20,7 @@ import {
 import * as metadataActions from "metabase/redux/metadata";
 
 const mapStateToProps = (state, props) => ({
-    entity: getData(state),
+    entity: getData(state) || {},
     loading: getLoading(state),
     error: getError(state)
 });
@@ -46,31 +47,30 @@ export default class EntityItem extends Component {
             <div className="full">
                 <div className="wrapper wrapper--trim">
                     <div className={S.header}>
-                        {entity ? entity.display_name || entity.name : ''}
+                        {entity.display_name || entity.name}
                     </div>
                 </div>
                 <LoadingAndErrorWrapper loading={!error && loading} error={error}>
-                { () => entity ?
+                { () =>
                     <div className="wrapper wrapper--trim">
                         <List>
+                            { entity.display_name ?
+                                <li className="relative">
+                                    <Item
+                                        name="Actual name in database"
+                                        description={entity.name}
+                                    />
+                                </li> :
+                                null
+                            }
                             <li className="relative">
-                                <div className={cx(S.item)}>
-                                    <div className={S.leftIcons}>
-                                    </div>
-                                    <div className={S.itemBody}>
-                                        <div className={S.itemTitle}>
-                                            Description
-                                        </div>
-                                        <div className={cx(S.itemSubtitle, { "mt1" : true })}>
-                                            {entity.description || 'No description'}
-                                        </div>
-                                    </div>
-                                </div>
+                                <Item
+                                    name="Description"
+                                    description={entity.description || 'No description'}
+                                />
                             </li>
                         </List>
                     </div>
-                    :
-                    null
                 }
                 </LoadingAndErrorWrapper>
             </div>

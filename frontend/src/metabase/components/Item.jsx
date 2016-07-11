@@ -16,7 +16,10 @@ const Item = ({ id, name, description, url, icon }) =>
         </div>
         <div className={S.itemBody}>
             <div className={S.itemTitle}>
-                <Link to={url} className={S.itemName}>{name}</Link>
+                { url ?
+                    <Link to={url} className={S.itemName}>{name}</Link> :
+                    <span className={S.itemName}>{name}</span>
+                }
             </div>
             <div className={cx(S.itemSubtitle, { "mt1" : true })}>
               { description || "No description" }
@@ -25,9 +28,9 @@ const Item = ({ id, name, description, url, icon }) =>
     </div>
 
 Item.propTypes = {
-    id:                 PropTypes.number.isRequired,
+    id:                 PropTypes.number,
     name:               PropTypes.string.isRequired,
-    url:                PropTypes.string.isRequired,
+    url:                PropTypes.string,
     description:        PropTypes.string,
     icon:               PropTypes.string
 };
