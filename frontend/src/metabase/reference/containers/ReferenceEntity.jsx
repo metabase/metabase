@@ -15,7 +15,8 @@ import {
     getSection,
     getData,
     getError,
-    getLoading
+    getLoading,
+    getIsEditing
 } from "../selectors";
 
 import * as metadataActions from "metabase/redux/metadata";
@@ -24,7 +25,8 @@ const mapStateToProps = (state, props) => ({
     section: getSection(state),
     entity: getData(state) || {},
     loading: getLoading(state),
-    error: getError(state)
+    error: getError(state),
+    isEditing: getIsEditing(state)
 });
 
 const mapDispatchToProps = {
@@ -34,7 +36,8 @@ const mapDispatchToProps = {
 @connect(mapStateToProps, mapDispatchToProps)
 export default class EntityItem extends Component {
     static propTypes = {
-        entity: PropTypes.object
+        entity: PropTypes.object,
+        isEditing: PropTypes.bool
     };
 
     render() {
@@ -42,12 +45,26 @@ export default class EntityItem extends Component {
             section,
             entity,
             error,
-            loading
+            loading,
+            isEditing,
         } = this.props;
 
         // TODO: style this properly, currently just reusing list style
         return (
             <div className="full">
+                { isEditing &&
+                    <div
+                        style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            height: '40px',
+                            backgroundColor: '#6CAFED'
+                        }}
+                    >
+                    </div>
+                }
                 <div className="wrapper wrapper--trim">
                     <div className={S.header}>
                         {entity.display_name || entity.name}

@@ -7,6 +7,7 @@ import Sidebar from 'metabase/components/Sidebar.jsx';
 import SidebarLayout from 'metabase/components/SidebarLayout.jsx';
 
 import * as metadataActions from 'metabase/redux/metadata';
+import * as actions from 'metabase/reference/reference';
 
 import {
     getDatabaseId,
@@ -32,7 +33,8 @@ const mapStateToProps = (state, props) => ({
 
 const mapDispatchToProps = {
     fetchQuestions,
-    ...metadataActions
+    ...metadataActions,
+    ...actions
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -42,7 +44,7 @@ export default class ReferenceApp extends Component {
         children:       PropTypes.any.isRequired,
         sections:       PropTypes.object.isRequired,
         section:       PropTypes.object.isRequired,
-        isEditing: PropTypes.boolean
+        isEditing: PropTypes.bool
     };
 
     componentWillMount() {

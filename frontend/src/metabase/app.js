@@ -49,6 +49,9 @@ import labels from "metabase/questions/labels";
 import undo from "metabase/questions/undo";
 import * as qb from "metabase/query_builder/reducers";
 
+/* data reference */
+import reference from "metabase/reference/reference";
+
 /* pulses */
 import * as pulse from "metabase/pulse/reducers";
 
@@ -80,6 +83,7 @@ const reducers = combineReducers({
     pulse: combineReducers(pulse),
     qb: combineReducers(qb),
     questions,
+    reference,
     setup: combineReducers(setup),
     undo,
     user: combineReducers(user),
@@ -143,28 +147,22 @@ angular.module('metabase', [
     $routeProvider.when('/reference/guide', route);
     $routeProvider.when('/reference/metrics', route);
     $routeProvider.when('/reference/metrics/:metricId', route);
-    $routeProvider.when('/reference/metrics/:metricId/edit', route);
     $routeProvider.when('/reference/metrics/:metricId/questions', route);
     $routeProvider.when('/reference/metrics/:metricId/questions/:cardId', route);
     $routeProvider.when('/reference/metrics/:metricId/revisions', route);
     $routeProvider.when('/reference/lists', route);
     $routeProvider.when('/reference/lists/:listId', route);
-    $routeProvider.when('/reference/lists/:listId/edit', route);
     $routeProvider.when('/reference/lists/:listId/fields', route);
     $routeProvider.when('/reference/lists/:listId/fields/:fieldId', route);
-    $routeProvider.when('/reference/lists/:listId/fields/:fieldId/edit', route);
     $routeProvider.when('/reference/lists/:listId/questions', route);
     $routeProvider.when('/reference/lists/:listId/questions/:cardId', route);
     $routeProvider.when('/reference/lists/:listId/revisions', route);
     $routeProvider.when('/reference/databases', route);
     $routeProvider.when('/reference/databases/:databaseId', route);
-    $routeProvider.when('/reference/databases/:databaseId/edit', route);
     $routeProvider.when('/reference/databases/:databaseId/tables', route);
     $routeProvider.when('/reference/databases/:databaseId/tables/:tableId', route);
-    $routeProvider.when('/reference/databases/:databaseId/tables/:tableId/edit', route);
     $routeProvider.when('/reference/databases/:databaseId/tables/:tableId/fields', route);
     $routeProvider.when('/reference/databases/:databaseId/tables/:tableId/fields/:fieldId', route);
-    $routeProvider.when('/reference/databases/:databaseId/tables/:tableId/fields/:fieldId/edit', route);
     $routeProvider.when('/reference/databases/:databaseId/tables/:tableId/questions', route);
     $routeProvider.when('/reference/databases/:databaseId/tables/:tableId/questions/:cardId', route);
 

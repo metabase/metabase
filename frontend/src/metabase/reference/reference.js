@@ -1,13 +1,15 @@
-import { createAction, createThunkAction } from 'metabase/lib/redux';
+import { handleActions, createAction, createThunkAction } from 'metabase/lib/redux';
 
 import i from 'icepick';
 
-const initialState = {};
-// Placeholder reducer for gettings started guide state
-// State for everything else is stored in metabase/redux/metadata
-export default (state = initialState, { type, payload, error }) => {
-    switch (type) {
-        default:
-            return state;
+const TOGGLE_EDITING = "metabase/reference/TOGGLE_EDITING";
+export const toggleEditing = createAction(TOGGLE_EDITING);
+
+const initialState = {
+    isEditing: false
+};
+export default handleActions({
+    [TOGGLE_EDITING]: {
+        next: (state) => i.assoc(state, 'isEditing', !state['isEditing'])
     }
-}
+}, initialState);
