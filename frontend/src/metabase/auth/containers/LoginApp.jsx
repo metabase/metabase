@@ -75,11 +75,11 @@ export default class LoginApp extends Component {
                   });
                   auth2.attachClickHandler(ssoLoginButton, {},
                       (googleUser) => loginGoogle(googleUser, onChangeLocation),
-                      (err) => console.error('err', err)
+                      (error) => console.error('There was an error logging in', error)
                   );
                 })
-            } catch (e) {
-                console.error('error rendering google auth login button: ', e);
+            } catch (error) {
+                console.error('Error attaching Google Auth handler: ', error);
             }
         }
         attachGoogleAuth();
