@@ -3,7 +3,6 @@ import React, { Component, PropTypes } from "react";
 import cx from "classnames";
 import _ from "underscore";
 
-import CheckBox from "metabase/components/CheckBox.jsx";
 import Input from "metabase/components/Input.jsx";
 
 export default class SettingsSingleSignOnForm extends Component {
