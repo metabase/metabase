@@ -186,14 +186,6 @@ const getTableSections = (database, table) => database && table ? {
         get: 'getTableQuestions',
         icon: "star",
         parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
-    },
-    [`/reference/databases/${database.id}/tables/${table.id}/revisions`]: {
-        id: `/reference/databases/${database.id}/tables/${table.id}/revisions`,
-        name: `Revision history`,
-        breadcrumb: `${table.display_name}`,
-        fetch: {fetchDatabaseMetadata: [database.id]},
-        icon: "star",
-        parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
     }
 } : {};
 
