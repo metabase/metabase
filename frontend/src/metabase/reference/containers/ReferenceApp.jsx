@@ -13,7 +13,8 @@ import {
     getSectionId,
     getSections,
     getSection,
-    getBreadcrumbs
+    getBreadcrumbs,
+    getIsEditing
 } from '../selectors';
 
 import {
@@ -25,7 +26,8 @@ const mapStateToProps = (state, props) => ({
     databaseId: getDatabaseId(state),
     sections: getSections(state),
     section: getSection(state),
-    breadcrumbs: getBreadcrumbs(state)
+    breadcrumbs: getBreadcrumbs(state),
+    isEditing: getIsEditing(state)
 });
 
 const mapDispatchToProps = {
@@ -40,8 +42,7 @@ export default class ReferenceApp extends Component {
         children:       PropTypes.any.isRequired,
         sections:       PropTypes.object.isRequired,
         section:       PropTypes.object.isRequired,
-        sectionId:       PropTypes.string.isRequired,
-        databaseId:       PropTypes.string
+        isEditing: PropTypes.boolean
     };
 
     componentWillMount() {
@@ -71,12 +72,19 @@ export default class ReferenceApp extends Component {
     }
 
     render() {
+        const {
+            children,
+            isEditing
+        } = this.props;
         return (
-            <SidebarLayout
-                sidebar={<Sidebar {...this.props} />}
-            >
-                {this.props.children}
-            </SidebarLayout>
+            <div>
+                <SidebarLayout
+                    style={ isEditing && { paddingTop: '40px' }}
+                    sidebar={<Sidebar {...this.props} />}
+                >
+                    {children}
+                </SidebarLayout>
+            </div>
         )
     }
 }

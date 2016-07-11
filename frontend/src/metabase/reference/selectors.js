@@ -471,3 +471,5 @@ export const getBreadcrumbs = createSelector(
 )
 
 export const getUser = (state) => state.currentUser;
+
+export const getIsEditing = (state) => state.router.location.pathname.endsWith('/edit');
