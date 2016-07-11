@@ -44,7 +44,8 @@ const getReferenceSections = (state) => referenceSections;
 const getMetricSections = (metric) => metric ? {
     [`/reference/metrics/${metric.id}`]: {
         id: `/reference/metrics/${metric.id}`,
-        name: "Details",
+        name: 'Details',
+        type: 'metric',
         breadcrumb: `${metric.name}`,
         fetch: {fetchMetrics: []},
         get: 'getMetric',
@@ -76,7 +77,8 @@ const getMetricSections = (metric) => metric ? {
 const getListSections = (list) => list ? {
     [`/reference/lists/${list.id}`]: {
         id: `/reference/lists/${list.id}`,
-        name: "Details",
+        name: 'Details',
+        type: 'list',
         breadcrumb: `${list.name}`,
         fetch: {fetchLists: []},
         get: 'getList',
@@ -121,7 +123,8 @@ const getListSections = (list) => list ? {
 const getListFieldSections = (list, field) => list && field ? {
     [`/reference/lists/${list.id}/fields/${field.id}`]: {
         id: `/reference/lists/${list.id}/fields/${field.id}`,
-        name: `Details`,
+        name: 'Details',
+        type: 'list',
         breadcrumb: `${field.display_name}`,
         fetch: {fetchLists: [], fetchTableFields: [list.table_id]},
         get: "getFieldByList",
@@ -133,7 +136,8 @@ const getListFieldSections = (list, field) => list && field ? {
 const getDatabaseSections = (database) => database ? {
     [`/reference/databases/${database.id}`]: {
         id: `/reference/databases/${database.id}`,
-        name: "Details",
+        name: 'Details',
+        type: 'database',
         breadcrumb: `${database.name}`,
         fetch: {fetchDatabaseMetadata: [database.id]},
         get: 'getDatabase',
@@ -155,7 +159,8 @@ const getDatabaseSections = (database) => database ? {
 const getTableSections = (database, table) => database && table ? {
     [`/reference/databases/${database.id}/tables/${table.id}`]: {
         id: `/reference/databases/${database.id}/tables/${table.id}`,
-        name: "Details",
+        name: 'Details',
+        type: 'database',
         breadcrumb: `${table.display_name}`,
         fetch: {fetchDatabaseMetadata: [database.id]},
         get: 'getTable',
@@ -195,7 +200,8 @@ const getTableSections = (database, table) => database && table ? {
 const getTableFieldSections = (database, table, field) => database && table && field ? {
     [`/reference/databases/${database.id}/tables/${table.id}/fields/${field.id}`]: {
         id: `/reference/databases/${database.id}/tables/${table.id}/fields/${field.id}`,
-        name: `Details`,
+        name: 'Details',
+        type: 'database',
         breadcrumb: `${field.display_name}`,
         fetch: {fetchDatabaseMetadata: [database.id]},
         get: "getField",

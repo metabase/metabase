@@ -12,6 +12,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.j
 import cx from "classnames";
 
 import {
+    getSection,
     getData,
     getError,
     getLoading
@@ -20,6 +21,7 @@ import {
 import * as metadataActions from "metabase/redux/metadata";
 
 const mapStateToProps = (state, props) => ({
+    section: getSection(state),
     entity: getData(state) || {},
     loading: getLoading(state),
     error: getError(state)
@@ -37,6 +39,7 @@ export default class EntityItem extends Component {
 
     render() {
         const {
+            section,
             entity,
             error,
             loading
@@ -54,6 +57,12 @@ export default class EntityItem extends Component {
                 { () =>
                     <div className="wrapper wrapper--trim">
                         <List>
+                            <li className="relative">
+                                <Item
+                                    name="Description"
+                                    description={entity.description || 'No description'}
+                                />
+                            </li>
                             { entity.display_name ?
                                 <li className="relative">
                                     <Item
@@ -65,8 +74,14 @@ export default class EntityItem extends Component {
                             }
                             <li className="relative">
                                 <Item
-                                    name="Description"
-                                    description={entity.description || 'No description'}
+                                    name={`Why this ${section.type} is interesting`}
+                                    description={entity.insights || 'No description'}
+                                />
+                            </li>
+                            <li className="relative">
+                                <Item
+                                    name={`Things to be aware of about this ${section.type}`}
+                                    description={entity.facts || 'No description'}
                                 />
                             </li>
                         </List>
