@@ -9,7 +9,7 @@
                              [view-log :refer [ViewLog]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [match-$ random-name expect-with-temp resolve-private-fns]]
+            [metabase.test.util :refer [match-$ expect-with-temp resolve-private-fns]]
             [metabase.util :as u]))
 
 ;; GET /
@@ -99,17 +99,28 @@
       :table        nil
       :custom_id    nil
       :details      $})]
-  (->> ((user->client :crowberto) :get 200 "activity")
-       (map #(dissoc % :timestamp))))
+  (for [activity ((user->client :crowberto) :get 200 "activity")]
+    (dissoc activity :timestamp)))
 
 
-;; GET /recent_views
+;;; GET /recent_views
 
-; Things we are testing for:
-;  1. ordering is sorted by most recent
-;  2. results are filtered to current user
-;  3. `:model_object` is hydrated in each result
-;  4. we filter out entries where `:model_object` is nil (object doesn't exist)
+;; Things we are testing for:
+;;  1. ordering is sorted by most recent
+;;  2. results are filtered to current user
+;;  3. `:model_object` is hydrated in each result
+;;  4. we filter out entries where `:model_object` is nil (object doesn't exist)
+
+(defn- create-view! [user model model-id]
+  (db/insert! ViewLog
+    :user_id  user
+    :model    model
+    :model_id model-id
+    :timestamp (u/new-sql-timestamp))
+  ;; we sleep a bit to ensure no events have the same timestamp
+  ;; sadly, MySQL doesn't support milliseconds so we have to wait a second
+  ;; otherwise our records are out of order and this test fails :(
+  (Thread/sleep 1000))
 
 (expect-with-temp [Card      [card1 {:name                   "rand-name"
                                      :creator_id             (user->id :crowberto)
@@ -127,47 +138,37 @@
                                      :display                "table"
                                      :dataset_query          {}
                                      :visualization_settings {}}]]
-  [{:cnt      1
-    :user_id  (user->id :crowberto)
-    :model    "card"
-    :model_id (:id card1)
+  [{:cnt          1
+    :user_id      (user->id :crowberto)
+    :model        "card"
+    :model_id     (:id card1)
     :model_object {:id          (:id card1)
                    :name        (:name card1)
                    :description (:description card1)
                    :display     (name (:display card1))}}
-   {:cnt      1
-    :user_id  (user->id :crowberto)
-    :model    "dashboard"
-    :model_id (:id dash1)
+   {:cnt          1
+    :user_id      (user->id :crowberto)
+    :model        "dashboard"
+    :model_id     (:id dash1)
     :model_object {:id          (:id dash1)
                    :name        (:name dash1)
                    :description (:description dash1)}}
-   {:cnt      1
-    :user_id  (user->id :crowberto)
-    :model    "card"
-    :model_id (:id card2)
+   {:cnt          1
+    :user_id      (user->id :crowberto)
+    :model        "card"
+    :model_id     (:id card2)
     :model_object {:id          (:id card2)
                    :name        (:name card2)
                    :description (:description card2)
                    :display     (name (:display card2))}}]
-  (let [create-view (fn [user model model-id]
-                      (db/insert! ViewLog
-                        :user_id  user
-                        :model    model
-                        :model_id model-id
-                        :timestamp (u/new-sql-timestamp))
-                      ;; we sleep a bit to ensure no events have the same timestamp
-                      ;; sadly, MySQL doesn't support milliseconds so we have to wait a second
-                      ;; otherwise our records are out of order and this test fails :(
-                      (Thread/sleep 1000))]
-    (do
-      (create-view (user->id :crowberto) "card" (:id card2))
-      (create-view (user->id :crowberto) "dashboard" (:id dash1))
-      (create-view (user->id :crowberto) "card" (:id card1))
-      (create-view (user->id :crowberto) "card" 36478)
-      (create-view (user->id :rasta) "card" (:id card1))
-      (->> ((user->client :crowberto) :get 200 "activity/recent_views")
-           (map #(dissoc % :max_ts))))))
+  (do
+    (create-view! (user->id :crowberto) "card"      (:id card2))
+    (create-view! (user->id :crowberto) "dashboard" (:id dash1))
+    (create-view! (user->id :crowberto) "card"      (:id card1))
+    (create-view! (user->id :crowberto) "card"      36478)
+    (create-view! (user->id :rasta)     "card"      (:id card1))
+    (for [recent-view ((user->client :crowberto) :get 200 "activity/recent_views")]
+      (dissoc recent-view :max_ts))))
 
 
 ;;; activities->referenced-objects, referenced-objects->existing-objects, add-model-exists-info
