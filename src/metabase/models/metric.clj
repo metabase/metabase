@@ -12,13 +12,17 @@
 
 (i/defentity Metric :metric)
 
+(defn- pre-cascade-delete [{:keys [id]}]
+  (db/cascade-delete! 'MetricImportantField :metric_id id))
+
 (u/strict-extend (class Metric)
   i/IEntity
   (merge i/IEntityDefaults
-         {:types         (constantly {:definition :json, :description :clob})
-          :timestamped?  (constantly true)
-          :can-read?     (constantly true)
-          :can-write?    i/superuser?}))
+         {:types              (constantly {:definition :json, :description :clob})
+          :timestamped?       (constantly true)
+          :can-read?          (constantly true)
+          :can-write?         i/superuser?
+          :pre-cascade-delete pre-cascade-delete}))
 
 
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------

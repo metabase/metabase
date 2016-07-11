@@ -236,7 +236,7 @@
 
      (Database)                       ; return a seq of *all* Databases (as instances of `DatabaseInstance`)
      (Database 1)                     ; return Database 1"
-  {:arglist      '([entity table-name] [entity docstr? table-name])
+  {:arglists     '([entity table-name] [entity docstr? table-name])
    :style/indent 2}
   [entity & args]
   (let [[docstr [table-name]] (u/optional string? args)
