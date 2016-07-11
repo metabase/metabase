@@ -54,7 +54,6 @@ export default class EntityItem extends Component {
             hasDisplayName
         } = this.props;
 
-        // TODO: style this properly, currently just reusing list style
         return (
             <div className="full">
                 { isEditing &&
@@ -82,9 +81,11 @@ export default class EntityItem extends Component {
                         <List>
                             <li className="relative">
                                 <Item
+                                    id="description"
                                     name="Description"
                                     description={entity.description}
                                     placeholder="No description"
+                                    isEditing={isEditing}
                                 />
                             </li>
                             { hasDisplayName &&
@@ -97,16 +98,20 @@ export default class EntityItem extends Component {
                             }
                             <li className="relative">
                                 <Item
+                                    id="insights"
                                     name={`Why this ${section.type} is interesting`}
                                     description={entity.insights}
                                     placeholder="No description"
+                                    isEditing={isEditing}
                                 />
                             </li>
                             <li className="relative">
                                 <Item
+                                    id="facts"
                                     name={`Things to be aware of about this ${section.type}`}
                                     description={entity.facts}
                                     placeholder="No description"
+                                    isEditing={isEditing}
                                 />
                             </li>
                         </List>
