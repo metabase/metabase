@@ -10,7 +10,7 @@ import cx from "classnames";
 import pure from "recompose/pure";
 
 //TODO: extend this to support functionality required for questions
-const Item = ({ id, name, description, placeholder, url, icon, isEditing }) =>
+const Item = ({ id, name, description, placeholder, url, icon, isEditing, field }) =>
     <div className={cx(S.item)}>
         <div className={S.leftIcons}>
         </div>
@@ -23,8 +23,8 @@ const Item = ({ id, name, description, placeholder, url, icon, isEditing }) =>
             </div>
             <div className={cx(S.itemSubtitle, { "mt1" : true })}>
                 { isEditing ?
-                    <textarea name={id} value={description} /> :
-                    description || placeholder || 'No description'
+                    <textarea placeholder={placeholder} {...field} defaultValue={description} /> :
+                    description || placeholder || 'No description yet'
                 }
             </div>
         </div>
@@ -37,7 +37,8 @@ Item.propTypes = {
     description:        PropTypes.string,
     placeholder:        PropTypes.string,
     icon:               PropTypes.string,
-    isEditing:          PropTypes.bool
+    isEditing:          PropTypes.bool,
+    field:          PropTypes.object
 };
 
 export default pure(Item);
