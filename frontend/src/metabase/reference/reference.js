@@ -2,14 +2,20 @@ import { handleActions, createAction, createThunkAction } from 'metabase/lib/red
 
 import i from 'icepick';
 
-const TOGGLE_EDITING = "metabase/reference/TOGGLE_EDITING";
-export const toggleEditing = createAction(TOGGLE_EDITING);
+const START_EDITING = "metabase/reference/START_EDITING";
+export const startEditing = createAction(START_EDITING);
+
+const END_EDITING = "metabase/reference/END_EDITING";
+export const endEditing = createAction(END_EDITING);
 
 const initialState = {
     isEditing: false
 };
 export default handleActions({
-    [TOGGLE_EDITING]: {
-        next: (state) => i.assoc(state, 'isEditing', !state['isEditing'])
+    [START_EDITING]: {
+        next: (state) => i.assoc(state, 'isEditing', true)
+    },
+    [END_EDITING]: {
+        next: (state) => i.assoc(state, 'isEditing', false)
     }
 }, initialState);

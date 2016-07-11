@@ -10,7 +10,7 @@ import cx from "classnames";
 import pure from "recompose/pure";
 
 //TODO: extend this to support functionality required for questions
-const Item = ({ id, name, description, url, icon }) =>
+const Item = ({ id, name, description, placeholder, url, icon }) =>
     <div className={cx(S.item)}>
         <div className={S.leftIcons}>
         </div>
@@ -22,16 +22,17 @@ const Item = ({ id, name, description, url, icon }) =>
                 }
             </div>
             <div className={cx(S.itemSubtitle, { "mt1" : true })}>
-              { description || "No description" }
+              { description || placeholder || 'No description' }
             </div>
         </div>
     </div>
 
 Item.propTypes = {
-    id:                 PropTypes.number,
+    id:                 PropTypes.string,
     name:               PropTypes.string.isRequired,
     url:                PropTypes.string,
     description:        PropTypes.string,
+    placeholder:        PropTypes.string,
     icon:               PropTypes.string
 };
 

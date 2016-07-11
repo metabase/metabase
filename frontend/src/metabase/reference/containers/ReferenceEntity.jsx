@@ -16,21 +16,23 @@ import {
     getData,
     getError,
     getLoading,
-    getIsEditing
+    getIsEditing,
+    getHasDisplayName
 } from "../selectors";
 
-import * as metadataActions from "metabase/redux/metadata";
+import * as actions from 'metabase/reference/reference';
 
 const mapStateToProps = (state, props) => ({
     section: getSection(state),
     entity: getData(state) || {},
     loading: getLoading(state),
     error: getError(state),
-    isEditing: getIsEditing(state)
+    isEditing: getIsEditing(state),
+    hasDisplayName: getHasDisplayName(state)
 });
 
 const mapDispatchToProps = {
-    ...metadataActions
+    ...actions
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -47,6 +49,9 @@ export default class EntityItem extends Component {
             error,
             loading,
             isEditing,
+            startEditing,
+            endEditing,
+            hasDisplayName
         } = this.props;
 
         // TODO: style this properly, currently just reusing list style
@@ -67,8 +72,9 @@ export default class EntityItem extends Component {
                 }
                 <div className="wrapper wrapper--trim">
                     <div className={S.header}>
-                        {entity.display_name || entity.name}
+                        {hasDisplayName ? entity.display_name : entity.name}
                     </div>
+                    <a onClick={startEditing} className="Button">Edit</a>
                 </div>
                 <LoadingAndErrorWrapper loading={!error && loading} error={error}>
                 { () =>
@@ -77,28 +83,30 @@ export default class EntityItem extends Component {
                             <li className="relative">
                                 <Item
                                     name="Description"
-                                    description={entity.description || 'No description'}
+                                    description={entity.description}
+                                    placeholder="No description"
                                 />
                             </li>
-                            { entity.display_name ?
+                            { hasDisplayName &&
                                 <li className="relative">
                                     <Item
                                         name="Actual name in database"
                                         description={entity.name}
                                     />
-                                </li> :
-                                null
+                                </li>
                             }
                             <li className="relative">
                                 <Item
                                     name={`Why this ${section.type} is interesting`}
-                                    description={entity.insights || 'No description'}
+                                    description={entity.insights}
+                                    placeholder="No description"
                                 />
                             </li>
                             <li className="relative">
                                 <Item
                                     name={`Things to be aware of about this ${section.type}`}
-                                    description={entity.facts || 'No description'}
+                                    description={entity.facts}
+                                    placeholder="No description"
                                 />
                             </li>
                         </List>

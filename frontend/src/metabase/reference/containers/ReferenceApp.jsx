@@ -63,6 +63,8 @@ export default class ReferenceApp extends Component {
             return;
         }
 
+        newProps.endEditing();
+
         if (newProps.section && newProps.section.fetch) {
             const fetch = newProps.section.fetch;
             Object.keys(fetch).forEach((fetchPropName) => {

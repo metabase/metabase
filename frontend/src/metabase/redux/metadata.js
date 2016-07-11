@@ -247,7 +247,7 @@ export const fetchRevisions = createThunkAction(FETCH_REVISIONS, (type, id, relo
 });
 
 const revisions = handleActions({
-    [FETCH_REVISIONS]: { next: (state, { payload }) => {console.log(payload);return payload} }
+    [FETCH_REVISIONS]: { next: (state, { payload }) => payload }
 }, {});
 
 export default combineReducers({

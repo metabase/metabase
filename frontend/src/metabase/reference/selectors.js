@@ -124,7 +124,7 @@ const getListFieldSections = (list, field) => list && field ? {
     [`/reference/lists/${list.id}/fields/${field.id}`]: {
         id: `/reference/lists/${list.id}/fields/${field.id}`,
         name: 'Details',
-        type: 'list',
+        type: 'field',
         breadcrumb: `${field.display_name}`,
         fetch: {fetchLists: [], fetchTableFields: [list.table_id]},
         get: "getFieldByList",
@@ -160,7 +160,7 @@ const getTableSections = (database, table) => database && table ? {
     [`/reference/databases/${database.id}/tables/${table.id}`]: {
         id: `/reference/databases/${database.id}/tables/${table.id}`,
         name: 'Details',
-        type: 'database',
+        type: 'table',
         breadcrumb: `${table.display_name}`,
         fetch: {fetchDatabaseMetadata: [database.id]},
         get: 'getTable',
@@ -193,7 +193,7 @@ const getTableFieldSections = (database, table, field) => database && table && f
     [`/reference/databases/${database.id}/tables/${table.id}/fields/${field.id}`]: {
         id: `/reference/databases/${database.id}/tables/${table.id}/fields/${field.id}`,
         name: 'Details',
-        type: 'database',
+        type: 'field',
         breadcrumb: `${field.display_name}`,
         fetch: {fetchDatabaseMetadata: [database.id]},
         get: "getField",
@@ -468,6 +468,14 @@ const buildBreadcrumbs = (section) => getParentSections(section)
 export const getBreadcrumbs = createSelector(
     [getSection],
     buildBreadcrumbs
+)
+
+export const getHasDisplayName = createSelector(
+    [getSection],
+    (section) =>
+        section.type === 'database' ||
+        section.type === 'table' ||
+        section.type === 'field'
 )
 
 export const getUser = (state) => state.currentUser;
