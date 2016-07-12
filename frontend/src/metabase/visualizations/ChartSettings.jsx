@@ -22,20 +22,29 @@ const LabelOptions = () =>
   <ul>
     <li className="full">
       <ToggleOption label='Show X-Axis label' on />
-      <h4 className="mb1">X-Axis label</h4>
-      <input className="input full" type="text" placeholder="Label" />
 
-      <h4 className="mb1">X-Axis label size</h4>
-      <Select options={['normal', 'large', 'are we sure we want this?']} />
+      <div className="flex align-center my2">
+        <h4>X-Axis label</h4>
+        <input className="input" type="text" placeholder="Label" />
+      </div>
+
+      <div className="flex align-center my2">
+        <h4 className="mb1">X-Axis label size</h4>
+        <Select options={['normal', 'large', 'are we sure we want this?']} />
+      </div>
     </li>
     <li className="full mt3">
-      <ToggleOption label='Show Y-Axis label' on />
+      <ToggleOption label='Show Y-Axis label' />
 
-      <h4 className="mb1">Y-Axis label</h4>
-      <input className="input full" type="text" placeholder="" />
+      <div className="disabled">
+        <h4 className="mb1">Y-Axis label</h4>
+        <input className="input full" type="text" placeholder="" />
+      </div>
 
-      <h4 className="mb1">Y-Axis label size</h4>
-      <Select options={['normal', 'large', 'are we sure we want this?']} />
+      <div className="disabled">
+        <h4 className="mb1">Y-Axis label size</h4>
+        <Select options={['normal', 'large', 'are we sure we want this?']} />
+      </div>
     </li>
   </ul>
 
@@ -71,8 +80,16 @@ const AxesOptions = ({options}) =>
   <ul>
     <li className="mb2"><ToggleOption label='Show x-axis lines and marks' on /></li>
     <li className="mb2"><ToggleOption label='Show y-axis lines and marks' on /></li>
-    <li className="mb2"><ToggleOption label='Auto x-axis range' /></li>
-    <li className="mb2"><ToggleOption label='Auto y-axis range' /></li>
+    <li className="mb2">
+        <ToggleOption label='Auto x-axis range' on />
+    </li>
+    <li className="mb2">
+        <ToggleOption label='Auto y-axis range' />
+        <div className="flex align-center mt1" style={{marginLeft: 60}}>
+          <h4>Min</h4><input className="input" type="text" value={100} />
+          <h4>Max</h4><input className="input" type="text" value={3400} />
+        </div>
+    </li>
   </ul>
 
 const ChartSettingsTab = ({name, active, onClick}) =>
@@ -134,7 +151,7 @@ class ChartSettings extends Component {
     }
     render () {
         return (
-          <div className="flex flex-column full-height p2">
+          <div className="flex flex-column full-height p4">
               <h2 className="my2">Customize this chart</h2>
               <ChartSettingsTabs selectTab={this.selectTab} activeTab={this.state.currentTab}/>
               <div className="Grid flex-full mt3">
