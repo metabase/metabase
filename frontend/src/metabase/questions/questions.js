@@ -33,9 +33,9 @@ export const selectSection = createThunkAction(SELECT_SECTION, (section = "all",
         let response;
         switch (section) {
             case "all":
-                dispatch(setRequestState({ statePath: ['questions'], state: "LOADING" }));
+                dispatch(setRequestState({ statePath: ['questions', 'fetch'], state: "LOADING" }));
                 response = await CardApi.list({ f: "all" });
-                dispatch(setRequestState({ statePath: ['questions'], state: "LOADED" }));
+                dispatch(setRequestState({ statePath: ['questions', 'fetch'], state: "LOADED" }));
                 break;
             case "favorites":
                 response = await CardApi.list({ f: "fav" });

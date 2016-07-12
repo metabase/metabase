@@ -3,6 +3,7 @@ import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
+import i from "icepick";
 
 import S from "metabase/components/List.css";
 import List from "metabase/components/List.jsx";
@@ -21,6 +22,7 @@ import {
     getHasDisplayName
 } from "../selectors";
 
+import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';
 
 const mapStateToProps = (state, props) => ({
@@ -33,12 +35,13 @@ const mapStateToProps = (state, props) => ({
 });
 
 const mapDispatchToProps = {
+    ...metadataActions,
     ...actions
 };
 
 @reduxForm({
     form: 'details',
-    fields: ['name', 'display_name', 'description', 'points_of_interest', 'caveats'],
+    fields: ['name', 'display_name', 'description']//, 'points_of_interest', 'caveats'],
 })
 @connect(mapStateToProps, mapDispatchToProps)
 export default class EntityItem extends Component {
@@ -49,7 +52,7 @@ export default class EntityItem extends Component {
 
     render() {
         const {
-            fields: { name, display_name, description, points_of_interest, caveats },
+            fields: { name, display_name, description }, //, points_of_interest, caveats },
             section,
             entity,
             error,
@@ -58,13 +61,23 @@ export default class EntityItem extends Component {
             startEditing,
             endEditing,
             hasDisplayName,
+            updateTable,
             handleSubmit,
             submitting
         } = this.props;
 
         return (
             <div className="full">
-                <form onSubmit={handleSubmit(fields => console.log({...entity, ...fields}))}>
+                <form onSubmit={handleSubmit(fields => {
+                        console.log(entity)
+                        const editedFields = Object.keys(fields)
+                            .filter(key => fields[key] !== undefined)
+                            .reduce((map, key) => i.assoc(map, key, fields[key]), {});
+                        const newEntity = {...entity, ...editedFields};
+
+                        updateTable(newEntity);
+                        endEditing();
+                    })}>
                     { isEditing &&
                         <div
                             style={{

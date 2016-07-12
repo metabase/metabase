@@ -409,21 +409,21 @@ const mapFetchToRequestStatePaths = (fetch) => fetch ?
     Object.keys(fetch).map(key => {
         switch(key) {
             case 'fetchQuestions':
-                return ['questions'];
+                return ['questions', 'fetch'];
             case 'fetchMetrics':
-                return ['metadata', 'metrics'];
+                return ['metadata', 'metrics', 'fetch'];
             case 'fetchRevisions':
-                return ['metadata', 'revisions', fetch[key[0]], fetch[key[1]]];
+                return ['metadata', 'revisions', fetch[key[0]], fetch[key[1]], 'fetch'];
             case 'fetchLists':
-                return ['metadata', 'lists'];
+                return ['metadata', 'lists', 'fetch'];
             case 'fetchDatabases':
-                return ['metadata', 'databases'];
+                return ['metadata', 'databases', 'fetch'];
             case 'fetchDatabaseMetadata':
-                return ['metadata', 'databases', fetch[key]];
+                return ['metadata', 'databases', fetch[key], 'fetch'];
             case 'fetchTableMetadata':
-                return ['metadata', 'tables', fetch[key]];
+                return ['metadata', 'tables', fetch[key], 'fetch'];
             case 'fetchTableFields':
-                return ['metadata', 'tables', fetch[key], 'fields'];
+                return ['metadata', 'tables', fetch[key], 'fields', 'fetch'];
             default:
                 return [];
         }
