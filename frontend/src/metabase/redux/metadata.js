@@ -28,6 +28,7 @@ const resourceListToMap = (resources) => resources
     .reduce((map, resource) => i.assoc(map, resource.id, resource), {});
 
 const cleanResource = (resource) => Object.keys(resource)
+    //filters out angular cruft
     .filter(key => key.charAt(0) !== "$")
     .reduce((map, key) => i.assoc(map, key, resource[key]), {});
 
@@ -175,7 +176,6 @@ const databases = handleActions({
 const UPDATE_TABLE = "metabase/metadata/UPDATE_TABLE";
 export const updateTable = createThunkAction(UPDATE_TABLE, function(table) {
     return async (dispatch, getState) => {
-        const payload = table;
         const requestStatePath = ["metadata", "tables", table.id];
         const existingStatePath = ["metadata", "tables"];
         const putData = async (existingTables) => {
@@ -191,7 +191,7 @@ export const updateTable = createThunkAction(UPDATE_TABLE, function(table) {
             return i.assoc(existingTables, mergedTable.id, mergedTable);
         };
 
-        return await updateData({dispatch, getState, requestStatePath, existingStatePath, putData, payload});
+        return await updateData({dispatch, getState, requestStatePath, existingStatePath, putData});
     };
 });
 
@@ -201,6 +201,10 @@ export const fetchTableMetadata = createThunkAction(FETCH_TABLE_METADATA, functi
         const requestStatePath = ["metadata", "tables", tableId];
         const existingStatePath = ["metadata", "tables"];
         const getData = async (existingTables) => {
+            // no need to replace existing table since it would already have fields metadata
+            if (existingTables[tableId]) {
+                return existingTables;
+            }
             const tableMetadata = await MetabaseApi.table_query_metadata({ tableId });
             await augmentTable(tableMetadata);
 
