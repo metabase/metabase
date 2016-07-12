@@ -63,9 +63,9 @@
 (defendpoint POST "/"
   "Add a new `Database`."
   [:as {{:keys [name engine details is_full_sync]} :body}]
-  {name         [Required NonEmptyString]
-   engine       [Required DBEngine]
-   details      [Required Dict]}
+  {name    [Required NonEmptyString]
+   engine  [Required DBEngine]
+   details [Required Dict]}
   (check-superuser)
   ;; this function tries connecting over ssl and non-ssl to establish a connection
   ;; if it succeeds it returns the `details` that worked, otherwise it returns an error
@@ -85,7 +85,8 @@
     (if-not (false? (:valid details-or-error))
       ;; no error, proceed with creation
       (let-500 [new-db (db/insert! Database, :name name, :engine engine, :details details-or-error, :is_full_sync is_full_sync)]
-        (events/publish-event :database-create new-db))
+        (events/publish-event :database-create new-db)
+        new-db)
       ;; failed to connect, return error
       {:status 400
        :body   details-or-error})))

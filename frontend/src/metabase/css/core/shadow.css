@@ -1,6 +1,12 @@
 :root {
     --shadow-color: rgba(0, 0, 0, .08);
+    --shadow-hover-color: rgba(0, 0, 0, .12);
 }
 .shadowed, :local(.shadowed) {
   box-shadow: 0 2px 2px var(--shadow-color);
+}
+
+.shadow-hover:hover {
+  box-shadow: 0 2px 2px var(--shadow-hover-color);
+  transition: box-shadow 300ms linear;
 }

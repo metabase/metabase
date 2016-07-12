@@ -307,24 +307,28 @@
       [default args]))
 
 
+;; TODO - rename to `email?`
 (defn is-email?
   "Is STRING a valid email address?"
-  [string]
-  (boolean (when string
+  ^Boolean [^String s]
+  (boolean (when s
              (re-matches #"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
-                         (s/lower-case string)))))
+                         (s/lower-case s)))))
 
+;; TODO - rename to `url?`
 (defn is-url?
   "Is STRING a valid HTTP/HTTPS URL?"
-  [^String string]
-  (boolean (when string
-             (when-let [^java.net.URL url (try (java.net.URL. string)
-                                               (catch java.net.MalformedURLException _
+  ^Boolean [^String s]
+  (boolean (when s
+             (when-let [^java.net.URL url (try (java.net.URL. s)
+                                               (catch java.net.MalformedURLException _ ; TODO - use ignore-exceptions
                                                  nil))]
                (when (and (.getProtocol url) (.getAuthority url))
                  (and (re-matches #"^https?$" (.getProtocol url))           ; these are both automatically downcased
                       (re-matches #"^.+\..{2,}$" (.getAuthority url)))))))) ; this is the part like 'google.com'. Make sure it contains at least one period and 2+ letter TLD
 
+
+;; TODO - This should be made into a separate `sequence-of-maps?` function and a `maybe?` function
 (defn nil-or-sequence-of-maps?
   "Is VALUE either nil or sequential? such that every item is a map?"
   [v]

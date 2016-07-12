@@ -60,7 +60,7 @@ import * as setup from "metabase/setup/reducers";
 
 /* user */
 import * as user from "metabase/user/reducers";
-import { currentUser } from "metabase/user";
+import { currentUser, setUser } from "metabase/user";
 
 import { registerAnalyticsClickListener } from "metabase/lib/analytics";
 import { serializeCardForUrl, cleanCopyCard, urlForCardState } from "metabase/lib/card";
@@ -269,6 +269,14 @@ angular.module('metabase', [
             }
         };
         $scope.store = createStoreWithAngularScope($scope, $location, reducers, {currentUser: AppState.model.currentUser});
+
+        // ANGULAR_HACK™: this seems like the easiest way to keep the redux store up to date with the currentUser :-/
+        let userSyncTimer = setInterval(() => {
+            if ($scope.store.getState().currentUser !== AppState.model.currentUser) {
+                $scope.store.dispatch(setUser(AppState.model.currentUser));
+            }
+        }, 250);
+        $scope.$on("$destroy", () => clearInterval(userSyncTimer));
 
         // HACK: prevent reloading controllers as the URL changes
         let route = $route.current;

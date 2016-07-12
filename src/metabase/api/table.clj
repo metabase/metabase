@@ -77,7 +77,7 @@
                                                   (not= (keyword visibility_type) :sensitive)))))))
 
 (defendpoint GET "/:id/fks"
-  "Get all `ForeignKeys` whose destination is a `Field` that belongs to this `Table`."
+  "Get all foreign keys whose destination is a `Field` that belongs to this `Table`."
   [id]
   (let-404 [table (Table id)]
     (read-check table)

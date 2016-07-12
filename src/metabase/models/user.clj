@@ -42,14 +42,17 @@
     (or first_name last_name) (assoc :common_name (str first_name " " last_name))))
 
 (defn- pre-cascade-delete [{:keys [id]}]
-  (db/cascade-delete! 'Session :user_id id)
-  (db/cascade-delete! 'Dashboard :creator_id id)
-  (db/cascade-delete! 'Card :creator_id id)
-  (db/cascade-delete! 'Pulse :creator_id id)
-  (db/cascade-delete! 'Activity :user_id id)
-  (db/cascade-delete! 'ViewLog :user_id id)
-  (db/cascade-delete! 'Segment :creator_id id)
-  (db/cascade-delete! 'Metric :creator_id id))
+  (doseq [[model k] [['Session        :user_id]
+                     ['Dashboard      :creator_id]
+                     ['Card           :creator_id]
+                     ['Pulse          :creator_id]
+                     ['Activity       :user_id]
+                     ['ViewLog        :user_id]
+                     ['Segment        :creator_id]
+                     ['Metric         :creator_id]
+                     ['Revision       :user_id]
+                     ['QueryExecution :executor_id]]]
+    (db/cascade-delete! model k id)))
 
 (u/strict-extend (class User)
   i/IEntity
