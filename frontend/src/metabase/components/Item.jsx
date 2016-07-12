@@ -23,7 +23,12 @@ const Item = ({ id, name, description, placeholder, url, icon, isEditing, field 
             </div>
             <div className={cx(S.itemSubtitle, { "mt1" : true })}>
                 { isEditing ?
-                    <textarea placeholder={placeholder} {...field} defaultValue={description} /> :
+                    <textarea
+                        className={S.itemTextArea}
+                        placeholder={placeholder}
+                        {...field}
+                        defaultValue={description}
+                    /> :
                     description || placeholder || 'No description yet'
                 }
             </div>

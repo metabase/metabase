@@ -1,5 +1,3 @@
-/*TODO: read up more about css modules and find out why it was done this way*/
-/*@import '../Questions.css';*/
 :root {
     --title-color: #606E7B;
     --subtitle-color: #AAB7C3;
@@ -23,11 +21,17 @@
 }
 
 :local(.header) {
-
-    /*composes: header from "../Questions.css";*/
     composes: mt4 mb2 from "style";
     color: var(--title-color);
     font-size: 24px;
+}
+
+:local(.headerLink) {
+
+}
+
+:local(.headerButton) {
+
 }
 
 :local(.empty) {
@@ -60,7 +64,7 @@
     composes: inline-block from "style";
 }
 
-:local(.itemName):hover {
+:local(a.itemName):hover {
     color: var(--blue-color);
 }
 
@@ -71,6 +75,15 @@
 
 :local(.itemSubtitleBold) {
     color: var(--title-color);
+}
+
+:local(.itemTextArea) {
+    resize: none;
+    padding: 20px;
+    font-size: 14px;
+    width: 100%;
+    min-height: 100px;
+    border-color: var(--subtitle-color);
 }
 
 :local(.icons) {
