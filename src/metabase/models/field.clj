@@ -1,6 +1,6 @@
 (ns metabase.models.field
-  (:require [clojure.data :as d]
-            [clojure.string :as s]
+  (:require (clojure [data :as d]
+                     [string :as s])
             [medley.core :as m]
             [metabase.db :as db]
             (metabase.models [common :as common]
@@ -112,7 +112,7 @@
 (defn qualified-name
   "Return a combined qualified name for FIELD, e.g. `table_name.parent_field_name.field_name`."
   [field]
-  (apply str (interpose \. (qualified-name-components field))))
+  (s/join \. (qualified-name-components field)))
 
 (defn table
   "Return the `Table` associated with this `Field`."

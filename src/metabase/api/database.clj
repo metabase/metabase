@@ -115,8 +115,7 @@
                          details
                          (assoc details :password (get-in database [:details :password])))
           conn-error   (test-database-connection engine details)
-          is_full_sync (if (nil? is_full_sync)
-                         nil
+          is_full_sync (when-not (nil? is_full_sync)
                          (boolean is_full_sync))]
       (if-not conn-error
         ;; no error, proceed with update

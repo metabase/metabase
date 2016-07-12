@@ -83,27 +83,6 @@
   ((rpartial - 5 10) 8))
 
 
-;;; ## cond-as->
-(expect 100
-  (cond-as-> 100 <>))
-
-(expect 106
-  (cond-as-> 100 <>
-    true  (+  1 <>)
-    false (+ 10 <>)
-    :ok   (+  5 <>)))
-
-(expect 101
-  (cond-as-> 100 <>
-    (odd? <>)  (inc <>)
-    (even? <>) (inc <>)))
-
-(expect 102
-  (cond-as-> 100 <>
-    (even? <>) (inc <>)
-    (odd? <>)  (inc <>)))
-
-
 ;;; TESTS FOR key-by
 (expect
   {1 {:id 1, :name "Rasta"}

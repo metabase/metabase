@@ -132,7 +132,7 @@
 (defn- handle-aggregation [query-type {{ag-type :aggregation-type, ag-field :field} :aggregation} druid-query]
   (when (isa? query-type ::ag-query)
     (merge druid-query
-           (let [ag-type (if (= ag-type :rows) nil ag-type)]
+           (let [ag-type (when-not (= ag-type :rows) ag-type)]
              (match [ag-type ag-field]
                ;; For 'distinct values' queries (queries with a breakout by no aggregation) just aggregate by count, but name it :___count so it gets discarded automatically
                [nil     nil] {:aggregations [(ag:count :___count)]}

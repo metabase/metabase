@@ -273,7 +273,7 @@
       (loop [acc []]
         (if-let [line (.readLine this)]
           (recur (conj acc line))
-          (apply str (interpose "\n" acc))))))
+          (s/join "\n" acc)))))
 
   ;; H2 -- See also http://h2database.com/javadoc/org/h2/jdbc/JdbcClob.html
   org.h2.jdbc.JdbcClob
@@ -472,8 +472,8 @@
             filleds      (int (* percent-done meter-width))
             blanks       (- meter-width filleds)]
         (str "["
-             (apply str (repeat filleds "*"))
-             (apply str (repeat blanks "·"))
+             (s/join (repeat filleds "*"))
+             (s/join (repeat blanks "·"))
              (format "] %s  %3.0f%%" (percent-done->emoji percent-done) (* percent-done 100.0)))))))
 
 (defn filtered-stacktrace
@@ -544,26 +544,6 @@
   [timeout-ms & body]
   `(deref-with-timeout (future ~@body) ~timeout-ms))
 
-(defmacro cond-as->
-  "Anaphoric version of `cond->`. Binds EXPR to NAME through a series
-   of pairs of TEST and FORM. NAME is successively bound to the value
-   of each FORM whose TEST succeeds.
-
-     (defn maybe-wrap-fn [before after f]
-       (as-> f <>
-         (fn? before) (fn [] (before) (<>))
-         (fn? after)  (fn [] (try (<>)
-                                  (finally (after))))))"
-  {:arglists '([expr nm tst form & more])}
-  [expr nm & clauses]
-  {:pre [(even? (count clauses))]}
-  `(let [~nm ~expr
-         ~@(apply concat (for [[tst form] (partition 2 clauses)]
-                           [nm `(if ~tst
-                                  ~form
-                                  ~nm)]))]
-     ~nm))
-
 (defn round-to-decimals
   "Round (presumabily floating-point) NUMBER to DECIMAL-PLACE. Returns a `Double`.
 
@@ -613,10 +593,10 @@
    Downcase the name and replace non-alphanumeric characters with underscores."
   ^String [s]
   (when (seq s)
-    (apply str (for [c (s/lower-case (name s))]
-                 (if (contains? slugify-valid-chars c)
-                   c
-                   \_)))))
+    (s/join (for [c (s/lower-case (name s))]
+              (if (contains? slugify-valid-chars c)
+                c
+                \_)))))
 
 (defn do-with-auto-retries
   "Execute F, a function that takes no arguments, and return the results.
