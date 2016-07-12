@@ -290,7 +290,7 @@ const getMetricQuestions = createSelector(
         .reduce((map, question) => i.assoc(map, question.id, question), {})
 );
 
-const getRevisions = (state) => state.metadata.revisions;
+const getRevisions = (state) => {console.log(state); return state.metadata.revisions;}
 
 const getMetricRevisions = createSelector(
     [getMetricId, getRevisions],
@@ -484,6 +484,13 @@ export const getHasDisplayName = createSelector(
     (section) =>
         section.type === 'table' ||
         section.type === 'field'
+)
+
+export const getHasRevisionHistory = createSelector(
+    [getSection],
+    (section) =>
+        section.type === 'metric' ||
+        section.type === 'list'
 )
 
 export const getUser = (state) => state.currentUser;

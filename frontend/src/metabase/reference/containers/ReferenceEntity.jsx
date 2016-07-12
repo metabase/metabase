@@ -19,7 +19,8 @@ import {
     getError,
     getLoading,
     getIsEditing,
-    getHasDisplayName
+    getHasDisplayName,
+    getHasRevisionHistory
 } from "../selectors";
 
 import * as metadataActions from 'metabase/redux/metadata';
@@ -31,7 +32,8 @@ const mapStateToProps = (state, props) => ({
     loading: getLoading(state),
     error: getError(state),
     isEditing: getIsEditing(state),
-    hasDisplayName: getHasDisplayName(state)
+    hasDisplayName: getHasDisplayName(state),
+    hasRevisionHistory: getHasRevisionHistory(state)
 });
 
 const mapDispatchToProps = {
@@ -41,7 +43,7 @@ const mapDispatchToProps = {
 
 @reduxForm({
     form: 'details',
-    fields: ['name', 'display_name', 'description']//, 'points_of_interest', 'caveats'],
+    fields: ['name', 'display_name', 'description', 'revision_message']//, 'points_of_interest', 'caveats'],
 })
 @connect(mapStateToProps, mapDispatchToProps)
 export default class EntityItem extends Component {
@@ -52,7 +54,7 @@ export default class EntityItem extends Component {
 
     render() {
         const {
-            fields: { name, display_name, description }, //, points_of_interest, caveats },
+            fields: { name, display_name, description, revision_message }, //, points_of_interest, caveats },
             section,
             entity,
             error,
@@ -61,6 +63,7 @@ export default class EntityItem extends Component {
             startEditing,
             endEditing,
             hasDisplayName,
+            hasRevisionHistory,
             handleSubmit,
             submitting
         } = this.props;
@@ -128,7 +131,7 @@ export default class EntityItem extends Component {
                                         field={description}
                                     />
                                 </li>
-                                { hasDisplayName &&
+                                { hasDisplayName && !isEditing &&
                                     <li className="relative">
                                         <Item
                                             name="Actual name in database"
@@ -153,6 +156,19 @@ export default class EntityItem extends Component {
                                     //         placeholder="Nothing to be aware of yet"
                                     //     />
                                     // </li>
+                                }
+                                { hasRevisionHistory && isEditing &&
+                                    // make this required and validate for it
+                                    <li className="relative">
+                                        <Item
+                                            id="revision_message"
+                                            name="Reason for changes"
+                                            description=""
+                                            placeholder="Leave a note to explain what changes you made and why they were required."
+                                            isEditing={isEditing}
+                                            field={revision_message}
+                                        />
+                                    </li>
                                 }
                             </List>
                         </div>

@@ -89,7 +89,7 @@ export default class RevisionHistoryApp extends Component {
                     </div>
                 </div>
                 <LoadingAndErrorWrapper loading={!error && loading} error={error}>
-                    { () => Object.keys(revisions).length > 0 && tables[entity.table_id] ?
+                    { () => {console.log(tables); return Object.keys(revisions).length > 0 && tables[entity.table_id] ?
                         <div className="wrapper wrapper--trim">
                             {Object.values(revisions)
                                 .map(revision => revision && revision.diff ?
@@ -108,7 +108,7 @@ export default class RevisionHistoryApp extends Component {
                         :
                         <div className={S.empty}>
                           <EmptyState message={empty.message} icon={empty.icon} />
-                        </div>
+                        </div>}
                     }
                 </LoadingAndErrorWrapper>
             </div>
