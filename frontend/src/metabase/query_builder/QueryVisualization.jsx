@@ -81,14 +81,11 @@ export default class QueryVisualization extends Component {
     }
 
     renderHeader() {
-        var visualizationSettings = false;
-        if (!this.props.isObjectDetail) {
-            visualizationSettings = (<VisualizationSettings {...this.props}/>);
-        }
-
         return (
             <div className="relative flex flex-no-shrink mt3 mb1" style={{ minHeight: "2em" }}>
-                <span className="relative z4">{visualizationSettings}</span>
+                <span className="relative z4">
+                  { !this.props.isObjectDetail && <VisualizationSettings {...this.props}/> }
+                </span>
                 <div className="absolute flex layout-centered left right z3">
                     <RunButton
                         canRun={this.canRun()}
@@ -214,56 +211,33 @@ export default class QueryVisualization extends Component {
     }
 
     render() {
-        var loading,
-            viz;
-
-        if(this.props.isRunning) {
-            loading = (
-                <div className="Loading spread flex flex-column layout-centered text-brand z2">
-                    <LoadingSpinner />
-                    <h2 className="Loading-message text-brand text-uppercase my3">Doing science...</h2>
-                </div>
-            );
-        }
+        let viz;
 
         if (!this.props.result) {
             let hasSampleDataset = !!_.findWhere(this.props.databases, { is_sample: true });
-            viz = (
-                <div className="flex full layout-centered text-grey-1 flex-column">
-                    <h1>If you give me some data I can show you something cool. Run a Query!</h1>
-                    { hasSampleDataset && <a className="link cursor-pointer my2" href="/q?tutorial">How do I use this thing?</a> }
-                </div>
-            );
+            viz = <VisualizationEmptyState showTutorialLink={hasSampleDataset} />
         } else {
             let { result } = this.props;
             let error = result.error;
-            let adminEmail = MetabaseSettings.adminEmail();
+
             if (error) {
                 if (typeof error.status === "number") {
                     // Assume if the request took more than 15 seconds it was due to a timeout
                     // Some platforms like Heroku return a 503 for numerous types of errors so we can't use the status code to distinguish between timeouts and other failures.
                     if (result.duration > 15*1000) {
-                        viz = (
-                            <div className="QueryError flex full align-center">
-                                <div className="QueryError-image QueryError-image--timeout"></div>
-                                <div className="QueryError-message text-centered">
-                                    <h1 className="text-bold">Your question took too long</h1>
-                                    <p className="QueryError-messageText">We didn't get an answer back from your database in time, so we had to stop. You can try again in a minute, or if the problem persists, you can email an admin to let them know.</p>
-                                    {adminEmail && <span className="QueryError-adminEmail"><a className="no-decoration" href={"mailto:"+adminEmail}>{adminEmail}</a></span>}
-                                </div>
-                            </div>
-                        );
+                        viz = <VisualizationError
+                                  type="timeout"
+                                  title="Your question took to long"
+                                  message="We didn't get an answer back from your database in time, so we had to stop. You can try again in a minute, or if the problem persists, you can email an admin to let them know."
+                                  action={<EmailAdmin />}
+                              />
                     } else {
-                        viz = (
-                            <div className="QueryError flex full align-center">
-                                <div className="QueryError-image QueryError-image--serverError"></div>
-                                <div className="QueryError-message text-centered">
-                                    <h1 className="text-bold">We're experiencing server issues</h1>
-                                    <p className="QueryError-messageText">Try refreshing the page after waiting a minute or two. If the problem persists we'd recommend you contact an admin.</p>
-                                    {adminEmail && <span className="QueryError-adminEmail"><a className="no-decoration" href={"mailto:"+adminEmail}>{adminEmail}</a></span>}
-                                </div>
-                            </div>
-                        );
+                        viz = <VisualizationError
+                                  type="serverError"
+                                  title="We\'re experiencing server issues"
+                                  message="Try refreshing the page after waiting a minute or two. If the problem persists we'd recommend you contact an admin."
+                                  action={<EmailAdmin />}
+                              />
                     }
                 } else if (this.props.card.dataset_query && this.props.card.dataset_query.type === 'native') {
                     // always show errors for native queries
@@ -307,24 +281,22 @@ export default class QueryVisualization extends Component {
                             cellIsClickableFn={this.props.cellIsClickableFn}
                             cellClickedFn={this.props.cellClickedFn}
                             followForeignKeyFn={this.props.followForeignKeyFn}
-                            loadObjectDetailFKReferences={this.props.loadObjectDetailFKReferences} />
+                            loadObjectDetailFKReferences={this.props.loadObjectDetailFKReferences}
+                        />
                     );
 
                 } else if (this.props.result.data.rows.length === 0) {
                     // successful query but there were 0 rows returned with the result
-                    viz = (
-                        <div className="QueryError flex full align-center">
-                            <div className="QueryError-image QueryError-image--noRows"></div>
-                            <div className="QueryError-message text-centered">
-                                <h1 className="text-bold">No results!</h1>
-                                <p className="QueryError-messageText">This may be the answer you’re looking for. If not, chances are your filters are too specific. Try removing or changing your filters to see more data.</p>
+                    viz = <VisualizationError
+                              type='noRows'
+                              title='No results!'
+                              message='This may be the answer you’re looking for. If not, chances are your filters are too specific. Try removing or changing your filters to see more data.'
+                              action={
                                 <button className="Button" onClick={() => window.history.back() }>
                                     Back to last run
                                 </button>
-                            </div>
-                        </div>
-                    );
-
+                              }
+                          />
                 } else {
                     // we want to provide the visualization with a card containing the latest
                     // "display", "visualization_settings", etc, (to ensure the correct visualization is shown)
@@ -350,12 +322,12 @@ export default class QueryVisualization extends Component {
             }
         }
 
-        var wrapperClasses = cx('wrapper full relative mb2 z1', {
+        const wrapperClasses = cx('wrapper full relative mb2 z1', {
             'flex': !this.props.isObjectDetail,
             'flex-column': !this.props.isObjectDetail
         });
 
-        var visualizationClasses = cx('flex flex-full Visualization z1 px1', {
+        const visualizationClasses = cx('flex flex-full Visualization z1 px1', {
             'Visualization--errors': (this.props.result && this.props.result.error),
             'Visualization--loading': this.props.isRunning
         });
@@ -363,7 +335,12 @@ export default class QueryVisualization extends Component {
         return (
             <div className={wrapperClasses}>
                 {this.renderHeader()}
-                {loading}
+                { this.props.isRunning && (
+                    <div className="Loading spread flex flex-column layout-centered text-brand z2">
+                        <LoadingSpinner />
+                        <h2 className="Loading-message text-brand text-uppercase my3">Doing science...</h2>
+                    </div>
+                )}
                 <div className={visualizationClasses}>
                     {viz}
                 </div>
@@ -371,3 +348,39 @@ export default class QueryVisualization extends Component {
         );
     }
 }
+
+const EmailAdmin = () => {
+  const adminEmail = MetabaseSettings.adminEmail()
+  return adminEmail && (
+      <span className="QueryError-adminEmail">
+          <a className="no-decoration" href={"mailto:"+adminEmail}>
+              {adminEmail}
+          </a>
+      </span>
+  )
+}
+
+const VisualizationError = ({title, type, message, action}) => {
+    return (
+        <div className="QueryError flex full align-center">
+            <div className={`QueryError-image QueryError-image--${type}`}></div>
+            <div className="QueryError-message text-centered">
+                { title && <h1 className="text-bold">{title}</h1> }
+                <p className="QueryError-messageText">{message}</p>
+                {action}
+            </div>
+        </div>
+    )
+}
+
+VisualizationError.propTypes = {
+  title:    PropTypes.string.isRequired,
+  type:     PropTypes.string.isRequired,
+  message:  PropTypes.string.isRequired,
+}
+
+const VisualizationEmptyState = ({showTutorialLink}) =>
+    <div className="flex full layout-centered text-grey-1 flex-column">
+        <h1>If you give me some data I can show you something cool. Run a Query!</h1>
+        { showTutorialLink && <a className="link cursor-pointer my2" href="/q?tutorial">How do I use this thing?</a> }
+    </div>
