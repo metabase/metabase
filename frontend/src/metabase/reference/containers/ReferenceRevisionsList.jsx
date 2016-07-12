@@ -68,7 +68,6 @@ export default class RevisionHistoryApp extends Component {
         } = this.props;
 
         const entity = metric.id !== undefined ? metric : list;
-        console.log(entity);
 
         const empty = {
             icon: 'mine',

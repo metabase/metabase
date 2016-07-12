@@ -7,7 +7,7 @@ import _ from "underscore";
 
 import { inflect } from "metabase/lib/formatting";
 import MetabaseAnalytics from "metabase/lib/analytics";
-import { setRequest } from "metabase/redux/requests";
+import { setRequestState } from "metabase/redux/requests";
 
 import { getVisibleEntities, getSelectedEntities } from "./selectors";
 import { addUndo } from "./undo";
@@ -33,9 +33,9 @@ export const selectSection = createThunkAction(SELECT_SECTION, (section = "all",
         let response;
         switch (section) {
             case "all":
-                dispatch(setRequest({ type: "questions/all", state: "LOADING" }));
+                dispatch(setRequestState({ statePath: ['questions'], state: "LOADING" }));
                 response = await CardApi.list({ f: "all" });
-                dispatch(setRequest({ type: "questions/all", state: "LOADED" }));
+                dispatch(setRequestState({ statePath: ['questions'], state: "LOADED" }));
                 break;
             case "favorites":
                 response = await CardApi.list({ f: "fav" });
@@ -63,7 +63,7 @@ export const selectSection = createThunkAction(SELECT_SECTION, (section = "all",
         if (slug) {
             section += "-" + slug;
         }
-        
+
         return { type, section, ...normalize(response, arrayOf(card)) };
     }
 });

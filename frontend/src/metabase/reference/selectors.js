@@ -409,20 +409,21 @@ const mapFetchToRequestStatePaths = (fetch) => fetch ?
     Object.keys(fetch).map(key => {
         switch(key) {
             case 'fetchQuestions':
-                return ['questions/all'];
+                return ['questions'];
             case 'fetchMetrics':
-                return ['metadata/metrics'];
-            case 'fetchMetricRevisions':
-                // this is getting a bit messy
-                return [`metadata/metrics/${fetch[key[0]]}`].concat(fetch[key[1]]);
+                return ['metadata', 'metrics'];
+            case 'fetchRevisions':
+                return ['metadata', 'revisions', fetch[key[0]], fetch[key[1]]];
             case 'fetchLists':
-                return ['metadata/lists'];
+                return ['metadata', 'lists'];
             case 'fetchDatabases':
-                return ['metadata/databases'];
+                return ['metadata', 'databases'];
             case 'fetchDatabaseMetadata':
-                return ['metadata/database'].concat(fetch[key]);
+                return ['metadata', 'databases', fetch[key]];
+            case 'fetchTableMetadata':
+                return ['metadata', 'tables', fetch[key]];
             case 'fetchTableFields':
-                return ['metadata/table_fields'].concat(fetch[key]);
+                return ['metadata', 'tables', fetch[key], 'fields'];
             default:
                 return [];
         }
@@ -438,7 +439,9 @@ const getRequestPaths = createSelector(
 export const getLoading = createSelector(
     [getRequestPaths, getRequests],
     (requestPaths, requests) => requestPaths
-        .reduce((isLoading, requestPath) => isLoading || i.getIn(requests, requestPath) === 'LOADING', false)
+        .reduce((isLoading, requestPath) =>
+            isLoading ||
+            i.getIn(requests, requestPath.concat('state')) === 'LOADING', false)
 )
 
 export const getError = createSelector(
