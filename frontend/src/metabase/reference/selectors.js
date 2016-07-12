@@ -4,6 +4,7 @@ import i from "icepick";
 import Query, { AggregationClause } from 'metabase/lib/query';
 
 //TODO: definitely lots of memoization opportunities here
+// might not be very efficient until we use immutable data though
 
 // there might be a better way to organize sections
 // it feels like I'm duplicating a lot of routing logic here
@@ -273,17 +274,6 @@ const getFieldByList = createSelector(
 );
 
 const getQuestions = (state) => i.getIn(state, ['questions', 'entities', 'cards']) || {};
-// TODO: get someone to look over this
-// probably not be the best way to determine which questions are associated
-// with a particular metric/list, but seems to work
-const filterMetricQuestions = (metricId, question) => {
-    const aggregation = i.getIn(question, ['dataset_query', 'query', 'aggregation']);
-    if (!aggregation) {
-        return false;
-    }
-
-    return aggregation[0] === "METRIC" && aggregation[1].toString() === metricId;
-};
 
 const getMetricQuestions = createSelector(
     [getMetricId, getQuestions],
