@@ -61,21 +61,35 @@ export default class EntityItem extends Component {
             startEditing,
             endEditing,
             hasDisplayName,
-            updateTable,
             handleSubmit,
             submitting
         } = this.props;
 
         return (
             <div className="full">
-                <form onSubmit={handleSubmit(fields => {
+                <form onSubmit={handleSubmit(async fields => {
                         console.log(entity)
                         const editedFields = Object.keys(fields)
                             .filter(key => fields[key] !== undefined)
                             .reduce((map, key) => i.assoc(map, key, fields[key]), {});
                         const newEntity = {...entity, ...editedFields};
+                        console.log(newEntity)
 
-                        updateTable(newEntity);
+                        //TODO: add update function to sections instead
+                        switch(section.type) {
+                            case "table":
+                                await this.props.updateTable(newEntity);
+                                break;
+                            case "field":
+                                await this.props.updateField(newEntity);
+                                break;
+                            case "database":
+                                //FIXME: description field has no backend support right now
+                                // only name updates work at the moment
+                                await this.props.updateDatabase(newEntity);
+                                break;
+                        }
+
                         endEditing();
                     })}>
                     { isEditing &&

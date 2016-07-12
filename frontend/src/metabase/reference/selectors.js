@@ -476,7 +476,6 @@ export const getBreadcrumbs = createSelector(
 export const getHasDisplayName = createSelector(
     [getSection],
     (section) =>
-        section.type === 'database' ||
         section.type === 'table' ||
         section.type === 'field'
 )
