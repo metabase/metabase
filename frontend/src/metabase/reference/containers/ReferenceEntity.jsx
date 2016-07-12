@@ -75,21 +75,7 @@ export default class EntityItem extends Component {
                         const newEntity = {...entity, ...editedFields};
                         console.log(newEntity)
 
-                        //TODO: add update function to sections instead
-                        switch(section.type) {
-                            case "table":
-                                await this.props.updateTable(newEntity);
-                                break;
-                            case "field":
-                                await this.props.updateField(newEntity);
-                                break;
-                            case "database":
-                                //FIXME: description field has no backend support right now
-                                // only name updates work at the moment
-                                await this.props.updateDatabase(newEntity);
-                                break;
-                        }
-
+                        await this.props[section.update](newEntity);
                         endEditing();
                     })}>
                     { isEditing &&

@@ -45,6 +45,7 @@ const getMetricSections = (metric) => metric ? {
     [`/reference/metrics/${metric.id}`]: {
         id: `/reference/metrics/${metric.id}`,
         name: 'Details',
+        update: 'updateMetric',
         type: 'metric',
         breadcrumb: `${metric.name}`,
         fetch: {fetchMetrics: []},
@@ -78,6 +79,7 @@ const getListSections = (list) => list ? {
     [`/reference/lists/${list.id}`]: {
         id: `/reference/lists/${list.id}`,
         name: 'Details',
+        update: 'updateList',
         type: 'list',
         breadcrumb: `${list.name}`,
         fetch: {fetchLists: []},
@@ -124,6 +126,7 @@ const getListFieldSections = (list, field) => list && field ? {
     [`/reference/lists/${list.id}/fields/${field.id}`]: {
         id: `/reference/lists/${list.id}/fields/${field.id}`,
         name: 'Details',
+        update: 'updateField',
         type: 'field',
         breadcrumb: `${field.display_name}`,
         fetch: {fetchLists: [], fetchTableMetadata: [list.table_id]},
@@ -137,6 +140,7 @@ const getDatabaseSections = (database) => database ? {
     [`/reference/databases/${database.id}`]: {
         id: `/reference/databases/${database.id}`,
         name: 'Details',
+        update: 'updateDatabase',
         type: 'database',
         breadcrumb: `${database.name}`,
         fetch: {fetchDatabaseMetadata: [database.id]},
@@ -160,6 +164,7 @@ const getTableSections = (database, table) => database && table ? {
     [`/reference/databases/${database.id}/tables/${table.id}`]: {
         id: `/reference/databases/${database.id}/tables/${table.id}`,
         name: 'Details',
+        update: 'updateTable',
         type: 'table',
         breadcrumb: `${table.display_name}`,
         fetch: {fetchDatabaseMetadata: [database.id]},
@@ -193,6 +198,7 @@ const getTableFieldSections = (database, table, field) => database && table && f
     [`/reference/databases/${database.id}/tables/${table.id}/fields/${field.id}`]: {
         id: `/reference/databases/${database.id}/tables/${table.id}/fields/${field.id}`,
         name: 'Details',
+        update: 'updateField',
         type: 'field',
         breadcrumb: `${field.display_name}`,
         fetch: {fetchDatabaseMetadata: [database.id]},
