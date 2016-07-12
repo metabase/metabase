@@ -3,18 +3,33 @@ import { normalize, Schema, arrayOf } from 'normalizr';
 import i from "icepick";
 import _ from "underscore";
 
-import { augmentDatabase, loadTableAndForeignKeys } from "metabase/lib/table";
+import { augmentDatabase, augmentTable } from "metabase/lib/table";
 import { setRequestState } from "./requests";
 
-const MetabaseApi = new AngularResourceProxy("Metabase", ["db_list", "db_metadata", "table_update", "table_fields"]);
+const MetabaseApi = new AngularResourceProxy("Metabase", ["db_list", "db_update", "db_metadata", "table_update", "table_query_metadata", "field_update"]);
 const MetricApi = new AngularResourceProxy("Metric", ["list"]);
 const SegmentApi = new AngularResourceProxy("Segment", ["list"]);
 const RevisionApi = new AngularResourceProxy("Revisions", ["get"]);
 
+const database = new Schema('databases');
+const table = new Schema('tables');
+const field = new Schema('fields');
+database.define({
+    tables: arrayOf(table)
+});
+table.define({
+    fields: arrayOf(field)
+});
+
+// move these to shared lib?
 const resourceListToMap = (resources) => resources
     //filters out angular cruft
     .filter(resource => resource.id !== undefined)
     .reduce((map, resource) => i.assoc(map, resource.id, resource), {});
+
+const cleanResource = (resource) => Object.keys(resource)
+    .filter(key => key.charAt(0) !== "$")
+    .reduce((map, key) => i.assoc(map, key, resource[key]), {});
 
 //TODO: test this thoroughly
 export const fetchData = async ({dispatch, getState, requestStatePath, existingStatePath, getData, reload}) => {
@@ -39,7 +54,7 @@ export const fetchData = async ({dispatch, getState, requestStatePath, existingS
     }
 }
 
-export const updateData = async ({dispatch, getState, requestStatePath, existingStatePath, putData, payload}) => {
+export const updateData = async ({dispatch, getState, requestStatePath, existingStatePath, putData}) => {
     const existingData = i.getIn(getState(), existingStatePath);
     const statePath = requestStatePath.concat(['update']);
     try {
@@ -113,20 +128,37 @@ export const fetchDatabases = createThunkAction(FETCH_DATABASES, (reload = false
     };
 });
 
+const UPDATE_DATABASE = "metabase/metadata/UPDATE_DATABASE";
+export const updateDatabase = createThunkAction(UPDATE_DATABASE, function(database) {
+    return async (dispatch, getState) => {
+        const requestStatePath = ["metadata", "databases", database.id];
+        const existingStatePath = ["metadata", "databases"];
+        const putData = async (existingDatabases) => {
+            // make sure we don't send all the computed metadata
+            // there may be more that I'm missing?
+            const slimDatabase = _.omit(database, "tables", "tables_lookup");
+
+            const updatedDatabase = await MetabaseApi.db_update(slimDatabase);
+            const cleanDatabase = cleanResource(updatedDatabase);
+            const existingDatabase = existingDatabases[database.id];
+
+            const mergedDatabase = {...existingDatabase, ...cleanDatabase};
+
+            return i.assoc(existingDatabases, mergedDatabase.id, mergedDatabase);
+        };
+
+        return await updateData({dispatch, getState, requestStatePath, existingStatePath, putData});
+    };
+});
+
 const FETCH_DATABASE_METADATA = "metabase/metadata/FETCH_DATABASE_METADATA";
 export const fetchDatabaseMetadata = createThunkAction(FETCH_DATABASE_METADATA, function(dbId, reload = false) {
     return async function(dispatch, getState) {
         const requestStatePath = ["metadata", "databases", dbId];
         const existingStatePath = ["metadata"];
-        const getData = async () => {
+        const getData = async (existingMetadata) => {
             const databaseMetadata = await MetabaseApi.db_metadata({ dbId });
-            augmentDatabase(databaseMetadata);
-
-            const database = new Schema('databases');
-            const table = new Schema('tables');
-            database.define({
-                tables: arrayOf(table)
-            });
+            await augmentDatabase(databaseMetadata);
 
             return normalize(databaseMetadata, database).entities;
         };
@@ -151,42 +183,15 @@ export const updateTable = createThunkAction(UPDATE_TABLE, function(table) {
             const slimTable = _.omit(table, "fields", "fields_lookup", "aggregation_options", "breakout_options", "metrics", "segments");
 
             const updatedTable = await MetabaseApi.table_update(slimTable);
-            console.log(updatedTable);
-            const cleanTable = Object.keys(updatedTable)
-                .filter(key => key.charAt(0) !== "$")
-                .reduce((map, key) => i.assoc(map, key, updatedTable[key]), {});
-            console.log(cleanTable);
+            const cleanTable = cleanResource(updatedTable);
             const existingTable = existingTables[table.id];
 
             const mergedTable = {...existingTable, ...cleanTable};
 
-            console.log(mergedTable);
             return i.assoc(existingTables, mergedTable.id, mergedTable);
         };
 
-        return await updateData({dispatch, getState, requestStatePath, existingStatePath, putData, payload})
-    };
-});
-
-const FETCH_TABLE_FIELDS = "metabase/metadata/FETCH_TABLE_FIELDS";
-export const fetchTableFields = createThunkAction(FETCH_TABLE_FIELDS, (tableId, reload = false) => {
-    return async (dispatch, getState) => {
-        const requestStatePath = ["metadata", "tables", tableId, 'fields'];
-        const existingStatePath = ["metadata", "tables"];
-        const getData = async (existingTables) => {
-            // no need to replace existing table since it would already have fields metadata
-            if (existingTables[tableId]) {
-                return existingTables;
-            }
-            const tableFields = await MetabaseApi.table_fields({ tableId });
-            const fields = tableFields
-                .filter(resource => resource.id !== undefined);
-            const tables = i.assocIn(existingTables, [tableId], {id: tableId, fields});
-
-            return tables;
-        };
-
-        return await fetchData({dispatch, getState, requestStatePath, existingStatePath, getData, reload});
+        return await updateData({dispatch, getState, requestStatePath, existingStatePath, putData, payload});
     };
 });
 
@@ -196,14 +201,10 @@ export const fetchTableMetadata = createThunkAction(FETCH_TABLE_METADATA, functi
         const requestStatePath = ["metadata", "tables", tableId];
         const existingStatePath = ["metadata", "tables"];
         const getData = async (existingTables) => {
-            // no need to replace existing table since it would already have fields metadata
-            if (existingTables[tableId]) {
-                return existingTables;
-            }
-            const { table } = await loadTableAndForeignKeys(tableId);
-            const tables = i.assoc(existingTables, tableId, table);
+            const tableMetadata = await MetabaseApi.table_query_metadata({ tableId });
+            await augmentTable(tableMetadata);
 
-            return tables;
+            return normalize(tableMetadata, tables).entities;
         };
 
         return await fetchData({dispatch, getState, requestStatePath, existingStatePath, getData, reload});
@@ -212,9 +213,37 @@ export const fetchTableMetadata = createThunkAction(FETCH_TABLE_METADATA, functi
 
 const tables = handleActions({
     [UPDATE_TABLE]: { next: (state, { payload }) => payload },
-    [FETCH_TABLE_FIELDS]: { next: (state, { payload }) => payload },
-    [FETCH_TABLE_METADATA]: { next: (state, { payload }) => payload },
+    [FETCH_TABLE_METADATA]: { next: (state, { payload }) => ({ ...state, ...payload.tables }) },
     [FETCH_DATABASE_METADATA]: { next: (state, { payload }) => ({ ...state, ...payload.tables }) }
+}, {});
+
+const UPDATE_FIELD = "metabase/metadata/UPDATE_FIELD";
+export const updateField = createThunkAction(UPDATE_FIELD, function(field) {
+    return async function(dispatch, getState) {
+        const requestStatePath = ["metadata", "fields", field.id];
+        const existingStatePath = ["metadata", "fields"];
+        const putData = async (existingFields) => {
+            // make sure we don't send all the computed metadata
+            // there may be more that I'm missing?
+            const slimField = _.omit(field, "operators_lookup");
+
+            const fieldMetadata = await MetabaseApi.field_update(slimField);
+            const cleanField = cleanResource(fieldMetadata);
+            const existingField = existingFields[field.id];
+
+            const mergedField = {...existingField, ...cleanField};
+
+            return i.assoc(existingFields, mergedField.id, mergedField);
+        };
+
+        return await updateData({dispatch, getState, requestStatePath, existingStatePath, putData});
+    };
+});
+
+const fields = handleActions({
+    [UPDATE_FIELD]: { next: (state, { payload }) => payload },
+    [FETCH_TABLE_METADATA]: { next: (state, { payload }) => ({ ...state, ...payload.fields }) },
+    [FETCH_DATABASE_METADATA]: { next: (state, { payload }) => ({ ...state, ...payload.fields }) }
 }, {});
 
 const FETCH_REVISIONS = "metabase/metadata/FETCH_REVISIONS";
@@ -243,5 +272,6 @@ export default combineReducers({
     lists,
     databases,
     tables,
+    fields,
     revisions
 });

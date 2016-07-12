@@ -90,9 +90,9 @@ const getListSections = (list) => list ? {
         name: `Fields in ${list.name}`,
         sidebar: 'Fields in this list',
         // FIXME: breaks if we refresh on this route, looks like a race condition
-        // due to fetchTableFields being dependent on list.table_id from fetchLists
+        // due to fetchTableMetadata being dependent on list.table_id from fetchLists
         // resolves itself once we navigate away and back though
-        fetch: {fetchLists: [], fetchTableFields: [list.table_id]},
+        fetch: {fetchLists: [], fetchTableMetadata: [list.table_id]},
         get: "getFieldsByList",
         breadcrumb: `${list.name}`,
         icon: "all",
@@ -126,7 +126,7 @@ const getListFieldSections = (list, field) => list && field ? {
         name: 'Details',
         type: 'field',
         breadcrumb: `${field.display_name}`,
-        fetch: {fetchLists: [], fetchTableFields: [list.table_id]},
+        fetch: {fetchLists: [], fetchTableMetadata: [list.table_id]},
         get: "getFieldByList",
         icon: "star",
         parent: getListSections(list)[`/reference/lists/${list.id}/fields`]
@@ -173,7 +173,7 @@ const getTableSections = (database, table) => database && table ? {
         sidebar: 'Fields in this table',
         breadcrumb: `${table.display_name}`,
         fetch: {fetchDatabaseMetadata: [database.id]},
-        get: "getFields",
+        get: "getFieldsByTable",
         icon: "star",
         parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
     },
@@ -202,6 +202,10 @@ const getTableFieldSections = (database, table, field) => database && table && f
     }
 } : {};
 
+const idsToObjectMap = (ids, objects) => ids
+    .map(id => objects[id])
+    .reduce((map, object) => i.assoc(map, object.id, object), {});
+
 export const getSectionId = (state) => state.router.location.pathname;
 
 export const getMetricId = (state) => state.router.params.metricId;
@@ -229,11 +233,9 @@ export const getTableId = (state) => state.router.params.tableId;
 export const getTables = (state) => state.metadata.tables;
 const getTablesByDatabase = createSelector(
     [getTables, getDatabase],
-    (tables, database) => tables && database ? Object.values(tables)
-        .filter(table => table.db_id === database.id)
-        .reduce((tableMap, table) => i.assoc(tableMap, table.id, table), {}) : {}
+    (tables, database) => tables && database && database.tables ?
+        idsToObjectMap(database.tables, tables) : {}
 );
-
 const getTable = createSelector(
     [getTableId, getTables],
     (tableId, tables) => tables[tableId] || { id: tableId }
@@ -244,15 +246,14 @@ const getTableByList = createSelector(
 );
 
 export const getFieldId = (state) => state.router.params.fieldId;
-const getFields = createSelector(
-    [getTable],
-    (table) => table && table.fields ?
-        table.fields.reduce((fieldMap, field) => i.assoc(fieldMap, field.id, field), {}) : {}
+const getFields = (state) => state.metadata.fields;
+const getFieldsByTable = createSelector(
+    [getTable, getFields],
+    (table, fields) => table && table.fields ? idsToObjectMap(table.fields, fields) : {}
 );
 const getFieldsByList = createSelector(
-    [getTableByList],
-    (table) => table && table.fields ?
-        table.fields.reduce((fieldMap, field) => i.assoc(fieldMap, field.id, field), {}) : {}
+    [getTableByList, getFields],
+    (table, fields) => table && table.fields ? idsToObjectMap(table.fields, fields) : {}
 );
 const getField = createSelector(
     [getFieldId, getFields],
@@ -389,6 +390,7 @@ const dataSelectors = {
     getField,
     getFieldByList,
     getFields,
+    getFieldsByTable,
     getFieldsByList
 };
 
@@ -422,8 +424,6 @@ const mapFetchToRequestStatePaths = (fetch) => fetch ?
                 return ['metadata', 'databases', fetch[key], 'fetch'];
             case 'fetchTableMetadata':
                 return ['metadata', 'tables', fetch[key], 'fetch'];
-            case 'fetchTableFields':
-                return ['metadata', 'tables', fetch[key], 'fields', 'fetch'];
             default:
                 return [];
         }
