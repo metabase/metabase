@@ -80,6 +80,7 @@ export default class UpdateUserDetails extends Component {
     render() {
         const { updateUserResult, user } = this.props;
         const { formError, valid } = this.state;
+        const managed = user.google_auth
 
         return (
             <div>
@@ -97,9 +98,23 @@ export default class UpdateUserDetails extends Component {
                     </FormField>
 
                     <FormField fieldName="email" formError={formError}>
-                        <FormLabel title="Email address" fieldName="email" formError={formError} ></FormLabel>
-                        <input ref="email" className="Form-input Form-offset full" name="email" defaultValue={(user) ? user.email : null} placeholder="youlooknicetoday@email.com" required onChange={this.onChange.bind(this)} />
-                        <span className="Form-charm"></span>
+                        <FormLabel title={ managed ? "Sign in with Google Email address" : "Email address"} fieldName="email" formError={formError} ></FormLabel>
+                        <input
+                            ref="email"
+                            className={
+                              cx("Form-offset full", {
+                                "Form-input" : !managed,
+                                "text-grey-2 h1 borderless mt1": managed
+                              })
+                            }
+                            name="email"
+                            defaultValue={(user) ? user.email : null}
+                            placeholder="youlooknicetoday@email.com"
+                            required
+                            onChange={this.onChange.bind(this)}
+                            disabled={managed}
+                        />
+                        { !managed && <span className="Form-charm"></span>}
                     </FormField>
 
                     <div className="Form-actions">

@@ -749,6 +749,11 @@ CoreServices.factory('Session', ['$resource', '$cookies', function($resource, $c
             method: 'POST',
             ignoreAuthModule: true // this ensures a 401 response doesn't trigger another auth-required event
         },
+        createWithGoogleAuth: {
+            url: '/api/session/google_auth',
+            method: 'POST',
+            ignoreAuthModule: true
+        },
         delete: {
             method: 'DELETE'
         },
