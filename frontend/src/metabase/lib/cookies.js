@@ -1,3 +1,6 @@
+
+import { clearGoogleAuthCredentials } from "metabase/lib/auth";
+
 export const METABASE_SESSION_COOKIE = 'metabase.SESSION_ID';
 
 var mb_cookies = {};
@@ -29,8 +32,9 @@ var MetabaseCookies = {
         } else {
             sessionId = mb_cookies.ipCookie(METABASE_SESSION_COOKIE);
 
-            // delete the current session cookie
+            // delete the current session cookie and Google Auth creds
             mb_cookies.ipCookie.remove(METABASE_SESSION_COOKIE);
+            clearGoogleAuthCredentials();
 
             // send a logout notification event
             mb_cookies.scope.$broadcast('appstate:logout', sessionId);
