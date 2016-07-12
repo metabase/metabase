@@ -26,11 +26,12 @@
   (setting/get (keyword key)))
 
 (defendpoint PUT "/:key"
-  "Create/update a `Setting`. You must be a superuser to do this."
+  "Create/update a `Setting`. You must be a superuser to do this.
+   This endpoint can also be used to delete Settings by passing `nil` for `:value`."
   [key :as {{:keys [value]} :body}]
-  {key Required, value Required}
+  {key Required}
   (check-superuser)
-  (setting/set (keyword key) value))
+  (setting/set* (keyword key) value))
 
 (defendpoint DELETE "/:key"
   "Delete a `Setting`. You must be a superuser to do this."

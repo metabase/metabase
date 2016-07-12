@@ -70,8 +70,8 @@
                           non-nil-values)]
     ;; TODO: eventually we can check for :nullable? based on the original values above
     (cond-> (assoc field-stats :values distinct-values)
-            (and (nil? (:special_type field))
-                 (< 0 (count distinct-values))) (assoc :special-type :category))))
+      (and (nil? (:special_type field))
+           (pos? (count distinct-values))) (assoc :special-type :category))))
 
 (defn- test:no-preview-display
   "If FIELD's is textual and its average length is too great, mark it so it isn't displayed in the UI."
@@ -117,11 +117,10 @@
         (s/blank? val)         (recur at-least-one-non-nil-value? more)
         ;; If val is non-nil, check that it's a JSON dictionary or array. We don't want to mark Fields containing other
         ;; types of valid JSON values as :json (e.g. a string representation of a number or boolean)
-        :else                  (let [val (json/parse-string val)]
-                                 (when (not (or (map? val)
-                                                (sequential? val)))
-                                   (throw (Exception.)))
-                                 (recur true more))))
+        :else                  (do (u/prog1 (json/parse-string val)
+                                     (assert (or (map? <>)
+                                                 (sequential? <>))))
+                                   (recur true more))))
     (catch Throwable _
       false)))
 
@@ -134,8 +133,7 @@
     ;; this field isn't suited for this test
     field-stats
     ;; check for json values
-    (if-not (values-are-valid-json? (->> (driver/field-values-lazy-seq driver field)
-                                         (take driver/max-sync-lazy-seq-results)))
+    (if-not (values-are-valid-json? (take driver/max-sync-lazy-seq-results (driver/field-values-lazy-seq driver field)))
       field-stats
       (do
         (log/debug (u/format-color 'green "Field '%s' looks like it contains valid JSON objects. Setting special_type to :json." (field/qualified-name field)))
@@ -193,7 +191,7 @@
             :visibility_type (when (false? preview-display) :details-only)
             :special_type    special-type))
         ;; handle field values, setting them if applicable otherwise clearing them
-        (if (and id values (< 0 (count (filter identity values))))
+        (if (and id values (pos? (count (filter identity values))))
           (field-values/save-field-values! id values)
           (field-values/clear-field-values! id))))
 

@@ -16,6 +16,7 @@
                              [raw-table :refer [RawTable]]
                              [revision :refer [Revision]]
                              [segment :refer [Segment]]
+                             [setting :as setting]
                              [table :refer [Table]]
                              [user :refer [User]])
             [metabase.test.data :as data]
@@ -92,7 +93,7 @@
 
 
 (defn boolean-ids-and-timestamps
-  "Useful for unit test comparisons.  Converts map keys with 'id' or '_at' to booleans."
+  "Useful for unit test comparisons. Converts map keys with 'id' or '_at' to booleans."
   [m]
   (let [f (fn [v]
             (cond
@@ -205,10 +206,10 @@
 
 (u/strict-extend (class User)
   WithTempDefaults
-  {:with-temp-defaults (fn [_] {:email      (str (random-name) "@metabase.com")
-                                :password   (random-name)
-                                :first_name (random-name)
-                                :last_name  (random-name)})})
+  {:with-temp-defaults (fn [_] {:first_name (random-name)
+                                :last_name  (random-name)
+                                :email      (str (random-name) "@metabase.com")
+                                :password   (random-name)})})
 
 
 (defn do-with-temp
@@ -277,23 +278,29 @@
            (first @~with-temp-form))   ; if dereferencing with-temp-form throws an exception then expect Exception <-> Exception will pass; we don't want that, so make sure the expected
          (second @~with-temp-form))))) ; case is nil if we encounter an exception so the two don't match and the test doesn't succeed
 
-;; ## resolve-private-fns
+
+(defn- namespace-or-symbol? [x]
+  (or (symbol? x)
+      (instance? clojure.lang.Namespace x)))
+
+(defn resolve-private-fns* [source-namespace target-namespace symbols]
+  {:pre [(namespace-or-symbol? source-namespace)
+         (namespace-or-symbol? target-namespace)
+         (every? symbol? symbols)]}
+  (require source-namespace)
+  (doseq [symb symbols
+          :let [varr (or (ns-resolve source-namespace symb)
+                         (throw (Exception. (str source-namespace "/" symb " doesn't exist!"))))]]
+    (intern target-namespace symb varr)))
 
 (defmacro resolve-private-fns
   "Have your cake and eat it too. This Macro adds private functions from another namespace to the current namespace so we can test them.
 
     (resolve-private-fns metabase.driver.generic-sql.sync
       field-avg-length field-percent-urls)"
-  {:arglists '([namespace-symb & fn-symbs])}
-  [namespc fn-name & more]
-  {:pre [(symbol? namespc)
-         (symbol? fn-name)
-         (every? symbol? more)]}
-  `(do (require '~namespc)
-       (def ~(vary-meta fn-name assoc :private true) (or (ns-resolve '~namespc '~fn-name)
-                                                         (throw (Exception. ~(str namespc "/" fn-name " doesn't exist!")))))
-       ~(when (seq more)
-          `(resolve-private-fns ~namespc ~(first more) ~@(rest more)))))
+  [namespc & symbols]
+  `(resolve-private-fns* (quote ~namespc) *ns* (quote ~symbols)))
+
 
 (defn obj->json->obj
   "Convert an object to JSON and back again. This can be done to ensure something will match its serialized + deserialized form,
@@ -315,3 +322,28 @@
                      (into {} x)
                      x))
                  coll))
+
+
+(defn do-with-temporary-setting-value
+  "Temporarily set the value of the `Setting` named by keyword SETTING-K to VALUE and execute F, then re-establish the original value.
+   This works much the same way as `binding`.
+
+   Prefer the macro `with-temporary-setting-values` over using this function directly."
+  [setting-k value f]
+  (let [original-value (setting/get setting-k)]
+    (try
+      (setting/set* setting-k value)
+      (f)
+      (finally
+        (setting/set* setting-k original-value)))))
+
+(defmacro with-temporary-setting-values
+  "Temporarily bind the values of one or more `Settings`, execute body, and re-establish the original values. This works much the same way as `binding`.
+
+     (with-temporary-setting-values [google-auth-auto-create-accounts-domain \"metabase.com\"]
+       (google-auth-auto-create-accounts-domain)) -> \"metabase.com\""
+  [[setting-k value & more] & body]
+  (let [body `(do-with-temporary-setting-value ~(keyword setting-k) ~value (fn [] ~@body))]
+    (if (seq more)
+      `(with-temporary-setting-values ~more ~body)
+      body)))

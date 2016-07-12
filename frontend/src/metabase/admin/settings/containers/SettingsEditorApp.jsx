@@ -8,6 +8,7 @@ import SettingsEmailForm from "../components/SettingsEmailForm.jsx";
 import SettingsSlackForm from "../components/SettingsSlackForm.jsx";
 import SettingsSetupList from "../components/SettingsSetupList.jsx";
 import SettingsUpdatesForm from "../components/SettingsUpdatesForm.jsx";
+import SettingsSingleSignOnForm from "../components/SettingsSingleSignOnForm.jsx";
 
 import _ from "underscore";
 import cx from 'classnames';
@@ -23,7 +24,6 @@ import * as settingsActions from "../settings";
 
 const mapStateToProps = (state, props) => {
     return {
-        initialSection:      state.router && state.router.location && state.router.location.query.section,
         refreshSiteSettings: props.refreshSiteSettings,
         settings:            getSettings(state),
         sections:            getSections(state),
@@ -54,7 +54,7 @@ export default class SettingsEditorApp extends Component {
     };
 
     componentWillMount() {
-        this.props.initializeSettings(this.props.initialSection, this.props.refreshSiteSettings);
+        this.props.initializeSettings(this.props.refreshSiteSettings);
     }
 
     updateSetting(setting, value) {
@@ -120,6 +120,15 @@ export default class SettingsEditorApp extends Component {
                     />
                 </div>
             );
+        } else if (section.name === "Single Sign On") {
+            return (
+                <div className="px2">
+                    <SettingsSingleSignOnForm
+                        elements={section.settings}
+                        updateSetting={this.updateSetting}
+                    />
+                </div>
+            );
         } else {
             let settings = section.settings.map((setting, index) => {
                 return <SettingsSetting key={setting.key} setting={setting} updateSetting={this.updateSetting} handleChangeEvent={this.handleChangeEvent} autoFocus={index === 0}/>
@@ -134,7 +143,7 @@ export default class SettingsEditorApp extends Component {
     }
 
     renderSettingsSections() {
-        const { sections, activeSection, selectSection, newVersionAvailable } = this.props;
+        const { sections, activeSection, newVersionAvailable } = this.props;
 
         const renderedSections = _.map(sections, (section, idx) => {
             const classes = cx("AdminList-item", "flex", "align-center", "justify-between", "no-decoration", {
@@ -151,7 +160,7 @@ export default class SettingsEditorApp extends Component {
 
             return (
                 <li key={section.name}>
-                    <a href="#" className={classes} onClick={() => selectSection(section.name)}>
+                    <a href={"/admin/settings/?section=" + section.name} className={classes}>
                         <span>{section.name}</span>
                         {newVersionIndicator}
                     </a>

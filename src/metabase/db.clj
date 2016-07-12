@@ -21,7 +21,6 @@
            liquibase.Liquibase
            (liquibase.database DatabaseFactory Database)
            liquibase.database.jvm.JdbcConnection
-           liquibase.exception.DatabaseException
            liquibase.resource.ClassLoaderResourceAccessor))
 
 ;; ## DB FILE, JDBC/KORMA DEFINITONS
@@ -112,22 +111,21 @@
    *  `:release-locks` - Manually release migration locks left by an earlier failed migration.
                          (This shouldn't be necessary now that we run migrations inside a transaction,
                          but is available just in case)."
-  [db-details direction]
-  (try
-    (jdbc/with-db-transaction [conn (jdbc-details db-details)]
-      (let [^Database database (-> (DatabaseFactory/getInstance)
-                                   (.findCorrectDatabaseImplementation (JdbcConnection. (jdbc/get-connection conn))))
-            ^Liquibase liquibase (Liquibase. changelog-file (ClassLoaderResourceAccessor.) database)]
-        (case direction
-          :up            (.update liquibase "")
-          :down          (.rollback liquibase 10000 "")
-          :down-one      (.rollback liquibase 1 "")
-          :print         (let [writer (StringWriter.)]
-                           (.update liquibase "" writer)
-                           (.toString writer))
-          :release-locks (.forceReleaseLocks liquibase))))
-    (catch Throwable e
-      (throw (DatabaseException. e)))))
+  ([direction]
+   (migrate @db-connection-details direction))
+  ([db-details direction]
+   (jdbc/with-db-transaction [conn (jdbc-details db-details)]
+     (let [^Database database (-> (DatabaseFactory/getInstance)
+                                  (.findCorrectDatabaseImplementation (JdbcConnection. (jdbc/get-connection conn))))
+           ^Liquibase liquibase (Liquibase. changelog-file (ClassLoaderResourceAccessor.) database)]
+       (case direction
+         :up            (.update liquibase "")
+         :down          (.rollback liquibase 10000 "")
+         :down-one      (.rollback liquibase 1 "")
+         :print         (let [writer (StringWriter.)]
+                          (.update liquibase "" writer)
+                          (.toString writer))
+         :release-locks (.forceReleaseLocks liquibase))))))
 
 
 ;;; +------------------------------------------------------------------------------------------------------------------------+
@@ -221,12 +219,12 @@
   "Test connection to database with DETAILS and throw an exception if we have any troubles connecting."
   [engine details]
   {:pre [(keyword? engine) (map? details)]}
-  (log/info (u/format-color 'cyan "Verifying Database Connection ..."))
+  (log/info (u/format-color 'cyan "Verifying %s Database Connection ..." (name engine)))
   (assert (binding [*allow-potentailly-unsafe-connections* true]
             (require 'metabase.driver)
             ((resolve 'metabase.driver/can-connect-with-details?) engine details))
     (format "Unable to connect to Metabase %s DB." (name engine)))
-  (log/info (str "Verify Database Connection ... ✅")))
+  (log/info "Verify Database Connection ... ✅"))
 
 (defn setup-db
   "Do general preparation of database by validating that we can connect.
@@ -309,7 +307,7 @@
     (:metabase.models.interface/entity entity) entity
     (vector? entity)                           (resolve-entity (first entity))
     (symbol? entity)                           (resolve-entity-from-symbol entity)
-    :else                                      (throw (Exception. (str "Invalid entity:" entity)))))
+    :else                                      (throw (Exception. (str "Invalid entity: " entity)))))
 
 (defn- quoting-style
   "Style of `:quoting` that should be passed to HoneySQL `format`."

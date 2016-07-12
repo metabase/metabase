@@ -40,6 +40,10 @@
 .inline-block,
 :local(.inline-block) { display: inline-block; }
 
+@media screen and (--breakpoint-min-sm) {
+    .sm-inline-block { display: inline-block; }
+}
+
 .table { display: table; }
 
 .full, :local(.full) { width: 100%; }

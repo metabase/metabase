@@ -12,7 +12,7 @@ import { loadCard, isCardDirty, startNewCard, deserializeCardFromUrl } from "met
 import { formatSQL } from "metabase/lib/formatting";
 import Query from "metabase/lib/query";
 import { createQuery } from "metabase/lib/query";
-import { loadTable } from "metabase/lib/table";
+import { loadTableAndForeignKeys } from "metabase/lib/table";
 import Utils from "metabase/lib/utils";
 
 const Metabase = new AngularResourceProxy("Metabase", ["db_list_with_tables", "db_tables", "dataset", "table_query_metadata"]);
@@ -192,7 +192,7 @@ export const loadTableMetadata = createThunkAction(LOAD_TABLE_METADATA, (tableId
         }
 
         try {
-            return await loadTable(tableId);
+            return await loadTableAndForeignKeys(tableId);
         } catch(error) {
             console.log('error getting table metadata', error);
             return {};

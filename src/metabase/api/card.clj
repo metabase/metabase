@@ -30,9 +30,10 @@
 (defn- hydrate-favorites
   "Efficiently add `favorite` status for a large collection of `Cards`."
   [cards]
-  (let [favorite-card-ids (set (db/select-field :card_id CardFavorite, :owner_id *current-user-id*, :card_id [:in (map :id cards)]))]
-    (for [card cards]
-      (assoc card :favorite (contains? favorite-card-ids (:id card))))))
+  (when (seq cards)
+    (let [favorite-card-ids (set (db/select-field :card_id CardFavorite, :owner_id *current-user-id*, :card_id [:in (map :id cards)]))]
+      (for [card cards]
+        (assoc card :favorite (contains? favorite-card-ids (:id card)))))))
 
 (defn- cards:all
   "Return all `Cards`."

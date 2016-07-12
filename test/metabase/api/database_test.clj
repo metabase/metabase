@@ -13,22 +13,40 @@
 
 ;; HELPER FNS
 
-(defn create-db
-  ([db-name]
-    (create-db db-name true))
-  ([db-name full-sync?]
-   ((user->client :crowberto) :post 200 "database" {:engine       :postgres
-                                                    :name         db-name
-                                                    :details      {:host   "localhost"
-                                                                   :port   5432
-                                                                   :dbname "fakedb"
-                                                                   :user   "cam"
-                                                                   :ssl    false}
-                                                    :is_full_sync full-sync?})))
+(defn- create-db-via-api! [options]
+  ((user->client :crowberto) :post 200 "database" (merge {:engine       :postgres
+                                                          :name         (tu/random-name)
+                                                          :details      {:host   "localhost"
+                                                                         :port   5432
+                                                                         :dbname "fakedb"
+                                                                         :user   "cam"
+                                                                         :ssl    false}
+                                                          :is_full_sync true}
+                                                         options)))
+
+(defn- do-with-temp-db-created-via-api [db-options f]
+  (let [db (create-db-via-api! db-options)]
+    (assert (integer? (:id db)))
+    (try
+      (f db)
+      (finally
+        (db/cascade-delete! Database :id (:id db))))))
+
+(defmacro ^:private expect-with-temp-db-created-via-api {:style/indent 1} [[binding & [options]] expected actual]
+  ;; use `gensym` instead of auto gensym here so we can be sure it's a unique symbol every time. Otherwise since expectations hashes its body
+  ;; to generate function names it will treat every usage this as the same test and only a single one will end up being ran
+  (let [result (gensym "result-")]
+    `(let [~result (delay (do-with-temp-db-created-via-api ~options (fn [~binding]
+                                                                      [~expected
+                                                                       ~actual])))]
+       (expect
+         (u/ignore-exceptions (first @~result)) ; in case @result# barfs we don't want the test to succeed (Exception == Exception for expectations)
+         (second @~result)))))
+
 
 (defn- db-details
   ([]
-    (db-details (db)))
+   (db-details (db)))
   ([db]
    (match-$ db
      {:created_at      $
@@ -42,6 +60,60 @@
       :organization_id nil
       :description     nil
       :features        (mapv name (driver/features (driver/engine->driver (:engine db))))})))
+
+
+;; # DB LIFECYCLE ENDPOINTS
+
+;; ## GET /api/database/:id
+;; regular users *should not* see DB details
+(expect
+  (dissoc (db-details) :details)
+  ((user->client :rasta) :get 200 (format "database/%d" (id))))
+
+;; superusers *should* see DB details
+(expect
+  (db-details)
+  ((user->client :crowberto) :get 200 (format "database/%d" (id))))
+
+;; ## POST /api/database
+;; Check that we can create a Database
+(expect-with-temp-db-created-via-api [db {:is_full_sync false}]
+  (match-$ db
+    {:created_at      $
+     :engine          :postgres
+     :id              $
+     :details         {:host "localhost", :port 5432, :dbname "fakedb", :user "cam", :ssl true}
+     :updated_at      $
+     :name            $
+     :is_sample       false
+     :is_full_sync    false
+     :organization_id nil
+     :description     nil
+     :features        (vec (driver/features (driver/engine->driver :postgres)))})
+  (Database (:id db)))
+
+
+;; ## DELETE /api/database/:id
+;; Check that we can delete a Database
+(expect-with-temp-db-created-via-api [db]
+  false
+  (do ((user->client :crowberto) :delete 204 (format "database/%d" (:id db)))
+      (db/exists? 'Database :id (:id db))))
+
+;; ## PUT /api/database/:id
+;; Check that we can update fields in a Database
+(expect-with-temp-db-created-via-api [{db-id :id}]
+  {:details      {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}
+   :engine       :h2
+   :name         "Cam's Awesome Toucan Database"
+   :is_full_sync false}
+  (do ((user->client :crowberto) :put 200 (format "database/%d" db-id) {:name         "Cam's Awesome Toucan Database"
+                                                                        :engine       "h2"
+                                                                        :is_full_sync false
+                                                                        :details      {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}})
+      (dissoc (into {} (db/select-one [Database :name :engine :details :is_full_sync], :id db-id))
+              :features)))
+
 
 (defn- table-details [table]
   (match-$ table
@@ -61,155 +133,86 @@
      :created_at      $}))
 
 
-;; # DB LIFECYCLE ENDPOINTS
+;; TODO - this is a test code smell, each test should clean up after itself and this step shouldn't be neccessary. One day we should be able to remove this!
+;; If you're writing a test that needs this, fix your brain and your test
+(defn- ^:deprecated delete-randomly-created-databases!
+  "Delete all the randomly created Databases we've made so far. Optionally specify one or more IDs to SKIP."
+  [& {:keys [skip]}]
+  (db/cascade-delete! Database :id [:not-in (into (set skip)
+                                                  (for [engine datasets/all-valid-engines
+                                                        :let   [id (datasets/when-testing-engine engine
+                                                                     (:id (get-or-create-test-data-db! (driver/engine->driver engine))))]
+                                                        :when  id]
+                                                    id))]))
 
-;; ## GET /api/database/:id
-;; regular users *should not* see DB details
-(expect
-  (dissoc (db-details) :details)
-  ((user->client :rasta) :get 200 (format "database/%d" (id))))
-
-;; superusers *should* see DB details
-(expect
-  (db-details)
-  ((user->client :crowberto) :get 200 (format "database/%d" (id))))
-
-;; ## POST /api/database
-;; Check that we can create a Database
-(let [db-name (random-name)]
-  (expect-eval-actual-first
-      (match-$ (Database :name db-name)
-        {:created_at      $
-         :engine          "postgres" ; string because it's coming back from API instead of DB
-         :id              $
-         :details         {:host "localhost", :port 5432, :dbname "fakedb", :user "cam", :ssl true}
-         :updated_at      $
-         :name            db-name
-         :is_sample       false
-         :is_full_sync    false
-         :organization_id nil
-         :description     nil
-         :features        (mapv name (driver/features (driver/engine->driver :postgres)))})
-    (create-db db-name false)))
-
-;; ## DELETE /api/database/:id
-;; Check that we can delete a Database
-(expect-let [db-name (random-name)
-             {db-id :id} (create-db db-name)
-             sel-db-name (fn [] (db/select-one-field :name Database, :id db-id))]
-  [db-name
-   nil]
-  [(sel-db-name)
-   (do ((user->client :crowberto) :delete 204 (format "database/%d" db-id))
-       (sel-db-name))])
-
-;; ## PUT /api/database/:id
-;; Check that we can update fields in a Database
-(expect-let [[old-name new-name] (repeatedly 2 random-name)
-             {db-id :id}         (create-db old-name)
-             sel-db              (fn [] (dissoc (into {} (db/select-one [Database :name :engine :details :is_full_sync], :id db-id))
-                                                :features))]
-  [{:details      {:host "localhost", :port 5432, :dbname "fakedb", :user "cam", :ssl true}
-    :engine       :postgres
-    :name         old-name
-    :is_full_sync true}
-   {:details      {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}
-    :engine       :h2
-    :name         new-name
-    :is_full_sync false}]
-  [(sel-db)
-   ;; Check that we can update all the fields
-   (do ((user->client :crowberto) :put 200 (format "database/%d" db-id) {:name         new-name
-                                                                         :engine       "h2"
-                                                                         :is_full_sync false
-                                                                         :details      {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}})
-       (sel-db))])
-
-;; # DATABASES FOR ORG
 
 ;; ## GET /api/database
-;; Test that we can get all the DBs for an Org, ordered by name
+;; Test that we can get all the DBs (ordered by name)
 ;; Database details *should not* come back for Rasta since she's not a superuser
-(let [db-name (str "A" (random-name))] ; make sure this name comes before "test-data"
-  (expect-eval-actual-first
-      (set (filter identity (conj (for [engine datasets/all-valid-engines]
-                                    (datasets/when-testing-engine engine
-                                      (match-$ (get-or-create-test-data-db! (driver/engine->driver engine))
-                                        {:created_at      $
-                                         :engine          (name $engine)
-                                         :id              $
-                                         :updated_at      $
-                                         :name            "test-data"
-                                         :is_sample       false
-                                         :is_full_sync    true
-                                         :organization_id nil
-                                         :description     nil
-                                         :features        (mapv name (driver/features (driver/engine->driver engine)))})))
-                                  ;; (?) I don't remember why we have to do this for postgres but not any other of the bonus drivers
-                                  (match-$ (Database :name db-name)
+(expect-with-temp-db-created-via-api [{db-id :id}]
+  (set (filter identity (conj (for [engine datasets/all-valid-engines]
+                                (datasets/when-testing-engine engine
+                                  (match-$ (get-or-create-test-data-db! (driver/engine->driver engine))
                                     {:created_at      $
-                                     :engine          "postgres"
+                                     :engine          (name $engine)
                                      :id              $
                                      :updated_at      $
-                                     :name            $
+                                     :name            "test-data"
                                      :is_sample       false
                                      :is_full_sync    true
                                      :organization_id nil
                                      :description     nil
-                                     :features        (mapv name (driver/features (driver/engine->driver :postgres)))}))))
-      (do
-        ;; Delete all the randomly created Databases we've made so far
-        (db/cascade-delete! Database :id [:not-in (filter identity
-                                                          (for [engine datasets/all-valid-engines]
-                                                            (datasets/when-testing-engine engine
-                                                              (:id (get-or-create-test-data-db! (driver/engine->driver engine))))))])
-        ;; Add an extra DB so we have something to fetch besides the Test DB
-        (create-db db-name)
-        ;; Now hit the endpoint
-        (set ((user->client :rasta) :get 200 "database")))))
+                                     :features        (map name (driver/features (driver/engine->driver engine)))})))
+                              (match-$ (Database db-id)
+                                {:created_at      $
+                                 :engine          "postgres"
+                                 :id              $
+                                 :updated_at      $
+                                 :name            $
+                                 :is_sample       false
+                                 :is_full_sync    true
+                                 :organization_id nil
+                                 :description     nil
+                                 :features        (map name (driver/features (driver/engine->driver :postgres)))}))))
+  (do
+    (delete-randomly-created-databases! :skip [db-id])
+    (set ((user->client :rasta) :get 200 "database"))))
+
+
 
 ;; GET /api/databases (include tables)
-(let [db-name (str "A" (random-name))] ; make sure this name comes before "test-data"
-  (expect-eval-actual-first
-    (set (concat [(match-$ (Database :name db-name)
-                    {:created_at      $
-                     :engine          "postgres"
-                     :id              $
-                     :updated_at      $
-                     :name            $
-                     :is_sample       false
-                     :is_full_sync    true
-                     :organization_id nil
-                     :description     nil
-                     :tables          []
-                     :features        (mapv name (driver/features (driver/engine->driver :postgres)))})]
-                 (filter identity (for [engine datasets/all-valid-engines]
-                                    (datasets/when-testing-engine engine
-                                      (let [database (get-or-create-test-data-db! (driver/engine->driver engine))]
-                                        (match-$ database
-                                          {:created_at      $
-                                           :engine          (name $engine)
-                                           :id              $
-                                           :updated_at      $
-                                           :name            "test-data"
-                                           :is_sample       false
-                                           :is_full_sync    true
-                                           :organization_id nil
-                                           :description     nil
-                                           :tables          (->> (db/select Table, :db_id (:id database))
-                                                                 (mapv table-details)
-                                                                 (sort-by :name))
-                                           :features        (mapv name (driver/features (driver/engine->driver engine)))})))))))
-    (do
-      ;; Delete all the randomly created Databases we've made so far
-      (db/cascade-delete! Database :id [:not-in (set (filter identity
-                                                             (for [engine datasets/all-valid-engines]
-                                                               (datasets/when-testing-engine engine
-                                                                 (:id (get-or-create-test-data-db! (driver/engine->driver engine)))))))])
-      ;; Add an extra DB so we have something to fetch besides the Test DB
-      (create-db db-name)
-      ;; Now hit the endpoint
-      (set ((user->client :rasta) :get 200 "database" :include_tables true)))))
+(expect-with-temp-db-created-via-api [{db-id :id}]
+  (set (cons (match-$ (Database db-id)
+               {:created_at      $
+                :engine          "postgres"
+                :id              $
+                :updated_at      $
+                :name            $
+                :is_sample       false
+                :is_full_sync    true
+                :organization_id nil
+                :description     nil
+                :tables          []
+                :features        (map name (driver/features (driver/engine->driver :postgres)))})
+             (filter identity (for [engine datasets/all-valid-engines]
+                                (datasets/when-testing-engine engine
+                                  (let [database (get-or-create-test-data-db! (driver/engine->driver engine))]
+                                    (match-$ database
+                                      {:created_at      $
+                                       :engine          (name $engine)
+                                       :id              $
+                                       :updated_at      $
+                                       :name            "test-data"
+                                       :is_sample       false
+                                       :is_full_sync    true
+                                       :organization_id nil
+                                       :description     nil
+                                       :tables          (sort-by :name (for [table (db/select Table, :db_id (:id database))]
+                                                                         (table-details table)))
+                                       :features        (map name (driver/features (driver/engine->driver engine)))})))))))
+  (do
+    (delete-randomly-created-databases! :skip [db-id])
+    (set ((user->client :rasta) :get 200 "database" :include_tables true))))
 
 ;; ## GET /api/meta/table/:id/query_metadata
 ;; TODO - add in example with Field :values
@@ -293,65 +296,65 @@
 ;; ## GET /api/database/:id/tables
 ;; These should come back in alphabetical order
 (expect
-    (let [db-id (id)]
-      [(match-$ (Table (id :categories))
-         {:description nil
-          :entity_type nil
-          :visibility_type nil
-          :schema "PUBLIC"
-          :name "CATEGORIES"
-          :rows 75
-          :updated_at $
-          :entity_name nil
-          :active true
-          :id $
-          :db_id db-id
-          :created_at $
-          :display_name "Categories"
-          :raw_table_id $})
-       (match-$ (Table (id :checkins))
-         {:description nil
-          :entity_type nil
-          :visibility_type nil
-          :schema "PUBLIC"
-          :name "CHECKINS"
-          :rows 1000
-          :updated_at $
-          :entity_name nil
-          :active true
-          :id $
-          :db_id db-id
-          :created_at $
-          :display_name "Checkins"
-          :raw_table_id $})
-       (match-$ (Table (id :users))
-         {:description nil
-          :entity_type nil
-          :visibility_type nil
-          :schema "PUBLIC"
-          :name "USERS"
-          :rows 15
-          :updated_at $
-          :entity_name nil
-          :active true
-          :id $
-          :db_id db-id
-          :created_at $
-          :display_name "Users"
-          :raw_table_id $})
-       (match-$ (Table (id :venues))
-         {:description nil
-          :entity_type nil
-          :visibility_type nil
-          :schema "PUBLIC"
-          :name "VENUES"
-          :rows 100
-          :updated_at $
-          :entity_name nil
-          :active true
-          :id $
-          :db_id db-id
-          :created_at $
-          :display_name "Venues"
-          :raw_table_id $})])
+  (let [db-id (id)]
+    [(match-$ (Table (id :categories))
+       {:description     nil
+        :entity_type     nil
+        :visibility_type nil
+        :schema          "PUBLIC"
+        :name            "CATEGORIES"
+        :rows            75
+        :updated_at      $
+        :entity_name     nil
+        :active          true
+        :id              $
+        :db_id           db-id
+        :created_at      $
+        :display_name    "Categories"
+        :raw_table_id    $})
+     (match-$ (Table (id :checkins))
+       {:description     nil
+        :entity_type     nil
+        :visibility_type nil
+        :schema          "PUBLIC"
+        :name            "CHECKINS"
+        :rows            1000
+        :updated_at      $
+        :entity_name     nil
+        :active          true
+        :id              $
+        :db_id           db-id
+        :created_at      $
+        :display_name    "Checkins"
+        :raw_table_id    $})
+     (match-$ (Table (id :users))
+       {:description     nil
+        :entity_type     nil
+        :visibility_type nil
+        :schema          "PUBLIC"
+        :name            "USERS"
+        :rows            15
+        :updated_at      $
+        :entity_name     nil
+        :active          true
+        :id              $
+        :db_id           db-id
+        :created_at      $
+        :display_name    "Users"
+        :raw_table_id    $})
+     (match-$ (Table (id :venues))
+       {:description     nil
+        :entity_type     nil
+        :visibility_type nil
+        :schema          "PUBLIC"
+        :name            "VENUES"
+        :rows            100
+        :updated_at      $
+        :entity_name     nil
+        :active          true
+        :id              $
+        :db_id           db-id
+        :created_at      $
+        :display_name    "Venues"
+        :raw_table_id    $})])
   ((user->client :rasta) :get 200 (format "database/%d/tables" (id))))

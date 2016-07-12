@@ -1,11 +1,10 @@
 (ns metabase.models.field
-  (:require [clojure.data :as d]
-            [clojure.string :as s]
+  (:require (clojure [data :as d]
+                     [string :as s])
             [medley.core :as m]
             [metabase.db :as db]
             (metabase.models [common :as common]
                              [field-values :refer [FieldValues]]
-                             [foreign-key :refer [ForeignKey]]
                              [interface :as i])
             [metabase.util :as u]))
 
@@ -88,8 +87,6 @@
 
 (defn- pre-cascade-delete [{:keys [id]}]
   (db/cascade-delete! Field :parent_id id)
-  (db/cascade-delete! ForeignKey {:where [:or [:= :origin_id id]
-                                              [:= :destination_id id]]})
   (db/cascade-delete! 'FieldValues :field_id id))
 
 (defn ^:hydrate target
@@ -115,7 +112,7 @@
 (defn qualified-name
   "Return a combined qualified name for FIELD, e.g. `table_name.parent_field_name.field_name`."
   [field]
-  (apply str (interpose \. (qualified-name-components field))))
+  (s/join \. (qualified-name-components field)))
 
 (defn table
   "Return the `Table` associated with this `Field`."

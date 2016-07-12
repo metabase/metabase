@@ -4,9 +4,11 @@ import { handleActions, combineReducers, AngularResourceProxy, createThunkAction
 import MetabaseCookies from "metabase/lib/cookies";
 import MetabaseUtils from "metabase/lib/utils";
 
+import { clearGoogleAuthCredentials } from "metabase/lib/auth";
+
 
 // resource wrappers
-const SessionApi = new AngularResourceProxy("Session", ["create", "delete", "reset_password"]);
+const SessionApi = new AngularResourceProxy("Session", ["create", "createWithGoogleAuth", "delete", "reset_password"]);
 
 
 // login
@@ -29,6 +31,34 @@ export const login = createThunkAction("AUTH_LOGIN", function(credentials, onCha
 
         } catch (error) {
             return error;
+        }
+    };
+});
+
+
+// login Google
+export const loginGoogle = createThunkAction("AUTH_LOGIN_GOOGLE", function(googleUser, onChangeLocation) {
+    return async function(dispatch, getState) {
+        try {
+            let newSession = await SessionApi.createWithGoogleAuth({
+                token: googleUser.getAuthResponse().id_token
+            });
+
+            // since we succeeded, lets set the session cookie
+            MetabaseCookies.setSessionCookie(newSession.id);
+
+            // TODO: redirect after login (carry user to intended destination)
+            // this is ridiculously stupid.  we have to wait (300ms) for the cookie to actually be set in the browser :(
+            setTimeout(() => onChangeLocation("/"), 300);
+
+        } catch (error) {
+            clearGoogleAuthCredentials();
+            // If we see a 428 ("Precondition Required") that means we need to show the "No Metabase account exists for this Google Account" page
+            if (error.status === 428) {
+                onChangeLocation('/auth/google_no_mb_account');
+            } else {
+                return error;
+            }
         }
     };
 });
@@ -84,7 +114,8 @@ export const passwordReset = createThunkAction("AUTH_PASSWORD_RESET", function(t
 // reducers
 
 const loginError = handleActions({
-    ["AUTH_LOGIN"]: { next: (state, { payload }) => payload ? payload : null }
+    ["AUTH_LOGIN"]: { next: (state, { payload }) => payload ? payload : null },
+    ["AUTH_LOGIN_GOOGLE"]: { next: (state, { payload }) => payload ? payload : null }
 }, null);
 
 const resetSuccess = handleActions({

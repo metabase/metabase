@@ -17,7 +17,7 @@
                (not (s/blank? password))))
   (assert (not (:password_salt user))
     "Don't try to pass an encrypted password to (ins User). Password encryption is handled by pre-insert.")
-  (let [salt     (.toString (java.util.UUID/randomUUID))
+  (let [salt     (str (java.util.UUID/randomUUID))
         defaults {:date_joined  (u/new-sql-timestamp)
                   :last_login   nil
                   :is_staff     true
@@ -42,14 +42,17 @@
     (or first_name last_name) (assoc :common_name (str first_name " " last_name))))
 
 (defn- pre-cascade-delete [{:keys [id]}]
-  (db/cascade-delete! 'Session :user_id id)
-  (db/cascade-delete! 'Dashboard :creator_id id)
-  (db/cascade-delete! 'Card :creator_id id)
-  (db/cascade-delete! 'Pulse :creator_id id)
-  (db/cascade-delete! 'Activity :user_id id)
-  (db/cascade-delete! 'ViewLog :user_id id)
-  (db/cascade-delete! 'Segment :creator_id id)
-  (db/cascade-delete! 'Metric :creator_id id))
+  (doseq [[model k] [['Session        :user_id]
+                     ['Dashboard      :creator_id]
+                     ['Card           :creator_id]
+                     ['Pulse          :creator_id]
+                     ['Activity       :user_id]
+                     ['ViewLog        :user_id]
+                     ['Segment        :creator_id]
+                     ['Metric         :creator_id]
+                     ['Revision       :user_id]
+                     ['QueryExecution :executor_id]]]
+    (db/cascade-delete! model k id)))
 
 (u/strict-extend (class User)
   i/IEntity
@@ -78,7 +81,7 @@
                         :email      email-address
                         :first_name first-name
                         :last_name  last-name
-                        :password   (if (not (nil? password))
+                        :password   (if-not (nil? password)
                                       password
                                       (str (java.util.UUID/randomUUID))))]
     (when send-welcome
@@ -92,7 +95,7 @@
 (defn set-user-password!
   "Updates the stored password for a specified `User` by hashing the password with a random salt."
   [user-id password]
-  (let [salt     (.toString (java.util.UUID/randomUUID))
+  (let [salt     (str (java.util.UUID/randomUUID))
         password (creds/hash-bcrypt (str salt password))]
     ;; NOTE: any password change expires the password reset token
     (db/update! User user-id
