@@ -1,6 +1,8 @@
 import { createSelector } from 'reselect';
 import i from "icepick";
 
+import Query, { AggregationClause } from 'metabase/lib/query';
+
 //TODO: definitely lots of memoization opportunities here
 
 // there might be a better way to organize sections
@@ -214,28 +216,28 @@ const idsToObjectMap = (ids, objects) => ids
 
 export const getSectionId = (state) => state.router.location.pathname;
 
-export const getMetricId = (state) => state.router.params.metricId;
+export const getMetricId = (state) => Number.parseInt(state.router.params.metricId);
 const getMetrics = (state) => state.metadata.metrics;
 export const getMetric = createSelector(
     [getMetricId, getMetrics],
     (metricId, metrics) => metrics[metricId] || { id: metricId }
 );
 
-export const getListId = (state) => state.router.params.listId;
+export const getListId = (state) => Number.parseInt(state.router.params.listId);
 const getLists = (state) => state.metadata.lists;
 export const getList = createSelector(
     [getListId, getLists],
     (listId, lists) => lists[listId] || { id: listId }
 );
 
-export const getDatabaseId = (state) => state.router.params.databaseId;
+export const getDatabaseId = (state) => Number.parseInt(state.router.params.databaseId);
 const getDatabases = (state) => state.metadata.databases;
 const getDatabase = createSelector(
     [getDatabaseId, getDatabases],
     (databaseId, databases) => databases[databaseId] || { id: databaseId }
 );
 
-export const getTableId = (state) => state.router.params.tableId;
+export const getTableId = (state) => Number.parseInt(state.router.params.tableId);
 export const getTables = (state) => state.metadata.tables;
 const getTablesByDatabase = createSelector(
     [getTables, getDatabase],
@@ -251,7 +253,7 @@ const getTableByList = createSelector(
     (list, tables) => list ? tables[list.table_id] : {}
 );
 
-export const getFieldId = (state) => state.router.params.fieldId;
+export const getFieldId = (state) => Number.parseInt(state.router.params.fieldId);
 const getFields = (state) => state.metadata.fields;
 const getFieldsByTable = createSelector(
     [getTable, getFields],
@@ -286,11 +288,13 @@ const filterMetricQuestions = (metricId, question) => {
 const getMetricQuestions = createSelector(
     [getMetricId, getQuestions],
     (metricId, questions) => Object.values(questions)
-        .filter(question => filterMetricQuestions(metricId, question))
+        .filter(question => AggregationClause.getMetric(
+            question.dataset_query.query.aggregation
+        ) === metricId)
         .reduce((map, question) => i.assoc(map, question.id, question), {})
 );
 
-const getRevisions = (state) => {console.log(state); return state.metadata.revisions;}
+const getRevisions = (state) => state.metadata.revisions;
 
 const getMetricRevisions = createSelector(
     [getMetricId, getRevisions],
@@ -302,26 +306,12 @@ const getListRevisions = createSelector(
     (listId, revisions) => i.getIn(revisions, ['list', listId]) || {}
 );
 
-const filterListQuestions = (listId, question) => {
-    const filter = i.getIn(question, ['dataset_query', 'query', 'filter']);
-    if (!filter) {
-        return false;
-    }
-    if (filter[0] === "AND") {
-        const filters = filter.slice(1);
-        const matchingFilters = filters
-            .filter(filter => filter[0] === "SEGMENT" && filter[1].toString() === listId);
-
-        return matchingFilters.length === 1;
-    }
-
-    return filter[0] === "SEGMENT" && filter[1].toString() === listId;
-};
-
 const getListQuestions = createSelector(
     [getListId, getQuestions],
     (listId, questions) => Object.values(questions)
-        .filter(question => filterListQuestions(listId, question))
+        .filter(question => Query.getFilters(question.dataset_query.query)
+            .some(filter => Query.isSegmentFilter(filter) && filter[1] === listId)
+        )
         .reduce((map, question) => i.assoc(map, question.id, question), {})
 );
 
