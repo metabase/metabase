@@ -24,7 +24,7 @@ const referenceSections = {
         // mapping of propname to args of dispatch function
         fetch: {fetchMetrics: []},
         get: 'getMetrics',
-        icon: "star"
+        icon: "ruler"
     },
     [`/reference/lists`]: {
         id: `/reference/lists`,
@@ -32,7 +32,7 @@ const referenceSections = {
         breadcrumb: "Lists",
         fetch: {fetchLists: []},
         get: 'getLists',
-        icon: "recents"
+        icon: "clipboard"
     },
     [`/reference/databases`]: {
         id: `/reference/databases`,
@@ -40,7 +40,7 @@ const referenceSections = {
         breadcrumb: "Databases",
         fetch: {fetchDatabases: []},
         get: 'getDatabases',
-        icon: "mine"
+        icon: "database"
     }
 };
 
@@ -55,7 +55,7 @@ const getMetricSections = (metric) => metric ? {
         breadcrumb: `${metric.name}`,
         fetch: {fetchMetrics: []},
         get: 'getMetric',
-        icon: "all",
+        icon: "document",
         parent: referenceSections[`/reference/metrics`]
     },
     [`/reference/metrics/${metric.id}/questions`]: {
@@ -75,7 +75,7 @@ const getMetricSections = (metric) => metric ? {
         breadcrumb: `${metric.name}`,
         fetch: {fetchMetrics: [], fetchRevisions: ['metric', metric.id], fetchTableMetadata: [metric.table_id]},
         get: 'getMetricRevisions',
-        icon: "all",
+        icon: "history",
         parent: referenceSections[`/reference/metrics`]
     }
 } : {};
@@ -89,7 +89,7 @@ const getListSections = (list) => list ? {
         breadcrumb: `${list.name}`,
         fetch: {fetchLists: []},
         get: 'getList',
-        icon: "all",
+        icon: "document",
         parent: referenceSections[`/reference/lists`]
     },
     [`/reference/lists/${list.id}/fields`]: {
@@ -102,7 +102,7 @@ const getListSections = (list) => list ? {
         fetch: {fetchLists: [], fetchTableMetadata: [list.table_id]},
         get: "getFieldsByList",
         breadcrumb: `${list.name}`,
-        icon: "all",
+        icon: "fields",
         parent: referenceSections[`/reference/lists`]
     },
     [`/reference/lists/${list.id}/questions`]: {
@@ -122,7 +122,7 @@ const getListSections = (list) => list ? {
         breadcrumb: `${list.name}`,
         fetch: {fetchLists: [], fetchRevisions: ['list', list.id], fetchTableMetadata: [list.table_id]},
         get: 'getListRevisions',
-        icon: "all",
+        icon: "history",
         parent: referenceSections[`/reference/lists`]
     }
 } : {};
@@ -136,7 +136,7 @@ const getListFieldSections = (list, field) => list && field ? {
         breadcrumb: `${field.display_name}`,
         fetch: {fetchLists: [], fetchTableMetadata: [list.table_id]},
         get: "getFieldByList",
-        icon: "star",
+        icon: "document",
         parent: getListSections(list)[`/reference/lists/${list.id}/fields`]
     }
 } : {};
@@ -150,7 +150,7 @@ const getDatabaseSections = (database) => database ? {
         breadcrumb: `${database.name}`,
         fetch: {fetchDatabaseMetadata: [database.id]},
         get: 'getDatabase',
-        icon: "all",
+        icon: "document",
         parent: referenceSections[`/reference/databases`]
     },
     [`/reference/databases/${database.id}/tables`]: {
@@ -160,7 +160,7 @@ const getDatabaseSections = (database) => database ? {
         breadcrumb: `${database.name}`,
         fetch: {fetchDatabaseMetadata: [database.id]},
         get: 'getTablesByDatabase',
-        icon: "star",
+        icon: "table2",
         parent: referenceSections[`/reference/databases`]
     }
 } : {};
@@ -174,7 +174,7 @@ const getTableSections = (database, table) => database && table ? {
         breadcrumb: `${table.display_name}`,
         fetch: {fetchDatabaseMetadata: [database.id]},
         get: 'getTable',
-        icon: "all",
+        icon: "document",
         parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
     },
     [`/reference/databases/${database.id}/tables/${table.id}/fields`]: {
@@ -184,7 +184,7 @@ const getTableSections = (database, table) => database && table ? {
         breadcrumb: `${table.display_name}`,
         fetch: {fetchDatabaseMetadata: [database.id]},
         get: "getFieldsByTable",
-        icon: "star",
+        icon: "fields",
         parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
     },
     [`/reference/databases/${database.id}/tables/${table.id}/questions`]: {
@@ -194,7 +194,7 @@ const getTableSections = (database, table) => database && table ? {
         breadcrumb: `${table.display_name}`,
         fetch: {fetchDatabaseMetadata: [database.id], fetchQuestions: []},
         get: 'getTableQuestions',
-        icon: "star",
+        icon: "all",
         parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
     }
 } : {};
@@ -208,7 +208,7 @@ const getTableFieldSections = (database, table, field) => database && table && f
         breadcrumb: `${field.display_name}`,
         fetch: {fetchDatabaseMetadata: [database.id]},
         get: "getField",
-        icon: "star",
+        icon: "document",
         parent: getTableSections(database, table)[`/reference/databases/${database.id}/tables/${table.id}/fields`]
     }
 } : {};
