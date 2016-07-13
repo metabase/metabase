@@ -21,6 +21,7 @@ import {
     getData,
     getError,
     getLoading,
+    getUser,
     getIsEditing,
     getHasDisplayName,
     getHasRevisionHistory
@@ -34,6 +35,7 @@ const mapStateToProps = (state, props) => ({
     entity: getData(state) || {},
     loading: getLoading(state),
     error: getError(state),
+    user: getUser(state),
     isEditing: getIsEditing(state),
     hasDisplayName: getHasDisplayName(state),
     hasRevisionHistory: getHasRevisionHistory(state)
@@ -58,7 +60,8 @@ const validate = (values, props) => props.hasRevisionHistory ?
 export default class EntityItem extends Component {
     static propTypes = {
         entity: PropTypes.object,
-        isEditing: PropTypes.bool
+        isEditing: PropTypes.bool,
+        user: PropTypes.object,
     };
 
     render() {
@@ -68,6 +71,7 @@ export default class EntityItem extends Component {
             entity,
             error,
             loading,
+            user,
             isEditing,
             startEditing,
             endEditing,
@@ -145,7 +149,7 @@ export default class EntityItem extends Component {
                                 hasDisplayName ?
                                     entity.display_name || entity.name : entity.name
                             }
-                            { !isEditing &&
+                            { user.is_superuser && !isEditing &&
                                 <div className={S.headerButton}>
                                     <a
                                         onClick={startEditing}
