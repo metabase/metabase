@@ -4,6 +4,7 @@ import { connect } from "react-redux";
 import i from "icepick";
 
 import S from "metabase/components/List.css";
+import R from "metabase/reference/Reference.css";
 
 import * as metadataActions from "metabase/redux/metadata";
 import { assignUserColors } from "metabase/lib/formatting";
@@ -94,19 +95,22 @@ export default class RevisionHistoryApp extends Component {
                 <LoadingAndErrorWrapper loading={!error && loading} error={error}>
                     { () => Object.keys(revisions).length > 0 && tables[entity.table_id] ?
                         <div className="wrapper wrapper--trim">
-                            {Object.values(revisions)
-                                .map(revision => revision && revision.diff ?
-                                    <Revision
-                                        key={revision.id}
-                                        revision={revision || {}}
-                                        tableMetadata={tables[entity.table_id] || {}}
-                                        objectName={entity.name}
-                                        currentUser={user || {}}
-                                        userColor={userColorAssignments[i.getIn(revision, ['user', 'id'])]}
-                                    /> :
-                                    null)
-                                .reverse()
-                            }
+                            <div className={R.revisionsWrapper}>
+                                {Object.values(revisions)
+                                    .map(revision => revision && revision.diff ?
+                                        <Revision
+                                            key={revision.id}
+                                            revision={revision || {}}
+                                            tableMetadata={tables[entity.table_id] || {}}
+                                            objectName={entity.name}
+                                            currentUser={user || {}}
+                                            userColor={userColorAssignments[i.getIn(revision, ['user', 'id'])]}
+                                        /> :
+                                        null
+                                    )
+                                    .reverse()
+                                }
+                            </div>
                         </div>
                         :
                         <div className={S.empty}>

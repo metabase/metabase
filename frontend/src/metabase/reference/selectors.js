@@ -24,7 +24,8 @@ const referenceSections = {
         // mapping of propname to args of dispatch function
         fetch: {fetchMetrics: []},
         get: 'getMetrics',
-        icon: "ruler"
+        icon: "ruler",
+        headerIcon: "ruler"
     },
     [`/reference/lists`]: {
         id: `/reference/lists`,
@@ -32,7 +33,8 @@ const referenceSections = {
         breadcrumb: "Lists",
         fetch: {fetchLists: []},
         get: 'getLists',
-        icon: "clipboard"
+        icon: "clipboard",
+        headerIcon: "clipboard"
     },
     [`/reference/databases`]: {
         id: `/reference/databases`,
@@ -40,7 +42,8 @@ const referenceSections = {
         breadcrumb: "Databases",
         fetch: {fetchDatabases: []},
         get: 'getDatabases',
-        icon: "database"
+        icon: "database",
+        headerIcon: "database"
     }
 };
 
@@ -56,6 +59,7 @@ const getMetricSections = (metric) => metric ? {
         fetch: {fetchMetrics: []},
         get: 'getMetric',
         icon: "document",
+        headerIcon: "ruler",
         parent: referenceSections[`/reference/metrics`]
     },
     [`/reference/metrics/${metric.id}/questions`]: {
@@ -90,6 +94,7 @@ const getListSections = (list) => list ? {
         fetch: {fetchLists: []},
         get: 'getList',
         icon: "document",
+        headerIcon: "clipboard",
         parent: referenceSections[`/reference/lists`]
     },
     [`/reference/lists/${list.id}/fields`]: {
@@ -137,6 +142,7 @@ const getListFieldSections = (list, field) => list && field ? {
         fetch: {fetchLists: [], fetchTableMetadata: [list.table_id]},
         get: "getFieldByList",
         icon: "document",
+        headerIcon: "field",
         parent: getListSections(list)[`/reference/lists/${list.id}/fields`]
     }
 } : {};
@@ -151,6 +157,7 @@ const getDatabaseSections = (database) => database ? {
         fetch: {fetchDatabaseMetadata: [database.id]},
         get: 'getDatabase',
         icon: "document",
+        headerIcon: "database",
         parent: referenceSections[`/reference/databases`]
     },
     [`/reference/databases/${database.id}/tables`]: {
@@ -175,6 +182,7 @@ const getTableSections = (database, table) => database && table ? {
         fetch: {fetchDatabaseMetadata: [database.id]},
         get: 'getTable',
         icon: "document",
+        headerIcon: "table2",
         parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
     },
     [`/reference/databases/${database.id}/tables/${table.id}/fields`]: {
@@ -209,6 +217,7 @@ const getTableFieldSections = (database, table, field) => database && table && f
         fetch: {fetchDatabaseMetadata: [database.id]},
         get: "getField",
         icon: "document",
+        headerIcon: "field",
         parent: getTableSections(database, table)[`/reference/databases/${database.id}/tables/${table.id}/fields`]
     }
 } : {};

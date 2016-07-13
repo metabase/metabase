@@ -40,3 +40,7 @@
     color: color(var(--primary-button-border-color) shade(10%));
     transition: color .3s linear;
 }
+
+:local(.revisionsWrapper) {
+    padding-left: 50px;
+}

@@ -117,7 +117,14 @@ export default class EntityItem extends Component {
                     <div className="wrapper wrapper--trim">
                         <div className={S.header}>
                             <div className={S.leftIcons}>
-
+                                { section.headerIcon &&
+                                    <Icon
+                                        className="text-brand"
+                                        name={section.headerIcon}
+                                        width={24}
+                                        height={24}
+                                    />
+                                }
                             </div>
                             { isEditing ?
                                 hasDisplayName ?
