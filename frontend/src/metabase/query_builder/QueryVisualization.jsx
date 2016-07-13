@@ -8,8 +8,9 @@ import RunButton from './RunButton.jsx';
 import VisualizationSettings from './VisualizationSettings.jsx';
 
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
+import VisualizationError from "./VisualizationError.jsx";
+import VisualizationErrorMessage from './VisualizationErrorMessage';
 
-import MetabaseSettings from "metabase/lib/settings";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import Query from "metabase/lib/query";
 
@@ -204,12 +205,6 @@ export default class QueryVisualization extends Component {
         }
     }
 
-    showDetailError() {
-        if (this._detailErrorLink && this._detailErrorBody ) {
-            ReactDOM.findDOMNode(this._detailErrorLink).style.display = "none";
-            ReactDOM.findDOMNode(this._detailErrorBody).style.display = "inherit";
-        }
-    }
 
     render() {
         const { card, databases, isObjectDetail, isRunning, result } = this.props
@@ -222,61 +217,13 @@ export default class QueryVisualization extends Component {
             let error = result.error;
 
             if (error) {
-                if (typeof error.status === "number") {
-                    // Assume if the request took more than 15 seconds it was due to a timeout
-                    // Some platforms like Heroku return a 503 for numerous types of errors so we can't use the status code to distinguish between timeouts and other failures.
-                    if (result.duration > 15*1000) {
-                        viz = <VisualizationError
-                                  type="timeout"
-                                  title="Your question took to long"
-                                  message="We didn't get an answer back from your database in time, so we had to stop. You can try again in a minute, or if the problem persists, you can email an admin to let them know."
-                                  action={<EmailAdmin />}
-                              />
-                    } else {
-                        viz = <VisualizationError
-                                  type="serverError"
-                                  title="We\'re experiencing server issues"
-                                  message="Try refreshing the page after waiting a minute or two. If the problem persists we'd recommend you contact an admin."
-                                  action={<EmailAdmin />}
-                              />
-                    }
-                } else if (card.dataset_query && card.dataset_query.type === 'native') {
-                    // always show errors for native queries
-                    viz = (
-                        <div className="QueryError flex full align-center text-error">
-                            <div className="QueryError-iconWrapper">
-                                <svg className="QueryError-icon" viewBox="0 0 32 32" width="64" height="64" fill="currentcolor">
-                                    <path d="M4 8 L8 4 L16 12 L24 4 L28 8 L20 16 L28 24 L24 28 L16 20 L8 28 L4 24 L12 16 z "></path>
-                                </svg>
-                            </div>
-                            <span className="QueryError-message">{error}</span>
-                        </div>
-                    );
-                } else {
-                    viz = (
-                        <div className="QueryError2 flex full justify-center">
-                            <div className="QueryError-image QueryError-image--queryError mr4"></div>
-                            <div className="QueryError2-details">
-                                <h1 className="text-bold">There was a problem with your question</h1>
-                                <p className="QueryError-messageText">Most of the time this is caused by an invalid selection or bad input value.  Double check your inputs and retry your query.</p>
-                                <div ref={(c) => this._detailErrorLink = c} className="pt2">
-                                    <a onClick={this.showDetailError.bind(this)} className="link cursor-pointer">Show error details</a>
-                                </div>
-                                <div ref={(c) => this._detailErrorBody = c} style={{display: "none"}} className="pt3 text-left">
-                                    <h2>Here's the full error message</h2>
-                                    <div style={{fontFamily: "monospace"}} className="QueryError2-detailBody bordered rounded bg-grey-0 text-bold p2 mt1">{error}</div>
-                                </div>
-                            </div>
-                        </div>
-                    );
-                }
-
+                viz = <VisualizationError error={error} card={card} duration={result.duration} />
             } else if (result.data) {
                 if (isObjectDetail) {
                     viz =  <QueryVisualizationObjectDetailTable data={result.data} {...this.props} />
                 } else if (result.data.rows.length === 0) {
                     // successful query but there were 0 rows returned with the result
-                    viz = <VisualizationError
+                    viz = <VisualizationErrorMessage
                               type='noRows'
                               title='No results!'
                               message='This may be the answer you’re looking for. If not, chances are your filters are too specific. Try removing or changing your filters to see more data.'
@@ -332,36 +279,6 @@ export default class QueryVisualization extends Component {
             </div>
         );
     }
-}
-
-const EmailAdmin = () => {
-  const adminEmail = MetabaseSettings.adminEmail()
-  return adminEmail && (
-      <span className="QueryError-adminEmail">
-          <a className="no-decoration" href={"mailto:"+adminEmail}>
-              {adminEmail}
-          </a>
-      </span>
-  )
-}
-
-const VisualizationError = ({title, type, message, action}) => {
-    return (
-        <div className="QueryError flex full align-center">
-            <div className={`QueryError-image QueryError-image--${type}`}></div>
-            <div className="QueryError-message text-centered">
-                { title && <h1 className="text-bold">{title}</h1> }
-                <p className="QueryError-messageText">{message}</p>
-                {action}
-            </div>
-        </div>
-    )
-}
-
-VisualizationError.propTypes = {
-  title:    PropTypes.string.isRequired,
-  type:     PropTypes.string.isRequired,
-  message:  PropTypes.string.isRequired,
 }
 
 const VisualizationEmptyState = ({showTutorialLink}) =>
