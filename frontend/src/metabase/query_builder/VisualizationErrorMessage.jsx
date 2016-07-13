@@ -17,6 +17,7 @@ VisualizationErrorMessage.propTypes = {
   title:    PropTypes.string.isRequired,
   type:     PropTypes.string.isRequired,
   message:  PropTypes.string.isRequired,
+  action:   PropTypes.node
 }
 
 export default VisualizationErrorMessage;

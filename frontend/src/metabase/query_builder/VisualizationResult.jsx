@@ -36,4 +36,11 @@ const VisualizationResult = ({card, isObjectDetail, lastRunDatasetQuery, result,
     }
 }
 
+VisualizationResult.propTypes = {
+    card:                   PropTypes.object.isRequired,
+    isObjectDetail:         PropTypes.bool.isRequired,
+    lastRunDatasetQuery:    PropTypes.object.isRequired,
+    result:                 PropTypes.object.isRequired,
+}
+
 export default VisualizationResult;
