@@ -31,6 +31,9 @@ const Item = ({ id, name, description, placeholder, url, icon, isEditing, field 
                     /> :
                     description || placeholder || 'No description yet'
                 }
+                { isEditing && field.error && field.touched &&
+                    <span className="text-error">{field.error}</span>
+                }
             </div>
         </div>
     </div>

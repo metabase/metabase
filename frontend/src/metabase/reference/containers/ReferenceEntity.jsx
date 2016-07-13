@@ -44,11 +44,17 @@ const mapDispatchToProps = {
     ...actions
 };
 
+const validate = (values, props) => props.hasRevisionHistory ?
+    !values.revision_message ?
+        { revision_message: "Please enter a revision message" } : {} :
+    {};
+
+@connect(mapStateToProps, mapDispatchToProps)
 @reduxForm({
     form: 'details',
-    fields: ['name', 'display_name', 'description', 'revision_message']//, 'points_of_interest', 'caveats'],
+    fields: ['name', 'display_name', 'description', 'revision_message', 'points_of_interest', 'caveats'],
+    validate
 })
-@connect(mapStateToProps, mapDispatchToProps)
 export default class EntityItem extends Component {
     static propTypes = {
         entity: PropTypes.object,
@@ -57,7 +63,7 @@ export default class EntityItem extends Component {
 
     render() {
         const {
-            fields: { name, display_name, description, revision_message }, //, points_of_interest, caveats },
+            fields: { name, display_name, description, revision_message, points_of_interest, caveats },
             section,
             entity,
             error,
@@ -73,7 +79,8 @@ export default class EntityItem extends Component {
 
         return (
             <div className="full">
-                <form onSubmit={handleSubmit(async fields => {
+                <form
+                    onSubmit={handleSubmit(async fields => {
                         const editedFields = Object.keys(fields)
                             .filter(key => fields[key] !== undefined)
                             .reduce((map, key) => i.assoc(map, key, fields[key]), {});
@@ -81,15 +88,29 @@ export default class EntityItem extends Component {
 
                         await this.props[section.update](newEntity);
                         endEditing();
-                    })}>
+                    })}
+                    hasRevisionHistory={hasRevisionHistory}
+                >
                     { isEditing &&
                         <div className={R.subheader}>
                             <div>
                                 You are editing this page
                             </div>
                             <div className={R.subheaderButtons}>
-                                <button className={cx("Button", "Button--white", "Button--small", R.saveButton)} type="submit">SAVE</button>
-                                <button className={cx("Button", "Button--white", "Button--small", R.cancelButton)} onClick={endEditing}>CANCEL</button>
+                                <button
+                                    className={cx("Button", "Button--white", "Button--small", R.saveButton)}
+                                    type="submit"
+                                    disabled={submitting}
+                                >
+                                    SAVE
+                                </button>
+                                <button
+                                    type="button"
+                                    className={cx("Button", "Button--white", "Button--small", R.cancelButton)}
+                                    onClick={endEditing}
+                                >
+                                    CANCEL
+                                </button>
                             </div>
                         </div>
                     }
@@ -153,24 +174,6 @@ export default class EntityItem extends Component {
                                             description={entity.name}
                                         />
                                     </li>
-                                    // <li className="relative">
-                                    //     <Item
-                                    //         id="points_of_interest"
-                                    //         name={`Why this ${section.type} is interesting`}
-                                    //         description={entity.points_of_interest}
-                                    //         placeholder="Nothing interesting yet"
-                                    //         isEditing={isEditing}
-                                    //         field={points_of_interest}
-                                    //         />
-                                    // </li>
-                                    // <li className="relative">
-                                    //     <Item
-                                    //         id="caveats"
-                                    //         name={`Things to be aware of about this ${section.type}`}
-                                    //         description={entity.caveats}
-                                    //         placeholder="Nothing to be aware of yet"
-                                    //     />
-                                    // </li>
                                 }
                                 { hasRevisionHistory && isEditing &&
                                     // make this required and validate for it
@@ -185,6 +188,26 @@ export default class EntityItem extends Component {
                                         />
                                     </li>
                                 }
+                                <li className="relative">
+                                    <Item
+                                        id="points_of_interest"
+                                        name={`Why this ${section.type} is interesting`}
+                                        description={entity.points_of_interest}
+                                        placeholder="Nothing interesting yet"
+                                        isEditing={isEditing}
+                                        field={points_of_interest}
+                                        />
+                                </li>
+                                <li className="relative">
+                                    <Item
+                                        id="caveats"
+                                        name={`Things to be aware of about this ${section.type}`}
+                                        description={entity.caveats}
+                                        placeholder="Nothing to be aware of yet"
+                                        isEditing={isEditing}
+                                        field={points_of_interest}
+                                    />
+                                </li>
                             </List>
                         </div>
                     }
