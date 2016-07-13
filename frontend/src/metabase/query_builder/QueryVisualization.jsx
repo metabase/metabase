@@ -3,13 +3,11 @@ import ReactDOM from "react-dom";
 
 import Icon from "metabase/components/Icon.jsx";
 import LoadingSpinner from 'metabase/components/LoadingSpinner.jsx';
-import QueryVisualizationObjectDetailTable from './QueryVisualizationObjectDetailTable.jsx';
 import RunButton from './RunButton.jsx';
 import VisualizationSettings from './VisualizationSettings.jsx';
 
-import Visualization from "metabase/visualizations/components/Visualization.jsx";
 import VisualizationError from "./VisualizationError.jsx";
-import VisualizationErrorMessage from './VisualizationErrorMessage';
+import VisualizationResult from "./VisualizationResult.jsx";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import Query from "metabase/lib/query";
@@ -247,40 +245,6 @@ export default class QueryVisualization extends Component {
                 </div>
             </div>
         );
-    }
-}
-
-
-const VisualizationResult = ({card, isObjectDetail, lastRunDatasetQuery, result, ...rest}) => {
-    if (isObjectDetail) {
-        return <QueryVisualizationObjectDetailTable data={result.data} {...rest} />
-    } else if (result.data.rows.length === 0) {
-        // successful query but there were 0 rows returned with the result
-        return <VisualizationErrorMessage
-                  type='noRows'
-                  title='No results!'
-                  message='This may be the answer you’re looking for. If not, chances are your filters are too specific. Try removing or changing your filters to see more data.'
-                  action={
-                    <button className="Button" onClick={() => window.history.back() }>
-                        Back to last run
-                    </button>
-                  }
-              />
-    } else {
-        // we want to provide the visualization with a card containing the latest
-        // "display", "visualization_settings", etc, (to ensure the correct visualization is shown)
-        // BUT the last executed "dataset_query" (to ensure data matches the query)
-        let vizCard = {
-            ...card,
-            dataset_query: lastRunDatasetQuery
-        };
-        return <Visualization
-                  className="full"
-                  series={[{ card: vizCard, data: result.data }]}
-                  isEditing={true}
-                  // Table:
-                  {...rest}
-              />
     }
 }
 
