@@ -114,7 +114,7 @@
   (^String [date-format]
    (format-date date-format (System/currentTimeMillis)))
   (^String [date-format date]
-   (time/unparse (->DateTimeFormatter date-format) (coerce/from-long (.getTime (->Timestamp date))))))
+   (time/unparse (->DateTimeFormatter date-format) (coerce/from-sql-time (->Timestamp date)))))
 
 (def ^{:arglists '([] [date])} date->iso-8601
   "Format DATE a an ISO-8601 string."
