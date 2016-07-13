@@ -21,9 +21,17 @@
 }
 
 :local(.header) {
+    composes: flex flex-row from "style";
     composes: mt4 mb2 from "style";
     color: var(--title-color);
     font-size: 24px;
+}
+
+:local(.headerTextInput) {
+    padding: 10px 20px;
+    font-size: 18px;
+    width: 100%;
+    outline-color: var(--subtitle-color);
 }
 
 :local(.headerLink) {
@@ -31,7 +39,8 @@
 }
 
 :local(.headerButton) {
-
+    composes: flex-align-right from "style";
+    font-size: 14px;
 }
 
 :local(.empty) {
@@ -83,13 +92,14 @@
     font-size: 14px;
     width: 100%;
     min-height: 100px;
-    border-color: var(--subtitle-color);
+    outline-color: var(--subtitle-color);
 }
 
 :local(.icons) {
     composes: flex flex-row align-center from "style";
 }
 :local(.leftIcons) {
+    composes: flex-no-shrink from "style";
     composes: icons;
     width: 50px;
 }

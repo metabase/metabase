@@ -8,6 +8,7 @@ import i from "icepick";
 import S from "metabase/components/List.css";
 import List from "metabase/components/List.jsx";
 import Item from "metabase/components/Item.jsx";
+import Icon from "metabase/components/Icon.jsx";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
@@ -92,19 +93,25 @@ export default class EntityItem extends Component {
                                 backgroundColor: '#6CAFED'
                             }}
                         >
+                            <button className="Button Button--white Button--small" type="submit">SAVE</button>
                         </div>
                     }
                     <div className="wrapper wrapper--trim">
                         <div className={S.header}>
+                            <div className={S.leftIcons}>
+
+                            </div>
                             { isEditing ?
                                 hasDisplayName ?
                                     <input
+                                        className={S.headerTextInput}
                                         type="text"
                                         placeholder={entity.name}
                                         {...display_name}
                                         defaultValue={entity.display_name}
                                     /> :
                                     <input
+                                        className={S.headerTextInput}
                                         type="text"
                                         placeholder={entity.name}
                                         {...name}
@@ -113,9 +120,20 @@ export default class EntityItem extends Component {
                                 hasDisplayName ?
                                     entity.display_name || entity.name : entity.name
                             }
+                            { !isEditing &&
+                                <div className={S.headerButton}>
+                                    <a
+                                        onClick={startEditing}
+                                        className="Button Button--primary Button--withIcon"
+                                    >
+                                        <div className="flex align-center relative">
+                                            <Icon name="pencil" width="16px" height="16px" />
+                                            <span className="ml1">Edit</span>
+                                        </div>
+                                    </a>
+                                </div>
+                            }
                         </div>
-                        <a onClick={startEditing} className="Button">Edit</a>
-                        <button type="submit" className="Button">Submit</button>
                     </div>
                     <LoadingAndErrorWrapper loading={!error && loading} error={error}>
                     { () =>
