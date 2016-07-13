@@ -81,16 +81,17 @@ export default class QueryVisualization extends Component {
     }
 
     renderHeader() {
+        const { isObjectDetail, isRunning } = this.props;
         return (
             <div className="relative flex flex-no-shrink mt3 mb1" style={{ minHeight: "2em" }}>
                 <span className="relative z4">
-                  { !this.props.isObjectDetail && <VisualizationSettings {...this.props}/> }
+                  { !isObjectDetail && <VisualizationSettings {...this.props}/> }
                 </span>
                 <div className="absolute flex layout-centered left right z3">
                     <RunButton
                         canRun={this.canRun()}
                         isDirty={this.queryIsDirty()}
-                        isRunning={this.props.isRunning}
+                        isRunning={isRunning}
                         runFn={this.runQuery}
                         cancelFn={this.props.cancelQueryFn}
                     />
@@ -211,13 +212,13 @@ export default class QueryVisualization extends Component {
     }
 
     render() {
+        const { card, databases, isObjectDetail, isRunning, result } = this.props
         let viz;
 
-        if (!this.props.result) {
-            let hasSampleDataset = !!_.findWhere(this.props.databases, { is_sample: true });
+        if (!result) {
+            let hasSampleDataset = !!_.findWhere(databases, { is_sample: true });
             viz = <VisualizationEmptyState showTutorialLink={hasSampleDataset} />
         } else {
-            let { result } = this.props;
             let error = result.error;
 
             if (error) {
@@ -239,7 +240,7 @@ export default class QueryVisualization extends Component {
                                   action={<EmailAdmin />}
                               />
                     }
-                } else if (this.props.card.dataset_query && this.props.card.dataset_query.type === 'native') {
+                } else if (card.dataset_query && card.dataset_query.type === 'native') {
                     // always show errors for native queries
                     viz = (
                         <div className="QueryError flex full align-center text-error">
@@ -270,11 +271,11 @@ export default class QueryVisualization extends Component {
                     );
                 }
 
-            } else if (this.props.result.data) {
-                if (this.props.isObjectDetail) {
+            } else if (result.data) {
+                if (isObjectDetail) {
                     viz = (
                         <QueryVisualizationObjectDetailTable
-                            data={this.props.result.data}
+                            data={result.data}
                             tableMetadata={this.props.tableMetadata}
                             tableForeignKeys={this.props.tableForeignKeys}
                             tableForeignKeyReferences={this.props.tableForeignKeyReferences}
@@ -285,7 +286,7 @@ export default class QueryVisualization extends Component {
                         />
                     );
 
-                } else if (this.props.result.data.rows.length === 0) {
+                } else if (result.data.rows.length === 0) {
                     // successful query but there were 0 rows returned with the result
                     viz = <VisualizationError
                               type='noRows'
@@ -301,14 +302,14 @@ export default class QueryVisualization extends Component {
                     // we want to provide the visualization with a card containing the latest
                     // "display", "visualization_settings", etc, (to ensure the correct visualization is shown)
                     // BUT the last executed "dataset_query" (to ensure data matches the query)
-                    let card = {
-                        ...this.props.card,
+                    let vizCard = {
+                        ...card,
                         dataset_query: this.state.lastRunDatasetQuery
                     };
                     viz = (
                         <Visualization
                             className="full"
-                            series={[{ card: card, data: this.props.result.data }]}
+                            series={[{ card: vizCard, data: result.data }]}
                             isEditing={true}
                             // Table:
                             setSortFn={this.props.setSortFn}
@@ -323,19 +324,19 @@ export default class QueryVisualization extends Component {
         }
 
         const wrapperClasses = cx('wrapper full relative mb2 z1', {
-            'flex': !this.props.isObjectDetail,
-            'flex-column': !this.props.isObjectDetail
+            'flex': !isObjectDetail,
+            'flex-column': !isObjectDetail
         });
 
         const visualizationClasses = cx('flex flex-full Visualization z1 px1', {
-            'Visualization--errors': (this.props.result && this.props.result.error),
-            'Visualization--loading': this.props.isRunning
+            'Visualization--errors': (result && result.error),
+            'Visualization--loading': isRunning
         });
 
         return (
             <div className={wrapperClasses}>
                 {this.renderHeader()}
-                { this.props.isRunning && (
+                { isRunning && (
                     <div className="Loading spread flex flex-column layout-centered text-brand z2">
                         <LoadingSpinner />
                         <h2 className="Loading-message text-brand text-uppercase my3">Doing science...</h2>
