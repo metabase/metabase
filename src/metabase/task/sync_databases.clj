@@ -21,7 +21,7 @@
   (doseq [database (db/select Database, :is_sample false)] ; skip Sample Dataset DB
     (try
       ;; NOTE: this happens synchronously for now to avoid excessive load if there are lots of databases
-      (if-not (and (= 0 (t/hour (t/now)))
+      (if-not (and (zero? (t/hour (t/now)))
                    (driver/driver-supports? (driver/engine->driver (:engine database)) :dynamic-schema))
         ;; most of the time we do a quick sync and avoid the lengthy analysis process
         (sync-database/sync-database! database :full-sync? false)

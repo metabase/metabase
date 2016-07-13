@@ -30,7 +30,7 @@
       (let [{:keys [slack-token metabot-enabled]} object]
         (cond
           (and (contains? object :metabot-enabled)
-               (not (= "true" metabot-enabled)))   (metabot/stop-metabot!)
+               (not= "true" metabot-enabled))      (metabot/stop-metabot!)
           (and (contains? object :slack-token)
                (seq slack-token))                  (metabot/start-metabot!)))
       (catch Throwable e

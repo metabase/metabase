@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 39
+      author: camsaul
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: google_auth
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
