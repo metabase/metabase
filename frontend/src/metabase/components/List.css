@@ -39,7 +39,7 @@
 }
 
 :local(.headerButton) {
-    composes: flex-align-right from "style";
+    composes: flex align-center flex-align-right from "style";
     font-size: 14px;
 }
 
