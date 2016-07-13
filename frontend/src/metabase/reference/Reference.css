@@ -1,0 +1,30 @@
+:root {
+    --subheader-color: #6CAFED;
+}
+
+:local(.subheader) {
+    composes: text-white pl4 pr3 flex align-center from "style";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 40px;
+    background-color: var(--subheader-color);
+}
+
+:local(.subheaderButtons) {
+    composes: flex-align-right from "style";
+}
+
+:local(.subheaderButton) {
+    border: none;
+    color: var(--subheader-color);
+}
+
+:local(.saveButton) {
+    composes: mx1 from "style";
+}
+
+:local(.cancelButton) {
+    opacity: 0.5;
+}

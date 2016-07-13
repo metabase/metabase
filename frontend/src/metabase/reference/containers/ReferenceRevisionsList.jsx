@@ -67,7 +67,7 @@ export default class RevisionHistoryApp extends Component {
             error
         } = this.props;
 
-        const entity = metric.id !== undefined ? metric : list;
+        const entity = metric.id ? metric : list;
 
         const empty = {
             icon: 'mine',
@@ -89,7 +89,7 @@ export default class RevisionHistoryApp extends Component {
                     </div>
                 </div>
                 <LoadingAndErrorWrapper loading={!error && loading} error={error}>
-                    { () => {console.log(tables); return Object.keys(revisions).length > 0 && tables[entity.table_id] ?
+                    { () => {console.log(revisions);console.log(tables); console.log(entity); return Object.keys(revisions).length > 0 && tables[entity.table_id] ?
                         <div className="wrapper wrapper--trim">
                             {Object.values(revisions)
                                 .map(revision => revision && revision.diff ?

@@ -89,7 +89,7 @@ export default class EntityItem extends Component {
                             </div>
                             <div className={R.subheaderButtons}>
                                 <button className={cx("Button", "Button--white", "Button--small", R.subheaderButton, R.saveButton)} type="submit">SAVE</button>
-                                <button className={cx("Button", "Button--white", "Button--small", R.subheaderButton, R.cancelButton)} type="submit">CANCEL</button>
+                                <button className={cx("Button", "Button--white", "Button--small", R.subheaderButton, R.cancelButton)} onClick={endEditing}>CANCEL</button>
                             </div>
                         </div>
                     }
