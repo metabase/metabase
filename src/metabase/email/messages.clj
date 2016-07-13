@@ -7,6 +7,7 @@
             (stencil [core :as stencil]
                      [loader :as stencil-loader])
             (metabase [config :as config]
+                      [db :as db]
                       [email :as email])
             [metabase.models.setting :as setting]
             [metabase.pulse.render :as render]
@@ -58,9 +59,10 @@
                               "%s created a Metabase account"
                               "%s accepted your Metabase invite")
                             (:common_name new-user))
-      :recipients   [(if google-auth?
-                       (setting/get :admin-email)
-                       (:email invitor))]
+      :recipients   (if google-auth?
+                      (vec (conj (db/select-field :email 'User, :is_superuser true) ; send email to all admins
+                                 (setting/get :admin-email)))
+                      [(:email invitor)])
       :message-type :html
       :message      (stencil/render-file "metabase/email/user_joined_notification"
                       {:logoHeader        true
