@@ -24,13 +24,10 @@ const Sidebar = ({
 }) =>
     <div className={cx(S.sidebar, className)} style={style}>
         <ul>
-            { breadcrumbs && breadcrumbs.length > 1 ?
-                <li>
-                    <div className={S.item}>
-                        <Breadcrumbs crumbs={breadcrumbs} />
-                    </div>
-                </li> :
-                null
+            { breadcrumbs && breadcrumbs.length > 1 &&
+                <div className={S.breadcrumbs}>
+                    <Breadcrumbs crumbs={breadcrumbs} inSidebar={true} />
+                </div>
             }
             {Object.values(sections).map(section =>
                 <SidebarItem key={section.id} href={section.id} {...section} />

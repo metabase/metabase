@@ -8,6 +8,8 @@ import Query, { AggregationClause } from 'metabase/lib/query';
 
 // there might be a better way to organize sections
 // it feels like I'm duplicating a lot of routing logic here
+//TODO: refactor to use different container components for each section
+// initialize section metadata in there
 const referenceSections = {
     // [`/reference/guide`]: {
     //     id: `/reference/guide`,

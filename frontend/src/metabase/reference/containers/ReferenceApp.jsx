@@ -78,13 +78,15 @@ export default class ReferenceApp extends Component {
     render() {
         const {
             children,
+            sections,
+            breadcrumbs,
             isEditing
         } = this.props;
         return (
             <div>
                 <SidebarLayout
                     style={ isEditing && { paddingTop: '40px' }}
-                    sidebar={<Sidebar {...this.props} />}
+                    sidebar={<Sidebar sections={sections} breadcrumbs={breadcrumbs} />}
                 >
                     {children}
                 </SidebarLayout>

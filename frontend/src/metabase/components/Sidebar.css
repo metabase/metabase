@@ -24,6 +24,10 @@
     text-decoration: none;
 }
 
+:local(.breadcrumbs) {
+    composes: sidebar-padding;
+}
+
 :local(.item),
 :local(.sectionTitle) {
     composes: flex align-center from "style";
