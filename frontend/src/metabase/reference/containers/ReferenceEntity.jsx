@@ -6,6 +6,8 @@ import { reduxForm } from "redux-form";
 import i from "icepick";
 
 import S from "metabase/components/List.css";
+import R from "metabase/reference/Reference.css";
+
 import List from "metabase/components/List.jsx";
 import Item from "metabase/components/Item.jsx";
 import Icon from "metabase/components/Icon.jsx";
@@ -72,28 +74,23 @@ export default class EntityItem extends Component {
         return (
             <div className="full">
                 <form onSubmit={handleSubmit(async fields => {
-                        console.log(entity)
                         const editedFields = Object.keys(fields)
                             .filter(key => fields[key] !== undefined)
                             .reduce((map, key) => i.assoc(map, key, fields[key]), {});
                         const newEntity = {...entity, ...editedFields};
-                        console.log(newEntity)
 
                         await this.props[section.update](newEntity);
                         endEditing();
                     })}>
                     { isEditing &&
-                        <div
-                            style={{
-                                position: 'absolute',
-                                top: 0,
-                                left: 0,
-                                right: 0,
-                                height: '40px',
-                                backgroundColor: '#6CAFED'
-                            }}
-                        >
-                            <button className="Button Button--white Button--small" type="submit">SAVE</button>
+                        <div className={R.subheader}>
+                            <div>
+                                You are editing this page
+                            </div>
+                            <div className={R.subheaderButtons}>
+                                <button className={cx("Button", "Button--white", "Button--small", R.subheaderButton, R.saveButton)} type="submit">SAVE</button>
+                                <button className={cx("Button", "Button--white", "Button--small", R.subheaderButton, R.cancelButton)} type="submit">CANCEL</button>
+                            </div>
                         </div>
                     }
                     <div className="wrapper wrapper--trim">
