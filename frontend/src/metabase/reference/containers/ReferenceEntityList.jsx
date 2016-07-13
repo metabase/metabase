@@ -58,6 +58,9 @@ export default class ReferenceEntityList extends Component {
             <div style={style} className="full">
                 <div className="wrapper wrapper--trim">
                     <div className={S.header}>
+                        <div className={S.leftIcons}>
+
+                        </div>
                         {section.name}
                     </div>
                 </div>
