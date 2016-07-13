@@ -24,7 +24,6 @@ export default class Breadcrumbs extends Component {
 
         const breadcrumbClass = inSidebar ? S.sidebarBreadcrumb : S.breadcrumb;
         const breadcrumbsClass = inSidebar ? S.sidebarBreadcrumbs : S.breadcrumbs;
-        const maxBreadcrumbWidth = inSidebar ? 90 / (crumbs.length || 1) : 100;
 
         const children = [];
         // TODO: maybe refactor this a bit to make it clearer how to use?
@@ -35,7 +34,6 @@ export default class Breadcrumbs extends Component {
                     <a
                         className={cx(breadcrumbClass, S.breadcrumbPath)}
                         href={crumb[1]}
-                        style={{ maxWidth: `${maxBreadcrumbWidth}%` }}
                     >
                         {crumb[0]}
                     </a>
@@ -44,7 +42,6 @@ export default class Breadcrumbs extends Component {
                 children.push(
                     <h2
                         className={cx(breadcrumbClass, S.breadcrumbPage)}
-                        style={{ maxWidth: `${maxBreadcrumbWidth}%` }}
                     >
                         {crumb}
                     </h2>);
@@ -53,6 +50,7 @@ export default class Breadcrumbs extends Component {
                 children.push(<Icon name="chevronright" className={S.breadcrumbDivider} width={12} height={12} />);
             }
         }
+
         return (
             <section className={breadcrumbsClass}>
                 {children}
