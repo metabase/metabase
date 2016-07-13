@@ -1,3 +1,5 @@
+/* eslint "react/prop-types": "warn" */
+
 import React, { PropTypes } from 'react';
 
 const VisualizationErrorMessage = ({title, type, message, action}) => {

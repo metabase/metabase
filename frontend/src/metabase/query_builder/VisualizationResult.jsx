@@ -1,4 +1,6 @@
-import React from "react";
+/* eslint "react/prop-types": "warn" */
+
+import React, { PropTypes } from "react";
 import QueryVisualizationObjectDetailTable from './QueryVisualizationObjectDetailTable.jsx';
 import VisualizationErrorMessage from './VisualizationErrorMessage';
 import Visualization from "metabase/visualizations/components/Visualization.jsx";

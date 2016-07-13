@@ -1,3 +1,5 @@
+/* eslint "react/prop-types": "warn" */
+
 import React, { Component, PropTypes } from 'react';
 
 import MetabaseSettings from "metabase/lib/settings";
