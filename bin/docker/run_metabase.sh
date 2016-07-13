@@ -32,5 +32,9 @@ if [ ! -z "$JAVA_TIMEZONE" ]; then
   JAVA_OPTS="${JAVA_OPTS} -Duser.timezone=${JAVA_TIMEZONE}"
 fi
 
+if [ ! -z "$MB_HEAP_SIZE" ]; then
+  JAVA_OPTS="${JAVA_OPTS} -Xms{$MB_HEAP_SIZE} -Xmx{$MB_HEAP_SIZE}"
+fi
+
 # Launch the application
 exec java $JAVA_OPTS -jar /app/metabase.jar
