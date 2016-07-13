@@ -273,19 +273,7 @@ export default class QueryVisualization extends Component {
 
             } else if (result.data) {
                 if (isObjectDetail) {
-                    viz = (
-                        <QueryVisualizationObjectDetailTable
-                            data={result.data}
-                            tableMetadata={this.props.tableMetadata}
-                            tableForeignKeys={this.props.tableForeignKeys}
-                            tableForeignKeyReferences={this.props.tableForeignKeyReferences}
-                            cellIsClickableFn={this.props.cellIsClickableFn}
-                            cellClickedFn={this.props.cellClickedFn}
-                            followForeignKeyFn={this.props.followForeignKeyFn}
-                            loadObjectDetailFKReferences={this.props.loadObjectDetailFKReferences}
-                        />
-                    );
-
+                    viz =  <QueryVisualizationObjectDetailTable data={result.data} {...this.props} />
                 } else if (result.data.rows.length === 0) {
                     // successful query but there were 0 rows returned with the result
                     viz = <VisualizationError
@@ -312,11 +300,7 @@ export default class QueryVisualization extends Component {
                             series={[{ card: vizCard, data: result.data }]}
                             isEditing={true}
                             // Table:
-                            setSortFn={this.props.setSortFn}
-                            cellIsClickableFn={this.props.cellIsClickableFn}
-                            cellClickedFn={this.props.cellClickedFn}
-                            onUpdateVisualizationSetting={this.props.onUpdateVisualizationSetting}
-                            onUpdateVisualizationSettings={this.props.onUpdateVisualizationSettings}
+                            {...this.props}
                         />
                     );
                 }
