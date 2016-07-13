@@ -219,38 +219,7 @@ export default class QueryVisualization extends Component {
             if (error) {
                 viz = <VisualizationError error={error} card={card} duration={result.duration} />
             } else if (result.data) {
-                if (isObjectDetail) {
-                    viz =  <QueryVisualizationObjectDetailTable data={result.data} {...this.props} />
-                } else if (result.data.rows.length === 0) {
-                    // successful query but there were 0 rows returned with the result
-                    viz = <VisualizationErrorMessage
-                              type='noRows'
-                              title='No results!'
-                              message='This may be the answer you’re looking for. If not, chances are your filters are too specific. Try removing or changing your filters to see more data.'
-                              action={
-                                <button className="Button" onClick={() => window.history.back() }>
-                                    Back to last run
-                                </button>
-                              }
-                          />
-                } else {
-                    // we want to provide the visualization with a card containing the latest
-                    // "display", "visualization_settings", etc, (to ensure the correct visualization is shown)
-                    // BUT the last executed "dataset_query" (to ensure data matches the query)
-                    let vizCard = {
-                        ...card,
-                        dataset_query: this.state.lastRunDatasetQuery
-                    };
-                    viz = (
-                        <Visualization
-                            className="full"
-                            series={[{ card: vizCard, data: result.data }]}
-                            isEditing={true}
-                            // Table:
-                            {...this.props}
-                        />
-                    );
-                }
+                viz = <VisualizationResult lastRunDatasetQuery={this.state.lastRunDatasetQuery} {...this.props} />
             }
         }
 
@@ -278,6 +247,40 @@ export default class QueryVisualization extends Component {
                 </div>
             </div>
         );
+    }
+}
+
+
+const VisualizationResult = ({card, isObjectDetail, lastRunDatasetQuery, result, ...rest}) => {
+    if (isObjectDetail) {
+        return <QueryVisualizationObjectDetailTable data={result.data} {...rest} />
+    } else if (result.data.rows.length === 0) {
+        // successful query but there were 0 rows returned with the result
+        return <VisualizationErrorMessage
+                  type='noRows'
+                  title='No results!'
+                  message='This may be the answer you’re looking for. If not, chances are your filters are too specific. Try removing or changing your filters to see more data.'
+                  action={
+                    <button className="Button" onClick={() => window.history.back() }>
+                        Back to last run
+                    </button>
+                  }
+              />
+    } else {
+        // we want to provide the visualization with a card containing the latest
+        // "display", "visualization_settings", etc, (to ensure the correct visualization is shown)
+        // BUT the last executed "dataset_query" (to ensure data matches the query)
+        let vizCard = {
+            ...card,
+            dataset_query: lastRunDatasetQuery
+        };
+        return <Visualization
+                  className="full"
+                  series={[{ card: vizCard, data: result.data }]}
+                  isEditing={true}
+                  // Table:
+                  {...rest}
+              />
     }
 }
 
