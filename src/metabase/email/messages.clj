@@ -1,45 +1,81 @@
 (ns metabase.email.messages
   "Convenience functions for sending templated email messages.  Each function here should represent a single email.
    NOTE: we want to keep this about email formatting, so don't put heavy logic here RE: building data for emails."
-  (:require [hiccup.core :refer [html]]
+  (:require [clojure.core.cache :as cache]
+            [hiccup.core :refer [html]]
             [medley.core :as m]
-            [stencil.core :as stencil]
-            [metabase.email :as email]
+            (stencil [core :as stencil]
+                     [loader :as stencil-loader])
+            (metabase [config :as config]
+                      [email :as email])
             [metabase.models.setting :as setting]
             [metabase.pulse.render :as render]
             [metabase.util :as u]
             (metabase.util [quotation :as quotation]
                            [urls :as url])))
 
-;; NOTE: uncomment this in development to disable template caching
-;; (stencil.loader/set-cache (clojure.core.cache/ttl-cache-factory {} :ttl 0))
+;; Dev only -- disable template caching
+(when config/is-dev?
+  (stencil-loader/set-cache (cache/ttl-cache-factory {} :ttl 0)))
+
 
 ;;; ### Public Interface
 
 (defn send-new-user-email
-  "Format and Send an welcome email for newly created users."
+  "Format and send an welcome email for newly created users."
   [invited invitor join-url]
   (let [data-quote   (quotation/random-quote)
         company      (or (setting/get :site-name) "Unknown")
         message-body (stencil/render-file "metabase/email/new_user_invite"
-                                          {:emailType       "new_user_invite"
-                                           :invitedName     (:first_name invited)
-                                           :invitorName     (:first_name invitor)
-                                           :invitorEmail    (:email invitor)
-                                           :company         company
-                                           :joinUrl         join-url
-                                           :quotation       (:quote data-quote)
-                                           :quotationAuthor (:author data-quote)
-                                           :today           (u/format-date "MMM'&nbsp;'dd,'&nbsp;'yyyy" (System/currentTimeMillis))
-                                           :logoHeader      true})]
+                       {:emailType       "new_user_invite"
+                        :invitedName     (:first_name invited)
+                        :invitorName     (:first_name invitor)
+                        :invitorEmail    (:email invitor)
+                        :company         company
+                        :joinUrl         join-url
+                        :quotation       (:quote data-quote)
+                        :quotationAuthor (:author data-quote)
+                        :today           (u/format-date "MMM'&nbsp;'dd,'&nbsp;'yyyy")
+                        :logoHeader      true})]
     (email/send-message
-     :subject      (str "You're invited to join " company "'s Metabase")
-     :recipients   [(:email invited)]
-     :message-type :html
-     :message      message-body)))
+      :subject      (str "You're invited to join " company "'s Metabase")
+      :recipients   [(:email invited)]
+      :message-type :html
+      :message      message-body)))
+
+
+(defn send-user-joined-admin-notification-email
+  "Send an email to the admin of this Metabase instance letting them know a new user joined."
+  [new-user invitor google-auth?]
+  {:pre [(map? new-user)
+         (m/boolean? google-auth?)
+         (or google-auth?
+             (and (map? invitor)
+                  (u/is-email? (:email invitor))))]}
+  (let [data-quote (quotation/random-quote)]
+    (email/send-message
+      :subject      (format (if google-auth?
+                              "%s created a Metabase account"
+                              "%s accepted your Metabase invite")
+                            (:common_name new-user))
+      :recipients   [(if google-auth?
+                       (setting/get :admin-email)
+                       (:email invitor))]
+      :message-type :html
+      :message      (stencil/render-file "metabase/email/user_joined_notification"
+                      {:logoHeader        true
+                       :quotation         (:quote data-quote)
+                       :quotationAuthor   (:author data-quote)
+                       :joinedUserName    (:first_name new-user)
+                       :joinedViaSSO      google-auth?
+                       :joinedUserEmail   (:email new-user)
+                       :joinedDate        (u/format-date "hh:mm") ; TODO - is this what we want?
+                       :invitorEmail      (:email invitor)
+                       :joinedUserEditUrl (str (setting/get :-site-url) "/admin/people")}))))
+
 
 (defn send-password-reset-email
-  "Format and Send an email informing the user how to reset their password."
+  "Format and send an email informing the user how to reset their password."
   [email google-auth? hostname password-reset-url]
   {:pre [(string? email)
          (m/boolean? google-auth?)
@@ -47,19 +83,20 @@
          (string? hostname)
          (string? password-reset-url)]}
   (let [message-body (stencil/render-file "metabase/email/password_reset"
-                                          {:emailType        "password_reset"
-                                           :hostname         hostname
-                                           :sso              google-auth?
-                                           :passwordResetUrl password-reset-url
-                                           :logoHeader       true})]
+                       {:emailType        "password_reset"
+                        :hostname         hostname
+                        :sso              google-auth?
+                        :passwordResetUrl password-reset-url
+                        :logoHeader       true})]
     (email/send-message
-     :subject      "[Metabase] Password Reset Request"
-     :recipients   [email]
-     :message-type :html
-     :message      message-body)))
+      :subject      "[Metabase] Password Reset Request"
+      :recipients   [email]
+      :message-type :html
+      :message      message-body)))
+
 
 (defn send-notification-email
-  "Format and Send an email informing the user about changes to objects in the system."
+  "Format and send an email informing the user about changes to objects in the system."
   [email context]
   {:pre [(string? email)
          (u/is-email? email)
@@ -91,8 +128,9 @@
       :message-type :html
       :message      message-body)))
 
+
 (defn send-follow-up-email
-  "Format and Send an email to the system admin following up on the installation."
+  "Format and send an email to the system admin following up on the installation."
   [email msg-type]
   {:pre [(string? email)
          (u/is-email? email)
@@ -118,6 +156,7 @@
       :recipients   [email]
       :message-type :html
       :message      message-body)))
+
 
 ;; HACK: temporary workaround to postal requiring a file as the attachment
 (defn- write-byte-array-to-temp-file
@@ -145,14 +184,14 @@
                                          (render/render-pulse-section result)))))
         data-quote   (quotation/random-quote)
         message-body (stencil/render-file "metabase/email/pulse"
-                                          {:emailType       "pulse"
-                                           :pulse           (html body)
-                                           :pulseName       (:name pulse)
-                                           :sectionStyle    render/section-style
-                                           :colorGrey4      render/color-gray-4
-                                           :quotation       (:quote data-quote)
-                                           :quotationAuthor (:author data-quote)
-                                           :logoFooter      true})]
+                       {:emailType       "pulse"
+                        :pulse           (html body)
+                        :pulseName       (:name pulse)
+                        :sectionStyle    render/section-style
+                        :colorGrey4      render/color-gray-4
+                        :quotation       (:quote data-quote)
+                        :quotationAuthor (:author data-quote)
+                        :logoFooter      true})]
     (apply vector {:type "text/html; charset=utf-8" :content message-body}
            (map-indexed (fn [idx bytes] {:type         :inline
                                          :content-id   (str "IMAGE" idx)
