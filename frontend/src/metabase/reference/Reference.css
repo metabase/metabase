@@ -23,8 +23,19 @@
 
 :local(.saveButton) {
     composes: mx1 from "style";
+    composes: subheaderButton;
 }
 
 :local(.cancelButton) {
+    composes: subheaderButton;
     opacity: 0.5;
+}
+
+:local(.editButton) {
+    color: var(--primary-button-bg-color);
+}
+
+:local(.editButton):hover {
+    color: color(var(--primary-button-border-color) shade(10%));
+    transition: color .3s linear;
 }

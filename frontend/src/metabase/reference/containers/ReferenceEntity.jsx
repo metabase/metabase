@@ -88,8 +88,8 @@ export default class EntityItem extends Component {
                                 You are editing this page
                             </div>
                             <div className={R.subheaderButtons}>
-                                <button className={cx("Button", "Button--white", "Button--small", R.subheaderButton, R.saveButton)} type="submit">SAVE</button>
-                                <button className={cx("Button", "Button--white", "Button--small", R.subheaderButton, R.cancelButton)} onClick={endEditing}>CANCEL</button>
+                                <button className={cx("Button", "Button--white", "Button--small", R.saveButton)} type="submit">SAVE</button>
+                                <button className={cx("Button", "Button--white", "Button--small", R.cancelButton)} onClick={endEditing}>CANCEL</button>
                             </div>
                         </div>
                     }
@@ -121,7 +121,7 @@ export default class EntityItem extends Component {
                                 <div className={S.headerButton}>
                                     <a
                                         onClick={startEditing}
-                                        className="Button Button--primary Button--withIcon"
+                                        className={cx("Button", "Button--borderless", R.editButton)}
                                     >
                                         <div className="flex align-center relative">
                                             <Icon name="pencil" width="16px" height="16px" />
