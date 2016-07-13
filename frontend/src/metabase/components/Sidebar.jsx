@@ -29,9 +29,12 @@ const Sidebar = ({
                     <Breadcrumbs crumbs={breadcrumbs} inSidebar={true} />
                 </div>
             }
-            {Object.values(sections).map(section =>
-                <SidebarItem key={section.id} href={section.id} {...section} />
-            )}
+            {Object.values(sections)
+                .filter(section => !section.hidden)
+                .map(section =>
+                    <SidebarItem key={section.id} href={section.id} {...section} />
+                )
+            }
         </ul>
     </div>
 

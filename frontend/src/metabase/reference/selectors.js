@@ -49,7 +49,7 @@ const referenceSections = {
 
 const getReferenceSections = (state) => referenceSections;
 
-const getMetricSections = (metric) => metric ? {
+const getMetricSections = (metric, user) => metric ? {
     [`/reference/metrics/${metric.id}`]: {
         id: `/reference/metrics/${metric.id}`,
         name: 'Details',
@@ -77,6 +77,7 @@ const getMetricSections = (metric) => metric ? {
         name: `Revision history for ${metric.name}`,
         sidebar: 'Revision history',
         breadcrumb: `${metric.name}`,
+        hidden: user && !user.is_superuser,
         fetch: {fetchMetrics: [], fetchRevisions: ['metric', metric.id], fetchTableMetadata: [metric.table_id]},
         get: 'getMetricRevisions',
         icon: "history",
@@ -84,7 +85,7 @@ const getMetricSections = (metric) => metric ? {
     }
 } : {};
 
-const getListSections = (list) => list ? {
+const getListSections = (list, user) => list ? {
     [`/reference/lists/${list.id}`]: {
         id: `/reference/lists/${list.id}`,
         name: 'Details',
@@ -125,6 +126,7 @@ const getListSections = (list) => list ? {
         name: `Revision history for ${list.name}`,
         sidebar: 'Revision history',
         breadcrumb: `${list.name}`,
+        hidden: user && !user.is_superuser,
         fetch: {fetchLists: [], fetchRevisions: ['list', list.id], fetchTableMetadata: [list.table_id]},
         get: 'getListRevisions',
         icon: "history",
@@ -132,7 +134,7 @@ const getListSections = (list) => list ? {
     }
 } : {};
 
-const getListFieldSections = (list, field) => list && field ? {
+const getListFieldSections = (list, field, user) => list && field ? {
     [`/reference/lists/${list.id}/fields/${field.id}`]: {
         id: `/reference/lists/${list.id}/fields/${field.id}`,
         name: 'Details',
@@ -225,6 +227,8 @@ const getTableFieldSections = (database, table, field) => database && table && f
 const idsToObjectMap = (ids, objects) => ids
     .map(id => objects[id])
     .reduce((map, object) => i.assoc(map, object.id, object), {});
+
+export const getUser = (state) => state.currentUser;
 
 export const getSectionId = (state) => state.router.location.pathname;
 
@@ -323,19 +327,19 @@ const getTableQuestions = createSelector(
 );
 
 export const getSections = createSelector(
-    [getSectionId, getMetric, getList, getDatabase, getTable, getField, getFieldByList, getReferenceSections],
-    (sectionId, metric, list, database, table, field, fieldByList, referenceSections) => {
+    [getSectionId, getMetric, getList, getDatabase, getTable, getField, getFieldByList, getUser, getReferenceSections],
+    (sectionId, metric, list, database, table, field, fieldByList, user, referenceSections) => {
         // can be simplified if we had a single map of all sections
         if (referenceSections[sectionId]) {
             return referenceSections;
         }
 
-        const metricSections = getMetricSections(metric);
+        const metricSections = getMetricSections(metric, user);
         if (metricSections[sectionId]) {
             return metricSections;
         }
 
-        const listSections = getListSections(list);
+        const listSections = getListSections(list, user);
         if (listSections[sectionId]) {
             return listSections;
         }
@@ -483,7 +487,5 @@ export const getHasRevisionHistory = createSelector(
         section.type === 'metric' ||
         section.type === 'list'
 )
-
-export const getUser = (state) => state.currentUser;
 
 export const getIsEditing = (state) => state.reference.isEditing;
