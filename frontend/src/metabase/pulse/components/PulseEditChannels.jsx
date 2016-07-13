@@ -179,11 +179,11 @@ export default class PulseEditChannels extends Component {
                         actionFn={this.onTestPulseChannel.bind(this, channel)}
                         className={cx("Button", { disabled: !isValid })}
                         normalText={channelSpec.type === "email" ?
-                            "Send a test email now" :
-                            "Test " + channelSpec.name + " now"}
+                            "Send email now" :
+                            "Send to  " + channelSpec.name + " now"}
                         activeText="Sending…"
-                        failedText="Test failed"
-                        successText="Test sent"
+                        failedText="Sending failed"
+                        successText="Pulse sent"
                     />
                 </div>
             </li>

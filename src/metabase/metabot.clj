@@ -26,9 +26,9 @@
   ([message m]
    (str message " " (keys-description m)))
   ([m]
-   (apply str (interpose ", " (sort (for [[k varr] m
-                                          :when    (not (:unlisted (meta varr)))]
-                                      (str \` (name k) \`)))))))
+   (str/join ", " (sort (for [[k varr] m
+                              :when    (not (:unlisted (meta varr)))]
+                          (str \` (name k) \`))))))
 
 (defn- dispatch-fn [verb tag]
   (let [fn-map (into {} (for [[symb varr] (ns-interns *ns*)
@@ -102,7 +102,7 @@
      (throw (Exception. "Not Found"))))
   ;; If the card name comes without spaces, e.g. (show 'my 'wacky 'card) turn it into a string an recur: (show "my wacky card")
   ([word & more]
-   (show (apply str (interpose " " (cons word more))))))
+   (show (str/join " " (cons word more)))))
 
 
 (defn meme:up-and-to-the-right

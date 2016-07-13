@@ -8,6 +8,7 @@ import ForgotPasswordApp from "metabase/auth/containers/ForgotPasswordApp.jsx";
 import LoginApp from "metabase/auth/containers/LoginApp.jsx";
 import LogoutApp from "metabase/auth/containers/LogoutApp.jsx";
 import PasswordResetApp from "metabase/auth/containers/PasswordResetApp.jsx";
+import GoogleNoAccount from "metabase/auth/components/GoogleNoAccount.jsx";
 
 // main app containers
 import DashboardApp from "metabase/dashboard/containers/DashboardApp.jsx";
@@ -77,9 +78,10 @@ export default class Routes extends Component {
                 </Route>
 
                 <Route path="/auth/forgot_password" component={ForgotPasswordApp} />
-                <Route path="/auth/login" component={this._forwardProps(LoginApp, ["onChangeLocation"])} />
+                <Route path="/auth/login" component={this._forwardProps(LoginApp, ["onChangeLocation", "setSessionFn"])} />
                 <Route path="/auth/logout" component={this._forwardProps(LogoutApp, ["onChangeLocation"])} />
                 <Route path="/auth/reset_password/:token" component={this._forwardProps(PasswordResetApp, ["onChangeLocation"])} />
+                <Route path="/auth/google_no_mb_account" component={GoogleNoAccount} />
 
                 <Route path="/card/:cardId" component={this._forwardProps(QueryBuilder, ["onChangeLocation", "broadcastEventFn", "updateUrl"])} />
 

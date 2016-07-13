@@ -2,6 +2,7 @@
   "Tests for /api/session"
   (:require [cemerick.friend.credentials :as creds]
             [expectations :refer :all]
+            [metabase.api.session :refer :all]
             [metabase.db :as db]
             [metabase.http-client :refer :all]
             (metabase.models [session :refer [Session]]
@@ -9,7 +10,7 @@
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
             [metabase.util :as u]
-            [metabase.test.util :refer [random-name expect-eval-actual-first]]))
+            [metabase.test.util :refer [random-name expect-eval-actual-first resolve-private-fns with-temporary-setting-values with-temp]]))
 
 ;; ## POST /api/session
 ;; Test that we can login
@@ -173,3 +174,71 @@
 (expect
   (vec (keys (metabase.models.setting/public-settings)))
   (vec (keys ((user->client :rasta) :get 200 "session/properties"))))
+
+
+;;; ------------------------------------------------------------ TESTS FOR GOOGLE AUTH STUFF ------------------------------------------------------------
+
+(resolve-private-fns metabase.api.session email->domain email-in-domain? autocreate-user-allowed-for-email? google-auth-create-new-user! google-auth-fetch-or-create-user!)
+
+;;; tests for email->domain
+(expect "metabase.com"   (email->domain "cam@metabase.com"))
+(expect "metabase.co.uk" (email->domain "cam@metabase.co.uk"))
+(expect "metabase.com"   (email->domain "cam.saul+1@metabase.com"))
+
+;;; tests for email-in-domain?
+(expect true  (email-in-domain? "cam@metabase.com"          "metabase.com"))
+(expect false (email-in-domain? "cam.saul+1@metabase.co.uk" "metabase.com"))
+(expect true  (email-in-domain? "cam.saul+1@metabase.com"   "metabase.com"))
+
+;;; tests for autocreate-user-allowed-for-email?
+(expect
+  (with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com"]
+    (autocreate-user-allowed-for-email? "cam@metabase.com")))
+
+(expect
+  false
+  (with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com"]
+    (autocreate-user-allowed-for-email? "cam@expa.com")))
+
+
+;;; tests for google-auth-create-new-user!
+;; shouldn't be allowed to create a new user via Google Auth if their email doesn't match the auto-create accounts domain
+(expect
+  clojure.lang.ExceptionInfo
+  (with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"]
+    (google-auth-create-new-user! "Rasta" "Toucan" "rasta@metabase.com")))
+
+;; should totally work if the email domains match up
+(expect
+  {:first_name "Rasta", :last_name "Toucan", :email "rasta@sf-toucannery.com"}
+  (with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"]
+    (select-keys (u/prog1 (google-auth-create-new-user! "Rasta" "Toucan" "rasta@sf-toucannery.com")
+                   (db/cascade-delete! User :id (:id <>)))                                          ; make sure we clean up after ourselves !
+                 [:first_name :last_name :email])))
+
+
+;;; tests for google-auth-fetch-or-create-user!
+
+(defn- is-session? [session]
+  (u/ignore-exceptions
+    (java.util.UUID/fromString (:id session))
+    true))
+
+;; test that an existing user can log in with Google auth even if the auto-create accounts domain is different from their account
+;; should return a Session
+(expect
+  (with-temp User [user {:email "cam@sf-toucannery.com"}]
+    (with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com"]
+      (is-session? (google-auth-fetch-or-create-user! "Cam" "Saül" "cam@sf-toucannery.com")))))
+
+;; test that a user that doesn't exist with a *different* domain than the auto-create accounts domain gets an exception
+(expect
+  clojure.lang.ExceptionInfo
+  (with-temporary-setting-values [google-auth-auto-create-accounts-domain nil]
+    (google-auth-fetch-or-create-user! "Rasta" "Can" "rasta@sf-toucannery.com")))
+
+;; test that a user that doesn't exist with the *same* domain as the auto-create accounts domain means a new user gets created
+(expect
+  (with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"]
+    (u/prog1 (is-session? (google-auth-fetch-or-create-user! "Rasta" "Toucan" "rasta@sf-toucannery.com"))
+      (db/cascade-delete! User :email "rasta@sf-toucannery.com"))))                                       ; clean up after ourselves
