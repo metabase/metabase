@@ -312,6 +312,39 @@ const revisions = handleActions({
     [FETCH_REVISIONS]: { next: (state, { payload }) => payload }
 }, {});
 
+// workarounds for race conditions on fetches with data dependencies in /reference
+const FETCH_METRIC_REVISIONS = "metabase/metadata/FETCH_METRIC_REVISIONS";
+export const fetchMetricRevisions = createThunkAction(FETCH_METRIC_REVISIONS, (metricId, reload = false) => {
+    return async (dispatch, getState) => {
+        dispatch(fetchRevisions('metric', metricId));
+        await dispatch(fetchMetrics());
+        const metric = i.getIn(getState(), ['metadata', 'metrics', metricId]);
+        const tableId = metric.table_id;
+        await dispatch(fetchTableMetadata(tableId));
+    };
+});
+
+const FETCH_LIST_FIELDS = "metabase/metadata/FETCH_LIST_FIELDS";
+export const fetchListFields = createThunkAction(FETCH_LIST_FIELDS, (listId, reload = false) => {
+    return async (dispatch, getState) => {
+        const test = await dispatch(fetchLists());
+        const list = i.getIn(getState(), ['metadata', 'lists', listId]);
+        const tableId = list.table_id;
+        await dispatch(fetchTableMetadata(tableId));
+    };
+});
+
+const FETCH_LIST_REVISIONS = "metabase/metadata/FETCH_LIST_REVISIONS";
+export const fetchListRevisions = createThunkAction(FETCH_LIST_REVISIONS, (listId, reload = false) => {
+    return async (dispatch, getState) => {
+        dispatch(fetchRevisions('list', listId));
+        await dispatch(fetchLists());
+        const list = i.getIn(getState(), ['metadata', 'lists', listId]);
+        const tableId = list.table_id;
+        await dispatch(fetchTableMetadata(tableId));
+    };
+});
+
 export default combineReducers({
     metrics,
     lists,

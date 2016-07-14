@@ -78,7 +78,7 @@ const getMetricSections = (metric, user) => metric ? {
         sidebar: 'Revision history',
         breadcrumb: `${metric.name}`,
         hidden: user && !user.is_superuser,
-        fetch: {fetchMetrics: [], fetchRevisions: ['metric', metric.id], fetchTableMetadata: [metric.table_id]},
+        fetch: {fetchMetricRevisions: [metric.id]},
         get: 'getMetricRevisions',
         icon: "history",
         parent: referenceSections[`/reference/metrics`]
@@ -105,7 +105,7 @@ const getListSections = (list, user) => list ? {
         // FIXME: breaks if we refresh on this route, looks like a race condition
         // due to fetchTableMetadata being dependent on list.table_id from fetchLists
         // resolves itself once we navigate away and back though
-        fetch: {fetchLists: [], fetchTableMetadata: [list.table_id]},
+        fetch: {fetchListFields: [list.id]},
         get: "getFieldsByList",
         breadcrumb: `${list.name}`,
         icon: "fields",
@@ -127,7 +127,7 @@ const getListSections = (list, user) => list ? {
         sidebar: 'Revision history',
         breadcrumb: `${list.name}`,
         hidden: user && !user.is_superuser,
-        fetch: {fetchLists: [], fetchRevisions: ['list', list.id], fetchTableMetadata: [list.table_id]},
+        fetch: {fetchListRevisions: [list.id]},
         get: 'getListRevisions',
         icon: "history",
         parent: referenceSections[`/reference/lists`]
@@ -141,7 +141,7 @@ const getListFieldSections = (list, field, user) => list && field ? {
         update: 'updateField',
         type: 'field',
         breadcrumb: `${field.display_name}`,
-        fetch: {fetchLists: [], fetchTableMetadata: [list.table_id]},
+        fetch: {fetchListFields: [list.id]},
         get: "getFieldByList",
         icon: "document",
         headerIcon: "field",
@@ -408,7 +408,7 @@ export const getData = (state) => {
     return selector(state);
 };
 
-const mapFetchToRequestStatePaths = (fetch) => fetch ?
+export const mapFetchToRequestStatePaths = (fetch) => fetch ?
     Object.keys(fetch).map(key => {
         switch(key) {
             case 'fetchQuestions':
@@ -436,6 +436,14 @@ const getRequestPaths = createSelector(
     [getSection],
     (section) => mapFetchToRequestStatePaths(section.fetch)
 );
+
+export const getLoaded = createSelector(
+    [getRequestPaths, getRequests],
+    (requestPaths, requests) => requestPaths
+        .reduce((isLoaded, requestPath) =>
+            isLoaded ||
+            i.getIn(requests, requestPath.concat('state')) === 'LOADED', false)
+)
 
 export const getLoading = createSelector(
     [getRequestPaths, getRequests],
