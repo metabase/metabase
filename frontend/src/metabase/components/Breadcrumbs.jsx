@@ -37,7 +37,7 @@ export default class Breadcrumbs extends Component {
                             <a
                                 className={cx(breadcrumbClass, S.breadcrumbPath)}
                                 href={breadcrumb[1]}
-                                >
+                            >
                                 {breadcrumb[0]}
                             </a>
                         </Tooltip> :

@@ -76,7 +76,7 @@ export default class ReferenceEntityList extends Component {
                     <div className="wrapper wrapper--trim">
                         <List>
                             { Object.values(entities).map(entity =>
-                                entity && entity.id && entity.name ?
+                                entity && entity.id && entity.name &&
                                     <li className="relative" key={entity.id}>
                                         <Item
                                             id={entity.id}
@@ -86,7 +86,6 @@ export default class ReferenceEntityList extends Component {
                                             icon="star"
                                         />
                                     </li>
-                                    : null
                             )}
                         </List>
                     </div>

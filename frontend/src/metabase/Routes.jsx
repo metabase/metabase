@@ -41,6 +41,7 @@ import Unauthorized from "metabase/components/Unauthorized.jsx";
 import ReferenceApp from "metabase/reference/containers/ReferenceApp.jsx";
 import ReferenceEntity from "metabase/reference/containers/ReferenceEntity.jsx";
 import ReferenceEntityList from "metabase/reference/containers/ReferenceEntityList.jsx";
+import ReferenceFieldsList from "metabase/reference/containers/ReferenceFieldsList.jsx";
 import ReferenceRevisionsList from "metabase/reference/containers/ReferenceRevisionsList.jsx";
 import ReferenceGettingStartedGuide from "metabase/reference/containers/ReferenceGettingStartedGuide.jsx";
 
@@ -91,7 +92,7 @@ export default class Routes extends Component {
                     <Route path="metrics/:metricId/revisions" component={ReferenceRevisionsList} />
                     <Route path="lists" component={ReferenceEntityList} />
                     <Route path="lists/:listId" component={ReferenceEntity} />
-                    <Route path="lists/:listId/fields" component={ReferenceEntityList} />
+                    <Route path="lists/:listId/fields" component={ReferenceFieldsList} />
                     <Route path="lists/:listId/fields/:fieldId" component={ReferenceEntity} />
                     <Route path="lists/:listId/questions" component={ReferenceEntityList} />
                     <Redirect from="lists/:listId/questions/:cardId" to="/card/:cardId"/>
@@ -100,7 +101,7 @@ export default class Routes extends Component {
                     <Route path="databases/:databaseId" component={ReferenceEntity} />
                     <Route path="databases/:databaseId/tables" component={ReferenceEntityList} />
                     <Route path="databases/:databaseId/tables/:tableId" component={ReferenceEntity} />
-                    <Route path="databases/:databaseId/tables/:tableId/fields" component={ReferenceEntityList} />
+                    <Route path="databases/:databaseId/tables/:tableId/fields" component={ReferenceFieldsList} />
                     <Route path="databases/:databaseId/tables/:tableId/fields/:fieldId" component={ReferenceEntity} />
                     <Route path="databases/:databaseId/tables/:tableId/questions" component={ReferenceEntityList} />
                     <Redirect from="databases/:databaseId/tables/:tableId/questions/:cardId" to="/card/:cardId"/>
