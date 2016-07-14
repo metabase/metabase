@@ -26,41 +26,41 @@ export default class Breadcrumbs extends Component {
         const breadcrumbClass = inSidebar ? S.sidebarBreadcrumb : S.breadcrumb;
         const breadcrumbsClass = inSidebar ? S.sidebarBreadcrumbs : S.breadcrumbs;
 
-        const children = [];
-        // TODO: maybe refactor this a bit to make it clearer how to use?
-        for (let [index, crumb] of crumbs.entries()) {
-            crumb = Array.isArray(crumb) ? crumb : [crumb];
-            if (crumb.length > 1) {
-                children.push(
-                    // TODO: ideally tooltips should only show when element overflows
-                    // but I can't seem to figure out how to actually implement it in React
-                    <Tooltip tooltip={crumb[0]}>
-                        <a
-                            className={cx(breadcrumbClass, S.breadcrumbPath)}
-                            href={crumb[1]}
-                            >
-                            {crumb[0]}
-                        </a>
-                    </Tooltip>
-                );
-            } else {
-                children.push(
-                    <Tooltip tooltip={crumb[0]}>
-                        <h2 className={cx(breadcrumbClass, S.breadcrumbPage)}>
-                            {crumb}
-                        </h2>
-                    </Tooltip>
-
-                );
-            }
-            if (index < crumbs.length - 1) {
-                children.push(<Icon name="chevronright" className={S.breadcrumbDivider} width={12} height={12} />);
-            }
-        }
-
         return (
             <section className={breadcrumbsClass}>
-                {children}
+                { crumbs
+                    .map(breadcrumb => Array.isArray(breadcrumb) ? breadcrumb : [breadcrumb])
+                    .map((breadcrumb, index) => breadcrumb.length > 1 ?
+                        // TODO: ideally tooltips should only show when element overflows
+                        // but I can't seem to figure out how to actually implement it in React
+                        <Tooltip key={index} tooltip={breadcrumb[0]}>
+                            <a
+                                className={cx(breadcrumbClass, S.breadcrumbPath)}
+                                href={breadcrumb[1]}
+                                >
+                                {breadcrumb[0]}
+                            </a>
+                        </Tooltip> :
+                        <Tooltip key={index} tooltip={breadcrumb[0]}>
+                            <h2 className={cx(breadcrumbClass, S.breadcrumbPage)}>
+                                {breadcrumb}
+                            </h2>
+                        </Tooltip>
+                    )
+                    .map((breadcrumb, index, breadcrumbs) => index < breadcrumbs.length - 1 ?
+                        [
+                            breadcrumb,
+                            <Icon
+                                key={`${index}-separator`}
+                                name="chevronright"
+                                className={S.breadcrumbDivider}
+                                width={12}
+                                height={12}
+                            />
+                        ] :
+                        breadcrumb
+                    )
+                }
             </section>
         );
     }
