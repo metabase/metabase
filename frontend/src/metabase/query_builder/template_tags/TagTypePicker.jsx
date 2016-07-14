@@ -6,7 +6,7 @@ import type { ParameterOption } from "metabase/meta/types/Dashboard";
 
 import _ from "underscore";
 
-export default class ParameterTypePicker extends Component {
+export default class TagTypePicker extends Component {
     props: {
         onChange: (option: ParameterOption) => {}
     };

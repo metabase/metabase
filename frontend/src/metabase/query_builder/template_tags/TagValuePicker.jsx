@@ -15,7 +15,7 @@ import CategoryWidget from "metabase/dashboard/components/parameters/widgets/Cat
 import TextWidget from "metabase/dashboard/components/parameters/widgets/TextWidget.jsx";
 
 
-export default class ParameterValuePicker extends Component {
+export default class TagValuePicker extends Component {
 
     static propTypes = {
         parameter: PropTypes.object.isRequired,
@@ -54,12 +54,12 @@ export default class ParameterValuePicker extends Component {
         const PickerComponent = this.determinePickerComponent(parameter.type, values.length);
 
         if (PickerComponent.noPopover) {
-            let classNames = cx("px1 flex align-center bordered border-med rounded ParameterValuePickerNoPopover", {
+            let classNames = cx("px1 flex align-center bordered border-med rounded TagValuePickerNoPopover", {
                 "text-bold": hasValue,
                 "text-grey-4": !hasValue,
                 "text-brand": hasValue,
                 "border-brand": hasValue,
-                "ParameterValuePickerNoPopover--selected": hasValue
+                "TagValuePickerNoPopover--selected": hasValue
             });
             return (
                 <div style={{paddingTop: "0.25rem", paddingBottom: "0.25rem"}} className={classNames}>

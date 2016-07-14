@@ -1,12 +1,12 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 import Icon from "metabase/components/Icon.jsx";
-import ParameterEditorParam from "./ParameterEditorParam.jsx";
+import TagEditorParam from "./TagEditorParam.jsx";
 
 import cx from "classnames";
 import { getIn } from "icepick";
 
-export default class ParameterEditorSidebar extends Component {
+export default class TagEditorSidebar extends Component {
 
     constructor(props, context) {
         super(props, context);
@@ -64,7 +64,7 @@ const SettingsPane = ({ tags, onUpdate }) =>
     <div>
         { tags.map(tag =>
             <div key={tags.name}>
-                <ParameterEditorParam tag={tag} onUpdate={onUpdate} />
+                <TagEditorParam tag={tag} onUpdate={onUpdate} />
             </div>
         ) }
     </div>

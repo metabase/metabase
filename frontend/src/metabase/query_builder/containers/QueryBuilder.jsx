@@ -12,7 +12,7 @@ import GuiQueryEditor from "../GuiQueryEditor.jsx";
 import NativeQueryEditor from "../NativeQueryEditor.jsx";
 import QueryVisualization from "../QueryVisualization.jsx";
 import DataReference from "../dataref/DataReference.jsx";
-import ParameterEditorSidebar from "../parameters/ParameterEditorSidebar.jsx";
+import TagEditorSidebar from "../template_tags/TagEditorSidebar.jsx";
 import QueryBuilderTutorial from "../../tutorial/QueryBuilderTutorial.jsx";
 import SavedQuestionIntroModal from "../SavedQuestionIntroModal.jsx";
 
@@ -201,7 +201,7 @@ export default class QueryBuilder extends Component {
                     }
 
                     { uiControls.isShowingTemplateTagsEditor &&
-                        <ParameterEditorSidebar {...this.props} onClose={() => this.props.toggleTemplateTagsEditor()} />
+                        <TagEditorSidebar {...this.props} onClose={() => this.props.toggleTemplateTagsEditor()} />
                     }
                 </div>
 

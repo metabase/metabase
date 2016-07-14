@@ -8,7 +8,6 @@ import { assocIn, getIn } from "icepick";
 
 import DataSelector from './DataSelector.jsx';
 import Icon from "metabase/components/Icon.jsx";
-// import ParameterValuePicker from "./parameters/ParameterValuePicker.jsx";
 import ParameterValueWidget from "metabase/dashboard/components/parameters/ParameterValueWidget.jsx";
 
 // This should return an object with information about the mode the ACE Editor should use to edit the query.

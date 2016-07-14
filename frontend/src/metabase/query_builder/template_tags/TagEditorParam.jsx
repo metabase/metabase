@@ -1,7 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 
-import ParameterTypePicker from "./ParameterTypePicker.jsx";
+import TagTypePicker from "./TagTypePicker.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import Input from "metabase/components/Input.jsx";
 import Toggle from "metabase/components/Toggle.jsx";
@@ -12,7 +12,7 @@ import _ from "underscore";
 
 import Select, { Option } from "metabase/components/Select.jsx";
 
-export default class ParameterEditorParam extends Component {
+export default class TagEditorParam extends Component {
 
     constructor(props, context) {
         super(props, context);
