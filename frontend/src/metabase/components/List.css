@@ -68,6 +68,11 @@
     font-size: 18px;
 }
 
+:local(.itemTitleTextInput) {
+    composes: headerTextInput;
+    font-size: 14px;
+}
+
 :local(.itemName) {
     composes: mr1 from "style";
     composes: inline-block from "style";

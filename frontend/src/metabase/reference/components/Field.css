@@ -1,0 +1,15 @@
+:local(.field) {
+    composes: flex from "style";
+}
+
+:local(.fieldName) {
+    composes: flex-full from "style";
+}
+
+:local(.fieldType) {
+    composes: flex-half from "style";
+}
+
+:local(.fieldDataType) {
+    composes: flex-half from "style";
+}

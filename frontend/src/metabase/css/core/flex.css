@@ -8,7 +8,7 @@
     flex: 1;
 }
 
-.flex-half {
+.flex-half, :local(.flex-half) {
     flex: 0.5;
 }
 

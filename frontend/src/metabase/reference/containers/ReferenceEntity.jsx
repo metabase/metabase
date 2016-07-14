@@ -135,7 +135,7 @@ export default class EntityItem extends Component {
                                     <input
                                         className={S.headerTextInput}
                                         type="text"
-                                        placeholder={entity.name}
+                                        placeholder={entity.display_name}
                                         {...display_name}
                                         defaultValue={entity.display_name}
                                     /> :

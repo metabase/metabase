@@ -46,7 +46,7 @@ Item.propTypes = {
     placeholder:        PropTypes.string,
     icon:               PropTypes.string,
     isEditing:          PropTypes.bool,
-    field:          PropTypes.object
+    field:              PropTypes.object
 };
 
 export default pure(Item);

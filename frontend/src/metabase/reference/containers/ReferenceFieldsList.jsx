@@ -6,9 +6,9 @@ import { connect } from "react-redux";
 import S from "metabase/components/List.css";
 import R from "metabase/reference/Reference.css";
 
+import Field from "metabase/reference/components/Field.jsx";
 import List from "metabase/components/List.jsx";
 import Icon from "metabase/components/Icon.jsx";
-import Item from "metabase/components/Item.jsx";
 import EmptyState from "metabase/components/EmptyState.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
@@ -128,12 +128,11 @@ export default class ReferenceEntityList extends Component {
                             { Object.values(fields).map(field =>
                                 field && field.id && field.name &&
                                     <li className="relative" key={field.id}>
-                                        <Item
-                                            id={field.id}
-                                            name={field.display_name || field.name}
-                                            description={field.name}
+                                        <Field
+                                            field={field}
                                             url={`${section.id}/${field.id}`}
                                             icon="star"
+                                            isEditing={isEditing}
                                         />
                                     </li>
                             )}
