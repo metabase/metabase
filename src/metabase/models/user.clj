@@ -70,27 +70,28 @@
 (declare form-password-reset-url
          set-user-password-reset-token!)
 
+;; TODO - `:send-welcome?` instead of `:send-welcome`
 (defn create-user!
   "Convenience function for creating a new `User` and sending out the welcome email."
-  [first-name last-name email-address & {:keys [send-welcome invitor password]
-                                         :or {send-welcome false}}]
-  {:pre [(string? first-name)
-         (string? last-name)
-         (string? email-address)]}
-  (when-let [new-user (db/insert! User
-                        :email      email-address
-                        :first_name first-name
-                        :last_name  last-name
-                        :password   (if-not (nil? password)
-                                      password
-                                      (str (java.util.UUID/randomUUID))))]
+  [first-name last-name email-address & {:keys [send-welcome invitor password google-auth?]
+                                         :or   {send-welcome false
+                                                google-auth?  false}}]
+  {:pre [(string? first-name) (string? last-name) (string? email-address)]}
+  (u/prog1 (db/insert! User
+             :email       email-address
+             :first_name  first-name
+             :last_name   last-name
+             :password    (if-not (nil? password)
+                            password
+                            (str (java.util.UUID/randomUUID)))
+             :google_auth google-auth?)
     (when send-welcome
-      (let [reset-token (set-user-password-reset-token! (:id new-user))
-            ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
+      (let [reset-token (set-user-password-reset-token! (:id <>))
+            ;; the new user join url is just a password reset with an indicator that this is a first time user
             join-url    (str (form-password-reset-url reset-token) "#new")]
-        (email/send-new-user-email new-user invitor join-url)))
-    ;; return the newly created user
-    new-user))
+        (email/send-new-user-email <> invitor join-url)))
+    ;; notifiy the admin of this MB instance that a new user has joined (TODO - are there cases where we *don't* want to do this)
+    (email/send-user-joined-admin-notification-email <> invitor google-auth?)))
 
 (defn set-user-password!
   "Updates the stored password for a specified `User` by hashing the password with a random salt."

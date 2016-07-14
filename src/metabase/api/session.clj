@@ -10,7 +10,7 @@
             [metabase.db :as db]
             [metabase.email.messages :as email]
             [metabase.events :as events]
-            (metabase.models [user :refer [User set-user-password! set-user-password-reset-token!]]
+            (metabase.models [user :refer [User set-user-password! set-user-password-reset-token!], :as user]
                              [session :refer [Session]]
                              [setting :refer [defsetting], :as setting])
             [metabase.util :as u]
@@ -164,14 +164,9 @@
 
 (defn- google-auth-create-new-user! [first-name last-name email]
   (check-autocreate-user-allowed-for-email email)
-  (db/insert! User
-    :first_name  first-name
-    :last_name   last-name
-    :email       email
-    :google_auth true
-    ;; just give the user a random password; they can go reset it if they ever change their mind and want to log in without Google Auth;
-    ;; this lets us keep the NOT NULL constraints on password / salt without having to make things hairy and only enforce those for non-Google Auth users
-    :password    (str (java.util.UUID/randomUUID))))
+  ;; this will just give the user a random password; they can go reset it if they ever change their mind and want to log in without Google Auth;
+  ;; this lets us keep the NOT NULL constraints on password / salt without having to make things hairy and only enforce those for non-Google Auth users
+  (user/create-user! first-name last-name email, :send-welcome false, :google-auth? true))
 
 (defn- google-auth-fetch-or-create-user! [first-name last-name email]
   (if-let [user (or (db/select-one [User :id :last_login] :email email)
