@@ -66,6 +66,12 @@ databaseChangeLog:
                   name: caveats
                   type: text
         - addColumn:
+            tableName: metric
+            columns:
+              - column:
+                  name: caveats
+                  type: text
+        - addColumn:
             tableName: segment
             columns:
               - column:
