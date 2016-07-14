@@ -37,6 +37,7 @@
                               (pre-update 1)
                               (project 1)
                               (qp-expect-with-engines 1)
+                              (render-file 1)
                               (resolve-private-fns 1)
                               (select 1)
                               (sync-in-context 2)
