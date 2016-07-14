@@ -3,11 +3,11 @@
 }
 
 :local(.fieldName) {
-    composes: flex-full from "style";
+    composes: flex-full pr2 from "style";
 }
 
 :local(.fieldType) {
-    composes: flex-half from "style";
+    composes: flex-half pr1 from "style";
 }
 
 :local(.fieldDataType) {

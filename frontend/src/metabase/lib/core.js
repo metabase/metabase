@@ -1,3 +1,4 @@
+import i from 'icepick';
 
 export const user_roles = [{
     'id': 'user',
@@ -85,6 +86,9 @@ export const field_special_types = [{
     'name': 'Zip Code',
     'section': 'Common'
 }];
+
+export const field_special_types_map = field_special_types
+    .reduce((map, type) => i.assoc(map, type.id, type), {});
 
 export const field_field_types = [{
     'id': 'info',

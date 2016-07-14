@@ -2,17 +2,20 @@
 import React, { Component, PropTypes } from "react";
 import { Link } from "react-router";
 
+import * as MetabaseCore from "metabase/lib/core";
+import { isNumeric } from "metabase/lib/schema_metadata";
+
 import S from "metabase/components/List.css";
 import F from "./Field.css";
 
-import Urls from "metabase/lib/urls";
 import Icon from "metabase/components/Icon.jsx";
+import Select from "metabase/components/Select.jsx";
 
 import cx from "classnames";
 import pure from "recompose/pure";
 
 const Field = ({
-    field: { id, name, display_name },
+    field,
     url,
     icon,
     isEditing,
@@ -28,21 +31,41 @@ const Field = ({
                         <input
                             className={S.itemTitleTextInput}
                             type="text"
-                            placeholder={display_name}
-                            defaultValue={display_name}
+                            placeholder={field.display_name}
+                            defaultValue={field.display_name}
                         /> :
-                        <Link to={url} className={S.itemName}>{display_name}</Link>
+                        <Link to={url} className={S.itemName}>{field.display_name}</Link>
                     }
                 </div>
                 <div className={F.fieldType}>
-test
+                    <Select
+                        placeholder="Select a field type"
+                        value={MetabaseCore.field_special_types_map[field.special_type]}
+                        options={
+                            MetabaseCore.field_special_types
+                                .concat({
+                                    'id': null,
+                                    'name': 'No special type',
+                                    'section': 'Other'
+                                })
+                                .filter(type => !isNumeric(field) ?
+                                    !(type.id && type.id.startsWith("timestamp_")) :
+                                    true
+                                )
+                        }
+                    />
                 </div>
                 <div className={F.fieldDataType}>
-test
+                    <input
+                        className={S.itemTitleTextInput}
+                        type="text"
+                        placeholder={field.display_name}
+                        defaultValue={field.display_name}
+                    />
                 </div>
             </div>
             <div className={cx(S.itemSubtitle, { "mt1" : true })}>
-                { name }
+                { field.name }
             </div>
         </div>
     </div>
