@@ -5,6 +5,7 @@ import _ from "underscore";
 import cx from "classnames";
 
 import AuthScene from "../components/AuthScene.jsx";
+import BackToLogin from "../components/BackToLogin.jsx"
 import FormField from "metabase/components/form/FormField.jsx";
 import FormLabel from "metabase/components/form/FormLabel.jsx";
 import FormMessage from "metabase/components/form/FormMessage.jsx";
@@ -55,7 +56,7 @@ export default class ForgotPasswordApp extends Component {
                       <div className="Grid-cell">
                           <div className="text-centered bordered rounded shadowed p4">
                               <h3 className="my4">Please contact an administrator to have them reset your password</h3>
-                              <a className="link block mb4" href="/auth/login">Back to login</a>
+                              <BackToLogin />
                           </div>
                       </div>
                       :

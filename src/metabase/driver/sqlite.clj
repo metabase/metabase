@@ -1,5 +1,6 @@
 (ns metabase.driver.sqlite
-  (:require [clojure.set :as set]
+  (:require (clojure [set :as set]
+                     [string :as s])
             (honeysql [core :as hsql]
                       [format :as hformat])
             [metabase.config :as config]
@@ -32,7 +33,7 @@
 ;; register the SQLite concatnation operator `||` with HoneySQL as `sqlite-concat`
 ;; (hsql/format (hsql/call :sqlite-concat :a :b)) -> "(a || b)"
 (defmethod hformat/fn-handler "sqlite-concat" [_ & args]
-  (str "(" (apply str (interpose " || " (map hformat/to-sql args))) ")"))
+  (str "(" (s/join " || " (map hformat/to-sql args)) ")"))
 
 (def ^:private ->date     (partial hsql/call :date))
 (def ^:private ->datetime (partial hsql/call :datetime))

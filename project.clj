@@ -65,8 +65,8 @@
                  [org.yaml/snakeyaml "1.17"]                          ; YAML parser (required by liquibase)
                  [org.xerial/sqlite-jdbc "3.8.11.2"]                  ; SQLite driver
                  [postgresql "9.3-1102.jdbc41"]                       ; Postgres driver
-                 [io.crate/crate-jdbc "1.11.0"]                       ; Crate JDBC driver (DON'T UPDATE THESE YET -- THEY CAUSE TESTS TO FAIL!)
-                 [io.crate/crate-client "0.54.7"]                     ; Crate Java client (used by Crate JDBC)
+                 [io.crate/crate-jdbc "1.13.0"]                       ; Crate JDBC driver
+                 [io.crate/crate-client "0.55.2"]                     ; Crate Java client (used by Crate JDBC)
                  [prismatic/schema "1.1.2"]                           ; Data schema declaration and validation library
                  [ring/ring-jetty-adapter "1.5.0"]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically
@@ -146,4 +146,4 @@
                               ;; Exclude everything except for reset-password specific code in the created jar
                               :jar-exclusions [#"^(?!metabase/reset_password).*$"]
                               :target-path "reset-password-artifacts/%s"} ; different than ./target because otherwise lein uberjar will delete our artifacts and vice versa
-             :h2-shell {:main org.h2.tools.Shell}})
+             :h2-shell {:main org.h2.tools.Shell}}) ; get the H2 shell with 'lein h2'

@@ -14,9 +14,9 @@
                  (:is_superuser @*current-user*))))
 
 (defendpoint GET "/"
-  "Fetch a list of all active `Users`."
+  "Fetch a list of all active `Users` for the admin People page."
   []
-  (db/select User, :is_active true))
+  (db/select [User :id :first_name :last_name :email :is_superuser :google_auth :last_login], :is_active true))
 
 
 (defendpoint POST "/"

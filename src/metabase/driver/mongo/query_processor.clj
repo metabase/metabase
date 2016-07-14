@@ -66,7 +66,7 @@
 (defn- field->name
   "Return a single string name for FIELD. For nested fields, this creates a combined qualified name."
   ^String [^Field field, ^String separator]
-  (apply str (interpose separator (rest (qualified-name-components field)))))
+  (s/join separator (rest (qualified-name-components field))))
 
 (defmacro ^:private mongo-let
   {:style/indent 1}

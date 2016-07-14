@@ -252,7 +252,7 @@
         0)))
 
 (defn- url-percentage [url-count total-count]
-  (if (and total-count (> total-count 0) url-count)
+  (if (and total-count (pos? total-count) url-count)
     (float (/ url-count total-count))
     0.0))
 
@@ -367,13 +367,11 @@
 
 (defn- describe-table-fks [driver database table]
   (with-metadata [metadata driver database]
-    (set (->> (.getImportedKeys metadata nil (:schema table) (:name table))
-              jdbc/result-set-seq
-              (mapv (fn [result]
-                      {:fk-column-name   (:fkcolumn_name result)
-                       :dest-table       {:name   (:pktable_name result)
-                                          :schema (:pktable_schem result)}
-                       :dest-column-name (:pkcolumn_name result)}))))))
+    (set (for [result (jdbc/result-set-seq (.getImportedKeys metadata nil (:schema table) (:name table)))]
+           {:fk-column-name   (:fkcolumn_name result)
+            :dest-table       {:name   (:pktable_name result)
+                               :schema (:pktable_schem result)}
+            :dest-column-name (:pkcolumn_name result)}))))
 
 
 (defn analyze-table
