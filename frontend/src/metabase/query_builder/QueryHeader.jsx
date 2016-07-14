@@ -260,13 +260,13 @@ export default class QueryHeader extends Component {
         // parameters
         if (Query.isNative(this.props.query)) {
             const parametersButtonClasses = cx('transition-color', {
-                'text-brand': this.props.uiControls.isShowingParametersEditor,
-                'text-brand-hover': !this.props.uiControls.isShowingParametersEditor
+                'text-brand': this.props.uiControls.isShowingTemplateTagsEditor,
+                'text-brand-hover': !this.props.uiControls.isShowingTemplateTagsEditor
             });
             buttonSections.push([
                 <Tooltip key="parameterEdititor" tooltip="Parameters">
                     <a className={parametersButtonClasses}>
-                        <Icon name="gear" width="16px" height="16px" onClick={this.props.toggleParametersEditor}></Icon>
+                        <Icon name="gear" width="16px" height="16px" onClick={this.props.toggleTemplateTagsEditor}></Icon>
                     </a>
                 </Tooltip>
             ]);

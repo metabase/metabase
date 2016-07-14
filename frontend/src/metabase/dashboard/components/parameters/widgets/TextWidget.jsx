@@ -1,3 +1,4 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 
 export default class TextWidget extends Component {
@@ -8,8 +9,11 @@ export default class TextWidget extends Component {
         };
     }
 
-    static propTypes = {};
-    static defaultProps = {};
+    static propTypes = {
+        value: PropTypes.any,
+        setValue: PropTypes.func.isRequired,
+        onClose: PropTypes.func.isRequired
+    };
 
     static noPopover = true;
 

@@ -4,6 +4,7 @@ import Icon from "metabase/components/Icon.jsx";
 import ParameterEditorParam from "./ParameterEditorParam.jsx";
 
 import cx from "classnames";
+import { getIn } from "icepick";
 
 export default class ParameterEditorSidebar extends Component {
 
@@ -17,22 +18,22 @@ export default class ParameterEditorSidebar extends Component {
     static propTypes = {
         card: PropTypes.object.isRequired,
         onClose: PropTypes.func.isRequired,
-        updateParameter: PropTypes.func.isRequired
+        updateTemplateTag: PropTypes.func.isRequired
     };
 
     render() {
         const { card } = this.props;
-        const parameters = (card && card.parameters) || [];
+        const tags = Object.values(getIn(card, ["dataset_query", "template_tags"]) || {});
 
         let section;
-        if (parameters.length === 0) {
+        if (tags.length === 0) {
             section = "help";
         } else if (this.state.section == null) {
             section = "settings";
         } else {
             section = this.state.section;
         }
-        console.log("section", section, parameters)
+
         return (
             <div className="DataReference-container p3 full-height scroll-y">
                 <div className="DataReference-header flex align-center mb2">
@@ -45,11 +46,11 @@ export default class ParameterEditorSidebar extends Component {
                 </div>
                 <div className="DataReference-content">
                     <div className="Button-group Button-group--brand text-uppercase mb2">
-                        <a className={cx("Button Button--small", { "Button--active": section === "settings" , "disabled": parameters.length === 0 })} onClick={() => this.setState({ section: "settings" })}>Settings</a>
+                        <a className={cx("Button Button--small", { "Button--active": section === "settings" , "disabled": tags.length === 0 })} onClick={() => this.setState({ section: "settings" })}>Settings</a>
                         <a className={cx("Button Button--small", { "Button--active": section === "help" })} onClick={() => this.setState({ section: "help" })}>Help</a>
                     </div>
                     { section === "settings" ?
-                        <SettingsPane parameters={parameters} onUpdate={this.props.updateParameter}/>
+                        <SettingsPane tags={tags} onUpdate={this.props.updateTemplateTag}/>
                     :
                         <HelpPane />
                     }
@@ -59,14 +60,19 @@ export default class ParameterEditorSidebar extends Component {
     }
 }
 
-const SettingsPane = ({ parameters, onUpdate }) =>
+const SettingsPane = ({ tags, onUpdate }) =>
     <div>
-        { parameters.map(parameter =>
-            <div key={parameter.id}>
-                <ParameterEditorParam parameter={parameter} onUpdate={onUpdate} />
+        { tags.map(tag =>
+            <div key={tags.name}>
+                <ParameterEditorParam tag={tag} onUpdate={onUpdate} />
             </div>
         ) }
     </div>
+
+SettingsPane.propTypes = {
+    tags: PropTypes.object.isRequired,
+    onUpdate: PropTypes.func.isRequired
+};
 
 const HelpPane = () =>
     <div>

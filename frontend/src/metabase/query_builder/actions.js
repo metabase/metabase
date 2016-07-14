@@ -15,6 +15,8 @@ import { createQuery } from "metabase/lib/query";
 import { loadTableAndForeignKeys } from "metabase/lib/table";
 import Utils from "metabase/lib/utils";
 
+import { getParameters } from "./selectors";
+
 const Metabase = new AngularResourceProxy("Metabase", ["db_list_with_tables", "db_tables", "dataset", "table_query_metadata"]);
 const User = new AngularResourceProxy("User", ["update_qbnewb"]);
 
@@ -136,8 +138,8 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (updateUrl) => {
 export const TOGGLE_DATA_REFERENCE = "TOGGLE_DATA_REFERENCE";
 export const toggleDataReference = createAction(TOGGLE_DATA_REFERENCE);
 
-export const TOGGLE_PARAMETERS_EDITOR = "TOGGLE_PARAMETERS_EDITOR";
-export const toggleParametersEditor = createAction(TOGGLE_PARAMETERS_EDITOR);
+export const TOGGLE_TEMPLATE_TAGS_EDITOR = "TOGGLE_TEMPLATE_TAGS_EDITOR";
+export const toggleTemplateTagsEditor = createAction(TOGGLE_TEMPLATE_TAGS_EDITOR);
 
 export const CLOSE_QB_TUTORIAL = "CLOSE_QB_TUTORIAL";
 export const closeQbTutorial = createAction(CLOSE_QB_TUTORIAL, () => {
@@ -253,8 +255,8 @@ export const setCardVisualizationSettings = createThunkAction(SET_CARD_VISUALIZA
     };
 });
 
-export const UPDATE_PARAMETER = "UPDATE_PARAMETER";
-export const updateParameter = createThunkAction(UPDATE_PARAMETER, (parameter) => {
+export const UPDATE_TEMPLATE_TAG = "UPDATE_TEMPLATE_TAG";
+export const updateTemplateTag = createThunkAction(UPDATE_TEMPLATE_TAG, (templateTag) => {
     return (dispatch, getState) => {
         const { qb: { card, uiControls } } = getState();
 
@@ -267,10 +269,7 @@ export const updateParameter = createThunkAction(UPDATE_PARAMETER, (parameter) =
             delete updatedCard.description;
         }
 
-        let updateIdx = _.findIndex(updatedCard.parameters, (p) => p.id === parameter.id);
-        updatedCard.parameters[updateIdx] = parameter;
-
-        return updatedCard;
+        return i.assocIn(updatedCard, ["dataset_query", "template_tags", templateTag.name], templateTag);
     };
 });
 
@@ -278,9 +277,6 @@ export const SET_PARAMETER_VALUE = "SET_PARAMETER_VALUE";
 export const setParameterValue = createThunkAction(SET_PARAMETER_VALUE, (parameterId, value) => {
     return (dispatch, getState) => {
         let { qb: { parameterValues } } = getState();
-
-        // always clone before modifying
-        parameterValues = JSON.parse(JSON.stringify(parameterValues));
 
         // apply this specific value
         parameterValues = { ...parameterValues, [parameterId]: value};
@@ -378,7 +374,7 @@ export const setQuery = createThunkAction(SET_QUERY, (dataset_query) => {
         const { qb: { card, uiControls } } = getState();
 
         let updatedCard = JSON.parse(JSON.stringify(card)),
-            openParametersEditor = uiControls.isShowingParametersEditor;
+            openTemplateTagsEditor = uiControls.isShowingTemplateTagsEditor;
 
         // when the query changes on saved card we change this into a new query w/ a known starting point
         if (!uiControls.isEditing && updatedCard.id) {
@@ -391,56 +387,63 @@ export const setQuery = createThunkAction(SET_QUERY, (dataset_query) => {
 
         // special handling for NATIVE cards to automatically detect parameters ... {{varname}}
         if (Query.isNative(dataset_query) && !_.isEmpty(dataset_query.native.query)) {
-            let variables = [];
+            let tags = [];
 
             // look for variable usage in the query (like '{{varname}}').  we only allow alphanumeric characters for the variable name
             // a variable name can optionally end with :start or :end which is not considered part of the actual variable name
             // expected pattern is like mustache templates, so we are looking for something like {{category}} or {{date:start}}
             // anything that doesn't match our rule is ignored, so {{&foo!}} would simply be ignored
-            let match, re = /\{\{([A-Za-z0-9]*?)(?:\:start|\:end)*\}\}/g;
+            let match, re = /\{\{([A-Za-z0-9_]*?)\}\}/g;
             while((match = re.exec(dataset_query.native.query)) != null) {
-                variables.push(match[1]);
+                tags.push(match[1]);
             }
 
             // eliminate any duplicates since it's allowed for a user to reference the same variable multiple times
-            variables = _.uniq(variables);
+            const existingTemplateTags = updatedCard.dataset_query.template_tags || {};
+
+            tags = _.uniq(tags);
+            let existingTags = Object.keys(existingTemplateTags);
 
             // if we ended up with any variables in the query then update the card parameters list accordingly
-            if (variables.length > 0 || (updatedCard.parameters && updatedCard.parameters.length > 0)) {
-                let existingVariables = updatedCard.parameters ? updatedCard.parameters.map(p => p.name) : [];
+            if (tags.length > 0 || existingTags.length > 0) {
+                let newTags = _.difference(tags, existingTags);
+                let oldTags = _.difference(existingTags, tags);
 
-                let newVariables = _.difference(variables, existingVariables);
-                let oldVariables = _.difference(existingVariables, variables);
-
-                let parameters = updatedCard.parameters;
-                if (oldVariables.length === 1 && newVariables.length === 1) {
+                let templateTags = { ...existingTemplateTags };
+                if (oldTags.length === 1 && newTags.length === 1) {
                     // renaming
-                    let param = _.find(parameters, p => p.name === oldVariables[0]);
-                    param.name = newVariables[0];
+                    templateTags[newTags[0]] = templateTags[oldTags[0]];
+                    templateTags[newTags[0]].name = newTags[0];
+                    delete templateTags[oldTags[0]];
                 } else {
                     // remove old vars
-                    parameters = _.reject(parameters, p => _.contains(oldVariables, p.name));
+                    for (const name of oldTags) {
+                        delete templateTags[name];
+                    }
 
                     // create new vars
-                    newVariables.forEach(function (paramName) {
-                        parameters.push({id: Utils.uuid(), name: paramName, target: ["VAR", paramName], label: paramName, type: null});
-                    });
+                    for (let tagName of newTags) {
+                        templateTags[tagName] = {
+                            name: tagName,
+                            display_name: null,
+                            type: null,
+                        };
+                    }
                 }
 
-                updatedCard.parameters = parameters;
+                updatedCard.dataset_query.template_tags = templateTags;
 
-                if (newVariables.length > 0) {
-                    openParametersEditor = true;
-                } else if (parameters.length === 0) {
-                    openParametersEditor = false;
+                if (newTags.length > 0) {
+                    openTemplateTagsEditor = true;
+                } else if (Object.keys(templateTags) === 0) {
+                    openTemplateTagsEditor = false;
                 }
             }
         }
 
         return {
             card: updatedCard,
-            openParametersEditor
-
+            openTemplateTagsEditor
         };
     };
 });
@@ -639,6 +642,7 @@ export const RUN_QUERY = "RUN_QUERY";
 export const runQuery = createThunkAction(RUN_QUERY, (card, updateUrl=true, paramValues) => {
     return async (dispatch, getState) => {
         const state = getState();
+        const parameters = getParameters(state);
 
         // if we got a query directly on the action call then use it, otherwise take whatever is in our current state
         card = card || state.qb.card;
@@ -651,17 +655,21 @@ export const runQuery = createThunkAction(RUN_QUERY, (card, updateUrl=true, para
             dataset_query.query = Query.cleanQuery(dataset_query.query);
         }
 
-        // apply any parameters, if specified
-        if (card.parameters && card.parameters.length > 0) {
-            let parameterValues = paramValues || state.parameterValues || {};
-            let queryParameters = [];
-            card.parameters.forEach(param => {
-                let parameter = JSON.parse(JSON.stringify(param));
-                parameter.value = parameterValues[param.id];
-                queryParameters.push(parameter);
-            });
-
-            dataset_query.parameters = queryParameters;
+        // apply any pseudo-parameters, if specified
+        if (parameters && parameters.length > 0) {
+            let templateTags = card.dataset_query.template_tags || {};
+            let parameterValues = paramValues || state.qb.parameterValues || {};
+            dataset_query.parameters = parameters.map(parameter => {
+                let tag = templateTags[parameter.id];
+                let value = parameterValues[parameter.id];
+                if (value != null && tag) {
+                    return {
+                        type: parameter.type,
+                        target: [tag.type === "dimension" ? "dimension" : "variable", ["template-tag", tag.name]],
+                        value: value
+                    };
+                }
+            }).filter(p => p);
         }
 
         if (updateUrl) {

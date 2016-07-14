@@ -30,6 +30,7 @@ import {
     tableForeignKeys,
     tableForeignKeyReferences,
     uiControls,
+    getParameters
 } from "../selectors";
 
 import * as actions from "../actions";
@@ -83,6 +84,7 @@ const mapStateToProps = (state, props) => {
         isDirty:                   isDirty(state),
         isObjectDetail:            isObjectDetail(state),
         uiControls:                uiControls(state),
+        parameters:                getParameters(state),
 
         cardIsDirtyFn:             () => isDirty(state),
         cardIsNewFn:               () => (state.qb.card && !state.qb.card.id),
@@ -127,7 +129,7 @@ export default class QueryBuilder extends Component {
 
     componentWillReceiveProps(nextProps) {
         if (nextProps.uiControls.isShowingDataReference !== this.props.uiControls.isShowingDataReference ||
-            nextProps.uiControls.isShowingParametersEditor !== this.props.uiControls.isShowingParametersEditor) {
+            nextProps.uiControls.isShowingTemplateTagsEditor !== this.props.uiControls.isShowingTemplateTagsEditor) {
             // when the data reference is toggled we need to trigger a rerender after a short delay in order to
             // ensure that some components are updated after the animation completes (e.g. card visualization)
             window.setTimeout(this.forceUpdateDebounced, 300);
@@ -172,7 +174,7 @@ export default class QueryBuilder extends Component {
             );
         }
 
-        const showDrawer = uiControls.isShowingDataReference || uiControls.isShowingParametersEditor;
+        const showDrawer = uiControls.isShowingDataReference || uiControls.isShowingTemplateTagsEditor;
         return (
             <div>
                 <div className={cx("QueryBuilder flex flex-column bg-white spread", {"QueryBuilder--showSideDrawer": showDrawer})}>
@@ -193,13 +195,13 @@ export default class QueryBuilder extends Component {
                     </div>
                 </div>
 
-                <div className="SideDrawer">
+                <div className={cx("SideDrawer", { "SideDrawer--show": showDrawer })}>
                     { uiControls.isShowingDataReference &&
                         <DataReference {...this.props} closeFn={() => this.props.toggleDataReference()} />
                     }
 
-                    { uiControls.isShowingParametersEditor &&
-                        <ParameterEditorSidebar {...this.props} onClose={() => this.props.toggleParametersEditor()} />
+                    { uiControls.isShowingTemplateTagsEditor &&
+                        <ParameterEditorSidebar {...this.props} onClose={() => this.props.toggleTemplateTagsEditor()} />
                     }
                 </div>
 

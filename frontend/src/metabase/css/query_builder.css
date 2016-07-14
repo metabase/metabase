@@ -546,7 +546,7 @@
     overflow: hidden;
 }
 
-.QueryBuilder--showSideDrawer .SideDrawer {
+.SideDrawer--show {
     z-index: 0;
 }
 

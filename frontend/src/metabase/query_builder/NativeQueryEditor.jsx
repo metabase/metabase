@@ -1,13 +1,15 @@
 /*global ace*/
+/* eslint "react/prop-types": "warn" */
 
 import React, { Component, PropTypes } from "react";
 
 import _ from "underscore";
-import { assocIn } from "icepick";
+import { assocIn, getIn } from "icepick";
 
 import DataSelector from './DataSelector.jsx';
 import Icon from "metabase/components/Icon.jsx";
-import ParameterValuePicker from "./parameters/ParameterValuePicker.jsx";
+// import ParameterValuePicker from "./parameters/ParameterValuePicker.jsx";
+import ParameterValueWidget from "metabase/dashboard/components/parameters/ParameterValueWidget.jsx";
 
 // This should return an object with information about the mode the ACE Editor should use to edit the query.
 // This object should have 2 properties:
@@ -51,7 +53,8 @@ export default class NativeQueryEditor extends Component {
         setQueryFn: PropTypes.func.isRequired,
         setDatabaseFn: PropTypes.func.isRequired,
         autocompleteResultsFn: PropTypes.func.isRequired,
-        isOpen: PropTypes.bool
+        isOpen: PropTypes.bool,
+        parameters: PropTypes.array.isRequired
     };
 
     static defaultProps = {
@@ -185,6 +188,8 @@ export default class NativeQueryEditor extends Component {
     }
 
     render() {
+        const { parameters, parameterValues, setParameterValue } = this.props;
+
         let modeInfo = getModeInfo(this.props.query, this.props.databases);
 
         // we only render a db selector if there are actually multiple to choose from
@@ -249,13 +254,14 @@ export default class NativeQueryEditor extends Component {
                 <div className="NativeQueryEditor bordered rounded shadowed">
                     <div className="flex">
                         {dataSelectors}
-                        { this.props.card && this.props.card.parameters && this.props.card.parameters.map(parameter =>
+                        { parameters.map(parameter =>
                             <div key={parameter.name} className="pl2 GuiBuilder-section GuiBuilder-data flex align-center">
-                                <span className="GuiBuilder-section-label Query-label">{parameter.label}</span>
-                                <ParameterValuePicker
+                                <span className="GuiBuilder-section-label Query-label">{parameter.name}</span>
+                                <ParameterValueWidget
+                                    key={parameter.id}
                                     parameter={parameter}
-                                    value={this.props.parameterValues[parameter.id]}
-                                    setValue={(v) => this.props.setParameterValue(parameter.id, v)} 
+                                    value={parameterValues[parameter.id]}
+                                    setValue={(v) => setParameterValue(parameter.id, v)}
                                 />
                             </div>
                         )}

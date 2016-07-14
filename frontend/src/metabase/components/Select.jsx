@@ -1,21 +1,119 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 
 import ColumnarSelector from "metabase/components/ColumnarSelector.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 
+import cx from "classnames";
+
 export default class Select extends Component {
+    static propTypes = {
+        children: PropTypes.any
+    };
+
+    render() {
+        if (this.props.children) {
+            return <BrowserSelect {...this.props} />;
+        } else {
+            return <LegacySelect {...this.props} />;
+        }
+    }
+}
+
+class BrowserSelect extends Component {
+    static propTypes = {
+        children: PropTypes.array.isRequired,
+        className: PropTypes.string,
+        value: PropTypes.any,
+        onChange: PropTypes.func.isRequired
+    }
+    static defaultProps = {
+        className: "",
+    }
+
+    isSelected(otherValue) {
+        const { value } = this.props;
+        return (value === otherValue || ((value == null || value === "") && (otherValue == null || otherValue === "")))
+    }
+
+    render() {
+        const { children, className, onChange } = this.props;
+
+        let selectedName;
+        for (const child of children) {
+            if (this.isSelected(child.props.value)) {
+                selectedName = child.props.children;
+            }
+        }
+
+        return (
+            <PopoverWithTrigger
+                ref="popover"
+                className={this.props.className}
+                triggerElement={
+                    <div className={"flex align-center " + (!this.props.value ? " text-grey-3" : "")}>
+                        <span className="mr1">{selectedName}</span>
+                        <Icon className="flex-align-right" name="chevrondown"  width="10" height="10"/>
+                    </div>
+                }
+                triggerClasses={cx("AdminSelect", className)}
+            >
+                <div className="ColumnarSelector-column" onClick={(e) => e.stopPropagation()}>
+                    {children.map(child =>
+                        React.cloneElement(child, {
+                            selected: this.isSelected(child.props.value),
+                            onClick: () => {
+                                if (!child.props.disabled) {
+                                    onChange({ target: { value: child.props.value }});
+                                }
+                                this.refs.popover.close()
+                            }
+                        })
+                    )}
+                </div>
+            </PopoverWithTrigger>
+        );
+    }
+}
+
+export class Option extends Component {
+    static propTypes = {
+        children: PropTypes.any,
+        selected: PropTypes.bool,
+        disabled: PropTypes.bool,
+        onClick: PropTypes.func
+    };
+
+    render() {
+        const { children, selected, disabled, onClick } = this.props;
+        return (
+            <div
+                onClick={onClick}
+                className={cx("ColumnarSelector-row flex no-decoration", {
+                    "ColumnarSelector-row--selected": selected,
+                    "disabled": disabled
+                })}
+            >
+                <Icon name="check"  width="14" height="14"/>
+                {children}
+            </div>
+        );
+    }
+}
+
+class LegacySelect extends Component {
     static propTypes = {
         value: PropTypes.any,
         options: PropTypes.array.isRequired,
         placeholder: PropTypes.string,
         onChange: PropTypes.func,
         optionNameFn: PropTypes.func,
-        optionValueFn: PropTypes.func
+        optionValueFn: PropTypes.func,
+        className: PropTypes.string
     };
 
     static defaultProps = {
-        isInitiallyOpen: false,
         placeholder: "",
         optionNameFn: (option) => option.name,
         optionValueFn: (option) => option

@@ -1,16 +1,8 @@
 import React, { Component, PropTypes } from 'react';
 import { connect } from "react-redux";
 
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
+import ParameterValueWidget from "../components/parameters/ParameterValueWidget.jsx";
 import Icon from "metabase/components/Icon.jsx";
-
-import DateSingleWidget from "../components/parameters/widgets/DateSingleWidget.jsx";
-import DateRangeWidget from "../components/parameters/widgets/DateRangeWidget.jsx";
-import DateRelativeWidget from "../components/parameters/widgets/DateRelativeWidget.jsx";
-import DateMonthYearWidget from "../components/parameters/widgets/DateMonthYearWidget.jsx";
-import DateQuarterYearWidget from "../components/parameters/widgets/DateQuarterYearWidget.jsx";
-import CategoryWidget from "../components/parameters/widgets/CategoryWidget.jsx";
-import TextWidget from "../components/parameters/widgets/TextWidget.jsx";
 
 import S from "./ParameterWidget.css";
 import cx from "classnames";
@@ -28,13 +20,6 @@ const makeMapStateToProps = () => {
 const mapDispatchToProps = {
 };
 
-const WIDGETS = {
-    "date/single": DateSingleWidget,
-    "date/range":  DateRangeWidget,
-    "date/relative":  DateRelativeWidget,
-    "date/month-year":  DateMonthYearWidget,
-    "date/quarter-year":  DateQuarterYearWidget
-}
 
 @connect(makeMapStateToProps, mapDispatchToProps)
 export default class ParameterWidget extends Component {
@@ -64,58 +49,19 @@ export default class ParameterWidget extends Component {
             .value();
     }
 
-    getWidget(parameter, values) {
-        let Widget = WIDGETS[parameter.type] || TextWidget;
-        if (values.length > 0) {
-            Widget = CategoryWidget;
-        }
-        return Widget;
-    }
-
     renderPopover(value, placeholder, setValue) {
         const { parameter, editingParameter } = this.props;
-        const isEditingParameter = editingParameter && editingParameter.id === parameter.id;
-
-        let hasValue = value != null;
-
+        const isEditingParameter = !!(editingParameter && editingParameter.id === parameter.id);
         const values = this.getValues();
-        let Widget = this.getWidget(parameter, values);
-
-        if (Widget.noPopover) {
-            return (
-                <div className={cx(S.parameter, S.noPopover, { [S.selected]: hasValue })}>
-                    <Widget value={value} values={values} setValue={setValue} isEditing={isEditingParameter} />
-                    { hasValue &&
-                        <Icon name="close" className="flex-align-right cursor-pointer" onClick={(e) => {
-                            if (hasValue) {
-                                e.stopPropagation();
-                                setValue(null);
-                            }
-                        }} />
-                    }
-                </div>
-            );
-        }
-
         return (
-            <PopoverWithTrigger
-                ref="valuePopover"
-                triggerElement={
-                    <div ref="trigger" className={cx(S.parameter, { [S.selected]: hasValue })}>
-                        <div className="mr1">{ hasValue ? Widget.format(value) : placeholder }</div>
-                        <Icon name={hasValue ? "close" : "chevrondown"} className="flex-align-right" onClick={(e) => {
-                            if (hasValue) {
-                                e.stopPropagation();
-                                setValue(null);
-                                this.refs.valuePopover.close();
-                            }
-                        }}/>
-                    </div>
-                }
-                target={() => this.refs.trigger} // not sure why this is necessary
-            >
-                <Widget value={value} values={values} setValue={setValue} onClose={() => this.refs.valuePopover.close()} />
-            </PopoverWithTrigger>
+            <ParameterValueWidget
+                parameter={parameter}
+                value={value}
+                placeholder={placeholder}
+                values={values}
+                setValue={setValue}
+                isEditing={isEditingParameter}
+            />
         );
     }
 
@@ -131,7 +77,7 @@ export default class ParameterWidget extends Component {
                     <div className={cx(className, S.container, S.fullscreen)}>
                         <div className={S.name}>{parameter.name}</div>
                         <div className={cx(S.parameter, S.selected)}>
-                            {this.getWidget(parameter, this.getValues()).format(parameterValue)}
+                            {ParameterValueWidget.getWidget(parameter, this.getValues()).format(parameterValue)}
                         </div>
                     </div>
                 );

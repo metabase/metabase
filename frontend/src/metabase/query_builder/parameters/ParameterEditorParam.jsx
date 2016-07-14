@@ -6,9 +6,11 @@ import Icon from "metabase/components/Icon.jsx";
 import Input from "metabase/components/Input.jsx";
 import Toggle from "metabase/components/Toggle.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
-import Select from "metabase/components/Select.jsx";
 import { PARAMETER_OPTIONS } from "metabase/meta/Dashboard";
 import _ from "underscore";
+
+
+import Select, { Option } from "metabase/components/Select.jsx";
 
 export default class ParameterEditorParam extends Component {
 
@@ -19,24 +21,24 @@ export default class ParameterEditorParam extends Component {
     }
 
     static propTypes = {
-        parameter: PropTypes.object.isRequired,
+        tag: PropTypes.object.isRequired,
         onUpdate: PropTypes.func.isRequired
     };
 
     setParameterAttribute(attr, val) {
         // only register an update if the value actually changes
-        if (this.props.parameter[attr] !== val) {
+        if (this.props.tag[attr] !== val) {
             this.props.onUpdate({
-                ...this.props.parameter,
+                ...this.props.tag,
                 [attr]: val
             });
         }
     }
 
     setRequired(val) {
-        if (this.props.parameter.required !== val) {
+        if (this.props.tag.required !== val) {
             this.props.onUpdate({
-                ...this.props.parameter,
+                ...this.props.tag,
                 required: val,
                 default: undefined
             });
@@ -44,59 +46,51 @@ export default class ParameterEditorParam extends Component {
     }
 
     render() {
-        const { parameter } = this.props;
+        const { tag } = this.props;
 
         return (
             <div className="pb2 mb2 border-bottom border-dark">
-                <h3 className="pb1">{parameter.name}</h3>
+                <h3 className="pb1">{tag.name}</h3>
 
                 <div className="pb2">
-                    <h5 className="pb1 text-normal">Label</h5>
+                    <h5 className="pb1 text-normal">Filter label</h5>
                     <input
                         type="text"
-                        defaultValue={parameter.label}
-                        className="p1 text-bold text-grey-4 bordered border-med rounded full"
+                        defaultValue={tag.display_name}
+                        className="AdminSelect p1 text-bold text-grey-4 bordered border-med rounded full"
                         onKeyUp={(e) => {
                             if (e.keyCode === 13) {
                                 e.target.blur();
                             }
                         }}
-                        onBlur={(e) => this.setParameterAttribute("label", e.target.value)}
+                        onBlur={(e) => this.setParameterAttribute("display_name", e.target.value)}
                     />
                 </div>
 
                 <div className="pb2">
-                    <h5 className="pb1 text-normal">Type</h5>
-                    <PopoverWithTrigger
-                        ref="popover"
-                        triggerElement={
-                            <input
-                                type="text"
-                                value={parameter.type ? _.findWhere(PARAMETER_OPTIONS, { type: parameter.type }).name : "Pick a type..."}
-                                className="p1 text-bold text-grey-4 bordered border-med rounded full cursor-pointer"
-                            />
-                        }
-                    >
-                        <ParameterTypePicker
-                            onChange={(opt) => {
-                                this.setParameterAttribute("type", opt.type);
-                                this.refs.popover.close();
-                            }}
-                        />
-                    </PopoverWithTrigger>
+                    <h5 className="pb1 text-normal">Variable type</h5>
+                    <Select className="border-med bg-white block" value={tag.type} onChange={(e) => this.setParameterAttribute("type", e.target.value)}>
+                        <Option value="" disabled>Select a tag type</Option>
+                        <Option value="text">Text</Option>
+                        <Option value="number">Number</Option>
+                        <Option value="date">Date</Option>
+                        <Option value="dimension">Dimension</Option>
+                    </Select>
                 </div>
 
-                <div className="flex align-center pb2">
-                    <h5 className="text-normal mr1">Required?</h5>
-                    <Toggle value={parameter.required} onChange={(value) => this.setRequired(value)} />
-                </div>
+                { tag.type !== "dimension" &&
+                    <div className="flex align-center pb2">
+                        <h5 className="text-normal mr1">Required?</h5>
+                        <Toggle value={tag.required} onChange={(value) => this.setRequired(value)} />
+                    </div>
+                }
 
-                { parameter.required &&
+                { tag.type !== "dimension" && tag.required &&
                     <div className="pb2">
                         <h5 className="pb1 text-normal">Default Value</h5>
                         <input
                             type="text"
-                            defaultValue={parameter.default}
+                            defaultValue={tag.default}
                             className="p1 text-bold text-grey-4 bordered border-med rounded full"
                             onKeyUp={(e) => {
                                 if (e.keyCode === 13) {
@@ -105,6 +99,15 @@ export default class ParameterEditorParam extends Component {
                             }}
                             onBlur={(e) => this.setParameterAttribute("default", e.target.value)}
                         />
+                    </div>
+                }
+
+                { tag.type === "dimension" &&
+                    <div className="pb2">
+                        <h5 className="pb1 text-normal">Field</h5>
+                        <select className="Select" value={tag.type} onChange={(e) => this.setParameterAttribute("dimension", e.target.value)}>
+                            <option value="" disabled>Select a field</option>
+                        </select>
                     </div>
                 }
             </div>

@@ -4,7 +4,7 @@ import i from "icepick";
 import {
     INITIALIZE_QB,
     TOGGLE_DATA_REFERENCE,
-    TOGGLE_PARAMETERS_EDITOR,
+    TOGGLE_TEMPLATE_TAGS_EDITOR,
     CLOSE_QB_TUTORIAL,
     CLOSE_QB_NEWB_MODAL,
     BEGIN_EDITING,
@@ -20,7 +20,7 @@ import {
     SET_CARD_VISUALIZATION,
     SET_CARD_VISUALIZATION_SETTING,
     SET_CARD_VISUALIZATION_SETTINGS,
-    UPDATE_PARAMETER,
+    UPDATE_TEMPLATE_TAG,
     SET_PARAMETER_VALUE,
 
     SET_QUERY_DATABASE,
@@ -50,9 +50,9 @@ export const user = handleActions({
 export const uiControls = handleActions({
     [INITIALIZE_QB]: { next: (state, { payload }) => ({ ...state, ...payload.uiControls }) },
 
-    [TOGGLE_DATA_REFERENCE]: { next: (state, { payload }) => ({ ...state, isShowingDataReference: !state.isShowingDataReference, isShowingParametersEditor: false }) },
-    [TOGGLE_PARAMETERS_EDITOR]: { next: (state, { payload }) => ({ ...state, isShowingParametersEditor: !state.isShowingParametersEditor, isShowingDataReference: false }) },
-    [SET_QUERY]: { next: (state, { payload }) => ({ ...state, isShowingParametersEditor: payload.openParametersEditor }) },
+    [TOGGLE_DATA_REFERENCE]: { next: (state, { payload }) => ({ ...state, isShowingDataReference: !state.isShowingDataReference, isShowingTemplateTagsEditor: false }) },
+    [TOGGLE_TEMPLATE_TAGS_EDITOR]: { next: (state, { payload }) => ({ ...state, isShowingTemplateTagsEditor: !state.isShowingTemplateTagsEditor, isShowingDataReference: false }) },
+    [SET_QUERY]: { next: (state, { payload }) => ({ ...state, isShowingTemplateTagsEditor: payload.openTemplateTagsEditor }) },
     [CLOSE_QB_TUTORIAL]: { next: (state, { payload }) => ({ ...state, isShowingTutorial: false }) },
     [CLOSE_QB_NEWB_MODAL]: { next: (state, { payload }) => ({ ...state, isShowingNewbModal: false }) },
 
@@ -67,7 +67,7 @@ export const uiControls = handleActions({
     [QUERY_ERRORED]: { next: (state, { payload }) => ({ ...state, isRunning: false }) },
 }, {
     isShowingDataReference: false,
-    isShowingParametersEditor: false,
+    isShowingTemplateTagsEditor: false,
     isShowingTutorial: false,
     isShowingNewbModal: false,
     isEditing: false,
@@ -91,7 +91,7 @@ export const card = handleActions({
     [SET_CARD_VISUALIZATION_SETTING]: { next: (state, { payload }) => payload },
     [SET_CARD_VISUALIZATION_SETTINGS]: { next: (state, { payload }) => payload },
 
-    [UPDATE_PARAMETER]: { next: (state, { payload }) => payload },
+    [UPDATE_TEMPLATE_TAG]: { next: (state, { payload }) => payload },
 
     [SET_QUERY_MODE]: { next: (state, { payload }) => payload },
     [SET_QUERY_DATABASE]: { next: (state, { payload }) => payload },

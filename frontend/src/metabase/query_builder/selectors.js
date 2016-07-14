@@ -1,6 +1,7 @@
 
 import { createSelector } from "reselect";
 import _ from "underscore";
+import { getIn } from "icepick";
 
 import { isCardDirty } from "metabase/lib/card";
 import * as DataGrid from "metabase/lib/data_grid";
@@ -107,4 +108,21 @@ export const queryResult = createSelector(
 
         return queryResult;
 	}
+);
+
+export const getImplicitParameters = createSelector(
+	[card],
+	(card) => //[{ name: "x", id: "y", type: "text" }]
+		Object.values(getIn(card, ["dataset_query", "template_tags"]) || {})
+			.filter(tag => tag.type != null && tag.type !== "dimension")
+			.map(tag => ({
+				id: tag.name,
+				type: tag.type === "date" ? "date/single" : "category",
+				name: tag.display_name,
+			}))
+);
+
+export const getParameters = createSelector(
+	[getImplicitParameters],
+	(implicitParameters) => implicitParameters
 );
