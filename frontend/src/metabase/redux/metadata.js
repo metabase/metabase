@@ -331,10 +331,13 @@ export const fetchMetricRevisions = createThunkAction(FETCH_METRIC_REVISIONS, (m
 const FETCH_LIST_FIELDS = "metabase/metadata/FETCH_LIST_FIELDS";
 export const fetchListFields = createThunkAction(FETCH_LIST_FIELDS, (listId, reload = false) => {
     return async (dispatch, getState) => {
-        const test = await dispatch(fetchLists());
+        await dispatch(fetchLists());
         const list = i.getIn(getState(), ['metadata', 'lists', listId]);
         const tableId = list.table_id;
         await dispatch(fetchTableMetadata(tableId));
+        const table = i.getIn(getState(), ['metadata', 'tables', tableId]);
+        const databaseId = table.db_id;
+        await dispatch(fetchDatabaseMetadata(databaseId));
     };
 });
 

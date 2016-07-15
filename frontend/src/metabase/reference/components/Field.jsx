@@ -19,13 +19,12 @@ import pure from "recompose/pure";
 const Field = ({
     field,
     foreignKeys,
-    specialTypeId,
     url,
     icon,
     isEditing,
     formField
-}) =>
-    <div className={cx(S.item)}>
+}) => {
+    return <div className={cx(S.item)}>
         <div className={S.leftIcons}>
         </div>
         <div className={S.itemBody}>
@@ -85,7 +84,7 @@ const Field = ({
                         (field.special_type === 'fk' && formField.special_type.value === undefined)) &&
                         <Select
                             placeholder="Select a field type"
-                            value={foreignKeys[field.fk_target_field_id]}
+                            value={foreignKeys[field.fk_target_field_id] || {}}
                             options={Object.values(foreignKeys)}
                             updateImmediately={true}
                             onChange={(foreignKey) => formField.fk_target_field_id.onChange(foreignKey.id)}
@@ -93,7 +92,7 @@ const Field = ({
                         /> :
                         field.special_type === 'fk' &&
                         <span>
-                            {foreignKeys[field.fk_target_field_id].name}
+                            {i.getIn(foreignKeys, [field.fk_target_field_id, "name"])}
                         </span>
                     }
                 </div>
@@ -102,7 +101,7 @@ const Field = ({
             </div>
         </div>
     </div>
-
+}
 Field.propTypes = {
     field: PropTypes.object.isRequired,
     url: PropTypes.string.isRequired,

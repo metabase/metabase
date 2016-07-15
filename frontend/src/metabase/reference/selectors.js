@@ -326,11 +326,11 @@ const getTableQuestions = createSelector(
 
 const getDatabaseByList = createSelector(
     [getList, getTables, getDatabases],
-    (list, tables, databases) => list && list.table_id ?
-        databases[tables[list.table_id].db_id] : {}
+    (list, tables, databases) => list && list.table_id && tables[list.table_id] &&
+        databases[tables[list.table_id].db_id] || {}
 );
 
-const databaseToForeignKeys = (database) => database && database.tables_lookup &&
+const databaseToForeignKeys = (database) => database && database.tables_lookup ?
     Object.values(database.tables_lookup)
         // ignore tables without primary key
         .filter(table => table && table.fields_lookup &&
@@ -349,7 +349,8 @@ const databaseToForeignKeys = (database) => database && database.tables_lookup &
                 `${table.display_name} → ${field.display_name}`,
             description: field.description
         }))
-        .reduce((map, foreignKey) => i.assoc(map, foreignKey.id, foreignKey), {});
+        .reduce((map, foreignKey) => i.assoc(map, foreignKey.id, foreignKey), {}) :
+    {};
 
 const getForeignKeysByList = createSelector(
     [getDatabaseByList],

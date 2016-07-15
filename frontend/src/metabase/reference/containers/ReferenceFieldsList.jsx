@@ -58,7 +58,6 @@ const mapDispatchToProps = {
 };
 
 const validate = (values, props) => {
-    console.log(values);
     return {};
 }
 
@@ -90,6 +89,7 @@ export default class ReferenceEntityList extends Component {
             isEditing,
             startEditing,
             endEditing,
+            updateField,
             handleSubmit,
             submitting
         } = this.props;
@@ -104,10 +104,24 @@ export default class ReferenceEntityList extends Component {
                 <form
                     onSubmit={handleSubmit(async formFields => {
                         const updatedFields = Object.keys(formFields)
-                            .filter(fieldId => Object.values(formFields[fieldId])
-                                .some(value => value !== undefined))
-                            .map(fieldId => ({...fields[fieldId], ...formFields[fieldId]}))
-                        console.log(updatedFields);
+                            .map(fieldId => ({
+                                field: entities[fieldId],
+                                formField: Object.keys(formFields[fieldId])
+                                    .filter(key => formFields[fieldId][key] !== undefined)
+                                    .reduce((map, key) => i
+                                        .assoc(map, key, formFields[fieldId][key]), {}
+                                    )
+                            }))
+                            .filter(({field, formField}) => Object
+                                .keys(formField).length !== 0
+                            )
+                            .map(({field, formField}) => ({...field, ...formField}));
+                        // Using Promise.all here makes values not update immediately
+                        await updatedFields
+                            .reduce((promise, field) => promise
+                                .then(() => updateField(field)),
+                                Promise.resolve()
+                            );
                         endEditing();
                     })}
                 >
