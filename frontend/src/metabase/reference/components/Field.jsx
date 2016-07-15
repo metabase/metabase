@@ -73,8 +73,40 @@ const Field = ({
                     {field.base_type}
                 </div>
             </div>
-            <div className={cx(S.itemSubtitle, { "mt1" : true })}>
-                { field.name }
+            <div className={cx(S.itemSubtitle, F.fieldSecondary, { "mt1" : true })}>
+                <div className={F.fieldActualName}>
+                    { field.name }
+                </div>
+                <div className={F.fieldForeignKey}>
+                    { isEditing ?
+                        (formField.special_type.value === 'fk' ||
+                        (field.special_type === 'fk' && formField.special_type.value === undefined)) &&
+                        <Select
+                            placeholder="Select a field type"
+                            value={MetabaseCore.field_special_types_map[field.special_type]}
+                            options={
+                                MetabaseCore.field_special_types
+                                    .concat({
+                                        'id': null,
+                                        'name': 'No field type',
+                                        'section': 'Other'
+                                    })
+                                    .filter(type => !isNumeric(field) ?
+                                        !(type.id && type.id.startsWith("timestamp_")) :
+                                        true
+                                    )
+                            }
+                            updateImmediately={true}
+                            onChange={(type) => formField.special_type.onChange(type.id)}
+                        /> :
+                        field.special_type === 'fk' &&
+                        <span>
+                            fk
+                        </span>
+                    }
+                </div>
+                <div className={F.fieldOther}>
+                </div>
             </div>
         </div>
     </div>

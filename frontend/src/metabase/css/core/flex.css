@@ -20,7 +20,7 @@
     align-items: center;
 }
 
-.align-baseline {
+.align-baseline, :local(.align-baseline) {
     align-items: baseline;
 }
 

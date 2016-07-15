@@ -1,5 +1,6 @@
 :local(.field) {
     composes: flex from "style";
+    composes: align-baseline from "style";
 }
 
 :local(.fieldName) {
@@ -12,4 +13,20 @@
 
 :local(.fieldDataType) {
     composes: flex-half from "style";
+}
+
+:local(.fieldSecondary) {
+    composes: field;
+}
+
+:local(.fieldActualName) {
+    composes: fieldName;
+}
+
+:local(.fieldForeignKey) {
+    composes: fieldType;
+}
+
+:local(.fieldOther) {
+    composes: fieldDataType;
 }
