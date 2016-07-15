@@ -18,6 +18,7 @@ import pure from "recompose/pure";
 
 const Field = ({
     field,
+    specialTypeId,
     url,
     icon,
     isEditing,
@@ -56,6 +57,7 @@ const Field = ({
                                         true
                                     )
                             }
+                            updateImmediately={true}
                             onChange={(type) => formField.special_type.onChange(type.id)}
                         /> :
                         <span>

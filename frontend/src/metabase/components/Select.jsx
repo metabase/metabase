@@ -5,8 +5,16 @@ import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 
 export default class Select extends Component {
+    constructor(props, context) {
+        super(props, context);
+        this.state = {
+            value: null
+        };
+    }
+
     static propTypes = {
         value: PropTypes.any,
+        updateImmediately: PropTypes.bool,
         options: PropTypes.array.isRequired,
         placeholder: PropTypes.string,
         onChange: PropTypes.func,
@@ -26,10 +34,14 @@ export default class Select extends Component {
     }
 
     render() {
-        var selectedName = this.props.value ? this.props.optionNameFn(this.props.value) : this.props.placeholder;
+        const value = this.props.updateImmediately ?
+            this.state.value || this.props.value :
+            this.props.value;
+
+        var selectedName = value ? this.props.optionNameFn(value) : this.props.placeholder;
 
         var triggerElement = (
-            <div className={"flex align-center " + (!this.props.value ? " text-grey-3" : "")}>
+            <div className={"flex align-center " + (!value ? " text-grey-3" : "")}>
                 <span className="mr1">{selectedName}</span>
                 <Icon className="flex-align-right" name="chevrondown"  width="10" height="10"/>
             </div>
@@ -45,12 +57,15 @@ export default class Select extends Component {
 
         var columns = [
             {
-                selectedItem: this.props.value,
+                selectedItem: this.state.value || value,
                 sections: sections,
                 itemTitleFn: this.props.optionNameFn,
                 itemDescriptionFn: (item) => item.description,
                 itemSelectFn: (item) => {
-                    this.props.onChange(this.props.optionValueFn(item))
+                    this.props.onChange(this.props.optionValueFn(item));
+                    if (this.props.updateImmediately) {
+                        this.setState({value: this.props.optionValueFn(item)});
+                    }
                     this.toggle();
                 }
             }
