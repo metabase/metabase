@@ -13,11 +13,10 @@ import { formatSQL } from "metabase/lib/formatting";
 import Query from "metabase/lib/query";
 import { createQuery } from "metabase/lib/query";
 import { loadTableAndForeignKeys } from "metabase/lib/table";
-import Utils from "metabase/lib/utils";
 
 import { getParameters } from "./selectors";
 
-const Metabase = new AngularResourceProxy("Metabase", ["db_list_with_tables", "db_tables", "dataset", "table_query_metadata"]);
+const Metabase = new AngularResourceProxy("Metabase", ["db_list_with_tables", "db_fields", "dataset", "table_query_metadata"]);
 const User = new AngularResourceProxy("User", ["update_qbnewb"]);
 
 
@@ -111,10 +110,8 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (updateUrl) => {
             MetabaseAnalytics.trackEvent("QueryBuilder", "Query Started", card.dataset_query.type);
         }
 
-        // if we have a card with a known source table then dispatch an action to load up that info
-        if (card && card.dataset_query && card.dataset_query.query && card.dataset_query.query.source_table) {
-            dispatch(loadTableMetadata(card.dataset_query.query.source_table));
-        }
+
+        dispatch(loadMetadataForCard(card));
 
         // if we have loaded up a card that we can run then lets kick that off as well
         if (card && card.dataset_query && (Query.canRun(card.dataset_query.query) || card.dataset_query.type === "native")) {
@@ -170,9 +167,7 @@ export const cancelEditing = createThunkAction(CANCEL_EDITING, () => {
         // clone
         let card = JSON.parse(JSON.stringify(originalCard));
 
-        if (card && card.dataset_query && card.dataset_query.query && card.dataset_query.query.source_table) {
-            dispatch(loadTableMetadata(card.dataset_query.query.source_table));
-        }
+        dispatch(loadMetadataForCard(card));
 
         // we do this to force the indication of the fact that the card should not be considered dirty when the url is updated
         dispatch(runQuery(card, false));
@@ -183,6 +178,19 @@ export const cancelEditing = createThunkAction(CANCEL_EDITING, () => {
     };
 });
 
+export const LOAD_METADATA_FOR_CARD = "LOAD_METADATA_FOR_CARD";
+export const loadMetadataForCard = createThunkAction(LOAD_METADATA_FOR_CARD, (card) => {
+    return async (dispatch, getState) => {
+        // if we have a card with a known source table then dispatch an action to load up that info
+        if (card && card.dataset_query && card.dataset_query.query && card.dataset_query.query.source_table != null) {
+            dispatch(loadTableMetadata(card.dataset_query.query.source_table));
+        }
+
+        if (card && card.dataset_query && card.dataset_query.type === "native" && card.dataset_query.database != null) {
+            dispatch(loadDatabaseFields(card.dataset_query.database));
+        }
+    }
+});
 
 export const LOAD_TABLE_METADATA = "LOAD_TABLE_METADATA";
 export const loadTableMetadata = createThunkAction(LOAD_TABLE_METADATA, (tableId) => {
@@ -202,6 +210,29 @@ export const loadTableMetadata = createThunkAction(LOAD_TABLE_METADATA, (tableId
     };
 });
 
+export const LOAD_DATABASE_FIELDS = "LOAD_DATABASE_FIELDS";
+export const loadDatabaseFields = createThunkAction(LOAD_DATABASE_FIELDS, (dbId) => {
+    return async (dispatch, getState) => {
+        // if we already have the metadata loaded for the given table then we are done
+        const { qb: { databaseFields } } = getState();
+        try {
+            let fields;
+            if (databaseFields[dbId]) {
+                fields = databaseFields[dbId];
+            } else {
+                fields = await Metabase.db_fields({ dbId: dbId });
+            }
+
+            return {
+                id: dbId,
+                fields: fields
+            };
+        } catch(error) {
+            console.error('error getting database fields', error);
+            return {};
+        }
+    };
+});
 
 function updateVisualizationSettings(card, isEditing, display, vizSettings) {
     // make sure that something actually changed
@@ -295,9 +326,7 @@ export const notifyCardCreatedFn = createThunkAction(NOTIFY_CARD_CREATED, (card)
     return (dispatch, getState) => {
         const { qb: { updateUrl } } = getState();
 
-        if (card && card.dataset_query && card.dataset_query.query && card.dataset_query.query.source_table) {
-            dispatch(loadTableMetadata(card.dataset_query.query.source_table));
-        }
+        dispatch(loadMetadataForCard(card));
 
         // we do this to force the indication of the fact that the card should not be considered dirty when the url is updated
         dispatch(runQuery(card, false));
@@ -314,9 +343,7 @@ export const notifyCardUpdatedFn = createThunkAction("NOTIFY_CARD_UPDATED", (car
     return (dispatch, getState) => {
         const { qb: { updateUrl } } = getState();
 
-        if (card && card.dataset_query && card.dataset_query.query && card.dataset_query.query.source_table) {
-            dispatch(loadTableMetadata(card.dataset_query.query.source_table));
-        }
+        dispatch(loadMetadataForCard(card));
 
         // we do this to force the indication of the fact that the card should not be considered dirty when the url is updated
         dispatch(runQuery(card, false));
@@ -337,9 +364,7 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
         // clone
         let card = JSON.parse(JSON.stringify(originalCard));
 
-        if (card && card.dataset_query && card.dataset_query.query && card.dataset_query.query.source_table) {
-            dispatch(loadTableMetadata(card.dataset_query.query.source_table));
-        }
+        dispatch(loadMetadataForCard(card));
 
         // we do this to force the indication of the fact that the card should not be considered dirty when the url is updated
         dispatch(runQuery(card, false));
@@ -356,9 +381,7 @@ export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (runCard) => {
         // clone
         let card = JSON.parse(JSON.stringify(runCard));
 
-        if (card && card.dataset_query && card.dataset_query.query && card.dataset_query.query.source_table) {
-            dispatch(loadTableMetadata(card.dataset_query.query.source_table));
-        }
+        dispatch(loadMetadataForCard(card));
 
         dispatch(runQuery(card));
 
@@ -485,13 +508,19 @@ export const setQueryMode = createThunkAction(SET_QUERY_MODE, (type) => {
 
             updatedCard.dataset_query = datasetQuery;
 
+            dispatch(loadMetadataForCard(updatedCard));
+
             MetabaseAnalytics.trackEvent("QueryBuilder", "MBQL->Native");
 
             return updatedCard;
 
         // we are translating an empty query
         } else {
-            return startNewCard(type, card.dataset_query.database);
+            let newCard = startNewCard(type, card.dataset_query.database);
+
+            dispatch(loadMetadataForCard(newCard));
+
+            return newCard;
         }
     };
 });
@@ -523,6 +552,8 @@ export const setQueryDatabase = createThunkAction(SET_QUERY_DATABASE, (databaseI
                 if (table) updatedCard.dataset_query.native.collection = table.name;
             }
 
+            dispatch(loadMetadataForCard(updatedCard));
+
             return updatedCard;
 
         } else {
@@ -535,6 +566,9 @@ export const setQueryDatabase = createThunkAction(SET_QUERY_DATABASE, (databaseI
 
             let updatedCard = JSON.parse(JSON.stringify(card));
             updatedCard.dataset_query = query;
+
+            dispatch(loadMetadataForCard(updatedCard));
+
             return updatedCard;
         }
     };

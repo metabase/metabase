@@ -12,6 +12,7 @@ import {
 
     LOAD_DATABASE,
     LOAD_TABLE_METADATA,
+    LOAD_DATABASE_FIELDS,
     RELOAD_CARD,
     NOTIFY_CARD_CREATED,
     NOTIFY_CARD_UPDATED,
@@ -130,6 +131,10 @@ export const tableForeignKeys = handleActions({
     [LOAD_DATABASE]: { next: (state, { payload }) => null},
     [LOAD_TABLE_METADATA]: { next: (state, { payload }) => payload && payload.foreignKeys ? payload.foreignKeys : state }
 }, null);
+
+export const databaseFields = handleActions({
+    [LOAD_DATABASE_FIELDS]: { next: (state, { payload }) => ({ [payload.id]: payload.fields }) }
+}, {});
 
 // references to FK tables specifically used on the ObjectDetail page.
 export const tableForeignKeyReferences = handleActions({

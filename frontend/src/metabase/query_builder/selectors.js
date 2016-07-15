@@ -20,16 +20,19 @@ export const isDirty = createSelector(
 		return isCardDirty(card, originalCard);
 	}
 );
+export const getDatabaseId = createSelector(
+	[card],
+	(card) => card && card.dataset_query && card.dataset_query.database
+);
 
 export const databases                 = state => state.qb.databases;
 export const tableMetadata             = state => state.qb.tableMetadata;
 export const tableForeignKeys          = state => state.qb.tableForeignKeys;
 export const tableForeignKeyReferences = state => state.qb.tableForeignKeyReferences;
 export const tables = createSelector(
-	[card, databases],
-    (card, databases) => {
-    	const databaseId = card && card.dataset_query && card.dataset_query.database;
-    	if (databaseId && databases && databases.length > 0) {
+	[getDatabaseId, databases],
+    (databaseId, databases) => {
+    	if (databaseId != null && databases && databases.length > 0) {
     		let db = _.findWhere(databases, { id: databaseId });
 	        if (db && db.tables) {
 	            return db.tables;
@@ -38,6 +41,11 @@ export const tables = createSelector(
 
         return [];
     }
+);
+
+export const getDatabaseFields = createSelector(
+	[getDatabaseId, state => state.qb.databaseFields],
+	(databaseId, databaseFields) => databaseFields[databaseId]
 );
 
 export const isObjectDetail = createSelector(

@@ -78,31 +78,65 @@ for (const option of PARAMETER_OPTIONS) {
     section.options.push(option);
 }
 
-export function getDimensions(table: Table, depth: number, filter = () => true) {
+export function getFieldDimension(field: Field) {
+    return {
+        name: field.display_name,
+        field_id: field.id,
+        sectionName: field.table().display_name,
+        target: ["field-id", field.id],
+        depth: 0
+    };
+}
+
+export function getCardDimensions(metadata: Metadata, card: CardObject, filter = () => true) {
+    if (card.dataset_query.type === "query") {
+        const table = card.dataset_query.query.source_table != null ? metadata.table(card.dataset_query.query.source_table) : null;
+        if (table) {
+            return getTableDimensions(table, 1, filter);
+        }
+    } else if (card.dataset_query.type === "native") {
+        return Object.values(card.dataset_query.template_tags || {}).map(tag => {
+            if (tag.type === "dimension" && Array.isArray(tag.dimension) && tag.dimension[0] === "field-id") {
+                const field = metadata.field(tag.dimension[1]);
+                if (field) {
+                    let dimension = getFieldDimension(field);
+                    return {
+                        ...dimension,
+                        target: ["template-tag", tag.name]
+                    };
+                }
+            }
+        }).filter(d => d);
+    }
+    return [];
+}
+
+export function getTableDimensions(table: Table, depth: number, filter = () => true) {
     return _.chain(table.fields())
         .map(field => {
             let targetField = field.target();
             if (targetField && depth > 0) {
                 let targetTable = targetField.table();
-                return _.map(getDimensions(targetTable, depth - 1, filter), (dimension) => ({
+                return _.map(getTableDimensions(targetTable, depth - 1, filter), (dimension) => ({
                     ...dimension,
                     sectionName: stripId(field.display_name),
                     target: ["fk->", field.id, dimension.target[0] === "field-id" ? dimension.target[1] : dimension.target],
                     depth: dimension.depth + 1
                 }));
             } else if (filter(field)) {
-                return [{
-                    name: field.display_name,
-                    field_id: field.id,
-                    sectionName: table.display_name,
-                    target: ["field-id", field.id],
-                    depth: 0
-                }];
+                return [getFieldDimension(field)];
             }
         })
         .flatten()
         .filter(dimension => dimension != null)
         .value();
+}
+
+export function getCardVariables(metadata: Metadata, card: CardObject, filter = () => true) {
+    if (card.dataset_query.type === "native") {
+
+    }
+    return [];
 }
 
 const PARAMETER_ICONS = {
@@ -122,30 +156,38 @@ function fieldFilterForParameter(parameter: ParameterObject) {
     return (field) => false;
 }
 
+function variableFilterForParameter(parameter: ParameterObject) {
+    // TODO
+    return () => true;
+}
+
 export function getParameterMappingOptions(metadata: Metadata, parameter: ParameterObject, card: CardObject): Array<ParameterMappingOption> {
     let options = [];
-    if (card.dataset_query.type === "query") {
-        const table = card.dataset_query.query.source_table != null ? metadata.table(card.dataset_query.query.source_table) : null;
-        if (table) {
-            options.push(...getDimensions(table, 1, fieldFilterForParameter(parameter))
+
+    // dimensions
+    options.push(
+        ...getCardDimensions(metadata, card, fieldFilterForParameter(parameter))
             .map(dimension => ({
                 name: dimension.name,
                 target: ["dimension", dimension.target],
                 icon: metadata.field(dimension.field_id).icon(),
                 sectionName: dimension.sectionName,
                 isFk: dimension.depth > 0
-            })));
-        }
-    }
+            }))
+    );
 
-    if (card.parameters) {
-        options.push(...card.parameters.map(parameter => ({
-            name: parameter.name,
-            target: ["parameter", parameter.name],
-            icon: PARAMETER_ICONS[parameter.type],
-            sectionName: ""
-        })));
-    }
+    // variables
+    options.push(
+        ...getCardVariables(metadata, card, variableFilterForParameter(parameter))
+            .map(variable => ({
+                name: variable.name,
+                target: ["variable", variable.target],
+                icon: "int",
+                sectionName: "Variables",
+                isVariable: true
+            }))
+    );
+
     return options;
 }
 

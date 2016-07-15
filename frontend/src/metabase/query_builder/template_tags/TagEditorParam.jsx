@@ -1,16 +1,10 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 
-import TagTypePicker from "./TagTypePicker.jsx";
-import Icon from "metabase/components/Icon.jsx";
-import Input from "metabase/components/Input.jsx";
 import Toggle from "metabase/components/Toggle.jsx";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
-import { PARAMETER_OPTIONS } from "metabase/meta/Dashboard";
-import _ from "underscore";
-
-
 import Select, { Option } from "metabase/components/Select.jsx";
+
+import _ from "underscore";
 
 export default class TagEditorParam extends Component {
 
@@ -35,18 +29,34 @@ export default class TagEditorParam extends Component {
         }
     }
 
-    setRequired(val) {
-        if (this.props.tag.required !== val) {
+    setRequired(required) {
+        if (this.props.tag.required !== required) {
             this.props.onUpdate({
                 ...this.props.tag,
-                required: val,
+                required: required,
                 default: undefined
             });
         }
     }
 
+    setType(type) {
+        if (this.props.tag.type !== type) {
+            this.props.onUpdate({
+                ...this.props.tag,
+                type: type,
+                dimension: undefined
+            });
+        }
+    }
+
     render() {
-        const { tag } = this.props;
+        const { tag, databaseFields } = this.props;
+
+        let dabaseHasSchemas = false;
+        if (databaseFields) {
+            let schemas = _.chain(databaseFields).pluck("schema").uniq().value();
+            dabaseHasSchemas = schemas.length > 1;
+        }
 
         return (
             <div className="pb2 mb2 border-bottom border-dark">
@@ -69,7 +79,7 @@ export default class TagEditorParam extends Component {
 
                 <div className="pb2">
                     <h5 className="pb1 text-normal">Variable type</h5>
-                    <Select className="border-med bg-white block" value={tag.type} onChange={(e) => this.setParameterAttribute("type", e.target.value)}>
+                    <Select className="border-med bg-white block" value={tag.type} onChange={(e) => this.setType(e.target.value)}>
                         <Option value="" disabled>Select a tag type</Option>
                         <Option value="text">Text</Option>
                         <Option value="number">Number</Option>
@@ -105,9 +115,23 @@ export default class TagEditorParam extends Component {
                 { tag.type === "dimension" &&
                     <div className="pb2">
                         <h5 className="pb1 text-normal">Field</h5>
-                        <select className="Select" value={tag.type} onChange={(e) => this.setParameterAttribute("dimension", e.target.value)}>
-                            <option value="" disabled>Select a field</option>
-                        </select>
+                        <Select
+                            className="border-med bg-white block"
+                            value={Array.isArray(tag.dimension) ? tag.dimension[1] : null}
+                            onChange={(e) => this.setParameterAttribute("dimension", ["field-id", e.target.value])}
+                            searchProp="name"
+                            searchCaseInsensitive
+                        >
+                            {databaseFields && databaseFields.map(field =>
+                                <Option value={field.id} name={field.name}>
+                                    <div>
+                                        <div className="h6 text-bold text-uppercase text-grey-2">{dabaseHasSchemas && (field.schema + " > ")}{field.table_name}</div>
+                                        <div className="h4 text-bold text-default">{field.name}</div>
+                                    </div>
+                                </Option>
+                            )}
+                        </Select>
+
                     </div>
                 }
             </div>

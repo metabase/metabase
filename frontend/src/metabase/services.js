@@ -460,6 +460,14 @@ CoreServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', funct
             },
             isArray: true
         },
+        db_fields: {
+            url: '/api/database/:dbId/fields',
+            method: 'GET',
+            params: {
+                dbId: '@dbId'
+            },
+            isArray: true
+        },
         db_idfields: {
             url: '/api/database/:dbId/idfields',
             method: 'GET',

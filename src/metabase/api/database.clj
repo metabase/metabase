@@ -1,6 +1,7 @@
 (ns metabase.api.database
   "/api/database endpoints."
   (:require [clojure.tools.logging :as log]
+            [clojure.string :as str]
             [compojure.core :refer [GET POST PUT DELETE]]
             [metabase.api.common :refer :all]
             (metabase [config :as config]
@@ -180,6 +181,21 @@
   [id]
   (read-check Database id)
   (db/select Table, :db_id id, :active true, {:order-by [:name]})) ; TODO - should this be case-insensitive -- {:order-by [:%lower.name]} -- instead?
+
+(defendpoint GET "/:id/fields"
+  "Get a list of all `Fields` in `Database`."
+  [id]
+  (read-check Database id)
+  (let [table-ids (db/select-field :id, Table, :db_id id)]
+    (->> (-> (db/select [Field :id :name :display_name :base_type :special_type :table_id]
+               :table_id        [:in table-ids]
+               :visibility_type [:not-in ["sensitive" "retired"]])
+             (hydrate :table))
+         (map (fn [{:keys [id display_name table]}]
+                  {:id id
+                   :name display_name
+                   :table_name (:display_name table)
+                   :schema (:schema table)})))))
 
 (defendpoint GET "/:id/idfields"
   "Get a list of all primary key `Fields` for `Database`."

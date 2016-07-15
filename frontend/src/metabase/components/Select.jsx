@@ -22,6 +22,12 @@ export default class Select extends Component {
 }
 
 class BrowserSelect extends Component {
+    constructor(props, context) {
+        super(props, context);
+        this.state = {
+            inputValue: ""
+        };
+    }
     static propTypes = {
         children: PropTypes.array.isRequired,
         className: PropTypes.string,
@@ -38,12 +44,27 @@ class BrowserSelect extends Component {
     }
 
     render() {
-        const { children, className, onChange } = this.props;
+        const { children, className, onChange, searchProp, searchCaseInsensitive } = this.props;
 
         let selectedName;
         for (const child of children) {
             if (this.isSelected(child.props.value)) {
                 selectedName = child.props.children;
+            }
+        }
+
+        const { inputValue } = this.state;
+        let filter = () => true;
+        if (searchProp && inputValue) {
+            filter = (child) => {
+                let childValue = String(child.props[searchProp] || "");
+                if (!inputValue) {
+                    return false;
+                } else if (searchCaseInsensitive) {
+                    return childValue.toLowerCase().startsWith(inputValue.toLowerCase())
+                } else {
+                    return childValue.startsWith(inputValue);
+                }
             }
         }
 
@@ -58,19 +79,30 @@ class BrowserSelect extends Component {
                     </div>
                 }
                 triggerClasses={cx("AdminSelect", className)}
+                verticalAttachments={["top"]}
             >
-                <div className="ColumnarSelector-column" onClick={(e) => e.stopPropagation()}>
-                    {children.map(child =>
-                        React.cloneElement(child, {
-                            selected: this.isSelected(child.props.value),
-                            onClick: () => {
-                                if (!child.props.disabled) {
-                                    onChange({ target: { value: child.props.value }});
+                <div className="flex flex-column">
+                    { searchProp &&
+                        <input
+                            className="AdminSelect m1 flex-full"
+                            value={inputValue}
+                            onChange={(e) => this.setState({ inputValue: e.target.value })}
+                            autoFocus
+                        />
+                    }
+                    <div className="ColumnarSelector-column scroll-y" onClick={(e) => e.stopPropagation()}>
+                        {children.filter(filter).map(child =>
+                            React.cloneElement(child, {
+                                selected: this.isSelected(child.props.value),
+                                onClick: () => {
+                                    if (!child.props.disabled) {
+                                        onChange({ target: { value: child.props.value }});
+                                    }
+                                    this.refs.popover.close()
                                 }
-                                this.refs.popover.close()
-                            }
-                        })
-                    )}
+                            })
+                        )}
+                    </div>
                 </div>
             </PopoverWithTrigger>
         );

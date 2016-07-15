@@ -22,6 +22,7 @@ export default class TagEditorSidebar extends Component {
     };
 
     render() {
+
         const { card } = this.props;
         const tags = Object.values(getIn(card, ["dataset_query", "template_tags"]) || {});
 
@@ -50,7 +51,7 @@ export default class TagEditorSidebar extends Component {
                         <a className={cx("Button Button--small", { "Button--active": section === "help" })} onClick={() => this.setState({ section: "help" })}>Help</a>
                     </div>
                     { section === "settings" ?
-                        <SettingsPane tags={tags} onUpdate={this.props.updateTemplateTag}/>
+                        <SettingsPane tags={tags} onUpdate={this.props.updateTemplateTag} databaseFields={this.props.databaseFields}/>
                     :
                         <HelpPane />
                     }
@@ -60,11 +61,11 @@ export default class TagEditorSidebar extends Component {
     }
 }
 
-const SettingsPane = ({ tags, onUpdate }) =>
+const SettingsPane = ({ tags, onUpdate, databaseFields }) =>
     <div>
         { tags.map(tag =>
             <div key={tags.name}>
-                <TagEditorParam tag={tag} onUpdate={onUpdate} />
+                <TagEditorParam tag={tag} onUpdate={onUpdate} databaseFields={databaseFields} />
             </div>
         ) }
     </div>

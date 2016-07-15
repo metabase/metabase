@@ -127,17 +127,17 @@ export default class NativeQueryEditor extends Component {
             showLineNumbers: true
         });
 
-        var autocompleteFn = this.props.autocompleteResultsFn;
         aceLanguageTools.addCompleter({
-            getCompletions: function(editor, session, pos, prefix, callback) {
+            getCompletions: async (editor, session, pos, prefix, callback) => {
                 if (prefix.length < 2) {
                     callback(null, []);
                     return;
                 }
-
-                autocompleteFn(prefix).then(function (results) {
+                try {
+                    // HACK: call this.props.autocompleteResultsFn rathern than caching the prop since it might change
+                    let results = await this.props.autocompleteResultsFn(prefix);
                     // transform results of the API call into what ACE expects
-                    var js_results = results.map(function(result) {
+                    let js_results = results.map(function(result) {
                         return {
                             name: result[0],
                             value: result[0],
@@ -145,11 +145,10 @@ export default class NativeQueryEditor extends Component {
                         };
                     });
                     callback(null, js_results);
-
-                }, function (error) {
+                } catch (error) {
                     console.log('error getting autocompletion data', error);
                     callback(null, []);
-                });
+                }
             }
         });
     }
