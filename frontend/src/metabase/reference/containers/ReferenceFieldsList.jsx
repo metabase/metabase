@@ -7,6 +7,7 @@ import i from "icepick";
 
 import S from "metabase/components/List.css";
 import R from "metabase/reference/Reference.css";
+import F from "metabase/reference/components/Field.css"
 
 import Field from "metabase/reference/components/Field.jsx";
 import List from "metabase/components/List.jsx";
@@ -33,7 +34,6 @@ const fieldsToFormFields = (fields) => Object.keys(fields);
 
 const mapStateToProps = (state, props) => {
     const data = getData(state);
-    console.log(getForeignKeys(state));
     return {
         section: getSection(state),
         entities: data,
@@ -99,7 +99,6 @@ export default class ReferenceEntityList extends Component {
             message: 'You haven\'t added any databases yet.'
         };
 
-        console.log(fields);
         return (
             <div className="full">
                 <form
@@ -162,6 +161,19 @@ export default class ReferenceEntityList extends Component {
                     <LoadingAndErrorWrapper loading={!error && loading} error={error}>
                     { () => Object.keys(entities).length > 0 ?
                         <div className="wrapper wrapper--trim">
+                            <div className={cx(S.item, F.field)}>
+                                <div className={S.leftIcons}>
+                                </div>
+                                <div className={cx(S.itemTitle, F.fieldName)}>
+                                    Field name
+                                </div>
+                                <div className={cx(S.itemTitle, F.fieldType)}>
+                                    Field type
+                                </div>
+                                <div className={cx(S.itemTitle, F.fieldDataType)}>
+                                    Data type
+                                </div>
+                            </div>
                             <List>
                                 { Object.values(entities).map(entity =>
                                     entity && entity.id && entity.name &&
@@ -180,7 +192,7 @@ export default class ReferenceEntityList extends Component {
                         </div>
                         :
                         <div className={S.empty}>
-                          <EmptyState message={empty.message} icon={empty.icon} />
+                            <EmptyState message={empty.message} icon={empty.icon} />
                         </div>
                     }
                     </LoadingAndErrorWrapper>

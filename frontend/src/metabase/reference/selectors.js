@@ -238,7 +238,7 @@ export const getMetric = createSelector(
 );
 
 export const getListId = (state) => Number.parseInt(state.router.params.listId);
-const getLists = (state) => {console.log(state); return state.metadata.lists;}
+const getLists = (state) => state.metadata.lists;
 export const getList = createSelector(
     [getListId, getLists],
     (listId, lists) => lists[listId] || { id: listId }

@@ -9,6 +9,8 @@
 
 :local(.fieldType) {
     composes: flex-half pr1 from "style";
+    overflow: hidden;
+    white-space: nowrap;
 }
 
 :local(.fieldDataType) {
