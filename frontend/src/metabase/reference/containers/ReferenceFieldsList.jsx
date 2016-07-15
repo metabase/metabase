@@ -102,8 +102,12 @@ export default class ReferenceEntityList extends Component {
         return (
             <div className="full">
                 <form
-                    onSubmit={handleSubmit(async fields => {
-                        console.log(fields)
+                    onSubmit={handleSubmit(async formFields => {
+                        const updatedFields = Object.keys(formFields)
+                            .filter(fieldId => Object.values(formFields[fieldId])
+                                .some(value => value !== undefined))
+                            .map(fieldId => ({...fields[fieldId], ...formFields[fieldId]}))
+                        console.log(updatedFields);
                         endEditing();
                     })}
                 >

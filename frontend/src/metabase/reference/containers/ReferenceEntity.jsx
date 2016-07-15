@@ -186,7 +186,6 @@ export default class EntityItem extends Component {
                                     </li>
                                 }
                                 { hasRevisionHistory && isEditing &&
-                                    // make this required and validate for it
                                     <li className="relative">
                                         <Item
                                             id="revision_message"

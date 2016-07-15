@@ -332,6 +332,11 @@ const getDatabaseByList = createSelector(
 
 const databaseToForeignKeys = (database) => database && database.tables_lookup &&
     Object.values(database.tables_lookup)
+        // ignore tables without primary key
+        .filter(table => table && table.fields_lookup &&
+            Object.values(table.fields_lookup)
+                .find(field => field.special_type === 'id')
+        )
         .map(table => ({
             table: table,
             field: table && table.fields_lookup && Object.values(table.fields_lookup)

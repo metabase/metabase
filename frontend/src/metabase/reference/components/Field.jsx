@@ -37,6 +37,7 @@ const Field = ({
                             type="text"
                             placeholder={field.display_name}
                             {...formField.display_name}
+                            defaultValue={field.display_name}
                         /> :
                         <Link to={url} className={S.itemName}>{field.display_name}</Link>
                     }
