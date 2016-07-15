@@ -93,7 +93,6 @@ export default class EntityItem extends Component {
                         await this.props[section.update](newEntity);
                         endEditing();
                     })}
-                    hasRevisionHistory={hasRevisionHistory}
                 >
                     { isEditing &&
                         <div className={R.subheader}>

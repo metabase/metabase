@@ -5,6 +5,8 @@ import { Link } from "react-router";
 import * as MetabaseCore from "metabase/lib/core";
 import { isNumeric } from "metabase/lib/schema_metadata";
 
+import i from 'icepick';
+
 import S from "metabase/components/List.css";
 import F from "./Field.css";
 
@@ -32,36 +34,41 @@ const Field = ({
                             className={S.itemTitleTextInput}
                             type="text"
                             placeholder={field.display_name}
-                            defaultValue={field.display_name}
+                            {...formField.display_name}
                         /> :
                         <Link to={url} className={S.itemName}>{field.display_name}</Link>
                     }
                 </div>
                 <div className={F.fieldType}>
-                    <Select
-                        placeholder="Select a field type"
-                        value={MetabaseCore.field_special_types_map[field.special_type]}
-                        options={
-                            MetabaseCore.field_special_types
-                                .concat({
-                                    'id': null,
-                                    'name': 'No special type',
-                                    'section': 'Other'
-                                })
-                                .filter(type => !isNumeric(field) ?
-                                    !(type.id && type.id.startsWith("timestamp_")) :
-                                    true
-                                )
-                        }
-                    />
+                    { isEditing ?
+                        <Select
+                            placeholder="Select a field type"
+                            value={MetabaseCore.field_special_types_map[field.special_type]}
+                            options={
+                                MetabaseCore.field_special_types
+                                    .concat({
+                                        'id': null,
+                                        'name': 'No field type',
+                                        'section': 'Other'
+                                    })
+                                    .filter(type => !isNumeric(field) ?
+                                        !(type.id && type.id.startsWith("timestamp_")) :
+                                        true
+                                    )
+                            }
+                            onChange={(type) => formField.special_type.onChange(type.id)}
+                        /> :
+                        <span>
+                            { i.getIn(
+                                    MetabaseCore.field_special_types_map,
+                                    [field.special_type, 'name']
+                                ) || 'No field type'
+                            }
+                        </span>
+                    }
                 </div>
                 <div className={F.fieldDataType}>
-                    <input
-                        className={S.itemTitleTextInput}
-                        type="text"
-                        placeholder={field.display_name}
-                        defaultValue={field.display_name}
-                    />
+                    {field.base_type}
                 </div>
             </div>
             <div className={cx(S.itemSubtitle, { "mt1" : true })}>
