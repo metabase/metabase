@@ -2,9 +2,7 @@ import { createSelector } from 'reselect';
 import i from "icepick";
 
 import Query, { AggregationClause } from 'metabase/lib/query';
-
-//TODO: definitely lots of memoization opportunities here
-// might not be very efficient until we use immutable data though
+import { titleize, humanize } from "metabase/lib/formatting";
 
 // there might be a better way to organize sections
 // it feels like I'm duplicating a lot of routing logic here
@@ -240,7 +238,7 @@ export const getMetric = createSelector(
 );
 
 export const getListId = (state) => Number.parseInt(state.router.params.listId);
-const getLists = (state) => state.metadata.lists;
+const getLists = (state) => {console.log(state); return state.metadata.lists;}
 export const getList = createSelector(
     [getListId, getLists],
     (listId, lists) => lists[listId] || { id: listId }
@@ -325,6 +323,43 @@ const getTableQuestions = createSelector(
     (table, questions) => Object.values(questions)
         .filter(question => question.table_id === table.id)
 );
+
+const getDatabaseByList = createSelector(
+    [getList, getTables, getDatabases],
+    (list, tables, databases) => list && list.table_id ?
+        databases[tables[list.table_id].db_id] : {}
+);
+
+const databaseToForeignKeys = (database) => database && database.tables_lookup &&
+    Object.values(database.tables_lookup)
+        .map(table => ({
+            table: table,
+            field: table && table.fields_lookup && Object.values(table.fields_lookup)
+                .find(field => field.special_type === 'id')
+        }))
+        .map(({ table, field }) => ({
+            id: field.id,
+            name: table.schema && table.schema !== "public" ?
+                `${titleize(humanize(table.schema))}.${table.display_name} → ${field.display_name}` :
+                `${table.display_name} → ${field.display_name}`,
+            description: field.description
+        }));
+
+const getForeignKeysByList = createSelector(
+    [getDatabaseByList],
+    databaseToForeignKeys
+);
+
+const getForeignKeysByDatabase = createSelector(
+    [getDatabase],
+    databaseToForeignKeys
+);
+
+export const getForeignKeys = createSelector(
+    [getListId, getForeignKeysByList, getForeignKeysByDatabase],
+    (listId, foreignKeysByList, foreignKeysByDatabase) => listId ?
+        foreignKeysByList : foreignKeysByDatabase
+)
 
 export const getSections = createSelector(
     [getSectionId, getMetric, getList, getDatabase, getTable, getField, getFieldByList, getUser, getReferenceSections],

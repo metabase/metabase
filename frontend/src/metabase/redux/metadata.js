@@ -197,6 +197,8 @@ export const updateDatabase = createThunkAction(UPDATE_DATABASE, function(databa
             const slimDatabase = _.omit(database, "tables", "tables_lookup");
 
             const updatedDatabase = await MetabaseApi.db_update(slimDatabase);
+            await augmentDatabase(updatedDatabase);
+
             const cleanDatabase = cleanResource(updatedDatabase);
             const existingDatabase = existingDatabases[database.id];
 
@@ -225,6 +227,8 @@ export const updateTable = createThunkAction(UPDATE_TABLE, function(table) {
             const slimTable = _.omit(table, "fields", "fields_lookup", "aggregation_options", "breakout_options", "metrics", "segments");
 
             const updatedTable = await MetabaseApi.table_update(slimTable);
+            await augmentTable(updatedTable);
+
             const cleanTable = cleanResource(updatedTable);
             const existingTable = existingTables[table.id];
 

@@ -18,6 +18,7 @@ import pure from "recompose/pure";
 
 const Field = ({
     field,
+    foreignKeys,
     specialTypeId,
     url,
     icon,
@@ -101,7 +102,7 @@ const Field = ({
                         /> :
                         field.special_type === 'fk' &&
                         <span>
-                            fk
+                            {field.fk_target_field_id}
                         </span>
                     }
                 </div>

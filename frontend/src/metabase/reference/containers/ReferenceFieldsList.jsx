@@ -19,6 +19,7 @@ import cx from "classnames";
 import {
     getSection,
     getData,
+    getForeignKeys,
     getError,
     getLoading,
     getUser,
@@ -32,9 +33,11 @@ const fieldsToFormFields = (fields) => Object.keys(fields);
 
 const mapStateToProps = (state, props) => {
     const data = getData(state);
+    console.log(getForeignKeys(state));
     return {
         section: getSection(state),
         entities: data,
+        foreignKeys: getForeignKeys(state),
         loading: getLoading(state),
         error: getError(state),
         user: getUser(state),
@@ -74,6 +77,7 @@ export default class ReferenceEntityList extends Component {
         const {
             entities,
             fields,
+            foreignKeys,
             style,
             section,
             error,
@@ -160,6 +164,7 @@ export default class ReferenceEntityList extends Component {
                                         <li className="relative" key={entity.id}>
                                             <Field
                                                 field={entity}
+                                                foreignKeys={foreignKeys}
                                                 url={`${section.id}/${entity.id}`}
                                                 icon="star"
                                                 isEditing={isEditing}
