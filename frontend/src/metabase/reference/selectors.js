@@ -343,7 +343,8 @@ const databaseToForeignKeys = (database) => database && database.tables_lookup &
                 `${titleize(humanize(table.schema))}.${table.display_name} → ${field.display_name}` :
                 `${table.display_name} → ${field.display_name}`,
             description: field.description
-        }));
+        }))
+        .reduce((map, foreignKey) => i.assoc(map, foreignKey.id, foreignKey), {});
 
 const getForeignKeysByList = createSelector(
     [getDatabaseByList],

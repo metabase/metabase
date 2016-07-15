@@ -84,25 +84,15 @@ const Field = ({
                         (field.special_type === 'fk' && formField.special_type.value === undefined)) &&
                         <Select
                             placeholder="Select a field type"
-                            value={MetabaseCore.field_special_types_map[field.special_type]}
-                            options={
-                                MetabaseCore.field_special_types
-                                    .concat({
-                                        'id': null,
-                                        'name': 'No field type',
-                                        'section': 'Other'
-                                    })
-                                    .filter(type => !isNumeric(field) ?
-                                        !(type.id && type.id.startsWith("timestamp_")) :
-                                        true
-                                    )
-                            }
+                            value={foreignKeys[field.fk_target_field_id]}
+                            options={Object.values(foreignKeys)}
                             updateImmediately={true}
-                            onChange={(type) => formField.special_type.onChange(type.id)}
+                            onChange={(foreignKey) => formField.fk_target_field_id.onChange(foreignKey.id)}
+                            optionNameFn={(foreignKey) => foreignKey.name}
                         /> :
                         field.special_type === 'fk' &&
                         <span>
-                            {field.fk_target_field_id}
+                            {foreignKeys[field.fk_target_field_id].name}
                         </span>
                     }
                 </div>

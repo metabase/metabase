@@ -43,7 +43,11 @@ const mapStateToProps = (state, props) => {
         user: getUser(state),
         isEditing: getIsEditing(state),
         fields: Object.keys(data)
-            .map(key => [`${key}.display_name`, `${key}.special_type`])
+            .map(key => [
+                `${key}.display_name`,
+                `${key}.special_type`,
+                `${key}.fk_target_field_id`
+            ])
             .reduce((array, keys) => array.concat(keys), [])
     };
 }
