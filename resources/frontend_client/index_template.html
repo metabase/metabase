@@ -6,10 +6,11 @@
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
         <title>Metabase</title>
 
-        <script>
-            window.MetabaseBootstrap = {{{bootstrap_json}}};
+        <script type="text/javascript">
+         window.MetabaseBootstrap = {{{bootstrap_json}}};
         </script>
     </head>
 
@@ -19,6 +20,7 @@
     </body>
 
     <script type="text/javascript">
+     // Load scripts asyncronously after the page has finished loading
      (function () {
          function loadScript(src, onload) {
              var script = document.createElement('script');
@@ -32,6 +34,11 @@
              WebFont.load({ google: { families: ["Lato:n3,n4,n7"] } });
          });
          loadScript('https://maps.googleapis.com/maps/api/js');
+
+         var googleAuthClientID = window.MetabaseBootstrap.google_auth_client_id;
+         if (googleAuthClientID) {
+             loadScript('https://apis.google.com/js/api:client.js');
+         }
      })();
     </script>
 

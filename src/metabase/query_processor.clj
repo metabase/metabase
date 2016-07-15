@@ -577,7 +577,7 @@
   {:arglists '([query options])}
   [query {:keys [executed_by]}]
   {:pre [(integer? executed_by)]}
-  (let [query-uuid      (.toString (java.util.UUID/randomUUID))
+  (let [query-uuid      (str (java.util.UUID/randomUUID))
         query-hash      (hash query)
         query-execution {:uuid              query-uuid
                          :executor_id       executed_by

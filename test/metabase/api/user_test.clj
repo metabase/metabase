@@ -29,34 +29,31 @@
 (expect
     #{(match-$ (fetch-user :crowberto)
         {:common_name  "Crowberto Corv"
-         :date_joined  $
          :last_name    "Corv"
          :id           $
          :is_superuser true
-         :is_qbnewb    true
          :last_login   $
          :first_name   "Crowberto"
-         :email        "crowberto@metabase.com"})
+         :email        "crowberto@metabase.com"
+         :google_auth  false})
       (match-$ (fetch-user :lucky)
         {:common_name  "Lucky Pigeon"
-         :date_joined  $
          :last_name    "Pigeon"
          :id           $
          :is_superuser false
-         :is_qbnewb    true
          :last_login   $
          :first_name   "Lucky"
-         :email        "lucky@metabase.com"})
+         :email        "lucky@metabase.com"
+         :google_auth  false})
       (match-$ (fetch-user :rasta)
         {:common_name  "Rasta Toucan"
-         :date_joined  $
          :last_name    "Toucan"
          :id           $
          :is_superuser false
-         :is_qbnewb    true
          :last_login   $
          :first_name   "Rasta"
-         :email        "rasta@metabase.com"})}
+         :email        "rasta@metabase.com"
+         :google_auth  false})}
   (do
     ;; Delete all the other random Users we've created so far
     (let [user-ids (set (map user->id [:crowberto :rasta :lucky :trashbird]))]
@@ -129,18 +126,20 @@
 
 ;; ## GET /api/user/current
 ;; Check that fetching current user will return extra fields like `is_active` and will return OrgPerms
-(expect (match-$ (fetch-user :rasta)
-          {:email        "rasta@metabase.com"
-           :first_name   "Rasta"
-           :last_name    "Toucan"
-           :common_name  "Rasta Toucan"
-           :date_joined  $
-           :last_login   $
-           :is_active    true
-           :is_staff     true
-           :is_superuser false
-           :is_qbnewb    true
-           :id           $})
+(expect
+  (match-$ (fetch-user :rasta)
+    {:email        "rasta@metabase.com"
+     :first_name   "Rasta"
+     :last_name    "Toucan"
+     :common_name  "Rasta Toucan"
+     :date_joined  $
+     :last_login   $
+     :is_active    true
+     :is_staff     true
+     :is_superuser false
+     :is_qbnewb    true
+     :google_auth  false
+     :id           $})
   ((user->client :rasta) :get 200 "user/current"))
 
 

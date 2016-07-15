@@ -1,7 +1,6 @@
 (ns metabase.sync-database.sync-dynamic-test
   (:require [expectations :refer :all]
             [metabase.db :as db]
-            [metabase.mock.toucanery :as toucanery]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [hydrate :as hydrate]
@@ -9,6 +8,7 @@
                              [table :refer [Table]])
             (metabase.sync-database [introspect :as introspect]
                                     [sync-dynamic :refer :all])
+            [metabase.test.mock.toucanery :as toucanery]
             [metabase.test.util :as tu]))
 
 (tu/resolve-private-fns metabase.sync-database.sync-dynamic

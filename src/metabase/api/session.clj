@@ -2,26 +2,31 @@
   "/api/session endpoints"
   (:require [clojure.tools.logging :as log]
             [cemerick.friend.credentials :as creds]
+            [cheshire.core :as json]
+            [clj-http.client :as http]
             [compojure.core :refer [defroutes GET POST DELETE]]
             [throttle.core :as throttle]
             [metabase.api.common :refer :all]
             [metabase.db :as db]
             [metabase.email.messages :as email]
             [metabase.events :as events]
-            (metabase.models [user :refer [User set-user-password! set-user-password-reset-token!]]
+            (metabase.models [user :refer [User set-user-password! set-user-password-reset-token!], :as user]
                              [session :refer [Session]]
-                             [setting :as setting])
+                             [setting :refer [defsetting], :as setting])
             [metabase.util :as u]
             [metabase.util.password :as pass]))
 
 
-(defn- create-session
-  "Generate a new `Session` for a given `User`.  Returns the newly generated session id value."
-  [user-id]
+(defn- create-session!
+  "Generate a new `Session` for a given `User`. Returns the newly generated session ID."
+  [user]
+  {:pre  [(map? user) (integer? (:id user)) (contains? user :last_login)]
+   :post [(string? %)]}
   (u/prog1 (str (java.util.UUID/randomUUID))
     (db/insert! Session
       :id      <>
-      :user_id user-id)))
+      :user_id (:id user))
+    (events/publish-event :user-login {:user_id (:id user), :session_id <>, :first_login (not (boolean (:last_login user)))})))
 
 
 ;;; ## API Endpoints
@@ -43,9 +48,7 @@
                    (pass/verify-password password (:password_salt user) (:password user)))
       (throw (ex-info "Password did not match stored password." {:status-code 400
                                                                  :errors      {:password "did not match stored password"}})))
-    (let [session-id (create-session (:id user))]
-      (events/publish-event :user-login {:user_id (:id user), :session_id session-id, :first_login (not (boolean (:last_login user)))})
-      {:id session-id})))
+    {:id (create-session! user)}))
 
 
 (defendpoint DELETE "/"
@@ -73,10 +76,10 @@
   (throttle/check (forgot-password-throttlers :ip-address) remote-address)
   (throttle/check (forgot-password-throttlers :email)      email)
   ;; Don't leak whether the account doesn't exist, just pretend everything is ok
-  (when-let [user-id (db/select-one-id User, :email email)]
+  (when-let [{user-id :id, google-auth? :google_auth} (db/select-one ['User :id :google_auth] :email email)]
     (let [reset-token        (set-user-password-reset-token! user-id)
-          password-reset-url (str (@(ns-resolve 'metabase.core 'site-url) request) "/auth/reset_password/" reset-token)]
-      (email/send-password-reset-email email server-name password-reset-url)
+          password-reset-url (str ((resolve 'metabase.core/site-url) request) "/auth/reset_password/" reset-token)]
+      (email/send-password-reset-email email google-auth? server-name password-reset-url)
       (log/info password-reset-url))))
 
 
@@ -106,10 +109,8 @@
   (or (when-let [{user-id :id, :as user} (valid-reset-token->user token)]
         (set-user-password! user-id password)
         ;; after a successful password update go ahead and offer the client a new session that they can use
-        (let [session-id (create-session user-id)]
-          (events/publish-event :user-login {:user_id user-id, :session_id session-id, :first_login (not (boolean (:last_login user)))})
-          {:success    true
-           :session_id session-id}))
+        {:success    true
+         :session_id (create-session! user)})
       (throw (invalid-param-exception :password "Invalid reset token"))))
 
 
@@ -124,5 +125,63 @@
   "Get all global properties and their values. These are the specific `Settings` which are meant to be public."
   []
   (setting/public-settings))
+
+
+;;; ------------------------------------------------------------ GOOGLE AUTH ------------------------------------------------------------
+
+(defsetting google-auth-client-id
+  "Client ID for Google Auth SSO.")
+
+(defsetting google-auth-auto-create-accounts-domain
+  "When set, allow users to sign up on their own if their Google account email address is from this domain.")
+
+(defn- google-auth-token-info [^String token]
+  (let [{:keys [status body]} (http/post (str "https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=" token))]
+    (when-not (= status 200)
+      (throw (ex-info "Invalid Google Auth token." {:status-code 400})))
+    (u/prog1 (json/parse-string body keyword)
+      (when-not (= (:email_verified <>) "true")
+        (throw (ex-info "Email is not verified." {:status-code 400}))))))
+
+;; TODO - are these general enough to move to `metabase.util`?
+(defn- email->domain   "ABC" ^String
+  [email]
+  (last (re-find #"^.*@(.*$)" email)))
+
+(defn- email-in-domain? ^Boolean [email domain]
+  {:pre [(u/is-email? email)]}
+  (= (email->domain email) domain))
+
+(defn- autocreate-user-allowed-for-email? [email]
+  (when-let [domain (google-auth-auto-create-accounts-domain)]
+    (email-in-domain? email domain)))
+
+(defn- check-autocreate-user-allowed-for-email [email]
+  (when-not (autocreate-user-allowed-for-email? email)
+    ;; Use some wacky status code (428 - Precondition Required) so we will know when to so the error screen specific to this situation
+    (throw (ex-info "You'll need an administrator to create a Metabase account before you can use Google to log in."
+                    {:status-code 428}))))
+
+(defn- google-auth-create-new-user! [first-name last-name email]
+  (check-autocreate-user-allowed-for-email email)
+  ;; this will just give the user a random password; they can go reset it if they ever change their mind and want to log in without Google Auth;
+  ;; this lets us keep the NOT NULL constraints on password / salt without having to make things hairy and only enforce those for non-Google Auth users
+  (user/create-user! first-name last-name email, :send-welcome false, :google-auth? true))
+
+(defn- google-auth-fetch-or-create-user! [first-name last-name email]
+  (if-let [user (or (db/select-one [User :id :last_login] :email email)
+                    (google-auth-create-new-user! first-name last-name email))]
+    {:id (create-session! user)}))
+
+(defendpoint POST "/google_auth"
+  "Login with Google Auth."
+  [:as {{:keys [token]} :body, remote-address :remote-addr}]
+  {token [Required NonEmptyString]}
+  (throttle/check (login-throttlers :ip-address) remote-address) ; TODO - Should we throttle this? It might keep us from being slammed with calls that have to make outbound HTTP requests, etc.
+  ;; Verify the token is valid with Google
+  (let [{:keys [given_name family_name email]} (google-auth-token-info token)]
+    (log/info "Successfully authenicated Google Auth token for:" given_name family_name)
+    (google-auth-fetch-or-create-user! given_name family_name email)))
+
 
 (define-routes)

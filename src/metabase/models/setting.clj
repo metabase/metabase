@@ -82,13 +82,23 @@
   (env/env (keyword (str "mb-" (name setting-key)))))
 
 (defn get*
-  "Get the value of a `Setting`. Unlike `get`, this also includes values from env vars."
+  "Get the value of a `Setting`. Unlike `get`, this also includes values from env vars. Like `get`, this does not return default values."
   [setting-key]
   (or (get setting-key)
       (get-from-env-var setting-key)))
 
 
 ;;; ### SET / DELETE
+
+;; TODO - this should be renamed `delete!`
+(defn delete
+  "Clear the value of a `Setting`."
+  [k]
+  {:pre [(keyword? k)]}
+  (restore-cache-if-needed)
+  (swap! cached-setting->value dissoc k)
+  (db/delete! Setting, :key (name k))
+  {:status 204, :body nil})
 
 ;; TODO - rename this `set!`
 (defn set
@@ -111,16 +121,6 @@
   (swap! cached-setting->value assoc k v)
   v)
 
-;; TODO - this should be renamed `delete!`
-(defn delete
-  "Clear the value of a `Setting`."
-  [k]
-  {:pre [(keyword? k)]}
-  (restore-cache-if-needed)
-  (swap! cached-setting->value dissoc k)
-  (db/delete! Setting, :key (name k))
-  {:status 204, :body nil})
-
 ;; TODO - rename this `set-all!`
 (defn set-all
   "Set the value of several `Settings` at once.
@@ -134,7 +134,7 @@
       (delete k)))
   (events/publish-event :settings-update settings))
 
-;; TODO - Rename to `set!*`
+;; TODO - Rename to `set-or-delete!`
 (defn set*
   "Set the value of a `Setting`, deleting it if VALUE is `nil` or an empty string."
   [setting-key value]
@@ -250,7 +250,8 @@
    :admin_email           (get :admin-email)
    :report_timezone       (get :report-timezone)
    :timezone_short        (short-timezone-name (get :report-timezone))
-   :has_sample_dataset    (db/exists? 'Database, :is_sample true)})
+   :has_sample_dataset    (db/exists? 'Database, :is_sample true)
+   :google_auth_client_id (get :google-auth-client-id)})
 
 
 ;;; # IMPLEMENTATION

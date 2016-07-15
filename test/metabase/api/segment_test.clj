@@ -4,6 +4,7 @@
             (metabase [http-client :as http]
                       [middleware :as middleware])
             (metabase.models [database :refer [Database]]
+                             [hydrate :refer [hydrate]]
                              [revision :refer [Revision]]
                              [segment :refer [Segment], :as segment]
                              [table :refer [Table]])
@@ -324,3 +325,13 @@
     [(dissoc ((user->client :crowberto) :post 200 (format "segment/%d/revert" id) {:revision_id revision-id}) :id :timestamp)
      (doall (for [revision ((user->client :crowberto) :get 200 (format "segment/%d/revisions" id))]
               (dissoc revision :timestamp :id)))]))
+
+
+;;; GET /api/segement/
+
+(tu/expect-with-temp [Segment [segment-1]
+                      Segment [segment-2]
+                      Segment [_          {:is_active false}]] ; inactive segments shouldn't show up
+  (tu/mappify (hydrate [segment-1
+                        segment-2] :creator))
+  ((user->client :rasta) :get 200 "segment/"))

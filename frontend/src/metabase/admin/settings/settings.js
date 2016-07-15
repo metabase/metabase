@@ -1,11 +1,10 @@
 
-import { createAction } from "redux-actions";
 import { handleActions, combineReducers, AngularResourceProxy, createThunkAction } from "metabase/lib/redux";
 
 
 // resource wrappers
 const SettingsApi = new AngularResourceProxy("Settings", ["list", "put"]);
-const EmailApi = new AngularResourceProxy("Email", ["updateSettings"]);
+const EmailApi = new AngularResourceProxy("Email", ["updateSettings", "sendTest"]);
 const SlackApi = new AngularResourceProxy("Slack", ["updateSettings"]);
 
 
@@ -18,27 +17,25 @@ async function loadSettings() {
         });
     } catch(error) {
         console.log("error fetching settings", error);
+        throw error;
     }
 }
 
 // initializeSettings
-export const initializeSettings = createThunkAction("INITIALIZE_SETTINGS", function(initialSection, refreshSiteSettings) {
+export const initializeSettings = createThunkAction("INITIALIZE_SETTINGS", function(refreshSiteSettings) {
     return async function(dispatch, getState) {
         try {
             let settings = await loadSettings();
             return {
-                initialSection,
                 settings,
                 refreshSiteSettings
             }
         } catch(error) {
             console.log("error fetching settings", error);
+            throw error;
         }
     };
 });
-
-// selectSection
-export const selectSection = createAction("SELECT_SECTION");
 
 // updateSetting
 export const updateSetting = createThunkAction("UPDATE_SETTING", function(setting) {
@@ -51,6 +48,7 @@ export const updateSetting = createThunkAction("UPDATE_SETTING", function(settin
             return await loadSettings();
         } catch(error) {
             console.log("error updating setting", setting, error);
+            throw error;
         }
     };
 });
@@ -66,6 +64,7 @@ export const updateEmailSettings = createThunkAction("UPDATE_EMAIL_SETTINGS", fu
             return await loadSettings();
         } catch(error) {
             console.log("error updating email settings", settings, error);
+            throw error;
         }
     };
 });
@@ -77,6 +76,7 @@ export const sendTestEmail = createThunkAction("SEND_TEST_EMAIL", function() {
             await EmailApi.sendTest();
         } catch(error) {
             console.log("error sending test email", error);
+            throw error;
         }
     };
 });
@@ -92,6 +92,7 @@ export const updateSlackSettings = createThunkAction("UPDATE_SLACK_SETTINGS", fu
             return await loadSettings();
         } catch(error) {
             console.log("error updating slack settings", settings, error);
+            throw error;
         }
     };
 });
@@ -111,13 +112,7 @@ const settings = handleActions({
     ["UPDATE_SLACK_SETTINGS"]: { next: (state, { payload }) => payload }
 }, []);
 
-const activeSection = handleActions({
-    ["INITIALIZE_SETTINGS"]: { next: (state, { payload }) => payload && payload.initialSection ? payload.initialSection : state },
-    ["SELECT_SECTION"]: { next: (state, { payload }) => payload }
-}, "Setup");
-
 export default combineReducers({
     settings,
-    activeSection,
     refreshSiteSettings
 });

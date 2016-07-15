@@ -67,6 +67,10 @@
 (expect true (is-url? "https://amazon.co.uk"))
 (expect true (is-url? "http://google.com?q=my-query&etc"))
 (expect true (is-url? "http://www.cool.com"))
+(expect true (is-url? "http://localhost/"))
+(expect true (is-url? "http://localhost:3000"))
+(expect true (is-url? "http://www.cool.com:3000"))
+(expect true (is-url? "http://localhost:3000/auth/reset_password/144_f98987de-53ca-4335-81da-31bb0de8ea2b#new"))
 (expect false (is-url? "google.com"))                      ; missing protocol
 (expect false (is-url? "ftp://metabase.com"))              ; protocol isn't HTTP/HTTPS
 (expect false (is-url? "http://metabasecom"))              ; no period / TLD
@@ -81,27 +85,6 @@
 
 (expect -7
   ((rpartial - 5 10) 8))
-
-
-;;; ## cond-as->
-(expect 100
-  (cond-as-> 100 <>))
-
-(expect 106
-  (cond-as-> 100 <>
-    true  (+  1 <>)
-    false (+ 10 <>)
-    :ok   (+  5 <>)))
-
-(expect 101
-  (cond-as-> 100 <>
-    (odd? <>)  (inc <>)
-    (even? <>) (inc <>)))
-
-(expect 102
-  (cond-as-> 100 <>
-    (even? <>) (inc <>)
-    (odd? <>)  (inc <>)))
 
 
 ;;; TESTS FOR key-by

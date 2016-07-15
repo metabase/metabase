@@ -3,8 +3,9 @@
   (:require [compojure.core :refer [defroutes GET PUT POST DELETE]]
             [metabase.api.common :refer :all]
             [metabase.db :as db]
-            (metabase.models [revision :as revision]
-                             [metric :refer [Metric] :as metric]
+            (metabase.models [hydrate :refer [hydrate]]
+                             [metric :refer [Metric], :as metric]
+                             [revision :as revision]
                              [table :refer [Table]])))
 
 
@@ -24,6 +25,12 @@
   [id]
   (check-superuser)
   (check-404 (metric/retrieve-metric id)))
+
+(defendpoint GET "/"
+  "Fetch *all* `Metrics`."
+  [id]
+  (-> (db/select Metric, :is_active true)
+      (hydrate :creator)))
 
 
 (defendpoint PUT "/:id"

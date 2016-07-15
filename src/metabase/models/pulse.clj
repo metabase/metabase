@@ -62,7 +62,7 @@
   ;; first off, just delete any cards associated with this pulse (we add them again below)
   (db/cascade-delete! PulseCard :pulse_id id)
   ;; now just insert all of the cards that were given to us
-  (when-not (empty? card-ids)
+  (when (seq card-ids)
     (let [cards (map-indexed (fn [idx itm] {:pulse_id id :card_id itm :position idx}) card-ids)]
       (db/insert-many! PulseCard cards))))
 
@@ -103,9 +103,11 @@
   (let [new-channels   (group-by (comp keyword :channel_type) channels)
         old-channels   (group-by (comp keyword :channel_type) (db/select PulseChannel :pulse_id id))
         handle-channel #(create-update-delete-channel! id (first (get new-channels %)) (first (get old-channels %)))]
-    (assert (= 0 (count (get new-channels nil))) "Cannot have channels without a :channel_type attribute")
+    (assert (zero? (count (get new-channels nil)))
+      "Cannot have channels without a :channel_type attribute")
     ;; for each of our possible channel types call our handler function
-    (dorun (map handle-channel (vec (keys pulse-channel/channel-types))))))
+    (doseq [[channel-type _] pulse-channel/channel-types]
+      (handle-channel channel-type))))
 
 (defn retrieve-pulse
   "Fetch a single `Pulse` by its ID value."

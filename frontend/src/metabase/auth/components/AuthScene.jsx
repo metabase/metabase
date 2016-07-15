@@ -10,7 +10,7 @@ export default class AuthScene extends Component {
 
     render() {
         return (
-            <section className="brand-scene absolute bottom left right hide sm-show">
+            <section className="z1 brand-scene absolute bottom left right hide sm-show">
                 <div className="brand-boat-container">
                     <svg className="brand-boat" width="27px" height="28px" viewBox="0 0 27 28">
                         <g stroke="none" strokeWidth="1" fill="none" fillRule="evenodd" ref="HACK_fill_rule_1">

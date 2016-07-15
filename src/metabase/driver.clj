@@ -221,12 +221,13 @@
                                  (filter identity)
                                  (take max-sync-lazy-seq-results))
         field-values-count (count field-values)]
-    (if (= field-values-count 0) 0
-        (int (math/round (/ (->> field-values
-                                 (map str)
-                                 (map count)
-                                 (reduce +))
-                            field-values-count))))))
+    (if (zero? field-values-count)
+      0
+      (int (math/round (/ (->> field-values
+                               (map str)
+                               (map count)
+                               (reduce +))
+                          field-values-count))))))
 
 
 (def IDriverDefaultsMixin

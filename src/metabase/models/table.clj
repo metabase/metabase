@@ -26,7 +26,8 @@
 (defn- pre-cascade-delete [{:keys [id]}]
   (db/cascade-delete! Segment :table_id id)
   (db/cascade-delete! Metric :table_id id)
-  (db/cascade-delete! Field :table_id id))
+  (db/cascade-delete! Field :table_id id)
+  (db/cascade-delete! 'Card :table_id id))
 
 (defn ^:hydrate fields
   "Return the `FIELDS` belonging to TABLE."
@@ -51,7 +52,8 @@
                     :table_id        id
                     :visibility_type "normal"
                     {:order-by [[:position :asc] [:name :asc]]})]
-    (db/select-field->field :field_id :values FieldValues, :field_id [:in field-ids])))
+    (when (seq field-ids)
+      (db/select-field->field :field_id :values FieldValues, :field_id [:in field-ids]))))
 
 (defn pk-field-id
   "Return the ID of the primary key `Field` for TABLE."

@@ -4,7 +4,7 @@ import { handleActions, combineReducers, AngularResourceProxy, createAction, cre
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { augmentTable } from "metabase/lib/table";
-import { loadTable } from "metabase/lib/table";
+import { loadTableAndForeignKeys } from "metabase/lib/table";
 
 
 // resource wrappers
@@ -206,7 +206,7 @@ export const onRetireMetric = createThunkAction("RETIRE_METRIC", function(metric
 
         await MetricApi.delete(metric);
         MetabaseAnalytics.trackEvent("Data Model", "Retire Metric");
-        
+
         return await loadDatabaseMetadata(editingDatabase.id);
     };
 });
@@ -241,7 +241,7 @@ export const deleteMetric = createAction(DELETE_METRIC, Metric.delete);
 export const LOAD_TABLE_METADATA = "LOAD_TABLE_METADATA";
 export const UPDATE_PREVIEW_SUMMARY = "UPDATE_PREVIEW_SUMMARY";
 
-export const loadTableMetadata = createAction(LOAD_TABLE_METADATA, loadTable);
+export const loadTableMetadata = createAction(LOAD_TABLE_METADATA, loadTableAndForeignKeys);
 export const updatePreviewSummary = createAction(UPDATE_PREVIEW_SUMMARY, async (query) => {
     let result = await Metabase.dataset(query);
     return result.data.rows[0][0];
@@ -311,7 +311,7 @@ const metrics = handleActions({
 
 const tableMetadata = handleActions({
     [LOAD_TABLE_METADATA]: {
-        next: (state, { payload }) => payload,
+        next: (state, { payload }) => (payload && payload.table) ? payload.table : null,
         throw: (state, action) => null
     }
 }, null);
