@@ -39,7 +39,7 @@ const mapStateToProps = (state, props) => {
         entities: data,
         foreignKeys: getForeignKeys(state),
         loading: getLoading(state),
-        error: getError(state),
+        loadingError: getError(state),
         user: getUser(state),
         isEditing: getIsEditing(state),
         fields: Object.keys(data)
@@ -73,17 +73,17 @@ export default class ReferenceEntityList extends Component {
         fields: PropTypes.object.isRequired,
         section: PropTypes.object.isRequired,
         loading: PropTypes.bool,
-        error: PropTypes.object
+        loadingError: PropTypes.object
     };
 
     render() {
         const {
+            style,
             entities,
             fields,
             foreignKeys,
-            style,
             section,
-            error,
+            loadingError,
             loading,
             user,
             isEditing,
@@ -100,86 +100,86 @@ export default class ReferenceEntityList extends Component {
         };
 
         return (
-            <div className="full">
-                <form
-                    onSubmit={handleSubmit(async formFields => {
-                        const updatedFields = Object.keys(formFields)
-                            .map(fieldId => ({
-                                field: entities[fieldId],
-                                formField: Object.keys(formFields[fieldId])
-                                    .filter(key => formFields[fieldId][key] !== undefined)
-                                    .reduce((map, key) => i
-                                        .assoc(map, key, formFields[fieldId][key]), {}
-                                    )
-                            }))
-                            .filter(({field, formField}) => Object
-                                .keys(formField).length !== 0
-                            )
-                            .map(({field, formField}) => ({...field, ...formField}));
-
-                        // FIXME: using Promise.all here makes values not update immediately
-                        // could be due to the fact that metadata actions get existing data too early
-                        await updatedFields
-                            .reduce((promise, field) => promise
-                                .then(() => updateField(field)),
-                                Promise.resolve()
-                            );
-                        endEditing();
-                    })}
-                >
-                    { isEditing &&
-                        <div className={R.subheader}>
-                            <div>
-                                You are editing this page
-                            </div>
-                            <div className={R.subheaderButtons}>
-                                <button
-                                    className={cx("Button", "Button--white", "Button--small", R.saveButton)}
-                                    type="submit"
-                                    disabled={submitting}
-                                >
-                                    SAVE
-                                </button>
-                                <button
-                                    type="button"
-                                    className={cx("Button", "Button--white", "Button--small", R.cancelButton)}
-                                    onClick={endEditing}
-                                >
-                                    CANCEL
-                                </button>
-                            </div>
+            <div style={style} className="full">
+                { isEditing &&
+                    <div className={R.subheader}>
+                        <div>
+                            You are editing this page
                         </div>
-                    }
-                    <div className="wrapper wrapper--trim">
-                        <div className={S.header}>
-                            <div className={S.leftIcons}>
-                                { section.headerIcon &&
-                                    <Icon
-                                        className="text-brand"
-                                        name={section.headerIcon}
-                                        width={24}
-                                        height={24}
-                                    />
-                                }
-                            </div>
-                            {section.name}
-                            { user.is_superuser && !isEditing &&
-                                <div className={S.headerButton}>
-                                    <a
-                                        onClick={startEditing}
-                                        className={cx("Button", "Button--borderless", R.editButton)}
-                                    >
-                                        <div className="flex align-center relative">
-                                            <Icon name="pencil" width="16px" height="16px" />
-                                            <span className="ml1">Edit</span>
-                                        </div>
-                                    </a>
-                                </div>
-                            }
+                        <div className={R.subheaderButtons}>
+                            <button
+                                className={cx("Button", "Button--white", "Button--small", R.saveButton)}
+                                type="submit"
+                                disabled={submitting}
+                            >
+                                SAVE
+                            </button>
+                            <button
+                                type="button"
+                                className={cx("Button", "Button--white", "Button--small", R.cancelButton)}
+                                onClick={endEditing}
+                            >
+                                CANCEL
+                            </button>
                         </div>
                     </div>
-                    <LoadingAndErrorWrapper loading={!error && loading} error={error}>
-                    { () => Object.keys(entities).length > 0 ?
+                }
+                <div className="wrapper wrapper--trim">
+                    <div className={S.header}>
+                        <div className={S.leftIcons}>
+                            { section.headerIcon &&
+                                <Icon
+                                    className="text-brand"
+                                    name={section.headerIcon}
+                                    width={24}
+                                    height={24}
+                                />
+                            }
+                        </div>
+                        {section.name}
+                        { user.is_superuser && !isEditing &&
+                            <div className={S.headerButton}>
+                                <a
+                                    onClick={startEditing}
+                                    className={cx("Button", "Button--borderless", R.editButton)}
+                                >
+                                    <div className="flex align-center relative">
+                                        <Icon name="pencil" width="16px" height="16px" />
+                                        <span className="ml1">Edit</span>
+                                    </div>
+                                </a>
+                            </div>
+                        }
+                    </div>
+                </div>
+                <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>
+                { () => Object.keys(entities).length > 0 ?
+                    <form
+                        onSubmit={handleSubmit(async formFields => {
+                            const updatedFields = Object.keys(formFields)
+                                .map(fieldId => ({
+                                    field: entities[fieldId],
+                                    formField: Object.keys(formFields[fieldId])
+                                        .filter(key => formFields[fieldId][key] !== undefined)
+                                        .reduce((map, key) => i
+                                            .assoc(map, key, formFields[fieldId][key]), {}
+                                        )
+                                }))
+                                .filter(({field, formField}) => Object
+                                    .keys(formField).length !== 0
+                                )
+                                .map(({field, formField}) => ({...field, ...formField}));
+
+                            // FIXME: using Promise.all here makes values not update immediately
+                            // could be due to the fact that metadata actions get existing data too early
+                            await updatedFields
+                                .reduce((promise, field) => promise
+                                    .then(() => updateField(field)),
+                                    Promise.resolve()
+                                );
+                            endEditing();
+                        })}
+                    >
                         <div className="wrapper wrapper--trim">
                             <div className={cx(S.item, F.field)}>
                                 <div className={S.leftIcons}>
@@ -210,13 +210,13 @@ export default class ReferenceEntityList extends Component {
                                 )}
                             </List>
                         </div>
-                        :
-                        <div className={S.empty}>
-                            <EmptyState message={empty.message} icon={empty.icon} />
-                        </div>
-                    }
-                    </LoadingAndErrorWrapper>
-                </form>
+                    </form>
+                    :
+                    <div className={S.empty}>
+                        <EmptyState message={empty.message} icon={empty.icon} />
+                    </div>
+                }
+                </LoadingAndErrorWrapper>
             </div>
         )
     }

@@ -2,6 +2,12 @@ import { handleActions, createAction, createThunkAction } from 'metabase/lib/red
 
 import i from 'icepick';
 
+const SET_ERROR = "metabase/reference/SET_ERROR";
+export const setError = createAction(SET_ERROR);
+
+const CLEAR_ERROR = "metabase/reference/CLEAR_ERROR";
+export const clearError = createAction(CLEAR_ERROR);
+
 const START_LOADING = "metabase/reference/START_LOADING";
 export const startLoading = createAction(START_LOADING);
 
@@ -15,10 +21,17 @@ const END_EDITING = "metabase/reference/END_EDITING";
 export const endEditing = createAction(END_EDITING);
 
 const initialState = {
+    error: null,
     isLoading: false,
     isEditing: false
 };
 export default handleActions({
+    [SET_ERROR]: {
+        throw: (state, { payload }) => i.assoc(state, 'error', payload)
+    },
+    [CLEAR_ERROR]: {
+        next: (state) => i.assoc(state, 'error', null)
+    },
     [START_LOADING]: {
         next: (state) => i.assoc(state, 'isLoading', true)
     },

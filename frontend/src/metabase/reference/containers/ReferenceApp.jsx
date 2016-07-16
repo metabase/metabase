@@ -37,6 +37,29 @@ const mapDispatchToProps = {
     ...actions
 };
 
+export const tryFetchData = async (props) => {
+    if (!(props.section && props.section.fetch)) {
+        return;
+    }
+
+    const fetch = props.section.fetch;
+    props.clearError();
+    props.startLoading();
+    try {
+        await Promise.all(Object.keys(fetch).map((fetchPropName) => {
+            const fetchData = props[fetchPropName];
+            const fetchArgs = fetch[fetchPropName] || [];
+            return fetchData(...fetchArgs);
+        }));
+    }
+    catch(error) {
+        props.setError(error);
+        console.error(error);
+    }
+
+    props.endLoading();
+}
+
 @connect(mapStateToProps, mapDispatchToProps)
 export default class ReferenceApp extends Component {
     static propTypes = {
@@ -48,16 +71,7 @@ export default class ReferenceApp extends Component {
     };
 
     async componentWillMount() {
-        if (this.props.section && this.props.section.fetch) {
-            const fetch = this.props.section.fetch;
-            this.props.startLoading();
-            await Promise.all(Object.keys(fetch).map((fetchPropName) => {
-                const fetchData = this.props[fetchPropName];
-                const fetchArgs = fetch[fetchPropName] || [];
-                return fetchData(...fetchArgs);
-            }));
-            this.props.endLoading();
-        }
+        await tryFetchData(this.props);
     }
 
     async componentWillReceiveProps(newProps) {
@@ -67,17 +81,9 @@ export default class ReferenceApp extends Component {
 
         newProps.endEditing();
         newProps.endLoading();
+        newProps.clearError();
 
-        if (newProps.section && newProps.section.fetch) {
-            const fetch = newProps.section.fetch;
-            newProps.startLoading();
-            await Promise.all(Object.keys(fetch).map((fetchPropName) => {
-                const fetchData = newProps[fetchPropName];
-                const fetchArgs = fetch[fetchPropName] || [];
-                return fetchData(...fetchArgs);
-            }));
-            newProps.endLoading();
-        }
+        await tryFetchData(newProps);
     }
 
     render() {

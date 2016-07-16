@@ -33,7 +33,7 @@ const mapStateToProps = (state, props) => {
         tables: getTables(state),
         user: getUser(state),
         loading: getLoading(state),
-        error: getError(state)
+        loadingError: getError(state)
     }
 }
 
@@ -52,7 +52,7 @@ export default class RevisionHistoryApp extends Component {
         tables: PropTypes.object.isRequired,
         user: PropTypes.object.isRequired,
         loading: PropTypes.bool,
-        error: PropTypes.object
+        loadingError: PropTypes.object
     };
 
     render() {
@@ -65,7 +65,7 @@ export default class RevisionHistoryApp extends Component {
             tables,
             user,
             loading,
-            error
+            loadingError
         } = this.props;
 
         const entity = metric.id ? metric : list;
@@ -92,7 +92,7 @@ export default class RevisionHistoryApp extends Component {
                         {section.name}
                     </div>
                 </div>
-                <LoadingAndErrorWrapper loading={!error && loading} error={error}>
+                <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>
                     { () => Object.keys(revisions).length > 0 && tables[entity.table_id] ?
                         <div className="wrapper wrapper--trim">
                             <div className={R.revisionsWrapper}>

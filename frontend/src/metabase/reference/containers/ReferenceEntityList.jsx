@@ -24,7 +24,7 @@ const mapStateToProps = (state, props) => ({
     section: getSection(state),
     entities: getData(state),
     loading: getLoading(state),
-    error: getError(state)
+    loadingError: getError(state)
 });
 
 const mapDispatchToProps = {
@@ -38,7 +38,7 @@ export default class ReferenceEntityList extends Component {
         entities: PropTypes.object.isRequired,
         section: PropTypes.object.isRequired,
         loading: PropTypes.bool,
-        error: PropTypes.object
+        loadingError: PropTypes.object
     };
 
     render() {
@@ -46,7 +46,7 @@ export default class ReferenceEntityList extends Component {
             entities,
             style,
             section,
-            error,
+            loadingError,
             loading
         } = this.props;
 
@@ -71,7 +71,7 @@ export default class ReferenceEntityList extends Component {
                         {section.name}
                     </div>
                 </div>
-                <LoadingAndErrorWrapper loading={!error && loading} error={error}>
+                <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>
                 { () => Object.keys(entities).length > 0 ?
                     <div className="wrapper wrapper--trim">
                         <List>

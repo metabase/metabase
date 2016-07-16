@@ -481,11 +481,7 @@ const getRequestPaths = createSelector(
 
 export const getLoading = (state) => state.reference.isLoading;
 
-export const getError = createSelector(
-    [getRequestPaths, getRequests],
-    (requestPaths, requests) => requestPaths
-        .reduce((error, requestPath) => error || i.getIn(requests, requestPath.concat('error')), undefined)
-)
+export const getError = (state) => {console.log(state); return state.reference.error;}
 
 const getBreadcrumb = (section, index, sections) => index !== sections.length - 1 ?
     [section.breadcrumb, section.id] : [section.breadcrumb];

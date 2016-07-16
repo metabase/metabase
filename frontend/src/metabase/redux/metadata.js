@@ -117,15 +117,23 @@ const metrics = handleActions({
 const FETCH_LISTS = "metabase/metadata/FETCH_LISTS";
 export const fetchLists = createThunkAction(FETCH_LISTS, (reload = false) => {
     return async (dispatch, getState) => {
-        const requestStatePath = ["metadata", "lists"];
-        const existingStatePath = requestStatePath;
-        const getData = async () => {
-            const lists = await SegmentApi.list();
-            const listMap = resourceListToMap(lists);
-            return listMap;
-        };
+        console.log('test')
+        const promise = new Promise((resolve) => setTimeout(() => resolve(), 10000));
+        console.log('test')
 
-        return await fetchData({dispatch, getState, requestStatePath, existingStatePath, getData, reload});
+
+        console.log('test')
+
+        await promise;
+        // const requestStatePath = ["metadata", "lists"];
+        // const existingStatePath = requestStatePath;
+        // const getData = async () => {
+        //     const lists = await SegmentApi.list();
+        //     const listMap = resourceListToMap(lists);
+        //     return listMap;
+        // };
+        //
+        // return await fetchData({dispatch, getState, requestStatePath, existingStatePath, getData, reload});
     };
 });
 
@@ -173,16 +181,17 @@ export const fetchDatabases = createThunkAction(FETCH_DATABASES, (reload = false
 const FETCH_DATABASE_METADATA = "metabase/metadata/FETCH_DATABASE_METADATA";
 export const fetchDatabaseMetadata = createThunkAction(FETCH_DATABASE_METADATA, function(dbId, reload = false) {
     return async function(dispatch, getState) {
-        const requestStatePath = ["metadata", "databases", dbId];
-        const existingStatePath = ["metadata"];
-        const getData = async (existingMetadata) => {
-            const databaseMetadata = await MetabaseApi.db_metadata({ dbId });
-            await augmentDatabase(databaseMetadata);
-
-            return normalize(databaseMetadata, database).entities;
-        };
-
-        return await fetchData({dispatch, getState, requestStatePath, existingStatePath, getData, reload});
+        throw new Error('test');
+        // const requestStatePath = ["metadata", "databases", dbId];
+        // const existingStatePath = ["metadata"];
+        // const getData = async (existingMetadata) => {
+        //     const databaseMetadata = await MetabaseApi.db_metadata({ dbId });
+        //     await augmentDatabase(databaseMetadata);
+        //
+        //     return normalize(databaseMetadata, database).entities;
+        // };
+        //
+        // return await fetchData({dispatch, getState, requestStatePath, existingStatePath, getData, reload});
     };
 });
 
@@ -341,11 +350,20 @@ export const fetchListFields = createThunkAction(FETCH_LIST_FIELDS, (listId, rel
 const FETCH_LIST_REVISIONS = "metabase/metadata/FETCH_LIST_REVISIONS";
 export const fetchListRevisions = createThunkAction(FETCH_LIST_REVISIONS, (listId, reload = false) => {
     return async (dispatch, getState) => {
-        dispatch(fetchRevisions('list', listId));
-        await dispatch(fetchLists());
-        const list = i.getIn(getState(), ['metadata', 'lists', listId]);
-        const tableId = list.table_id;
-        await dispatch(fetchTableMetadata(tableId));
+        console.log('test')
+        const promise = new Promise((resolve) => setTimeout(() => resolve(), 10000));
+        console.log('test')
+
+
+        console.log('test')
+
+        await promise;
+
+        // dispatch(fetchRevisions('list', listId));
+        // await dispatch(fetchLists());
+        // const list = i.getIn(getState(), ['metadata', 'lists', listId]);
+        // const tableId = list.table_id;
+        // await dispatch(fetchTableMetadata(tableId));
     };
 });
 

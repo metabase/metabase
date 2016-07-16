@@ -30,16 +30,21 @@ import {
 import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';
 
-const mapStateToProps = (state, props) => ({
-    section: getSection(state),
-    entity: getData(state) || {},
-    loading: getLoading(state),
-    error: getError(state),
-    user: getUser(state),
-    isEditing: getIsEditing(state),
-    hasDisplayName: getHasDisplayName(state),
-    hasRevisionHistory: getHasRevisionHistory(state)
-});
+const mapStateToProps = (state, props) => {
+    console.log(state)
+    console.log(getError(state))
+    return {
+        section: getSection(state),
+        entity: getData(state) || {},
+        loading: getLoading(state),
+        // naming this 'error' will conflict with redux form
+        loadingError: getError(state),
+        user: getUser(state),
+        isEditing: getIsEditing(state),
+        hasDisplayName: getHasDisplayName(state),
+        hasRevisionHistory: getHasRevisionHistory(state)
+    }
+};
 
 const mapDispatchToProps = {
     ...metadataActions,
@@ -67,9 +72,10 @@ export default class EntityItem extends Component {
     render() {
         const {
             fields: { name, display_name, description, revision_message, points_of_interest, caveats },
+            style,
             section,
             entity,
-            error,
+            loadingError,
             loading,
             user,
             isEditing,
@@ -83,91 +89,93 @@ export default class EntityItem extends Component {
             submitting
         } = this.props;
 
+        console.log(loadingError);
+
         return (
-            <div className="full">
-                <form
-                    onSubmit={handleSubmit(async fields => {
-                        const editedFields = Object.keys(fields)
-                            .filter(key => fields[key] !== undefined)
-                            .reduce((map, key) => i.assoc(map, key, fields[key]), {});
-                        const newEntity = {...entity, ...editedFields};
-                        startLoading();
-                        await this.props[section.update](newEntity);
-                        endLoading();
-                        endEditing();
-                    })}
-                >
-                    { isEditing &&
-                        <div className={R.subheader}>
-                            <div>
-                                You are editing this page
-                            </div>
-                            <div className={R.subheaderButtons}>
-                                <button
-                                    className={cx("Button", "Button--white", "Button--small", R.saveButton)}
-                                    type="submit"
-                                    disabled={submitting}
-                                >
-                                    SAVE
-                                </button>
-                                <button
-                                    type="button"
-                                    className={cx("Button", "Button--white", "Button--small", R.cancelButton)}
-                                    onClick={endEditing}
-                                >
-                                    CANCEL
-                                </button>
-                            </div>
+            <div style={style} className="full">
+                { isEditing &&
+                    <div className={R.subheader}>
+                        <div>
+                            You are editing this page
                         </div>
-                    }
-                    <div className="wrapper wrapper--trim">
-                        <div className={S.header}>
-                            <div className={S.leftIcons}>
-                                { section.headerIcon &&
-                                    <Icon
-                                        className="text-brand"
-                                        name={section.headerIcon}
-                                        width={24}
-                                        height={24}
-                                    />
-                                }
-                            </div>
-                            { isEditing ?
-                                hasDisplayName ?
-                                    <input
-                                        className={S.headerTextInput}
-                                        type="text"
-                                        placeholder={entity.name}
-                                        {...display_name}
-                                        defaultValue={entity.display_name}
-                                    /> :
-                                    <input
-                                        className={S.headerTextInput}
-                                        type="text"
-                                        placeholder={entity.name}
-                                        {...name}
-                                        defaultValue={entity.name}
-                                    /> :
-                                hasDisplayName ?
-                                    entity.display_name || entity.name : entity.name
-                            }
-                            { user.is_superuser && !isEditing &&
-                                <div className={S.headerButton}>
-                                    <a
-                                        onClick={startEditing}
-                                        className={cx("Button", "Button--borderless", R.editButton)}
-                                    >
-                                        <div className="flex align-center relative">
-                                            <Icon name="pencil" width="16px" height="16px" />
-                                            <span className="ml1">Edit</span>
-                                        </div>
-                                    </a>
-                                </div>
-                            }
+                        <div className={R.subheaderButtons}>
+                            <button
+                                className={cx("Button", "Button--white", "Button--small", R.saveButton)}
+                                type="submit"
+                                disabled={submitting}
+                            >
+                                SAVE
+                            </button>
+                            <button
+                                type="button"
+                                className={cx("Button", "Button--white", "Button--small", R.cancelButton)}
+                                onClick={endEditing}
+                            >
+                                CANCEL
+                            </button>
                         </div>
                     </div>
-                    <LoadingAndErrorWrapper loading={!error && loading} error={error}>
-                    { () =>
+                }
+                <div className="wrapper wrapper--trim">
+                    <div className={S.header}>
+                        <div className={S.leftIcons}>
+                            { section.headerIcon &&
+                                <Icon
+                                    className="text-brand"
+                                    name={section.headerIcon}
+                                    width={24}
+                                    height={24}
+                                />
+                            }
+                        </div>
+                        { isEditing ?
+                            hasDisplayName ?
+                                <input
+                                    className={S.headerTextInput}
+                                    type="text"
+                                    placeholder={entity.name}
+                                    {...display_name}
+                                    defaultValue={entity.display_name}
+                                /> :
+                                <input
+                                    className={S.headerTextInput}
+                                    type="text"
+                                    placeholder={entity.name}
+                                    {...name}
+                                    defaultValue={entity.name}
+                                /> :
+                            hasDisplayName ?
+                                entity.display_name || entity.name : entity.name
+                        }
+                        { user.is_superuser && !isEditing &&
+                            <div className={S.headerButton}>
+                                <a
+                                    onClick={startEditing}
+                                    className={cx("Button", "Button--borderless", R.editButton)}
+                                >
+                                    <div className="flex align-center relative">
+                                        <Icon name="pencil" width="16px" height="16px" />
+                                        <span className="ml1">Edit</span>
+                                    </div>
+                                </a>
+                            </div>
+                        }
+                    </div>
+                </div>
+                <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>
+                { () =>
+                    <form className="flex"
+                        onSubmit={handleSubmit(async fields => {
+                            const editedFields = Object.keys(fields)
+                                .filter(key => fields[key] !== undefined)
+                                .reduce((map, key) => i.assoc(map, key, fields[key]), {});
+                            const newEntity = {...entity, ...editedFields};
+                            startLoading();
+                            await this.props[section.update](newEntity);
+                            endLoading();
+                            endEditing();
+                        })}
+                    >
                         <div className="wrapper wrapper--trim">
                             <List>
                                 <li className="relative">
@@ -222,9 +230,9 @@ export default class EntityItem extends Component {
                                 </li>
                             </List>
                         </div>
-                    }
-                    </LoadingAndErrorWrapper>
-                </form>
+                    </form>
+                }
+                </LoadingAndErrorWrapper>
             </div>
         )
     }
