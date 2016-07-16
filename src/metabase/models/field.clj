@@ -87,7 +87,8 @@
 
 (defn- pre-cascade-delete [{:keys [id]}]
   (db/cascade-delete! Field :parent_id id)
-  (db/cascade-delete! 'FieldValues :field_id id))
+  (db/cascade-delete! 'FieldValues :field_id id)
+  (db/cascade-delete! 'MetricImportantField :field_id id))
 
 (defn ^:hydrate target
   "Return the FK target `Field` that this `Field` points to."

@@ -105,7 +105,7 @@
 
 (defendpoint PUT "/:id"
   "Update a `Database`."
-  [id :as {{:keys [name engine details is_full_sync]} :body}]
+  [id :as {{:keys [name engine details is_full_sync description]} :body}]
   {name    [Required NonEmptyString]
    engine  [Required DBEngine]
    details [Required Dict]}
@@ -126,7 +126,8 @@
                        :name         name
                        :engine       engine
                        :details      details
-                       :is_full_sync is_full_sync))
+                       :is_full_sync is_full_sync
+                       :description  description)) ; TODO - this means one cannot unset the description. Does that matter?
           (events/publish-event :database-update (Database id)))
         ;; failed to connect, return error
         {:status 400
