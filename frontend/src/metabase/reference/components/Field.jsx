@@ -3,7 +3,7 @@ import React, { Component, PropTypes } from "react";
 import { Link } from "react-router";
 
 import * as MetabaseCore from "metabase/lib/core";
-import { isNumeric } from "metabase/lib/schema_metadata";
+import { isNumericBaseType } from "metabase/lib/schema_metadata";
 
 import i from 'icepick';
 
@@ -53,7 +53,7 @@ const Field = ({
                                         'name': 'No field type',
                                         'section': 'Other'
                                     })
-                                    .filter(type => !isNumeric(field) ?
+                                    .filter(type => !isNumericBaseType(field) ?
                                         !(type.id && type.id.startsWith("timestamp_")) :
                                         true
                                     )

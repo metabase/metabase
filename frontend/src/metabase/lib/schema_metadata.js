@@ -109,6 +109,9 @@ export const isCategory = isFieldType.bind(null, CATEGORY);
 export const isDimension = (col) => (col && col.source !== "aggregation");
 export const isMetric    = (col) => (col && col.source !== "breakout") && isNumeric(col);
 
+export const isNumericBaseType = (field) => TYPES[NUMBER].base
+    .some(type => type === field.base_type);
+
 // operator argument constructors:
 
 function freeformArgument(field, table) {
