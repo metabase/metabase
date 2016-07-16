@@ -89,6 +89,9 @@ export default class ReferenceEntityList extends Component {
             isEditing,
             startEditing,
             endEditing,
+            startLoading,
+            endLoading,
+            setError,
             updateField,
             handleSubmit,
             submitting
@@ -100,7 +103,34 @@ export default class ReferenceEntityList extends Component {
         };
 
         return (
-            <div style={style} className="full">
+            <form style={style} className="full"
+                onSubmit={handleSubmit(async formFields => {
+                    const updatedFields = Object.keys(formFields)
+                        .map(fieldId => ({
+                            field: entities[fieldId],
+                            formField: Object.keys(formFields[fieldId])
+                                .filter(key => formFields[fieldId][key] !== undefined)
+                                .reduce((map, key) => i
+                                    .assoc(map, key, formFields[fieldId][key]), {}
+                                )
+                        }))
+                        .filter(({field, formField}) => Object
+                            .keys(formField).length !== 0
+                        )
+                        .map(({field, formField}) => ({...field, ...formField}));
+
+                    startLoading();
+                    try {
+                        await Promise.all(updatedFields.map(updateField));
+                    }
+                    catch(error) {
+                        setError(error);
+                        console.error(error);
+                    }
+                    endLoading();
+                    endEditing();
+                })}
+            >
                 { isEditing &&
                     <div className={R.subheader}>
                         <div>
@@ -154,70 +184,43 @@ export default class ReferenceEntityList extends Component {
                 </div>
                 <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>
                 { () => Object.keys(entities).length > 0 ?
-                    <form
-                        onSubmit={handleSubmit(async formFields => {
-                            const updatedFields = Object.keys(formFields)
-                                .map(fieldId => ({
-                                    field: entities[fieldId],
-                                    formField: Object.keys(formFields[fieldId])
-                                        .filter(key => formFields[fieldId][key] !== undefined)
-                                        .reduce((map, key) => i
-                                            .assoc(map, key, formFields[fieldId][key]), {}
-                                        )
-                                }))
-                                .filter(({field, formField}) => Object
-                                    .keys(formField).length !== 0
-                                )
-                                .map(({field, formField}) => ({...field, ...formField}));
-
-                            // FIXME: using Promise.all here makes values not update immediately
-                            // could be due to the fact that metadata actions get existing data too early
-                            await updatedFields
-                                .reduce((promise, field) => promise
-                                    .then(() => updateField(field)),
-                                    Promise.resolve()
-                                );
-                            endEditing();
-                        })}
-                    >
-                        <div className="wrapper wrapper--trim">
-                            <div className={cx(S.item, F.field)}>
-                                <div className={S.leftIcons}>
-                                </div>
-                                <div className={cx(S.itemTitle, F.fieldName)}>
-                                    Field name
-                                </div>
-                                <div className={cx(S.itemTitle, F.fieldType)}>
-                                    Field type
-                                </div>
-                                <div className={cx(S.itemTitle, F.fieldDataType)}>
-                                    Data type
-                                </div>
+                    <div className="wrapper wrapper--trim">
+                        <div className={cx(S.item, F.field)}>
+                            <div className={S.leftIcons}>
                             </div>
-                            <List>
-                                { Object.values(entities).map(entity =>
-                                    entity && entity.id && entity.name &&
-                                        <li className="relative" key={entity.id}>
-                                            <Field
-                                                field={entity}
-                                                foreignKeys={foreignKeys}
-                                                url={`${section.id}/${entity.id}`}
-                                                icon="star"
-                                                isEditing={isEditing}
-                                                formField={fields[entity.id]}
-                                            />
-                                        </li>
-                                )}
-                            </List>
+                            <div className={cx(S.itemTitle, F.fieldName)}>
+                                Field name
+                            </div>
+                            <div className={cx(S.itemTitle, F.fieldType)}>
+                                Field type
+                            </div>
+                            <div className={cx(S.itemTitle, F.fieldDataType)}>
+                                Data type
+                            </div>
                         </div>
-                    </form>
+                        <List>
+                            { Object.values(entities).map(entity =>
+                                entity && entity.id && entity.name &&
+                                    <li className="relative" key={entity.id}>
+                                        <Field
+                                            field={entity}
+                                            foreignKeys={foreignKeys}
+                                            url={`${section.id}/${entity.id}`}
+                                            icon="star"
+                                            isEditing={isEditing}
+                                            formField={fields[entity.id]}
+                                        />
+                                    </li>
+                            )}
+                        </List>
+                    </div>
                     :
                     <div className={S.empty}>
                         <EmptyState message={empty.message} icon={empty.icon} />
                     </div>
                 }
                 </LoadingAndErrorWrapper>
-            </div>
+            </form>
         )
     }
 }

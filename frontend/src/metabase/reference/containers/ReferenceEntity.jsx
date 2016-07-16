@@ -30,21 +30,17 @@ import {
 import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';
 
-const mapStateToProps = (state, props) => {
-    console.log(state)
-    console.log(getError(state))
-    return {
-        section: getSection(state),
-        entity: getData(state) || {},
-        loading: getLoading(state),
-        // naming this 'error' will conflict with redux form
-        loadingError: getError(state),
-        user: getUser(state),
-        isEditing: getIsEditing(state),
-        hasDisplayName: getHasDisplayName(state),
-        hasRevisionHistory: getHasRevisionHistory(state)
-    }
-};
+const mapStateToProps = (state, props) => ({
+    section: getSection(state),
+    entity: getData(state) || {},
+    loading: getLoading(state),
+    // naming this 'error' will conflict with redux form
+    loadingError: getError(state),
+    user: getUser(state),
+    isEditing: getIsEditing(state),
+    hasDisplayName: getHasDisplayName(state),
+    hasRevisionHistory: getHasRevisionHistory(state)
+});
 
 const mapDispatchToProps = {
     ...metadataActions,
@@ -91,7 +87,24 @@ export default class EntityItem extends Component {
         } = this.props;
 
         return (
-            <div style={style} className="full">
+            <form style={style} className="full"
+                onSubmit={handleSubmit(async fields => {
+                    const editedFields = Object.keys(fields)
+                        .filter(key => fields[key] !== undefined)
+                        .reduce((map, key) => i.assoc(map, key, fields[key]), {});
+                    const newEntity = {...entity, ...editedFields};
+                    startLoading();
+                    try {
+                        await this.props[section.update](newEntity);
+                    }
+                    catch(error) {
+                        setError(error);
+                        console.error(error);
+                    }
+                    endLoading();
+                    endEditing();
+                })}
+            >
                 { isEditing &&
                     <div className={R.subheader}>
                         <div>
@@ -163,82 +176,63 @@ export default class EntityItem extends Component {
                 </div>
                 <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>
                 { () =>
-                    <form className="flex"
-                        onSubmit={handleSubmit(async fields => {
-                            const editedFields = Object.keys(fields)
-                                .filter(key => fields[key] !== undefined)
-                                .reduce((map, key) => i.assoc(map, key, fields[key]), {});
-                            const newEntity = {...entity, ...editedFields};
-                            startLoading();
-                            try {
-                                await this.props[section.update](newEntity);
-                            }
-                            catch(error) {
-                                setError(error);
-                                console.error(error);
-                            }
-                            endLoading();
-                            endEditing();
-                        })}
-                    >
-                        <div className="wrapper wrapper--trim">
-                            <List>
+                    <div className="wrapper wrapper--trim">
+                        <List>
+                            <li className="relative">
+                                <Item
+                                    id="description"
+                                    name="Description"
+                                    description={entity.description}
+                                    placeholder="No description yet"
+                                    isEditing={isEditing}
+                                    field={description}
+                                />
+                            </li>
+                            { hasDisplayName && !isEditing &&
                                 <li className="relative">
                                     <Item
-                                        id="description"
-                                        name="Description"
-                                        description={entity.description}
-                                        placeholder="No description yet"
-                                        isEditing={isEditing}
-                                        field={description}
+                                        name="Actual name in database"
+                                        description={entity.name}
                                     />
                                 </li>
-                                { hasDisplayName && !isEditing &&
-                                    <li className="relative">
-                                        <Item
-                                            name="Actual name in database"
-                                            description={entity.name}
-                                        />
-                                    </li>
-                                }
-                                { hasRevisionHistory && isEditing &&
-                                    <li className="relative">
-                                        <Item
-                                            id="revision_message"
-                                            name="Reason for changes"
-                                            description=""
-                                            placeholder="Leave a note to explain what changes you made and why they were required."
-                                            isEditing={isEditing}
-                                            field={revision_message}
-                                        />
-                                    </li>
-                                }
+                            }
+                            { hasRevisionHistory && isEditing &&
                                 <li className="relative">
                                     <Item
-                                        id="points_of_interest"
-                                        name={`Why this ${section.type} is interesting`}
-                                        description={entity.points_of_interest}
-                                        placeholder="Nothing interesting yet"
+                                        id="revision_message"
+                                        name="Reason for changes"
+                                        description=""
+                                        placeholder="Leave a note to explain what changes you made and why they were required."
                                         isEditing={isEditing}
-                                        field={points_of_interest}
-                                        />
-                                </li>
-                                <li className="relative">
-                                    <Item
-                                        id="caveats"
-                                        name={`Things to be aware of about this ${section.type}`}
-                                        description={entity.caveats}
-                                        placeholder="Nothing to be aware of yet"
-                                        isEditing={isEditing}
-                                        field={caveats}
+                                        field={revision_message}
                                     />
                                 </li>
-                            </List>
-                        </div>
-                    </form>
+                            }
+                            <li className="relative">
+                                <Item
+                                    id="points_of_interest"
+                                    name={`Why this ${section.type} is interesting`}
+                                    description={entity.points_of_interest}
+                                    placeholder="Nothing interesting yet"
+                                    isEditing={isEditing}
+                                    field={points_of_interest}
+                                    />
+                            </li>
+                            <li className="relative">
+                                <Item
+                                    id="caveats"
+                                    name={`Things to be aware of about this ${section.type}`}
+                                    description={entity.caveats}
+                                    placeholder="Nothing to be aware of yet"
+                                    isEditing={isEditing}
+                                    field={caveats}
+                                />
+                            </li>
+                        </List>
+                    </div>
                 }
                 </LoadingAndErrorWrapper>
-            </div>
+            </form>
         )
     }
 }

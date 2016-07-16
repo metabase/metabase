@@ -450,38 +450,9 @@ export const getData = (state) => {
     return selector(state);
 };
 
-export const mapFetchToRequestStatePaths = (fetch) => fetch ?
-    Object.keys(fetch).map(key => {
-        switch(key) {
-            case 'fetchQuestions':
-                return ['questions', 'fetch'];
-            case 'fetchMetrics':
-                return ['metadata', 'metrics', 'fetch'];
-            case 'fetchRevisions':
-                return ['metadata', 'revisions', fetch[key][0], fetch[key][1], 'fetch'];
-            case 'fetchLists':
-                return ['metadata', 'lists', 'fetch'];
-            case 'fetchDatabases':
-                return ['metadata', 'databases', 'fetch'];
-            case 'fetchDatabaseMetadata':
-                return ['metadata', 'databases', fetch[key][0], 'fetch'];
-            case 'fetchTableMetadata':
-                return ['metadata', 'tables', fetch[key][0], 'fetch'];
-            default:
-                return [];
-        }
-    }) : [];
-
-const getRequests = (state) => i.getIn(state, ['requests']);
-
-const getRequestPaths = createSelector(
-    [getSection],
-    (section) => mapFetchToRequestStatePaths(section.fetch)
-);
-
 export const getLoading = (state) => state.reference.isLoading;
 
-export const getError = (state) => {console.log(state); return state.reference.error;}
+export const getError = (state) => state.reference.error;
 
 const getBreadcrumb = (section, index, sections) => index !== sections.length - 1 ?
     [section.breadcrumb, section.id] : [section.breadcrumb];
