@@ -83,13 +83,12 @@ export default class EntityItem extends Component {
             endEditing,
             startLoading,
             endLoading,
+            setError,
             hasDisplayName,
             hasRevisionHistory,
             handleSubmit,
             submitting
         } = this.props;
-
-        console.log(loadingError);
 
         return (
             <div style={style} className="full">
@@ -171,7 +170,13 @@ export default class EntityItem extends Component {
                                 .reduce((map, key) => i.assoc(map, key, fields[key]), {});
                             const newEntity = {...entity, ...editedFields};
                             startLoading();
-                            await this.props[section.update](newEntity);
+                            try {
+                                await this.props[section.update](newEntity);
+                            }
+                            catch(error) {
+                                setError(error);
+                                console.error(error);
+                            }
                             endLoading();
                             endEditing();
                         })}
