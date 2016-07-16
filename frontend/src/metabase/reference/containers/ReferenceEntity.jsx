@@ -89,7 +89,7 @@ export default class EntityItem extends Component {
                             .filter(key => fields[key] !== undefined)
                             .reduce((map, key) => i.assoc(map, key, fields[key]), {});
                         const newEntity = {...entity, ...editedFields};
-
+                        console.log(newEntity);
                         await this.props[section.update](newEntity);
                         endEditing();
                     })}
@@ -134,7 +134,7 @@ export default class EntityItem extends Component {
                                     <input
                                         className={S.headerTextInput}
                                         type="text"
-                                        placeholder={entity.display_name}
+                                        placeholder={entity.name}
                                         {...display_name}
                                         defaultValue={entity.display_name}
                                     /> :
@@ -214,7 +214,7 @@ export default class EntityItem extends Component {
                                         description={entity.caveats}
                                         placeholder="Nothing to be aware of yet"
                                         isEditing={isEditing}
-                                        field={points_of_interest}
+                                        field={caveats}
                                     />
                                 </li>
                             </List>

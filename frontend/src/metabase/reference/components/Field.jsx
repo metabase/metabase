@@ -34,7 +34,7 @@ const Field = ({
                         <input
                             className={S.itemTitleTextInput}
                             type="text"
-                            placeholder={field.display_name}
+                            placeholder={field.name}
                             {...formField.display_name}
                             defaultValue={field.display_name}
                         /> :

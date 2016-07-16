@@ -116,7 +116,9 @@ export default class ReferenceEntityList extends Component {
                                 .keys(formField).length !== 0
                             )
                             .map(({field, formField}) => ({...field, ...formField}));
-                        // Using Promise.all here makes values not update immediately
+
+                        // FIXME: using Promise.all here makes values not update immediately
+                        // could be due to the fact that metadata actions get existing data too early
                         await updatedFields
                             .reduce((promise, field) => promise
                                 .then(() => updateField(field)),

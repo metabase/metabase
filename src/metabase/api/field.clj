@@ -31,7 +31,7 @@
 
 (defendpoint PUT "/:id"
   "Update `Field` with ID."
-  [id :as {{:keys [special_type visibility_type fk_target_field_id description display_name], :as body} :body}]
+  [id :as {{:keys [special_type visibility_type fk_target_field_id description display_name caveats points_of_interest], :as body} :body}]
   {special_type    FieldSpecialType
    visibility_type FieldVisibilityType
    display_name    NonEmptyString}
@@ -52,6 +52,8 @@
           :fk_target_field_id "Invalid target field"))
       ;; update the Field.  start with keys that may be set to NULL then conditionally add other keys if they have values
       (check-500 (db/update! Field id (merge {:description        description
+                                              :caveats            caveats
+                                              :points_of_interest points_of_interest
                                               :special_type       special_type
                                               :visibility_type    visibility_type
                                               :fk_target_field_id fk_target_field_id}
