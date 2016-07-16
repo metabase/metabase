@@ -63,6 +63,7 @@ const getMetricSections = (metric, user) => metric ? {
     [`/reference/metrics/${metric.id}/questions`]: {
         id: `/reference/metrics/${metric.id}/questions`,
         name: `Questions about ${metric.name}`,
+        type: 'questions',
         sidebar: 'Questions about this metric',
         breadcrumb: `${metric.name}`,
         fetch: {fetchMetrics: [], fetchQuestions: []},
@@ -112,6 +113,7 @@ const getListSections = (list, user) => list ? {
     [`/reference/lists/${list.id}/questions`]: {
         id: `/reference/lists/${list.id}/questions`,
         name: `Questions about ${list.name}`,
+        type: 'questions',
         sidebar: 'Questions about this list',
         breadcrumb: `${list.name}`,
         fetch: {fetchLists: [], fetchQuestions: []},
@@ -198,6 +200,7 @@ const getTableSections = (database, table) => database && table ? {
     [`/reference/databases/${database.id}/tables/${table.id}/questions`]: {
         id: `/reference/databases/${database.id}/tables/${table.id}/questions`,
         name: `Questions about ${table.display_name}`,
+        type: 'questions',
         sidebar: 'Questions about this table',
         breadcrumb: `${table.display_name}`,
         fetch: {fetchDatabaseMetadata: [database.id], fetchQuestions: []},

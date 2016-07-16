@@ -2,6 +2,7 @@
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 import { connect } from "react-redux";
+import moment from "moment";
 
 import S from "metabase/components/List.css";
 import List from "metabase/components/List.jsx";
@@ -50,6 +51,8 @@ export default class ReferenceEntityList extends Component {
             loading
         } = this.props;
 
+        console.log(entities);
+
         const empty = {
             icon: 'mine',
             message: 'You haven\'t added any databases yet.'
@@ -81,7 +84,10 @@ export default class ReferenceEntityList extends Component {
                                         <Item
                                             id={entity.id}
                                             name={entity.display_name || entity.name}
-                                            description={entity.description}
+                                            description={section.type !== 'questions' ?
+                                                entity.description :
+                                                `Created ${moment(entity.created_at).fromNow()} by ${entity.creator.common_name}`
+                                            }
                                             url={`${section.id}/${entity.id}`}
                                             icon="star"
                                         />
