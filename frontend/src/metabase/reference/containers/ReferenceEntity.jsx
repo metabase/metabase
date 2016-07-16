@@ -75,6 +75,8 @@ export default class EntityItem extends Component {
             isEditing,
             startEditing,
             endEditing,
+            startLoading,
+            endLoading,
             hasDisplayName,
             hasRevisionHistory,
             handleSubmit,
@@ -89,8 +91,9 @@ export default class EntityItem extends Component {
                             .filter(key => fields[key] !== undefined)
                             .reduce((map, key) => i.assoc(map, key, fields[key]), {});
                         const newEntity = {...entity, ...editedFields};
-                        console.log(newEntity);
+                        startLoading();
                         await this.props[section.update](newEntity);
+                        endLoading();
                         endEditing();
                     })}
                 >

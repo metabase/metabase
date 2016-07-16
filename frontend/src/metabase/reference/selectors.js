@@ -458,15 +458,15 @@ export const mapFetchToRequestStatePaths = (fetch) => fetch ?
             case 'fetchMetrics':
                 return ['metadata', 'metrics', 'fetch'];
             case 'fetchRevisions':
-                return ['metadata', 'revisions', fetch[key[0]], fetch[key[1]], 'fetch'];
+                return ['metadata', 'revisions', fetch[key][0], fetch[key][1], 'fetch'];
             case 'fetchLists':
                 return ['metadata', 'lists', 'fetch'];
             case 'fetchDatabases':
                 return ['metadata', 'databases', 'fetch'];
             case 'fetchDatabaseMetadata':
-                return ['metadata', 'databases', fetch[key], 'fetch'];
+                return ['metadata', 'databases', fetch[key][0], 'fetch'];
             case 'fetchTableMetadata':
-                return ['metadata', 'tables', fetch[key], 'fetch'];
+                return ['metadata', 'tables', fetch[key][0], 'fetch'];
             default:
                 return [];
         }
@@ -479,21 +479,7 @@ const getRequestPaths = createSelector(
     (section) => mapFetchToRequestStatePaths(section.fetch)
 );
 
-export const getLoaded = createSelector(
-    [getRequestPaths, getRequests],
-    (requestPaths, requests) => requestPaths
-        .reduce((isLoaded, requestPath) =>
-            isLoaded ||
-            i.getIn(requests, requestPath.concat('state')) === 'LOADED', false)
-)
-
-export const getLoading = createSelector(
-    [getRequestPaths, getRequests],
-    (requestPaths, requests) => requestPaths
-        .reduce((isLoading, requestPath) =>
-            isLoading ||
-            i.getIn(requests, requestPath.concat('state')) === 'LOADING', false)
-)
+export const getLoading = (state) => state.reference.isLoading;
 
 export const getError = createSelector(
     [getRequestPaths, getRequests],

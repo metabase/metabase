@@ -47,31 +47,36 @@ export default class ReferenceApp extends Component {
         isEditing: PropTypes.bool
     };
 
-    componentWillMount() {
+    async componentWillMount() {
         if (this.props.section && this.props.section.fetch) {
             const fetch = this.props.section.fetch;
-            Object.keys(fetch).forEach((fetchPropName) => {
+            this.props.startLoading();
+            await Promise.all(Object.keys(fetch).map((fetchPropName) => {
                 const fetchData = this.props[fetchPropName];
                 const fetchArgs = fetch[fetchPropName] || [];
-                fetchData(...fetchArgs);
-            });
+                return fetchData(...fetchArgs);
+            }));
+            this.props.endLoading();
         }
     }
 
-    componentWillReceiveProps(newProps) {
+    async componentWillReceiveProps(newProps) {
         if (this.props.location.pathname === newProps.location.pathname) {
             return;
         }
 
         newProps.endEditing();
+        newProps.endLoading();
 
         if (newProps.section && newProps.section.fetch) {
             const fetch = newProps.section.fetch;
-            Object.keys(fetch).forEach((fetchPropName) => {
+            newProps.startLoading();
+            await Promise.all(Object.keys(fetch).map((fetchPropName) => {
                 const fetchData = newProps[fetchPropName];
                 const fetchArgs = fetch[fetchPropName] || [];
-                fetchData(...fetchArgs);
-            });
+                return fetchData(...fetchArgs);
+            }));
+            newProps.endLoading();
         }
     }
 
