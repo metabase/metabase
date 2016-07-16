@@ -59,7 +59,8 @@ export default class PieChart extends Component {
 
         let total = data.rows.reduce((sum, row) => sum + row[1], 0);
 
-        let sliceColors = Object.values(colors.normal);
+        // use standard colors for up to 5 values otherwise use color harmony to help differentiate slices
+        let sliceColors = Object.values(data.rows.length > 5 ? colors.harmony : colors.normal);
 
         let [slices, others] = _.chain(data.rows)
             .map(([key, value], index) => ({

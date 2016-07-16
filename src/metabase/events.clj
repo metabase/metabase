@@ -53,7 +53,7 @@
 (def ^:private events-publication
   "Publication for general events channel.
    Expects a map as input and the map must have a `:topic` key."
-  (async/pub events-channel #(:topic %)))
+  (async/pub events-channel :topic))
 
 (defn publish-event
   "Publish an item into the events stream.
