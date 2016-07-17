@@ -5,12 +5,16 @@ import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
 import i from "icepick";
 
+import * as MetabaseCore from "metabase/lib/core";
+import { isNumericBaseType } from "metabase/lib/schema_metadata";
+
 import S from "metabase/components/List.css";
 import R from "metabase/reference/Reference.css";
 
 import List from "metabase/components/List.jsx";
 import Item from "metabase/components/Item.jsx";
 import Icon from "metabase/components/Icon.jsx";
+import Select from "metabase/components/Select.jsx";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
@@ -24,7 +28,8 @@ import {
     getUser,
     getIsEditing,
     getHasDisplayName,
-    getHasRevisionHistory
+    getHasRevisionHistory,
+    getForeignKeys
 } from "../selectors";
 
 import * as metadataActions from 'metabase/redux/metadata';
@@ -37,6 +42,7 @@ const mapStateToProps = (state, props) => ({
     // naming this 'error' will conflict with redux form
     loadingError: getError(state),
     user: getUser(state),
+    foreignKeys: getForeignKeys(state),
     isEditing: getIsEditing(state),
     hasDisplayName: getHasDisplayName(state),
     hasRevisionHistory: getHasRevisionHistory(state)
@@ -55,7 +61,7 @@ const validate = (values, props) => props.hasRevisionHistory ?
 @connect(mapStateToProps, mapDispatchToProps)
 @reduxForm({
     form: 'details',
-    fields: ['name', 'display_name', 'description', 'revision_message', 'points_of_interest', 'caveats', 'how_is_this_calculated'],
+    fields: ['name', 'display_name', 'description', 'revision_message', 'points_of_interest', 'caveats', 'how_is_this_calculated', 'special_type', 'fk_target_field_id'],
     validate
 })
 export default class EntityItem extends Component {
@@ -67,13 +73,14 @@ export default class EntityItem extends Component {
 
     render() {
         const {
-            fields: { name, display_name, description, revision_message, points_of_interest, caveats, how_is_this_calculated },
+            fields: { name, display_name, description, revision_message, points_of_interest, caveats, how_is_this_calculated, special_type, fk_target_field_id },
             style,
             section,
             entity,
             loadingError,
             loading,
             user,
+            foreignKeys,
             isEditing,
             startEditing,
             endEditing,
@@ -191,6 +198,7 @@ export default class EntityItem extends Component {
                             { hasDisplayName && !isEditing &&
                                 <li className="relative">
                                     <Item
+                                        id="name"
                                         name="Actual name in database"
                                         description={entity.name}
                                     />
@@ -231,13 +239,85 @@ export default class EntityItem extends Component {
                             { section.type === 'metric' &&
                                 <li className="relative">
                                     <Item
-                                        id="caveats"
+                                        id="how_is_this_calculated"
                                         name={`How this ${section.type} is calculated`}
                                         description={entity.how_is_this_calculated}
                                         placeholder="Nothing on how it's calculated yet"
                                         isEditing={isEditing}
                                         field={how_is_this_calculated}
                                     />
+                                </li>
+                            }
+                            { !isEditing && section.type === 'field' &&
+                                <li className="relative">
+                                    <Item
+                                        id="base_type"
+                                        name={`Data type`}
+                                        description={entity.base_type}
+                                    />
+                                </li>
+                            }
+                            { section.type === 'field' &&
+                                //TODO: could use some refactoring. a lot of overlap with Field.jsx and Item.jsx
+                                <li className="relative">
+                                    <div className={cx(S.item)}>
+                                        <div className={S.leftIcons}>
+                                        </div>
+                                        <div className={S.itemBody}>
+                                            <div className={S.itemTitle}>
+                                                <span className={S.itemName}>Field type</span>
+                                            </div>
+                                            <div className={cx(S.itemSubtitle, { "mt1" : true })}>
+                                                <span>
+                                                    { isEditing ?
+                                                        <Select
+                                                            placeholder="Select a field type"
+                                                            value={MetabaseCore.field_special_types_map[entity.special_type]}
+                                                            options={
+                                                                MetabaseCore.field_special_types
+                                                                    .concat({
+                                                                        'id': null,
+                                                                        'name': 'No field type',
+                                                                        'section': 'Other'
+                                                                    })
+                                                                    .filter(type => !isNumericBaseType(entity) ?
+                                                                        !(type.id && type.id.startsWith("timestamp_")) :
+                                                                        true
+                                                                    )
+                                                            }
+                                                            updateImmediately={true}
+                                                            onChange={(type) => special_type.onChange(type.id)}
+                                                        /> :
+                                                        <span>
+                                                            { i.getIn(
+                                                                    MetabaseCore.field_special_types_map,
+                                                                    [entity.special_type, 'name']
+                                                                ) || 'No field type'
+                                                            }
+                                                        </span>
+                                                    }
+                                                </span>
+                                                <span className="ml4">
+                                                    { isEditing ?
+                                                        (special_type.value === 'fk' ||
+                                                        (entity.special_type === 'fk' && special_type.value === undefined)) &&
+                                                        <Select
+                                                            placeholder="Select a field type"
+                                                            value={foreignKeys[entity.fk_target_field_id] || {}}
+                                                            options={Object.values(foreignKeys)}
+                                                            updateImmediately={true}
+                                                            onChange={(foreignKey) => fk_target_field_id.onChange(foreignKey.id)}
+                                                            optionNameFn={(foreignKey) => foreignKey.name}
+                                                        /> :
+                                                        entity.special_type === 'fk' &&
+                                                        <span>
+                                                            {i.getIn(foreignKeys, [entity.fk_target_field_id, "name"])}
+                                                        </span>
+                                                    }
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </li>
                             }
                         </List>
