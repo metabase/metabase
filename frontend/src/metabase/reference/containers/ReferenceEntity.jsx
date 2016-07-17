@@ -55,7 +55,7 @@ const validate = (values, props) => props.hasRevisionHistory ?
 @connect(mapStateToProps, mapDispatchToProps)
 @reduxForm({
     form: 'details',
-    fields: ['name', 'display_name', 'description', 'revision_message', 'points_of_interest', 'caveats'],
+    fields: ['name', 'display_name', 'description', 'revision_message', 'points_of_interest', 'caveats', 'how_is_this_calculated'],
     validate
 })
 export default class EntityItem extends Component {
@@ -67,7 +67,7 @@ export default class EntityItem extends Component {
 
     render() {
         const {
-            fields: { name, display_name, description, revision_message, points_of_interest, caveats },
+            fields: { name, display_name, description, revision_message, points_of_interest, caveats, how_is_this_calculated },
             style,
             section,
             entity,
@@ -228,6 +228,18 @@ export default class EntityItem extends Component {
                                     field={caveats}
                                 />
                             </li>
+                            { section.type === 'metric' &&
+                                <li className="relative">
+                                    <Item
+                                        id="caveats"
+                                        name={`How this ${section.type} is calculated`}
+                                        description={entity.how_is_this_calculated}
+                                        placeholder="Nothing on how it's calculated yet"
+                                        isEditing={isEditing}
+                                        field={how_is_this_calculated}
+                                    />
+                                </li>
+                            }
                         </List>
                     </div>
                 }
