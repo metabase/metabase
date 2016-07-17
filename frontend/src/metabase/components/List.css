@@ -126,7 +126,7 @@
 }
 
 :local(.icon) {
-    composes: relative cursor-pointer from "style";
+    composes: relative from "style";
     color: var(--muted-color);
 }
 
@@ -165,6 +165,13 @@
 :local(.item):hover :local(.itemIcon),
 :local(.item.selected) :local(.itemIcon) {
     display: none;
+}
+
+/* CHART ICON */
+:local(.chartIcon) {
+    composes: icon;
+    visibility: visible !important;
+    composes: relative from "style";
 }
 
 /* ACTION ICONS */
