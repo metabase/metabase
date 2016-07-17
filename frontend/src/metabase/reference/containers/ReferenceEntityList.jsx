@@ -4,6 +4,8 @@ import ReactDOM from "react-dom";
 import { connect } from "react-redux";
 import moment from "moment";
 
+import visualizations from "metabase/visualizations";
+
 import S from "metabase/components/List.css";
 import List from "metabase/components/List.jsx";
 import Icon from "metabase/components/Icon.jsx";
@@ -51,8 +53,6 @@ export default class ReferenceEntityList extends Component {
             loading
         } = this.props;
 
-        console.log(entities);
-
         const empty = {
             icon: 'mine',
             message: 'You haven\'t added any databases yet.'
@@ -88,8 +88,14 @@ export default class ReferenceEntityList extends Component {
                                                 entity.description :
                                                 `Created ${moment(entity.created_at).fromNow()} by ${entity.creator.common_name}`
                                             }
-                                            url={`${section.id}/${entity.id}`}
-                                            icon="star"
+                                            url={section.type !== 'questions' ?
+                                                `${section.id}/${entity.id}` :
+                                                `/card/${entity.id}`
+                                            }
+                                            icon={section.type !== 'questions' ?
+                                                null :
+                                                (visualizations.get(entity.display)||{}).iconName
+                                            }
                                         />
                                     </li>
                             )}
