@@ -3,20 +3,18 @@ import { Link } from "react-router";
 
 import Icon from "metabase/components/Icon.jsx";
 
-import S from "./EmptyState.css"
-
 const EmptyState = ({ title, message, icon, image, action, link }) =>
-    <div className={S.emptyState}>
+    <div className="text-centered text-brand-light">
         { title &&
-            <h2 className={S.emptyStateTitle}>{title}</h2>
+            <h2 className="text-brand mb4">{title}</h2>
         }
         { icon &&
             <Icon name={icon} width={40} height={40} />
         }
         { image &&
-            <img src={`${image}.png`} height="300px" alt={message} srcSet={`${image}@2x.png 2x`} />
+            <img src={`${image}.png`} height="250px" alt={message} srcSet={`${image}@2x.png 2x`} />
         }
-        <h3 className={S.emptyStateMessage}>{message}</h3>
+        <h3 className="text-grey-2 mt4">{message}</h3>
         { action &&
             <Link className="Button Button--primary mt3" to={link}>{action}</Link>
         }

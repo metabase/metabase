@@ -32,7 +32,6 @@ const cleanResource = (resource) => Object.keys(resource)
     .filter(key => key.charAt(0) !== "$")
     .reduce((map, key) => i.assoc(map, key, resource[key]), {});
 
-//TODO: test this thoroughly
 export const fetchData = async ({dispatch, getState, requestStatePath, existingStatePath, getData, reload}) => {
     const existingData = i.getIn(getState(), existingStatePath);
     const statePath = requestStatePath.concat(['fetch']);
@@ -54,7 +53,7 @@ export const fetchData = async ({dispatch, getState, requestStatePath, existingS
         return existingData;
     }
 }
-//TODO: test this thoroughly
+
 export const updateData = async ({dispatch, getState, requestStatePath, existingStatePath, putData}) => {
     const existingData = i.getIn(getState(), existingStatePath);
     const statePath = requestStatePath.concat(['update']);

@@ -12,7 +12,7 @@ import S from "metabase/components/List.css";
 import R from "metabase/reference/Reference.css";
 
 import List from "metabase/components/List.jsx";
-import Item from "metabase/components/Item.jsx";
+import Detail from "metabase/components/Detail.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import Select from "metabase/components/Select.jsx";
 
@@ -202,7 +202,7 @@ export default class EntityItem extends Component {
                     <div className="wrapper wrapper--trim">
                         <List>
                             <li className="relative">
-                                <Item
+                                <Detail
                                     id="description"
                                     name="Description"
                                     description={entity.description}
@@ -213,7 +213,7 @@ export default class EntityItem extends Component {
                             </li>
                             { hasDisplayName && !isEditing &&
                                 <li className="relative">
-                                    <Item
+                                    <Detail
                                         id="name"
                                         name="Actual name in database"
                                         description={entity.name}
@@ -222,7 +222,7 @@ export default class EntityItem extends Component {
                             }
                             { hasRevisionHistory && isEditing &&
                                 <li className="relative">
-                                    <Item
+                                    <Detail
                                         id="revision_message"
                                         name="Reason for changes"
                                         description=""
@@ -233,7 +233,7 @@ export default class EntityItem extends Component {
                                 </li>
                             }
                             <li className="relative">
-                                <Item
+                                <Detail
                                     id="points_of_interest"
                                     name={`Why this ${section.type} is interesting`}
                                     description={entity.points_of_interest}
@@ -243,7 +243,7 @@ export default class EntityItem extends Component {
                                     />
                             </li>
                             <li className="relative">
-                                <Item
+                                <Detail
                                     id="caveats"
                                     name={`Things to be aware of about this ${section.type}`}
                                     description={entity.caveats}
@@ -254,7 +254,7 @@ export default class EntityItem extends Component {
                             </li>
                             { section.type === 'metric' &&
                                 <li className="relative">
-                                    <Item
+                                    <Detail
                                         id="how_is_this_calculated"
                                         name={`How this ${section.type} is calculated`}
                                         description={entity.how_is_this_calculated}
@@ -266,7 +266,7 @@ export default class EntityItem extends Component {
                             }
                             { !isEditing && section.type === 'field' &&
                                 <li className="relative">
-                                    <Item
+                                    <Detail
                                         id="base_type"
                                         name={`Data type`}
                                         description={entity.base_type}

@@ -8,8 +8,7 @@ import Icon from "./Icon.jsx";
 import cx from "classnames";
 import pure from "recompose/pure";
 
-//TODO: extend this to support functionality required for questions
-const Item = ({ name, description, placeholder, url, icon }) =>
+const Detail = ({ name, description, placeholder, url, icon, isEditing, field }) =>
     <div className={cx(S.item)}>
         <div className={S.leftIcons}>
             { icon && <Icon className={S.chartIcon} name={icon} width={40} height={40} /> }
@@ -22,12 +21,23 @@ const Item = ({ name, description, placeholder, url, icon }) =>
                 }
             </div>
             <div className={cx(S.itemSubtitle, { "mt1" : true })}>
-                {description || placeholder || 'No description yet'}
+                { isEditing ?
+                    <textarea
+                        className={S.itemTextArea}
+                        placeholder={placeholder}
+                        {...field}
+                        defaultValue={description}
+                    /> :
+                    description || placeholder || 'No description yet'
+                }
+                { isEditing && field.error && field.touched &&
+                    <span className="text-error">{field.error}</span>
+                }
             </div>
         </div>
     </div>
 
-Item.propTypes = {
+Detail.propTypes = {
     name:               PropTypes.string.isRequired,
     url:                PropTypes.string,
     description:        PropTypes.string,
@@ -37,4 +47,4 @@ Item.propTypes = {
     field:              PropTypes.object
 };
 
-export default pure(Item);
+export default pure(Detail);

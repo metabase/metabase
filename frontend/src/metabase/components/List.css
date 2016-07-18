@@ -49,16 +49,16 @@
 }
 
 :local(.item) {
-    composes: border-top from "style";
     composes: flex align-center from "style";
     composes: relative from "style";
-    padding-top: 20px;
-    padding-bottom: 20px;
-    border-color: #EDF5FB;
 }
 
 :local(.itemBody) {
+    composes: border-top from "style";
     composes: flex-full from "style";
+    padding-top: 20px;
+    padding-bottom: 20px;
+    border-color: #EDF5FB;
 }
 
 :local(.itemTitle) {
