@@ -37,18 +37,18 @@ const referenceSections = {
         id: `/reference/segments`,
         name: "Segments",
         empty: {
-            title: "Metrics are the official numbers that your team cares about",
-            adminMessage: "Defining common metrics for your team makes it even easier to ask questions",
-            message: "Metrics will appear here once your admins have created some",
-            image: "/app/img/metrics-list",
-            adminAction: "Create a metric",
+            title: "Segments are interesting subsets of tables",
+            adminMessage: "Defining common segments for your team makes it even easier to ask questions",
+            message: "Segments will appear here once your admins have created some",
+            image: "/app/img/segments-list",
+            adminAction: "Create a segment",
             adminLink: "/admin/datamodel/database"
         },
         breadcrumb: "Segments",
         fetch: {fetchSegments: []},
         get: 'getSegments',
-        icon: "clipboard",
-        headerIcon: "clipboard"
+        icon: "segment",
+        headerIcon: "segment"
     },
     [`/reference/databases`]: {
         id: `/reference/databases`,

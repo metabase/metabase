@@ -164,7 +164,7 @@ export default class EntityItem extends Component {
                                 />
                             }
                         </div>
-                        <div className="flex flex-full pb2 border-bottom">
+                        <div className={R.headerBody}>
                             { isEditing ?
                                 hasDisplayName ?
                                     <input

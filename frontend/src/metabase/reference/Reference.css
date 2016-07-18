@@ -3,6 +3,11 @@
     --subheader-color: #6CAFED;
 }
 
+:local(.headerBody) {
+    composes: flex flex-full pb2 border-bottom from "style";
+    border-color: #EDF5FB;
+}
+
 :local(.headerTextInput) {
     composes: rounded bordered p2 from "style";
     font-size: 18px;

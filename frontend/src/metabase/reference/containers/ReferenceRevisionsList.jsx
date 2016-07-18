@@ -89,7 +89,9 @@ export default class RevisionHistoryApp extends Component {
                         <div className={S.leftIcons}>
 
                         </div>
-                        {section.name}
+                        <div className={R.headerBody}>
+                            {section.name}
+                        </div>
                     </div>
                 </div>
                 <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>
