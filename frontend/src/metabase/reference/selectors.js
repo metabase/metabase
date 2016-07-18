@@ -249,7 +249,7 @@ const getTableSections = (database, table) => database && table ? {
             message: `Questions about this table will appear here as they're added`,
             icon: "all",
             action: "Ask a question",
-            link: "/q"
+            link: `/q?table=${table.id}`
         },
         type: 'questions',
         sidebar: 'Questions about this table',
