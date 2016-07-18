@@ -25,7 +25,6 @@
   String        (->sql [this]
                   (str \' (s/replace this #"'" "\\\\'") \'))
   FieldInstance (->sql [this]
-                  (println "FieldInstance -> SQL:" (u/pprint-to-str 'blue this))
                   ;; For SQL drivers, generate appropriate qualified & quoted identifier
                   ;; Mative param substitution is only enabled for SQL for the time being. We'll need to tweak this a bit so when we add support for other DBs in the future.
                   (first (hsql/format (apply hsql/qualify (field/qualified-name-components this))
@@ -35,8 +34,7 @@
   (let [k (keyword param)
         _ (assert (contains? params k)
             (format "Unable to substitute '%s': param not specified." param))
-        v (->sql (u/prog1 (k params)
-                   (println "->sql" <>)))]
+        v (->sql (k params))]
     (s/replace-first s match v)))
 
 (defn- handle-simple [s params]
@@ -81,7 +79,7 @@
   (when-let [dimension (:dimension tag)]
     (if-let [field-id (dimension->field-id dimension)]
       (db/select-one [Field :name :parent_id :table_id], :id field-id)
-      (println "TODO - Handle non-Field-ID dimension:" dimension))))
+      (throw (Exception. (str "Don't know how to handle dimension: " dimension))))))
 
 (defn- default-value-for-tag [{:keys [default display_name required]}]
   (or default
@@ -98,12 +96,8 @@
     :dimension value))
 
 (defn- value-for-tag [tag params]
-  (parse-value-for-type (:type tag) (or (u/prog1 (param-value-for-tag tag params)
-                                          (when <>
-                                            (println "param-value-for-tag" <>)))
-                                        (u/prog1 (dimension-value-for-tag tag)
-                                          (when <>
-                                            (println "dimension-value-for-tag" (u/pprint-to-str <>))))
+  (parse-value-for-type (:type tag) (or (param-value-for-tag tag params)
+                                        (dimension-value-for-tag tag)
                                         (default-value-for-tag tag))))
 
 (defn- query->params-map [{tags :template_tags, params :parameters}]
