@@ -2,7 +2,7 @@
 
 ### Does Metabase support SQL Joins?
 
-Metabase does not expose a "Join" operator, but we do provide ways for non-SQL proficient users more specialized tools to perform the tasks that joins are used for such as filtering or grouping by columns in other tables, etc.
+Metabase does not expose a "Join" operator, but we do provide ways for non-SQL-proficient users to perform the tasks that joins are used for such as filtering or grouping by columns in other tables, etc.
 
 For more info see our [blog post on the subject](http://www.metabase.com/blog/Joins)
 
