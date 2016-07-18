@@ -17,6 +17,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.j
 import {
     getSection,
     getData,
+    getUser,
     getError,
     getLoading
 } from "../selectors";
@@ -25,7 +26,8 @@ import * as metadataActions from "metabase/redux/metadata";
 
 const mapStateToProps = (state, props) => ({
     section: getSection(state),
-    entities: getData(state),
+    entities: {},
+    user: getUser(state),
     loading: getLoading(state),
     loadingError: getError(state)
 });
@@ -39,6 +41,7 @@ export default class ReferenceEntityList extends Component {
     static propTypes = {
         style: PropTypes.object.isRequired,
         entities: PropTypes.object.isRequired,
+        user: PropTypes.object.isRequired,
         section: PropTypes.object.isRequired,
         loading: PropTypes.bool,
         loadingError: PropTypes.object
@@ -47,6 +50,7 @@ export default class ReferenceEntityList extends Component {
     render() {
         const {
             entities,
+            user,
             style,
             section,
             loadingError,
@@ -103,7 +107,18 @@ export default class ReferenceEntityList extends Component {
                     </div>
                     :
                     <div className={S.empty}>
-                      <EmptyState message={empty.message} icon={empty.icon} />
+                        { section.empty &&
+                            <EmptyState
+                                title={section.empty.title}
+                                message={user.is_superuser ?
+                                    section.empty.adminMessage :
+                                    section.empty.message
+                                }
+                                image={section.empty.image}
+                                action={user.is_superuser && section.empty.action}
+                                link={user.is_superuser && section.empty.link}
+                            />
+                        }
                     </div>
                 }
                 </LoadingAndErrorWrapper>

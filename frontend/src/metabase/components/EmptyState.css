@@ -1,0 +1,15 @@
+:local(.emptyState) {
+    composes: text-centered text-brand-light from "style";
+}
+
+:local(.emptyStateTitle) {
+    composes: text-brand mb4 from "style";
+}
+
+:local(.emptyStateMessage) {
+    composes: text-grey-2 mt4 from "style";
+}
+
+:local(.emptyStateAction) {
+    composes: button-primary from "style";
+}

@@ -32,8 +32,8 @@
 }
 
 /* brand */
-.text-brand,
-.text-brand-hover:hover {
+.text-brand, :local(.text-brand),
+.text-brand-hover:hover, :local(.text-brand-hover):hover {
     color: var(--brand-color);
 }
 
@@ -136,7 +136,7 @@
 .text-grey-1, :local(.text-grey-1),
 .text-grey-1-hover:hover { color: var(--grey-1) }
 
-.text-grey-2,
+.text-grey-2, :local(.text-grey-2),
 .text-grey-2-hover:hover { color: var(--grey-2) }
 
 .text-grey-3, :local(.text-grey-3),

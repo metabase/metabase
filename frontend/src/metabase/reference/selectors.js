@@ -18,6 +18,14 @@ const referenceSections = {
     [`/reference/metrics`]: {
         id: `/reference/metrics`,
         name: "Metrics",
+        empty: {
+            title: "Metrics are the official numbers that your team cares about",
+            adminMessage: "Defining common metrics for your team makes it even easier to ask questions",
+            message: "Metrics will appear here once your admins have created some",
+            image: "/app/img/metrics-list",
+            action: "Create a metric",
+            link: "/admin/datamodel/database"
+        },
         breadcrumb: "Metrics",
         // mapping of propname to args of dispatch function
         fetch: {fetchMetrics: []},
@@ -28,6 +36,14 @@ const referenceSections = {
     [`/reference/lists`]: {
         id: `/reference/lists`,
         name: "Lists",
+        empty: {
+            title: "Metrics are the official numbers that your team cares about",
+            adminMessage: "Defining common metrics for your team makes it even easier to ask questions",
+            message: "Metrics will appear here once your admins have created some",
+            image: "/app/img/metrics-list",
+            action: "Create a metric",
+            link: "/admin/datamodel/database"
+        },
         breadcrumb: "Lists",
         fetch: {fetchLists: []},
         get: 'getLists',
@@ -37,6 +53,14 @@ const referenceSections = {
     [`/reference/databases`]: {
         id: `/reference/databases`,
         name: "Databases and tables",
+        empty: {
+            title: "Metabase is no fun without any data",
+            adminMessage: "Your databses will appear here once you connect one",
+            message: "Databases will appear here once your admins have added some",
+            image: "/app/img/databases-list",
+            action: "Connect a database",
+            link: "/admin/databases/create"
+        },
         breadcrumb: "Databases",
         fetch: {fetchDatabases: []},
         get: 'getDatabases',
