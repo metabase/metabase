@@ -2,8 +2,9 @@
 
 import type Metadata from "./metadata/Metadata";
 import type Table from "./metadata/Table";
-import type { CardObject } from "./types/Card";
-import type { ParameterOption, ParameterObject, ParameterMappingOption } from "./types/Dashboard";
+import type Field from "./metadata/Field";
+import type { CardObject, TemplateTag } from "./types/Card";
+import type { ParameterOption, ParameterObject, ParameterMappingOption, DimensionTarget, VariableTarget } from "./types/Dashboard";
 
 import { slugify, stripId } from "metabase/lib/formatting";
 
@@ -78,40 +79,67 @@ for (const option of PARAMETER_OPTIONS) {
     section.options.push(option);
 }
 
-export function getFieldDimension(field: Field) {
+type Dimension = {
+    name: string,
+    parentName: string,
+    target: DimensionTarget,
+    field_id: number,
+    depth: number
+};
+
+type Variable = {
+    name: string,
+    target: VariableTarget,
+    type: string
+};
+
+type FieldFilter = (field: Field) => boolean;
+type TemplateTagFilter = (tag: TemplateTag) => boolean;
+
+export function getFieldDimension(field: Field): Dimension {
     return {
         name: field.display_name,
         field_id: field.id,
-        sectionName: field.table().display_name,
+        parentName: field.table().display_name,
         target: ["field-id", field.id],
         depth: 0
     };
 }
 
-export function getCardDimensions(metadata: Metadata, card: CardObject, filter = () => true) {
+export function getTagDimension(tag: TemplateTag, dimension: Dimension): Dimension {
+    return {
+        name: dimension.name,
+        parentName: dimension.parentName,
+        target: ["template-tag", tag.name],
+        field_id: dimension.field_id,
+        depth: 0
+    }
+}
+
+export function getCardDimensions(metadata: Metadata, card: CardObject, filter: FieldFilter = () => true): Array<Dimension> {
     if (card.dataset_query.type === "query") {
         const table = card.dataset_query.query.source_table != null ? metadata.table(card.dataset_query.query.source_table) : null;
         if (table) {
             return getTableDimensions(table, 1, filter);
         }
-    } else if (card.dataset_query.type === "native") {
-        return Object.values(card.dataset_query.template_tags || {}).map(tag => {
+    } else if (card.dataset_query.type === "native" && card.dataset_query.template_tags != null) {
+        let dimensions = [];
+        for (const name in card.dataset_query.template_tags) {
+            const tag = card.dataset_query.template_tags[name];
             if (tag.type === "dimension" && Array.isArray(tag.dimension) && tag.dimension[0] === "field-id") {
                 const field = metadata.field(tag.dimension[1]);
-                if (field) {
-                    let dimension = getFieldDimension(field);
-                    return {
-                        ...dimension,
-                        target: ["template-tag", tag.name]
-                    };
+                if (field && filter(field)) {
+                    let fieldDimension = getFieldDimension(field);
+                    dimensions.push(getTagDimension(tag, fieldDimension));
                 }
             }
-        }).filter(d => d);
+        }
+        return dimensions;
     }
     return [];
 }
 
-export function getTableDimensions(table: Table, depth: number, filter = () => true) {
+export function getTableDimensions(table: Table, depth: number, filter: FieldFilter = () => true): Array<Dimension> {
     return _.chain(table.fields())
         .map(field => {
             let targetField = field.target();
@@ -119,7 +147,7 @@ export function getTableDimensions(table: Table, depth: number, filter = () => t
                 let targetTable = targetField.table();
                 return _.map(getTableDimensions(targetTable, depth - 1, filter), (dimension) => ({
                     ...dimension,
-                    sectionName: stripId(field.display_name),
+                    parentName: stripId(field.display_name),
                     target: ["fk->", field.id, dimension.target[0] === "field-id" ? dimension.target[1] : dimension.target],
                     depth: dimension.depth + 1
                 }));
@@ -132,34 +160,51 @@ export function getTableDimensions(table: Table, depth: number, filter = () => t
         .value();
 }
 
-export function getCardVariables(metadata: Metadata, card: CardObject, filter = () => true) {
-    if (card.dataset_query.type === "native") {
-
+export function getCardVariables(metadata: Metadata, card: CardObject, filter: TemplateTagFilter = () => true): Array<Variable> {
+    if (card.dataset_query.type === "native" && card.dataset_query.template_tags) {
+        let variables = [];
+        for (const name in card.dataset_query.template_tags) {
+            const tag = card.dataset_query.template_tags[name];
+            if (!filter || filter(tag)) {
+                variables.push({
+                    name: tag.display_name || tag.name,
+                    type: tag.type,
+                    target: ["template-tag", tag.name]
+                });
+            }
+        }
+        return variables;
     }
     return [];
 }
 
-const PARAMETER_ICONS = {
-    "string": "string",
+function fieldFilterForParameter(parameter: ParameterObject): FieldFilter {
+    const [type, subtype] = parameter.type.split("/");
+    switch (type) {
+        case "date":        return (field: Field) => field.isDate();
+        case "location":    return (field: Field) => field.special_type === subtype;
+        case "id":          return (field: Field) => console.log("isID", field.isID())||field.isID();
+        case "category":    return (field: Field) => field.isCategory();
+    }
+    return (field: Field) => false;
+}
+
+function tagFilterForParameter(parameter: ParameterObject): TemplateTagFilter {
+    const [type, subtype] = parameter.type.split("/");
+    switch (type) {
+        case "date":        return (tag: TemplateTag) => subtype === "single" && tag.type === "date";
+        case "location":    return (tag: TemplateTag) => tag.type === "number" || tag.type === "text";
+        case "id":          return (tag: TemplateTag) => tag.type === "number" || tag.type === "text";
+        case "category":    return (tag: TemplateTag) => tag.type === "number" || tag.type === "text";
+    }
+    return (tag: TemplateTag) => false;
+}
+
+const VARIABLE_ICONS = {
+    "text": "string",
     "number": "int",
     "date": "calendar"
 };
-
-function fieldFilterForParameter(parameter: ParameterObject) {
-    const [type, subtype] = parameter.type.split("/");
-    switch (type) {
-        case "date":        return (field) => field.isDate();
-        case "location":    return (field) => field.special_type === subtype;
-        case "id":          return (field) => field.special_type === "id";
-        case "category":    return (field) => field.special_type === "category";
-    }
-    return (field) => false;
-}
-
-function variableFilterForParameter(parameter: ParameterObject) {
-    // TODO
-    return () => true;
-}
 
 export function getParameterMappingOptions(metadata: Metadata, parameter: ParameterObject, card: CardObject): Array<ParameterMappingOption> {
     let options = [];
@@ -167,22 +212,25 @@ export function getParameterMappingOptions(metadata: Metadata, parameter: Parame
     // dimensions
     options.push(
         ...getCardDimensions(metadata, card, fieldFilterForParameter(parameter))
-            .map(dimension => ({
-                name: dimension.name,
-                target: ["dimension", dimension.target],
-                icon: metadata.field(dimension.field_id).icon(),
-                sectionName: dimension.sectionName,
-                isFk: dimension.depth > 0
-            }))
+            .map((dimension: Dimension) => {
+                const field = metadata.field(dimension.field_id);
+                return {
+                    name: dimension.name,
+                    target: ["dimension", dimension.target],
+                    icon: field && field.icon(),
+                    sectionName: dimension.parentName,
+                    isFk: dimension.depth > 0
+                };
+            })
     );
 
     // variables
     options.push(
-        ...getCardVariables(metadata, card, variableFilterForParameter(parameter))
-            .map(variable => ({
+        ...getCardVariables(metadata, card, tagFilterForParameter(parameter))
+            .map((variable: Variable) => ({
                 name: variable.name,
                 target: ["variable", variable.target],
-                icon: "int",
+                icon: VARIABLE_ICONS[variable.type],
                 sectionName: "Variables",
                 isVariable: true
             }))

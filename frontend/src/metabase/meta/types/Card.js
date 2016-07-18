@@ -19,7 +19,15 @@ export type StructuredDatasetQueryObject = {
 export type NativeDatasetQueryObject = {
     type: "native",
     native: NativeQueryObject,
-    database: ?DatabaseId
+    database: ?DatabaseId,
+    template_tags: { [key: string]: TemplateTag }
+};
+
+export type TemplateTag = {
+    name: string,
+    display_name: string,
+    type: string,
+    dimension?: ["field-id", number]
 };
 
 export type DatasetQueryObject = StructuredDatasetQueryObject | NativeDatasetQueryObject;

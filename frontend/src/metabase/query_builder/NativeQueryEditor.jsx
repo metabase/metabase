@@ -4,7 +4,7 @@
 import React, { Component, PropTypes } from "react";
 
 import _ from "underscore";
-import { assocIn, getIn } from "icepick";
+import { assocIn } from "icepick";
 
 import DataSelector from './DataSelector.jsx';
 import Icon from "metabase/components/Icon.jsx";
@@ -53,7 +53,9 @@ export default class NativeQueryEditor extends Component {
         setDatabaseFn: PropTypes.func.isRequired,
         autocompleteResultsFn: PropTypes.func.isRequired,
         isOpen: PropTypes.bool,
-        parameters: PropTypes.array.isRequired
+        parameters: PropTypes.array.isRequired,
+        parameterValues: PropTypes.object,
+        setParameterValue: PropTypes.func
     };
 
     static defaultProps = {
