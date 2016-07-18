@@ -13,6 +13,8 @@
 ;; TODO - we have dynamic *driver* variables like this in several places; it probably makes more sense to see if we can share one used somewhere else instead
 (def ^:private ^:dynamic *driver* nil)
 
+(def ^:private ^:dynamic *timezone* nil)
+
 ;;; ------------------------------------------------------------ String Substituion ------------------------------------------------------------
 
 (defprotocol ^:private ISQLParamSubstituion
@@ -26,7 +28,7 @@
 
 (defn- dimension-value->sql [dimension-type value]
   (if (contains? #{"date/range" "date/month-year" "date/quarter-year"} dimension-type)
-    (->sql (map->DateRange ((resolve 'metabase.query-processor.parameters/date->range) value nil))) ; TODO - get timezone from query dict
+    (->sql (map->DateRange ((resolve 'metabase.query-processor.parameters/date->range) value *timezone*))) ; TODO - get timezone from query dict
     (str "= " (->sql value))))
 
 (defn- honeysql->sql ^String [x]
@@ -149,5 +151,6 @@
 (defn expand-params
   "Expand parameters inside a *native* QUERY."
   [query]
-  (binding [*driver* (:driver query)]
+  (binding [*driver*   (:driver query)
+            *timezone* (get-in query [:settings :report-timezone])]
     (update-in query [:native :query] (u/rpartial substitute (query->params-map query)))))

@@ -185,8 +185,6 @@
 
 ;;; ------------------------------------------------------------ expansion tests: dimensions ------------------------------------------------------------
 
-#_(:require 'metabase.test.data.h2 :reload)
-
 (defn- expand-with-dimension-param [dimension-param]
   (with-redefs [t/now (fn [] (t/date-time 2016 06 07 12 0 0))]
     (-> (expand-params {:driver        (driver/engine->driver :h2)
