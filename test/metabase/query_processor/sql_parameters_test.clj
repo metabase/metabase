@@ -1,6 +1,8 @@
 (ns metabase.query-processor.sql-parameters-test
   (:require [expectations :refer :all]
-            [metabase.query-processor.sql-parameters :refer :all]))
+            [metabase.driver :as driver]
+            [metabase.query-processor.sql-parameters :refer :all]
+            [metabase.test.data :as data]))
 
 
 ;;; simple substitution -- {{x}}
@@ -182,8 +184,8 @@
 ;; dimension
 (expect
   "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" > '2016-01-01';"
-  (-> (expand-params {:driver        (metabase.driver/engine->driver :h2)
+  (-> (expand-params {:driver        (driver/engine->driver :h2)
                       :native        {:query "SELECT * FROM checkins WHERE {{date}} > '2016-01-01';"},
-                      :template_tags {:date {:name "date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (metabase.test.data/id :checkins :date)]}},
+                      :template_tags {:date {:name "date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}},
                       :parameters    []})
       :native :query))

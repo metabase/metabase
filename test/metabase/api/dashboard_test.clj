@@ -125,7 +125,6 @@
                                            :query_type             nil
                                            :dataset_query          {}
                                            :visualization_settings {}
-                                           :parameters             []
                                            :archived               false}
                       :series              []}]
    :organization_id nil}

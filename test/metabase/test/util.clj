@@ -127,7 +127,6 @@
                                 :dataset_query          {}
                                 :display                :table
                                 :name                   (random-name)
-                                :parameters             []
                                 :public_perms           common/perms-none
                                 :visualization_settings {}})})
 

@@ -1,7 +1,6 @@
 (ns metabase.api.database
   "/api/database endpoints."
   (:require [clojure.tools.logging :as log]
-            [clojure.string :as str]
             [compojure.core :refer [GET POST PUT DELETE]]
             [metabase.api.common :refer :all]
             (metabase [config :as config]
@@ -11,9 +10,9 @@
                       [sample-data :as sample-data]
                       [util :as u])
             (metabase.models common
-                             [hydrate :refer [hydrate]]
                              [database :refer [Database protected-password]]
                              [field :refer [Field]]
+                             [hydrate :refer [hydrate]]
                              [table :refer [Table]])))
 
 (defannotation DBEngine
@@ -186,16 +185,14 @@
   "Get a list of all `Fields` in `Database`."
   [id]
   (read-check Database id)
-  (let [table-ids (db/select-field :id, Table, :db_id id)]
-    (->> (-> (db/select [Field :id :name :display_name :base_type :special_type :table_id]
-               :table_id        [:in table-ids]
-               :visibility_type [:not-in ["sensitive" "retired"]])
-             (hydrate :table))
-         (map (fn [{:keys [id display_name table]}]
-                  {:id id
-                   :name display_name
-                   :table_name (:display_name table)
-                   :schema (:schema table)})))))
+  (for [{:keys [id display_name table]} (-> (db/select [Field :id :display_name :table_id]
+                                              :table_id        [:in (db/select-field :id Table, :db_id id)]
+                                              :visibility_type [:not-in ["sensitive" "retired"]])
+                                            (hydrate :table))]
+    {:id         id
+     :name       display_name
+     :table_name (:display_name table)
+     :schema     (:schema table)}))
 
 (defendpoint GET "/:id/idfields"
   "Get a list of all primary key `Fields` for `Database`."
