@@ -8,7 +8,7 @@ var CommonsChunkPlugin = webpack.optimize.CommonsChunkPlugin;
 var ExtractTextPlugin = require('extract-text-webpack-plugin');
 var HtmlWebpackPlugin = require('html-webpack-plugin');
 var UnusedFilesWebpackPlugin = require("unused-files-webpack-plugin").default;
-// var FlowStatusWebpackPlugin = require('flow-status-webpack-plugin');
+var FlowStatusWebpackPlugin = require('flow-status-webpack-plugin');
 
 var _ = require('underscore');
 var glob = require('glob');

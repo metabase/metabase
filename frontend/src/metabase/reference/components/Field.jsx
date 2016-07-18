@@ -105,10 +105,10 @@ Field.propTypes = {
     field: PropTypes.object.isRequired,
     foreignKeys: PropTypes.object.isRequired,
     url: PropTypes.string.isRequired,
-    placeholder:        PropTypes.string,
-    icon:               PropTypes.string,
-    isEditing:          PropTypes.bool,
-    formField:              PropTypes.object
+    placeholder: PropTypes.string,
+    icon: PropTypes.string,
+    isEditing: PropTypes.bool,
+    formField: PropTypes.object
 };
 
 export default pure(Field);
