@@ -101,8 +101,11 @@
                                         (default-value-for-tag tag))))
 
 (defn- query->params-map [{tags :template_tags, params :parameters}]
-  (into {} (for [[k tag] tags]
-             {k (value-for-tag tag params)})))
+  (into {} (for [[k tag] tags
+                 :let    [v (value-for-tag tag params)]
+                 :when   v]
+             ;; TODO - if V is `nil` *on purpose* this still won't give us a query like `WHERE field = NULL`. That kind of query shouldn't be possible from the frontend anyway
+             {k v})))
 
 
 ;;; ------------------------------------------------------------ Public API ------------------------------------------------------------
