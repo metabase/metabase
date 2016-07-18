@@ -113,44 +113,44 @@ const metrics = handleActions({
     [UPDATE_METRIC]: { next: (state, { payload }) => payload }
 }, {});
 
-const FETCH_LISTS = "metabase/metadata/FETCH_LISTS";
-export const fetchLists = createThunkAction(FETCH_LISTS, (reload = false) => {
+const FETCH_SEGMENTS = "metabase/metadata/FETCH_SEGMENTS";
+export const fetchSegments = createThunkAction(FETCH_SEGMENTS, (reload = false) => {
     return async (dispatch, getState) => {
-        const requestStatePath = ["metadata", "lists"];
+        const requestStatePath = ["metadata", "segments"];
         const existingStatePath = requestStatePath;
         const getData = async () => {
-            const lists = await SegmentApi.list();
-            const listMap = resourceListToMap(lists);
-            return listMap;
+            const segments = await SegmentApi.list();
+            const segmentMap = resourceListToMap(segments);
+            return segmentMap;
         };
 
         return await fetchData({dispatch, getState, requestStatePath, existingStatePath, getData, reload});
     };
 });
 
-const UPDATE_LIST = "metabase/metadata/UPDATE_LIST";
-export const updateList = createThunkAction(UPDATE_LIST, function(list) {
+const UPDATE_SEGMENT = "metabase/metadata/UPDATE_SEGMENT";
+export const updateSegment = createThunkAction(UPDATE_SEGMENT, function(segment) {
     return async (dispatch, getState) => {
-        const requestStatePath = ["metadata", "lists", list.id];
-        const existingStatePath = ["metadata", "lists"];
+        const requestStatePath = ["metadata", "segments", segment.id];
+        const existingStatePath = ["metadata", "segments"];
         const putData = async () => {
-            const updatedList = await SegmentApi.update(list);
-            const cleanList = cleanResource(updatedList);
-            const existingLists = i.getIn(getState(), existingStatePath);
-            const existingList = existingLists[list.id];
+            const updatedSegment = await SegmentApi.update(segment);
+            const cleanSegment = cleanResource(updatedSegment);
+            const existingSegments = i.getIn(getState(), existingStatePath);
+            const existingSegment = existingSegments[segment.id];
 
-            const mergedList = {...existingList, ...cleanList};
+            const mergedSegment = {...existingSegment, ...cleanSegment};
 
-            return i.assoc(existingLists, mergedList.id, mergedList);
+            return i.assoc(existingSegments, mergedSegment.id, mergedSegment);
         };
 
         return await updateData({dispatch, getState, requestStatePath, existingStatePath, putData});
     };
 });
 
-const lists = handleActions({
-    [FETCH_LISTS]: { next: (state, { payload }) => payload },
-    [UPDATE_LIST]: { next: (state, { payload }) => payload }
+const segments = handleActions({
+    [FETCH_SEGMENTS]: { next: (state, { payload }) => payload },
+    [UPDATE_SEGMENT]: { next: (state, { payload }) => payload }
 }, {});
 
 const FETCH_DATABASES = "metabase/metadata/FETCH_DATABASES";
@@ -304,8 +304,7 @@ export const fetchRevisions = createThunkAction(FETCH_REVISIONS, (type, id, relo
         const requestStatePath = ["metadata", "revisions", type, id];
         const existingStatePath = ["metadata", "revisions"];
         const getData = async () => {
-            const revisionType = type === 'list' ? 'segment' : type;
-            const revisions = await RevisionApi.get({id, entity: revisionType});
+            const revisions = await RevisionApi.get({id, entity: type});
             const revisionMap = resourceListToMap(revisions);
 
             const existingRevisions = i.getIn(getState(), existingStatePath);
@@ -332,12 +331,12 @@ export const fetchMetricRevisions = createThunkAction(FETCH_METRIC_REVISIONS, (m
     };
 });
 
-const FETCH_LIST_FIELDS = "metabase/metadata/FETCH_LIST_FIELDS";
-export const fetchListFields = createThunkAction(FETCH_LIST_FIELDS, (listId, reload = false) => {
+const FETCH_SEGMENT_FIELDS = "metabase/metadata/FETCH_SEGMENT_FIELDS";
+export const fetchSegmentFields = createThunkAction(FETCH_SEGMENT_FIELDS, (segmentId, reload = false) => {
     return async (dispatch, getState) => {
-        await dispatch(fetchLists());
-        const list = i.getIn(getState(), ['metadata', 'lists', listId]);
-        const tableId = list.table_id;
+        await dispatch(fetchSegments());
+        const segment = i.getIn(getState(), ['metadata', 'segments', segmentId]);
+        const tableId = segment.table_id;
         await dispatch(fetchTableMetadata(tableId));
         const table = i.getIn(getState(), ['metadata', 'tables', tableId]);
         const databaseId = table.db_id;
@@ -345,20 +344,20 @@ export const fetchListFields = createThunkAction(FETCH_LIST_FIELDS, (listId, rel
     };
 });
 
-const FETCH_LIST_REVISIONS = "metabase/metadata/FETCH_LIST_REVISIONS";
-export const fetchListRevisions = createThunkAction(FETCH_LIST_REVISIONS, (listId, reload = false) => {
+const FETCH_SEGMENT_REVISIONS = "metabase/metadata/FETCH_SEGMENT_REVISIONS";
+export const fetchSegmentRevisions = createThunkAction(FETCH_SEGMENT_REVISIONS, (segmentId, reload = false) => {
     return async (dispatch, getState) => {
-        dispatch(fetchRevisions('list', listId));
-        await dispatch(fetchLists());
-        const list = i.getIn(getState(), ['metadata', 'lists', listId]);
-        const tableId = list.table_id;
+        dispatch(fetchRevisions('segment', segmentId));
+        await dispatch(fetchSegments());
+        const segment = i.getIn(getState(), ['metadata', 'segments', segmentId]);
+        const tableId = segment.table_id;
         await dispatch(fetchTableMetadata(tableId));
     };
 });
 
 export default combineReducers({
     metrics,
-    lists,
+    segments,
     databases,
     tables,
     fields,

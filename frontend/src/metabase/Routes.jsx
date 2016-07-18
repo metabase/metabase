@@ -88,13 +88,13 @@ export default class Routes extends Component {
                     // Uncaught Error: [$rootScope:infdig] 10 $digest() iterations reached. Aborting!
                     <Redirect from="metrics/:metricId/questions/:cardId" to="/card/:cardId"/>
                     <Route path="metrics/:metricId/revisions" component={ReferenceRevisionsList} />
-                    <Route path="lists" component={ReferenceEntityList} />
-                    <Route path="lists/:listId" component={ReferenceEntity} />
-                    <Route path="lists/:listId/fields" component={ReferenceFieldsList} />
-                    <Route path="lists/:listId/fields/:fieldId" component={ReferenceEntity} />
-                    <Route path="lists/:listId/questions" component={ReferenceEntityList} />
-                    <Redirect from="lists/:listId/questions/:cardId" to="/card/:cardId"/>
-                    <Route path="lists/:listId/revisions" component={ReferenceRevisionsList} />
+                    <Route path="segments" component={ReferenceEntityList} />
+                    <Route path="segments/:segmentId" component={ReferenceEntity} />
+                    <Route path="segments/:segmentId/fields" component={ReferenceFieldsList} />
+                    <Route path="segments/:segmentId/fields/:fieldId" component={ReferenceEntity} />
+                    <Route path="segments/:segmentId/questions" component={ReferenceEntityList} />
+                    <Redirect from="segments/:segmentId/questions/:cardId" to="/card/:cardId"/>
+                    <Route path="segments/:segmentId/revisions" component={ReferenceRevisionsList} />
                     <Route path="databases" component={ReferenceEntityList} />
                     <Route path="databases/:databaseId" component={ReferenceEntity} />
                     <Route path="databases/:databaseId/tables" component={ReferenceEntityList} />

@@ -33,9 +33,9 @@ const referenceSections = {
         icon: "ruler",
         headerIcon: "ruler"
     },
-    [`/reference/lists`]: {
-        id: `/reference/lists`,
-        name: "Lists",
+    [`/reference/segments`]: {
+        id: `/reference/segments`,
+        name: "Segments",
         empty: {
             title: "Metrics are the official numbers that your team cares about",
             adminMessage: "Defining common metrics for your team makes it even easier to ask questions",
@@ -44,9 +44,9 @@ const referenceSections = {
             adminAction: "Create a metric",
             adminLink: "/admin/datamodel/database"
         },
-        breadcrumb: "Lists",
-        fetch: {fetchLists: []},
-        get: 'getLists',
+        breadcrumb: "Segments",
+        fetch: {fetchSegments: []},
+        get: 'getSegments',
         icon: "clipboard",
         headerIcon: "clipboard"
     },
@@ -114,75 +114,75 @@ const getMetricSections = (metric, user) => metric ? {
     }
 } : {};
 
-const getListSections = (list, user) => list ? {
-    [`/reference/lists/${list.id}`]: {
-        id: `/reference/lists/${list.id}`,
+const getSegmentSections = (segment, user) => segment ? {
+    [`/reference/segments/${segment.id}`]: {
+        id: `/reference/segments/${segment.id}`,
         name: 'Details',
-        update: 'updateList',
-        type: 'list',
-        breadcrumb: `${list.name}`,
-        fetch: {fetchLists: []},
-        get: 'getList',
+        update: 'updateSegment',
+        type: 'segment',
+        breadcrumb: `${segment.name}`,
+        fetch: {fetchSegments: []},
+        get: 'getSegment',
         icon: "document",
         headerIcon: "clipboard",
-        parent: referenceSections[`/reference/lists`]
+        parent: referenceSections[`/reference/segments`]
     },
-    [`/reference/lists/${list.id}/fields`]: {
-        id: `/reference/lists/${list.id}/fields`,
-        name: `Fields in ${list.name}`,
+    [`/reference/segments/${segment.id}/fields`]: {
+        id: `/reference/segments/${segment.id}/fields`,
+        name: `Fields in ${segment.name}`,
         empty: {
-            message: `Fields in this list will appear here as they're added`,
+            message: `Fields in this segment will appear here as they're added`,
             icon: "fields"
         },
-        sidebar: 'Fields in this list',
-        fetch: {fetchListFields: [list.id]},
-        get: "getFieldsByList",
-        breadcrumb: `${list.name}`,
+        sidebar: 'Fields in this segment',
+        fetch: {fetchSegmentFields: [segment.id]},
+        get: "getFieldsBySegment",
+        breadcrumb: `${segment.name}`,
         icon: "fields",
-        parent: referenceSections[`/reference/lists`]
+        parent: referenceSections[`/reference/segments`]
     },
-    [`/reference/lists/${list.id}/questions`]: {
-        id: `/reference/lists/${list.id}/questions`,
-        name: `Questions about ${list.name}`,
+    [`/reference/segments/${segment.id}/questions`]: {
+        id: `/reference/segments/${segment.id}/questions`,
+        name: `Questions about ${segment.name}`,
         empty: {
-            message: `Questions about this list will appear here as they're added`,
+            message: `Questions about this segment will appear here as they're added`,
             icon: "all",
             action: "Ask a question",
             link: "/q"
         },
         type: 'questions',
-        sidebar: 'Questions about this list',
-        breadcrumb: `${list.name}`,
-        fetch: {fetchLists: [], fetchQuestions: []},
-        get: 'getListQuestions',
+        sidebar: 'Questions about this segment',
+        breadcrumb: `${segment.name}`,
+        fetch: {fetchSegments: [], fetchQuestions: []},
+        get: 'getSegmentQuestions',
         icon: "all",
-        parent: referenceSections[`/reference/lists`]
+        parent: referenceSections[`/reference/segments`]
     },
-    [`/reference/lists/${list.id}/revisions`]: {
-        id: `/reference/lists/${list.id}/revisions`,
-        name: `Revision history for ${list.name}`,
+    [`/reference/segments/${segment.id}/revisions`]: {
+        id: `/reference/segments/${segment.id}/revisions`,
+        name: `Revision history for ${segment.name}`,
         sidebar: 'Revision history',
-        breadcrumb: `${list.name}`,
+        breadcrumb: `${segment.name}`,
         hidden: user && !user.is_superuser,
-        fetch: {fetchListRevisions: [list.id]},
-        get: 'getListRevisions',
+        fetch: {fetchSegmentRevisions: [segment.id]},
+        get: 'getSegmentRevisions',
         icon: "history",
-        parent: referenceSections[`/reference/lists`]
+        parent: referenceSections[`/reference/segments`]
     }
 } : {};
 
-const getListFieldSections = (list, field, user) => list && field ? {
-    [`/reference/lists/${list.id}/fields/${field.id}`]: {
-        id: `/reference/lists/${list.id}/fields/${field.id}`,
+const getSegmentFieldSections = (segment, field, user) => segment && field ? {
+    [`/reference/segments/${segment.id}/fields/${field.id}`]: {
+        id: `/reference/segments/${segment.id}/fields/${field.id}`,
         name: 'Details',
         update: 'updateField',
         type: 'field',
         breadcrumb: `${field.display_name}`,
-        fetch: {fetchListFields: [list.id]},
-        get: "getFieldByList",
+        fetch: {fetchSegmentFields: [segment.id]},
+        get: "getFieldBySegment",
         icon: "document",
         headerIcon: "field",
-        parent: getListSections(list)[`/reference/lists/${list.id}/fields`]
+        parent: getSegmentSections(segment)[`/reference/segments/${segment.id}/fields`]
     }
 } : {};
 
@@ -291,11 +291,11 @@ export const getMetric = createSelector(
     (metricId, metrics) => metrics[metricId] || { id: metricId }
 );
 
-export const getListId = (state) => Number.parseInt(state.router.params.listId);
-const getLists = (state) => state.metadata.lists;
-export const getList = createSelector(
-    [getListId, getLists],
-    (listId, lists) => lists[listId] || { id: listId }
+export const getSegmentId = (state) => Number.parseInt(state.router.params.segmentId);
+const getSegments = (state) => state.metadata.segments;
+export const getSegment = createSelector(
+    [getSegmentId, getSegments],
+    (segmentId, segments) => segments[segmentId] || { id: segmentId }
 );
 
 export const getDatabaseId = (state) => Number.parseInt(state.router.params.databaseId);
@@ -316,9 +316,9 @@ const getTable = createSelector(
     [getTableId, getTables],
     (tableId, tables) => tables[tableId] || { id: tableId }
 );
-const getTableByList = createSelector(
-    [getList, getTables],
-    (list, tables) => list ? tables[list.table_id] : {}
+const getTableBySegment = createSelector(
+    [getSegment, getTables],
+    (segment, tables) => segment ? tables[segment.table_id] : {}
 );
 
 export const getFieldId = (state) => Number.parseInt(state.router.params.fieldId);
@@ -327,16 +327,16 @@ const getFieldsByTable = createSelector(
     [getTable, getFields],
     (table, fields) => table && table.fields ? idsToObjectMap(table.fields, fields) : {}
 );
-const getFieldsByList = createSelector(
-    [getTableByList, getFields],
+const getFieldsBySegment = createSelector(
+    [getTableBySegment, getFields],
     (table, fields) => table && table.fields ? idsToObjectMap(table.fields, fields) : {}
 );
 const getField = createSelector(
     [getFieldId, getFields],
     (fieldId, fields) => fields[fieldId] || { id: fieldId }
 );
-const getFieldByList = createSelector(
-    [getFieldId, getFieldsByList],
+const getFieldBySegment = createSelector(
+    [getFieldId, getFieldsBySegment],
     (fieldId, fields) => fields[fieldId] || { id: fieldId }
 );
 
@@ -358,16 +358,16 @@ const getMetricRevisions = createSelector(
     (metricId, revisions) => i.getIn(revisions, ['metric', metricId]) || {}
 );
 
-const getListRevisions = createSelector(
-    [getListId, getRevisions],
-    (listId, revisions) => i.getIn(revisions, ['list', listId]) || {}
+const getSegmentRevisions = createSelector(
+    [getSegmentId, getRevisions],
+    (segmentId, revisions) => i.getIn(revisions, ['segment', segmentId]) || {}
 );
 
-const getListQuestions = createSelector(
-    [getListId, getQuestions],
-    (listId, questions) => Object.values(questions)
+const getSegmentQuestions = createSelector(
+    [getSegmentId, getQuestions],
+    (segmentId, questions) => Object.values(questions)
         .filter(question => Query.getFilters(question.dataset_query.query)
-            .some(filter => Query.isSegmentFilter(filter) && filter[1] === listId)
+            .some(filter => Query.isSegmentFilter(filter) && filter[1] === segmentId)
         )
         .reduce((map, question) => i.assoc(map, question.id, question), {})
 );
@@ -378,10 +378,10 @@ const getTableQuestions = createSelector(
         .filter(question => question.table_id === table.id)
 );
 
-const getDatabaseByList = createSelector(
-    [getList, getTables, getDatabases],
-    (list, tables, databases) => list && list.table_id && tables[list.table_id] &&
-        databases[tables[list.table_id].db_id] || {}
+const getDatabaseBySegment = createSelector(
+    [getSegment, getTables, getDatabases],
+    (segment, tables, databases) => segment && segment.table_id && tables[segment.table_id] &&
+        databases[tables[segment.table_id].db_id] || {}
 );
 
 const databaseToForeignKeys = (database) => database && database.tables_lookup ?
@@ -406,8 +406,8 @@ const databaseToForeignKeys = (database) => database && database.tables_lookup ?
         .reduce((map, foreignKey) => i.assoc(map, foreignKey.id, foreignKey), {}) :
     {};
 
-const getForeignKeysByList = createSelector(
-    [getDatabaseByList],
+const getForeignKeysBySegment = createSelector(
+    [getDatabaseBySegment],
     databaseToForeignKeys
 );
 
@@ -417,14 +417,14 @@ const getForeignKeysByDatabase = createSelector(
 );
 
 export const getForeignKeys = createSelector(
-    [getListId, getForeignKeysByList, getForeignKeysByDatabase],
-    (listId, foreignKeysByList, foreignKeysByDatabase) => listId ?
-        foreignKeysByList : foreignKeysByDatabase
+    [getSegmentId, getForeignKeysBySegment, getForeignKeysByDatabase],
+    (segmentId, foreignKeysBySegment, foreignKeysByDatabase) => segmentId ?
+        foreignKeysBySegment : foreignKeysByDatabase
 )
 
 export const getSections = createSelector(
-    [getSectionId, getMetric, getList, getDatabase, getTable, getField, getFieldByList, getUser, getReferenceSections],
-    (sectionId, metric, list, database, table, field, fieldByList, user, referenceSections) => {
+    [getSectionId, getMetric, getSegment, getDatabase, getTable, getField, getFieldBySegment, getUser, getReferenceSections],
+    (sectionId, metric, segment, database, table, field, fieldBySegment, user, referenceSections) => {
         // can be simplified if we had a single map of all sections
         if (referenceSections[sectionId]) {
             return referenceSections;
@@ -435,14 +435,14 @@ export const getSections = createSelector(
             return metricSections;
         }
 
-        const listSections = getListSections(list, user);
-        if (listSections[sectionId]) {
-            return listSections;
+        const segmentSections = getSegmentSections(segment, user);
+        if (segmentSections[sectionId]) {
+            return segmentSections;
         }
 
-        const listFieldSections = getListFieldSections(list, fieldByList);
-        if (listFieldSections[sectionId]) {
-            return listFieldSections;
+        const segmentFieldSections = getSegmentFieldSections(segment, fieldBySegment);
+        if (segmentFieldSections[sectionId]) {
+            return segmentFieldSections;
         }
 
         const databaseSections = getDatabaseSections(database);
@@ -474,10 +474,10 @@ const dataSelectors = {
     getMetricQuestions,
     getMetricRevisions,
     getMetrics,
-    getList,
-    getListQuestions,
-    getListRevisions,
-    getLists,
+    getSegment,
+    getSegmentQuestions,
+    getSegmentRevisions,
+    getSegments,
     getDatabase,
     getDatabases,
     getTable,
@@ -485,10 +485,10 @@ const dataSelectors = {
     getTables,
     getTablesByDatabase,
     getField,
-    getFieldByList,
+    getFieldBySegment,
     getFields,
     getFieldsByTable,
-    getFieldsByList
+    getFieldsBySegment
 };
 
 export const getData = (state) => {
@@ -542,7 +542,7 @@ export const getHasRevisionHistory = createSelector(
     [getSection],
     (section) =>
         section.type === 'metric' ||
-        section.type === 'list'
+        section.type === 'segment'
 )
 
 export const getIsEditing = (state) => state.reference.isEditing;

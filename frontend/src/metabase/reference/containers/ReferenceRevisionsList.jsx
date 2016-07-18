@@ -13,7 +13,7 @@ import {
     getSection,
     getData,
     getMetric,
-    getList,
+    getSegment,
     getTables,
     getUser,
     getLoading,
@@ -29,7 +29,7 @@ const mapStateToProps = (state, props) => {
         section: getSection(state),
         revisions: getData(state),
         metric: getMetric(state),
-        list: getList(state),
+        segment: getSegment(state),
         tables: getTables(state),
         user: getUser(state),
         loading: getLoading(state),
@@ -48,7 +48,7 @@ export default class RevisionHistoryApp extends Component {
         section: PropTypes.object.isRequired,
         revisions: PropTypes.object.isRequired,
         metric: PropTypes.object.isRequired,
-        list: PropTypes.object.isRequired,
+        segment: PropTypes.object.isRequired,
         tables: PropTypes.object.isRequired,
         user: PropTypes.object.isRequired,
         loading: PropTypes.bool,
@@ -61,14 +61,14 @@ export default class RevisionHistoryApp extends Component {
             section,
             revisions,
             metric,
-            list,
+            segment,
             tables,
             user,
             loading,
             loadingError
         } = this.props;
 
-        const entity = metric.id ? metric : list;
+        const entity = metric.id ? metric : segment;
 
         const empty = {
             icon: 'mine',
