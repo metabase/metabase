@@ -98,7 +98,7 @@ export default class ReferenceApp extends Component {
         return (
             <div>
                 <SidebarLayout
-                    style={ isEditing && { paddingTop: '40px' }}
+                    style={ isEditing ? { paddingTop: '40px' } : {}}
                     sidebar={<Sidebar sections={sections} breadcrumbs={breadcrumbs} />}
                 >
                     {children}

@@ -4,6 +4,7 @@ import React, { Component, PropTypes } from "react";
 import S from "./LabelIconPicker.css";
 
 import Icon from "metabase/components/Icon.jsx";
+import LabelIcon from "metabase/components/LabelIcon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 
 import { VirtualScroll } from "react-virtualized";
@@ -11,8 +12,6 @@ import "react-virtualized/styles.css";
 
 import * as colors from "metabase/lib/colors";
 import { categories } from "metabase/lib/emoji";
-
-import LabelIcon from "./LabelIcon.jsx";
 
 const ROW_HEIGHT = 45;
 const VISIBLE_ROWS = 6;

@@ -18,7 +18,7 @@ const EmptyState = ({ title, message, icon, image, action, link }) =>
         }
         <h3 className={S.emptyStateMessage}>{message}</h3>
         { action &&
-            <Link className="Button Button--primary Button--large mt2" to={link}>{action}</Link>
+            <Link className="Button Button--primary mt3" to={link}>{action}</Link>
         }
     </div>
 

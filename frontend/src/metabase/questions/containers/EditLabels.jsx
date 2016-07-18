@@ -29,8 +29,8 @@ import Icon from "metabase/components/Icon.jsx";
 
 // import LabelEditor from "../components/LabelEditor.jsx";
 import LabelEditorForm from "./LabelEditorForm.jsx";
-import LabelIcon from "../components/LabelIcon.jsx";
-import EmptyState from "../components/EmptyState.jsx";
+import LabelIcon from "metabase/components/LabelIcon.jsx";
+import EmptyState from "metabase/components/EmptyState.jsx";
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class EditLabels extends Component {
