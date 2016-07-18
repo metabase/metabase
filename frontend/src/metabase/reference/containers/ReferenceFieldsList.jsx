@@ -30,7 +30,13 @@ import {
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from 'metabase/reference/reference';
 
-const fieldsToFormFields = (fields) => Object.keys(fields);
+const fieldsToFormFields = (fields) => Object.keys(fields)
+    .map(key => [
+        `${key}.display_name`,
+        `${key}.special_type`,
+        `${key}.fk_target_field_id`
+    ])
+    .reduce((array, keys) => array.concat(keys), []);
 
 const mapStateToProps = (state, props) => {
     const data = getData(state);
@@ -42,13 +48,7 @@ const mapStateToProps = (state, props) => {
         loadingError: getError(state),
         user: getUser(state),
         isEditing: getIsEditing(state),
-        fields: Object.keys(data)
-            .map(key => [
-                `${key}.display_name`,
-                `${key}.special_type`,
-                `${key}.fk_target_field_id`
-            ])
-            .reduce((array, keys) => array.concat(keys), [])
+        fields: fieldsToFormFields(data)
     };
 }
 
@@ -70,10 +70,21 @@ export default class ReferenceEntityList extends Component {
     static propTypes = {
         style: PropTypes.object.isRequired,
         entities: PropTypes.object.isRequired,
+        foreignKeys: PropTypes.object.isRequired,
+        isEditing: PropTypes.bool,
+        startEditing: PropTypes.func.isRequired,
+        endEditing: PropTypes.func.isRequired,
+        startLoading: PropTypes.func.isRequired,
+        endLoading: PropTypes.func.isRequired,
+        setError: PropTypes.func.isRequired,
+        updateField: PropTypes.func.isRequired,
+        handleSubmit: PropTypes.func.isRequired,
+        user: PropTypes.object.isRequired,
         fields: PropTypes.object.isRequired,
         section: PropTypes.object.isRequired,
         loading: PropTypes.bool,
-        loadingError: PropTypes.object
+        loadingError: PropTypes.object,
+        submitting: PropTypes.bool
     };
 
     render() {

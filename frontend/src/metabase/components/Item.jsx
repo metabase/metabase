@@ -3,7 +3,6 @@ import React, { Component, PropTypes } from "react";
 import { Link } from "react-router";
 import S from "./List.css";
 
-import Urls from "metabase/lib/urls";
 import Icon from "./Icon.jsx";
 
 import cx from "classnames";

@@ -10,7 +10,6 @@ import i from 'icepick';
 import S from "metabase/components/List.css";
 import F from "./Field.css";
 
-import Icon from "metabase/components/Icon.jsx";
 import Select from "metabase/components/Select.jsx";
 
 import cx from "classnames";
@@ -104,6 +103,7 @@ const Field = ({
 }
 Field.propTypes = {
     field: PropTypes.object.isRequired,
+    foreignKeys: PropTypes.object.isRequired,
     url: PropTypes.string.isRequired,
     placeholder:        PropTypes.string,
     icon:               PropTypes.string,

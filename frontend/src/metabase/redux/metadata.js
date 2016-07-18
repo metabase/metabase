@@ -1,4 +1,4 @@
-import { handleActions, combineReducers, AngularResourceProxy, createAction, createThunkAction } from "metabase/lib/redux";
+import { handleActions, combineReducers, AngularResourceProxy, createThunkAction } from "metabase/lib/redux";
 import { normalize, Schema, arrayOf } from 'normalizr';
 import i from "icepick";
 import _ from "underscore";
@@ -59,8 +59,6 @@ export const updateData = async ({dispatch, getState, requestStatePath, existing
     const existingData = i.getIn(getState(), existingStatePath);
     const statePath = requestStatePath.concat(['update']);
     try {
-        const requestState = i.getIn(getState(), ["requests", ...statePath]);
-
         dispatch(setRequestState({ statePath, state: "LOADING" }));
         const data = await putData();
         dispatch(setRequestState({ statePath, state: "LOADED" }));

@@ -63,10 +63,12 @@ export const tryFetchData = async (props) => {
 @connect(mapStateToProps, mapDispatchToProps)
 export default class ReferenceApp extends Component {
     static propTypes = {
-        params:         PropTypes.object.isRequired,
-        children:       PropTypes.any.isRequired,
-        sections:       PropTypes.object.isRequired,
-        section:       PropTypes.object.isRequired,
+        params: PropTypes.object.isRequired,
+        breadcrumbs: PropTypes.array,
+        location: PropTypes.object.isRequired,
+        children: PropTypes.any.isRequired,
+        sections: PropTypes.object.isRequired,
+        section: PropTypes.object.isRequired,
         isEditing: PropTypes.bool
     };
 

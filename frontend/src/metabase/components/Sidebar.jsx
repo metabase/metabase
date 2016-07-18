@@ -3,9 +3,6 @@ import React, { PropTypes } from "react";
 import { Link } from "react-router";
 import S from "./Sidebar.css";
 
-import Icon from "./Icon.jsx";
-import LoadingAndErrorWrapper from "./LoadingAndErrorWrapper.jsx";
-
 import Breadcrumbs from "./Breadcrumbs.jsx";
 
 import LabelIcon from "./LabelIcon.jsx";
@@ -38,35 +35,10 @@ const Sidebar = ({
         </ul>
     </div>
 
-    // { () => labels ?
-    //     // TODO: factor this out properly for reuse in questions
-    //     <QuestionSidebarSectionTitle name="Labels" href="/questions/edit/labels" />
-    //     <LoadingAndErrorWrapper loading={labelsLoading} error={labelsError} noBackground noWrapper>
-    //     { () => labels.length > 0 ? // eslint-disable-line
-    //         <ul>
-    //         { labels.map(label =>
-    //             <QuestionSidebarItem key={label.id} href={"/questions/label/"+label.slug} {...label} />
-    //         )}
-    //         </ul>
-    //     :
-    //         <div className={S.noLabelsMessage}>
-    //             <div>
-    //               <Icon name="label" />
-    //             </div>
-    //             Create labels to group and manage questions.
-    //         </div>
-    //     }
-    //     </LoadingAndErrorWrapper>
-    //     <ul>
-    //         <li className={S.divider} />
-    //         <QuestionSidebarItem name="Archive" href="/questions/archived" icon="archive" />
-    //     </ul>
-    //     : null
-    // }
-
 Sidebar.propTypes = {
     className:      PropTypes.string,
     style:          PropTypes.object,
+    breadcrumbs:    PropTypes.array,
     sections:       PropTypes.object.isRequired,
     labels:         PropTypes.array,
     labelsLoading:  PropTypes.bool,

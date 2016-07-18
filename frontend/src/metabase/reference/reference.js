@@ -1,4 +1,4 @@
-import { handleActions, createAction, createThunkAction } from 'metabase/lib/redux';
+import { handleActions, createAction } from 'metabase/lib/redux';
 
 import i from 'icepick';
 

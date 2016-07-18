@@ -9,4 +9,8 @@ const List = ({ children }) =>
         { children }
     </ul>
 
+List.propTypes = {
+    children:   PropTypes.any.isRequired
+};
+
 export default pure(List);

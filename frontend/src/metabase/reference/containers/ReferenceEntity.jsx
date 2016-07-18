@@ -66,9 +66,25 @@ const validate = (values, props) => props.hasRevisionHistory ?
 })
 export default class EntityItem extends Component {
     static propTypes = {
-        entity: PropTypes.object,
+        style: PropTypes.object.isRequired,
+        entity: PropTypes.object.isRequired,
+        user: PropTypes.object.isRequired,
+        foreignKeys: PropTypes.object,
         isEditing: PropTypes.bool,
-        user: PropTypes.object,
+        startEditing: PropTypes.func.isRequired,
+        endEditing: PropTypes.func.isRequired,
+        startLoading: PropTypes.func.isRequired,
+        endLoading: PropTypes.func.isRequired,
+        setError: PropTypes.func.isRequired,
+        updateField: PropTypes.func.isRequired,
+        handleSubmit: PropTypes.func.isRequired,
+        fields: PropTypes.object.isRequired,
+        section: PropTypes.object.isRequired,
+        hasDisplayName: PropTypes.bool,
+        hasRevisionHistory: PropTypes.bool,
+        loading: PropTypes.bool,
+        loadingError: PropTypes.object,
+        submitting: PropTypes.bool
     };
 
     render() {

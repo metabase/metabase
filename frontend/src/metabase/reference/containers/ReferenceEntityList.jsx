@@ -57,10 +57,6 @@ export default class ReferenceEntityList extends Component {
             loading
         } = this.props;
 
-        const empty = {
-            icon: 'mine',
-            message: 'You haven\'t added any databases yet.'
-        };
         return (
             <div style={style} className="full">
                 <div className="wrapper wrapper--trim">
