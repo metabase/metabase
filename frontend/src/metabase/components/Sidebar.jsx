@@ -21,11 +21,13 @@ const Sidebar = ({
 }) =>
     <div className={cx(S.sidebar, className)} style={style}>
         <ul>
-            { breadcrumbs && breadcrumbs.length > 1 &&
-                <div className={S.breadcrumbs}>
-                    <Breadcrumbs crumbs={breadcrumbs} inSidebar={true} />
-                </div>
-            }
+            <div className={S.breadcrumbs}>
+                <Breadcrumbs
+                    crumbs={breadcrumbs}
+                    inSidebar={true}
+                    placeholder="Data Reference"
+                />
+            </div>
             {Object.values(sections)
                 .filter(section => !section.hidden)
                 .map(section =>
