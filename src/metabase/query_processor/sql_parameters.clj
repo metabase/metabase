@@ -1,7 +1,15 @@
 (ns metabase.query-processor.sql-parameters
   ;; TODO - is it more appropriate to name this namespace something like `native-parameters` ?
   (:require [clojure.string :as s]
-            [metabase.util :as u]))
+            [honeysql.core :as hsql]
+            [metabase.db :as db]
+            [metabase.models.field :refer [Field], :as field]
+            [metabase.query-processor.expand :as ql]
+            [metabase.util :as u])
+  (:import metabase.models.field.FieldInstance))
+
+;; TODO - we have dynamic *driver* variables like this in several places; it probably makes more sense to see if we can share one used somewhere else instead
+(def ^:private ^:dynamic *driver* nil)
 
 ;;; ------------------------------------------------------------ String Substituion ------------------------------------------------------------
 
@@ -9,19 +17,26 @@
   (^:private ->sql ^String [this]))
 
 (extend-protocol ISQLParamSubstituion
-  nil     (->sql [_] "NULL")
-  Object  (->sql [this]
-            (str this))
-  Boolean (->sql [this]
-            (if this "TRUE" "FALSE"))
-  String  (->sql [this]
-            (str \' (s/replace this #"'" "\\\\'") \')))
+  nil           (->sql [_] "NULL")
+  Object        (->sql [this]
+                  (str this))
+  Boolean       (->sql [this]
+                  (if this "TRUE" "FALSE"))
+  String        (->sql [this]
+                  (str \' (s/replace this #"'" "\\\\'") \'))
+  FieldInstance (->sql [this]
+                  (println "FieldInstance -> SQL:" (u/pprint-to-str 'blue this))
+                  ;; For SQL drivers, generate appropriate qualified & quoted identifier
+                  ;; Mative param substitution is only enabled for SQL for the time being. We'll need to tweak this a bit so when we add support for other DBs in the future.
+                  (first (hsql/format (apply hsql/qualify (field/qualified-name-components this))
+                           :quoting ((resolve 'metabase.driver.generic-sql/quote-style) *driver*)))))
 
 (defn- replace-param [s params match param]
   (let [k (keyword param)
         _ (assert (contains? params k)
             (format "Unable to substitute '%s': param not specified." param))
-        v (->sql (k params))]
+        v (->sql (u/prog1 (k params)
+                   (println "->sql" <>)))]
     (s/replace-first s match v)))
 
 (defn- handle-simple [s params]
@@ -52,30 +67,44 @@
 
 ;;; ------------------------------------------------------------ Param Resolution ------------------------------------------------------------
 
-{:database      213,
- :type          "native",
- :native        {:query "SELECT * \nFROM orders\nWHERE id = {{id}};"},
- :template_tags {:id {:name "id", :display_name "ID", :type "number", :required true, :default "100"}},
- :parameters    [{:type "category", :target ["variable" ["template-tag" "id"]], :value "2"}],
- :constraints   {:max-results 10000, :max-results-bare-rows 2000},
- :info          {:executed-by 21, :uuid "a0286e10-465f-49b1-a51b-631d9c44615e", :query-hash -1098692062, :query-type "native"},
- :driver        {},
- :settings      {}}
-
 (defn- param-value-for-tag [tag params]
-  (let [target->param-value (u/key-by :target params)
-        param-value         (target->param-value ["variable" ["template-tag" (:name tag)]])]
-    (:value param-value)))
+  (when (not= (:type tag) "dimension")
+    (some (fn [param]
+            (when (= (:target param) ["variable" ["template-tag" (:name tag)]])
+              (:value param)))
+          params)))
+
+(defn- dimension->field-id [dimension]
+  (:field-id (ql/expand-ql-sexpr dimension)))
+
+(defn- dimension-value-for-tag [tag]
+  (when-let [dimension (:dimension tag)]
+    (if-let [field-id (dimension->field-id dimension)]
+      (db/select-one [Field :name :parent_id :table_id], :id field-id)
+      (println "TODO - Handle non-Field-ID dimension:" dimension))))
 
 (defn- default-value-for-tag [{:keys [default display_name required]}]
   (or default
       (when required
         (throw (Exception. (format "'%s' is a required param." display_name))))))
 
+(defn- parse-value-for-type [type value]
+  value
+  ;; TODO - do we ever need to do anything special for one of the types?
+  #_(case (keyword type)
+    :number    value
+    :text      value
+    :date      value
+    :dimension value))
+
 (defn- value-for-tag [tag params]
-  ;; TODO - need to parse tag based on type
-  (or (param-value-for-tag tag params)
-      (default-value-for-tag tag)))
+  (parse-value-for-type (:type tag) (or (u/prog1 (param-value-for-tag tag params)
+                                          (when <>
+                                            (println "param-value-for-tag" <>)))
+                                        (u/prog1 (dimension-value-for-tag tag)
+                                          (when <>
+                                            (println "dimension-value-for-tag" (u/pprint-to-str <>))))
+                                        (default-value-for-tag tag))))
 
 (defn- query->params-map [{tags :template_tags, params :parameters}]
   (into {} (for [[k tag] tags]
@@ -84,6 +113,8 @@
 
 ;;; ------------------------------------------------------------ Public API ------------------------------------------------------------
 
-(defn expand-params [query]
-  (println "NEED TO EXPAND:\n" (u/pprint-to-str 'magenta query)) ; NOCOMMIT
-  (update-in query [:native :query] (u/rpartial substitute (query->params-map query))))
+(defn expand-params
+  "Expand parameters inside a *native* QUERY."
+  [query]
+  (binding [*driver* (:driver query)]
+    (update-in query [:native :query] (u/rpartial substitute (query->params-map query)))))

@@ -136,7 +136,7 @@
   *  `:standard-deviation-aggregations` - Does this driver support [standard deviation aggregations](https://github.com/metabase/metabase/wiki/Query-Language-'98#stddev-aggregation)?
   *  `:expressions` - Does this driver support [expressions](https://github.com/metabase/metabase/wiki/Query-Language-'98#expressions) (e.g. adding the values of 2 columns together)?
   *  `:dynamic-schema` -  Does this Database have no fixed definitions of schemas? (e.g. Mongo)
-  *  `:native-parameters` - The driver supports parameter substitution on native queries.")
+  *  `:native-parameters` - Does the driver support parameter substitution on native queries?")
 
   (field-values-lazy-seq ^clojure.lang.Sequential [this, ^FieldInstance field]
     "Return a lazy sequence of all values of FIELD.

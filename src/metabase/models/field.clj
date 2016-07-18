@@ -106,7 +106,10 @@
   [{field-name :name, table-id :table_id, parent-id :parent_id}]
   (conj (if-let [parent (Field parent-id)]
           (qualified-name-components parent)
-          [(db/select-one-field :name 'Table, :id table-id)])
+          (let [{table-name :name, schema :schema} (db/select-one ['Table :name :schema], :id table-id)]
+            (conj (when schema
+                    [schema])
+                  table-name)))
         field-name))
 
 (defn qualified-name
