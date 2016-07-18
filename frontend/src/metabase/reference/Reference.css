@@ -16,12 +16,12 @@
 }
 
 :local(.subheader) {
-    composes: text-white pl4 pr3 flex align-center from "style";
+    composes: text-white flex align-center from "style";
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
-    height: 40px;
+    height: 43px;
     background-color: var(--subheader-color);
 }
 
@@ -43,7 +43,6 @@
 }
 
 :local(.saveButton) {
-    composes: mr1 from "style";
     composes: subheaderButton;
 }
 
