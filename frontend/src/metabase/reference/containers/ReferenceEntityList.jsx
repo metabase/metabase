@@ -26,7 +26,7 @@ import * as metadataActions from "metabase/redux/metadata";
 
 const mapStateToProps = (state, props) => ({
     section: getSection(state),
-    entities: {},
+    entities: getData(state),
     user: getUser(state),
     loading: getLoading(state),
     loadingError: getError(state)
@@ -111,12 +111,19 @@ export default class ReferenceEntityList extends Component {
                             <EmptyState
                                 title={section.empty.title}
                                 message={user.is_superuser ?
-                                    section.empty.adminMessage :
+                                    section.empty.adminMessage || section.empty.message :
                                     section.empty.message
                                 }
+                                icon={section.empty.icon}
                                 image={section.empty.image}
-                                action={user.is_superuser && section.empty.action}
-                                link={user.is_superuser && section.empty.link}
+                                action={user.is_superuser ?
+                                    section.empty.adminAction || section.empty.action :
+                                    section.empty.action
+                                }
+                                link={user.is_superuser ?
+                                    section.empty.adminLink || section.empty.link :
+                                    section.empty.link
+                                }
                             />
                         }
                     </div>

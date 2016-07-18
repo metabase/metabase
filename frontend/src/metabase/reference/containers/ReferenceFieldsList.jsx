@@ -97,11 +97,6 @@ export default class ReferenceEntityList extends Component {
             submitting
         } = this.props;
 
-        const empty = {
-            icon: 'mine',
-            message: 'You haven\'t added any databases yet.'
-        };
-
         return (
             <form style={style} className="full"
                 onSubmit={handleSubmit(async formFields => {
@@ -216,7 +211,25 @@ export default class ReferenceEntityList extends Component {
                     </div>
                     :
                     <div className={S.empty}>
-                        <EmptyState message={empty.message} icon={empty.icon} />
+                        { section.empty &&
+                            <EmptyState
+                                title={section.empty.title}
+                                message={user.is_superuser ?
+                                    section.empty.adminMessage || section.empty.message :
+                                    section.empty.message
+                                }
+                                icon={section.empty.icon}
+                                image={section.empty.image}
+                                action={user.is_superuser ?
+                                    section.empty.adminAction || section.empty.action :
+                                    section.empty.action
+                                }
+                                link={user.is_superuser ?
+                                    section.empty.adminLink || section.empty.link :
+                                    section.empty.link
+                                }
+                            />
+                        }
                     </div>
                 }
                 </LoadingAndErrorWrapper>

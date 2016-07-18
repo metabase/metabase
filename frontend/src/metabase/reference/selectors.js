@@ -23,8 +23,8 @@ const referenceSections = {
             adminMessage: "Defining common metrics for your team makes it even easier to ask questions",
             message: "Metrics will appear here once your admins have created some",
             image: "/app/img/metrics-list",
-            action: "Create a metric",
-            link: "/admin/datamodel/database"
+            adminAction: "Create a metric",
+            adminLink: "/admin/datamodel/database"
         },
         breadcrumb: "Metrics",
         // mapping of propname to args of dispatch function
@@ -41,8 +41,8 @@ const referenceSections = {
             adminMessage: "Defining common metrics for your team makes it even easier to ask questions",
             message: "Metrics will appear here once your admins have created some",
             image: "/app/img/metrics-list",
-            action: "Create a metric",
-            link: "/admin/datamodel/database"
+            adminAction: "Create a metric",
+            adminLink: "/admin/datamodel/database"
         },
         breadcrumb: "Lists",
         fetch: {fetchLists: []},
@@ -58,8 +58,8 @@ const referenceSections = {
             adminMessage: "Your databses will appear here once you connect one",
             message: "Databases will appear here once your admins have added some",
             image: "/app/img/databases-list",
-            action: "Connect a database",
-            link: "/admin/databases/create"
+            adminAction: "Connect a database",
+            adminLink: "/admin/databases/create"
         },
         breadcrumb: "Databases",
         fetch: {fetchDatabases: []},
@@ -87,6 +87,12 @@ const getMetricSections = (metric, user) => metric ? {
     [`/reference/metrics/${metric.id}/questions`]: {
         id: `/reference/metrics/${metric.id}/questions`,
         name: `Questions about ${metric.name}`,
+        empty: {
+            message: `Questions about this metric will appear here as they're added`,
+            icon: "all",
+            action: "Ask a question",
+            link: "/q"
+        },
         type: 'questions',
         sidebar: 'Questions about this metric',
         breadcrumb: `${metric.name}`,
@@ -124,10 +130,11 @@ const getListSections = (list, user) => list ? {
     [`/reference/lists/${list.id}/fields`]: {
         id: `/reference/lists/${list.id}/fields`,
         name: `Fields in ${list.name}`,
+        empty: {
+            message: `Fields in this list will appear here as they're added`,
+            icon: "fields"
+        },
         sidebar: 'Fields in this list',
-        // FIXME: breaks if we refresh on this route, looks like a race condition
-        // due to fetchTableMetadata being dependent on list.table_id from fetchLists
-        // resolves itself once we navigate away and back though
         fetch: {fetchListFields: [list.id]},
         get: "getFieldsByList",
         breadcrumb: `${list.name}`,
@@ -137,6 +144,12 @@ const getListSections = (list, user) => list ? {
     [`/reference/lists/${list.id}/questions`]: {
         id: `/reference/lists/${list.id}/questions`,
         name: `Questions about ${list.name}`,
+        empty: {
+            message: `Questions about this list will appear here as they're added`,
+            icon: "all",
+            action: "Ask a question",
+            link: "/q"
+        },
         type: 'questions',
         sidebar: 'Questions about this list',
         breadcrumb: `${list.name}`,
@@ -189,6 +202,10 @@ const getDatabaseSections = (database) => database ? {
     [`/reference/databases/${database.id}/tables`]: {
         id: `/reference/databases/${database.id}/tables`,
         name: `Tables in ${database.name}`,
+        empty: {
+            message: `Tables in this database will appear here as they're added`,
+            icon: "table2"
+        },
         sidebar: 'Tables in this database',
         breadcrumb: `${database.name}`,
         fetch: {fetchDatabaseMetadata: [database.id]},
@@ -214,6 +231,10 @@ const getTableSections = (database, table) => database && table ? {
     [`/reference/databases/${database.id}/tables/${table.id}/fields`]: {
         id: `/reference/databases/${database.id}/tables/${table.id}/fields`,
         name: `Fields in ${table.display_name}`,
+        empty: {
+            message: `Fields in this table will appear here as they're added`,
+            icon: "fields"
+        },
         sidebar: 'Fields in this table',
         breadcrumb: `${table.display_name}`,
         fetch: {fetchDatabaseMetadata: [database.id]},
@@ -224,6 +245,12 @@ const getTableSections = (database, table) => database && table ? {
     [`/reference/databases/${database.id}/tables/${table.id}/questions`]: {
         id: `/reference/databases/${database.id}/tables/${table.id}/questions`,
         name: `Questions about ${table.display_name}`,
+        empty: {
+            message: `Questions about this table will appear here as they're added`,
+            icon: "all",
+            action: "Ask a question",
+            link: "/q"
+        },
         type: 'questions',
         sidebar: 'Questions about this table',
         breadcrumb: `${table.display_name}`,
