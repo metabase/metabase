@@ -197,70 +197,70 @@
                                                  dimension-param))]})
         :native :query)))
 
-;; TODO dimension (date/single)
+;; dimension (date/single)
 (expect
-  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" = '2016-07-01';"
+  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = '2016-07-01';"
   (expand-with-dimension-param {:type "date/single", :value "2016-07-01"}))
 
 ;; dimension (date/range)
 (expect
-  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN '2016-07-01' AND '2016-08-01';"
+  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN '2016-07-01' AND '2016-08-01';"
   (expand-with-dimension-param {:type "date/range", :value "2016-07-01~2016-08-01"}))
 
 
 ;; dimension (date/month-year)
 (expect
-  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN '2016-07-01' AND '2016-07-31';"
+  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN '2016-07-01' AND '2016-07-31';"
   (expand-with-dimension-param {:type "date/month-year", :value "2016-07"}))
 
 ;; dimension (date/quarter-year)
 (expect
-  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN '2016-01-01' AND '2016-03-31';"
+  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN '2016-01-01' AND '2016-03-31';"
   (expand-with-dimension-param {:type "date/quarter-year", :value "Q1-2016"}))
 
 ;; relative date -- "yesterday"
 (expect
-  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" = '2016-06-06';"
+  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = '2016-06-06';"
   (expand-with-dimension-param {:type "date/range", :value "yesterday"}))
 
 ;; relative date -- "past7days"
 (expect
-  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN '2016-05-31' AND '2016-06-06';"
+  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN '2016-05-31' AND '2016-06-06';"
   (expand-with-dimension-param {:type "date/range", :value "past7days"}))
 
 ;; relative date -- "past30days"
 (expect
-  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN '2016-05-08' AND '2016-06-06';"
+  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN '2016-05-08' AND '2016-06-06';"
   (expand-with-dimension-param {:type "date/range", :value "past30days"}))
 
 ;; relative date -- "thisweek"
 (expect
-  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN '2016-06-05' AND '2016-06-11';"
+  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN '2016-06-05' AND '2016-06-11';"
   (expand-with-dimension-param {:type "date/range", :value "thisweek"}))
 
 ;; relative date -- "thismonth"
 (expect
-  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN '2016-06-01' AND '2016-06-30';"
+  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN '2016-06-01' AND '2016-06-30';"
   (expand-with-dimension-param {:type "date/range", :value "thismonth"}))
 
 ;; relative date -- "thisyear"
 (expect
-  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN '2016-01-01' AND '2016-12-31';"
+  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN '2016-01-01' AND '2016-12-31';"
   (expand-with-dimension-param {:type "date/range", :value "thisyear"}))
 
 ;; relative date -- "lastweek"
 (expect
-  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN '2016-05-29' AND '2016-06-04';"
+  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN '2016-05-29' AND '2016-06-04';"
   (expand-with-dimension-param {:type "date/range", :value "lastweek"}))
 
 ;; relative date -- "lastmonth"
 (expect
-  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN '2016-05-01' AND '2016-05-31';"
+  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN '2016-05-01' AND '2016-05-31';"
   (expand-with-dimension-param {:type "date/range", :value "lastmonth"}))
 
 ;; relative date -- "lastyear"
 (expect
-  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN '2015-01-01' AND '2015-12-31';"
+  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN '2015-01-01' AND '2015-12-31';"
   (expand-with-dimension-param {:type "date/range", :value "lastyear"}))
 
 ;; dimension with no value -- just replace with an always true clause (e.g. "WHERE 1")

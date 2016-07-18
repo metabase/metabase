@@ -1,12 +1,14 @@
 (ns metabase.query-processor.sql-parameters
-  ;; TODO - is it more appropriate to name this namespace something like `native-parameters` ?
+  "Param substitution for *SQL* drivers."
   (:require [clojure.string :as s]
             [honeysql.core :as hsql]
             [metabase.db :as db]
             [metabase.models.field :refer [Field], :as field]
             [metabase.query-processor.expand :as ql]
             [metabase.util :as u])
-  (:import metabase.models.field.FieldInstance))
+  (:import clojure.lang.Keyword
+           honeysql.types.SqlCall
+           metabase.models.field.FieldInstance))
 
 ;; TODO - we have dynamic *driver* variables like this in several places; it probably makes more sense to see if we can share one used somewhere else instead
 (def ^:private ^:dynamic *driver* nil)
@@ -27,30 +29,40 @@
     (->sql (map->DateRange ((resolve 'metabase.query-processor.parameters/date->range) value nil))) ; TODO - get timezone from query dict
     (str "= " (->sql value))))
 
+(defn- honeysql->sql ^String [x]
+  (first (hsql/format x
+           :quoting ((resolve 'metabase.driver.generic-sql/quote-style) *driver*))))
+
 (extend-protocol ISQLParamSubstituion
-  nil           (->sql [_] "NULL")
-  Object        (->sql [this]
-                  (str this))
-  Boolean       (->sql [this]
-                  (if this "TRUE" "FALSE"))
-  NumberValue   (->sql [this]
-                  (:value this))
-  String        (->sql [this]
-                  (str \' (s/replace this #"'" "\\\\'") \'))
-  FieldInstance (->sql [this]
-                  ;; For SQL drivers, generate appropriate qualified & quoted identifier
-                  ;; Mative param substitution is only enabled for SQL for the time being. We'll need to tweak this a bit so when we add support for other DBs in the future.
-                  (first (hsql/format (apply hsql/qualify (field/qualified-name-components this))
-                           :quoting ((resolve 'metabase.driver.generic-sql/quote-style) *driver*))))
-  DateRange     (->sql [{:keys [start end]}]
-                  (if (= start end)
-                    (format "= '%s'" start)
-                    (format "BETWEEN '%s' AND '%s'" start end)))
-  Dimension     (->sql [{:keys [field param]}]
-                  (if-not param
-                    ;; if the param is `nil` just put in something that will always be true, such as `1` (e.g. `WHERE 1`)
-                    "1"
-                    (format "%s %s" (->sql field) (dimension-value->sql (:type param) (:value param))))))
+  nil         (->sql [_]    "NULL")
+  Object      (->sql [this] (str this))
+  Boolean     (->sql [this] (if this "TRUE" "FALSE"))
+  NumberValue (->sql [this] (:value this))
+  String      (->sql [this] (str \' (s/replace this #"'" "\\\\'") \'))
+  Keyword     (->sql [this] (honeysql->sql this))
+  SqlCall     (->sql [this] (honeysql->sql this))
+
+  FieldInstance
+  (->sql [this]
+    (->sql (let [identifier (apply hsql/qualify (field/qualified-name-components this))]
+             (if (re-find #"^date/" (:type this))
+               ((resolve 'metabase.driver.generic-sql/date) *driver* :day identifier)
+               identifier))))
+
+  DateRange
+  (->sql [{:keys [start end]}]
+    (if (= start end)
+      (format "= '%s'" start)
+      (format "BETWEEN '%s' AND '%s'" start end)))
+
+  Dimension
+  (->sql [{:keys [field param]}]
+    (if-not param
+      ;; if the param is `nil` just put in something that will always be true, such as `1` (e.g. `WHERE 1`)
+      "1"
+      (let [param-type (:type param)]
+        (format "%s %s" (->sql (assoc field :type param-type)) (dimension-value->sql param-type (:value param)))))))
+
 
 (defn- replace-param [s params match param]
   (let [k (keyword param)
