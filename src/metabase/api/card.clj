@@ -146,12 +146,12 @@
 (defendpoint POST "/"
   "Create a new `Card`."
   [:as {{:keys [dataset_query display name parameters public_perms visualization_settings], :as body} :body}]
-  {dataset_query          [Required Dict]
+  {dataset_query          [Required Dict]           ; added for parameterized SQL (why?)
    display                [Required NonEmptyString]
    name                   [Required NonEmptyString]
-   parameters             [Required ArrayOfMaps]
+   parameters             [Required ArrayOfMaps]    ; added for parameterized SQL (why?)
    public_perms           [Required PublicPerms]
-   visualization_settings [Required Dict]}
+   visualization_settings [Required Dict]}          ; added for parameterized SQL (why?)
   (card/create-card body *current-user-id*))
 
 (defendpoint GET "/:id"
@@ -167,11 +167,11 @@
 (defendpoint PUT "/:id"
   "Update a `Card`."
   [id :as {{:keys [archived dataset_query display name parameters public_perms visualization_settings], :as body} :body}]
-  {archived               [Boolean]
-   dataset_query          [Required Dict]
+  {archived               Boolean
+   dataset_query          [Required Dict]           ; added for parameterized SQL (why?)
    display                [Required NonEmptyString]
    name                   [Required NonEmptyString]
-   parameters             [Required ArrayOfMaps]
+   parameters             [Required ArrayOfMaps]    ; added for parameterized SQL (why?)
    public_perms           [Required PublicPerms]
    visualization_settings [Required Dict]}
   (let-404 [card (Card id)]

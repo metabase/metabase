@@ -1,10 +1,13 @@
 (ns metabase.query-processor.parameters
+  "Code for handling parameter substitution in MBQL & native queries."
   (:require [clojure.core.match :refer [match]]
             [clojure.string :as s]
-            [clj-time.core :as t]
-            [clj-time.format :as tf]
+            (clj-time [core :as t]
+                      [format :as tf])
             [medley.core :as m]
-            [metabase.driver :as driver])
+            [metabase.driver :as driver]
+            [metabase.query-processor.sql-parameters :as native-params]
+            [metabase.util :as u])
   (:import (org.joda.time DateTimeConstants DateTime)))
 
 
@@ -133,13 +136,13 @@
     (seq addtl)       addtl
     :else             []))
 
-(defn- expand-params-mbql [query-dict [{:keys [target value], :as param} & rest]]
+(defn- expand-params:mbql [query-dict [{:keys [target value], :as param} & rest]]
   (if param
     (if (and param target value)
       (let [filter-subclause (build-filter-clause param)
             query            (assoc-in query-dict [:query :filter] (merge-filter-clauses (get-in query-dict [:query :filter]) filter-subclause))]
-        (expand-params-mbql query rest))
-      (expand-params-mbql query-dict rest))
+        (expand-params:mbql query rest))
+      (expand-params:mbql query-dict rest))
     query-dict))
 
 
@@ -147,95 +150,10 @@
 ;;; |                                             SQL QUERIES                                               |
 ;;; +-------------------------------------------------------------------------------------------------------+
 
-
-(defn- extract-dates [value report-timezone]
-  (cond
-    ;; no value supplied
-    (nil? value)                     {:start nil, :end nil}
-    ;; relative date range
-    (contains? relative-dates value) (relative-date->range value report-timezone)
-    ;; absolute date range
-    :else                            (absolute-date->range value)))
-
-(defn- expand-date-range-param [report-timezone {[target param-name] :target, param-type :type, param-value :value, :as param}]
-  (if-not (s/starts-with? param-type "date")
-    param
-    (let [{:keys [start end]} (extract-dates param-value report-timezone)]
-      [(assoc param :target [target (str param-name ":start")], :value start)
-       (assoc param :target [target (str param-name ":end")],   :value end)])))
-
-(defn- substitute-param [param-name value query]
-  ;; TODO: it would be safer to use prepared statements here
-  (s/replace query (re-pattern (str "\\{\\{" param-name "\\}\\}")) value))
-
-(defn- substitute-all-params [query-dict [{:keys [value], [_ param-name] :target, :as param} & rest]]
-  (if param
-    (if-not (and param param-name value (string? param-name))
-      (substitute-all-params query-dict rest)
-      (let [query (update-in query-dict [:native :query] (partial substitute-param param-name value))]
-        (substitute-all-params query rest)))
-    query-dict))
-
-;; these are various regex patterns used by the functions below to parse/extract our custom clauses
-;; an "outer-clause" is of the form [[PREFIX ...]] and an "inner-clause" is of the form <...>
-;; an incomplete clause is any clause which has an unsubstituted parameter left in it.  e.g. [[AND foo={{bar}}]]
-(def ^:private ^:const outer-clause-pattern            #"\[\[.*?\]\]")
-(def ^:private ^:const outer-clause-prefix-pattern     #"^\[\[(.*?)\s.*\]\]$")
-(def ^:private ^:const incomplete-outer-clause-pattern #"\[\[.*?\{\{.*?\}\}.*?\]\]")
-(def ^:private ^:const inner-clause-pattern            #"<(.*?)>")
-(def ^:private ^:const incomplete-inner-clause-pattern #"<.*?\{\{.*?\}\}.*?>")
-
-(defn- remove-incomplete-clauses
-  "Scans the native query body and removes any custom clauses which were not substituted with a parameter."
-  [query-dict]
-  (let [find-and-replace (fn [sql]
-                           (-> sql
-                               (s/replace incomplete-outer-clause-pattern "")
-                               (s/replace incomplete-inner-clause-pattern "")))]
-    (update-in query-dict [:native :query] find-and-replace)))
-
-(defn- format-outer-clause
-  "Formats an outer clause, finding all inner clauses and joining them via `AND` and then concatenating that onto the clause prefix.
-   e.g. \"[[WHERE <foo='bar'> <tou='can'>]]\" -> \"WHERE foo='bar' AND tou='can'\""
-  [clause]
-  (let [prefix (second (re-find outer-clause-prefix-pattern clause))]
-    ;; re-seq produces a vector for each match like [matched-form grouping1] and we only want grouping1.
-    (str prefix " " (s/join " AND " (map second (re-seq inner-clause-pattern clause))))))
-
-(defn- process-outer-clauses
-  "Takes a native query body and completely processes all included outer clauses present."
-  [query-dict]
-  (if-let [outer-clauses (re-seq outer-clause-pattern (get-in query-dict [:native :query]))]
-    (update-in query-dict [:native :query] (fn [q]
-                                             (loop [sql                   q
-                                                    [outer-clause & rest] outer-clauses]
-                                               (if outer-clause
-                                                 (recur (s/replace-first sql outer-clause (format-outer-clause outer-clause)) rest)
-                                                 sql))))
-    query-dict))
-
-(defn- process-inner-clauses
-  "Takes a native query body and completely processes all included inner clauses present.
-   e.g. \"<foo='bar'>\" -> \"foo='bar'\""
-  [query-dict]
-  (if-let [inner-clauses (re-seq inner-clause-pattern (get-in query-dict [:native :query]))]
-    (update-in query-dict [:native :query] (fn [q]
-                                             (loop [sql                      q
-                                                    [[orig stripped] & rest] inner-clauses]
-                                               (if orig
-                                                 (recur (s/replace-first sql orig stripped) rest)
-                                                 sql))))
-    query-dict))
-
-(defn- expand-params-native [{:keys [driver], :as query-dict} params]
+(defn- expand-params:native [{:keys [driver] :as query}]
   (if-not (driver/driver-supports? driver :native-parameters)
-    query-dict
-    (let [report-timezone (get-in query-dict [:settings :report-timezone])
-          params          (flatten (map (partial expand-date-range-param report-timezone) params))]
-      (-> (substitute-all-params query-dict params)
-          remove-incomplete-clauses
-          process-outer-clauses
-          process-inner-clauses))))
+    query
+    (native-params/expand-params query)))
 
 
 ;;; +-------------------------------------------------------------------------------------------------------+
@@ -247,7 +165,6 @@
   "Expand any :parameters set on the QUERY-DICT and apply them to the query definition.
    This function removes the :parameters attribute from the QUERY-DICT as part of its execution."
   [{:keys [parameters], :as query-dict}]
-  (let [query (dissoc query-dict :parameters)]
-    (if (= :query (keyword (:type query)))
-      (expand-params-mbql query parameters)
-      (expand-params-native query parameters))))
+  (if (= :query (keyword (:type query-dict)))
+    (expand-params:mbql (dissoc query-dict :parameters) parameters)
+    (expand-params:native query-dict)))
