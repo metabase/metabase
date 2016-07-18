@@ -100,6 +100,13 @@
          ;; the above values are JodaTime objects, so unparse them to iso8601 strings
          (m/map-vals (partial tf/unparse formatter)))))
 
+(defn date->range
+  "Convert a relative or absolute date range VALUE to a map with `:start` and `:end` keys."
+  [value report-timezone]
+  (if (contains? relative-dates value)
+    (relative-date->range value report-timezone)
+    (absolute-date->range value)))
+
 
 ;;; +-------------------------------------------------------------------------------------------------------+
 ;;; |                                             MBQL QUERIES                                              |

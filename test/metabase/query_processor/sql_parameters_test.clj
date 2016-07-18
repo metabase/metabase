@@ -1,11 +1,12 @@
 (ns metabase.query-processor.sql-parameters-test
-  (:require [expectations :refer :all]
+  (:require [clj-time.core :as t]
+            [expectations :refer :all]
             [metabase.driver :as driver]
             [metabase.query-processor.sql-parameters :refer :all]
             [metabase.test.data :as data]))
 
 
-;;; simple substitution -- {{x}}
+;;; ------------------------------------------------------------ simple substitution -- {{x}} ------------------------------------------------------------
 
 (expect "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
   (substitute "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}}"
@@ -24,7 +25,7 @@
     {:toucans_are_cool true}))
 
 
-;;; optional substitution -- [[ ... {{x}} ... ]]
+;;; ------------------------------------------------------------ optional substitution -- [[ ... {{x}} ... ]] ------------------------------------------------------------
 
 (expect
   "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
@@ -132,7 +133,7 @@
     {:num_toucans 5}))
 
 
-;;; ------------------------------------------------------------ end-to-end tests ------------------------------------------------------------
+;;; ------------------------------------------------------------ expansion tests: variables ------------------------------------------------------------
 
 ;; unspecified optional param
 (expect
@@ -151,7 +152,7 @@
 
 ;; default value
 (expect
-  "SELECT * FROM orders WHERE id = '100';"
+  "SELECT * FROM orders WHERE id = 100;"
   (-> (expand-params {:native        {:query "SELECT * FROM orders WHERE id = {{id}};"}
                       :template_tags {:id {:name "id", :display_name "ID", :type "number", :required true, :default "100"}}
                       :parameters    []})
@@ -159,13 +160,13 @@
 
 ;; specified param (numbers)
 (expect
-  "SELECT * FROM orders WHERE id = '2';"
+  "SELECT * FROM orders WHERE id = 2;"
   (-> (expand-params {:native        {:query "SELECT * FROM orders WHERE id = {{id}};"}
                       :template_tags {:id {:name "id", :display_name "ID", :type "number", :required true, :default "100"}}
                       :parameters    [{:type "category", :target ["variable" ["template-tag" "id"]], :value "2"}]})
       :native :query))
 
-;; specified param (date)
+;; specified param (date/single)
 (expect
   "SELECT * FROM orders WHERE created_at > '2016-07-19';"
   (-> (expand-params {:native        {:query "SELECT * FROM orders WHERE created_at > {{created_at}};"}
@@ -181,11 +182,98 @@
                       :parameters    [{:type "category", :target ["variable" ["template-tag" "category"]], :value "Gizmo"}],})
       :native :query))
 
-;; dimension
+
+;;; ------------------------------------------------------------ expansion tests: dimensions ------------------------------------------------------------
+
+#_(:require 'metabase.test.data.h2 :reload)
+
+(defn- expand-with-dimension-param [dimension-param]
+  (with-redefs [t/now (fn [] (t/date-time 2016 06 07 12 0 0))]
+    (-> (expand-params {:driver        (driver/engine->driver :h2)
+                        :native        {:query "SELECT * FROM checkins WHERE {{date}};"}
+                        :template_tags {:date {:name "date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}}
+                        :parameters    [(when dimension-param
+                                          (merge {:target ["dimension" ["template-tag" "date"]]}
+                                                 dimension-param))]})
+        :native :query)))
+
+;; TODO dimension (date/single)
 (expect
-  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" > '2016-01-01';"
-  (-> (expand-params {:driver        (driver/engine->driver :h2)
-                      :native        {:query "SELECT * FROM checkins WHERE {{date}} > '2016-01-01';"},
-                      :template_tags {:date {:name "date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}},
-                      :parameters    []})
-      :native :query))
+  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" = '2016-07-01';"
+  (expand-with-dimension-param {:type "date/single", :value "2016-07-01"}))
+
+;; dimension (date/range)
+(expect
+  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN '2016-07-01' AND '2016-08-01';"
+  (expand-with-dimension-param {:type "date/range", :value "2016-07-01~2016-08-01"}))
+
+
+;; dimension (date/month-year)
+(expect
+  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN '2016-07-01' AND '2016-07-31';"
+  (expand-with-dimension-param {:type "date/month-year", :value "2016-07"}))
+
+;; dimension (date/quarter-year)
+(expect
+  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN '2016-01-01' AND '2016-03-31';"
+  (expand-with-dimension-param {:type "date/quarter-year", :value "Q1-2016"}))
+
+;; relative date -- "yesterday"
+(expect
+  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" = '2016-06-06';"
+  (expand-with-dimension-param {:type "date/range", :value "yesterday"}))
+
+;; relative date -- "past7days"
+(expect
+  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN '2016-05-31' AND '2016-06-06';"
+  (expand-with-dimension-param {:type "date/range", :value "past7days"}))
+
+;; relative date -- "past30days"
+(expect
+  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN '2016-05-08' AND '2016-06-06';"
+  (expand-with-dimension-param {:type "date/range", :value "past30days"}))
+
+;; relative date -- "thisweek"
+(expect
+  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN '2016-06-05' AND '2016-06-11';"
+  (expand-with-dimension-param {:type "date/range", :value "thisweek"}))
+
+;; relative date -- "thismonth"
+(expect
+  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN '2016-06-01' AND '2016-06-30';"
+  (expand-with-dimension-param {:type "date/range", :value "thismonth"}))
+
+;; relative date -- "thisyear"
+(expect
+  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN '2016-01-01' AND '2016-12-31';"
+  (expand-with-dimension-param {:type "date/range", :value "thisyear"}))
+
+;; relative date -- "lastweek"
+(expect
+  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN '2016-05-29' AND '2016-06-04';"
+  (expand-with-dimension-param {:type "date/range", :value "lastweek"}))
+
+;; relative date -- "lastmonth"
+(expect
+  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN '2016-05-01' AND '2016-05-31';"
+  (expand-with-dimension-param {:type "date/range", :value "lastmonth"}))
+
+;; relative date -- "lastyear"
+(expect
+  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" BETWEEN '2015-01-01' AND '2015-12-31';"
+  (expand-with-dimension-param {:type "date/range", :value "lastyear"}))
+
+;; dimension with no value -- just replace with an always true clause (e.g. "WHERE 1")
+(expect
+  "SELECT * FROM checkins WHERE 1;"
+  (expand-with-dimension-param nil))
+
+;; dimension -- number
+(expect
+  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" = 100;"
+  (expand-with-dimension-param {:type "number", :value "100"}))
+
+;; dimension -- text
+(expect
+  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" = '100';"
+  (expand-with-dimension-param {:type "text", :value "100"}))

@@ -16,19 +16,41 @@
 (defprotocol ^:private ISQLParamSubstituion
   (^:private ->sql ^String [this]))
 
+(defrecord ^:private Dimension [^FieldInstance field, param])
+
+(defrecord ^:private DateRange [start end])
+
+(defrecord ^:private NumberValue [value])
+
+(defn- dimension-value->sql [dimension-type value]
+  (if (contains? #{"date/range" "date/month-year" "date/quarter-year"} dimension-type)
+    (->sql (map->DateRange ((resolve 'metabase.query-processor.parameters/date->range) value nil))) ; TODO - get timezone from query dict
+    (str "= " (->sql value))))
+
 (extend-protocol ISQLParamSubstituion
   nil           (->sql [_] "NULL")
   Object        (->sql [this]
                   (str this))
   Boolean       (->sql [this]
                   (if this "TRUE" "FALSE"))
+  NumberValue   (->sql [this]
+                  (:value this))
   String        (->sql [this]
                   (str \' (s/replace this #"'" "\\\\'") \'))
   FieldInstance (->sql [this]
                   ;; For SQL drivers, generate appropriate qualified & quoted identifier
                   ;; Mative param substitution is only enabled for SQL for the time being. We'll need to tweak this a bit so when we add support for other DBs in the future.
                   (first (hsql/format (apply hsql/qualify (field/qualified-name-components this))
-                           :quoting ((resolve 'metabase.driver.generic-sql/quote-style) *driver*)))))
+                           :quoting ((resolve 'metabase.driver.generic-sql/quote-style) *driver*))))
+  DateRange     (->sql [{:keys [start end]}]
+                  (if (= start end)
+                    (format "= '%s'" start)
+                    (format "BETWEEN '%s' AND '%s'" start end)))
+  Dimension     (->sql [{:keys [field param]}]
+                  (if-not param
+                    ;; if the param is `nil` just put in something that will always be true, such as `1` (e.g. `WHERE 1`)
+                    "1"
+                    (format "%s %s" (->sql field) (dimension-value->sql (:type param) (:value param))))))
 
 (defn- replace-param [s params match param]
   (let [k (keyword param)
@@ -65,21 +87,25 @@
 
 ;;; ------------------------------------------------------------ Param Resolution ------------------------------------------------------------
 
+(defn param-with-target [params target]
+  (some (fn [param]
+          (when (= (:target param) target)
+            param))
+        params))
+
 (defn- param-value-for-tag [tag params]
   (when (not= (:type tag) "dimension")
-    (some (fn [param]
-            (when (= (:target param) ["variable" ["template-tag" (:name tag)]])
-              (:value param)))
-          params)))
+    (:value (param-with-target params ["variable" ["template-tag" (:name tag)]]))))
 
 (defn- dimension->field-id [dimension]
   (:field-id (ql/expand-ql-sexpr dimension)))
 
-(defn- dimension-value-for-tag [tag]
+(defn- dimension-value-for-tag [tag params]
   (when-let [dimension (:dimension tag)]
-    (if-let [field-id (dimension->field-id dimension)]
-      (db/select-one [Field :name :parent_id :table_id], :id field-id)
-      (throw (Exception. (str "Don't know how to handle dimension: " dimension))))))
+    (let [field-id (or (dimension->field-id dimension)
+                       (throw (Exception. (str "Don't know how to handle dimension: " dimension))))]
+      (map->Dimension {:field (db/select-one [Field :name :parent_id :table_id], :id field-id)
+                       :param (param-with-target params ["dimension" ["template-tag" (:name tag)]])}))))
 
 (defn- default-value-for-tag [{:keys [default display_name required]}]
   (or default
@@ -87,17 +113,15 @@
         (throw (Exception. (format "'%s' is a required param." display_name))))))
 
 (defn- parse-value-for-type [type value]
-  value
-  ;; TODO - do we ever need to do anything special for one of the types?
-  #_(case (keyword type)
-    :number    value
-    :text      value
-    :date      value
-    :dimension value))
+  (cond
+    (= type "number")                                (->NumberValue value)
+    (and (= type "dimension")
+         (= (get-in value [:param :type]) "number")) (update-in value [:param :value] ->NumberValue)
+    :else                                            value))
 
 (defn- value-for-tag [tag params]
   (parse-value-for-type (:type tag) (or (param-value-for-tag tag params)
-                                        (dimension-value-for-tag tag)
+                                        (dimension-value-for-tag tag params)
                                         (default-value-for-tag tag))))
 
 (defn- query->params-map [{tags :template_tags, params :parameters}]
