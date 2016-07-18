@@ -191,17 +191,17 @@ export default class ReferenceEntityList extends Component {
                 <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>
                 { () => Object.keys(entities).length > 0 ?
                     <div className="wrapper wrapper--trim">
-                        <div className={cx(S.item, F.field)}>
-                            <div className={S.leftIcons}>
-                            </div>
-                            <div className={cx(S.itemTitle, F.fieldName)}>
-                                Field name
-                            </div>
-                            <div className={cx(S.itemTitle, F.fieldType)}>
-                                Field type
-                            </div>
-                            <div className={cx(S.itemTitle, F.fieldDataType)}>
-                                Data type
+                        <div className={cx(S.item)}>
+                            <div className={R.columnHeader}>
+                                <div className={cx(S.itemTitle, F.fieldName)}>
+                                    Field name
+                                </div>
+                                <div className={cx(S.itemTitle, F.fieldType)}>
+                                    Field type
+                                </div>
+                                <div className={cx(S.itemTitle, F.fieldDataType)}>
+                                    Data type
+                                </div>
                             </div>
                         </div>
                         <List>

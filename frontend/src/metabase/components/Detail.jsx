@@ -1,7 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 import { Link } from "react-router";
-import S from "./List.css";
+import S from "./Detail.css";
 
 import Icon from "./Icon.jsx";
 
@@ -9,21 +9,18 @@ import cx from "classnames";
 import pure from "recompose/pure";
 
 const Detail = ({ name, description, placeholder, url, icon, isEditing, field }) =>
-    <div className={cx(S.item)}>
-        <div className={S.leftIcons}>
-            { icon && <Icon className={S.chartIcon} name={icon} width={40} height={40} /> }
-        </div>
-        <div className={S.itemBody}>
-            <div className={S.itemTitle}>
+    <div className={cx(S.detail)}>
+        <div className={S.detailBody}>
+            <div className={S.detailTitle}>
                 { url ?
-                    <Link to={url} className={S.itemName}>{name}</Link> :
-                    <span className={S.itemName}>{name}</span>
+                    <Link to={url} className={S.detailName}>{name}</Link> :
+                    <span className={S.detailName}>{name}</span>
                 }
             </div>
-            <div className={cx(S.itemSubtitle, { "mt1" : true })}>
+            <div className={cx(S.detailSubtitle, { "mt1" : true })}>
                 { isEditing ?
                     <textarea
-                        className={S.itemTextArea}
+                        className={S.detailTextArea}
                         placeholder={placeholder}
                         {...field}
                         defaultValue={description}

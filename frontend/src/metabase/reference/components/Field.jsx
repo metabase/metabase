@@ -31,7 +31,7 @@ const Field = ({
                 <div className={cx(S.itemTitle, F.fieldName)}>
                     { isEditing ?
                         <input
-                            className={S.itemTitleTextInput}
+                            className={F.fieldNameTextInput}
                             type="text"
                             placeholder={field.name}
                             {...formField.display_name}
@@ -43,6 +43,7 @@ const Field = ({
                 <div className={F.fieldType}>
                     { isEditing ?
                         <Select
+                            triggerClasses={F.fieldSelect}
                             placeholder="Select a field type"
                             value={MetabaseCore.field_special_types_map[field.special_type]}
                             options={
@@ -82,6 +83,7 @@ const Field = ({
                         (formField.special_type.value === 'fk' ||
                         (field.special_type === 'fk' && formField.special_type.value === undefined)) &&
                         <Select
+                            triggerClasses={F.fieldSelect}
                             placeholder="Select a field type"
                             value={foreignKeys[field.fk_target_field_id] || {}}
                             options={Object.values(foreignKeys)}

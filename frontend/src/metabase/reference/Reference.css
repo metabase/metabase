@@ -1,5 +1,13 @@
 :root {
+    --title-color: #606E7B;
     --subheader-color: #6CAFED;
+}
+
+:local(.headerTextInput) {
+    composes: rounded bordered p2 from "style";
+    font-size: 18px;
+    color: var(--title-color);
+    width: 100%;
 }
 
 :local(.subheader) {
@@ -19,6 +27,14 @@
 :local(.subheaderButton) {
     border: none;
     color: var(--subheader-color);
+}
+
+:local(.columnHeader) {
+    composes: flex flex-full border-top from "style";
+    border-color: #EDF5FB;
+    margin-left: 50px;
+    padding-top: 20px;
+    padding-bottom: 20px;
 }
 
 :local(.saveButton) {

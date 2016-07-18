@@ -9,6 +9,7 @@ import * as MetabaseCore from "metabase/lib/core";
 import { isNumericBaseType } from "metabase/lib/schema_metadata";
 
 import S from "metabase/components/List.css";
+import D from "metabase/components/Detail.css";
 import R from "metabase/reference/Reference.css";
 
 import List from "metabase/components/List.jsx";
@@ -153,7 +154,7 @@ export default class EntityItem extends Component {
                 }
                 <div className="wrapper wrapper--trim">
                     <div className={S.header}>
-                        <div className={S.leftIcons}>
+                        <div className={cx("pb2", S.leftIcons)}>
                             { section.headerIcon &&
                                 <Icon
                                     className="text-brand"
@@ -163,38 +164,40 @@ export default class EntityItem extends Component {
                                 />
                             }
                         </div>
-                        { isEditing ?
-                            hasDisplayName ?
-                                <input
-                                    className={S.headerTextInput}
-                                    type="text"
-                                    placeholder={entity.name}
-                                    {...display_name}
-                                    defaultValue={entity.display_name}
-                                /> :
-                                <input
-                                    className={S.headerTextInput}
-                                    type="text"
-                                    placeholder={entity.name}
-                                    {...name}
-                                    defaultValue={entity.name}
-                                /> :
-                            hasDisplayName ?
-                                entity.display_name || entity.name : entity.name
-                        }
-                        { user.is_superuser && !isEditing &&
-                            <div className={S.headerButton}>
-                                <a
-                                    onClick={startEditing}
-                                    className={cx("Button", "Button--borderless", R.editButton)}
-                                >
-                                    <div className="flex align-center relative">
-                                        <Icon name="pencil" width="16px" height="16px" />
-                                        <span className="ml1">Edit</span>
-                                    </div>
-                                </a>
-                            </div>
-                        }
+                        <div className="flex flex-full pb2 border-bottom">
+                            { isEditing ?
+                                hasDisplayName ?
+                                    <input
+                                        className={R.headerTextInput}
+                                        type="text"
+                                        placeholder={entity.name}
+                                        {...display_name}
+                                        defaultValue={entity.display_name}
+                                    /> :
+                                    <input
+                                        className={R.headerTextInput}
+                                        type="text"
+                                        placeholder={entity.name}
+                                        {...name}
+                                        defaultValue={entity.name}
+                                    /> :
+                                hasDisplayName ?
+                                    entity.display_name || entity.name : entity.name
+                            }
+                            { user.is_superuser && !isEditing &&
+                                <div className={S.headerButton}>
+                                    <a
+                                        onClick={startEditing}
+                                        className={cx("Button", "Button--borderless", R.editButton)}
+                                    >
+                                        <div className="flex align-center relative">
+                                            <Icon name="pencil" width="16px" height="16px" />
+                                            <span className="ml1">Edit</span>
+                                        </div>
+                                    </a>
+                                </div>
+                            }
+                        </div>
                     </div>
                 </div>
                 <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>
@@ -276,17 +279,16 @@ export default class EntityItem extends Component {
                             { section.type === 'field' &&
                                 //TODO: could use some refactoring. a lot of overlap with Field.jsx and Item.jsx
                                 <li className="relative">
-                                    <div className={cx(S.item)}>
-                                        <div className={S.leftIcons}>
-                                        </div>
-                                        <div className={S.itemBody}>
-                                            <div className={S.itemTitle}>
-                                                <span className={S.itemName}>Field type</span>
+                                    <div className={cx(D.detail)}>
+                                        <div className={D.detailBody}>
+                                            <div className={D.detailTitle}>
+                                                <span className={D.detailName}>Field type</span>
                                             </div>
-                                            <div className={cx(S.itemSubtitle, { "mt1" : true })}>
+                                            <div className={cx(D.detailSubtitle, { "mt1" : true })}>
                                                 <span>
                                                     { isEditing ?
                                                         <Select
+                                                            triggerClasses="rounded bordered p1 inline-block"
                                                             placeholder="Select a field type"
                                                             value={MetabaseCore.field_special_types_map[entity.special_type]}
                                                             options={
@@ -318,6 +320,7 @@ export default class EntityItem extends Component {
                                                         (special_type.value === 'fk' ||
                                                         (entity.special_type === 'fk' && special_type.value === undefined)) &&
                                                         <Select
+                                                            triggerClasses="rounded bordered p1 inline-block"
                                                             placeholder="Select a field type"
                                                             value={foreignKeys[entity.fk_target_field_id] || {}}
                                                             options={Object.values(foreignKeys)}

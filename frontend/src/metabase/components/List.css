@@ -27,17 +27,6 @@
     font-size: 24px;
 }
 
-:local(.headerTextInput) {
-    padding: 10px 20px;
-    font-size: 18px;
-    width: 100%;
-    outline-color: var(--subtitle-color);
-}
-
-:local(.headerLink) {
-
-}
-
 :local(.headerButton) {
     composes: flex align-center flex-align-right from "style";
     font-size: 14px;
@@ -68,17 +57,12 @@
     font-size: 18px;
 }
 
-:local(.itemTitleTextInput) {
-    composes: headerTextInput;
-    font-size: 14px;
-}
-
 :local(.itemName) {
     composes: mr1 from "style";
     composes: inline-block from "style";
 }
 
-:local(a.itemName):hover {
+:local(.itemName):hover {
     color: var(--blue-color);
 }
 
@@ -89,15 +73,6 @@
 
 :local(.itemSubtitleBold) {
     color: var(--title-color);
-}
-
-:local(.itemTextArea) {
-    resize: none;
-    padding: 20px;
-    font-size: 14px;
-    width: 100%;
-    min-height: 100px;
-    outline-color: var(--subtitle-color);
 }
 
 :local(.icons) {

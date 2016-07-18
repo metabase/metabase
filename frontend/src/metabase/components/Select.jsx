@@ -4,6 +4,8 @@ import ColumnarSelector from "metabase/components/ColumnarSelector.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 
+import cx from "classnames";
+
 export default class Select extends Component {
     constructor(props, context) {
         super(props, context);
@@ -17,6 +19,7 @@ export default class Select extends Component {
         updateImmediately: PropTypes.bool,
         options: PropTypes.array.isRequired,
         placeholder: PropTypes.string,
+        triggerClasses: PropTypes.string,
         onChange: PropTypes.func,
         optionNameFn: PropTypes.func,
         optionValueFn: PropTypes.func
@@ -76,7 +79,7 @@ export default class Select extends Component {
                 ref="popover"
                 className={this.props.className}
                 triggerElement={triggerElement}
-                triggerClasses={"AdminSelect " + (this.props.className || "")}
+                triggerClasses={this.props.triggerClasses || cx("AdminSelect", this.props.className)}
             >
                 <div onClick={(e) => e.stopPropagation()}>
                     <ColumnarSelector
