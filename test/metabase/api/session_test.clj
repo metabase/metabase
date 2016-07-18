@@ -211,7 +211,8 @@
 ;; should totally work if the email domains match up
 (expect
   {:first_name "Rasta", :last_name "Toucan", :email "rasta@sf-toucannery.com"}
-  (with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"]
+  (with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"
+                                  admin-email                             "rasta@toucans.com"]
     (select-keys (u/prog1 (google-auth-create-new-user! "Rasta" "Toucan" "rasta@sf-toucannery.com")
                    (db/cascade-delete! User :id (:id <>)))                                          ; make sure we clean up after ourselves !
                  [:first_name :last_name :email])))
@@ -234,7 +235,8 @@
 ;; test that a user that doesn't exist with a *different* domain than the auto-create accounts domain gets an exception
 (expect
   clojure.lang.ExceptionInfo
-  (with-temporary-setting-values [google-auth-auto-create-accounts-domain nil]
+  (with-temporary-setting-values [google-auth-auto-create-accounts-domain nil
+                                  admin-email                             "rasta@toucans.com"]
     (google-auth-fetch-or-create-user! "Rasta" "Can" "rasta@sf-toucannery.com")))
 
 ;; test that a user that doesn't exist with the *same* domain as the auto-create accounts domain means a new user gets created

@@ -1,6 +1,6 @@
 ## Getting answers in Slack with Metabot
 
-You can already send data to Slack on  a set schedule via [Pulses](http://www.metabase.com/docs/latest/users-guide/07-pulses) but what about when you need an answer right now? Say hello to Metabot.
+You can already send data to Slack on  a set schedule via [Pulses](09-pulses.md) but what about when you need an answer right now? Say hello to Metabot.
 
 Metabot helps add context to conversations you’re having in Slack by letting you insert results from Metabase.
 
@@ -37,7 +37,7 @@ If you don’t have a sense of which questions you want to view in  Slack, you c
 
 ## To review
 
-- [Connect to Slack](http://www.metabase.com/docs/latest/users-guide/07-pulses) to start using Metabot.
+- [Connect to Slack](09-pulses.md) to start using Metabot.
 - Show data from Metabase in Slack using ```metabot show <question-id>```
 - Search for questions by typing ```metabot show <search-term>```
 - Get a list of questions by typing ```metabot list```

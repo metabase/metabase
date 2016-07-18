@@ -114,7 +114,7 @@
   (^String [date-format]
    (format-date date-format (System/currentTimeMillis)))
   (^String [date-format date]
-   (time/unparse (->DateTimeFormatter date-format) (coerce/from-long (.getTime (->Timestamp date))))))
+   (time/unparse (->DateTimeFormatter date-format) (coerce/from-sql-time (->Timestamp date)))))
 
 (def ^{:arglists '([] [date])} date->iso-8601
   "Format DATE a an ISO-8601 string."
@@ -307,6 +307,13 @@
       [default args]))
 
 
+(defmacro ignore-exceptions
+  "Simple macro which wraps the given expression in a try/catch block and ignores the exception if caught."
+  {:style/indent 0}
+  [& body]
+  `(try ~@body (catch Throwable ~'_)))
+
+
 ;; TODO - rename to `email?`
 (defn is-email?
   "Is STRING a valid email address?"
@@ -317,15 +324,18 @@
 
 ;; TODO - rename to `url?`
 (defn is-url?
-  "Is STRING a valid HTTP/HTTPS URL?"
+  "Is STRING a valid HTTP/HTTPS URL? (This only handles `localhost` and domains like `metabase.com`; URLs containing IP addresses will return `false`.)"
   ^Boolean [^String s]
-  (boolean (when s
-             (when-let [^java.net.URL url (try (java.net.URL. s)
-                                               (catch java.net.MalformedURLException _ ; TODO - use ignore-exceptions
-                                                 nil))]
-               (when (and (.getProtocol url) (.getAuthority url))
-                 (and (re-matches #"^https?$" (.getProtocol url))           ; these are both automatically downcased
-                      (re-matches #"^.+\..{2,}$" (.getAuthority url)))))))) ; this is the part like 'google.com'. Make sure it contains at least one period and 2+ letter TLD
+  (boolean (when (seq s)
+             (when-let [^java.net.URL url (ignore-exceptions (java.net.URL. s))]
+               ;; these are both automatically downcased
+               (let [protocol (.getProtocol url)
+                     host     (.getHost url)]
+                 (and protocol
+                      host
+                      (re-matches #"^https?$" protocol)
+                      (or (re-matches #"^.+\..{2,}$" host) ; 2+ letter TLD
+                          (= host "localhost"))))))))
 
 
 ;; TODO - This should be made into a separate `sequence-of-maps?` function and a `maybe?` function
@@ -524,12 +534,6 @@
   (apply (wrap-try-catch f) (concat (butlast args) (if (sequential? (last args))
                                                      (last args)
                                                      [(last args)]))))
-
-(defmacro ignore-exceptions
-  "Simple macro which wraps the given expression in a try/catch block and ignores the exception if caught."
-  {:style/indent 0}
-  [& body]
-  `(try ~@body (catch Throwable ~'_)))
 
 (defn deref-with-timeout
   "Call `deref` on a FUTURE and throw an exception if it takes more than TIMEOUT-MS."
