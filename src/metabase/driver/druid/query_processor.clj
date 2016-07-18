@@ -224,13 +224,13 @@
 (defn- unit->granularity
   [unit]
   (let [iso-period (case unit
-                  :minute  "PT1M"
-                  :hour    "PT1H"
-                  :day     "P1D"
-                  :week    "P1W"
-                  :month   "P1M"
-                  :quarter "P3M"
-                  :year    "P1Y")]
+                     :minute  "PT1M"
+                     :hour    "PT1H"
+                     :day     "P1D"
+                     :week    "P1W"
+                     :month   "P1M"
+                     :quarter "P3M"
+                     :year    "P1Y")]
   {:type      "period"
    :period    iso-period
    :timeZone  (or (get-in *query* [:settings :report-timezone])
@@ -509,6 +509,8 @@
 (defn- build-druid-query [query]
   {:pre [(map? query)]}
   (let [query-type (druid-query-type query)]
+    (log/error "THIS SHOULD BE A Query")
+    (log/error query)
     (loop [druid-query (query-type->default-query query-type), [f & more] [handle-source-table
                                                                            handle-aggregation
                                                                            handle-breakout
@@ -569,6 +571,8 @@
                      :settings (:settings query))]
     (binding [*query* mbql-query]
       (let [[query-type druid-query] (build-druid-query mbql-query)]
+        (log/error "THIS Query from tonative")    
+        (log/error druid-query)
         {:query      druid-query
          :query-type query-type}))))
 
@@ -585,6 +589,11 @@
                         (post-process query-type)
                         remove-bonus-keys)
         columns    (vec (keys (first results)))]
+    (log/error "THIS Query from execute-query")    
+    (log/error query) 
+    (log/error "THIS result from execute-query")    
+    (log/error results)
+
     {:columns   columns
      :rows      (for [row results]
                   (mapv row columns))
