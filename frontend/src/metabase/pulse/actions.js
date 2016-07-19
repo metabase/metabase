@@ -60,7 +60,7 @@ export const savePulse = createThunkAction(SAVE_PULSE, function(pulse) {
 
 export const saveEditingPulse = createThunkAction(SAVE_EDITING_PULSE, function() {
     return async function(dispatch, getState) {
-        let { editingPulse } = getState();
+        let { pulse: { editingPulse } } = getState();
         if (editingPulse.id != null) {
             return await Pulse.update(editingPulse);
         } else {
