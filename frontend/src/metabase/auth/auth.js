@@ -3,6 +3,7 @@ import { handleActions, combineReducers, AngularResourceProxy, createThunkAction
 
 import MetabaseCookies from "metabase/lib/cookies";
 import MetabaseUtils from "metabase/lib/utils";
+import MetabaseAnalytics from "metabase/lib/analytics";
 
 import { clearGoogleAuthCredentials } from "metabase/lib/auth";
 
@@ -25,6 +26,7 @@ export const login = createThunkAction("AUTH_LOGIN", function(credentials, onCha
             // since we succeeded, lets set the session cookie
             MetabaseCookies.setSessionCookie(newSession.id);
 
+            MetabaseAnalytics.trackEvent('Auth', 'Login');
             // TODO: redirect after login (carry user to intended destination)
             // this is ridiculously stupid.  we have to wait (300ms) for the cookie to actually be set in the browser :(
             setTimeout(() => onChangeLocation("/"), 300);
@@ -46,6 +48,8 @@ export const loginGoogle = createThunkAction("AUTH_LOGIN_GOOGLE", function(googl
 
             // since we succeeded, lets set the session cookie
             MetabaseCookies.setSessionCookie(newSession.id);
+
+            MetabaseAnalytics.trackEvent('Auth', 'Google Auth Login');
 
             // TODO: redirect after login (carry user to intended destination)
             // this is ridiculously stupid.  we have to wait (300ms) for the cookie to actually be set in the browser :(
@@ -73,6 +77,7 @@ export const logout = createThunkAction("AUTH_LOGOUT", function(onChangeLocation
             // actively delete the session
             SessionApi.delete({'session_id': sessionId});
         }
+        MetabaseAnalytics.trackEvent('Auth', 'Logout');
 
         setTimeout(() => onChangeLocation("/auth/login"), 300);
     };
@@ -96,6 +101,8 @@ export const passwordReset = createThunkAction("AUTH_PASSWORD_RESET", function(t
                 // we should have a valid session that we can use immediately!
                 MetabaseCookies.setSessionCookie(result.session_id);
             }
+
+            MetabaseAnalytics.trackEvent('Auth', 'Password Reset');
 
             return {
                 success: true,

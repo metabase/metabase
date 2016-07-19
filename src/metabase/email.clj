@@ -1,11 +1,11 @@
 (ns metabase.email
   (:require [clojure.string :as s]
             [clojure.tools.logging :as log]
-            [postal.core :as postal]
-            [postal.support :refer [make-props]]
+            (postal [core :as postal]
+                    [support :refer [make-props]])
             [metabase.models.setting :refer [defsetting] :as setting]
             [metabase.util :as u])
-  (:import [javax.mail Session]))
+  (:import javax.mail.Session))
 
 ;; ## CONFIG
 
@@ -31,16 +31,20 @@
 (defn send-message
   "Send an email to one or more RECIPIENTS.
    RECIPIENTS is a sequence of email addresses; MESSAGE-TYPE must be either `:text` or `:html`.
+
      (email/send-message
-      :subject      \"[Metabase] Password Reset Request\"
-      :recipients   [\"cam@metabase.com\"]
-      :message-type :text
-      :message      \"How are you today?\")
+       :subject      \"[Metabase] Password Reset Request\"
+       :recipients   [\"cam@metabase.com\"]
+       :message-type :text
+       :message      \"How are you today?\")
+
    Upon success, this returns the MESSAGE that was just sent."
+  {:style/indent 0}
   [& {:keys [subject recipients message-type message]}]
   {:pre [(string? subject)
          (sequential? recipients)
-         (every? u/is-email? recipients)
+         (or (every? u/is-email? recipients)
+             (log/error "recipients contains an invalid email:" recipients))
          (contains? #{:text :html :attachments} message-type)
          (if (= message-type :attachments) (sequential? message) (string? message))]}
   (try

@@ -77,6 +77,11 @@ Once you have added this connection, you will be taken into the app and you'll b
 
 For a more detailed walkthrough, check out our [Getting Started](docs/getting-started.md) guide.
 
+# Frequently Asked Questions
+
+Some questions come up over and over again. Check here first:
+[FAQ](docs/faq.md)
+
 # Security Disclosure
 
 Security is very important to us. If discover any issue regarding security, please disclose the information responsibly by sending an email to security@metabase.com and not by creating a GitHub issue.
