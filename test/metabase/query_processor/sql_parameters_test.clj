@@ -2,8 +2,12 @@
   (:require [clj-time.core :as t]
             [expectations :refer :all]
             [metabase.driver :as driver]
+            [metabase.query-processor :as qp]
             [metabase.query-processor.sql-parameters :refer :all]
-            [metabase.test.data :as data]))
+            [metabase.query-processor-test :refer [engines-that-support first-row]]
+            [metabase.test.data :as data]
+            [metabase.test.data.datasets :as datasets]
+            [metabase.test.util :as tu]))
 
 
 ;;; ------------------------------------------------------------ simple substitution -- {{x}} ------------------------------------------------------------
@@ -131,6 +135,45 @@
   "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > 5 AND num_toucans < 5"
   (substitute "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND num_toucans < {{num_toucans}}]]"
     {:num_toucans 5}))
+
+;;; ------------------------------------------------------------ tests for value-for-tag ------------------------------------------------------------
+
+(tu/resolve-private-fns metabase.query-processor.sql-parameters value-for-tag)
+
+;; variable -- specified
+(expect
+  "2"
+  (value-for-tag {:name "id", :display_name "ID", :type "text", :required true, :default "100"}
+                 [{:type "category", :target ["variable" ["template-tag" "id"]], :value "2"}]))
+
+;; variable -- unspecified
+(expect
+  nil
+  (value-for-tag {:name "id", :display_name "ID", :type "text"} nil))
+
+;; variable -- default
+(expect
+  "100"
+  (value-for-tag {:name "id", :display_name "ID", :type "text", :required true, :default "100"} nil))
+
+;; dimension -- specified
+(expect
+  {:field {:name      "DATE"
+           :parent_id nil
+           :table_id  (data/id :checkins)}
+   :param {:type   "date/range"
+           :target ["dimension" ["template-tag" "checkin_date"]]
+           :value  "2015-04-01~2015-05-01"}}
+  (into {} (value-for-tag {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}
+                          [{:type "date/range", :target ["dimension" ["template-tag" "checkin_date"]], :value "2015-04-01~2015-05-01"}])))
+
+;; dimension -- unspecified
+(expect
+  {:field {:name      "DATE"
+           :parent_id nil
+           :table_id  (data/id :checkins)}
+   :param nil}
+  (into {} (value-for-tag {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]} nil)))
 
 
 ;;; ------------------------------------------------------------ expansion tests: variables ------------------------------------------------------------
@@ -275,3 +318,27 @@
 (expect
   "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" = '100';"
   (expand-with-dimension-param {:type "text", :value "100"}))
+
+
+;;; ------------------------------------------------------------ "REAL" END-TO-END-TESTS ------------------------------------------------------------
+
+(datasets/expect-with-engines (engines-that-support :native-parameters)
+  [29]
+  (first-row
+    (qp/process-query
+      {:database      (data/id)
+       :type          :native
+       :native        {:query "SELECT COUNT(*) FROM checkins WHERE {{checkin_date}};"}
+       :template_tags {:checkin_date {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}},
+       :parameters    [{:type "date/range", :target ["dimension" ["template-tag" "checkin_date"]], :value "2015-04-01~2015-05-01"}]})))
+
+;; no parameter -- should give us a query with "WHERE 1"
+(datasets/expect-with-engines (engines-that-support :native-parameters)
+  [1000]
+  (first-row
+    (qp/process-query
+      {:database      (data/id)
+       :type          :native
+       :native        {:query "SELECT COUNT(*) FROM checkins WHERE {{checkin_date}};"}
+       :template_tags {:checkin_date {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}},
+       :parameters    []})))

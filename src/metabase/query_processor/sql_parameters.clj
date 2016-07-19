@@ -69,7 +69,7 @@
 (defn- replace-param [s params match param]
   (let [k (keyword param)
         _ (assert (contains? params k)
-            (format "Unable to substitute '%s': param not specified." param))
+            (format "Unable to substitute '%s': param not specified.\nFound: %s" param (keys params)))
         v (->sql (k params))]
     (s/replace-first s match v)))
 
@@ -92,6 +92,7 @@
      ; -> \"SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE\""
   {:style/indent 1}
   ^String [sql params]
+  {:pre [(string? sql) (seq sql) (u/maybe? map? params)]}
   (loop [s sql, [[match optional] & more] (re-seq #"\[\[([^\]]+)\]\]" sql)]
     (if-not match
       (s/trim (handle-simple s params))
@@ -133,7 +134,11 @@
          (= (get-in value [:param :type]) "number")) (update-in value [:param :value] ->NumberValue)
     :else                                            value))
 
-(defn- value-for-tag [tag params]
+(defn- value-for-tag
+  "Given a map TAG (a value in the `:template_tags` dictionary) return the corresponding value from the PARAMS sequence.
+   The VALUE is something that can be compiled to SQL via `->sql`."
+  [tag params]
+  {:pre [(map? tag) (u/maybe? sequential? params)]}
   (parse-value-for-type (:type tag) (or (param-value-for-tag tag params)
                                         (dimension-value-for-tag tag params)
                                         (default-value-for-tag tag))))

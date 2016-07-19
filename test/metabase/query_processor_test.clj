@@ -29,7 +29,10 @@
   "Set of engines for non-timeseries DBs (i.e., every driver except `:druid`)."
   (set/difference datasets/all-valid-engines timeseries-engines))
 
-(defn- engines-that-support [feature]
+;; TODO - this should be moved somewhere more general as well
+(defn engines-that-support
+  "Set of engines that support a given FEATURE."
+  [feature]
   (set (for [engine non-timeseries-engines
              :when  (contains? (driver/features (driver/engine->driver engine)) feature)]
          engine)))
@@ -283,6 +286,7 @@
 
 (defn first-row
   "Return the first row in the results of a query, or throw an Exception if they're missing."
+  {:style/indent 0}
   [results]
   (first (rows results)))
 
