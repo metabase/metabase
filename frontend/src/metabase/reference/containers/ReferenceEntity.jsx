@@ -18,8 +18,9 @@ import Icon from "metabase/components/Icon.jsx";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
 import IconBorder from "metabase/components/IconBorder.jsx";
 import Select from "metabase/components/Select.jsx";
-
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+
+import RevisionMessageModal from "metabase/reference/components/RevisionMessageModal.jsx";
 
 import cx from "classnames";
 
@@ -81,6 +82,7 @@ export default class EntityItem extends Component {
         setError: PropTypes.func.isRequired,
         updateField: PropTypes.func.isRequired,
         handleSubmit: PropTypes.func.isRequired,
+        resetForm: PropTypes.func.isRequired,
         fields: PropTypes.object.isRequired,
         section: PropTypes.object.isRequired,
         hasDisplayName: PropTypes.bool,
@@ -109,27 +111,31 @@ export default class EntityItem extends Component {
             hasDisplayName,
             hasRevisionHistory,
             handleSubmit,
+            resetForm,
             submitting
         } = this.props;
 
+        const onSubmit = handleSubmit(async fields => {
+            const editedFields = Object.keys(fields)
+                .filter(key => fields[key] !== undefined)
+                .reduce((map, key) => i.assoc(map, key, fields[key]), {});
+            const newEntity = {...entity, ...editedFields};
+            startLoading();
+            try {
+                await this.props[section.update](newEntity);
+            }
+            catch(error) {
+                setError(error);
+                console.error(error);
+            }
+            resetForm();
+            endLoading();
+            endEditing();
+        });
+
         return (
             <form style={style} className="full"
-                onSubmit={handleSubmit(async fields => {
-                    const editedFields = Object.keys(fields)
-                        .filter(key => fields[key] !== undefined)
-                        .reduce((map, key) => i.assoc(map, key, fields[key]), {});
-                    const newEntity = {...entity, ...editedFields};
-                    startLoading();
-                    try {
-                        await this.props[section.update](newEntity);
-                    }
-                    catch(error) {
-                        setError(error);
-                        console.error(error);
-                    }
-                    endLoading();
-                    endEditing();
-                })}
+                onSubmit={onSubmit}
             >
                 { isEditing &&
                     <div className={cx("EditHeader wrapper py1", R.subheader)}>
@@ -137,13 +143,29 @@ export default class EntityItem extends Component {
                             You are editing this page
                         </div>
                         <div className={R.subheaderButtons}>
-                            <button
-                                className={cx("Button", "Button--primary", "Button--white", "Button--small", R.saveButton)}
-                                type="submit"
-                                disabled={submitting}
-                            >
-                                SAVE
-                            </button>
+                            { hasRevisionHistory ?
+                                <RevisionMessageModal
+                                    action={() => onSubmit()}
+                                    field={revision_message}
+                                    submitting={submitting}
+                                >
+                                    <button
+                                        className={cx("Button", "Button--primary", "Button--white", "Button--small", R.saveButton)}
+                                        type="button"
+                                        disabled={submitting}
+                                    >
+                                        SAVE
+                                    </button>
+                                </RevisionMessageModal> :
+                                <button
+                                    className={cx("Button", "Button--primary", "Button--white", "Button--small", R.saveButton)}
+                                    type="submit"
+                                    disabled={submitting}
+                                >
+                                    SAVE
+                                </button>
+                            }
+
                             <button
                                 type="button"
                                 className={cx("Button", "Button--white", "Button--small", R.cancelButton)}
@@ -228,18 +250,6 @@ export default class EntityItem extends Component {
                                         id="name"
                                         name="Actual name in database"
                                         description={entity.name}
-                                    />
-                                </li>
-                            }
-                            { hasRevisionHistory && isEditing &&
-                                <li className="relative">
-                                    <Detail
-                                        id="revision_message"
-                                        name="Reason for changes"
-                                        description=""
-                                        placeholder="Leave a note to explain what changes you made and why they were required."
-                                        isEditing={isEditing}
-                                        field={revision_message}
                                     />
                                 </li>
                             }
