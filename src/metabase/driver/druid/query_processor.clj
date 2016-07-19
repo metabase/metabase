@@ -488,15 +488,17 @@
 
 (defn- druid-query-type
   "What type of Druid query type should we perform?"
-  [{breakout-fields :breakout, {ag-type :aggregation-type} :aggregation}]
+  [{breakout-fields :breakout, {ag-type :aggregation-type} :aggregation, limit :limit}]
   (let [breakouts   (condp = (count breakout-fields)
                       0 :none
                       1 :one
                         :many)
         agg?        (boolean (and ag-type (not= ag-type :rows)))
         period-set  #{:minute :hour :day :week :month :quarter :year}
-        ts?         (and (instance? DateTimeField (first breakout-fields))        ;; Checks whether the query is a timeseries (excludes x-of-y type breakouts)
-                         (contains? period-set (:unit (first breakout-fields))))]
+        ts?         (and
+                      (instance? DateTimeField (first breakout-fields))        ;; Checks whether the query is a timeseries
+                      (contains? period-set (:unit (first breakout-fields)))   ;; (excludes x-of-y type breakouts)
+                      (nil? limit))]                                           ;; (excludes queries with LIMIT)
 
     (match [breakouts agg? ts?]
       [:none  false    _] ::select
@@ -509,8 +511,6 @@
 (defn- build-druid-query [query]
   {:pre [(map? query)]}
   (let [query-type (druid-query-type query)]
-    (log/error "THIS SHOULD BE A Query")
-    (log/error query)
     (loop [druid-query (query-type->default-query query-type), [f & more] [handle-source-table
                                                                            handle-aggregation
                                                                            handle-breakout
@@ -532,7 +532,7 @@
 (defmulti ^:private post-process query-type-dispatch-fn)
 
 (defmethod post-process ::select     [_ results] (->> results first :result :events (map :event)))
-(defmethod post-process ::total [_ results] (map :result results))
+(defmethod post-process ::total      [_ results] (map :result results))
 (defmethod post-process ::topN       [_ results] (-> results first :result))
 (defmethod post-process ::groupBy    [_ results] (map :event results))
 
@@ -571,8 +571,6 @@
                      :settings (:settings query))]
     (binding [*query* mbql-query]
       (let [[query-type druid-query] (build-druid-query mbql-query)]
-        (log/error "THIS Query from tonative")    
-        (log/error druid-query)
         {:query      druid-query
          :query-type query-type}))))
 
@@ -589,11 +587,6 @@
                         (post-process query-type)
                         remove-bonus-keys)
         columns    (vec (keys (first results)))]
-    (log/error "THIS Query from execute-query")    
-    (log/error query) 
-    (log/error "THIS result from execute-query")    
-    (log/error results)
-
     {:columns   columns
      :rows      (for [row results]
                   (mapv row columns))
