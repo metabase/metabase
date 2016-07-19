@@ -60,8 +60,8 @@
   Dimension
   (->sql [{:keys [field param]}]
     (if-not param
-      ;; if the param is `nil` just put in something that will always be true, such as `1` (e.g. `WHERE 1`)
-      "1"
+      ;; if the param is `nil` just put in something that will always be true, such as `1` (e.g. `WHERE 1 = 1`)
+      "1 = 1"
       (let [param-type (:type param)]
         (format "%s %s" (->sql (assoc field :type param-type)) (dimension-value->sql param-type (:value param)))))))
 

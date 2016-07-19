@@ -304,9 +304,9 @@
   "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN '2015-01-01' AND '2015-12-31';"
   (expand-with-dimension-param {:type "date/range", :value "lastyear"}))
 
-;; dimension with no value -- just replace with an always true clause (e.g. "WHERE 1")
+;; dimension with no value -- just replace with an always true clause (e.g. "WHERE 1 = 1")
 (expect
-  "SELECT * FROM checkins WHERE 1;"
+  "SELECT * FROM checkins WHERE 1 = 1;"
   (expand-with-dimension-param nil))
 
 ;; dimension -- number
@@ -332,7 +332,7 @@
        :template_tags {:checkin_date {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}},
        :parameters    [{:type "date/range", :target ["dimension" ["template-tag" "checkin_date"]], :value "2015-04-01~2015-05-01"}]})))
 
-;; no parameter -- should give us a query with "WHERE 1"
+;; no parameter -- should give us a query with "WHERE 1 = 1"
 (datasets/expect-with-engines (engines-that-support :native-parameters)
   [1000]
   (first-row
