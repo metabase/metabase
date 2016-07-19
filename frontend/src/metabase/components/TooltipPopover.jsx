@@ -9,7 +9,7 @@ const TooltipPopover = (props) =>
         {...props}
     >
         { typeof props.children === "string" ?
-            <div className="py1 px2" style={{maxWidth: "12em"}}>
+            <div className="py1 px2" style={{maxWidth: "12em", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis"}}>
                 {props.children}
             </div>
         :

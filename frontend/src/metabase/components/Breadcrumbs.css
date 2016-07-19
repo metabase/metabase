@@ -26,6 +26,7 @@
 :local(.breadcrumbDivider) {
     margin-left: var(--breadcrumb-divider-spacing);
     margin-right: var(--breadcrumb-divider-spacing);
+    flex-shrink: 0;
 }
 
 /* the breadcrumb path will always inherit the color of the breadcrumbs object */
@@ -53,9 +54,7 @@
 
 :local(.sidebarBreadcrumb) {
     composes: breadcrumb;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    height: 15px;
 }
 
 /* the breadcrumb path will always inherit the color of the breadcrumbs object */

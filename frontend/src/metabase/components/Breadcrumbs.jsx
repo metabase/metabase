@@ -3,7 +3,7 @@ import React, { Component, PropTypes } from "react";
 import S from "./Breadcrumbs.css";
 
 import Icon from "metabase/components/Icon.jsx";
-import Tooltip from "metabase/components/Tooltip.jsx";
+import Ellipsified from "metabase/components/Ellipsified.jsx";
 
 import cx from 'classnames';
 
@@ -32,29 +32,24 @@ export default class Breadcrumbs extends Component {
         return (
             <section className={breadcrumbsClass}>
                 { crumbs.length <= 1 && placeholder ?
-                    <h2 className={cx(breadcrumbClass, S.breadcrumbPage)}>
+                    <span className={cx(breadcrumbClass, S.breadcrumbPage)}>
                         {placeholder}
-                    </h2> :
+                    </span> :
                     crumbs
                         .map(breadcrumb => Array.isArray(breadcrumb) ?
                             breadcrumb : [breadcrumb]
                         )
                         .map((breadcrumb, index) => breadcrumb.length > 1 ?
-                            // TODO: ideally tooltips should only show when element overflows
-                            // but I can't seem to figure out how to actually implement it in React
-                            <Tooltip key={index} tooltip={breadcrumb[0]}>
-                                <a
-                                    className={cx(breadcrumbClass, S.breadcrumbPath)}
-                                    href={breadcrumb[1]}
-                                >
+                            <Ellipsified key={index} tooltip={breadcrumb[0]} className={cx(breadcrumbClass, S.breadcrumbPath)}>
+                                <a href={breadcrumb[1]}>
                                     {breadcrumb[0]}
                                 </a>
-                            </Tooltip> :
-                            <Tooltip key={index} tooltip={breadcrumb[0]}>
-                                <h2 className={cx(breadcrumbClass, S.breadcrumbPage)}>
-                                    {breadcrumb}
-                                </h2>
-                            </Tooltip>
+                            </Ellipsified> :
+                            <Ellipsified key={index} tooltip={breadcrumb[0]} className={cx(breadcrumbClass, S.breadcrumbPage)}>
+                                <span>
+                                    {breadcrumb[0]}
+                                </span>
+                            </Ellipsified>
                         )
                         .map((breadcrumb, index, breadcrumbs) => index < breadcrumbs.length - 1 ?
                             [
