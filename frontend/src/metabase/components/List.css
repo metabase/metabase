@@ -37,7 +37,6 @@
 
 :local(.headerButton) {
     composes: flex ml1 align-center from "style";
-    align-self: end;
     font-size: 14px;
 }
 
