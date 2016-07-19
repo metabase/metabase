@@ -18,7 +18,8 @@ export default class TagEditorSidebar extends Component {
     static propTypes = {
         card: PropTypes.object.isRequired,
         onClose: PropTypes.func.isRequired,
-        updateTemplateTag: PropTypes.func.isRequired
+        updateTemplateTag: PropTypes.func.isRequired,
+        databaseFields: PropTypes.array
     };
 
     render() {
@@ -72,7 +73,8 @@ const SettingsPane = ({ tags, onUpdate, databaseFields }) =>
 
 SettingsPane.propTypes = {
     tags: PropTypes.object.isRequired,
-    onUpdate: PropTypes.func.isRequired
+    onUpdate: PropTypes.func.isRequired,
+    databaseFields: PropTypes.array
 };
 
 const HelpPane = () =>

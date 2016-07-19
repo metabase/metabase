@@ -32,7 +32,9 @@ class BrowserSelect extends Component {
         children: PropTypes.array.isRequired,
         className: PropTypes.string,
         value: PropTypes.any,
-        onChange: PropTypes.func.isRequired
+        onChange: PropTypes.func.isRequired,
+        searchProp: PropTypes.string,
+        searchCaseInsensitive: PropTypes.bool
     }
     static defaultProps = {
         className: "",

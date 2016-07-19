@@ -1,6 +1,5 @@
 import React, { Component, PropTypes } from 'react';
 import cx from "classnames";
-import _ from 'underscore';
 
 import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";

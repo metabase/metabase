@@ -16,7 +16,8 @@ export default class TagEditorParam extends Component {
 
     static propTypes = {
         tag: PropTypes.object.isRequired,
-        onUpdate: PropTypes.func.isRequired
+        onUpdate: PropTypes.func.isRequired,
+        databaseFields: PropTypes.array
     };
 
     setParameterAttribute(attr, val) {
