@@ -193,7 +193,7 @@ export default class ReferenceEntityList extends Component {
                     <div className="wrapper wrapper--trim">
                         <div className={cx(S.item)}>
                             <div className={R.columnHeader}>
-                                <div className={cx(S.itemTitle, F.fieldName)}>
+                                <div className={cx(S.itemTitle, F.fieldNameTitle)}>
                                     Field name
                                 </div>
                                 <div className={cx(S.itemTitle, F.fieldType)}>
