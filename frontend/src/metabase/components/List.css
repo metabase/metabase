@@ -42,8 +42,8 @@
 }
 
 :local(.empty) {
-    composes:  flex align-center justify-center from "style";
-    composes: full from "style";
+    composes: full flex justify-center from "style";
+    padding-top: 75px;
 }
 
 :local(.item) {
