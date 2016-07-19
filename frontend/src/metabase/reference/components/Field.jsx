@@ -26,7 +26,7 @@ const Field = ({
     return <div className={cx(S.item)}>
         <div className={S.leftIcons}>
         </div>
-        <div className={S.itemBody}>
+        <div className={S.itemBody} style={{maxWidth: "100%"}}>
             <div className={F.field}>
                 <div className={cx(S.itemTitle, F.fieldName)}>
                     { isEditing ?

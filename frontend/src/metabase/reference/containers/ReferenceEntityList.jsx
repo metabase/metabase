@@ -14,6 +14,8 @@ import EmptyState from "metabase/components/EmptyState.jsx";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
+import cx from "classnames";
+
 import {
     getSection,
     getData,
@@ -61,7 +63,7 @@ export default class ReferenceEntityList extends Component {
             <div style={style} className="full">
                 <div className="wrapper wrapper--trim">
                     <div className={S.header}>
-                        <div className={S.leftIcons}>
+                        <div className={cx("pb2", S.leftIcons)}>
                             { section.headerIcon &&
                                 <Icon
                                     className="text-brand"
@@ -71,18 +73,21 @@ export default class ReferenceEntityList extends Component {
                                 />
                             }
                         </div>
-                        {section.name}
+                        <div className={S.headerBody}>
+                            {section.name}
+                        </div>
                     </div>
                 </div>
                 <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>
                 { () => Object.keys(entities).length > 0 ?
                     <div className="wrapper wrapper--trim">
                         <List>
-                            { Object.values(entities).map(entity =>
+                            { Object.values(entities).map((entity, index) =>
                                 entity && entity.id && entity.name &&
                                     <li className="relative" key={entity.id}>
                                         <Item
                                             id={entity.id}
+                                            index={index}
                                             name={entity.display_name || entity.name}
                                             description={section.type !== 'questions' ?
                                                 entity.description :

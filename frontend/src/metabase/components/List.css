@@ -27,6 +27,11 @@
     font-size: 24px;
 }
 
+:local(.headerBody) {
+    composes: flex flex-full pb2 border-bottom from "style";
+    border-color: #EDF5FB;
+}
+
 :local(.headerButton) {
     composes: flex align-center flex-align-right from "style";
     font-size: 14px;
@@ -45,6 +50,7 @@
 :local(.itemBody) {
     composes: border-top from "style";
     composes: flex-full from "style";
+    max-width: 550px;
     padding-top: 20px;
     padding-bottom: 20px;
     border-color: #EDF5FB;

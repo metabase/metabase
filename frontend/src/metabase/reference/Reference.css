@@ -13,6 +13,7 @@
     font-size: 18px;
     color: var(--title-color);
     width: 100%;
+    max-width: 550px;
 }
 
 :local(.subheader) {

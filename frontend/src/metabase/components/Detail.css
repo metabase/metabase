@@ -13,6 +13,7 @@
 
 :local(.detailBody) {
     composes: flex-full from "style";
+    max-width: 550px;
     padding-top: 20px;
     padding-bottom: 20px;
 }
