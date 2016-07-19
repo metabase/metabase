@@ -79,7 +79,7 @@ export default class Scalar extends Component {
     }
 
     render() {
-        let { card, data, isDashboard, className, onAddSeries, actionButtons, hovered, onHoverChange, gridSize } = this.props;
+        let { card, data, isDashboard, className, onAddSeries, actionButtons, hovered, onHoverChange, gridSize, settings } = this.props;
 
         if (this.state.isMultiseries) {
             return (
@@ -100,10 +100,30 @@ export default class Scalar extends Component {
         let isSmall = gridSize && gridSize.width < 4;
 
         let scalarValue = i.getIn(data, ["rows", 0, 0]);
+
+        const scale =  parseFloat(settings["scalar.scale"]);
+        if (typeof scalarValue === "number" && !isNaN(scale)) {
+            scalarValue *= scale;
+        }
+
+        // const decimals = parseFloat(settings["scalar.decimals"]);
+        // if (typeof scalarValue === "number" && !isNaN(decimals)) {
+        //     scalarValue = Math.round(scalarValue * Math.pow(10, decimals)) / Math.pow(10, decimals);
+        // }
+
         let compactScalarValue = scalarValue == undefined ? "" :
             formatValue(scalarValue, { column: i.getIn(data, ["cols", 0]), compact: isSmall });
         let fullScalarValue = scalarValue == undefined ? "" :
             formatValue(scalarValue, { column: i.getIn(data, ["cols", 0]), compact: false });
+
+        if (settings["scalar.prefix"]) {
+            compactScalarValue = settings["scalar.prefix"] + compactScalarValue;
+            fullScalarValue = settings["scalar.prefix"] + fullScalarValue;
+        }
+        if (settings["scalar.suffix"]) {
+            compactScalarValue = compactScalarValue + settings["scalar.suffix"];
+            fullScalarValue = fullScalarValue + settings["scalar.suffix"];
+        }
 
         return (
             <div className={cx(className, styles.Scalar, styles[isSmall ? "small" : "large"])}>

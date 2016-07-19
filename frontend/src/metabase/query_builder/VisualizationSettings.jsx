@@ -98,9 +98,9 @@ export default class VisualizationSettings extends React.Component {
                         <ChartSettings
                             card={this.props.card}
                             result={this.props.result}
-                            onUpdateVisualizationSetting={this.props.onUpdateVisualizationSetting}
-                            onUpdateVisualizationSettings={this.props.onUpdateVisualizationSettings}
+                            onChange={this.props.onUpdateVisualizationSettings}
                             onClose={() => this.refs.chartSettings.close()}
+
                         />
                     </ModalWithTrigger>
                     {this.renderVisualizationSettings()}

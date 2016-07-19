@@ -184,7 +184,7 @@ function getSettingsGroupsForVisualization(visualization) {
     return groups;
 }
 
-export function getSettingsForVisualization(dbSettings, visualization) {
+export function getSettingsForVisualization_LEGACY(dbSettings, visualization) {
     var settings = angular.copy(dbSettings);
     var groups = _.union(_.keys(settings), getSettingsGroupsForVisualization(visualization));
     return getSettingsForGroups(settings, groups);
@@ -227,4 +227,293 @@ export function setLatitudeAndLongitude(settings, columnDefs) {
     } else {
         return settings;
     }
+}
+
+import React from "react";
+import Select from "metabase/components/Select.jsx";
+import Toggle from "metabase/components/Toggle.jsx";
+
+const ChartSettingSelect = ({ value, onChange, options = [] }) =>
+    <Select
+        className="block"
+        value={_.findWhere(options, { value })}
+        options={options}
+        optionNameFn={(o) => o.name}
+        optionValueFn={(o) => o.value}
+        onChange={(value) => onChange(value)}
+    />
+
+const ChartSettingInput = ({ value, onChange }) =>
+    <input
+        className="input block full"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+    />
+
+const ChartSettingToggle = ({ value, onChange }) =>
+    <Toggle
+        value={value}
+        onChange={(value) => onChange(value)}
+    />
+
+const ChartSettingFieldPicker = ({ value = [], onChange, columns, onAddAnother }) =>
+    <div>
+        { value.map((v, index) =>
+            <Select
+                className="block"
+                key={index}
+                value={_.findWhere(columns, { name: v })}
+                options={columns}
+                optionNameFn={(o) => o.display_name}
+                optionValueFn={(o) => o.name}
+                onChange={(v) => onChange([...value.slice(0, index), v, ...value.slice(index + 1)])}
+            />
+        )}
+        { onAddAnother &&
+            <div>
+                <a onClick={onAddAnother}>Add another...</a>
+            </div>
+        }
+    </div>
+
+const ChartSettingColorsPicker = ({ value, onChange }) =>
+    <div>colors</div>
+
+import { isMetric, isDimension } from "metabase/lib/schema_metadata";
+
+function dimensionAndMetricsAreValid(dimension, metric, cols) {
+    const colsByName = {};
+    for (const col of cols) {
+        colsByName[col.name] = col;
+    }
+    return (
+        (dimension != null &&
+            dimension.reduce((acc, name) =>
+                acc && (name == undefined || (colsByName[name] && isDimension(colsByName[name])))
+            , true)) &&
+        (metric != null &&
+            metric.reduce((acc, name) =>
+                acc && (name == undefined || (colsByName[name] && isMetric(colsByName[name])))
+            , true))
+    );
+}
+
+function getDefaultDimensionsAndMetrics(data) {
+
+}
+
+const SETTINGS = {
+    "graph.dimensions": {
+        section: "Data",
+        title: "X-axis",
+        widget: ChartSettingFieldPicker,
+        getValue: (card, data) => {
+            if (dimensionAndMetricsAreValid(
+                card.visualization_settings["graph.dimensions"],
+                card.visualization_settings["graph.metrics"],
+                data.cols
+            )) {
+                return card.visualization_settings["graph.dimensions"];
+            } else {
+                return [data.cols.filter(isDimension)[0].name];
+            }
+        },
+        getProps: ({ value, onChange, card, data }) => {
+            let props = { columns: data.cols.filter(isDimension) }
+            if (!Array.isArray(value) || (props.columns.length > value.length && value.length < 2)) {
+                props.onAddAnother = () => onChange(value.concat([undefined]))
+            }
+            return props;
+        },
+        dependentSettings: ["graph.metrics"]
+    },
+    "graph.metrics": {
+        section: "Data",
+        title: "Y-axis",
+        widget: ChartSettingFieldPicker,
+        getValue: (card, data) => {
+            if (dimensionAndMetricsAreValid(
+                card.visualization_settings["graph.dimensions"],
+                card.visualization_settings["graph.metrics"],
+                data.cols
+            )) {
+                return card.visualization_settings["graph.metrics"];
+            } else {
+                return [data.cols.filter(isMetric)[0].name];
+            }
+        },
+        getProps: ({ value, onChange, card, data }) => {
+            let props = { columns: data.cols.filter(isMetric) }
+            if (!Array.isArray(value) || (props.columns.length > value.length)) {
+                props.onAddAnother = () => onChange(value.concat([undefined]))
+            }
+            return props;
+        },
+        dependentSettings: ["graph.dimensions"]
+    },
+    "graph.stacked": {
+        section: "Display",
+        title: "Stacked",
+        widget: ChartSettingToggle,
+        getDefault: (card, data) => card.display === "area" ? true : false
+    },
+    "graph.colors": {
+        section: "Display",
+        widget: ChartSettingColorsPicker
+    },
+    "graph.x_axis.show_marks": {
+        section: "Axes",
+        title: "Show x-axis line and marks",
+        widget: ChartSettingToggle
+    },
+    "graph.y_axis.show_marks": {
+        section: "Axes",
+        title: "Show y-axis line and marks",
+        widget: ChartSettingToggle
+    },
+    "graph.y_axis.auto_range": {
+        section: "Axes",
+        title: "Auto y-axis range",
+        widget: ChartSettingToggle
+    },
+    "graph.y_axis.min": {
+        section: "Axes",
+        title: "Min",
+        widget: ChartSettingInput
+    },
+    "graph.y_axis.max": {
+        section: "Axes",
+        title: "Min",
+        widget: ChartSettingInput
+    },
+    "graph.y_axis_right.auto_range": {
+        section: "Axes",
+        title: "Auto right-hand y-axis range",
+        widget: ChartSettingToggle
+    },
+    "graph.y_axis_right.min": {
+        section: "Axes",
+        title: "Min",
+        widget: ChartSettingInput
+    },
+    "graph.y_axis_right.max": {
+        section: "Axes",
+        title: "Min",
+        widget: ChartSettingInput
+    },
+    "graph.y_axis.auto_split": {
+        section: "Axes",
+        title: "Use a split y-axis when necessary",
+        widget: ChartSettingToggle
+    },
+    "graph.x_axis.title_enabled": {
+        section: "Labels",
+        title: "Show label on x-axis",
+        widget: ChartSettingToggle
+    },
+    "graph.x_axis.title_text": {
+        section: "Labels",
+        title: "X-axis label",
+        widget: ChartSettingInput
+    },
+    "graph.y_axis.title_enabled": {
+        section: "Labels",
+        title: "Show label on y-axis",
+        widget: ChartSettingToggle
+    },
+    "graph.y_axis.title_text": {
+        section: "Labels",
+        title: "Y-axis label",
+        widget: ChartSettingInput
+    },
+    "pie.dimension": {
+        section: "Data",
+        title: "Measure",
+        widget: ChartSettingFieldPicker
+    },
+    "pie.metric": {
+        section: "Data",
+        title: "Slice by",
+        widget: ChartSettingFieldPicker
+    },
+    "pie.show_legend": {
+        section: "Legend",
+        title: "Show legend",
+        widget: ChartSettingToggle
+    },
+    "pie.show_legend_perecent": {
+        section: "Legend",
+        title: "Show percentages in legend",
+        widget: ChartSettingToggle
+    },
+    "scalar.separator": {
+        title: "Separator",
+        widget: ChartSettingSelect,
+        getProps: ({ value, onChange, card, data }) =>
+        ({ options: [
+            { name: "None", value: "" },
+            { name: "Comma", value: "," },
+            { name: "Period", value: "." },
+        ]}),
+        getDefault: (card, data) => ","
+    },
+    "scalar.decimals": {
+        title: "Number of decimal places",
+        widget: ChartSettingInput
+    },
+    "scalar.prefix": {
+        title: "Add a prefix",
+        widget: ChartSettingInput
+    },
+    "scalar.suffix": {
+        title: "Add a suffix",
+        widget: ChartSettingInput
+    },
+    "scalar.scale": {
+        title: "Multiply by a number",
+        widget: ChartSettingInput
+    }
+};
+
+const SETTINGS_PREFIXES_BY_CHART_TYPE = {
+    line: ["graph."],
+    area: ["graph."],
+    bar: ["graph."],
+    pie: ["pie."],
+    scalar: ["scalar."]
+}
+
+export function getSettings(card, data) {
+    const prefixes = SETTINGS_PREFIXES_BY_CHART_TYPE[card.display] || [];
+    const settingEntries = Object.entries(SETTINGS)
+        .filter(([id, setting]) => _.any(prefixes, (p) => id.startsWith(p)))
+
+    let settings = {};
+    for (let [id, setting] of settingEntries) {
+        if (setting.getValue) {
+            settings[id] = setting.getValue(card, data);
+        } else if (card.visualization_settings[id] === undefined && setting.getDefault) {
+            settings[id] = setting.getDefault(card, data);
+        } else if (card.visualization_settings[id] !== undefined) {
+            settings[id] = card.visualization_settings[id];
+        }
+    }
+
+    return {
+        // LEGACY SETTINGS
+        ...getSettingsForVisualization_LEGACY(card.visualization_settings, card.display),
+        ...settings
+    };
+}
+
+export function getSettingsWidgets(display, visualization_settings) {
+    const prefixes = SETTINGS_PREFIXES_BY_CHART_TYPE[display] || [];
+    return Object.entries(SETTINGS)
+        .filter(([id, setting]) => _.any(prefixes, (p) => id.startsWith(p)))
+        .map(([id, setting]) => ({
+            id: id,
+            ...setting,
+            hidden: setting.isHidden && setting.isHidden(visualization_settings, display),
+            disabled: setting.isDisabled && setting.isDisabled(visualization_settings, display)
+        }));
 }

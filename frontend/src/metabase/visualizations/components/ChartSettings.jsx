@@ -1,97 +1,9 @@
 import React, { Component, PropTypes } from "react";
 import cx from "classnames";
 
-import CheckBox from "metabase/components/CheckBox.jsx";
-import Toggle from "metabase/components/Toggle.jsx";
-import Select from "metabase/components/Select.jsx";
-import ColorSetting from "metabase/visualizations/components/settings/ColorSetting.jsx";
 import Visualization from "metabase/visualizations/components/Visualization.jsx"
 
-const ToggleOption = ({label, on}) =>
-  <div className="flex align-center">
-    <Toggle value={on} />
-    <h4 className="ml1">{label}</h4>
-  </div>
-
-
-const ColorOption = ({label}) =>
-  <div>
-    <h4>{label}</h4>
-  </div>
-
-const LabelOptions = () =>
-  <ul>
-    <li className="full">
-      <ToggleOption label='Show X-Axis label' on />
-
-      <div className="flex align-center my2">
-        <h4>X-Axis label</h4>
-        <input className="input" type="text" placeholder="Label" />
-      </div>
-
-      <div className="flex align-center my2">
-        <h4 className="mb1">X-Axis label size</h4>
-        <Select options={['normal', 'large', 'are we sure we want this?']} />
-      </div>
-    </li>
-    <li className="full mt3">
-      <ToggleOption label='Show Y-Axis label' />
-
-      <div className="disabled">
-        <h4 className="mb1">Y-Axis label</h4>
-        <input className="input full" type="text" placeholder="" />
-      </div>
-
-      <div className="disabled">
-        <h4 className="mb1">Y-Axis label size</h4>
-        <Select options={['normal', 'large', 'are we sure we want this?']} />
-      </div>
-    </li>
-  </ul>
-
-const DisplayOptions = () =>
-  <ul>
-    <li className="mb2"><ToggleOption label='Stacked bars' on /></li>
-    <li className="mb2"><ColorOption label='Completed bookings' /></li>
-    <li className="mb2"><ColorOption label='Canceled bookings' /></li>
-  </ul>
-
-const DataOptions = () =>
-  <div>
-      <div className="mb3">
-        <h4 className="mb1">X-Axis</h4>
-        <Select options={['Derp', 'Lerp']} className="full" />
-      </div>
-
-      <h4 className="mb1">Y-Axis</h4>
-      <div className="flex">
-        <Select options={['Derp', 'Lerp']} className="full" />
-        <CheckBox className="p3"/>
-      </div>
-
-      <div className="flex">
-        <Select options={['Derp', 'Lerp']} className="full" />
-        <CheckBox className="p3"/>
-      </div>
-
-      <a className="link my2 text-bold">Add another</a>
-  </div>
-
-const AxesOptions = ({options}) =>
-  <ul>
-    <li className="mb2"><ToggleOption label='Show x-axis lines and marks' on /></li>
-    <li className="mb2"><ToggleOption label='Show y-axis lines and marks' on /></li>
-    <li className="mb2">
-        <ToggleOption label='Auto x-axis range' on />
-    </li>
-    <li className="mb2">
-        <ToggleOption label='Auto y-axis range' />
-        <div className="flex align-center mt1" style={{marginLeft: 60}}>
-          <h4>Min</h4><input className="input" type="text" value={100} />
-          <h4>Max</h4><input className="input" type="text" value={3400} />
-        </div>
-    </li>
-  </ul>
+import { getSettings, getSettingsWidgets } from "metabase/lib/visualization_settings";
 
 const ChartSettingsTab = ({name, active, onClick}) =>
   <a
@@ -101,30 +13,34 @@ const ChartSettingsTab = ({name, active, onClick}) =>
     {name.toUpperCase()}
   </a>
 
-const TABS = ['data', 'display', 'axes', 'labels']
-
-const ChartSettingsTabs = ({selectTab, activeTab}) =>
+const ChartSettingsTabs = ({ tabs, selectTab, activeTab}) =>
   <ul className="bordered rounded flex justify-around overflow-hidden">
-    { TABS.map((tab, index) =>
+    { tabs.map((tab, index) =>
         <li className="flex-full border-left" key={index}>
           <ChartSettingsTab name={tab} active={tab === activeTab} onClick={selectTab} />
         </li>
     )}
   </ul>
 
-const ChartSettingsFooter = ({ onDone, onCancel }) =>
-  <div>
-    <a className="Button Button--primary" href="" onClick={onDone}>Done</a>
-    <a className="text-grey-2 ml2" onClick={onCancel}>Cancel</a>
-  </div>
+const Setting = (props) => {
+    const { title } = props;
+    const Widget = props.widget;
+    return (
+        <div className={cx("mb3", { hide: props.hidden, disable: props.disabled })}>
+            { title && <h4 className="mb1">{title}</h4> }
+            { Widget && <Widget {...props}/> }
+        </div>
+    );
+}
+
 
 class ChartSettings extends Component {
     constructor (props) {
         super(props);
         this.state = {
-          currentTab: 'data',
+          currentTab: null,
           card: props.card,
-          result: props.result
+          data: props.result.data
       };
     }
 
@@ -132,36 +48,81 @@ class ChartSettings extends Component {
         this.setState({ currentTab: tab });
     }
 
-    renderOptionsForTab () {
-      switch(this.state.currentTab) {
-        case 'data':
-          return <DataOptions />;
-        case 'display':
-          return <DisplayOptions />;
-        case 'axes':
-          return <AxesOptions />;
-        case 'labels':
-          return <LabelOptions />;
-        default:
-          return <DataOptions />;
-      }
+    getVisualizationSettings() {
+        const { card, data } = this.state;
+        return getSettings(card, data);
     }
+
+    onChangeSetting(setting, value, settings) {
+        let newSettings = { [setting.id]: value };
+        if (setting.dependentSettings) {
+            for (let id of setting.dependentSettings) {
+                newSettings[id] = settings[id];
+            }
+        }
+
+        console.log("CHANGE", setting.id, value, newSettings)
+
+        this.setState({
+            card: {
+                ...this.state.card,
+                visualization_settings: {
+                    ...this.state.card.visualization_settings,
+                    ...newSettings
+                }
+            }
+        })
+    }
+
+    onDone() {
+        this.props.onChange(this.state.card.visualization_settings);
+        this.props.onClose();
+    }
+
     render () {
         const { onClose } = this.props;
-        const { card, result } = this.state;
+        const { card, data } = this.state;
+
+        const settings = this.getVisualizationSettings();
+
+        const tabs = {};
+        for (let widget of getSettingsWidgets(card.display, settings)) {
+            tabs[widget.section] = tabs[widget.section] || [];
+            tabs[widget.section].push(widget);
+        }
+        const tabNames = Object.keys(tabs);
+        const currentTab = this.state.currentTab || tabNames[0];
+        const widgets = tabs[currentTab];
 
         return (
           <div className="flex flex-column spread p4">
               <h2 className="my2">Customize this chart</h2>
-              <ChartSettingsTabs selectTab={this.selectTab} activeTab={this.state.currentTab}/>
+              { tabNames.length > 1 &&
+                  <ChartSettingsTabs tabs={tabNames} selectTab={this.selectTab} activeTab={currentTab}/>
+              }
               <div className="Grid flex-full mt3">
-                  <div className="Grid-cell Cell--1of3">
-                    { this.renderOptionsForTab() }
+                  <div className="Grid-cell Cell--1of3" ref={currentTab}>
+                      { widgets && widgets.map((setting) => {
+                          const value = settings[setting.id];
+                          const onChange = (value) => this.onChangeSetting(setting, value, settings);
+                          return (
+                              <Setting
+                                key={setting.id}
+                                value={value}
+                                onChange={onChange}
+                                {...setting}
+                                {...(setting.getProps ? setting.getProps({ value, onChange, card, data }) : {})}
+                              />
+                          );
+                      })}
+                      <pre>
+                        {JSON.stringify(card.visualization_settings, null, 2)}
+                      </pre>
                   </div>
                   <div className="Grid-cell relative">
                       <Visualization
                           className="spread"
-                          series={[{ card: card, data: result.data }]}
+                          series={[{ card: card, data: data }]}
                           isEditing={true}
                           // Table:
                           setSortFn={this.props.setSortFn}
@@ -172,7 +133,10 @@ class ChartSettings extends Component {
                       />
                   </div>
               </div>
-              <ChartSettingsFooter onCancel={onClose} />
+              <div>
+                <a className={cx("Button Button--primary", { "disabled": JSON.stringify(card.visualization_settings) === JSON.stringify(this.props.card.visualization_settings)})} href="" onClick={() => this.onDone()}>Done</a>
+                <a className="text-grey-2 ml2" onClick={onClose}>Cancel</a>
+              </div>
           </div>
         )
     }

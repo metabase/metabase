@@ -432,15 +432,12 @@ function lineAndBarOnRender(chart, settings) {
     chart.render();
 }
 
-export default function lineAreaBar(element, { series, onHoverChange, onRender, chartType, isScalarSeries, isStacked, allowSplitAxis }) {
+export default function lineAreaBar(element, { series, onHoverChange, onRender, chartType, isScalarSeries, allowSplitAxis }) {
     const settings = series[0].card.visualization_settings;
     const colors = getCardColors(series[0].card);
 
     const isTimeseries = dimensionIsTimeseries(series[0].data);
     const isLinear = false;
-
-    // no stacking lines, always stack area
-    isStacked = (isStacked && chartType !== "line") || (chartType === "area");
 
     // validation.  we require at least 2 rows for line charting
     if (series[0].data.cols.length < 2) {
@@ -458,7 +455,7 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
 
     let dimension, groups, yAxisSplit;
 
-    if (isStacked && datas.length > 1) {
+    if (settings["graph.stacked"] && datas.length > 1) {
         let dataset = crossfilter();
         datas.map((data, i) =>
             dataset.add(data.map(d => ({

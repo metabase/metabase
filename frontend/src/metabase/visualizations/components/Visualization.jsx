@@ -9,6 +9,7 @@ import Tooltip from "metabase/components/Tooltip.jsx";
 import { duration } from "metabase/lib/formatting";
 
 import visualizations from "metabase/visualizations";
+import { getSettings } from "metabase/lib/visualization_settings";
 
 import { assoc, getIn } from "icepick";
 import _ from "underscore";
@@ -69,7 +70,7 @@ export default class Visualization extends Component {
     }
 
     render() {
-        const { series, actionButtons, className, isDashboard, width, isSlow, expectedDuration, replacementContent } = this.props;
+        const { series, actionButtons, className, isDashboard, width, isSlow, expectedDuration, replacementContent, settings } = this.props;
         const CardVisualization = visualizations.get(series[0].card.display);
         const small = width < 330;
 
@@ -167,6 +168,7 @@ export default class Visualization extends Component {
                         {...this.props}
                         className="flex-full"
                         series={series}
+                        settings={settings || getSettings(series[0].card, series[0].data)}
                         card={series[0].card} // convienence for single-series visualizations
                         data={series[0].data} // convienence for single-series visualizations
                         hovered={this.state.hovered}

@@ -7,7 +7,6 @@ import ChartTooltip from "./ChartTooltip.jsx";
 import ColorSetting from "./settings/ColorSetting.jsx";
 
 import lineAreaBarRenderer from "metabase/visualizations/lib/LineAreaBarRenderer";
-import { getSettingsForVisualization } from "metabase/lib/visualization_settings";
 
 import { isNumeric, isDate, isDimension, isMetric } from "metabase/lib/schema_metadata";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
@@ -208,7 +207,7 @@ export default class LineAreaBarChart extends Component {
     getSettings() {
         let fidelity = this.getFidelity();
 
-        let settings = getSettingsForVisualization(this.props.series[0].card.visualization_settings, this.getChartType());
+        let settings = this.props.settings;
 
         // no axis in < 1 fidelity
         if (fidelity.x < 1) {
