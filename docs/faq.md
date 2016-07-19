@@ -63,7 +63,7 @@ One caveat is that if you are using Google Analytics Premium, one of the feature
 
 ### Can I upload data to Metabase?
 
-Not exactly. Metabase provides access to data you have in an existing database you control. We currently do not add or modify the information in your database. You should ask whoever controls the database you are accessing how to upload the data you're interested in accessing.
+Not exactly. Metabase provides access to data you have in an existing database you control. We currently do not add or modify the information in your database. You should ask whomever controls the database you are accessing how to upload the data you're interested in accessing.
 
 ### Can you help me debug something?
 
