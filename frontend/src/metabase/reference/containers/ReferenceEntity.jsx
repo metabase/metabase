@@ -15,6 +15,8 @@ import R from "metabase/reference/Reference.css";
 import List from "metabase/components/List.jsx";
 import Detail from "metabase/components/Detail.jsx";
 import Icon from "metabase/components/Icon.jsx";
+import Ellipsified from "metabase/components/Ellipsified.jsx";
+import IconBorder from "metabase/components/IconBorder.jsx";
 import Select from "metabase/components/Select.jsx";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
@@ -154,14 +156,16 @@ export default class EntityItem extends Component {
                 }
                 <div className="wrapper wrapper--trim">
                     <div className={S.header}>
-                        <div className={cx("pb2", S.leftIcons)}>
+                        <div className={cx(S.leftIcons)}>
                             { section.headerIcon &&
-                                <Icon
-                                    className="text-brand"
-                                    name={section.headerIcon}
-                                    width={24}
-                                    height={24}
-                                />
+                                <IconBorder borderWidth="0" style={{backgroundColor: "#E9F4F8"}}>
+                                    <Icon
+                                        className="text-brand"
+                                        name={section.headerIcon}
+                                        width={24}
+                                        height={24}
+                                    />
+                                </IconBorder>
                             }
                         </div>
                         <div className={R.headerBody}>
@@ -181,8 +185,12 @@ export default class EntityItem extends Component {
                                         {...name}
                                         defaultValue={entity.name}
                                     /> :
-                                hasDisplayName ?
-                                    entity.display_name || entity.name : entity.name
+                                <Ellipsified className="flex-full" tooltipMaxWidth="100%">
+                                    { hasDisplayName ?
+                                        entity.display_name || entity.name :
+                                        entity.name
+                                    }
+                                </Ellipsified>
                             }
                             { user.is_superuser && !isEditing &&
                                 <div className={S.headerButton}>

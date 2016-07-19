@@ -39,30 +39,36 @@ export default class Breadcrumbs extends Component {
                         .map(breadcrumb => Array.isArray(breadcrumb) ?
                             breadcrumb : [breadcrumb]
                         )
-                        .map((breadcrumb, index) => breadcrumb.length > 1 ?
-                            <Ellipsified key={index} tooltip={breadcrumb[0]} className={cx(breadcrumbClass, S.breadcrumbPath)}>
-                                <a href={breadcrumb[1]}>
-                                    {breadcrumb[0]}
-                                </a>
-                            </Ellipsified> :
-                            <Ellipsified key={index} tooltip={breadcrumb[0]} className={cx(breadcrumbClass, S.breadcrumbPage)}>
-                                <span>
-                                    {breadcrumb[0]}
-                                </span>
+                        .map((breadcrumb, index) =>
+                            <Ellipsified
+                                key={index}
+                                tooltip={breadcrumb[0]}
+                                tooltipMaxWidth="100%"
+                                className={cx(
+                                    breadcrumbClass,
+                                    breadcrumb.length > 1 ?
+                                        S.breadcrumbPath : S.breadcrumbPage
+                                )}
+                            >
+                                { breadcrumb.length > 1 ?
+                                    <a href={breadcrumb[1]}>{breadcrumb[0]}</a> :
+                                    <span>{breadcrumb[0]}</span>
+                                }
                             </Ellipsified>
                         )
-                        .map((breadcrumb, index, breadcrumbs) => index < breadcrumbs.length - 1 ?
-                            [
-                                breadcrumb,
-                                <Icon
-                                    key={`${index}-separator`}
-                                    name="chevronright"
-                                    className={S.breadcrumbDivider}
-                                    width={12}
-                                    height={12}
-                                />
-                            ] :
-                            breadcrumb
+                        .map((breadcrumb, index, breadcrumbs) =>
+                            index < breadcrumbs.length - 1 ?
+                                [
+                                    breadcrumb,
+                                    <Icon
+                                        key={`${index}-separator`}
+                                        name="chevronright"
+                                        className={S.breadcrumbDivider}
+                                        width={12}
+                                        height={12}
+                                    />
+                                ] :
+                                breadcrumb
                         )
                 }
             </section>

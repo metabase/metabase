@@ -8,7 +8,7 @@
 :local(.detail) {
     composes: flex align-center from "style";
     composes: relative from "style";
-    padding-left: 50px;
+    padding-left: 70px;
 }
 
 :local(.detailBody) {

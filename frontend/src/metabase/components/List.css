@@ -25,15 +25,19 @@
     composes: mt4 mb2 from "style";
     color: var(--title-color);
     font-size: 24px;
+    min-height: 48px;
 }
 
 :local(.headerBody) {
     composes: flex flex-full pb2 border-bottom from "style";
+    align-items: center;
+    height: 100%;
     border-color: #EDF5FB;
 }
 
 :local(.headerButton) {
-    composes: flex align-center flex-align-right from "style";
+    composes: flex align-center from "style";
+    align-self: end;
     font-size: 14px;
 }
 
@@ -92,7 +96,7 @@
 :local(.leftIcons) {
     composes: flex-no-shrink from "style";
     composes: icons;
-    width: 50px;
+    width: 70px;
 }
 :local(.rightIcons) {
     composes: icons;

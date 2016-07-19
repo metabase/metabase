@@ -4,7 +4,9 @@
 }
 
 :local(.headerBody) {
-    composes: flex flex-full pb2 border-bottom from "style";
+    composes: flex flex-full border-bottom from "style";
+    overflow: hidden;
+    align-items: center;
     border-color: #EDF5FB;
 }
 
@@ -38,7 +40,7 @@
 :local(.columnHeader) {
     composes: flex flex-full border-top from "style";
     border-color: #EDF5FB;
-    margin-left: 50px;
+    margin-left: 70px;
     padding-top: 20px;
     padding-bottom: 20px;
 }
@@ -64,5 +66,5 @@
 
 :local(.revisionsWrapper) {
     padding-top: 20px;
-    padding-left: 50px;
+    padding-left: 70px;
 }
