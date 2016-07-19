@@ -73,12 +73,14 @@
     {:channels (if-not (get-in chan-types [:slack :configured])
                  ;; no Slack integration, so we are g2g
                  chan-types
-                 ;; if we have Slack enabled build a dynamic list of channels/users
+                 ;; if we have Slack enabled build a dynamic list of channels/users/groups
                  (let [slack-channels (for [channel (slack/channels-list)]
                                         (str \# (:name channel)))
                        slack-users    (for [user (slack/users-list)]
-                                        (str \@ (:name user)))]
-                   (assoc-in chan-types [:slack :fields 0 :options] (concat slack-channels slack-users))))}))
+                                        (str \@ (:name user)))
+                       slack-groups   (for [group (slack/groups-list)]
+                                        (str \# (:name group)))]
+                   (assoc-in chan-types [:slack :fields 0 :options] (concat (sort (concat slack-channels slack-groups)) slack-users))))}))
 
 
 (defendpoint GET "/preview_card/:id"

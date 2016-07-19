@@ -53,6 +53,10 @@
   "Calls Slack api `users.list` function and returns the list of available users."
   (comp :members (partial GET :users.list)))
 
+(def ^{:arglists '([& {:as args}])} groups-list
+  "Calls Slack api `groups.list` function and returns the list of available groups."
+  (comp :groups (partial GET :groups.list)))
+
 (defn- create-files-channel!
   "Convenience function for creating our Metabase files channel to store file uploads."
   []
