@@ -7,8 +7,12 @@ import moment from "moment";
 import visualizations from "metabase/visualizations";
 
 import S from "metabase/components/List.css";
+import R from "metabase/reference/Reference.css";
+
 import List from "metabase/components/List.jsx";
 import Icon from "metabase/components/Icon.jsx";
+import IconBorder from "metabase/components/IconBorder.jsx";
+import Ellipsified from "metabase/components/Ellipsified.jsx";
 import Item from "metabase/components/Item.jsx";
 import EmptyState from "metabase/components/EmptyState.jsx";
 
@@ -63,18 +67,25 @@ export default class ReferenceEntityList extends Component {
             <div style={style} className="full">
                 <div className="wrapper wrapper--trim">
                     <div className={S.header}>
-                        <div className={cx("pb2", S.leftIcons)}>
+                        <div className={S.leftIcons}>
                             { section.headerIcon &&
-                                <Icon
-                                    className="text-brand"
-                                    name={section.headerIcon}
-                                    width={24}
-                                    height={24}
-                                />
+                                <IconBorder
+                                    borderWidth="0"
+                                    style={{backgroundColor: "#E9F4F8"}}
+                                >
+                                    <Icon
+                                        className="text-brand"
+                                        name={section.headerIcon}
+                                        width={24}
+                                        height={24}
+                                    />
+                                </IconBorder>
                             }
                         </div>
-                        <div className={S.headerBody}>
-                            {section.name}
+                        <div className={R.headerBody}>
+                            <Ellipsified className="flex-full" tooltipMaxWidth="100%">
+                                {section.name}
+                            </Ellipsified>
                         </div>
                     </div>
                 </div>

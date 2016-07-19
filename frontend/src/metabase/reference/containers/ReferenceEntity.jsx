@@ -156,7 +156,7 @@ export default class EntityItem extends Component {
                 }
                 <div className="wrapper wrapper--trim">
                     <div className={S.header}>
-                        <div className={cx(S.leftIcons)}>
+                        <div className={S.leftIcons}>
                             { section.headerIcon &&
                                 <IconBorder borderWidth="0" style={{backgroundColor: "#E9F4F8"}}>
                                     <Icon

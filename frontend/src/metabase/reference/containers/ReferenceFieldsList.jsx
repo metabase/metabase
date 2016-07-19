@@ -11,6 +11,7 @@ import F from "metabase/reference/components/Field.css"
 
 import Field from "metabase/reference/components/Field.jsx";
 import List from "metabase/components/List.jsx";
+import Ellipsified from "metabase/components/Ellipsified.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import EmptyState from "metabase/components/EmptyState.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
@@ -172,26 +173,30 @@ export default class ReferenceEntityList extends Component {
                                 />
                             }
                         </div>
-                        {section.name}
-                        { user.is_superuser && !isEditing &&
-                            <div className={S.headerButton}>
-                                <a
-                                    onClick={startEditing}
-                                    className={cx("Button", "Button--borderless", R.editButton)}
-                                >
-                                    <div className="flex align-center relative">
-                                        <Icon name="pencil" width="16px" height="16px" />
-                                        <span className="ml1">Edit</span>
-                                    </div>
-                                </a>
-                            </div>
-                        }
+                        <div className={R.headerBody}>
+                            <Ellipsified className="flex-full" tooltipMaxWidth="100%">
+                                {section.name}
+                            </Ellipsified>
+                            { user.is_superuser && !isEditing &&
+                                <div className={S.headerButton}>
+                                    <a
+                                        onClick={startEditing}
+                                        className={cx("Button", "Button--borderless", R.editButton)}
+                                    >
+                                        <div className="flex align-center relative">
+                                            <Icon name="pencil" width="16px" height="16px" />
+                                            <span className="ml1">Edit</span>
+                                        </div>
+                                    </a>
+                                </div>
+                            }
+                        </div>
                     </div>
                 </div>
                 <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>
                 { () => Object.keys(entities).length > 0 ?
                     <div className="wrapper wrapper--trim">
-                        <div className={cx(S.item)}>
+                        <div className={S.item}>
                             <div className={R.columnHeader}>
                                 <div className={cx(S.itemTitle, F.fieldNameTitle)}>
                                     Field name

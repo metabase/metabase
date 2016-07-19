@@ -38,8 +38,7 @@
 }
 
 :local(.columnHeader) {
-    composes: flex flex-full border-top from "style";
-    border-color: #EDF5FB;
+    composes: flex flex-full from "style";
     margin-left: 70px;
     padding-top: 20px;
     padding-bottom: 20px;
