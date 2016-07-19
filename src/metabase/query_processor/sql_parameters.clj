@@ -73,8 +73,7 @@
         v (->sql (k params))]
     (s/replace-first s match v)))
 
-(defn- handle-simple [s params]
-  (loop [s s, [[match param] & more] (re-seq #"\{\{\s*(\w+)\s*\}\}" s)]
+(defn- handle-simple [s params]  (loop [s s, [[match param] & more] (re-seq #"\{\{\s*(\w+)\s*\}\}" s)]
     (if-not match
       s
       (recur (replace-param s params match param) more))))
@@ -127,12 +126,12 @@
       (when required
         (throw (Exception. (format "'%s' is a required param." display_name))))))
 
-(defn- parse-value-for-type [type value]
+(defn- parse-value-for-type [param-type value]
   (cond
-    (= type "number")                                (->NumberValue value)
-    (and (= type "dimension")
-         (= (get-in value [:param :type]) "number")) (update-in value [:param :value] ->NumberValue)
-    :else                                            value))
+    (= param-type "number")                                (->NumberValue value)
+    (and (= param-type "dimension")
+         (= (get-in value [:param :type]) "number"))       (update-in value [:param :value] ->NumberValue)
+    :else                                                  value))
 
 (defn- value-for-tag
   "Given a map TAG (a value in the `:template_tags` dictionary) return the corresponding value from the PARAMS sequence.
