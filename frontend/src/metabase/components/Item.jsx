@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import S from "./List.css";
 
 import Icon from "./Icon.jsx";
+import Ellipsified from "./Ellipsified.jsx";
 
 import cx from "classnames";
 import pure from "recompose/pure";
@@ -16,10 +17,12 @@ const Item = ({ index, name, description, placeholder, url, icon }) =>
         </div>
         <div className={S.itemBody} style={ index === 0 ? {borderTop: 'none'} : {}}>
             <div className={S.itemTitle}>
-                { url ?
-                    <Link to={url} className={S.itemName}>{name}</Link> :
-                    <span className={S.itemName}>{name}</span>
-                }
+                <Ellipsified className={S.itemName} tooltip={name} tooltipMaxWidth="100%">
+                    { url ?
+                        <Link to={url}>{name}</Link> :
+                        {name}
+                    }
+                </Ellipsified>
             </div>
             <div className={cx(description ? S.itemSubtitle : S.itemSubtitleLight, { "mt1" : true })}>
                 {description || placeholder || 'No description yet'}
