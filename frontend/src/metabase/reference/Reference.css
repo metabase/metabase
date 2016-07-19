@@ -3,6 +3,24 @@
     --subheader-color: #6CAFED;
 }
 
+:local(.guideEmpty) {
+    composes: flex full justify-center from "style";
+    padding-top: 75px;
+}
+
+:local(.guideEmptyBody) {
+    composes: text-centered from "style";
+    max-width: 400px;
+}
+
+:local(.guideEmptyMessage) {
+    /*composing text-body doesn't seem to work?*/
+    composes: text-dark mt3 from "style";
+    text-align: left;
+    font-size: 1.1em;
+    line-height: 1.457em;
+}
+
 :local(.headerBody) {
     composes: flex flex-full border-bottom from "style";
     overflow: hidden;
