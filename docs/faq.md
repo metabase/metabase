@@ -59,11 +59,11 @@ We welcome community contributions of database connectors. If you're able to hel
 
 No. Metabase is a fast and easy way for you to access and share information you have in a database. We do not currently offer a way to connect to third party APIs or services directly. What people do instead in these situations is download data from these services into a database they control and then use Metabase to access that database directly. This can be done either by writing code or more commonly using a third party service. There are a large number of these services, and you can ask other users and discuss pros and cons at our [user forum](https://discourse.metabase.com)
 
-One caveat is that if you are using Google Analytics Premium, one of the features is direct access to a BigQuery database with your personal Google Analytics data. In this situation, you can Metabase with that BigQuery dataset directly.
+One caveat is that if you are using Google Analytics Premium, one of the features is direct access to a BigQuery database with your personal Google Analytics data. In this situation, you can use Metabase with that BigQuery dataset directly.
 
 ### Can I upload data to Metabase?
 
-Not exactly. Metabase provides access to data you have in an existing database you control. We currently do not add or modify the information in your database. You should ask whoever controls the database you are accessing how to upload the data you're interested in accessing.
+Not exactly. Metabase provides access to data you have in an existing database you control. We currently do not add or modify the information in your database. You should ask whomever controls the database you are accessing how to upload the data you're interested in accessing.
 
 ### Can you help me debug something?
 
