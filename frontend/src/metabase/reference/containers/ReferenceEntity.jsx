@@ -168,7 +168,7 @@ export default class EntityItem extends Component {
                                 </IconBorder>
                             }
                         </div>
-                        <div className={R.headerBody}>
+                        <div className={R.headerBody} style={isEditing ? {alignItems: "flex-start"} : {}}>
                             { isEditing ?
                                 hasDisplayName ?
                                     <input
