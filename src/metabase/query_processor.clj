@@ -477,7 +477,7 @@
                                 (:native query)
                                 (driver/mbql->native (:driver query) query))
                        (when-not *disable-qp-logging*
-                         (log/debug (u/format-color 'green "NATIVE FORM:\n%s\n" (u/pprint-to-str <>)))))
+                         (log/debug (u/format-color 'green "NATIVE FORM: 😳\n%s\n" (u/pprint-to-str <>)))))
         native-query (if-not (mbql-query? query)
                        query
                        (assoc query :native native-form))
