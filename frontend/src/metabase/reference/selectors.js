@@ -91,7 +91,7 @@ const getMetricSections = (metric, user) => metric ? {
             message: `Questions about this metric will appear here as they're added`,
             icon: "all",
             action: "Ask a question",
-            link: "/q"
+            link: `/q?table=${metric.table_id}&metric=${metric.id}`
         },
         type: 'questions',
         sidebar: 'Questions about this metric',
@@ -148,7 +148,7 @@ const getSegmentSections = (segment, user) => segment ? {
             message: `Questions about this segment will appear here as they're added`,
             icon: "all",
             action: "Ask a question",
-            link: "/q"
+            link: `/q?table=${segment.table_id}&segment=${segment.id}`
         },
         type: 'questions',
         sidebar: 'Questions about this segment',
