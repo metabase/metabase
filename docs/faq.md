@@ -57,7 +57,7 @@ We welcome community contributions of database connectors. If you're able to hel
 
 ### Can Metabase connect to Google Analytics, Salesforce, etc?
 
-No. Metabase is a fast and easy way for you to access and share information you have in a database. We do not currently offer a way to connect to third party APIs or services directly. What people do instead in these situations is download data from these services into a database they control and then use Metabase to access that database directly. This can be done either by writing code or more commonly using a third party service. There are a large number of these service, and you can ask other users and discuss pro's and cons at our [user forum](https://discourse.metabase.com)
+No. Metabase is a fast and easy way for you to access and share information you have in a database. We do not currently offer a way to connect to third party APIs or services directly. What people do instead in these situations is download data from these services into a database they control and then use Metabase to access that database directly. This can be done either by writing code or more commonly using a third party service. There are a large number of these services, and you can ask other users and discuss pros and cons at our [user forum](https://discourse.metabase.com)
 
 One caveat is that if you are using Google Analytics Premium, one of the features is direct access to a BigQuery database with your personal Google Analytics data. In this situation, you can Metabase with that BigQuery dataset directly.
 
