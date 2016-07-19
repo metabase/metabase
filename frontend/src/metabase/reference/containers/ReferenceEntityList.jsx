@@ -18,8 +18,6 @@ import EmptyState from "metabase/components/EmptyState.jsx";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
-import cx from "classnames";
-
 import {
     getSection,
     getData,

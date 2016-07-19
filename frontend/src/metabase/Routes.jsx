@@ -1,6 +1,6 @@
 import React, { Component, PropTypes } from "react";
 
-import { Route, Redirect } from 'react-router';
+import { Route } from 'react-router';
 import { ReduxRouter } from 'redux-router';
 
 // auth containers
@@ -84,16 +84,12 @@ export default class Routes extends Component {
                     <Route path="metrics" component={ReferenceEntityList} />
                     <Route path="metrics/:metricId" component={ReferenceEntity} />
                     <Route path="metrics/:metricId/questions" component={ReferenceEntityList} />
-                    //FIXME: has some intermittent issues with the angular routing integration
-                    // Uncaught Error: [$rootScope:infdig] 10 $digest() iterations reached. Aborting!
-                    <Redirect from="metrics/:metricId/questions/:cardId" to="/card/:cardId"/>
                     <Route path="metrics/:metricId/revisions" component={ReferenceRevisionsList} />
                     <Route path="segments" component={ReferenceEntityList} />
                     <Route path="segments/:segmentId" component={ReferenceEntity} />
                     <Route path="segments/:segmentId/fields" component={ReferenceFieldsList} />
                     <Route path="segments/:segmentId/fields/:fieldId" component={ReferenceEntity} />
                     <Route path="segments/:segmentId/questions" component={ReferenceEntityList} />
-                    <Redirect from="segments/:segmentId/questions/:cardId" to="/card/:cardId"/>
                     <Route path="segments/:segmentId/revisions" component={ReferenceRevisionsList} />
                     <Route path="databases" component={ReferenceEntityList} />
                     <Route path="databases/:databaseId" component={ReferenceEntity} />
@@ -102,7 +98,6 @@ export default class Routes extends Component {
                     <Route path="databases/:databaseId/tables/:tableId/fields" component={ReferenceFieldsList} />
                     <Route path="databases/:databaseId/tables/:tableId/fields/:fieldId" component={ReferenceEntity} />
                     <Route path="databases/:databaseId/tables/:tableId/questions" component={ReferenceEntityList} />
-                    <Redirect from="databases/:databaseId/tables/:tableId/questions/:cardId" to="/card/:cardId"/>
                 </Route>
 
                 <Route path="/auth/forgot_password" component={ForgotPasswordApp} />

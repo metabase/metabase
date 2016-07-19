@@ -9,12 +9,12 @@ import { titleize, humanize } from "metabase/lib/formatting";
 //TODO: refactor to use different container components for each section
 // initialize section metadata in there
 const referenceSections = {
-    // [`/reference/guide`]: {
-    //     id: `/reference/guide`,
-    //     name: "Understanding our data",
-    //     breadcrumb: "Guide",
-    //     icon: "all"
-    // },
+    [`/reference/guide`]: {
+        id: `/reference/guide`,
+        name: "Understanding our data",
+        breadcrumb: "Guide",
+        icon: "all"
+    },
     [`/reference/metrics`]: {
         id: `/reference/metrics`,
         name: "Metrics",
