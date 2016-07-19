@@ -119,8 +119,6 @@ angular.module('metabase', [
 
     $routeProvider.when('/', { ...route, template: '<div mb-redux-component class="full-height" />'});
 
-    $routeProvider.when('/chartsettings', route);
-
     $routeProvider.when('/admin/', { redirectTo: () => ('/admin/settings') });
     $routeProvider.when('/admin/databases', route);
     $routeProvider.when('/admin/databases/create', route);

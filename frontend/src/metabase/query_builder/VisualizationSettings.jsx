@@ -2,6 +2,9 @@ import React, { Component, PropTypes } from "react";
 
 import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
+
+import ChartSettings from "metabase/visualizations/components/ChartSettings.jsx";
 
 import visualizations from "metabase/visualizations";
 
@@ -10,7 +13,6 @@ import cx from "classnames";
 export default class VisualizationSettings extends React.Component {
     constructor(props, context) {
         super(props, context);
-        this.setDisplay = this.setDisplay.bind(this);
     }
 
     static propTypes = {
@@ -21,7 +23,7 @@ export default class VisualizationSettings extends React.Component {
         onUpdateVisualizationSettings: PropTypes.func.isRequired
     };
 
-    setDisplay(type) {
+    setDisplay = (type) => {
         // notify our parent about our change
         this.props.setDisplayFn(type);
         this.refs.displayPopover.toggle();
@@ -88,6 +90,19 @@ export default class VisualizationSettings extends React.Component {
             return (
                 <div className="VisualizationSettings flex align-center">
                     {this.renderChartTypePicker()}
+                    <ModalWithTrigger
+                        ref="chartSettings"
+                        className="Modal Modal--wide Modal--tall"
+                        triggerElement={<Icon name="gear" />}
+                    >
+                        <ChartSettings
+                            card={this.props.card}
+                            result={this.props.result}
+                            onUpdateVisualizationSetting={this.props.onUpdateVisualizationSetting}
+                            onUpdateVisualizationSettings={this.props.onUpdateVisualizationSettings}
+                            onClose={() => this.refs.chartSettings.close()}
+                        />
+                    </ModalWithTrigger>
                     {this.renderVisualizationSettings()}
                 </div>
             );

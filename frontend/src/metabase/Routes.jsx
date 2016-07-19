@@ -35,9 +35,6 @@ import SettingsEditorApp from "metabase/admin/settings/containers/SettingsEditor
 import NotFound from "metabase/components/NotFound.jsx";
 import Unauthorized from "metabase/components/Unauthorized.jsx";
 
-// TODO DESTROY WITH FIRE
-import ChartSettings from "metabase/visualizations/ChartSettings.jsx";
-
 
 export default class Routes extends Component {
     // this lets us forward props we've injected from the Angular controller
@@ -53,8 +50,6 @@ export default class Routes extends Component {
         return (
             <ReduxRouter>
                 <Route path="/" component={this._forwardProps(HomepageApp, ["onChangeLocation"])} />
-
-                <Route path="/chartsettings" component={ChartSettings} />
 
                 <Route path="/admin">
                     <Route path="databases" component={DatabaseListApp} />

@@ -37,6 +37,10 @@
   width: 85%;
 }
 
+.Modal.Modal--tall {
+  min-height: 85%;
+}
+
 .Modal-backdrop {
     position: fixed;
     top: 0;
