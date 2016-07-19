@@ -21,7 +21,7 @@ const Item = ({ index, name, description, placeholder, url, icon }) =>
                     <span className={S.itemName}>{name}</span>
                 }
             </div>
-            <div className={cx(S.itemSubtitle, { "mt1" : true })}>
+            <div className={cx(description ? S.itemSubtitle : S.itemSubtitleLight, { "mt1" : true })}>
                 {description || placeholder || 'No description yet'}
             </div>
         </div>

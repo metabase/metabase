@@ -30,6 +30,12 @@
     font-size: 16px;
 }
 
+:local(.detailSubtitleLight) {
+    composes: mt2 from "style";
+    color: var(--subtitle-color);
+    font-size: 16px;
+}
+
 :local(.detailTextArea) {
     composes: text-dark rounded bordered p2 from "style";
     resize: none;

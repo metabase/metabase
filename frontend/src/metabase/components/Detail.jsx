@@ -15,7 +15,7 @@ const Detail = ({ name, description, placeholder, url, icon, isEditing, field })
                     <span className={S.detailName}>{name}</span>
                 }
             </div>
-            <div className={cx(S.detailSubtitle, { "mt1" : true })}>
+            <div className={cx(description ? S.detailSubtitle : S.detailSubtitleLight, { "mt1" : true })}>
                 { isEditing ?
                     <textarea
                         className={S.detailTextArea}

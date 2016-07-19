@@ -73,8 +73,13 @@
 }
 
 :local(.itemSubtitle) {
+    color: color(var(--subtitle-color) shade(20%));
+    font-size: 16px;
+}
+
+:local(.itemSubtitleLight) {
     color: var(--subtitle-color);
-    font-size: 14px;
+    font-size: 16px;
 }
 
 :local(.itemSubtitleBold) {
