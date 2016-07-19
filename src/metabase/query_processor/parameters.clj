@@ -102,28 +102,40 @@
 ;;; |                                             MBQL QUERIES                                              |
 ;;; +-------------------------------------------------------------------------------------------------------+
 
+(defn- parse-param-value-for-type
+  "Convert PARAM-VALUE to a type appropriate for PARAM-TYPE.
+   The frontend always passes parameters in as strings, which is what we want in most cases; for numbers, instead convert the parameters to integers or floating-point numbers."
+  [param-type param-value]
+  (cond
+    ;; no conversion needed if PARAM-TYPE isn't :number or PARAM-VALUE isn't a string
+    (or (not= (keyword param-type) :number)
+        (not (string? param-value)))        param-value
+    ;; if PARAM-VALUE contains a period then convert to a Double
+    (re-find #"\." param-value)             (Double/parseDouble param-value)
+    ;; otherwise convert to a Long
+    :else                                   (Long/parseLong param-value)))
+
 
 (defn- build-filter-clause [{param-type :type, param-value :value, [_ field] :target}]
-  (if-not (s/starts-with? param-type "date")
-    ;; default behavior is to use a simple equals filter
-    ["=" field param-value]
-    ;; otherwise we need to handle date filtering
-    (if-not (contains? relative-dates param-value)
-      ;; absolute date range
-      (let [{:keys [start end]} (absolute-date->range param-value)]
-        ["BETWEEN" field start end])
+  (let [param-value (parse-param-value-for-type param-type param-value)]
+    (cond
+      ;; default behavior (non-date filtering) is to use a simple equals filter
+      (not (s/starts-with? param-type "date")) ["=" field param-value]
       ;; relative date range
-      (case param-value
-        "past7days"  ["TIME_INTERVAL" field -7 "day"]
-        "past30days" ["TIME_INTERVAL" field -30 "day"]
-        "thisweek"   ["TIME_INTERVAL" field "current" "week"]
-        "thismonth"  ["TIME_INTERVAL" field "current" "month"]
-        "thisyear"   ["TIME_INTERVAL" field "current" "year"]
-        "lastweek"   ["TIME_INTERVAL" field "last" "week"]
-        "lastmonth"  ["TIME_INTERVAL" field "last" "month"]
-        "lastyear"   ["TIME_INTERVAL" field "last" "year"]
-        "yesterday"  ["=" field ["relative_datetime" -1 "day"]]
-        "today"      ["=" field ["relative_datetime" "current"]]))))
+      (contains? relative-dates param-value)   (case param-value
+                                                 "past7days"  ["TIME_INTERVAL" field -7 "day"]
+                                                 "past30days" ["TIME_INTERVAL" field -30 "day"]
+                                                 "thisweek"   ["TIME_INTERVAL" field "current" "week"]
+                                                 "thismonth"  ["TIME_INTERVAL" field "current" "month"]
+                                                 "thisyear"   ["TIME_INTERVAL" field "current" "year"]
+                                                 "lastweek"   ["TIME_INTERVAL" field "last" "week"]
+                                                 "lastmonth"  ["TIME_INTERVAL" field "last" "month"]
+                                                 "lastyear"   ["TIME_INTERVAL" field "last" "year"]
+                                                 "yesterday"  ["=" field ["relative_datetime" -1 "day"]]
+                                                 "today"      ["=" field ["relative_datetime" "current"]])
+      ;; absolute date range
+      :else                                    (let [{:keys [start end]} (absolute-date->range param-value)]
+                                                 ["BETWEEN" field start end]))))
 
 (defn- merge-filter-clauses [base addtl]
   (cond
@@ -134,13 +146,13 @@
     :else             []))
 
 (defn- expand-params-mbql [query-dict [{:keys [target value], :as param} & rest]]
-  (if param
-    (if (and param target value)
-      (let [filter-subclause (build-filter-clause param)
-            query            (assoc-in query-dict [:query :filter] (merge-filter-clauses (get-in query-dict [:query :filter]) filter-subclause))]
-        (expand-params-mbql query rest))
-      (expand-params-mbql query-dict rest))
-    query-dict))
+  (cond
+    (not param)      query-dict
+    (or (not target)
+        (not value)) (expand-params-mbql query-dict rest)
+    :else            (let [filter-subclause (build-filter-clause param)
+                           query            (assoc-in query-dict [:query :filter] (merge-filter-clauses (get-in query-dict [:query :filter]) filter-subclause))]
+                       (recur query rest))))
 
 
 ;;; +-------------------------------------------------------------------------------------------------------+
