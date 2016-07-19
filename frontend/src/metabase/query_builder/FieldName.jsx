@@ -29,16 +29,21 @@ export default class FieldName extends Component {
         let fieldTarget = Query.getFieldTarget(field, tableMetadata);
 
         let parts = [];
-        // fk path
-        for (let [index, fkField] of Object.entries(fieldTarget.path)) {
-            parts.push(<span key={"fkName"+index}>{stripId(fkField.display_name)}</span>);
-            parts.push(<span key={"fkIcon"+index} className="px1"><Icon name="connections" width="10" height="10" /></span>);
-        }
-        // target field itself
-        parts.push(<span key="field">{i.getIn(fieldTarget, ['field', 'display_name'])}</span>);
-        // datetime-field unit
-        if (fieldTarget.unit != null) {
-            parts.push(<span key="unit">{": " + formatBucketing(fieldTarget.unit)}</span>);
+
+        if (fieldTarget) {
+            // fk path
+            for (let [index, fkField] of Object.entries(fieldTarget.path)) {
+                parts.push(<span key={"fkName"+index}>{stripId(fkField.display_name)}</span>);
+                parts.push(<span key={"fkIcon"+index} className="px1"><Icon name="connections" width="10" height="10" /></span>);
+            }
+            // target field itself
+            parts.push(<span key="field">{i.getIn(fieldTarget, ['field', 'display_name'])}</span>);
+            // datetime-field unit
+            if (fieldTarget.unit != null) {
+                parts.push(<span key="unit">{": " + formatBucketing(fieldTarget.unit)}</span>);
+            }
+        } else {
+            parts.push(<span key="field">field</span>);
         }
 
         return (
