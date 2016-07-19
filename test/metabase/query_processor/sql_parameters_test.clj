@@ -1,7 +1,9 @@
 (ns metabase.query-processor.sql-parameters-test
   (:require [clj-time.core :as t]
             [expectations :refer :all]
-            [metabase.driver :as driver]
+            (metabase [db :as db]
+                      [driver :as driver])
+            [metabase.models.table :as table]
             [metabase.query-processor :as qp]
             [metabase.query-processor.sql-parameters :refer :all]
             [metabase.query-processor-test :refer [engines-that-support first-row]]
@@ -324,13 +326,16 @@
 
 ;;; ------------------------------------------------------------ "REAL" END-TO-END-TESTS ------------------------------------------------------------
 
+(defn- checkins-identifier []
+  (name (table/qualified-identifier (db/select-one ['Table :name :schema], :id (data/id :checkins)))))
+
 (datasets/expect-with-engines (engines-that-support :native-parameters)
   [29]
   (first-row
     (qp/process-query
       {:database      (data/id)
        :type          :native
-       :native        {:query "SELECT COUNT(*) FROM checkins WHERE {{checkin_date}};"}
+       :native        {:query (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}};" (checkins-identifier))}
        :template_tags {:checkin_date {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}},
        :parameters    [{:type "date/range", :target ["dimension" ["template-tag" "checkin_date"]], :value "2015-04-01~2015-05-01"}]})))
 
@@ -341,6 +346,6 @@
     (qp/process-query
       {:database      (data/id)
        :type          :native
-       :native        {:query "SELECT COUNT(*) FROM checkins WHERE {{checkin_date}};"}
+       :native        {:query (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}};" (checkins-identifier))}
        :template_tags {:checkin_date {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}},
        :parameters    []})))

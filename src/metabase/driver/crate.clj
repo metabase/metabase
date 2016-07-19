@@ -73,7 +73,8 @@
                                         :default      "//localhost:4300"}])
           :features       (fn [this]
                             (set/difference (sql/features this)
-                                            #{:foreign-keys}))})
+                                            ;; Crate doesn't support FKs (?) and native parameters seem to not work properly due to syntax issues
+                                            #{:foreign-keys :native-parameters}))})
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
          {:connection-details->spec  (u/drop-first-arg crate-spec)

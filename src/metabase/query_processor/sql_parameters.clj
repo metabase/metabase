@@ -101,7 +101,7 @@
 
 ;;; ------------------------------------------------------------ Param Resolution ------------------------------------------------------------
 
-(defn param-with-target [params target]
+(defn- param-with-target [params target]
   (some (fn [param]
           (when (= (:target param) target)
             param))
