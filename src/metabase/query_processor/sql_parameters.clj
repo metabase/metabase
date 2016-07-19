@@ -83,7 +83,7 @@
        (catch Throwable _
          "")))
 
-(defn substitute
+(defn- substitute
   "Replace PARAMS in SQL string. See parameterized SQL guide for more details. (TODO - Add link once we have the guide)
 
      (substitute \"SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}}\"
