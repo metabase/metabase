@@ -6,6 +6,9 @@ import ChartTooltip from "./ChartTooltip.jsx";
 
 import ColorSetting from "./settings/ColorSetting.jsx";
 
+import lineAreaBarRenderer from "metabase/visualizations/lib/LineAreaBarRenderer";
+import { getSettingsForVisualization } from "metabase/lib/visualization_settings";
+
 import { isNumeric, isDate, isDimension, isMetric } from "metabase/lib/schema_metadata";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 import Urls from "metabase/lib/urls";
@@ -181,6 +184,10 @@ export default class LineAreaBarChart extends Component {
         }
     }
 
+    getChartType() {
+        return this.constructor.identifier;
+    }
+
     getFidelity() {
         let fidelity = { x: 0, y: 0 };
         let size = this.props.gridSize ||  { width: Infinity, height: Infinity };
@@ -201,7 +208,7 @@ export default class LineAreaBarChart extends Component {
     getSettings() {
         let fidelity = this.getFidelity();
 
-        let settings = this.props.series[0].card.visualization_settings;
+        let settings = getSettingsForVisualization(this.props.series[0].card.visualization_settings, this.getChartType());
 
         // no axis in < 1 fidelity
         if (fidelity.x < 1) {
@@ -232,7 +239,6 @@ export default class LineAreaBarChart extends Component {
         const { series, isMultiseries, isStacked } = this.state;
 
         const card = this.props.series[0].card;
-        const chartType = this.constructor.identifier;
 
         let settings = this.getSettings();
 
@@ -254,11 +260,12 @@ export default class LineAreaBarChart extends Component {
                 }
                 <CardRenderer
                     {...this.props}
-                    chartType={chartType}
+                    chartType={this.getChartType()}
                     series={i.assocIn(series, [0, "card", "visualization_settings"], settings)}
                     className="flex-full"
                     allowSplitAxis={isMultiseries ? false : allowSplitAxis}
                     isStacked={isStacked}
+                    renderer={lineAreaBarRenderer}
                 />
                 <ChartTooltip series={series} hovered={hovered} />
             </div>
