@@ -43,6 +43,14 @@ export const tables = createSelector(
     }
 );
 
+export const getSampleDatasetId = createSelector(
+	[databases],
+	(databases) => {
+		const sampleDataset = _.findWhere(databases, { is_sample: true });
+		return sampleDataset && sampleDataset.id;
+	}
+)
+
 export const getDatabaseFields = createSelector(
 	[getDatabaseId, state => state.qb.databaseFields],
 	(databaseId, databaseFields) => databaseFields[databaseId]

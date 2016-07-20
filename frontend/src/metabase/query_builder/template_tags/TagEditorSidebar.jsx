@@ -56,7 +56,7 @@ export default class TagEditorSidebar extends Component {
                     { section === "settings" ?
                         <SettingsPane tags={tags} onUpdate={this.props.updateTemplateTag} databaseFields={this.props.databaseFields}/>
                     :
-                        <TagEditorHelp setQuery={this.props.setQuery}/>
+                        <TagEditorHelp sampleDatasetId={this.props.sampleDatasetId} setQuery={this.props.setQuery}/>
                     }
                 </div>
             </div>

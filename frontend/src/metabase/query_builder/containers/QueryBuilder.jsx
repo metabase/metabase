@@ -31,7 +31,8 @@ import {
     tableForeignKeyReferences,
     uiControls,
     getParameters,
-    getDatabaseFields
+    getDatabaseFields,
+    getSampleDatasetId
 } from "../selectors";
 
 import * as actions from "../actions";
@@ -88,6 +89,7 @@ const mapStateToProps = (state, props) => {
         uiControls:                uiControls(state),
         parameters:                getParameters(state),
         databaseFields:            getDatabaseFields(state),
+        sampleDatasetId:           getSampleDatasetId(state),
 
         cardIsDirtyFn:             () => isDirty(state),
         cardIsNewFn:               () => (state.qb.card && !state.qb.card.id),
