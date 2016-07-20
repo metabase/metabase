@@ -1,8 +1,8 @@
 import React, { Component, PropTypes } from "react";
 import cx from "classnames";
+import { assocIn } from "icepick";
 
 import Visualization from "metabase/visualizations/components/Visualization.jsx"
-
 import { getSettings, getSettingsWidgets } from "metabase/lib/visualization_settings";
 
 const ChartSettingsTab = ({name, active, onClick}) =>
@@ -39,8 +39,7 @@ class ChartSettings extends Component {
         super(props);
         this.state = {
           currentTab: null,
-          card: props.card,
-          data: props.result.data
+          card: props.series[0].card
       };
     }
 
@@ -49,7 +48,8 @@ class ChartSettings extends Component {
     }
 
     getVisualizationSettings() {
-        const { card, data } = this.state;
+        const { card } = this.state;
+        const data = this.props.series[0].data;
         return getSettings(card, data);
     }
 
@@ -81,7 +81,10 @@ class ChartSettings extends Component {
 
     render () {
         const { onClose } = this.props;
-        const { card, data } = this.state;
+        const { card } = this.state;
+        const data = this.props.series[0].data;
+
+        const series = assocIn(this.props.series, [0, "card"], card);
 
         const settings = this.getVisualizationSettings();
 
@@ -93,6 +96,8 @@ class ChartSettings extends Component {
         const tabNames = Object.keys(tabs);
         const currentTab = this.state.currentTab || tabNames[0];
         const widgets = tabs[currentTab];
+
+        const isDirty = JSON.stringify(card.visualization_settings) === JSON.stringify(this.props.series[0].card.visualization_settings);
 
         return (
           <div className="flex flex-column spread p4">
@@ -122,7 +127,7 @@ class ChartSettings extends Component {
                   <div className="Grid-cell relative">
                       <Visualization
                           className="spread"
-                          series={[{ card: card, data: data }]}
+                          series={series}
                           isEditing={true}
                           // Table:
                           setSortFn={this.props.setSortFn}
@@ -134,7 +139,7 @@ class ChartSettings extends Component {
                   </div>
               </div>
               <div className="pt1">
-                <a className={cx("Button Button--primary", { "disabled": JSON.stringify(card.visualization_settings) === JSON.stringify(this.props.card.visualization_settings)})} href="" onClick={() => this.onDone()}>Done</a>
+                <a className={cx("Button Button--primary", { "disabled": !isDirty })} href="" onClick={() => this.onDone()}>Done</a>
                 <a className="text-grey-2 ml2" onClick={onClose}>Cancel</a>
               </div>
           </div>

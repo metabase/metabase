@@ -95,8 +95,7 @@ export default class VisualizationSettings extends React.Component {
                         triggerElement={<Icon name="gear" />}
                     >
                         <ChartSettings
-                            card={this.props.card}
-                            result={this.props.result}
+                            series={[{ card: this.props.card, data: this.props.result.data }]}
                             onChange={this.props.onUpdateVisualizationSettings}
                         />
                     </ModalWithTrigger>
