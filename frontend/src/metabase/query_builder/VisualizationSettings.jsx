@@ -91,7 +91,6 @@ export default class VisualizationSettings extends React.Component {
                 <div className="VisualizationSettings flex align-center">
                     {this.renderChartTypePicker()}
                     <ModalWithTrigger
-                        ref="chartSettings"
                         className="Modal Modal--wide Modal--tall"
                         triggerElement={<Icon name="gear" />}
                     >
@@ -99,8 +98,6 @@ export default class VisualizationSettings extends React.Component {
                             card={this.props.card}
                             result={this.props.result}
                             onChange={this.props.onUpdateVisualizationSettings}
-                            onClose={() => this.refs.chartSettings.close()}
-
                         />
                     </ModalWithTrigger>
                     {this.renderVisualizationSettings()}
