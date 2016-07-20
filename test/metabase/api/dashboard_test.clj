@@ -84,6 +84,9 @@
 (expect
   {:name            "Test Create Dashboard"
    :description     nil
+   :show_in_getting_started false
+   :caveats nil
+   :points_of_interest nil
    :creator_id      (user->id :rasta)
    :parameters      [{:hash "abc123", :name "test", :type "date"}]
    :public_perms    0
@@ -100,6 +103,9 @@
 (expect
   {:name            "Test Dashboard"
    :description     nil
+   :show_in_getting_started false
+   :caveats nil
+   :points_of_interest nil
    :creator_id      (user->id :rasta)
    :creator         (user-details (fetch-user :rasta))
    :public_perms    0
@@ -139,6 +145,9 @@
 (expect
   [{:name            "Test Dashboard"
     :description     nil
+    :show_in_getting_started false
+    :caveats nil
+    :points_of_interest nil
     :creator_id      (user->id :rasta)
     :public_perms    0
     :updated_at      true
@@ -147,6 +156,9 @@
     :parameters      []}
    {:name            "My Cool Dashboard"
     :description     "Some awesome description"
+    :show_in_getting_started false
+    :caveats nil
+    :points_of_interest nil
     :creator_id      (user->id :rasta)
     :public_perms    0
     :updated_at      true
@@ -155,6 +167,9 @@
     :parameters      []}
    {:name            "My Cool Dashboard"
     :description     "Some awesome description"
+    :show_in_getting_started false
+    :caveats nil
+    :points_of_interest nil
     :creator_id      (user->id :rasta)
     :public_perms    0
     :updated_at      true

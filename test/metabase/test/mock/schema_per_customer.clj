@@ -464,11 +464,16 @@
 (def ^:const schema-per-customer-tables-and-fields
   [{:description     nil
     :entity_type     nil
+    :caveats         nil
+    :points_of_interest nil
+    :show_in_getting_started false
     :schema          "common"
     :raw_table_id    true
     :name            "user"
     :fields          [{:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :id
                        :name               "id"
                        :fk_target_field_id false
@@ -487,6 +492,8 @@
                        :base_type          :IntegerField}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :name
                        :name               "name"
                        :fk_target_field_id false
@@ -514,11 +521,16 @@
     :created_at      true}
    {:description     nil
     :entity_type     nil
+    :caveats         nil
+    :points_of_interest nil
+    :show_in_getting_started false
     :schema          "s1"
     :raw_table_id    true
     :name            "city"
     :fields          [{:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :id
                        :name               "id"
                        :fk_target_field_id false
@@ -537,6 +549,8 @@
                        :base_type          :IntegerField}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :name
                        :name               "name"
                        :fk_target_field_id false
@@ -564,11 +578,16 @@
     :created_at      true}
    {:description     nil
     :entity_type     nil
+    :caveats         nil
+    :points_of_interest nil
+    :show_in_getting_started false
     :schema          "s1"
     :raw_table_id    true
     :name            "review"
     :fields          [{:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :id
                        :name               "id"
                        :fk_target_field_id false
@@ -587,6 +606,8 @@
                        :base_type          :IntegerField}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :fk
                        :name               "reviewer_id"
                        :fk_target_field_id true
@@ -606,6 +627,8 @@
                        :fk_target_field    {:schema "common", :name "user", :col-name "id"}}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :name
                        :name               "text"
                        :fk_target_field_id false
@@ -624,6 +647,8 @@
                        :base_type          :TextField}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :fk
                        :name               "venue_id"
                        :fk_target_field_id true
@@ -652,11 +677,16 @@
     :created_at      true}
    {:description     nil
     :entity_type     nil
+    :caveats         nil
+    :points_of_interest nil
+    :show_in_getting_started false
     :schema          "s1"
     :raw_table_id    true
     :name            "venue"
     :fields          [{:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :fk
                        :name               "city_id"
                        :fk_target_field_id true
@@ -676,6 +706,8 @@
                        :fk_target_field    {:schema "s1", :name "city", :col-name "id"}}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :id
                        :name               "id"
                        :fk_target_field_id false
@@ -694,6 +726,8 @@
                        :base_type          :IntegerField}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :name
                        :name               "name"
                        :fk_target_field_id false
@@ -721,11 +755,16 @@
     :created_at      true}
    {:description     nil
     :entity_type     nil
+    :caveats         nil
+    :points_of_interest nil
+    :show_in_getting_started false
     :schema          "s2"
     :raw_table_id    true
     :name            "city"
     :fields          [{:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :id
                        :name               "id"
                        :fk_target_field_id false
@@ -744,6 +783,8 @@
                        :base_type          :IntegerField}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :name
                        :name               "name"
                        :fk_target_field_id false
@@ -771,11 +812,16 @@
     :created_at      true}
    {:description     nil
     :entity_type     nil
+    :caveats         nil
+    :points_of_interest nil
+    :show_in_getting_started false
     :schema          "s2"
     :raw_table_id    true
     :name            "review"
     :fields          [{:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :id
                        :name               "id"
                        :fk_target_field_id false
@@ -794,6 +840,8 @@
                        :base_type          :IntegerField}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :fk
                        :name               "reviewer_id"
                        :fk_target_field_id true
@@ -813,6 +861,8 @@
                        :fk_target_field    {:schema "common", :name "user", :col-name "id"}}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :name
                        :name               "text"
                        :fk_target_field_id false
@@ -831,6 +881,8 @@
                        :base_type          :TextField}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :fk
                        :name               "venue_id"
                        :fk_target_field_id true
@@ -859,11 +911,16 @@
     :created_at      true}
    {:description     nil
     :entity_type     nil
+    :caveats         nil
+    :points_of_interest nil
+    :show_in_getting_started false
     :schema          "s2"
     :raw_table_id    true
     :name            "venue"
     :fields          [{:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :fk
                        :name               "city_id"
                        :fk_target_field_id true
@@ -883,6 +940,8 @@
                        :fk_target_field    {:schema "s2", :name "city", :col-name "id"}}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :id
                        :name               "id"
                        :fk_target_field_id false
@@ -901,6 +960,8 @@
                        :base_type          :IntegerField}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :name
                        :name               "name"
                        :fk_target_field_id false
@@ -928,11 +989,16 @@
     :created_at      true}
    {:description     nil
     :entity_type     nil
+    :caveats         nil
+    :points_of_interest nil
+    :show_in_getting_started false
     :schema          "s3"
     :raw_table_id    true
     :name            "city"
     :fields          [{:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :id
                        :name               "id"
                        :fk_target_field_id false
@@ -951,6 +1017,8 @@
                        :base_type          :IntegerField}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :name
                        :name               "name"
                        :fk_target_field_id false
@@ -978,11 +1046,16 @@
     :created_at      true}
    {:description     nil
     :entity_type     nil
+    :caveats         nil
+    :points_of_interest nil
+    :show_in_getting_started false
     :schema          "s3"
     :raw_table_id    true
     :name            "review"
     :fields          [{:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :id
                        :name               "id"
                        :fk_target_field_id false
@@ -1001,6 +1074,8 @@
                        :base_type          :IntegerField}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :fk
                        :name               "reviewer_id"
                        :fk_target_field_id true
@@ -1020,6 +1095,8 @@
                        :fk_target_field    {:schema "common", :name "user", :col-name "id"}}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :name
                        :name               "text"
                        :fk_target_field_id false
@@ -1038,6 +1115,8 @@
                        :base_type          :TextField}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :fk
                        :name               "venue_id"
                        :fk_target_field_id true
@@ -1066,11 +1145,16 @@
     :created_at      true}
    {:description     nil
     :entity_type     nil
+    :caveats         nil
+    :points_of_interest nil
+    :show_in_getting_started false
     :schema          "s3"
     :raw_table_id    true
     :name            "venue"
     :fields          [{:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :fk
                        :name               "city_id"
                        :fk_target_field_id true
@@ -1090,6 +1174,8 @@
                        :fk_target_field    {:schema "s3", :name "city", :col-name "id"}}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :id
                        :name               "id"
                        :fk_target_field_id false
@@ -1108,6 +1194,8 @@
                        :base_type          :IntegerField}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :name
                        :name               "name"
                        :fk_target_field_id false

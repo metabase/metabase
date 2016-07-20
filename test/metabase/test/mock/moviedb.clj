@@ -247,11 +247,16 @@
 (def ^:const moviedb-tables-and-fields
   [{:description     nil
     :entity_type     nil
+    :caveats         nil
+    :points_of_interest nil
+    :show_in_getting_started false
     :schema          nil
     :raw_table_id    true
     :name            "actors"
     :fields          [{:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :id
                        :name               "id"
                        :fk_target_field_id false
@@ -270,6 +275,8 @@
                        :base_type          :IntegerField}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :name
                        :name               "name"
                        :fk_target_field_id false
@@ -297,11 +304,16 @@
     :created_at      true}
    {:description     nil
     :entity_type     nil
+    :caveats         nil
+    :points_of_interest nil
+    :show_in_getting_started false
     :schema          nil
     :raw_table_id    true
     :name            "movies"
     :fields          [{:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       nil
                        :name               "filming"
                        :fk_target_field_id false
@@ -320,6 +332,8 @@
                        :base_type          :BooleanField}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :id
                        :name               "id"
                        :fk_target_field_id false
@@ -338,6 +352,8 @@
                        :base_type          :IntegerField}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       nil
                        :name               "title"
                        :fk_target_field_id false
@@ -365,11 +381,16 @@
     :created_at      true}
    {:description     nil
     :entity_type     nil
+    :caveats         nil
+    :points_of_interest nil
+    :show_in_getting_started false
     :schema          nil
     :raw_table_id    true
     :name            "reviews"
     :fields          [{:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :id
                        :name               "id"
                        :fk_target_field_id false
@@ -388,6 +409,8 @@
                        :base_type          :IntegerField}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :fk
                        :name               "movie_id"
                        :fk_target_field_id true
@@ -406,6 +429,8 @@
                        :base_type          :IntegerField}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       nil
                        :name               "stars"
                        :fk_target_field_id false
@@ -433,11 +458,16 @@
     :created_at      true}
    {:description     nil
     :entity_type     nil
+    :caveats         nil
+    :points_of_interest nil
+    :show_in_getting_started false
     :schema          nil
     :raw_table_id    true
     :name            "roles"
     :fields          [{:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :fk
                        :name               "actor_id"
                        :fk_target_field_id true
@@ -456,6 +486,8 @@
                        :base_type          :IntegerField}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       nil
                        :name               "character"
                        :fk_target_field_id false
@@ -474,6 +506,8 @@
                        :base_type          :TextField}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :id
                        :name               "id"
                        :fk_target_field_id false
@@ -492,6 +526,8 @@
                        :base_type          :IntegerField}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :fk
                        :name               "movie_id"
                        :fk_target_field_id true
@@ -510,6 +546,8 @@
                        :base_type          :IntegerField}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       nil
                        :name               "salary"
                        :fk_target_field_id false

@@ -29,6 +29,8 @@
      :name               "First",
      :display_name       "First",
      :description        nil,
+     :caveats            nil
+     :points_of_interest nil
      :base_type          :IntegerField
      :visibility_type    :normal,
      :special_type       :id,
@@ -43,6 +45,8 @@
      :name               "Second",
      :display_name       "Second",
      :description        nil,
+     :caveats            nil
+     :points_of_interest nil
      :base_type          :TextField
      :visibility_type    :normal,
      :special_type       :category,
@@ -57,6 +61,8 @@
      :name               "Third",
      :display_name       "Third",
      :description        nil,
+     :caveats            nil
+     :points_of_interest nil
      :base_type          :BooleanField
      :visibility_type    :normal,
      :special_type       nil,
@@ -72,6 +78,8 @@
      :name               "First",
      :display_name       "First",
      :description        nil,
+     :caveats            nil
+     :points_of_interest nil
      :base_type          :DecimalField
      :visibility_type    :normal,
      :special_type       :id,                 ; existing special types are NOT modified
@@ -86,6 +94,8 @@
      :name               "Second",
      :display_name       "Second",
      :description        nil,
+     :caveats            nil
+     :points_of_interest nil
      :base_type          :TextField
      :visibility_type    :normal,
      :special_type       :category,
@@ -100,6 +110,8 @@
      :name               "Third",
      :display_name       "Third",
      :description        nil,
+     :caveats            nil
+     :points_of_interest nil
      :base_type          :BooleanField
      :visibility_type    :normal,
      :special_type       nil,
@@ -114,6 +126,8 @@
      :name               "rating",
      :display_name       "Rating",
      :description        nil,
+     :caveats            nil
+     :points_of_interest nil
      :base_type          :IntegerField
      :visibility_type    :normal,
      :special_type       :category,            ; should be infered from name
@@ -128,6 +142,8 @@
      :name               "city",
      :display_name       "City",
      :description        nil,
+     :caveats            nil
+     :points_of_interest nil
      :base_type          :TextField
      :visibility_type    :normal,
      :special_type       :city,               ; should be infered from name
@@ -142,6 +158,8 @@
      :name               "type",
      :display_name       "Type",
      :description        nil,
+     :caveats            nil
+     :points_of_interest nil
      :base_type          :TextField
      :visibility_type    :normal,
      :special_type       :category,            ; manually specified
@@ -157,6 +175,8 @@
      :name               "First",
      :display_name       "First",
      :description        nil,
+     :caveats            nil
+     :points_of_interest nil
      :base_type          :DecimalField
      :visibility_type    :normal,            ; fields are NOT retired automatically in dynamic schemas
      :special_type       :id,
@@ -171,6 +191,8 @@
      :name               "Second",
      :display_name       "Second",
      :description        nil,
+     :caveats            nil
+     :points_of_interest nil
      :base_type          :TextField
      :visibility_type    :normal,
      :special_type       :category,
@@ -185,6 +207,8 @@
      :name               "Third",
      :display_name       "Third",
      :description        nil,
+     :caveats            nil
+     :points_of_interest nil
      :base_type          :BooleanField
      :visibility_type    :normal,
      :special_type       :id,                  ; special type can be set if it was nil before
@@ -199,6 +223,8 @@
      :name               "rating",
      :display_name       "Rating",
      :description        nil,
+     :caveats            nil
+     :points_of_interest nil
      :base_type          :IntegerField
      :visibility_type    :normal,
      :special_type       :category,            ; should be infered from name
@@ -213,6 +239,8 @@
      :name               "city",
      :display_name       "City",
      :description        nil,
+     :caveats            nil
+     :points_of_interest nil
      :base_type          :TextField
      :visibility_type    :normal,
      :special_type       :city,               ; should be infered from name
@@ -227,6 +255,8 @@
      :name               "type",
      :display_name       "Type",
      :description        nil,
+     :caveats            nil
+     :points_of_interest nil
      :base_type          :TextField
      :visibility_type    :normal,
      :special_type       :category,            ; manually specified
@@ -241,6 +271,8 @@
      :name               "new",
      :display_name       "New",
      :description        nil,
+     :caveats            nil
+     :points_of_interest nil
      :base_type          :BooleanField
      :visibility_type    :normal,
      :special_type       nil,

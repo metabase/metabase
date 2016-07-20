@@ -15,6 +15,8 @@
   (tu/match-$ (db)
     {:created_at      $
      :engine          "h2"
+     :caveats         nil
+     :points_of_interest nil
      :id              $
      :updated_at      $
      :name            "test-data"
@@ -45,11 +47,16 @@
                            :active          true
                            :id              (id :users)
                            :db_id           (id)
+                           :caveats nil
+                           :points_of_interest nil
+                           :show_in_getting_started false
                            :raw_table_id    $
                            :created_at      $})
        :special_type    "name"
        :name            "NAME"
        :display_name    "Name"
+       :caveats         nil
+       :points_of_interest nil
        :updated_at      $
        :last_analyzed   $
        :active          true
@@ -95,6 +102,8 @@
     :visibility_type :sensitive}]
   (tu/with-temp* [Database [{database-id :id} {:name      "Field Test"
                                                :engine    :yeehaw
+                                               :caveats nil
+                                               :points_of_interest nil
                                                :details   {}
                                                :is_sample false}]
                   Table    [{table-id :id}    {:name   "Field Test"
@@ -129,6 +138,8 @@
    nil]
   (tu/with-temp* [Database [{database-id :id} {:name      "Field Test"
                                                :engine    :yeehaw
+                                               :caveats nil
+                                               :points_of_interest nil
                                                :details   {}
                                                :is_sample false}]
                   Table    [{table-id :id}    {:name   "Field Test"

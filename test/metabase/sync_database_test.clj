@@ -71,6 +71,9 @@
     :name            "movie"
     :display_name    "Movie"
     :description     nil
+    :caveats nil
+    :points_of_interest nil
+    :show_in_getting_started false
     :entity_type     nil
     :entity_name     nil
     :visibility_type nil
@@ -82,6 +85,8 @@
                        :table_id           true
                        :raw_column_id      true
                        :description        nil
+                       :caveats nil
+                       :points_of_interest nil
                        :special_type       :id
                        :name               "id"
                        :active             true
@@ -100,6 +105,8 @@
                        :table_id           true
                        :raw_column_id      true
                        :description        nil
+                       :caveats nil
+                       :points_of_interest nil
                        :special_type       :fk
                        :name               "studio"
                        :active             true
@@ -118,6 +125,8 @@
                        :table_id           true
                        :raw_column_id      true
                        :description        nil
+                       :caveats nil
+                       :points_of_interest nil
                        :special_type       nil
                        :name               "title"
                        :active             true
@@ -139,6 +148,9 @@
     :name            "studio"
     :display_name    "Studio"
     :description     nil
+    :caveats nil
+    :points_of_interest nil
+    :show_in_getting_started false
     :entity_type     nil
     :entity_name     nil
     :visibility_type nil
@@ -150,6 +162,8 @@
                        :table_id           true
                        :raw_column_id      true
                        :description        nil
+                       :caveats nil
+                       :points_of_interest nil
                        :special_type       :name
                        :name               "name"
                        :active             true
@@ -168,6 +182,8 @@
                        :table_id           true
                        :raw_column_id      true
                        :description        nil
+                       :caveats nil
+                       :points_of_interest nil
                        :special_type       :id
                        :name               "studio"
                        :active             true
@@ -200,6 +216,9 @@
    :name            "movie"
    :display_name    "Movie"
    :description     nil
+   :caveats nil
+   :points_of_interest nil
+   :show_in_getting_started false
    :entity_type     nil
    :entity_name     nil
    :visibility_type nil
@@ -211,6 +230,8 @@
                       :table_id           true
                       :raw_column_id      true
                       :description        nil
+                      :caveats nil
+                      :points_of_interest nil
                       :special_type       :id
                       :name               "id"
                       :active             true
@@ -229,6 +250,8 @@
                       :table_id           true
                       :raw_column_id      true
                       :description        nil
+                      :caveats nil
+                      :points_of_interest nil
                       :special_type       nil
                       :name               "studio"
                       :active             true
@@ -247,6 +270,8 @@
                       :table_id           true
                       :raw_column_id      true
                       :description        nil
+                      :caveats nil
+                      :points_of_interest nil
                       :special_type       nil
                       :name               "title"
                       :active             true

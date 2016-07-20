@@ -186,6 +186,10 @@
    :user_id      (user->id :rasta)
    :object       {:name        "Toucans in the rainforest"
                   :description "Lookin' for a blueberry"
+                  :how_is_this_calculated nil
+                  :show_in_getting_started false
+                  :caveats nil
+                  :points_of_interest nil
                   :is_active    true
                   :creator_id  (user->id :rasta)
                   :definition  {:a "b"}}
@@ -208,6 +212,10 @@
    :user_id      (user->id :crowberto)
    :object       {:name        "Toucans in the rainforest"
                   :description "Lookin' for a blueberry"
+                  :how_is_this_calculated nil
+                  :show_in_getting_started false
+                  :caveats nil
+                  :points_of_interest nil
                   :is_active   true
                   :creator_id  (user->id :rasta)
                   :definition  {:a "b"}}
@@ -231,6 +239,10 @@
    :user_id      (user->id :rasta)
    :object       {:name        "Toucans in the rainforest"
                   :description "Lookin' for a blueberry"
+                  :how_is_this_calculated nil
+                  :show_in_getting_started false
+                  :caveats nil
+                  :points_of_interest nil
                   :is_active   false
                   :creator_id  (user->id :rasta)
                   :definition  {:a "b"}}
@@ -252,6 +264,9 @@
    :user_id      (user->id :rasta)
    :object       {:name        "Toucans in the rainforest"
                   :description "Lookin' for a blueberry"
+                  :show_in_getting_started false
+                  :caveats nil
+                  :points_of_interest nil
                   :is_active    true
                   :creator_id  (user->id :rasta)
                   :definition  {:a "b"}}
@@ -274,6 +289,9 @@
    :user_id      (user->id :crowberto)
    :object       {:name        "Toucans in the rainforest"
                   :description "Lookin' for a blueberry"
+                  :show_in_getting_started false
+                  :caveats nil
+                  :points_of_interest nil
                   :is_active   true
                   :creator_id  (user->id :rasta)
                   :definition  {:a "b"}}
@@ -297,6 +315,9 @@
    :user_id      (user->id :rasta)
    :object       {:name        "Toucans in the rainforest"
                   :description "Lookin' for a blueberry"
+                  :show_in_getting_started false
+                  :caveats nil
+                  :points_of_interest nil
                   :is_active   false
                   :creator_id  (user->id :rasta)
                   :definition  {:a "b"}}

@@ -29,45 +29,59 @@
 
 (defn- db-details []
   (match-$ (db)
-    {:created_at      $
-     :engine          "h2"
-     :id              $
-     :updated_at      $
-     :name            "test-data"
-     :is_sample       false
-     :is_full_sync    true
-     :organization_id nil
-     :description     nil
-     :features        (mapv name (driver/features (driver/engine->driver :h2)))}))
+    {:created_at         $
+     :engine             "h2"
+     :id                 $
+     :updated_at         $
+     :name               "test-data"
+     :is_sample          false
+     :is_full_sync       true
+     :organization_id    nil
+     :description        nil
+     :caveats            nil
+     :points_of_interest nil
+     :features           (mapv name (driver/features (driver/engine->driver :h2)))}))
 
 
 ;; ## GET /api/table
 ;; These should come back in alphabetical order and include relevant metadata
 (expect
-  #{{:name         (format-name "categories")
-     :display_name "Categories"
-     :db_id        (id)
-     :active       true
-     :rows         75
-     :id           (id :categories)}
-    {:name         (format-name "checkins")
-     :display_name "Checkins"
-     :db_id        (id)
-     :active       true
-     :rows         1000
-     :id           (id :checkins)}
-    {:name         (format-name "users")
-     :display_name "Users"
-     :db_id        (id)
-     :active       true
-     :rows         15
-     :id           (id :users)}
-    {:name         (format-name "venues")
-     :display_name "Venues"
-     :db_id        (id)
-     :active       true
-     :rows         100
-     :id           (id :venues)}}
+  #{{:name                    (format-name "categories")
+     :display_name            "Categories"
+     :caveats                 nil
+     :points_of_interest      nil
+     :show_in_getting_started false
+     :db_id                   (id)
+     :active                  true
+     :rows                    75
+     :id                      (id :categories)}
+    {:name                    (format-name "checkins")
+     :display_name            "Checkins"
+     :caveats                 nil
+     :points_of_interest      nil
+     :show_in_getting_started false
+     :db_id                   (id)
+     :active                  true
+     :rows                    1000
+     :id                      (id :checkins)}
+    {:name                    (format-name "users")
+     :display_name            "Users"
+     :caveats                 nil
+     :points_of_interest      nil
+     :show_in_getting_started false
+     :db_id                   (id)
+     :active                  true
+     :rows                    15
+     :id                      (id :users)}
+    {:name                    (format-name "venues")
+     :display_name            "Venues"
+     :caveats                 nil
+     :points_of_interest      nil
+     :show_in_getting_started false
+     :db_id                   (id)
+     :active                  true
+     :rows                    100
+     :id                      (id :venues)}}
   (->> ((user->client :rasta) :get 200 "table")
        (filter #(= (:db_id %) (id)))                        ; prevent stray tables from affecting unit test results
        (map #(dissoc % :raw_table_id :db :created_at :updated_at :schema :entity_name :description :entity_type :visibility_type))
@@ -77,6 +91,9 @@
 (expect
     (match-$ (Table (id :venues))
       {:description     nil
+       :caveats         nil
+       :points_of_interest nil
+       :show_in_getting_started false
        :entity_type     nil
        :visibility_type nil
        :db              (db-details)
@@ -111,11 +128,15 @@
             :base_type           "BigIntegerField"
             :visibility_type     "normal"
             :fk_target_field_id  $
+            :caveats             nil
+            :points_of_interest  nil
             :parent_id           nil
             :raw_column_id       $
             :last_analyzed       $})
          (match-$ (Field (id :categories :name))
            {:description         nil
+            :caveats             nil
+            :points_of_interest  nil
             :table_id            (id :categories)
             :special_type        "name"
             :name                "NAME"
@@ -139,6 +160,9 @@
 (expect
     (match-$ (Table (id :categories))
       {:description     nil
+       :caveats         nil
+       :points_of_interest nil
+       :show_in_getting_started false
        :entity_type     nil
        :visibility_type nil
        :db              (db-details)
@@ -147,6 +171,8 @@
        :display_name    "Categories"
        :fields          [(match-$ (Field (id :categories :id))
                            {:description     nil
+                            :caveats         nil
+                            :points_of_interest nil
                             :table_id        (id :categories)
                             :special_type    "id"
                             :name            "ID"
@@ -167,6 +193,8 @@
                             :last_analyzed   $})
                          (match-$ (Field (id :categories :name))
                            {:description     nil
+                            :caveats         nil
+                            :points_of_interest nil
                             :table_id        (id :categories)
                             :special_type    "name"
                             :name            "NAME"
@@ -222,6 +250,9 @@
 (expect
     (match-$ (Table (id :users))
       {:description     nil
+       :caveats         nil
+       :points_of_interest nil
+       :show_in_getting_started false
        :entity_type     nil
        :visibility_type nil
        :db              (db-details)
@@ -245,6 +276,8 @@
                             :base_type       "BigIntegerField"
                             :visibility_type "normal"
                             :fk_target_field_id $
+                            :caveats         nil
+                            :points_of_interest nil
                             :parent_id       nil
                             :raw_column_id   $
                             :last_analyzed   $})
@@ -265,6 +298,8 @@
                             :base_type       "DateTimeField"
                             :visibility_type "normal"
                             :fk_target_field_id $
+                            :caveats         nil
+                            :points_of_interest nil
                             :parent_id       nil
                             :raw_column_id   $
                             :last_analyzed   $})
@@ -285,6 +320,8 @@
                             :base_type       "TextField"
                             :visibility_type "normal"
                             :fk_target_field_id $
+                            :caveats         nil
+                            :points_of_interest nil
                             :parent_id       nil
                             :raw_column_id   $
                             :last_analyzed   $})
@@ -305,6 +342,8 @@
                             :base_type       "TextField"
                             :visibility_type "sensitive"
                             :fk_target_field_id $
+                            :caveats         nil
+                            :points_of_interest nil
                             :parent_id       nil
                             :raw_column_id   $
                             :last_analyzed   $})]
@@ -341,6 +380,9 @@
 (expect
     (match-$ (Table (id :users))
       {:description     nil
+       :caveats         nil
+       :points_of_interest nil
+       :show_in_getting_started false
        :entity_type     nil
        :visibility_type nil
        :db              (db-details)
@@ -364,6 +406,8 @@
                             :base_type       "BigIntegerField"
                             :visibility_type "normal"
                             :fk_target_field_id $
+                            :caveats         nil
+                            :points_of_interest nil
                             :parent_id       nil
                             :raw_column_id   $
                             :last_analyzed   $})
@@ -384,6 +428,8 @@
                             :base_type       "DateTimeField"
                             :visibility_type "normal"
                             :fk_target_field_id $
+                            :caveats         nil
+                            :points_of_interest nil
                             :parent_id       nil
                             :raw_column_id   $
                             :last_analyzed   $})
@@ -404,6 +450,8 @@
                             :base_type       "TextField"
                             :visibility_type "normal"
                             :fk_target_field_id $
+                            :caveats         nil
+                            :points_of_interest nil
                             :parent_id       nil
                             :raw_column_id   $
                             :last_analyzed   $})]
@@ -442,10 +490,15 @@
                ;; reset Table back to its original state
                (db/update! Table (id :users), :display_name "Users", :entity_type nil, :visibility_type nil, :description nil))
       {:description     "What a nice table!"
+       :caveats         nil
+       :points_of_interest nil
+       :show_in_getting_started false
        :entity_type     "person"
        :visibility_type "hidden"
        :db              (match-$ (db)
                           {:description     nil
+                           :caveats         nil
+                           :points_of_interest nil
                            :organization_id $
                            :name            "test-data"
                            :is_sample       false
@@ -499,6 +552,8 @@
                          :active          true
                          :special_type    "fk"
                          :fk_target_field_id $
+                         :caveats         nil
+                         :points_of_interest nil
                          :created_at      $
                          :updated_at      $
                          :last_analyzed   $
@@ -512,6 +567,9 @@
                                              :rows            1000
                                              :updated_at      $
                                              :entity_name     nil
+                                             :show_in_getting_started false
+                                             :caveats         nil
+                                             :points_of_interest nil
                                              :active          true
                                              :id              $
                                              :db_id           $
@@ -534,6 +592,8 @@
                          :active          true
                          :special_type    "id"
                          :fk_target_field_id $
+                         :caveats         nil
+                         :points_of_interest nil
                          :created_at      $
                          :updated_at      $
                          :last_analyzed   $
@@ -547,6 +607,9 @@
                                              :rows            15
                                              :updated_at      $
                                              :entity_name     nil
+                                             :show_in_getting_started false
+                                             :caveats         nil
+                                             :points_of_interest nil
                                              :active          true
                                              :id              $
                                              :db_id           $

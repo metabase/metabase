@@ -34,6 +34,9 @@
    :creator     (user-details :rasta)
    :name        "I only want *these* things"
    :description nil
+   :show_in_getting_started false
+   :caveats nil
+   :points_of_interest nil
    :is_active   true
    :definition  {:clause ["a" "b"]}}
   (tu/with-temp* [Database [{database-id :id}]
@@ -58,6 +61,9 @@
    :creator      (user-details :rasta)
    :name         "Toucans in the rainforest"
    :description  "Lookin' for a blueberry"
+   :show_in_getting_started false
+   :caveats nil
+   :points_of_interest nil
    :is_active    true
    :definition   {:database 45
                   :query    {:filter ["yay"]}}}
@@ -78,6 +84,9 @@
     :creator      (user-details :rasta)
     :name         "Segment 1"
     :description  nil
+    :show_in_getting_started false
+    :caveats nil
+    :points_of_interest nil
     :is_active    true
     :definition   {}}]
   (tu/with-temp* [Database [{database-id :id}]
@@ -104,6 +113,9 @@
    :creator      (user-details :rasta)
    :name         "Costa Rica"
    :description  nil
+   :show_in_getting_started false
+   :caveats nil
+   :points_of_interest nil
    :is_active    true
    :definition   {:database 2
                   :query    {:filter ["not" "the toucans you're looking for"]}}}
@@ -113,6 +125,9 @@
     (update-segment-then-select! {:id          id
                                  :name        "Costa Rica"
                                  :description nil
+                                 :show_in_getting_started false
+                                 :caveats nil
+                                 :points_of_interest nil
                                  :creator_id  (user->id :crowberto)
                                  :table_id    456
                                  :definition  {:database 2
@@ -125,6 +140,9 @@
    :creator      (user-details :rasta)
    :name         "Toucans in the rainforest"
    :description  "Lookin' for a blueberry"
+   :show_in_getting_started false
+   :caveats nil
+   :points_of_interest nil
    :is_active    false
    :definition   {}}
   (tu/with-temp* [Database [{database-id :id}]
@@ -145,6 +163,9 @@
    :creator_id  (user->id :rasta)
    :name        "Toucans in the rainforest"
    :description "Lookin' for a blueberry"
+   :show_in_getting_started false
+   :caveats nil
+   :points_of_interest nil
    :definition  {:filter ["AND",[">",4,"2014-10-19"]]}
    :is_active   true}
   (tu/with-temp* [Database [{database-id :id}]

@@ -59,6 +59,8 @@
       :is_full_sync    true
       :organization_id nil
       :description     nil
+      :caveats         nil
+      :points_of_interest nil
       :features        (mapv name (driver/features (driver/engine->driver (:engine db))))})))
 
 
@@ -89,6 +91,8 @@
      :is_full_sync    false
      :organization_id nil
      :description     nil
+     :caveats         nil
+     :points_of_interest nil
      :features        (vec (driver/features (driver/engine->driver :postgres)))})
   (Database (:id db)))
 
@@ -119,6 +123,8 @@
   (match-$ table
     {:description     $
      :entity_type     $
+     :caveats nil
+     :points_of_interest nil
      :visibility_type $
      :schema          $
      :name            $
@@ -129,6 +135,7 @@
      :active          $
      :id              $
      :db_id           $
+     :show_in_getting_started false
      :raw_table_id    $
      :created_at      $}))
 
@@ -162,6 +169,8 @@
                                      :is_full_sync    true
                                      :organization_id nil
                                      :description     nil
+                                     :caveats         nil
+                                     :points_of_interest nil
                                      :features        (map name (driver/features (driver/engine->driver engine)))})))
                               (match-$ (Database db-id)
                                 {:created_at      $
@@ -173,6 +182,8 @@
                                  :is_full_sync    true
                                  :organization_id nil
                                  :description     nil
+                                 :caveats         nil
+                                 :points_of_interest nil
                                  :features        (map name (driver/features (driver/engine->driver :postgres)))}))))
   (do
     (delete-randomly-created-databases! :skip [db-id])
@@ -192,6 +203,8 @@
                 :is_full_sync    true
                 :organization_id nil
                 :description     nil
+                :caveats         nil
+                :points_of_interest nil
                 :tables          []
                 :features        (map name (driver/features (driver/engine->driver :postgres)))})
              (filter identity (for [engine datasets/all-valid-engines]
@@ -207,6 +220,8 @@
                                        :is_full_sync    true
                                        :organization_id nil
                                        :description     nil
+                                       :caveats         nil
+                                       :points_of_interest nil
                                        :tables          (sort-by :name (for [table (db/select Table, :db_id (:id database))]
                                                                          (table-details table)))
                                        :features        (map name (driver/features (driver/engine->driver engine)))})))))))
@@ -227,10 +242,14 @@
        :is_full_sync    true
        :organization_id nil
        :description     nil
+       :caveats         nil
+       :points_of_interest nil
        :features        (mapv name (driver/features (driver/engine->driver :h2)))
        :tables          [(match-$ (Table (id :categories))
                            {:description     nil
                             :entity_type     nil
+                            :caveats nil
+                            :points_of_interest nil
                             :visibility_type nil
                             :schema          "PUBLIC"
                             :name            "CATEGORIES"
@@ -238,6 +257,8 @@
                             :fields          [(match-$ (Field (id :categories :id))
                                                 {:description        nil
                                                  :table_id           (id :categories)
+                                                 :caveats            nil
+                                                 :points_of_interest nil
                                                  :special_type       "id"
                                                  :name               "ID"
                                                  :display_name       "ID"
@@ -259,6 +280,8 @@
                                               (match-$ (Field (id :categories :name))
                                                 {:description        nil
                                                  :table_id           (id :categories)
+                                                 :caveats            nil
+                                                 :points_of_interest nil
                                                  :special_type       "name"
                                                  :name               "NAME"
                                                  :display_name       "Name"
@@ -286,6 +309,7 @@
                             :id              (id :categories)
                             :raw_table_id    $
                             :db_id           (id)
+                            :show_in_getting_started false
                             :created_at      $})]})
     (let [resp ((user->client :rasta) :get 200 (format "database/%d/metadata" (id)))]
       (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp)))))
@@ -300,6 +324,8 @@
     [(match-$ (Table (id :categories))
        {:description     nil
         :entity_type     nil
+        :caveats nil
+        :points_of_interest nil
         :visibility_type nil
         :schema          "PUBLIC"
         :name            "CATEGORIES"
@@ -309,12 +335,15 @@
         :active          true
         :id              $
         :db_id           db-id
+        :show_in_getting_started false
         :created_at      $
         :display_name    "Categories"
         :raw_table_id    $})
      (match-$ (Table (id :checkins))
        {:description     nil
         :entity_type     nil
+        :caveats nil
+        :points_of_interest nil
         :visibility_type nil
         :schema          "PUBLIC"
         :name            "CHECKINS"
@@ -324,12 +353,15 @@
         :active          true
         :id              $
         :db_id           db-id
+        :show_in_getting_started false
         :created_at      $
         :display_name    "Checkins"
         :raw_table_id    $})
      (match-$ (Table (id :users))
        {:description     nil
         :entity_type     nil
+        :caveats nil
+        :points_of_interest nil
         :visibility_type nil
         :schema          "PUBLIC"
         :name            "USERS"
@@ -339,12 +371,15 @@
         :active          true
         :id              $
         :db_id           db-id
+        :show_in_getting_started false
         :created_at      $
         :display_name    "Users"
         :raw_table_id    $})
      (match-$ (Table (id :venues))
        {:description     nil
         :entity_type     nil
+        :caveats nil
+        :points_of_interest nil
         :visibility_type nil
         :schema          "PUBLIC"
         :name            "VENUES"
@@ -354,6 +389,7 @@
         :active          true
         :id              $
         :db_id           db-id
+        :show_in_getting_started false
         :created_at      $
         :display_name    "Venues"
         :raw_table_id    $})])

@@ -84,11 +84,16 @@
 (def ^:const toucanery-tables-and-fields
   [{:description     nil
     :entity_type     nil
+    :caveats         nil
+    :points_of_interest nil
+    :show_in_getting_started false
     :schema          nil
     :raw_table_id    true
     :name            "employees"
     :fields          [{:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :id
                        :name               "id"
                        :fk_target_field_id false
@@ -107,6 +112,8 @@
                        :base_type          :IntegerField}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :name
                        :name               "name"
                        :fk_target_field_id false
@@ -134,11 +141,16 @@
     :created_at      true}
    {:description     nil
     :entity_type     nil
+    :caveats         nil
+    :points_of_interest nil
+    :show_in_getting_started false
     :schema          nil
     :raw_table_id    true
     :name            "transactions"
     :fields          [{:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       nil
                        :name               "age"
                        :fk_target_field_id false
@@ -157,6 +169,8 @@
                        :base_type          :IntegerField}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       nil
                        :name               "buyer"
                        :fk_target_field_id false
@@ -175,6 +189,8 @@
                        :base_type          :DictionaryField}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       nil
                        :name               "cc"
                        :fk_target_field_id false
@@ -193,6 +209,8 @@
                        :base_type          :TextField}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       nil
                        :name               "details"
                        :fk_target_field_id false
@@ -211,6 +229,8 @@
                        :base_type          :DictionaryField}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :id
                        :name               "id"
                        :fk_target_field_id false
@@ -229,6 +249,8 @@
                        :base_type          :IntegerField}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :name
                        :name               "name"
                        :fk_target_field_id false
@@ -247,6 +269,8 @@
                        :base_type          :TextField}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :name
                        :name               "name"
                        :fk_target_field_id false
@@ -265,6 +289,8 @@
                        :base_type          :TextField}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       nil
                        :name               "toucan"
                        :fk_target_field_id false
@@ -283,6 +309,8 @@
                        :base_type          :DictionaryField}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :timestamp_milliseconds
                        :name               "ts"
                        :fk_target_field_id false
@@ -301,6 +329,8 @@
                        :base_type          :BigIntegerField}
                       {:description        nil
                        :table_id           true
+                       :caveats            nil
+                       :points_of_interest nil
                        :special_type       :category
                        :name               "weight"
                        :fk_target_field_id false
