@@ -12,7 +12,7 @@ import i from "icepick";
 import _ from "underscore";
 
 import { augmentDatabase, augmentTable } from "metabase/lib/table";
-import { setRequestState } from "./requests";
+import { setRequestState, clearRequestState } from "./requests";
 
 const MetabaseApi = new AngularResourceProxy("Metabase", ["db_list", "db_update", "db_metadata", "table_update", "table_query_metadata", "field_update"]);
 const MetricApi = new AngularResourceProxy("Metric", ["list", "update"]);
@@ -97,6 +97,7 @@ export const updateMetric = createThunkAction(UPDATE_METRIC, function(metric) {
 
             const mergedMetric = {...existingMetric, ...cleanMetric};
 
+            dispatch(clearRequestState({statePath: ['metadata', 'revisions', 'metric', metric.id]}));
             return i.assoc(existingMetrics, mergedMetric.id, mergedMetric);
         };
 
@@ -137,6 +138,7 @@ export const updateSegment = createThunkAction(UPDATE_SEGMENT, function(segment)
 
             const mergedSegment = {...existingSegment, ...cleanSegment};
 
+            dispatch(clearRequestState({statePath: ['metadata', 'revisions', 'segment', segment.id]}));
             return i.assoc(existingSegments, mergedSegment.id, mergedSegment);
         };
 
@@ -315,7 +317,7 @@ const revisions = handleActions({
     [FETCH_REVISIONS]: { next: (state, { payload }) => payload }
 }, {});
 
-// workarounds for race conditions on fetches with data dependencies in /reference
+// for fetches with data dependencies in /reference
 const FETCH_METRIC_REVISIONS = "metabase/metadata/FETCH_METRIC_REVISIONS";
 export const fetchMetricRevisions = createThunkAction(FETCH_METRIC_REVISIONS, (metricId, reload = false) => {
     return async (dispatch, getState) => {
