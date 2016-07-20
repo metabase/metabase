@@ -240,7 +240,7 @@ const ChartSettingSelect = ({ value, onChange, options = [] }) =>
         options={options}
         optionNameFn={(o) => o.name}
         optionValueFn={(o) => o.value}
-        onChange={(value) => onChange(value)}
+        onChange={onChange}
     />
 
 const ChartSettingInput = ({ value, onChange }) =>
@@ -253,19 +253,16 @@ const ChartSettingInput = ({ value, onChange }) =>
 const ChartSettingToggle = ({ value, onChange }) =>
     <Toggle
         value={value}
-        onChange={(value) => onChange(value)}
+        onChange={onChange}
     />
 
-const ChartSettingFieldPicker = ({ value = [], onChange, columns, onAddAnother }) =>
+const ChartSettingFieldPicker = ({ value = [], onChange, options, onAddAnother }) =>
     <div>
         { value.map((v, index) =>
-            <Select
-                className="block"
+            <ChartSettingSelect
                 key={index}
-                value={_.findWhere(columns, { name: v })}
-                options={columns}
-                optionNameFn={(o) => o.display_name}
-                optionValueFn={(o) => o.name}
+                value={v}
+                options={options}
                 onChange={(v) => onChange([...value.slice(0, index), v, ...value.slice(index + 1)])}
             />
         )}
@@ -319,8 +316,8 @@ const SETTINGS = {
             }
         },
         getProps: ({ value, onChange, card, data }) => {
-            let props = { columns: data.cols.filter(isDimension) }
-            if (!Array.isArray(value) || (props.columns.length > value.length && value.length < 2)) {
+            let props = { options: data.cols.filter(isDimension).map(c => ({ name: c.display_name, value: c.name })) }
+            if (!Array.isArray(value) || (props.options.length > value.length && value.length < 2)) {
                 props.onAddAnother = () => onChange(value.concat([undefined]))
             }
             return props;
@@ -343,15 +340,31 @@ const SETTINGS = {
             }
         },
         getProps: ({ value, onChange, card, data }) => {
-            let props = { columns: data.cols.filter(isMetric) }
-            if (!Array.isArray(value) || (props.columns.length > value.length)) {
+            let props = { options: data.cols.filter(isMetric).map(c => ({ name: c.display_name, value: c.name })) }
+            if (!Array.isArray(value) || (props.options.length > value.length)) {
                 props.onAddAnother = () => onChange(value.concat([undefined]))
             }
             return props;
         },
         dependentSettings: ["graph.dimensions"]
     },
-    "graph.stacked": {
+    "line.interpolate": {
+        section: "Display",
+        title: "Style",
+        widget: ChartSettingSelect,
+        options: [
+            { name: "Line", value: "linear" },
+            { name: "Curve", value: "cardinal" },
+            { name: "Step", value: "step-after" },
+        ],
+        getDefault: () => "linear"
+    },
+    "line.marker_enabled": {
+        section: "Display",
+        title: "Show point markers on lines",
+        widget: ChartSettingToggle
+    },
+    "stackable.stacked": {
         section: "Display",
         title: "Stacked",
         widget: ChartSettingToggle,
@@ -361,70 +374,83 @@ const SETTINGS = {
         section: "Display",
         widget: ChartSettingColorsPicker
     },
-    "graph.x_axis.show_marks": {
+    "graph.x_axis.axis_enabled": {
         section: "Axes",
         title: "Show x-axis line and marks",
-        widget: ChartSettingToggle
+        widget: ChartSettingToggle,
+        default: true
     },
-    "graph.y_axis.show_marks": {
+    "graph.y_axis.axis_enabled": {
         section: "Axes",
         title: "Show y-axis line and marks",
-        widget: ChartSettingToggle
+        widget: ChartSettingToggle,
+        default: true
     },
     "graph.y_axis.auto_range": {
         section: "Axes",
         title: "Auto y-axis range",
-        widget: ChartSettingToggle
+        widget: ChartSettingToggle,
+        default: true
     },
     "graph.y_axis.min": {
         section: "Axes",
         title: "Min",
-        widget: ChartSettingInput
+        widget: ChartSettingInput,
+        isHidden: (settings) => settings["graph.y_axis.auto_range"] !== false
     },
     "graph.y_axis.max": {
         section: "Axes",
         title: "Min",
-        widget: ChartSettingInput
+        widget: ChartSettingInput,
+        isHidden: (settings) => settings["graph.y_axis.auto_range"] !== false
     },
     "graph.y_axis_right.auto_range": {
         section: "Axes",
         title: "Auto right-hand y-axis range",
-        widget: ChartSettingToggle
+        widget: ChartSettingToggle,
+        default: true
     },
     "graph.y_axis_right.min": {
         section: "Axes",
         title: "Min",
-        widget: ChartSettingInput
+        widget: ChartSettingInput,
+        isHidden: (settings) => settings["graph.y_axis_right.auto_range"] !== false
     },
     "graph.y_axis_right.max": {
         section: "Axes",
         title: "Min",
-        widget: ChartSettingInput
+        widget: ChartSettingInput,
+        isHidden: (settings) => settings["graph.y_axis_right.auto_range"] !== false
     },
     "graph.y_axis.auto_split": {
         section: "Axes",
         title: "Use a split y-axis when necessary",
-        widget: ChartSettingToggle
+        widget: ChartSettingToggle,
+        default: true
     },
-    "graph.x_axis.title_enabled": {
+    "graph.x_axis.labels_enabled": {
         section: "Labels",
         title: "Show label on x-axis",
-        widget: ChartSettingToggle
+        widget: ChartSettingToggle,
+        default: true
     },
     "graph.x_axis.title_text": {
         section: "Labels",
         title: "X-axis label",
-        widget: ChartSettingInput
+        widget: ChartSettingInput,
+        isHidden: (settings) => settings["graph.x_axis.labels_enabled"] === false
     },
-    "graph.y_axis.title_enabled": {
+    "graph.y_axis.labels_enabled": {
         section: "Labels",
         title: "Show label on y-axis",
-        widget: ChartSettingToggle
+        widget: ChartSettingToggle,
+        default: true
     },
     "graph.y_axis.title_text": {
         section: "Labels",
         title: "Y-axis label",
-        widget: ChartSettingInput
+        widget: ChartSettingInput,
+        isHidden: (settings) => settings["graph.y_axis.labels_enabled"] === false
     },
     "pie.dimension": {
         section: "Data",
@@ -449,13 +475,12 @@ const SETTINGS = {
     "scalar.separator": {
         title: "Separator",
         widget: ChartSettingSelect,
-        getProps: ({ value, onChange, card, data }) =>
-        ({ options: [
+        options: [
             { name: "None", value: "" },
             { name: "Comma", value: "," },
             { name: "Period", value: "." },
-        ]}),
-        getDefault: (card, data) => ","
+        ],
+        default: ","
     },
     "scalar.decimals": {
         title: "Number of decimal places",
@@ -476,9 +501,9 @@ const SETTINGS = {
 };
 
 const SETTINGS_PREFIXES_BY_CHART_TYPE = {
-    line: ["graph."],
-    area: ["graph."],
-    bar: ["graph."],
+    line: ["graph.", "line."],
+    area: ["graph.", "line.", "stackable."],
+    bar: ["graph.", "stackable."],
     pie: ["pie."],
     scalar: ["scalar."]
 }
@@ -494,6 +519,8 @@ export function getSettings(card, data) {
             settings[id] = setting.getValue(card, data);
         } else if (card.visualization_settings[id] === undefined && setting.getDefault) {
             settings[id] = setting.getDefault(card, data);
+        } else if (card.visualization_settings[id] === undefined && "default" in setting) {
+            settings[id] = setting.default;
         } else if (card.visualization_settings[id] !== undefined) {
             settings[id] = card.visualization_settings[id];
         }

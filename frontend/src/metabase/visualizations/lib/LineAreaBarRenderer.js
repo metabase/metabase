@@ -89,11 +89,11 @@ function applyChartTimeseriesXAxis(chart, settings, series, xValues) {
     // compute the domain
     let xDomain = d3.extent(xValues);
 
-    if (settings.xAxis.labels_enabled) {
-        chart.xAxisLabel(settings.xAxis.title_text || getFriendlyName(dimensionColumn));
+    if (settings["graph.x_axis.labels_enabled"]) {
+        chart.xAxisLabel(settings["graph.x_axis.title_text"] || getFriendlyName(dimensionColumn));
     }
-    if (settings.xAxis.axis_enabled) {
-        chart.renderVerticalGridLines(settings.xAxis.gridLine_enabled);
+    if (settings["graph.x_axis.axis_enabled"]) {
+        chart.renderVerticalGridLines(settings["graph.x_axis.gridLine_enabled"]);
 
         if (dimensionColumn.unit == null) {
             dimensionColumn = { ...dimensionColumn, unit: dataInterval.interval };
@@ -126,11 +126,11 @@ function applyChartTimeseriesXAxis(chart, settings, series, xValues) {
 function applyChartOrdinalXAxis(chart, settings, series, xValues) {
     const dimensionColumn = series[0].data.cols[0];
 
-    if (settings.xAxis.labels_enabled) {
-        chart.xAxisLabel(settings.xAxis.title_text || getFriendlyName(dimensionColumn));
+    if (settings["graph.x_axis.labels_enabled"]) {
+        chart.xAxisLabel(settings["graph.x_axis.title_text"] || getFriendlyName(dimensionColumn));
     }
-    if (settings.xAxis.axis_enabled) {
-        chart.renderVerticalGridLines(settings.xAxis.gridLine_enabled);
+    if (settings["graph.x_axis.axis_enabled"]) {
+        chart.renderVerticalGridLines(settings["graph.x_axis.gridLine_enabled"]);
         chart.xAxis().ticks(xValues.length);
         adjustTicksIfNeeded(chart.xAxis(), chart.width(), MIN_PIXELS_PER_TICK.x);
 
@@ -157,10 +157,10 @@ function applyChartOrdinalXAxis(chart, settings, series, xValues) {
 
 function applyChartYAxis(chart, settings, series, yAxisSplit) {
 
-    if (settings.yAxis.labels_enabled) {
+    if (settings["graph.y_axis.labels_enabled"]) {
         // left
-        if (settings.yAxis.title_text) {
-            chart.yAxisLabel(settings.yAxis.title_text);
+        if (settings["graph.y_axis.title_text"]) {
+            chart.yAxisLabel(settings["graph.y_axis.title_text"]);
         } else if (yAxisSplit[0].length === 1) {
             chart.yAxisLabel(getFriendlyName(series[yAxisSplit[0][0]].data.cols[1]));
         }
@@ -170,7 +170,7 @@ function applyChartYAxis(chart, settings, series, yAxisSplit) {
         }
     }
 
-    if (settings.yAxis.axis_enabled) {
+    if (settings["graph.y_axis.axis_enabled"]) {
         chart.renderHorizontalGridLines(true);
         chart.elasticY(true);
 
@@ -214,8 +214,8 @@ function applyChartLineBarSettings(chart, settings, chartType, isLinear, isTimes
     // LINE/AREA:
     // for chart types that have an 'interpolate' option (line/area charts), enable based on settings
     if (chart.interpolate) {
-        if (settings.line.interpolate) {
-            chart.interpolate(settings.line.interpolate);
+        if (settings["line.interpolate"]) {
+            chart.interpolate(settings["line.interpolate"]);
         } else {
             chart.interpolate(DEFAULT_INTERPOLATION);
         }
@@ -261,8 +261,8 @@ function lineAndBarOnRender(chart, settings) {
     function enableDots() {
         let enableDots;
         const dots = chart.svg().selectAll(".dc-tooltip .dot")[0];
-        if (settings.line && !settings.line.marker_enabled) {
-            enableDots = false;
+        if (settings["line.marker_enabled"] != null) {
+            enableDots = !!settings["line.marker_enabled"];
         } else if (dots.length > 500) {
             // more than 500 dots is almost certainly too dense, don't waste time computing the voronoi map
             enableDots = false;
@@ -348,19 +348,19 @@ function lineAndBarOnRender(chart, settings) {
     }
 
     function hideDisabledLabels() {
-       if (!settings.xAxis.labels_enabled) {
+       if (!settings["graph.x_axis.labels_enabled"]) {
            chart.selectAll(".x-axis-label").remove();
        }
-       if (!settings.yAxis.labels_enabled) {
+       if (!settings["graph.y_axis.labels_enabled"]) {
            chart.selectAll(".y-axis-label").remove();
        }
     }
 
     function hideDisabledAxis() {
-       if (!settings.xAxis.axis_enabled) {
+       if (!settings["graph.x_axis.axis_enabled"]) {
            chart.selectAll(".axis.x").remove();
        }
-       if (!settings.yAxis.axis_enabled) {
+       if (!settings["graph.y_axis.axis_enabled"]) {
            chart.selectAll(".axis.y, .axis.yr").remove();
        }
     }
@@ -408,9 +408,9 @@ function lineAndBarOnRender(chart, settings) {
     let mins = computeMinHorizontalMargins()
 
     // adjust the margins to fit the X and Y axis tick and label sizes, if enabled
-    adjustMargin("bottom", "height", ".axis.x",  ".x-axis-label", settings.xAxis.labels_enabled);
-    adjustMargin("left",   "width",  ".axis.y",  ".y-axis-label.y-label", settings.yAxis.labels_enabled);
-    adjustMargin("right",  "width",  ".axis.yr", ".y-axis-label.yr-label", settings.yAxis.labels_enabled);
+    adjustMargin("bottom", "height", ".axis.x",  ".x-axis-label", settings["graph.x_axis.labels_enabled"]);
+    adjustMargin("left",   "width",  ".axis.y",  ".y-axis-label.y-label", settings["graph.y_axis.labels_enabled"]);
+    adjustMargin("right",  "width",  ".axis.yr", ".y-axis-label.yr-label", settings["graph.y_axis.labels_enabled"]);
 
     // set margins to the max of the various mins
     chart.margins().left = Math.max(5, mins.left, chart.margins().left);
@@ -455,7 +455,7 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
 
     let dimension, groups, yAxisSplit;
 
-    if (settings["graph.stacked"] && datas.length > 1) {
+    if (settings["stackable.stacked"] && datas.length > 1) {
         let dataset = crossfilter();
         datas.map((data, i) =>
             dataset.add(data.map(d => ({
@@ -486,7 +486,7 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
 
         let yExtents = groups.map(group => d3.extent(group[0].all(), d => d.value));
 
-        if (allowSplitAxis) {
+        if (allowSplitAxis && settings["graph.y_axis.auto_split"] !== false) {
             yAxisSplit = computeSplit(yExtents);
         } else {
             yAxisSplit = [series.map((s,i) => i)];
