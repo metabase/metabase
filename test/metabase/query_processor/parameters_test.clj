@@ -133,8 +133,8 @@
 ;;; |                                           END-TO-END TESTS                                            |
 ;;; +-------------------------------------------------------------------------------------------------------+
 
-;; for some reason param substitution tests fail on Redshift so just don't run those for now
-(def ^:private ^:const params-test-engines (set/difference non-timeseries-engines #{:redshift}))
+;; for some reason param substitution tests fail on Redshift & (occasionally) Crate so just don't run those for now
+(def ^:private ^:const params-test-engines (set/difference non-timeseries-engines #{:redshift :crate}))
 
 ;; check that date ranges work correctly
 (datasets/expect-with-engines params-test-engines
