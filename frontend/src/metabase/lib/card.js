@@ -12,8 +12,7 @@ export function createCard(name = null) {
         public_perms: 0,
         display: "table",
         visualization_settings: {},
-        dataset_query: {},
-        parameters: []
+        dataset_query: {}
     };
 }
 
