@@ -4,6 +4,9 @@ import ReactDOM from "react-dom";
 import visualizations from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
 
+import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
+import ChartSettings from "metabase/visualizations/components/ChartSettings.jsx";
+
 import Icon from "metabase/components/Icon.jsx";
 
 import DashCardParameterMapper from "../components/parameters/DashCardParameterMapper.jsx";
@@ -115,7 +118,14 @@ export default class DashCard extends Component {
                     isDashboard={true}
                     isEditing={isEditing}
                     gridSize={this.props.isMobile ? undefined : { width: dashcard.sizeX, height: dashcard.sizeY }}
-                    actionButtons={isEditing && !isEditingParameter ? <DashCardActionButtons series={series} visualization={CardVisualization} onRemove={onRemove} onAddSeries={onAddSeries} /> : undefined}
+                    actionButtons={isEditing && !isEditingParameter ?
+                        <DashCardActionButtons
+                            series={series}
+                            visualization={CardVisualization}
+                            onRemove={onRemove}
+                            onAddSeries={onAddSeries}
+                        /> : undefined
+                    }
                     onUpdateVisualizationSetting={this.props.onUpdateVisualizationSetting}
                     replacementContent={isEditingParameter && <DashCardParameterMapper dashcard={dashcard} />}
                 />
@@ -129,8 +139,21 @@ const DashCardActionButtons = ({ series, visualization, onRemove, onAddSeries })
         { visualization.supportsSeries &&
             <AddSeriesButton series={series} onAddSeries={onAddSeries} />
         }
+        <ChartSettingsButton series={series} />
         <RemoveButton onRemove={onRemove} />
     </span>
+
+const ChartSettingsButton = ({ series, onUpdateVisualizationSettings }) =>
+    <ModalWithTrigger
+        className="Modal Modal--wide Modal--tall"
+        triggerElement={<Icon name="gear" />}
+        triggerClasses="text-grey-2 text-grey-4-hover cursor-pointer mr1 flex align-center flex-no-shrink"
+    >
+        <ChartSettings
+            series={series}
+            onChange={() => alert("FIXME: NYI!")}
+        />
+    </ModalWithTrigger>
 
 const RemoveButton = ({ onRemove }) =>
     <a className="text-grey-2 text-grey-4-hover expand-clickable" data-metabase-event="Dashboard;Remove Card Modal" href="#" onClick={onRemove}>
@@ -138,7 +161,11 @@ const RemoveButton = ({ onRemove }) =>
     </a>
 
 const AddSeriesButton = ({ series, onAddSeries }) =>
-    <a data-metabase-event={"Dashboard;Edit Series Modal;open"} className="text-grey-2 text-grey-4-hover cursor-pointer h3 ml1 mr2 flex align-center flex-no-shrink relative" onClick={onAddSeries}>
+    <a
+        data-metabase-event={"Dashboard;Edit Series Modal;open"}
+        className="text-grey-2 text-grey-4-hover cursor-pointer h3 ml1 mr1 flex align-center flex-no-shrink relative"
+        onClick={onAddSeries}
+    >
         <Icon className="absolute" style={{ top: 2, left: 2 }} name="add" width={8} height={8} />
         <Icon name={getSeriesIconName(series)} width={24} height={24} />
         <span className="flex-no-shrink">{ series.length > 1 ? "Edit" : "Add" }</span>
