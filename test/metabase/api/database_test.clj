@@ -24,7 +24,7 @@
                                                           :is_full_sync true}
                                                          options)))
 
-(defn- do-with-temp-db-created-via-api [db-options f]
+(defn- do-with-temp-db-created-via-api {:style/indent 1} [db-options f]
   (let [db (create-db-via-api! db-options)]
     (assert (integer? (:id db)))
     (try
@@ -49,19 +49,19 @@
    (db-details (db)))
   ([db]
    (match-$ db
-     {:created_at      $
-      :engine          "h2"
-      :id              $
-      :details         $
-      :updated_at      $
-      :name            "test-data"
-      :is_sample       false
-      :is_full_sync    true
-      :organization_id nil
-      :description     nil
-      :caveats         nil
+     {:created_at         $
+      :engine             "h2"
+      :id                 $
+      :details            $
+      :updated_at         $
+      :name               "test-data"
+      :is_sample          false
+      :is_full_sync       true
+      :organization_id    nil
+      :description        nil
+      :caveats            nil
       :points_of_interest nil
-      :features        (mapv name (driver/features (driver/engine->driver (:engine db))))})))
+      :features           (mapv name (driver/features (driver/engine->driver (:engine db))))})))
 
 
 ;; # DB LIFECYCLE ENDPOINTS
@@ -81,19 +81,19 @@
 ;; Check that we can create a Database
 (expect-with-temp-db-created-via-api [db {:is_full_sync false}]
   (match-$ db
-    {:created_at      $
-     :engine          :postgres
-     :id              $
-     :details         {:host "localhost", :port 5432, :dbname "fakedb", :user "cam", :ssl true}
-     :updated_at      $
-     :name            $
-     :is_sample       false
-     :is_full_sync    false
-     :organization_id nil
-     :description     nil
-     :caveats         nil
+    {:created_at         $
+     :engine             :postgres
+     :id                 $
+     :details            {:host "localhost", :port 5432, :dbname "fakedb", :user "cam", :ssl true}
+     :updated_at         $
+     :name               $
+     :is_sample          false
+     :is_full_sync       false
+     :organization_id    nil
+     :description        nil
+     :caveats            nil
      :points_of_interest nil
-     :features        (vec (driver/features (driver/engine->driver :postgres)))})
+     :features           (vec (driver/features (driver/engine->driver :postgres)))})
   (Database (:id db)))
 
 
@@ -121,23 +121,23 @@
 
 (defn- table-details [table]
   (match-$ table
-    {:description     $
-     :entity_type     $
-     :caveats nil
-     :points_of_interest nil
-     :visibility_type $
-     :schema          $
-     :name            $
-     :display_name    $
-     :rows            $
-     :updated_at      $
-     :entity_name     $
-     :active          $
-     :id              $
-     :db_id           $
+    {:description             $
+     :entity_type             $
+     :caveats                 nil
+     :points_of_interest      nil
+     :visibility_type         $
+     :schema                  $
+     :name                    $
+     :display_name            $
+     :rows                    $
+     :updated_at              $
+     :entity_name             $
+     :active                  $
+     :id                      $
+     :db_id                   $
      :show_in_getting_started false
-     :raw_table_id    $
-     :created_at      $}))
+     :raw_table_id            $
+     :created_at              $}))
 
 
 ;; TODO - this is a test code smell, each test should clean up after itself and this step shouldn't be neccessary. One day we should be able to remove this!
@@ -160,31 +160,31 @@
   (set (filter identity (conj (for [engine datasets/all-valid-engines]
                                 (datasets/when-testing-engine engine
                                   (match-$ (get-or-create-test-data-db! (driver/engine->driver engine))
-                                    {:created_at      $
-                                     :engine          (name $engine)
-                                     :id              $
-                                     :updated_at      $
-                                     :name            "test-data"
-                                     :is_sample       false
-                                     :is_full_sync    true
-                                     :organization_id nil
-                                     :description     nil
-                                     :caveats         nil
+                                    {:created_at         $
+                                     :engine             (name $engine)
+                                     :id                 $
+                                     :updated_at         $
+                                     :name               "test-data"
+                                     :is_sample          false
+                                     :is_full_sync       true
+                                     :organization_id    nil
+                                     :description        nil
+                                     :caveats            nil
                                      :points_of_interest nil
-                                     :features        (map name (driver/features (driver/engine->driver engine)))})))
+                                     :features           (map name (driver/features (driver/engine->driver engine)))})))
                               (match-$ (Database db-id)
-                                {:created_at      $
-                                 :engine          "postgres"
-                                 :id              $
-                                 :updated_at      $
-                                 :name            $
-                                 :is_sample       false
-                                 :is_full_sync    true
-                                 :organization_id nil
-                                 :description     nil
-                                 :caveats         nil
+                                {:created_at         $
+                                 :engine             "postgres"
+                                 :id                 $
+                                 :updated_at         $
+                                 :name               $
+                                 :is_sample          false
+                                 :is_full_sync       true
+                                 :organization_id    nil
+                                 :description        nil
+                                 :caveats            nil
                                  :points_of_interest nil
-                                 :features        (map name (driver/features (driver/engine->driver :postgres)))}))))
+                                 :features           (map name (driver/features (driver/engine->driver :postgres)))}))))
   (do
     (delete-randomly-created-databases! :skip [db-id])
     (set ((user->client :rasta) :get 200 "database"))))
@@ -194,37 +194,37 @@
 ;; GET /api/databases (include tables)
 (expect-with-temp-db-created-via-api [{db-id :id}]
   (set (cons (match-$ (Database db-id)
-               {:created_at      $
-                :engine          "postgres"
-                :id              $
-                :updated_at      $
-                :name            $
-                :is_sample       false
-                :is_full_sync    true
-                :organization_id nil
-                :description     nil
-                :caveats         nil
+               {:created_at         $
+                :engine             "postgres"
+                :id                 $
+                :updated_at         $
+                :name               $
+                :is_sample          false
+                :is_full_sync       true
+                :organization_id    nil
+                :description        nil
+                :caveats            nil
                 :points_of_interest nil
-                :tables          []
-                :features        (map name (driver/features (driver/engine->driver :postgres)))})
+                :tables             []
+                :features           (map name (driver/features (driver/engine->driver :postgres)))})
              (filter identity (for [engine datasets/all-valid-engines]
                                 (datasets/when-testing-engine engine
                                   (let [database (get-or-create-test-data-db! (driver/engine->driver engine))]
                                     (match-$ database
-                                      {:created_at      $
-                                       :engine          (name $engine)
-                                       :id              $
-                                       :updated_at      $
-                                       :name            "test-data"
-                                       :is_sample       false
-                                       :is_full_sync    true
-                                       :organization_id nil
-                                       :description     nil
-                                       :caveats         nil
+                                      {:created_at         $
+                                       :engine             (name $engine)
+                                       :id                 $
+                                       :updated_at         $
+                                       :name               "test-data"
+                                       :is_sample          false
+                                       :is_full_sync       true
+                                       :organization_id    nil
+                                       :description        nil
+                                       :caveats            nil
                                        :points_of_interest nil
-                                       :tables          (sort-by :name (for [table (db/select Table, :db_id (:id database))]
-                                                                         (table-details table)))
-                                       :features        (map name (driver/features (driver/engine->driver engine)))})))))))
+                                       :tables             (sort-by :name (for [table (db/select Table, :db_id (:id database))]
+                                                                            (table-details table)))
+                                       :features           (map name (driver/features (driver/engine->driver engine)))})))))))
   (do
     (delete-randomly-created-databases! :skip [db-id])
     (set ((user->client :rasta) :get 200 "database" :include_tables true))))
@@ -232,87 +232,87 @@
 ;; ## GET /api/meta/table/:id/query_metadata
 ;; TODO - add in example with Field :values
 (expect
-    (match-$ (db)
-      {:created_at      $
-       :engine          "h2"
-       :id              $
-       :updated_at      $
-       :name            "test-data"
-       :is_sample       false
-       :is_full_sync    true
-       :organization_id nil
-       :description     nil
-       :caveats         nil
-       :points_of_interest nil
-       :features        (mapv name (driver/features (driver/engine->driver :h2)))
-       :tables          [(match-$ (Table (id :categories))
-                           {:description     nil
-                            :entity_type     nil
-                            :caveats nil
-                            :points_of_interest nil
-                            :visibility_type nil
-                            :schema          "PUBLIC"
-                            :name            "CATEGORIES"
-                            :display_name    "Categories"
-                            :fields          [(match-$ (Field (id :categories :id))
-                                                {:description        nil
-                                                 :table_id           (id :categories)
-                                                 :caveats            nil
-                                                 :points_of_interest nil
-                                                 :special_type       "id"
-                                                 :name               "ID"
-                                                 :display_name       "ID"
-                                                 :updated_at         $
-                                                 :active             true
-                                                 :id                 $
-                                                 :raw_column_id      $
-                                                 :field_type         "info"
-                                                 :position           0
-                                                 :target             nil
-                                                 :preview_display    true
-                                                 :created_at         $
-                                                 :last_analyzed      $
-                                                 :base_type          "BigIntegerField"
-                                                 :visibility_type    "normal"
-                                                 :fk_target_field_id $
-                                                 :parent_id          nil
-                                                 :values             []})
-                                              (match-$ (Field (id :categories :name))
-                                                {:description        nil
-                                                 :table_id           (id :categories)
-                                                 :caveats            nil
-                                                 :points_of_interest nil
-                                                 :special_type       "name"
-                                                 :name               "NAME"
-                                                 :display_name       "Name"
-                                                 :updated_at         $
-                                                 :active             true
-                                                 :id                 $
-                                                 :raw_column_id      $
-                                                 :field_type         "info"
-                                                 :position           0
-                                                 :target             nil
-                                                 :preview_display    true
-                                                 :created_at         $
-                                                 :last_analyzed      $
-                                                 :base_type          "TextField"
-                                                 :visibility_type    "normal"
-                                                 :fk_target_field_id $
-                                                 :parent_id          nil
-                                                 :values             []})]
-                            :segments        []
-                            :metrics         []
-                            :rows            75
-                            :updated_at      $
-                            :entity_name     nil
-                            :active          true
-                            :id              (id :categories)
-                            :raw_table_id    $
-                            :db_id           (id)
-                            :show_in_getting_started false
-                            :created_at      $})]})
-    (let [resp ((user->client :rasta) :get 200 (format "database/%d/metadata" (id)))]
-      (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp)))))
+  (match-$ (db)
+    {:created_at      $
+     :engine          "h2"
+     :id              $
+     :updated_at      $
+     :name            "test-data"
+     :is_sample       false
+     :is_full_sync    true
+     :organization_id nil
+     :description     nil
+     :caveats         nil
+     :points_of_interest nil
+     :features        (mapv name (driver/features (driver/engine->driver :h2)))
+     :tables          [(match-$ (Table (id :categories))
+                         {:description             nil
+                          :entity_type             nil
+                          :caveats                 nil
+                          :points_of_interest      nil
+                          :visibility_type         nil
+                          :schema                  "PUBLIC"
+                          :name                    "CATEGORIES"
+                          :display_name            "Categories"
+                          :fields                  [(match-$ (Field (id :categories :id))
+                                                      {:description        nil
+                                                       :table_id           (id :categories)
+                                                       :caveats            nil
+                                                       :points_of_interest nil
+                                                       :special_type       "id"
+                                                       :name               "ID"
+                                                       :display_name       "ID"
+                                                       :updated_at         $
+                                                       :active             true
+                                                       :id                 $
+                                                       :raw_column_id      $
+                                                       :field_type         "info"
+                                                       :position           0
+                                                       :target             nil
+                                                       :preview_display    true
+                                                       :created_at         $
+                                                       :last_analyzed      $
+                                                       :base_type          "BigIntegerField"
+                                                       :visibility_type    "normal"
+                                                       :fk_target_field_id $
+                                                       :parent_id          nil
+                                                       :values             []})
+                                                    (match-$ (Field (id :categories :name))
+                                                      {:description        nil
+                                                       :table_id           (id :categories)
+                                                       :caveats            nil
+                                                       :points_of_interest nil
+                                                       :special_type       "name"
+                                                       :name               "NAME"
+                                                       :display_name       "Name"
+                                                       :updated_at         $
+                                                       :active             true
+                                                       :id                 $
+                                                       :raw_column_id      $
+                                                       :field_type         "info"
+                                                       :position           0
+                                                       :target             nil
+                                                       :preview_display    true
+                                                       :created_at         $
+                                                       :last_analyzed      $
+                                                       :base_type          "TextField"
+                                                       :visibility_type    "normal"
+                                                       :fk_target_field_id $
+                                                       :parent_id          nil
+                                                       :values             []})]
+                          :segments                []
+                          :metrics                 []
+                          :rows                    75
+                          :updated_at              $
+                          :entity_name             nil
+                          :active                  true
+                          :id                      (id :categories)
+                          :raw_table_id            $
+                          :db_id                   (id)
+                          :show_in_getting_started false
+                          :created_at              $})]})
+  (let [resp ((user->client :rasta) :get 200 (format "database/%d/metadata" (id)))]
+    (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp)))))
 
 
 ;; # DB TABLES ENDPOINTS
@@ -322,75 +322,75 @@
 (expect
   (let [db-id (id)]
     [(match-$ (Table (id :categories))
-       {:description     nil
-        :entity_type     nil
-        :caveats nil
-        :points_of_interest nil
-        :visibility_type nil
-        :schema          "PUBLIC"
-        :name            "CATEGORIES"
-        :rows            75
-        :updated_at      $
-        :entity_name     nil
-        :active          true
-        :id              $
-        :db_id           db-id
+       {:description             nil
+        :entity_type             nil
+        :caveats                 nil
+        :points_of_interest      nil
+        :visibility_type         nil
+        :schema                  "PUBLIC"
+        :name                    "CATEGORIES"
+        :rows                    75
+        :updated_at              $
+        :entity_name             nil
+        :active                  true
+        :id                      $
+        :db_id                   db-id
         :show_in_getting_started false
-        :created_at      $
-        :display_name    "Categories"
-        :raw_table_id    $})
+        :created_at              $
+        :display_name            "Categories"
+        :raw_table_id            $})
      (match-$ (Table (id :checkins))
-       {:description     nil
-        :entity_type     nil
-        :caveats nil
-        :points_of_interest nil
-        :visibility_type nil
-        :schema          "PUBLIC"
-        :name            "CHECKINS"
-        :rows            1000
-        :updated_at      $
-        :entity_name     nil
-        :active          true
-        :id              $
-        :db_id           db-id
+       {:description             nil
+        :entity_type             nil
+        :caveats                 nil
+        :points_of_interest      nil
+        :visibility_type         nil
+        :schema                  "PUBLIC"
+        :name                    "CHECKINS"
+        :rows                    1000
+        :updated_at              $
+        :entity_name             nil
+        :active                  true
+        :id                      $
+        :db_id                   db-id
         :show_in_getting_started false
-        :created_at      $
-        :display_name    "Checkins"
-        :raw_table_id    $})
+        :created_at              $
+        :display_name            "Checkins"
+        :raw_table_id            $})
      (match-$ (Table (id :users))
-       {:description     nil
-        :entity_type     nil
-        :caveats nil
-        :points_of_interest nil
-        :visibility_type nil
-        :schema          "PUBLIC"
-        :name            "USERS"
-        :rows            15
-        :updated_at      $
-        :entity_name     nil
-        :active          true
-        :id              $
-        :db_id           db-id
+       {:description             nil
+        :entity_type             nil
+        :caveats                 nil
+        :points_of_interest      nil
+        :visibility_type         nil
+        :schema                  "PUBLIC"
+        :name                    "USERS"
+        :rows                    15
+        :updated_at              $
+        :entity_name             nil
+        :active                  true
+        :id                      $
+        :db_id                   db-id
         :show_in_getting_started false
-        :created_at      $
-        :display_name    "Users"
-        :raw_table_id    $})
+        :created_at              $
+        :display_name            "Users"
+        :raw_table_id            $})
      (match-$ (Table (id :venues))
-       {:description     nil
-        :entity_type     nil
-        :caveats nil
-        :points_of_interest nil
-        :visibility_type nil
-        :schema          "PUBLIC"
-        :name            "VENUES"
-        :rows            100
-        :updated_at      $
-        :entity_name     nil
-        :active          true
-        :id              $
-        :db_id           db-id
+       {:description             nil
+        :entity_type             nil
+        :caveats                 nil
+        :points_of_interest      nil
+        :visibility_type         nil
+        :schema                  "PUBLIC"
+        :name                    "VENUES"
+        :rows                    100
+        :updated_at              $
+        :entity_name             nil
+        :active                  true
+        :id                      $
+        :db_id                   db-id
         :show_in_getting_started false
-        :created_at      $
-        :display_name    "Venues"
-        :raw_table_id    $})])
+        :created_at              $
+        :display_name            "Venues"
+        :raw_table_id            $})])
   ((user->client :rasta) :get 200 (format "database/%d/tables" (id))))

@@ -82,7 +82,7 @@
      :points_of_interest nil
      :base_type          :DecimalField
      :visibility_type    :normal,
-     :special_type       :id,                 ; existing special types are NOT modified
+     :special_type       :id, ; existing special types are NOT modified
      :parent_id          false,
      :fk_target_field_id false,
      :last_analyzed      false
@@ -130,7 +130,7 @@
      :points_of_interest nil
      :base_type          :IntegerField
      :visibility_type    :normal,
-     :special_type       :category,            ; should be infered from name
+     :special_type       :category,     ; should be infered from name
      :parent_id          false,
      :fk_target_field_id false,
      :last_analyzed      false
@@ -146,8 +146,8 @@
      :points_of_interest nil
      :base_type          :TextField
      :visibility_type    :normal,
-     :special_type       :city,               ; should be infered from name
-     :parent_id          true,                ; nested field
+     :special_type       :city,         ; should be infered from name
+     :parent_id          true,          ; nested field
      :fk_target_field_id false,
      :last_analyzed      false
      :created_at         true,
@@ -162,8 +162,8 @@
      :points_of_interest nil
      :base_type          :TextField
      :visibility_type    :normal,
-     :special_type       :category,            ; manually specified
-     :parent_id          true,                 ; nested field
+     :special_type       :category,     ; manually specified
+     :parent_id          true,          ; nested field
      :fk_target_field_id false,
      :last_analyzed      false
      :created_at         true,
@@ -178,7 +178,7 @@
      :caveats            nil
      :points_of_interest nil
      :base_type          :DecimalField
-     :visibility_type    :normal,            ; fields are NOT retired automatically in dynamic schemas
+     :visibility_type    :normal, ; fields are NOT retired automatically in dynamic schemas
      :special_type       :id,
      :parent_id          false,
      :fk_target_field_id false,
@@ -211,7 +211,7 @@
      :points_of_interest nil
      :base_type          :BooleanField
      :visibility_type    :normal,
-     :special_type       :id,                  ; special type can be set if it was nil before
+     :special_type       :id, ; special type can be set if it was nil before
      :parent_id          false,
      :fk_target_field_id false,
      :last_analyzed      false
@@ -227,7 +227,7 @@
      :points_of_interest nil
      :base_type          :IntegerField
      :visibility_type    :normal,
-     :special_type       :category,            ; should be infered from name
+     :special_type       :category,     ; should be infered from name
      :parent_id          false,
      :fk_target_field_id false,
      :last_analyzed      false
@@ -243,8 +243,8 @@
      :points_of_interest nil
      :base_type          :TextField
      :visibility_type    :normal,
-     :special_type       :city,               ; should be infered from name
-     :parent_id          true,                ; nested field
+     :special_type       :city,         ; should be infered from name
+     :parent_id          true,          ; nested field
      :fk_target_field_id false,
      :last_analyzed      false
      :created_at         true,
@@ -259,8 +259,8 @@
      :points_of_interest nil
      :base_type          :TextField
      :visibility_type    :normal,
-     :special_type       :category,            ; manually specified
-     :parent_id          true,                 ; nested field
+     :special_type       :category,     ; manually specified
+     :parent_id          true,          ; nested field
      :fk_target_field_id false,
      :last_analyzed      false
      :created_at         true,
@@ -276,7 +276,7 @@
      :base_type          :BooleanField
      :visibility_type    :normal,
      :special_type       nil,
-     :parent_id          true,                 ; nested field
+     :parent_id          true,          ; nested field
      :fk_target_field_id false,
      :last_analyzed      false
      :created_at         true,

@@ -30,15 +30,15 @@
 
 ;; create-segment!
 (expect
-  {:creator_id  (user->id :rasta)
-   :creator     (user-details :rasta)
-   :name        "I only want *these* things"
-   :description nil
+  {:creator_id              (user->id :rasta)
+   :creator                 (user-details :rasta)
+   :name                    "I only want *these* things"
+   :description             nil
    :show_in_getting_started false
-   :caveats nil
-   :points_of_interest nil
-   :is_active   true
-   :definition  {:clause ["a" "b"]}}
+   :caveats                 nil
+   :points_of_interest      nil
+   :is_active               true
+   :definition              {:clause ["a" "b"]}}
   (tu/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]]
     (create-segment-then-select! table-id "I only want *these* things" nil (user->id :rasta) {:clause ["a" "b"]})))
@@ -57,16 +57,16 @@
 
 ;; retrieve-segment
 (expect
-  {:creator_id   (user->id :rasta)
-   :creator      (user-details :rasta)
-   :name         "Toucans in the rainforest"
-   :description  "Lookin' for a blueberry"
+  {:creator_id              (user->id :rasta)
+   :creator                 (user-details :rasta)
+   :name                    "Toucans in the rainforest"
+   :description             "Lookin' for a blueberry"
    :show_in_getting_started false
-   :caveats nil
-   :points_of_interest nil
-   :is_active    true
-   :definition   {:database 45
-                  :query    {:filter ["yay"]}}}
+   :caveats                 nil
+   :points_of_interest      nil
+   :is_active               true
+   :definition              {:database 45
+                             :query    {:filter ["yay"]}}}
   (tu/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}   {:db_id database-id}]
                   Segment  [{segment-id :id} {:table_id   table-id
@@ -80,15 +80,15 @@
 
 ;; retrieve-segements
 (expect
-  [{:creator_id   (user->id :rasta)
-    :creator      (user-details :rasta)
-    :name         "Segment 1"
-    :description  nil
+  [{:creator_id              (user->id :rasta)
+    :creator                 (user-details :rasta)
+    :name                    "Segment 1"
+    :description             nil
     :show_in_getting_started false
-    :caveats nil
-    :points_of_interest nil
-    :is_active    true
-    :definition   {}}]
+    :caveats                 nil
+    :points_of_interest      nil
+    :is_active               true
+    :definition              {}}]
   (tu/with-temp* [Database [{database-id :id}]
                   Table    [{table-id-1 :id}    {:db_id database-id}]
                   Table    [{table-id-2 :id}    {:db_id database-id}]
@@ -109,42 +109,42 @@
 ;;  4. ability to modify the definition json
 ;;  5. revision is captured along with our commit message
 (expect
-  {:creator_id   (user->id :rasta)
-   :creator      (user-details :rasta)
-   :name         "Costa Rica"
-   :description  nil
+  {:creator_id              (user->id :rasta)
+   :creator                 (user-details :rasta)
+   :name                    "Costa Rica"
+   :description             nil
    :show_in_getting_started false
-   :caveats nil
-   :points_of_interest nil
-   :is_active    true
-   :definition   {:database 2
-                  :query    {:filter ["not" "the toucans you're looking for"]}}}
+   :caveats                 nil
+   :points_of_interest      nil
+   :is_active               true
+   :definition              {:database 2
+                             :query    {:filter ["not" "the toucans you're looking for"]}}}
   (tu/with-temp* [Database [{database-id :id}]
                   Table    [{:keys [id]} {:db_id database-id}]
                   Segment  [{:keys [id]} {:table_id id}]]
-    (update-segment-then-select! {:id          id
-                                 :name        "Costa Rica"
-                                 :description nil
-                                 :show_in_getting_started false
-                                 :caveats nil
-                                 :points_of_interest nil
-                                 :creator_id  (user->id :crowberto)
-                                 :table_id    456
-                                 :definition  {:database 2
-                                               :query    {:filter ["not" "the toucans you're looking for"]}}
-                                 :revision_message "Just horsing around"})))
+    (update-segment-then-select! {:id                      id
+                                  :name                    "Costa Rica"
+                                  :description             nil
+                                  :show_in_getting_started false
+                                  :caveats                 nil
+                                  :points_of_interest      nil
+                                  :creator_id              (user->id :crowberto)
+                                  :table_id                456
+                                  :definition              {:database 2
+                                                            :query    {:filter ["not" "the toucans you're looking for"]}}
+                                  :revision_message        "Just horsing around"})))
 
 ;; delete-segment!
 (expect
-  {:creator_id   (user->id :rasta)
-   :creator      (user-details :rasta)
-   :name         "Toucans in the rainforest"
-   :description  "Lookin' for a blueberry"
+  {:creator_id              (user->id :rasta)
+   :creator                 (user-details :rasta)
+   :name                    "Toucans in the rainforest"
+   :description             "Lookin' for a blueberry"
    :show_in_getting_started false
-   :caveats nil
-   :points_of_interest nil
-   :is_active    false
-   :definition   {}}
+   :caveats                 nil
+   :points_of_interest      nil
+   :is_active               false
+   :definition              {}}
   (tu/with-temp* [Database [{database-id :id}]
                   Table    [{:keys [id]} {:db_id database-id}]
                   Segment  [{:keys [id]} {:table_id id}]]
@@ -158,16 +158,16 @@
 
 ;; serialize-segment
 (expect
-  {:id          true
-   :table_id    true
-   :creator_id  (user->id :rasta)
-   :name        "Toucans in the rainforest"
-   :description "Lookin' for a blueberry"
+  {:id                      true
+   :table_id                true
+   :creator_id              (user->id :rasta)
+   :name                    "Toucans in the rainforest"
+   :description             "Lookin' for a blueberry"
    :show_in_getting_started false
-   :caveats nil
-   :points_of_interest nil
-   :definition  {:filter ["AND",[">",4,"2014-10-19"]]}
-   :is_active   true}
+   :caveats                 nil
+   :points_of_interest      nil
+   :definition              {:filter ["AND",[">",4,"2014-10-19"]]}
+   :is_active               true}
   (tu/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Segment  [segment        {:table_id   table-id
