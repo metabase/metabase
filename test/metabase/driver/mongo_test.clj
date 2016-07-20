@@ -8,8 +8,7 @@
                              [table :refer [Table] :as table])
             [metabase.query-processor :as qp]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]
-            [metabase.test.util :refer [expect-eval-actual-first resolve-private-fns]])
+            [metabase.test.data.datasets :as datasets])
   (:import metabase.driver.mongo.MongoDriver))
 
 ;; ## Logic for selectively running mongo

@@ -139,7 +139,7 @@
 (defn- handle-aggregation [query-type {{ag-type :aggregation-type, ag-field :field} :aggregation} druid-query]
   (when (isa? query-type ::ag-query)
     (merge druid-query
-           (let [ag-type (if (= ag-type :rows) nil ag-type)]
+           (let [ag-type (when-not (= ag-type :rows) ag-type)]
              (match [ag-type ag-field]
                ;; For 'distinct values' queries (queries with a breakout by no aggregation) just aggregate by count, but name it :___count so it gets discarded automatically
                [nil     nil] {:aggregations [(ag:count :___count)]}
@@ -170,7 +170,9 @@
   (^:private ->dimension-rvalue [this]
    "Format `Field` for use in a `:dimension` or `:dimensions` clause."))
 
-(defn- extract:timeFormat [format-str]
+(defn- extract:timeFormat
+  "Create a time format extraction. Returns a string. See http://druid.io/docs/0.9.1.1/querying/dimensionspecs.html#time-format-extraction-function"
+  [format-str]
   {:pre [(string? format-str)]}
   {:type     :timeFormat
    :format   format-str
@@ -178,14 +180,15 @@
                  "UTC")
    :locale   "en-US"})
 
-(defn- extract:js [& function-str-parts]
+(defn- extract:js
+  "Create an extraction function from JavaScript -- see http://druid.io/docs/0.9.1.1/querying/dimensionspecs.html#javascript-extraction-function"
+  [& function-str-parts]
   {:pre [(every? string? function-str-parts)]}
   {:type     :javascript
    :function (s/replace (apply str function-str-parts) #"\s+" " ")})
 
-(defn- unit->extractionFn
-  "JODA date format strings for each datetime unit. [Described here.](http://www.joda.org/joda-time/apidocs/org/joda/time/format/DateTimeFormat.html)."
-  [unit]
+;; don't try to make this a ^:const map -- extract:timeFormat looks up timezone info at query time
+(defn- unit->extraction-fn [unit]
   (case unit
     :default         (extract:timeFormat "yyyy-MM-dd'T'HH:mm:ssZ")
     :minute          (extract:timeFormat "yyyy-MM-dd'T'HH:mm:00Z")
@@ -236,6 +239,21 @@
    :timeZone  (or (get-in *query* [:settings :report-timezone])
                  "UTC")}))
 
+(def ^:private ^:const units-that-need-post-processing-int-parsing
+  "`extract:timeFormat` always returns a string; there are cases where we'd like to return an integer instead, such as `:day-of-month`.
+   There's no simple way to do this in Druid -- Druid 0.9.0+ *does* let you combine extraction functions with `:cascade`, but we're still supporting 0.8.x.
+   Instead, we will perform the conversions in Clojure-land during post-processing. If we need to perform the extra post-processing step, we'll name the resulting
+   column `:timestamp___int`; otherwise we'll keep the name `:timestamp`."
+  #{:minute-of-hour
+    :hour-of-day
+    :day-of-week
+    :day-of-month
+    :day-of-year
+    :week-of-year
+    :month-of-year
+    :quarter-of-year
+    :year})
+
 (extend-protocol IDimension
   nil    (->dimension-rvalue [this] (->rvalue this))
   Object (->dimension-rvalue [this] (->rvalue this))
@@ -244,8 +262,10 @@
   (->dimension-rvalue [{:keys [unit]}]
     {:type         :extraction
      :dimension    :__time
-     :outputName   :timestamp
-     :extractionFn (unit->extractionFn unit)}))
+     :outputName   (if (contains? units-that-need-post-processing-int-parsing unit)
+                     :timestamp___int
+                     :timestamp)
+     :extractionFn (unit->extraction-fn unit)}))
 
 (defmulti ^:private handle-breakout query-type-dispatch-fn)
 
@@ -574,6 +594,20 @@
         {:query      druid-query
          :query-type query-type}))))
 
+
+(defn- columns->getter-fns
+  "Given a sequence of COLUMNS keywords, return a sequence of appropriate getter functions to get values from a single result row. Normally,
+   these are just the keyword column names themselves, but for `:timestamp___int`, we'll also parse the result as an integer (for further
+   explanation, see the docstring for `units-that-need-post-processing-int-parsing`)."
+  [columns]
+  (vec (for [k columns]
+         (if (not= k :timestamp___int)
+           k
+           (comp (fn [^String s]
+                   (when (seq s)
+                     (Integer/parseInt s)))
+                 k)))))
+
 (defn execute-query
   "Execute a query for a Druid DB."
   [do-query {database :database, {:keys [query query-type mbql?]} :native}]
@@ -586,8 +620,11 @@
         results    (->> (do-query details query)
                         (post-process query-type)
                         remove-bonus-keys)
-        columns    (vec (keys (first results)))]
-    {:columns   columns
+        columns    (keys (first results))
+        getters    (columns->getter-fns columns)]
+    ;; rename any occurances of `:timestamp___int` to `:timestamp` in the results so the user doesn't know about our behind-the-scenes conversion
+    {:columns   (vec (replace {:timestamp___int :timestamp} columns))
      :rows      (for [row results]
-                  (mapv row columns))
+                  (for [getter getters]
+                    (getter row)))
      :annotate? mbql?}))

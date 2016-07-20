@@ -166,10 +166,10 @@
 
 (defn- collect-ids-with [f expanded-query-dict]
   (let [ids (transient #{})]
-    (->> expanded-query-dict
-         (walk/postwalk (fn [form]
-                          (when-let [id (f form)]
-                            (conj! ids id)))))
+    (walk/postwalk (fn [form]
+                     (when-let [id (f form)]
+                       (conj! ids id)))
+                   expanded-query-dict)
     (persistent! ids)))
 
 (def ^:private collect-unresolved-field-ids (partial collect-ids-with unresolved-field-id))
@@ -186,7 +186,7 @@
    Record `:table-ids` referenced in the Query."
   [expanded-query-dict]
   (loop [max-iterations 5, expanded-query-dict expanded-query-dict]
-    (when (< max-iterations 0)
+    (when (neg? max-iterations)
       (throw (Exception. "Failed to resolve fields: too many iterations.")))
     (let [field-ids (collect-unresolved-field-ids expanded-query-dict)]
       (if-not (seq field-ids)

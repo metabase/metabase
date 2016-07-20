@@ -9,7 +9,6 @@
                              [dashboard-card :refer [DashboardCard]]
                              [database :refer [Database]]
                              [field :refer [Field]]
-                             [foreign-key :refer [ForeignKey]]
                              [interface :refer [defentity]]
                              [raw-column :refer [RawColumn]]
                              [raw-table :refer [RawTable]]
@@ -19,7 +18,10 @@
 
 ;;; # Migration Helpers
 
-(defentity DataMigrations :data_migrations)
+(defentity ^:private DataMigrations :data_migrations)
+
+;; This is defined here since we still need it for some of the data migrations below. It's no longer used.
+(defentity ^:deprecated ^:private ForeignKey :metabase_foreignkey)
 
 (defn- migration-ran? [migration-name]
   (db/exists? DataMigrations :id (name migration-name)))

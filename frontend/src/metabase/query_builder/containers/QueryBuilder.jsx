@@ -4,7 +4,7 @@ import cx from "classnames";
 import _ from "underscore";
 
 import { AngularResourceProxy } from "metabase/lib/redux";
-import { loadTable } from "metabase/lib/table";
+import { loadTableAndForeignKeys } from "metabase/lib/table";
 
 import NotFound from "metabase/components/NotFound.jsx";
 import QueryHeader from "../QueryHeader.jsx";
@@ -90,7 +90,7 @@ const mapStateToProps = (state, props) => {
         cardApi:                   cardApi,
         dashboardApi:              dashboardApi,
         revisionApi:               revisionApi,
-        loadTableFn:               loadTable,
+        loadTableAndForeignKeysFn: loadTableAndForeignKeys,
         autocompleteResultsFn:     (prefix) => autocompleteResults(state.qb.card, prefix),
         cellIsClickableFn:         (rowIndex, columnIndex) => cellIsClickable(state.qb.queryResult, rowIndex, columnIndex)
     }

@@ -1,12 +1,12 @@
 (ns metabase.sync-database.introspect-test
   (:require [expectations :refer :all]
             [metabase.db :as db]
-            [metabase.mock.moviedb :as moviedb]
             (metabase.models [database :refer [Database]]
                              [hydrate :as hydrate]
                              [raw-column :refer [RawColumn]]
                              [raw-table :refer [RawTable]])
             [metabase.sync-database.introspect :as introspect]
+            [metabase.test.mock.moviedb :as moviedb]
             [metabase.test.util :as tu]))
 
 (tu/resolve-private-fns metabase.sync-database.introspect

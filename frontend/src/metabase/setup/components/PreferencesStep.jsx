@@ -69,10 +69,10 @@ export default class PreferencesStep extends Component {
                         : null }
 
                         <div className="Form-actions">
-                            <button className="Button Button--primary" ng-click="setUsagePreference()">
+                            <button className="Button Button--primary">
                                 Next
                             </button>
-                            <mb-form-message form="usageForm"></mb-form-message>
+                            { /* FIXME: <mb-form-message form="usageForm"></mb-form-message>*/ }
                         </div>
                     </form>
                 </section>

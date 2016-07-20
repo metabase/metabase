@@ -73,7 +73,7 @@
   ;; first off, just delete all series on the dashboard card (we add them again below)
   (db/cascade-delete! DashboardCardSeries :dashboardcard_id id)
   ;; now just insert all of the series that were given to us
-  (when-not (empty? card-ids)
+  (when (seq card-ids)
     (let [cards (map-indexed (fn [i card-id]
                                {:dashboardcard_id id, :card_id card-id, :position i})
                              card-ids)]

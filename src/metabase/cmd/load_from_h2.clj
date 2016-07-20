@@ -17,7 +17,6 @@
                              [dependency :refer [Dependency]]
                              [field :refer [Field]]
                              [field-values :refer [FieldValues]]
-                             [foreign-key :refer [ForeignKey]]
                              [label :refer [Label]]
                              [metric :refer [Metric]]
                              [pulse :refer [Pulse]]
@@ -49,7 +48,6 @@
    Table
    Field
    FieldValues
-   ForeignKey
    Segment
    Metric
    Revision
@@ -81,19 +79,32 @@
   "Active database connection to the target database we are loading into."
   nil)
 
-;; TODO - `e` is a bad variable name! This should be something like `entity`
-(defn- insert-entity! [e objs]
-  (print (u/format-color 'blue "Transfering %d instances of %s..." (count objs) (:name e))) ; TODO - I don't think the print+flush is working as intended :/
+
+(defn- insert-entity! [entity objs]
+  (print (u/format-color 'blue "Transfering %d instances of %s..." (count objs) (:name entity))) ; TODO - I don't think the print+flush is working as intended :/
   (flush)
-  ;; The connection closes prematurely on occasion when we're inserting thousands of rows at once. Break into smaller chunks so connection stays alive
-  (doseq [chunk (partition-all 300 objs)]
-    (print (color/blue \.))
-    (flush)
-    (jdbc/insert-multi! *target-db-connection* (:table e) (if (= e DashboardCard)
-                                                            ;; mini-HACK to fix h2 lowercasing these couple attributes
-                                                            ;; luckily this is the only place in our schema where we have camel case names
-                                                            (mapv #(set/rename-keys % {:sizex :sizeX, :sizey :sizeY}) chunk)
-                                                            chunk)))
+  (let [ks         (keys (first objs))
+        ;; 1) `:sizeX` and `:sizeY` come out of H2 as `:sizex` and `:sizey` because of automatic lowercasing; fix the names of these before putting into the new DB
+        ;; 2) Need to wrap the column names in quotes because Postgres automatically lowercases unquoted identifiers
+        quote-char (case (config/config-kw :mb-db-type)
+                     :postgres \"
+                     :mysql    \`)
+        cols       (for [k ks]
+                     (str quote-char (name (case k
+                                             :sizex :sizeX
+                                             :sizey :sizeY
+                                             k)) quote-char))]
+    ;; The connection closes prematurely on occasion when we're inserting thousands of rows at once. Break into smaller chunks so connection stays alive
+    (doseq [chunk (partition-all 300 objs)]
+      (print (color/blue \.))
+      (flush)
+      (try
+        (jdbc/insert-multi! *target-db-connection* (:table entity) cols (for [row chunk]
+                                                                          (map row ks)))
+
+        (catch java.sql.SQLException e
+          (jdbc/print-sql-exception-chain e)
+          (throw e)))))
   (println (color/green "[OK]")))
 
 (defn- insert-self-referencing-entity! [e objs]
