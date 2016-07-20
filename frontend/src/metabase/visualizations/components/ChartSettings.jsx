@@ -101,7 +101,7 @@ class ChartSettings extends Component {
                   <ChartSettingsTabs tabs={tabNames} selectTab={this.selectTab} activeTab={currentTab}/>
               }
               <div className="Grid flex-full mt3">
-                  <div className="Grid-cell Cell--1of3" ref={currentTab}>
+                  <div className="Grid-cell Cell--1of3 scroll-y p1">
                       { widgets && widgets.map((setting) => {
                           const value = settings[setting.id];
                           const onChange = (value) => this.onChangeSetting(setting, value, settings);
@@ -133,7 +133,7 @@ class ChartSettings extends Component {
                       />
                   </div>
               </div>
-              <div>
+              <div className="pt1">
                 <a className={cx("Button Button--primary", { "disabled": JSON.stringify(card.visualization_settings) === JSON.stringify(this.props.card.visualization_settings)})} href="" onClick={() => this.onDone()}>Done</a>
                 <a className="text-grey-2 ml2" onClick={onClose}>Cancel</a>
               </div>

@@ -50,7 +50,7 @@ export default class PieChart extends Component {
     }
 
     render() {
-        const { series, hovered, onHoverChange, className, gridSize } = this.props;
+        const { series, hovered, onHoverChange, className, gridSize, settings } = this.props;
         const { data } = series[0];
 
         const formatDimension = (dimension, jsx = true) => formatValue(dimension, { column: data.cols[0], jsx, majorWidth: 0 })
@@ -91,7 +91,7 @@ export default class PieChart extends Component {
 
         let legendTitles = slices.map(slice => [
             slice.key === "Other" ? slice.key : formatDimension(slice.key, false),
-            formatPercent(slice.percentage)
+            settings["pie.show_legend_perecent"] ? formatPercent(slice.percentage) : undefined
         ]);
         let legendColors = slices.map(slice => slice.color);
 
@@ -133,6 +133,7 @@ export default class PieChart extends Component {
                 legendTitles={legendTitles} legendColors={legendColors}
                 gridSize={gridSize}
                 hovered={hovered} onHoverChange={(d) => onHoverChange && onHoverChange(d && { ...d, ...hoverForIndex(d.index) })}
+                showLegend={settings["pie.show_legend"]}
             >
                 <div className={styles.ChartAndDetail}>
                     <div ref="detail" className={styles.Detail}>

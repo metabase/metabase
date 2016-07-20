@@ -250,13 +250,24 @@ const ChartSettingInput = ({ value, onChange }) =>
         onChange={(e) => onChange(e.target.value)}
     />
 
+const ChartSettingInputNumeric = ({ value, onChange }) =>
+    <input
+        className="input block full"
+        value={value == undefined ? "" : String(value)}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={(e) => {
+            let num = parseFloat(e.target.value);
+            onChange(isNaN(num) ? undefined : num);
+        }}
+    />
+
 const ChartSettingToggle = ({ value, onChange }) =>
     <Toggle
         value={value}
         onChange={onChange}
     />
 
-const ChartSettingFieldPicker = ({ value = [], onChange, options, onAddAnother }) =>
+const ChartSettingFieldPicker = ({ value = [], onChange, options, canAddAnother }) =>
     <div>
         { value.map((v, index) =>
             <ChartSettingSelect
@@ -266,9 +277,9 @@ const ChartSettingFieldPicker = ({ value = [], onChange, options, onAddAnother }
                 onChange={(v) => onChange([...value.slice(0, index), v, ...value.slice(index + 1)])}
             />
         )}
-        { onAddAnother &&
+        { canAddAnother &&
             <div>
-                <a onClick={onAddAnother}>Add another...</a>
+                <a onClick={() => onChange(value.concat([undefined]))}>Add another...</a>
             </div>
         }
     </div>
@@ -316,11 +327,11 @@ const SETTINGS = {
             }
         },
         getProps: ({ value, onChange, card, data }) => {
-            let props = { options: data.cols.filter(isDimension).map(c => ({ name: c.display_name, value: c.name })) }
-            if (!Array.isArray(value) || (props.options.length > value.length && value.length < 2)) {
-                props.onAddAnother = () => onChange(value.concat([undefined]))
-            }
-            return props;
+            const options = data.cols.filter(isDimension).map(c => ({ name: c.display_name, value: c.name }));
+            return {
+                options,
+                canAddAnother: !Array.isArray(value) || (options.length > value.length && value.length < 2)
+            };
         },
         dependentSettings: ["graph.metrics"]
     },
@@ -340,11 +351,11 @@ const SETTINGS = {
             }
         },
         getProps: ({ value, onChange, card, data }) => {
-            let props = { options: data.cols.filter(isMetric).map(c => ({ name: c.display_name, value: c.name })) }
-            if (!Array.isArray(value) || (props.options.length > value.length)) {
-                props.onAddAnother = () => onChange(value.concat([undefined]))
-            }
-            return props;
+            const options = data.cols.filter(isMetric).map(c => ({ name: c.display_name, value: c.name }));
+            return {
+                options,
+                canAddAnother: !Array.isArray(value) || (options.length > value.length)
+            };
         },
         dependentSettings: ["graph.dimensions"]
     },
@@ -395,15 +406,18 @@ const SETTINGS = {
     "graph.y_axis.min": {
         section: "Axes",
         title: "Min",
-        widget: ChartSettingInput,
+        widget: ChartSettingInputNumeric,
+        default: 0,
         isHidden: (settings) => settings["graph.y_axis.auto_range"] !== false
     },
     "graph.y_axis.max": {
         section: "Axes",
         title: "Min",
-        widget: ChartSettingInput,
+        widget: ChartSettingInputNumeric,
+        default: 100,
         isHidden: (settings) => settings["graph.y_axis.auto_range"] !== false
     },
+/*
     "graph.y_axis_right.auto_range": {
         section: "Axes",
         title: "Auto right-hand y-axis range",
@@ -413,15 +427,18 @@ const SETTINGS = {
     "graph.y_axis_right.min": {
         section: "Axes",
         title: "Min",
-        widget: ChartSettingInput,
+        widget: ChartSettingInputNumeric,
+        default: 0,
         isHidden: (settings) => settings["graph.y_axis_right.auto_range"] !== false
     },
     "graph.y_axis_right.max": {
         section: "Axes",
         title: "Min",
-        widget: ChartSettingInput,
+        widget: ChartSettingInputNumeric,
+        default: 100,
         isHidden: (settings) => settings["graph.y_axis_right.auto_range"] !== false
     },
+*/
     "graph.y_axis.auto_split": {
         section: "Axes",
         title: "Use a split y-axis when necessary",
@@ -470,7 +487,8 @@ const SETTINGS = {
     "pie.show_legend_perecent": {
         section: "Legend",
         title: "Show percentages in legend",
-        widget: ChartSettingToggle
+        widget: ChartSettingToggle,
+        default: true
     },
     "scalar.separator": {
         title: "Separator",
@@ -484,7 +502,7 @@ const SETTINGS = {
     },
     "scalar.decimals": {
         title: "Number of decimal places",
-        widget: ChartSettingInput
+        widget: ChartSettingInputNumeric
     },
     "scalar.prefix": {
         title: "Add a prefix",
@@ -496,7 +514,7 @@ const SETTINGS = {
     },
     "scalar.scale": {
         title: "Multiply by a number",
-        widget: ChartSettingInput
+        widget: ChartSettingInputNumeric
     }
 };
 

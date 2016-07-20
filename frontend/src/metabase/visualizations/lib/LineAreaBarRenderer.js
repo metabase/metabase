@@ -172,7 +172,6 @@ function applyChartYAxis(chart, settings, series, yAxisSplit) {
 
     if (settings["graph.y_axis.axis_enabled"]) {
         chart.renderHorizontalGridLines(true);
-        chart.elasticY(true);
 
         adjustTicksIfNeeded(chart.yAxis(), chart.height(), MIN_PIXELS_PER_TICK.y);
         if (yAxisSplit.length > 1 && chart.rightYAxis) {
@@ -183,6 +182,12 @@ function applyChartYAxis(chart, settings, series, yAxisSplit) {
         if (chart.rightYAxis) {
             chart.rightYAxis().ticks(0);
         }
+    }
+
+    if (settings["graph.y_axis.auto_range"]) {
+        chart.elasticY(true);
+    } else {
+        chart.y(d3.scale.linear().domain([settings["graph.y_axis.min"], settings["graph.y_axis.max"]]))
     }
 }
 

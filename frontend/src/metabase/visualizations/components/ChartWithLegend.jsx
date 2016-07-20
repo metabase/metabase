@@ -19,7 +19,7 @@ export default class ChartWithLegend extends Component {
     };
 
     render() {
-        let { children, legendTitles, legendColors, hovered, onHoverChange, className, gridSize, aspectRatio, height, width } = this.props;
+        let { children, legendTitles, legendColors, hovered, onHoverChange, className, gridSize, aspectRatio, height, width, showLegend } = this.props;
 
         // padding
         width -= PADDING * 2
@@ -28,7 +28,9 @@ export default class ChartWithLegend extends Component {
         let chartWidth, chartHeight, flexChart = false;
         let type, LegendComponent;
         let isHorizontal = gridSize && gridSize.width > gridSize.height / GRID_ASPECT_RATIO;
-        if (!gridSize || (isHorizontal && (gridSize.width > 4 || gridSize.height > 4))) {
+        if (showLegend === false) {
+            type = "small";
+        } else if (!gridSize || (isHorizontal && (showLegend || gridSize.width > 4 || gridSize.height > 4))) {
             type = "horizontal";
             LegendComponent = LegendVertical;
             if (gridSize && gridSize.width < 6) {
@@ -41,7 +43,7 @@ export default class ChartWithLegend extends Component {
                 chartWidth = desiredWidth;
             }
             chartHeight = height;
-        } else if (!isHorizontal && gridSize.height > 3 && gridSize.width > 2) {
+        } else if (!isHorizontal && (showLegend || (gridSize.height > 3 && gridSize.width > 2))) {
             type = "vertical";
             LegendComponent = LegendHorizontal;
             legendTitles = legendTitles.map(title => Array.isArray(title) ? title[0] : title);
