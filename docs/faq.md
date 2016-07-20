@@ -80,3 +80,16 @@ We are experimenting with offering paid support to a limited number of companies
 ### Can I embed charts or dashboards in another application?
 
 Not yet. We're working on it however, and you should expect it in the near future. (Late summer/early fall 2016). Keep tabs on it at the main [tracking issue](https://github.com/metabase/metabase/issues/1380)
+
+
+## Common Errors
+
+###  “ERROR: current transaction is aborted, commands ignored until end of transaction block”
+
+This error often occurs when you set a reporting timezone in the global settings and use a database user without write permissions. While Metabase never writes to a connected data warehouse, to set a timezone in PostgreSQL, we execute something like
+
+```
+ UPDATE pg_settings SET setting = ? WHERE name ILIKE 'timezone';
+```
+
+While this does not modify underlying data at all, it is considered a write by the PostgreSQL permissions system. For the time being, you should either unset the timezone, or give the database credentials Metabase uses to access your database write permissions.
