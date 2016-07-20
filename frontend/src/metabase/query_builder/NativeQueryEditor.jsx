@@ -255,7 +255,7 @@ export default class NativeQueryEditor extends Component {
                     <div className="flex">
                         {dataSelectors}
                         { parameters.map(parameter =>
-                            <div key={parameter.name} className="pl2 GuiBuilder-section GuiBuilder-data flex align-center">
+                            <div key={parameter.id} className="pl2 GuiBuilder-section GuiBuilder-data flex align-center">
                                 <span className="GuiBuilder-section-label Query-label">{parameter.name}</span>
                                 <ParameterValueWidget
                                     key={parameter.id}

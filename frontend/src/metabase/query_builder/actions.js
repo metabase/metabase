@@ -392,7 +392,7 @@ export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (runCard) => {
 
 // setQuery
 export const SET_QUERY = "SET_QUERY";
-export const setQuery = createThunkAction(SET_QUERY, (dataset_query) => {
+export const setQuery = createThunkAction(SET_QUERY, (dataset_query, run = false) => {
     return (dispatch, getState) => {
         const { qb: { card, uiControls } } = getState();
 
@@ -462,6 +462,11 @@ export const setQuery = createThunkAction(SET_QUERY, (dataset_query) => {
                     openTemplateTagsEditor = false;
                 }
             }
+        }
+
+        // run updated query
+        if (run) {
+            dispatch(runQuery(updatedCard));
         }
 
         return {
@@ -658,13 +663,8 @@ export const setQuerySort = createThunkAction(SET_QUERY_SORT, (column) => {
             // set clause
             dataset_query.query.order_by = [sortClause];
 
-            // update the query
-            dispatch(setQuery(dataset_query));
-
-            // run updated query
-            let updatedCard = JSON.parse(JSON.stringify(card));
-            updatedCard.dataset_query = dataset_query;
-            dispatch(runQuery(updatedCard));
+            // update and run the query
+            dispatch(setQuery(dataset_query, true));
         }
 
         return null;
@@ -848,11 +848,8 @@ export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnInde
                 Query.updateFilter(dataset_query.query, dataset_query.query.filter.length - 1, [filter, fieldRefForm, value]);
             }
 
-            dispatch(setQuery(dataset_query));
-
-            let updatedCard = JSON.parse(JSON.stringify(card));
-            updatedCard.dataset_query = dataset_query;
-            dispatch(runQuery(updatedCard));
+            // update and run the query
+            dispatch(setQuery(dataset_query, true));
 
             MetabaseAnalytics.trackEvent("QueryBuilder", "Table Cell Click", "Quick Filter");
         }

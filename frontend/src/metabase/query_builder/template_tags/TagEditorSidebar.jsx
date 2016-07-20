@@ -2,6 +2,7 @@
 import React, { Component, PropTypes } from "react";
 import Icon from "metabase/components/Icon.jsx";
 import TagEditorParam from "./TagEditorParam.jsx";
+import TagEditorHelp from "./TagEditorHelp.jsx";
 
 import cx from "classnames";
 import { getIn } from "icepick";
@@ -19,7 +20,8 @@ export default class TagEditorSidebar extends Component {
         card: PropTypes.object.isRequired,
         onClose: PropTypes.func.isRequired,
         updateTemplateTag: PropTypes.func.isRequired,
-        databaseFields: PropTypes.array
+        databaseFields: PropTypes.array,
+        setQuery: PropTypes.func.isRequired
     };
 
     render() {
@@ -54,7 +56,7 @@ export default class TagEditorSidebar extends Component {
                     { section === "settings" ?
                         <SettingsPane tags={tags} onUpdate={this.props.updateTemplateTag} databaseFields={this.props.databaseFields}/>
                     :
-                        <HelpPane />
+                        <TagEditorHelp setQuery={this.props.setQuery}/>
                     }
                 </div>
             </div>
@@ -76,11 +78,3 @@ SettingsPane.propTypes = {
     onUpdate: PropTypes.func.isRequired,
     databaseFields: PropTypes.array
 };
-
-const HelpPane = () =>
-    <div>
-        <h3>What's this for?</h3>
-        <p>Parameters and variables in native queries let you dynamically replace values in your queries using the selection widgets or through the URL.</p>
-        <h3>Syntax</h3>
-        <p>lorem ipsum</p>
-    </div>
