@@ -14,7 +14,6 @@
 }
 
 :local(.guideEmptyMessage) {
-    /*composing text-body doesn't seem to work?*/
     composes: text-dark mt3 from "style";
     text-align: left;
     font-size: 1.1em;
