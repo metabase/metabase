@@ -102,7 +102,7 @@
   "migrations/liquibase.json")
 
 (defn migrate
-  "Migrate the database:
+  "Migrate the database (this can also be ran via command line like `lein run migrate down-one`):
 
    *  `:up`            - Migrate up
    *  `:down`          - Rollback *all* migrations

@@ -1,6 +1,7 @@
 (ns metabase.api.metric
   "/api/metric endpoints."
-  (:require [compojure.core :refer [defroutes GET PUT POST DELETE]]
+  (:require [clojure.data :as data]
+            [compojure.core :refer [defroutes GET PUT POST DELETE]]
             [metabase.api.common :refer :all]
             [metabase.db :as db]
             (metabase.models [hydrate :refer [hydrate]]
@@ -48,6 +49,26 @@
      :definition       definition
      :revision_message revision_message}
     *current-user-id*))
+
+(defendpoint PUT "/:id/important_fields"
+  "Update the important `Fields` for a `Metric` with ID.
+   (This is used for the Getting Started guide)."
+  [id :as {{:keys [important_field_ids]} :body}]
+  {important_field_ids [Required ArrayOfIntegers]}
+  (check-superuser)
+  (check-404 (metric/exists? id))
+  (check (<= (count important_field_ids) 3)
+    [400 "A Metric can have a maximum of 3 important fields."])
+  (let [[fields-to-remove fields-to-add] (data/diff (set (db/select-field :field_id 'MetricImportantField :metric_id 1))
+                                                    (set important_field_ids))]
+    ;; delete old fields as needed
+    (when (seq fields-to-remove)
+      (db/delete! 'MetricImportantField {:metric_id id, :field_id [:in fields-to-remove]}))
+    ;; add new fields as needed
+    (db/insert-many! 'MetricImportantField (for [field-id fields-to-add]
+                                             {:metric_id id, :field_id field-id}))
+    ;; we're done (TODO - Do we want to return anything here?)
+    {:success true}))
 
 
 (defendpoint DELETE "/:id"
