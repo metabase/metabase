@@ -37,6 +37,7 @@ export default class FieldName extends Component {
                 parts.push(<span key={"fkIcon"+index} className="px1"><Icon name="connections" width="10" height="10" /></span>);
             }
             // target field itself
+            // using i.getIn to avoid exceptions when field is undefined
             parts.push(<span key="field">{i.getIn(fieldTarget, ['field', 'display_name'])}</span>);
             // datetime-field unit
             if (fieldTarget.unit != null) {

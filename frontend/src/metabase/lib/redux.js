@@ -1,5 +1,6 @@
 import moment from "moment";
 import _ from "underscore";
+import i from "icepick";
 
 import { createStore as originalCreateStore, applyMiddleware, compose } from "redux";
 import promise from 'redux-promise';
@@ -90,3 +91,13 @@ export function momentifyTimestamps(object, keys = ["created_at", "updated_at"])
 export function momentifyObjectsTimestamps(objects, keys) {
     return _.mapObject(objects, o => momentifyTimestamps(o, keys));
 }
+
+//filters out angular cruft and turns into id indexed map
+export const resourceListToMap = (resources) => resources
+    .filter(resource => resource.id !== undefined)
+    .reduce((map, resource) => i.assoc(map, resource.id, resource), {});
+
+//filters out angular cruft in resource
+export const cleanResource = (resource) => Object.keys(resource)
+    .filter(key => key.charAt(0) !== "$")
+    .reduce((map, key) => i.assoc(map, key, resource[key]), {});

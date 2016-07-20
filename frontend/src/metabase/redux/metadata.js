@@ -1,4 +1,12 @@
-import { handleActions, combineReducers, AngularResourceProxy, createThunkAction } from "metabase/lib/redux";
+import {
+    handleActions,
+    combineReducers,
+    AngularResourceProxy,
+    createThunkAction,
+    resourceListToMap,
+    cleanResource
+} from "metabase/lib/redux";
+
 import { normalize, Schema, arrayOf } from 'normalizr';
 import i from "icepick";
 import _ from "underscore";
@@ -20,17 +28,6 @@ database.define({
 table.define({
     fields: arrayOf(field)
 });
-
-// move these to shared lib?
-const resourceListToMap = (resources) => resources
-    //filters out angular cruft
-    .filter(resource => resource.id !== undefined)
-    .reduce((map, resource) => i.assoc(map, resource.id, resource), {});
-
-const cleanResource = (resource) => Object.keys(resource)
-    //filters out angular cruft
-    .filter(key => key.charAt(0) !== "$")
-    .reduce((map, key) => i.assoc(map, key, resource[key]), {});
 
 export const fetchData = async ({dispatch, getState, requestStatePath, existingStatePath, getData, reload}) => {
     const existingData = i.getIn(getState(), existingStatePath);
