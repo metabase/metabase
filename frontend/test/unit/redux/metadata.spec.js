@@ -20,7 +20,7 @@ describe("Metadata Actions and Reducers", () => {
         dispatch = jasmine.createSpy('dispatch'),
         getData = () => Promise.resolve(newData),
         putData = () => Promise.resolve(newData)
-    }) => ({dispatch, getState, requestStatePath, existingStatePath, getData, putData,
+    } = {}) => ({dispatch, getState, requestStatePath, existingStatePath, getData, putData,
         // passthrough args constants
         existingData,
         newData,
@@ -36,14 +36,15 @@ describe("Metadata Actions and Reducers", () => {
     const args = getDefaultArgs({});
 
     describe("fetchData()", () => {
-        it("should return new data if request hasn't been made", async () => {
+        it("should return new data if request hasn't been made", async (done) => {
             const argsDefault = getDefaultArgs({});
             const data = await fetchData(argsDefault);
             expect(argsDefault.dispatch.calls.count()).toEqual(2);
             expect(data).toEqual(args.newData);
+            done();
         });
 
-        it("should return existing data if request has been made", async () => {
+        it("should return existing data if request has been made", async (done) => {
             const argsLoading = getDefaultArgs({requestState: args.requestStateLoading});
             const dataLoading = await fetchData(argsLoading);
             expect(argsLoading.dispatch.calls.count()).toEqual(0);
@@ -53,19 +54,21 @@ describe("Metadata Actions and Reducers", () => {
             const dataLoaded = await fetchData(argsLoaded);
             expect(argsLoaded.dispatch.calls.count()).toEqual(0);
             expect(dataLoaded).toEqual(args.existingData);
+            done();
         });
 
-        it("should return new data if previous request ended in error", async () => {
+        it("should return new data if previous request ended in error", async (done) => {
             const argsError = getDefaultArgs({requestState: args.requestStateError});
             const dataError = await fetchData(argsError);
             expect(argsError.dispatch.calls.count()).toEqual(2);
             expect(dataError).toEqual(args.newData);
+            done();
         });
 
         // FIXME: this seems to make jasmine ignore the rest of the tests
         // is an exception bubbling up from fetchData? why?
         // how else to test return value in the catch case?
-        xit("should return existing data if request fails", async () => {
+        xit("should return existing data if request fails", async (done) => {
             const argsFail = getDefaultArgs({getData: () => Promise.reject('error')});
 
             try{
@@ -76,11 +79,12 @@ describe("Metadata Actions and Reducers", () => {
             catch(error) {
                 return;
             }
+            done();
         });
     });
 
     describe("updateData()", () => {
-        it("should return new data regardless of previous request state", async () => {
+        it("should return new data regardless of previous request state", async (done) => {
             const argsDefault = getDefaultArgs({});
             const data = await updateData(argsDefault);
             expect(argsDefault.dispatch.calls.count()).toEqual(2);
@@ -100,14 +104,16 @@ describe("Metadata Actions and Reducers", () => {
             const dataError = await updateData(argsError);
             expect(argsError.dispatch.calls.count()).toEqual(2);
             expect(dataError).toEqual(args.newData);
+            done();
         });
 
         // FIXME: same problem as fetchData() case
-        xit("should return existing data if request fails", async () => {
+        xit("should return existing data if request fails", async (done) => {
             const argsFail = getDefaultArgs({putData: () => {throw new Error('test')}});
             const data = await fetchData(argsFail);
             expect(argsFail.dispatch.calls.count()).toEqual(2);
             expect(data).toEqual(args.existingData);
+            done();
         });
     });
 });
