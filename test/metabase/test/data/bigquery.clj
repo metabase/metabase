@@ -90,9 +90,9 @@
   (println (u/format-color 'blue "Created BigQuery table '%s.%s'." dataset-id table-id)))
 
 (defn- table-row-count ^Integer [^String dataset-id, ^String table-id]
-  (first (first (:rows (post-process-native (execute (.query (.jobs bigquery) project-id
-                                                             (doto (QueryRequest.)
-                                                               (.setQuery (format "SELECT COUNT(*) FROM [%s.%s]" dataset-id table-id))))))))))
+  (ffirst (:rows (post-process-native (execute (.query (.jobs bigquery) project-id
+                                                       (doto (QueryRequest.)
+                                                         (.setQuery (format "SELECT COUNT(*) FROM [%s.%s]" dataset-id table-id)))))))))
 
 ;; This is a dirty HACK
 (defn- ^DateTime timestamp-honeysql-form->GoogleDateTime
