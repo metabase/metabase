@@ -62,10 +62,12 @@
   ["birds_50" [{:field-name "name", :base-type :TextField}] [["Rasta"] ["Lucky"]]]
   ["birds_51" [{:field-name "name", :base-type :TextField}] [["Rasta"] ["Lucky"]]])
 
-(expect-with-engine :bigquery
-  51
-  (data/with-temp-db [db fifty-one-different-tables]
-    (count (database/tables db))))
+;; only run this test 1/4 times since it takes like 5-10 minutes
+(when (> (rand) 0.75)
+  (expect-with-engine :bigquery
+    51
+    (data/with-temp-db [db fifty-one-different-tables]
+      (count (database/tables db)))))
 
 
 ;; Test native queries
