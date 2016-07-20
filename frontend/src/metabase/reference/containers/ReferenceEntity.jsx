@@ -321,7 +321,7 @@ export default class EntityItem extends Component {
                                                                         true
                                                                     )
                                                             }
-                                                            updateImmediately={true}
+                                                            changeOnSelect={true}
                                                             onChange={(type) => special_type.onChange(type.id)}
                                                         /> :
                                                         <span>
@@ -342,7 +342,7 @@ export default class EntityItem extends Component {
                                                             placeholder="Select a field type"
                                                             value={foreignKeys[entity.fk_target_field_id] || {}}
                                                             options={Object.values(foreignKeys)}
-                                                            updateImmediately={true}
+                                                            changeOnSelect={true}
                                                             onChange={(foreignKey) => fk_target_field_id.onChange(foreignKey.id)}
                                                             optionNameFn={(foreignKey) => foreignKey.name}
                                                         /> :

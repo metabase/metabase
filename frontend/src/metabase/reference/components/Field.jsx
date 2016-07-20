@@ -58,7 +58,7 @@ const Field = ({
                                         true
                                     )
                             }
-                            updateImmediately={true}
+                            changeOnSelect={true}
                             onChange={(type) => formField.special_type.onChange(type.id)}
                         /> :
                         <span>
@@ -87,7 +87,7 @@ const Field = ({
                             placeholder="Select a field type"
                             value={foreignKeys[field.fk_target_field_id] || {}}
                             options={Object.values(foreignKeys)}
-                            updateImmediately={true}
+                            changeOnSelect={true}
                             onChange={(foreignKey) => formField.fk_target_field_id.onChange(foreignKey.id)}
                             optionNameFn={(foreignKey) => foreignKey.name}
                         /> :

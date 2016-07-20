@@ -16,7 +16,7 @@ export default class Select extends Component {
 
     static propTypes = {
         value: PropTypes.any,
-        updateImmediately: PropTypes.bool,
+        changeOnSelect: PropTypes.bool,
         options: PropTypes.array.isRequired,
         placeholder: PropTypes.string,
         triggerClasses: PropTypes.string,
@@ -37,7 +37,7 @@ export default class Select extends Component {
     }
 
     render() {
-        const value = this.props.updateImmediately ?
+        const value = this.props.changeOnSelect ?
             this.state.value || this.props.value :
             this.props.value;
 
@@ -66,7 +66,7 @@ export default class Select extends Component {
                 itemDescriptionFn: (item) => item.description,
                 itemSelectFn: (item) => {
                     this.props.onChange(this.props.optionValueFn(item));
-                    if (this.props.updateImmediately) {
+                    if (this.props.changeOnSelect) {
                         this.setState({value: this.props.optionValueFn(item)});
                     }
                     this.toggle();
