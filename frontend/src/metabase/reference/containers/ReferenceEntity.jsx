@@ -25,6 +25,10 @@ import RevisionMessageModal from "metabase/reference/components/RevisionMessageM
 import cx from "classnames";
 
 import {
+    tryUpdateData
+} from '../utils';
+
+import {
     getSection,
     getData,
     getError,
@@ -105,33 +109,15 @@ export default class EntityItem extends Component {
             isEditing,
             startEditing,
             endEditing,
-            startLoading,
-            endLoading,
-            setError,
             hasDisplayName,
             hasRevisionHistory,
             handleSubmit,
-            resetForm,
             submitting
         } = this.props;
 
-        const onSubmit = handleSubmit(async fields => {
-            const editedFields = Object.keys(fields)
-                .filter(key => fields[key] !== undefined)
-                .reduce((map, key) => i.assoc(map, key, fields[key]), {});
-            const newEntity = {...entity, ...editedFields};
-            startLoading();
-            try {
-                await this.props[section.update](newEntity);
-            }
-            catch(error) {
-                setError(error);
-                console.error(error);
-            }
-            resetForm();
-            endLoading();
-            endEditing();
-        });
+        const onSubmit = handleSubmit(async (fields) =>
+            await tryUpdateData(fields, this.props)
+        );
 
         return (
             <form style={style} className="full"

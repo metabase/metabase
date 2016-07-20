@@ -3,7 +3,6 @@ import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
-import i from "icepick";
 
 import S from "metabase/components/List.css";
 import R from "metabase/reference/Reference.css";
@@ -28,16 +27,13 @@ import {
     getIsEditing,
 } from "../selectors";
 
+import {
+    tryUpdateFields,
+    fieldsToFormFields
+} from '../utils';
+
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from 'metabase/reference/reference';
-
-const fieldsToFormFields = (fields) => Object.keys(fields)
-    .map(key => [
-        `${key}.display_name`,
-        `${key}.special_type`,
-        `${key}.fk_target_field_id`
-    ])
-    .reduce((array, keys) => array.concat(keys), []);
 
 const mapStateToProps = (state, props) => {
     const data = getData(state);
@@ -101,42 +97,15 @@ export default class ReferenceEntityList extends Component {
             isEditing,
             startEditing,
             endEditing,
-            startLoading,
-            endLoading,
-            setError,
-            updateField,
             handleSubmit,
             submitting
         } = this.props;
 
         return (
             <form style={style} className="full"
-                onSubmit={handleSubmit(async formFields => {
-                    const updatedFields = Object.keys(formFields)
-                        .map(fieldId => ({
-                            field: entities[fieldId],
-                            formField: Object.keys(formFields[fieldId])
-                                .filter(key => formFields[fieldId][key] !== undefined)
-                                .reduce((map, key) => i
-                                    .assoc(map, key, formFields[fieldId][key]), {}
-                                )
-                        }))
-                        .filter(({field, formField}) => Object
-                            .keys(formField).length !== 0
-                        )
-                        .map(({field, formField}) => ({...field, ...formField}));
-
-                    startLoading();
-                    try {
-                        await Promise.all(updatedFields.map(updateField));
-                    }
-                    catch(error) {
-                        setError(error);
-                        console.error(error);
-                    }
-                    endLoading();
-                    endEditing();
-                })}
+                onSubmit={handleSubmit(async (formFields) =>
+                    await tryUpdateFields(formFields, this.props)
+                )}
             >
                 { isEditing &&
                     <div className={cx("EditHeader wrapper py1", R.subheader)}>

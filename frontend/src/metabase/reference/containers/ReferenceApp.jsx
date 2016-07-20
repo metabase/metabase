@@ -19,6 +19,10 @@ import {
 } from '../selectors';
 
 import {
+    tryFetchData
+} from '../utils';
+
+import {
     selectSection as fetchQuestions
 } from 'metabase/questions/questions';
 
@@ -36,29 +40,6 @@ const mapDispatchToProps = {
     ...metadataActions,
     ...actions
 };
-
-export const tryFetchData = async (props) => {
-    if (!(props.section && props.section.fetch)) {
-        return;
-    }
-
-    const fetch = props.section.fetch;
-    props.clearError();
-    props.startLoading();
-    try {
-        await Promise.all(Object.keys(fetch).map((fetchPropName) => {
-            const fetchData = props[fetchPropName];
-            const fetchArgs = fetch[fetchPropName] || [];
-            return fetchData(...fetchArgs);
-        }));
-    }
-    catch(error) {
-        props.setError(error);
-        console.error(error);
-    }
-
-    props.endLoading();
-}
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class ReferenceApp extends Component {

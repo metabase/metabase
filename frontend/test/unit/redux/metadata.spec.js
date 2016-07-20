@@ -2,8 +2,6 @@ import { fetchData, updateData } from 'metabase/redux/metadata';
 
 describe("Metadata Actions and Reducers", () => {
     const getDefaultArgs = ({
-        // a bit of a hack to avoid reassignment and allow overrides based on named args
-        // TODO: think of a more elegant way to do this
         existingData = 'data',
         newData = 'new data',
         requestState = null,
