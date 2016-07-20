@@ -30,7 +30,7 @@ import * as metadataActions from "metabase/redux/metadata";
 
 const mapStateToProps = (state, props) => ({
     section: getSection(state),
-    entities: getData(state),
+    entities: {},
     user: getUser(state),
     loading: getLoading(state),
     loadingError: getError(state)
