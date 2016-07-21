@@ -477,7 +477,7 @@
                                 (:native query)
                                 (driver/mbql->native (:driver query) query))
                        (when-not *disable-qp-logging*
-                         (log/debug (u/format-color 'green "NATIVE FORM:\n%s\n" (u/pprint-to-str <>)))))
+                         (log/debug (u/format-color 'green "NATIVE FORM: 😳\n%s\n" (u/pprint-to-str <>)))))
         native-query (if-not (mbql-query? query)
                        query
                        (assoc query :native native-form))
@@ -520,8 +520,10 @@
 ;;
 ;; Post-processing then happens in order from bottom-to-top; i.e. POST-ANNOTATE gets to modify the results, then LIMIT, then CUMULATIVE-SUM, etc.
 
+
 (defn process-query
   "Process an MBQL structured or native query, and return the result."
+  {:style/indent 0}
   [query]
   (when-not *disable-qp-logging*
     (log/debug (u/format-color 'blue "\nQUERY: 😎\n%s"  (u/pprint-to-str query))))

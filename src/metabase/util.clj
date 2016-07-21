@@ -337,14 +337,23 @@
                       (or (re-matches #"^.+\..{2,}$" host) ; 2+ letter TLD
                           (= host "localhost"))))))))
 
+(defn sequence-of-maps?
+  "Is COLL a sequence of maps?"
+  [coll]
+  (and (sequential? coll)
+       (every? map? coll)))
 
-;; TODO - This should be made into a separate `sequence-of-maps?` function and a `maybe?` function
-(defn nil-or-sequence-of-maps?
-  "Is VALUE either nil or sequential? such that every item is a map?"
-  [v]
-  (or (nil? v)
-      (and (sequential? v)
-           (every? map? v))))
+(defn maybe?
+  "True if X is `nil`, or if it satisfies PRED. (PRED is only called if X is non-nil.)
+
+     (string? nil)        -> false
+     (string? \"A\")      -> true
+     (maybe? string? nil) -> true
+     (maybe? string? \"A\") -> true"
+  [pred x]
+  (or (nil? x)
+      (pred x)))
+
 
 (def ^:private ^:const host-up-timeout
   "Timeout (in ms) for checking if a host is available with `host-up?` and `host-port-up?`."
