@@ -1,0 +1,19 @@
+#!/bin/bash
+set -euo pipefail
+
+if [ $# -gt 0 ]; then
+    heroku_app_name="$1"
+else
+    heroku_app_name="metabase-$(git rev-parse --abbrev-ref HEAD)"
+fi
+
+if ! heroku ps -a "$heroku_app_name" > /dev/null; then
+    heroku apps:create -n --addons "heroku-postgresql:hobby-dev" "$heroku_app_name"
+    heroku buildpacks:clear -a "$heroku_app_name"
+    heroku buildpacks:add "https://github.com/heroku/heroku-buildpack-nodejs" -a "$heroku_app_name"
+    heroku buildpacks:add "https://github.com/heroku/heroku-buildpack-clojure" -a "$heroku_app_name"
+fi
+
+time git push -f "https://git.heroku.com/$heroku_app_name.git" HEAD:master
+
+heroku open -a "$heroku_app_name"
