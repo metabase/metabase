@@ -129,6 +129,9 @@
 
 ;;; ------------------------------------------------------------ GOOGLE AUTH ------------------------------------------------------------
 
+;; TODO - The more I look at all this code the more I think it should go in its own namespace. `metabase.integrations.google-auth` would be appropriate,
+;; or `metabase.integrations.auth.google` if we decide to add more 3rd-party SSO options
+
 (defsetting google-auth-client-id
   "Client ID for Google Auth SSO.")
 
@@ -160,7 +163,7 @@
   (when-not (autocreate-user-allowed-for-email? email)
     ;; Use some wacky status code (428 - Precondition Required) so we will know when to so the error screen specific to this situation
     (throw (ex-info "You'll need an administrator to create a Metabase account before you can use Google to log in."
-                    {:status-code 428}))))
+             {:status-code 428}))))
 
 (defn- google-auth-create-new-user! [first-name last-name email]
   (check-autocreate-user-allowed-for-email email)
