@@ -384,7 +384,7 @@ const getDatabaseBySegment = createSelector(
         databases[tables[segment.table_id].db_id] || {}
 );
 
-const databaseToForeignKeys = (database) => database && database.tables_lookup ?
+export const databaseToForeignKeys = (database) => database && database.tables_lookup ?
     Object.values(database.tables_lookup)
         // ignore tables without primary key
         .filter(table => table && table.fields_lookup &&
@@ -522,7 +522,7 @@ const getParentSections = (section) => {
     return parentSections;
 };
 
-const buildBreadcrumbs = (section) => getParentSections(section)
+export const buildBreadcrumbs = (section) => getParentSections(section)
     .map(getBreadcrumb)
     .slice(-3);
 

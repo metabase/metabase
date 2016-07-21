@@ -1,6 +1,6 @@
 import { fetchData, updateData } from 'metabase/redux/metadata';
 
-describe("Metadata Actions and Reducers", () => {
+describe("Metadata", () => {
     const getDefaultArgs = ({
         existingData = 'data',
         newData = 'new data',
