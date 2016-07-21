@@ -458,6 +458,13 @@ export const setQuery = createThunkAction(SET_QUERY, (dataset_query, run = false
                     }
                 }
 
+                // ensure all tags have an id since we need it for parameter values to work
+                for (const tag of Object.values(templateTags)) {
+                    if (tag.id == undefined) {
+                        tag.id = Utils.uuid();
+                    }
+                }
+
                 updatedCard.dataset_query.native.template_tags = templateTags;
 
                 if (newTags.length > 0) {
