@@ -127,14 +127,15 @@ export const queryResult = createSelector(
 );
 
 export const getImplicitParameters = createSelector(
-	[card],
-	(card) => //[{ name: "x", id: "y", type: "text" }]
+	[card, parameterValues],
+	(card, parameterValues) =>
 		Object.values(getIn(card, ["dataset_query", "template_tags"]) || {})
 			.filter(tag => tag.type != null && tag.type !== "dimension")
 			.map(tag => ({
 				id: tag.name,
 				type: tag.type === "date" ? "date/single" : "category",
 				name: tag.display_name,
+				value: parameterValues[tag.name]
 			}))
 );
 

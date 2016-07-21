@@ -9,7 +9,7 @@ import { AngularResourceProxy, angularPromise, createThunkAction } from "metabas
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { loadCard, isCardDirty, startNewCard, deserializeCardFromUrl } from "metabase/lib/card";
-import { formatSQL } from "metabase/lib/formatting";
+import { formatSQL, humanize } from "metabase/lib/formatting";
 import Query from "metabase/lib/query";
 import { createQuery } from "metabase/lib/query";
 import { loadTableAndForeignKeys } from "metabase/lib/table";
@@ -416,7 +416,7 @@ export const setQuery = createThunkAction(SET_QUERY, (dataset_query, run = false
             // a variable name can optionally end with :start or :end which is not considered part of the actual variable name
             // expected pattern is like mustache templates, so we are looking for something like {{category}} or {{date:start}}
             // anything that doesn't match our rule is ignored, so {{&foo!}} would simply be ignored
-            let match, re = /\{\{([A-Za-z0-9_]*?)\}\}/g;
+            let match, re = /\{\{([A-Za-z0-9_]+?)\}\}/g;
             while((match = re.exec(dataset_query.native.query)) != null) {
                 tags.push(match[1]);
             }
@@ -436,6 +436,12 @@ export const setQuery = createThunkAction(SET_QUERY, (dataset_query, run = false
                 if (oldTags.length === 1 && newTags.length === 1) {
                     // renaming
                     templateTags[newTags[0]] = templateTags[oldTags[0]];
+
+                    console.log(templateTags[newTags[0]].display_name, humanize(oldTags[0]))
+                    if (templateTags[newTags[0]].display_name === humanize(oldTags[0])) {
+                        templateTags[newTags[0]].display_name = humanize(newTags[0])
+                    }
+
                     templateTags[newTags[0]].name = newTags[0];
                     delete templateTags[oldTags[0]];
                 } else {
@@ -448,7 +454,7 @@ export const setQuery = createThunkAction(SET_QUERY, (dataset_query, run = false
                     for (let tagName of newTags) {
                         templateTags[tagName] = {
                             name: tagName,
-                            display_name: null,
+                            display_name: humanize(tagName),
                             type: null,
                         };
                     }

@@ -34,7 +34,9 @@ class BrowserSelect extends Component {
         value: PropTypes.any,
         onChange: PropTypes.func.isRequired,
         searchProp: PropTypes.string,
-        searchCaseInsensitive: PropTypes.bool
+        searchCaseInsensitive: PropTypes.bool,
+        isInitiallyOpen: PropTypes.bool,
+        placeholder: PropTypes.string
     }
     static defaultProps = {
         className: "",
@@ -46,13 +48,16 @@ class BrowserSelect extends Component {
     }
 
     render() {
-        const { children, className, onChange, searchProp, searchCaseInsensitive } = this.props;
+        const { children, className, onChange, searchProp, searchCaseInsensitive, isInitiallyOpen, placeholder } = this.props;
 
         let selectedName;
         for (const child of children) {
             if (this.isSelected(child.props.value)) {
                 selectedName = child.props.children;
             }
+        }
+        if (selectedName == null && placeholder) {
+            selectedName = placeholder;
         }
 
         const { inputValue } = this.state;
@@ -82,6 +87,7 @@ class BrowserSelect extends Component {
                 }
                 triggerClasses={cx("AdminSelect", className)}
                 verticalAttachments={["top"]}
+                isInitiallyOpen={isInitiallyOpen}
             >
                 <div className="flex flex-column">
                     { searchProp &&

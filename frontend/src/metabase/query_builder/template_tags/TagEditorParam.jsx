@@ -67,21 +67,21 @@ export default class TagEditorParam extends Component {
                     <h5 className="pb1 text-normal">Filter label</h5>
                     <input
                         type="text"
-                        defaultValue={tag.display_name}
+                        value={tag.display_name}
                         className="AdminSelect p1 text-bold text-grey-4 bordered border-med rounded full"
-                        onKeyUp={(e) => {
-                            if (e.keyCode === 13) {
-                                e.target.blur();
-                            }
-                        }}
-                        onBlur={(e) => this.setParameterAttribute("display_name", e.target.value)}
+                        onChange={(e) => this.setParameterAttribute("display_name", e.target.value)}
                     />
                 </div>
 
                 <div className="pb2">
                     <h5 className="pb1 text-normal">Variable type</h5>
-                    <Select className="border-med bg-white block" value={tag.type} onChange={(e) => this.setType(e.target.value)}>
-                        <Option value="" disabled>Select a tag type</Option>
+                    <Select
+                        className="border-med bg-white block"
+                        value={tag.type}
+                        onChange={(e) => this.setType(e.target.value)}
+                        isInitiallyOpen={!tag.type}
+                        placeholder="Select…"
+                    >
                         <Option value="text">Text</Option>
                         <Option value="number">Number</Option>
                         <Option value="date">Date</Option>
@@ -122,10 +122,12 @@ export default class TagEditorParam extends Component {
                             onChange={(e) => this.setParameterAttribute("dimension", ["field-id", e.target.value])}
                             searchProp="name"
                             searchCaseInsensitive
+                            isInitiallyOpen={!tag.dimension}
+                            placeholder="Select…"
                         >
                             {databaseFields && databaseFields.map(field =>
                                 <Option value={field.id} name={field.name}>
-                                    <div>
+                                    <div className="cursor-pointer">
                                         <div className="h6 text-bold text-uppercase text-grey-2">{dabaseHasSchemas && (field.schema + " > ")}{field.table_name}</div>
                                         <div className="h4 text-bold text-default">{field.name}</div>
                                     </div>

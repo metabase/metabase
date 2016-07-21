@@ -260,7 +260,7 @@ export default class NativeQueryEditor extends Component {
                                 <ParameterValueWidget
                                     key={parameter.id}
                                     parameter={parameter}
-                                    value={parameterValues[parameter.id]}
+                                    value={parameter.value}
                                     setValue={(v) => setParameterValue(parameter.id, v)}
                                 />
                             </div>
