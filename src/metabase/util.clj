@@ -20,8 +20,8 @@
            javax.xml.bind.DatatypeConverter
            org.joda.time.format.DateTimeFormatter))
 
-;; Set the default width for pprinting to 240 instead of 72. The default width is too narrow and wastes a lot of space for pprinting huge things like expanded queries
-(intern 'clojure.pprint '*print-right-margin* 240)
+;; Set the default width for pprinting to 200 instead of 72. The default width is too narrow and wastes a lot of space for pprinting huge things like expanded queries
+(intern 'clojure.pprint '*print-right-margin* 200)
 
 (declare pprint-to-str)
 
