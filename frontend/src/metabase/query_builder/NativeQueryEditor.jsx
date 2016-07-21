@@ -2,12 +2,16 @@
 /* eslint "react/prop-types": "warn" */
 
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 
 import _ from "underscore";
 import { assocIn } from "icepick";
+import cx from "classnames";
 
 import DataSelector from './DataSelector.jsx';
 import Icon from "metabase/components/Icon.jsx";
+import Popover from "metabase/components/Popover.jsx";
+import Code from "metabase/components/Code.jsx";
 import ParameterValueWidget from "metabase/dashboard/components/parameters/ParameterValueWidget.jsx";
 
 // This should return an object with information about the mode the ACE Editor should use to edit the query.
@@ -35,6 +39,11 @@ function getModeInfo(query, databases) {
 export default class NativeQueryEditor extends Component {
     constructor(props, context) {
         super(props, context);
+
+        this.state = {
+            selection: null,
+            snippetName: null
+        }
 
         this.localUpdate = false;
 
@@ -81,8 +90,12 @@ export default class NativeQueryEditor extends Component {
         }
     }
 
+    getEditor() {
+        return ace.edit("id_sql");
+    }
+
     componentDidUpdate() {
-        var editor = ace.edit("id_sql");
+        var editor = this.getEditor();
         if (editor.getValue() !== this.props.query.native.query) {
             // This is a weird hack, but the purpose is to avoid an infinite loop caused by the fact that calling editor.setValue()
             // will trigger the editor 'change' event, update the query, and cause another rendering loop which we don't want, so
@@ -100,10 +113,22 @@ export default class NativeQueryEditor extends Component {
     }
 
     loadAceEditor() {
-        var editor = ace.edit("id_sql");
+        var editor = this.getEditor();
 
         // listen to onChange events
         editor.getSession().on('change', this.onChange);
+
+        editor.getSelection().on("changeSelection", (e, selection) => {
+            if (this.state.selection !== null) {
+                setTimeout(() => {
+                    this.setState({ selection: null, snippetName: null });
+                });
+            }
+            clearTimeout(this.timer);
+            this.timer = setTimeout(() => {
+                this.setState({ selection: editor.getSelectedText() || null })
+            }, 500);
+        });
 
         // initialize the content
         editor.setValue(this.props.query.native.query);
@@ -271,9 +296,36 @@ export default class NativeQueryEditor extends Component {
                         </a>
                     </div>
                     <div className={"border-top " + editorClasses}>
-                        <div id="id_sql"></div>
+                        <div ref="editor" id="id_sql"></div>
                     </div>
                 </div>
+                <Popover
+                    isOpen={!!this.state.selection}
+                    target={() => ReactDOM.findDOMNode(this.refs.editor).querySelector(".ace_selection")}
+                >
+                    <div className="p1" style={{ minWidth: 200 }}>
+                        <Code block style={{ minHeight: 50 }}>{this.state.selection}</Code>
+                        <div>
+                            <input
+                                className="input input--small mr1"
+                                value={this.state.snippetName}
+                                onChange={(e) => this.setState({ snippetName: e.target.value.replace(/\W/g, "_") })}
+                            />
+                            <button
+                                className={cx("Button Button--primary Button--small mt1", { disabled: !this.state.snippetName })}
+                                onClick={() => {
+                                    let snippetTag = `{{snippet:${this.state.snippetName}}}`;
+                                    this.setState({ snippetName: null, selection: null }, () => {
+                                        let editor = this.getEditor();
+                                        editor.session.replace(editor.selection.getRange(), snippetTag);
+                                    })
+                                }}
+                            >
+                                Extract Snippet
+                            </button>
+                        </div>
+                    </div>
+                </Popover>
             </div>
         );
     }
