@@ -313,9 +313,6 @@ export const setParameterValue = createThunkAction(SET_PARAMETER_VALUE, (paramet
         // apply this specific value
         parameterValues = { ...parameterValues, [parameterId]: value};
 
-        // whenever a parameter value is set run the query
-        dispatch(runQuery(null, null, parameterValues));
-
         // the return value from our action is still just the id/value of the parameter set
         return {id: parameterId, value};
     };

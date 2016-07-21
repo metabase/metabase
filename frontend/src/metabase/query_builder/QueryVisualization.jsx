@@ -15,14 +15,14 @@ import Query from "metabase/lib/query";
 import cx from "classnames";
 import _ from "underscore";
 
+const isEqualsDeep = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
 export default class QueryVisualization extends Component {
     constructor(props, context) {
         super(props, context);
         this.runQuery = this.runQuery.bind(this);
 
-        this.state = {
-            lastRunDatasetQuery: props.card.dataset_query
-        };
+        this.state = this._getStateFromProps(props);
     }
 
     static propTypes = {
@@ -48,18 +48,26 @@ export default class QueryVisualization extends Component {
         maxTableRows: 2000
     };
 
+    _getStateFromProps(props) {
+        return {
+            lastRunDatasetQuery: JSON.parse(JSON.stringify(props.card.dataset_query)),
+            lastRunParameterValues: JSON.parse(JSON.stringify(props.parameterValues))
+        };
+    }
+
     componentWillReceiveProps(nextProps) {
         // whenever we are told that we are running a query lets update our understanding of the "current" query
         if (nextProps.isRunning) {
-            this.setState({
-                lastRunDatasetQuery: JSON.parse(JSON.stringify(nextProps.card.dataset_query))
-            });
+            this.setState(this._getStateFromProps(nextProps));
         }
     }
 
     queryIsDirty() {
         // a query is considered dirty if ANY part of it has been changed
-        return JSON.stringify(this.props.card.dataset_query) !== JSON.stringify(this.state.lastRunDatasetQuery);
+        return (
+            !isEqualsDeep(this.props.card.dataset_query, this.state.lastRunDatasetQuery) ||
+            !isEqualsDeep(this.props.parameterValues, this.state.lastRunParameterValues)
+        );
     }
 
     isChartDisplay(display) {
