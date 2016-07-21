@@ -21,7 +21,8 @@ export default class TagEditorSidebar extends Component {
         onClose: PropTypes.func.isRequired,
         updateTemplateTag: PropTypes.func.isRequired,
         databaseFields: PropTypes.array,
-        setQuery: PropTypes.func.isRequired
+        setQuery: PropTypes.func.isRequired,
+        sampleDatasetId: PropTypes.number,
     };
 
     render() {
