@@ -24,6 +24,7 @@ import {
     queryResult,
     parameterValues,
     isDirty,
+    isNew,
     isObjectDetail,
     tables,
     tableMetadata,
@@ -85,14 +86,13 @@ const mapStateToProps = (state, props) => {
         tableForeignKeyReferences: tableForeignKeyReferences(state),
         result:                    queryResult(state),
         isDirty:                   isDirty(state),
+        isNew:                     isNew(state),
         isObjectDetail:            isObjectDetail(state),
         uiControls:                uiControls(state),
         parameters:                getParameters(state),
         databaseFields:            getDatabaseFields(state),
         sampleDatasetId:           getSampleDatasetId(state),
 
-        cardIsDirtyFn:             () => isDirty(state),
-        cardIsNewFn:               () => (state.qb.card && !state.qb.card.id),
         isShowingDataReference:    state.qb.uiControls.isShowingDataReference,
         isShowingTutorial:         state.qb.uiControls.isShowingTutorial,
         isEditing:                 state.qb.uiControls.isEditing,
@@ -164,7 +164,7 @@ export default class QueryBuilder extends Component {
     }
 
     render() {
-        const { card, cardIsDirtyFn, databases, uiControls } = this.props;
+        const { card, isDirty, databases, uiControls } = this.props;
 
         // if we can't load the card that was intended then we end up with a 404
         // TODO: we should do something more unique for is500
@@ -193,7 +193,7 @@ export default class QueryBuilder extends Component {
 
                     <div id="react_qb_editor" className="z2">
                         { card && card.dataset_query && card.dataset_query.type === "native" ?
-                            <NativeQueryEditor {...this.props} isOpen={!card.dataset_query.native.query || cardIsDirtyFn()} />
+                            <NativeQueryEditor {...this.props} isOpen={!card.dataset_query.native.query || isDirty} />
                         :
                             <div className="wrapper"><GuiQueryEditor {...this.props}/></div>
                         }

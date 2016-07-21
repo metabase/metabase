@@ -15,12 +15,16 @@ export const uiControls                = state => state.qb.uiControls;
 export const card                      = state => state.qb.card;
 export const originalCard              = state => state.qb.originalCard;
 export const parameterValues           = state => state.qb.parameterValues;
+
 export const isDirty = createSelector(
 	[card, originalCard],
 	(card, originalCard) => {
 		return isCardDirty(card, originalCard);
 	}
 );
+
+export const isNew = (state) => state.qb.card && !state.qb.card.id;
+
 export const getDatabaseId = createSelector(
 	[card],
 	(card) => card && card.dataset_query && card.dataset_query.database

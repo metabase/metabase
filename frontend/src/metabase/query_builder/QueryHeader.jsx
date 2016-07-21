@@ -52,8 +52,8 @@ export default class QueryHeader extends Component {
         setQueryModeFn: PropTypes.func.isRequired,
         isShowingDataReference: PropTypes.bool.isRequired,
         toggleDataReferenceFn: PropTypes.func.isRequired,
-        cardIsNewFn: PropTypes.func.isRequired,
-        cardIsDirtyFn: PropTypes.func.isRequired
+        isNew: PropTypes.bool.isRequired,
+        isDirty: PropTypes.bool.isRequired
     }
 
     componentWillUnmount() {
@@ -172,7 +172,7 @@ export default class QueryHeader extends Component {
         var buttonSections = [];
 
         // NEW card
-        if (this.props.cardIsNewFn() && this.props.cardIsDirtyFn()) {
+        if (this.props.isNew && this.props.isDirsty) {
             buttonSections.push([
                 <ModalWithTrigger
                     key="save"
@@ -194,7 +194,7 @@ export default class QueryHeader extends Component {
         }
 
         // persistence buttons on saved cards
-        if (!this.props.cardIsNewFn()) {
+        if (!this.props.isNew) {
             if (!this.props.isEditing) {
                 if (this.state.recentlySaved) {
                     // existing card + not editing + recently saved = save confirmation
@@ -273,7 +273,7 @@ export default class QueryHeader extends Component {
         }
 
         // add to dashboard
-        if (!this.props.cardIsNewFn() && !this.props.isEditing) {
+        if (!this.props.isNew && !this.props.isEditing) {
             // simply adding an existing saved card to a dashboard, so show the modal to do so
             buttonSections.push([
                 <Tooltip key="addtodash" tooltip="Add to dashboard">
@@ -282,7 +282,7 @@ export default class QueryHeader extends Component {
                     </span>
                 </Tooltip>
             ]);
-        } else if (this.props.cardIsNewFn() && this.props.cardIsDirtyFn()) {
+        } else if (this.props.isNew && this.props.isDirty) {
             // this is a new card, so we need the user to save first then they can add to dash
             buttonSections.push([
                 <Tooltip key="addtodashsave" tooltip="Add to dashboard">
@@ -306,7 +306,7 @@ export default class QueryHeader extends Component {
         }
 
         // history icon on saved cards
-        if (!this.props.cardIsNewFn()) {
+        if (!this.props.isNew) {
             buttonSections.push([
                 <Tooltip key="history" tooltip="Revision history">
                     <ModalWithTrigger
@@ -332,7 +332,7 @@ export default class QueryHeader extends Component {
             <QueryModeButton
                 key="queryModeToggle"
                 mode={this.props.card.dataset_query.type}
-                allowNativeToQuery={this.props.cardIsNewFn() && !this.props.cardIsDirtyFn()}
+                allowNativeToQuery={this.props.isNew && !this.props.isDirty}
                 nativeForm={this.props.result && this.props.result.data && this.props.result.data.native_form}
                 onSetMode={this.props.setQueryModeFn}
                 tableMetadata={this.props.tableMetadata}
@@ -362,7 +362,7 @@ export default class QueryHeader extends Component {
             <div>
                 <HeaderBar
                     isEditing={this.props.isEditing}
-                    name={this.props.cardIsNewFn() ? "New question" : this.props.card.name}
+                    name={this.props.isNew ? "New question" : this.props.card.name}
                     description={this.props.card ? this.props.card.description : null}
                     breadcrumb={(!this.props.card.id && this.props.originalCard) ? (<span className="pl2">started from <a className="link" onClick={this.onFollowBreadcrumb}>{this.props.originalCard.name}</a></span>) : null }
                     buttons={this.getHeaderButtons()}
