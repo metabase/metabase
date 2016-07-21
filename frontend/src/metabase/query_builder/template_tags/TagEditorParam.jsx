@@ -107,6 +107,7 @@ export default class TagEditorParam extends Component {
                             value={tag.default}
                             setValue={(value) => this.setParameterAttribute("default", value)}
                             isEditing
+                            commitImmediately
                         />
                     </div>
                 }

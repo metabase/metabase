@@ -33,11 +33,13 @@ export default class ParameterValueWidget extends Component {
         placeholder: PropTypes.string,
         values: PropTypes.array,
         isEditing: PropTypes.bool,
+        commitImmediately: PropTypes.bool,
     };
 
     static defautProps = {
         values: [],
         isEditing: false,
+        commitImmediately: false,
     };
 
     static getWidget(parameter, values) {
@@ -51,7 +53,7 @@ export default class ParameterValueWidget extends Component {
     }
 
     render() {
-        const { parameter, value, values, setValue, isEditing, placeholder } = this.props;
+        const { parameter, value, values, setValue, isEditing, placeholder, commitImmediately } = this.props;
 
         let hasValue = value != null;
 
@@ -60,9 +62,9 @@ export default class ParameterValueWidget extends Component {
         if (Widget.noPopover) {
             return (
                 <div className={cx(S.parameter, S.noPopover, { [S.selected]: hasValue })}>
-                    <Widget value={value} values={values} setValue={setValue} isEditing={isEditing} />
+                    <Widget value={value} values={values} setValue={setValue} isEditing={isEditing} commitImmediately={commitImmediately} />
                     { hasValue &&
-                        <Icon name="close" className="flex-align-right cursor-pointer" width={10} height={10} onClick={(e) => {
+                        <Icon name="close" className="flex-align-right cursor-pointer" width={12} height={12} onClick={(e) => {
                             if (hasValue) {
                                 e.stopPropagation();
                                 setValue(null);

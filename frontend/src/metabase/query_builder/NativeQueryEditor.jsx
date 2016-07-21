@@ -262,6 +262,7 @@ export default class NativeQueryEditor extends Component {
                                     parameter={parameter}
                                     value={parameter.value}
                                     setValue={(v) => setParameterValue(parameter.id, v)}
+                                    commitImmediately
                                 />
                             </div>
                         )}
