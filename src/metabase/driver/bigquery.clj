@@ -161,7 +161,7 @@
    :fields (set (table-schema->metabase-field-info (.getSchema (get-table database table-name))))})
 
 
-(def ^:private ^:const query-timeout-seconds 90)
+(def ^:private ^:const query-timeout-seconds 60)
 
 (defn- ^QueryResponse execute-bigquery
   ([{{:keys [project-id]} :details, :as database} query-string]

@@ -18,6 +18,7 @@
                               (checkp 1)
                               (context 2)
                               (create-database-definition 1)
+                              (ex-info 1)
                               (execute-query 1)
                               (execute-sql! 2)
                               (expect 0)
