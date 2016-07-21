@@ -132,10 +132,10 @@ export const getImplicitParameters = createSelector(
 		Object.values(getIn(card, ["dataset_query", "template_tags"]) || {})
 			.filter(tag => tag.type != null && tag.type !== "dimension")
 			.map(tag => ({
-				id: tag.name,
+				id: tag.id,
 				type: tag.type === "date" ? "date/single" : "category",
 				name: tag.display_name,
-				value: parameterValues[tag.name]
+				value: parameterValues[tag.id]
 			}))
 );
 

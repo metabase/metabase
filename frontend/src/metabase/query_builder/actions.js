@@ -13,6 +13,7 @@ import { formatSQL, humanize } from "metabase/lib/formatting";
 import Query from "metabase/lib/query";
 import { createQuery } from "metabase/lib/query";
 import { loadTableAndForeignKeys } from "metabase/lib/table";
+import Utils from "metabase/lib/utils";
 
 import { getParameters } from "./selectors";
 
@@ -437,7 +438,6 @@ export const setQuery = createThunkAction(SET_QUERY, (dataset_query, run = false
                     // renaming
                     templateTags[newTags[0]] = templateTags[oldTags[0]];
 
-                    console.log(templateTags[newTags[0]].display_name, humanize(oldTags[0]))
                     if (templateTags[newTags[0]].display_name === humanize(oldTags[0])) {
                         templateTags[newTags[0]].display_name = humanize(newTags[0])
                     }
@@ -453,6 +453,7 @@ export const setQuery = createThunkAction(SET_QUERY, (dataset_query, run = false
                     // create new vars
                     for (let tagName of newTags) {
                         templateTags[tagName] = {
+                            id: Utils.uuid(),
                             name: tagName,
                             display_name: humanize(tagName),
                             type: null,
@@ -552,6 +553,7 @@ export const setQueryDatabase = createThunkAction(SET_QUERY_DATABASE, (databaseI
             let updatedCard = startNewCard(card.dataset_query.type, databaseId);
             if (existingQuery) {
                 updatedCard.dataset_query.native.query = existingQuery;
+                updatedCard.dataset_query.template_tags = card.dataset_query.template_tags;
             }
 
             // set the initial collection for the query if this is a native query
@@ -566,17 +568,15 @@ export const setQueryDatabase = createThunkAction(SET_QUERY_DATABASE, (databaseI
             dispatch(loadMetadataForCard(updatedCard));
 
             return updatedCard;
-
         } else {
             // if we are editing a saved query we don't want to replace the card, so just start a fresh query only
             // TODO: should this clear the visualization as well?
-            let query = createQuery(card.dataset_query.type, databaseId);
-            if (existingQuery) {
-                query.native.query = existingQuery;
-            }
-
             let updatedCard = JSON.parse(JSON.stringify(card));
-            updatedCard.dataset_query = query;
+            updatedCard.dataset_query = createQuery(card.dataset_query.type, databaseId);
+            if (existingQuery) {
+                updatedCard.dataset_query.native.query = existingQuery;
+                updatedCard.dataset_query.template_tags = card.dataset_query.template_tags;
+            }
 
             dispatch(loadMetadataForCard(updatedCard));
 
@@ -700,7 +700,7 @@ export const runQuery = createThunkAction(RUN_QUERY, (card, updateUrl=true, para
             let templateTags = card.dataset_query.template_tags || {};
             let parameterValues = paramValues || state.qb.parameterValues || {};
             dataset_query.parameters = parameters.map(parameter => {
-                let tag = templateTags[parameter.id];
+                let tag = _.findWhere(templateTags, { id: parameter.id });
                 let value = parameterValues[parameter.id];
                 if (value != null && tag) {
                     return {

@@ -188,7 +188,7 @@ export default class NativeQueryEditor extends Component {
     }
 
     render() {
-        const { parameters, parameterValues, setParameterValue } = this.props;
+        const { parameters, setParameterValue } = this.props;
 
         let modeInfo = getModeInfo(this.props.query, this.props.databases);
 
