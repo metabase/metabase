@@ -99,7 +99,7 @@ export default class TagEditorParam extends Component {
 
                 { tag.type !== "dimension" && tag.required &&
                     <div className="pb2">
-                        <h5 className="pb1 text-normal">Default Value</h5>
+                        <h5 className="pb1 text-normal">Default value</h5>
                         <ParameterValueWidget
                             parameter={{
                                 type: tag.type === "date" ? "date/single" : null
