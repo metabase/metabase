@@ -3,6 +3,7 @@ import React, { Component, PropTypes } from "react";
 
 import Toggle from "metabase/components/Toggle.jsx";
 import Select, { Option } from "metabase/components/Select.jsx";
+import ParameterValueWidget from "metabase/dashboard/components/parameters/ParameterValueWidget.jsx";
 
 import _ from "underscore";
 
@@ -99,16 +100,13 @@ export default class TagEditorParam extends Component {
                 { tag.type !== "dimension" && tag.required &&
                     <div className="pb2">
                         <h5 className="pb1 text-normal">Default Value</h5>
-                        <input
-                            type="text"
-                            defaultValue={tag.default}
-                            className="p1 text-bold text-grey-4 bordered border-med rounded full"
-                            onKeyUp={(e) => {
-                                if (e.keyCode === 13) {
-                                    e.target.blur();
-                                }
+                        <ParameterValueWidget
+                            parameter={{
+                                type: tag.type === "date" ? "date/single" : null
                             }}
-                            onBlur={(e) => this.setParameterAttribute("default", e.target.value)}
+                            value={tag.default}
+                            setValue={(value) => this.setParameterAttribute("default", value)}
+                            isEditing
                         />
                     </div>
                 }

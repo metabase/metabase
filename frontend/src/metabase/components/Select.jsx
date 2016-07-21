@@ -82,7 +82,7 @@ class BrowserSelect extends Component {
                 triggerElement={
                     <div className={"flex align-center " + (!this.props.value ? " text-grey-3" : "")}>
                         <span className="mr1">{selectedName}</span>
-                        <Icon className="flex-align-right" name="chevrondown"  width="10" height="10"/>
+                        <Icon className="flex-align-right" name="chevrondown" width={12} height={12} />
                     </div>
                 }
                 triggerClasses={cx("AdminSelect", className)}
@@ -169,7 +169,7 @@ class LegacySelect extends Component {
         var triggerElement = (
             <div className={"flex align-center " + (!this.props.value ? " text-grey-3" : "")}>
                 <span className="mr1">{selectedName}</span>
-                <Icon className="flex-align-right" name="chevrondown"  width="10" height="10"/>
+                <Icon className="flex-align-right" name="chevrondown" width={12} height={12}/>
             </div>
         );
 

@@ -49,7 +49,7 @@ export default class ParameterWidget extends Component {
             .value();
     }
 
-    renderPopover(value, placeholder, setValue) {
+    renderPopover(value, setValue) {
         const { parameter, editingParameter } = this.props;
         const isEditingParameter = !!(editingParameter && editingParameter.id === parameter.id);
         const values = this.getValues();
@@ -57,7 +57,6 @@ export default class ParameterWidget extends Component {
             <ParameterValueWidget
                 parameter={parameter}
                 value={value}
-                placeholder={placeholder}
                 values={values}
                 setValue={setValue}
                 isEditing={isEditingParameter}
@@ -88,7 +87,7 @@ export default class ParameterWidget extends Component {
             return (
                 <div className={cx(className, S.container)}>
                     <div className={S.name}>{parameter.name}</div>
-                    {this.renderPopover(parameterValue, "Select...", (value) => setValue(value))}
+                    {this.renderPopover(parameterValue, (value) => setValue(value))}
                 </div>
             );
         } else if (isEditingParameter) {
@@ -114,7 +113,7 @@ export default class ParameterWidget extends Component {
                             <Icon name="pencil" width={12} height={12} className="ml1 text-brand cursor-pointer" onClick={() => this.setState({ isEditingName: true })} />
                         </div>
                     }
-                    {this.renderPopover(parameter.default, "Pick a default value (optional)", (value) => setDefaultValue(value))}
+                    {this.renderPopover(parameter.default, (value) => setDefaultValue(value))}
                 </div>
             );
         } else {

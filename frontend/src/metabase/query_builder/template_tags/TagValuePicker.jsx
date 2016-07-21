@@ -47,7 +47,7 @@ export default class TagValuePicker extends Component {
     render() {
         const { parameter, setValue, value, values } = this.props;
         const hasValue = value != null;
-        const placeholder = "Select ...";
+        const placeholder = "Select…";
 
         // determine the correct Picker to render based on the parameter data type
         const PickerComponent = this.determinePickerComponent(parameter.type, values.length);

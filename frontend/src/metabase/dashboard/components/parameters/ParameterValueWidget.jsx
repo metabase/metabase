@@ -36,7 +36,6 @@ export default class ParameterValueWidget extends Component {
     };
 
     static defautProps = {
-        placeholder: "Select...",
         values: [],
         isEditing: false,
     };
@@ -63,7 +62,7 @@ export default class ParameterValueWidget extends Component {
                 <div className={cx(S.parameter, S.noPopover, { [S.selected]: hasValue })}>
                     <Widget value={value} values={values} setValue={setValue} isEditing={isEditing} />
                     { hasValue &&
-                        <Icon name="close" className="flex-align-right cursor-pointer" onClick={(e) => {
+                        <Icon name="close" className="flex-align-right cursor-pointer" width={10} height={10} onClick={(e) => {
                             if (hasValue) {
                                 e.stopPropagation();
                                 setValue(null);
@@ -74,19 +73,23 @@ export default class ParameterValueWidget extends Component {
             );
         }
 
+        let placeholderText = placeholder || (isEditing ? "Select a default value…" : "Select…");
+
         return (
             <PopoverWithTrigger
                 ref="valuePopover"
                 triggerElement={
                     <div ref="trigger" className={cx(S.parameter, { [S.selected]: hasValue })}>
-                        <div className="mr1">{ hasValue ? Widget.format(value) : placeholder }</div>
-                        <Icon name={hasValue ? "close" : "chevrondown"} className="flex-align-right" onClick={(e) => {
-                            if (hasValue) {
+                        <div className="mr1">{ hasValue ? Widget.format(value) : placeholderText }</div>
+                        { hasValue ?
+                            <Icon name="close" className="flex-align-right" width={12} height={12} onClick={(e) => {
                                 e.stopPropagation();
                                 setValue(null);
                                 this.refs.valuePopover.close();
-                            }
-                        }}/>
+                            }} />
+                        :
+                            <Icon name="chevrondown" className="flex-align-right" width={12} height={12} />
+                        }
                     </div>
                 }
                 target={() => this.refs.trigger} // not sure why this is necessary
