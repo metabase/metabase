@@ -47,6 +47,13 @@
      ~expected
      ~actual))
 
+(defmacro ^:private expect-with-non-timeseries-dbs-except
+  {:style/indent 1}
+  [excluded-engines expected actual]
+  `(datasets/expect-with-engines (set/difference non-timeseries-engines (set ~excluded-engines))
+     ~expected
+     ~actual))
+
 (defmacro ^:private qp-expect-with-all-engines
   {:style/indent 0}
   [data q-form & post-process-fns]
@@ -1673,22 +1680,25 @@
                            (apply ql/relative-datetime relative-datetime-args)))))
       first-row first int))
 
-(expect-with-non-timeseries-dbs 4 (count-of-grouping (checkins:4-per-minute) :minute "current"))
-(expect-with-non-timeseries-dbs 4 (count-of-grouping (checkins:4-per-minute) :minute -1 "minute"))
-(expect-with-non-timeseries-dbs 4 (count-of-grouping (checkins:4-per-minute) :minute  1 "minute"))
+;; HACK - Don't run these tests against BigQuery because the databases need to be loaded every time the tests are ran and loading data into BigQuery is mind-bogglingly slow.
+;;        Don't worry, I promise these work though!
 
-(expect-with-non-timeseries-dbs 4 (count-of-grouping (checkins:4-per-hour) :hour "current"))
-(expect-with-non-timeseries-dbs 4 (count-of-grouping (checkins:4-per-hour) :hour -1 "hour"))
-(expect-with-non-timeseries-dbs 4 (count-of-grouping (checkins:4-per-hour) :hour  1 "hour"))
+(expect-with-non-timeseries-dbs-except #{:bigquery} 4 (count-of-grouping (checkins:4-per-minute) :minute "current"))
+(expect-with-non-timeseries-dbs-except #{:bigquery} 4 (count-of-grouping (checkins:4-per-minute) :minute -1 "minute"))
+(expect-with-non-timeseries-dbs-except #{:bigquery} 4 (count-of-grouping (checkins:4-per-minute) :minute  1 "minute"))
 
-(expect-with-non-timeseries-dbs 1 (count-of-grouping (checkins:1-per-day) :day "current"))
-(expect-with-non-timeseries-dbs 1 (count-of-grouping (checkins:1-per-day) :day -1 "day"))
-(expect-with-non-timeseries-dbs 1 (count-of-grouping (checkins:1-per-day) :day  1 "day"))
+(expect-with-non-timeseries-dbs-except #{:bigquery} 4 (count-of-grouping (checkins:4-per-hour) :hour "current"))
+(expect-with-non-timeseries-dbs-except #{:bigquery} 4 (count-of-grouping (checkins:4-per-hour) :hour -1 "hour"))
+(expect-with-non-timeseries-dbs-except #{:bigquery} 4 (count-of-grouping (checkins:4-per-hour) :hour  1 "hour"))
 
-(expect-with-non-timeseries-dbs 7 (count-of-grouping (checkins:1-per-day) :week "current"))
+(expect-with-non-timeseries-dbs-except #{:bigquery} 1 (count-of-grouping (checkins:1-per-day) :day "current"))
+(expect-with-non-timeseries-dbs-except #{:bigquery} 1 (count-of-grouping (checkins:1-per-day) :day -1 "day"))
+(expect-with-non-timeseries-dbs-except #{:bigquery} 1 (count-of-grouping (checkins:1-per-day) :day  1 "day"))
+
+(expect-with-non-timeseries-dbs-except #{:bigquery} 7 (count-of-grouping (checkins:1-per-day) :week "current"))
 
 ;; SYNTACTIC SUGAR
-(expect-with-non-timeseries-dbs
+(expect-with-non-timeseries-dbs-except #{:bigquery}
   1
   (-> (with-temp-db [_ (checkins:1-per-day)]
         (run-query checkins
@@ -1696,7 +1706,7 @@
           (ql/filter (ql/time-interval $timestamp :current :day))))
       first-row first int))
 
-(expect-with-non-timeseries-dbs
+(expect-with-non-timeseries-dbs-except #{:bigquery}
   7
   (-> (with-temp-db [_ (checkins:1-per-day)]
         (run-query checkins
@@ -1718,23 +1728,23 @@
                (throw (ex-info "Query failed!" results)))
      :unit (-> results :data :cols first :unit)}))
 
-(expect-with-non-timeseries-dbs
+(expect-with-non-timeseries-dbs-except #{:bigquery}
   {:rows 1, :unit :day}
   (date-bucketing-unit-when-you :breakout-by "day", :filter-by "day"))
 
-(expect-with-non-timeseries-dbs
+(expect-with-non-timeseries-dbs-except #{:bigquery}
   {:rows 7, :unit :day}
   (date-bucketing-unit-when-you :breakout-by "day", :filter-by "week"))
 
-(expect-with-non-timeseries-dbs
+(expect-with-non-timeseries-dbs-except #{:bigquery}
   {:rows 1, :unit :week}
   (date-bucketing-unit-when-you :breakout-by "week", :filter-by "day"))
 
-(expect-with-non-timeseries-dbs
+(expect-with-non-timeseries-dbs-except #{:bigquery}
   {:rows 1, :unit :quarter}
   (date-bucketing-unit-when-you :breakout-by "quarter", :filter-by "day"))
 
-(expect-with-non-timeseries-dbs
+(expect-with-non-timeseries-dbs-except #{:bigquery}
   {:rows 1, :unit :hour}
   (date-bucketing-unit-when-you :breakout-by "hour", :filter-by "day"))
 
