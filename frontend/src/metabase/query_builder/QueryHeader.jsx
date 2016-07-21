@@ -266,7 +266,7 @@ export default class QueryHeader extends Component {
             buttonSections.push([
                 <Tooltip key="parameterEdititor" tooltip="Parameters">
                     <a className={parametersButtonClasses}>
-                        <Icon name="gear" width="16px" height="16px" onClick={this.props.toggleTemplateTagsEditor}></Icon>
+                        <Icon name="variable" width="16px" height="16px" onClick={this.props.toggleTemplateTagsEditor}></Icon>
                     </a>
                 </Tooltip>
             ]);
