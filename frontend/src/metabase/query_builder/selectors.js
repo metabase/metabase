@@ -140,7 +140,8 @@ export const getImplicitParameters = createSelector(
 				id: tag.id,
 				type: tag.type === "date" ? "date/single" : "category",
 				name: tag.display_name,
-				value: parameterValues[tag.id]
+				value: parameterValues[tag.id] != null ? parameterValues[tag.id] : tag.default,
+				default: tag.default
 			}))
 );
 
