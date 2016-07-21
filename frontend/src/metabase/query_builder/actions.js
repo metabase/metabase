@@ -301,7 +301,7 @@ export const updateTemplateTag = createThunkAction(UPDATE_TEMPLATE_TAG, (templat
             delete updatedCard.description;
         }
 
-        return i.assocIn(updatedCard, ["dataset_query", "template_tags", templateTag.name], templateTag);
+        return i.assocIn(updatedCard, ["dataset_query", "native", "template_tags", templateTag.name], templateTag);
     };
 });
 
@@ -423,7 +423,7 @@ export const setQuery = createThunkAction(SET_QUERY, (dataset_query, run = false
             }
 
             // eliminate any duplicates since it's allowed for a user to reference the same variable multiple times
-            const existingTemplateTags = updatedCard.dataset_query.template_tags || {};
+            const existingTemplateTags = updatedCard.dataset_query.native.template_tags || {};
 
             tags = _.uniq(tags);
             let existingTags = Object.keys(existingTemplateTags);
@@ -461,7 +461,7 @@ export const setQuery = createThunkAction(SET_QUERY, (dataset_query, run = false
                     }
                 }
 
-                updatedCard.dataset_query.template_tags = templateTags;
+                updatedCard.dataset_query.native.template_tags = templateTags;
 
                 if (newTags.length > 0) {
                     openTemplateTagsEditor = true;
@@ -553,7 +553,7 @@ export const setQueryDatabase = createThunkAction(SET_QUERY_DATABASE, (databaseI
             let updatedCard = startNewCard(card.dataset_query.type, databaseId);
             if (existingQuery) {
                 updatedCard.dataset_query.native.query = existingQuery;
-                updatedCard.dataset_query.template_tags = card.dataset_query.template_tags;
+                updatedCard.dataset_query.native.template_tags = card.dataset_query.native.template_tags;
             }
 
             // set the initial collection for the query if this is a native query
@@ -575,7 +575,7 @@ export const setQueryDatabase = createThunkAction(SET_QUERY_DATABASE, (databaseI
             updatedCard.dataset_query = createQuery(card.dataset_query.type, databaseId);
             if (existingQuery) {
                 updatedCard.dataset_query.native.query = existingQuery;
-                updatedCard.dataset_query.template_tags = card.dataset_query.template_tags;
+                updatedCard.dataset_query.native.template_tags = card.dataset_query.native.template_tags;
             }
 
             dispatch(loadMetadataForCard(updatedCard));
@@ -697,7 +697,7 @@ export const runQuery = createThunkAction(RUN_QUERY, (card, updateUrl=true, para
 
         // apply any pseudo-parameters, if specified
         if (parameters && parameters.length > 0) {
-            let templateTags = card.dataset_query.template_tags || {};
+            let templateTags = card.dataset_query.native.template_tags || {};
             let parameterValues = paramValues || state.qb.parameterValues || {};
             dataset_query.parameters = parameters.map(parameter => {
                 let tag = _.findWhere(templateTags, { id: parameter.id });

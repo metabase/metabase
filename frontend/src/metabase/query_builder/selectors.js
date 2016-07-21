@@ -1,7 +1,8 @@
 
 import { createSelector } from "reselect";
 import _ from "underscore";
-import { getIn } from "icepick";
+
+import { getTemplateTags } from "metabase/meta/Card";
 
 import { isCardDirty } from "metabase/lib/card";
 import * as DataGrid from "metabase/lib/data_grid";
@@ -129,7 +130,7 @@ export const queryResult = createSelector(
 export const getImplicitParameters = createSelector(
 	[card, parameterValues],
 	(card, parameterValues) =>
-		Object.values(getIn(card, ["dataset_query", "template_tags"]) || {})
+		getTemplateTags(card)
 			.filter(tag => tag.type != null && tag.type !== "dimension")
 			.map(tag => ({
 				id: tag.id,

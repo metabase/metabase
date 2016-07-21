@@ -142,7 +142,7 @@
                                         (dimension-value-for-tag tag params)
                                         (default-value-for-tag tag))))
 
-(defn- query->params-map [{tags :template_tags, params :parameters}]
+(defn- query->params-map [{{tags :template_tags} :native, params :parameters}]
   (into {} (for [[k tag] tags
                  :let    [v (value-for-tag tag params)]
                  :when   v]

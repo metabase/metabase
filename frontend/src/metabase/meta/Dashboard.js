@@ -3,8 +3,11 @@
 import type Metadata from "./metadata/Metadata";
 import type Table from "./metadata/Table";
 import type Field from "./metadata/Field";
-import type { CardObject, TemplateTag } from "./types/Card";
+import type { TemplateTag } from "./types/Query";
+import type { CardObject } from "./types/Card";
 import type { ParameterOption, ParameterObject, ParameterMappingOption, DimensionTarget, VariableTarget } from "./types/Dashboard";
+
+import { getTemplateTags } from "./Card";
 
 import { slugify, stripId } from "metabase/lib/formatting";
 
@@ -122,10 +125,9 @@ export function getCardDimensions(metadata: Metadata, card: CardObject, filter: 
         if (table) {
             return getTableDimensions(table, 1, filter);
         }
-    } else if (card.dataset_query.type === "native" && card.dataset_query.template_tags != null) {
+    } else if (card.dataset_query.type === "native") {
         let dimensions = [];
-        for (const name in card.dataset_query.template_tags) {
-            const tag = card.dataset_query.template_tags[name];
+        for (const tag of getTemplateTags(card)) {
             if (tag.type === "dimension" && Array.isArray(tag.dimension) && tag.dimension[0] === "field-id") {
                 const field = metadata.field(tag.dimension[1]);
                 if (field && filter(field)) {
@@ -161,10 +163,9 @@ export function getTableDimensions(table: Table, depth: number, filter: FieldFil
 }
 
 export function getCardVariables(metadata: Metadata, card: CardObject, filter: TemplateTagFilter = () => true): Array<Variable> {
-    if (card.dataset_query.type === "native" && card.dataset_query.template_tags) {
+    if (card.dataset_query.type === "native") {
         let variables = [];
-        for (const name in card.dataset_query.template_tags) {
-            const tag = card.dataset_query.template_tags[name];
+        for (const tag of getTemplateTags(card)) {
             if (!filter || filter(tag)) {
                 variables.push({
                     name: tag.display_name || tag.name,

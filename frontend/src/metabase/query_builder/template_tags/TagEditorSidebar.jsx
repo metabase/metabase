@@ -5,7 +5,7 @@ import TagEditorParam from "./TagEditorParam.jsx";
 import TagEditorHelp from "./TagEditorHelp.jsx";
 
 import cx from "classnames";
-import { getIn } from "icepick";
+import { getTemplateTags } from "metabase/meta/Card";
 
 export default class TagEditorSidebar extends Component {
 
@@ -27,7 +27,7 @@ export default class TagEditorSidebar extends Component {
     render() {
 
         const { card } = this.props;
-        const tags = Object.values(getIn(card, ["dataset_query", "template_tags"]) || {});
+        const tags = getTemplateTags(card);
 
         let section;
         if (tags.length === 0) {

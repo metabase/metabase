@@ -6,34 +6,43 @@ const EXAMPLES = {
     variable: {
         database: null,
         type: "native",
-        native: { query: "SELECT count(*)\nFROM products\nWHERE category = {{category}}" },
-        template_tags: {
-            "category": { name: "category", display_name: "Category", type: "text", required: true, default: "Widget" }
-        }
+        native: {
+            query: "SELECT count(*)\nFROM products\nWHERE category = {{category}}",
+            template_tags: {
+                "category": { name: "category", display_name: "Category", type: "text", required: true, default: "Widget" }
+            }
+        },
+
     },
     dimension: {
         database: null,
         type: "native",
-        native: { query: "SELECT count(*)\nFROM products\nWHERE {{created_at}}" },
-        template_tags: {
-            "created_at": { name: "created_at", display_name: "Created At", type: "dimension", dimension: null }
+        native: {
+            query: "SELECT count(*)\nFROM products\nWHERE {{created_at}}",
+            template_tags: {
+                "created_at": { name: "created_at", display_name: "Created At", type: "dimension", dimension: null }
+            }
         }
     },
     optional: {
         database: null,
         type: "native",
-        native: { query: "SELECT count(*)\nFROM products\n[[WHERE category = {{category}}]]" },
-        template_tags: {
-            "category": { name: "category", display_name: "Category", type: "text", required: false }
+        native: {
+            query: "SELECT count(*)\nFROM products\n[[WHERE category = {{category}}]]",
+            template_tags: {
+                "category": { name: "category", display_name: "Category", type: "text", required: false }
+            }
         }
     },
     multipleOptional: {
         database: null,
         type: "native",
-        native: { query: "SELECT count(*)\nFROM products\nWHERE 1=1\n  [[AND id = {{id}}]]\n  [[AND category = {{category}}]]" },
-        template_tags: {
-            "id": { name: "id", display_name: "ID", type: "number", required: false },
-            "category": { name: "category", display_name:"Category", type: "text", required: false }
+        native: {
+            query: "SELECT count(*)\nFROM products\nWHERE 1=1\n  [[AND id = {{id}}]]\n  [[AND category = {{category}}]]",
+            template_tags: {
+                "id": { name: "id", display_name: "ID", type: "number", required: false },
+                "category": { name: "category", display_name:"Category", type: "text", required: false }
+            }
         }
     },
 }
