@@ -16,14 +16,14 @@ export type CardObject = {
 
 export type StructuredDatasetQueryObject = {
     type: "query",
-    query: StructuredQueryObject,
-    database: ?DatabaseId
+    database: ?DatabaseId,
+    query: StructuredQueryObject
 };
 
 export type NativeDatasetQueryObject = {
     type: "native",
+    database: ?DatabaseId,
     native: NativeQueryObject,
-    database: ?DatabaseId
 };
 
 export type DatasetQueryObject = StructuredDatasetQueryObject | NativeDatasetQueryObject;

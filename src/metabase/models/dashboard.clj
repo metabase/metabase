@@ -1,8 +1,8 @@
 (ns metabase.models.dashboard
   (:require [clojure.data :refer [diff]]
-            [metabase.db :as db]
-            [metabase.events :as events]
-            (metabase.models [dashboard-card :refer [DashboardCard] :as dashboard-card]
+            (metabase [db :as db]
+                      [events :as events])
+            (metabase.models [dashboard-card :refer [DashboardCard], :as dashboard-card]
                              [interface :as i]
                              [revision :as revision])
             [metabase.models.revision.diff :refer [build-sentence]]
@@ -43,7 +43,7 @@
   "Create a `Dashboard`"
   [{:keys [name description parameters public_perms], :as dashboard} user-id]
   {:pre [(map? dashboard)
-         (u/nil-or-sequence-of-maps? parameters)
+         (u/maybe? u/sequence-of-maps? parameters)
          (integer? user-id)]}
   (->> (db/insert! Dashboard
                    :name         name
@@ -58,7 +58,7 @@
   [{:keys [id name description parameters], :as dashboard} user-id]
   {:pre [(map? dashboard)
          (integer? id)
-         (u/nil-or-sequence-of-maps? parameters)
+         (u/maybe? u/sequence-of-maps? parameters)
          (integer? user-id)]}
   (db/update-non-nil-keys! Dashboard id
     :description description

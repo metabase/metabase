@@ -71,9 +71,7 @@
           :details-fields (constantly [{:name         "hosts"
                                         :display-name "Hosts"
                                         :default      "//localhost:4300"}])
-          :features       (fn [this]
-                            (set/difference (sql/features this)
-                                            #{:foreign-keys}))})
+          :features       (comp (u/rpartial set/difference #{:foreign-keys}) sql/features)})
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
          {:connection-details->spec  (u/drop-first-arg crate-spec)

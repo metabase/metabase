@@ -10,9 +10,9 @@
                       [sample-data :as sample-data]
                       [util :as u])
             (metabase.models common
-                             [hydrate :refer [hydrate]]
                              [database :refer [Database protected-password]]
                              [field :refer [Field]]
+                             [hydrate :refer [hydrate]]
                              [table :refer [Table]])))
 
 (defannotation DBEngine
@@ -180,6 +180,19 @@
   [id]
   (read-check Database id)
   (db/select Table, :db_id id, :active true, {:order-by [:name]})) ; TODO - should this be case-insensitive -- {:order-by [:%lower.name]} -- instead?
+
+(defendpoint GET "/:id/fields"
+  "Get a list of all `Fields` in `Database`."
+  [id]
+  (read-check Database id)
+  (for [{:keys [id display_name table]} (-> (db/select [Field :id :display_name :table_id]
+                                              :table_id        [:in (db/select-field :id Table, :db_id id)]
+                                              :visibility_type [:not-in ["sensitive" "retired"]])
+                                            (hydrate :table))]
+    {:id         id
+     :name       display_name
+     :table_name (:display_name table)
+     :schema     (:schema table)}))
 
 (defendpoint GET "/:id/idfields"
   "Get a list of all primary key `Fields` for `Database`."

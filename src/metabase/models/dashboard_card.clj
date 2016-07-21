@@ -1,11 +1,11 @@
 (ns metabase.models.dashboard-card
   (:require [clojure.set :as set]
-            [metabase.db :as db]
-            [metabase.events :as events]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.hydrate :refer :all]
-            [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
-            [metabase.models.interface :as i]
+            (metabase [db :as db]
+                      [events :as events])
+            (metabase.models  [card :refer [Card]]
+                              [hydrate :refer :all]
+                              [dashboard-card-series :refer [DashboardCardSeries]]
+                              [interface :as i])
             [metabase.util :as u]))
 
 (i/defentity DashboardCard :report_dashboardcard)
@@ -84,7 +84,7 @@
    Returns the updated `DashboardCard` or throws an Exception."
   [{:keys [id series parameter_mappings] :as dashboard-card}]
   {:pre [(integer? id)
-         (u/nil-or-sequence-of-maps? parameter_mappings)
+         (u/maybe? u/sequence-of-maps? parameter_mappings)
          (every? integer? series)]}
   (let [{:keys [sizeX sizeY row col series]} (merge {:series []} dashboard-card)]
     (db/transaction
@@ -105,7 +105,7 @@
   {:pre [(integer? dashboard_id)
          (integer? card_id)
          (integer? creator_id)
-         (u/nil-or-sequence-of-maps? parameter_mappings)]}
+         (u/maybe? u/sequence-of-maps? parameter_mappings)]}
   (let [{:keys [sizeX sizeY row col series]} (merge {:sizeX 2, :sizeY 2, :series []}
                                                     dashboard-card)]
     (db/transaction

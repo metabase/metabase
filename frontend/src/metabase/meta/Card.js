@@ -1,26 +1,31 @@
 /* @flow */
 
-import type { StructuredQueryObject, NativeQueryObject } from "./types/Query";
+import type { StructuredQueryObject, NativeQueryObject, TemplateTag } from "./types/Query";
 import type { CardObject, StructuredDatasetQueryObject, NativeDatasetQueryObject } from "./types/Card";
+
+declare class Object {
+    static values<T>(object: { [key:string]: T }): Array<T>;
+}
 
 import * as Query from "./Query";
 
 export const STRUCTURED_QUERY_TEMPLATE: StructuredDatasetQueryObject = {
-    database: null,
     type: "query",
+    database: null,
     query: {
         source_table: null,
-        aggregation: ["rows"],
-        breakout: [],
-        filter: []
+        aggregation: undefined,
+        breakout: undefined,
+        filter: undefined
     }
 };
 
 export const NATIVE_QUERY_TEMPLATE: NativeDatasetQueryObject = {
-    database: null,
     type: "native",
+    database: null,
     native: {
-        query: ""
+        query: "",
+        template_tags: {}
     }
 };
 
@@ -50,4 +55,10 @@ export function getQuery(card: CardObject): ?StructuredQueryObject {
     } else {
         return null;
     }
+}
+
+export function getTemplateTags(card: ?CardObject): Array<TemplateTag> {
+    return card && card.dataset_query.native && card.dataset_query.native.template_tags ?
+        Object.values(card.dataset_query.native.template_tags) :
+        [];
 }

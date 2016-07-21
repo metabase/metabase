@@ -61,9 +61,17 @@
   [{:keys [id]}]
   (db/select-one-id Field, :table_id id, :special_type "id", :visibility_type [:not-in ["sensitive" "retired"]]))
 
-(def ^{:arglists '([table])} database
+(defn qualified-identifier
+  "Return a keyword identifier for TABLE in the form `:schema.table-name` (if the Table has a non-empty `:schema` field) or `:table-name` (if the Table has no `:schema`)."
+  ^clojure.lang.Keyword [{schema :schema, table-name :name}]
+  (keyword (str (when (seq schema)
+                  (str schema \.))
+                table-name)))
+
+(defn database
   "Return the `Database` associated with this `Table`."
-  (comp Database :db_id))
+  [table]
+  (Database (:db_id table)))
 
 (u/strict-extend (class Table)
   i/IEntity (merge i/IEntityDefaults
@@ -109,7 +117,6 @@
         :display_name (:display_name updated-table)))
     ;; always return the table when we are done
     updated-table))
-
 
 (defn create-table!
   "Create `Table` with the data from TABLE-DEF."

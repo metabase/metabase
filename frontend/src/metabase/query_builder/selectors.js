@@ -2,6 +2,8 @@
 import { createSelector } from "reselect";
 import _ from "underscore";
 
+import { getTemplateTags } from "metabase/meta/Card";
+
 import { isCardDirty } from "metabase/lib/card";
 import * as DataGrid from "metabase/lib/data_grid";
 import Query from "metabase/lib/query";
@@ -12,6 +14,8 @@ export const uiControls                = state => state.qb.uiControls;
 
 export const card                      = state => state.qb.card;
 export const originalCard              = state => state.qb.originalCard;
+export const parameterValues           = state => state.qb.parameterValues;
+
 export const isDirty = createSelector(
 	[card, originalCard],
 	(card, originalCard) => {
@@ -19,15 +23,21 @@ export const isDirty = createSelector(
 	}
 );
 
+export const isNew = (state) => state.qb.card && !state.qb.card.id;
+
+export const getDatabaseId = createSelector(
+	[card],
+	(card) => card && card.dataset_query && card.dataset_query.database
+);
+
 export const databases                 = state => state.qb.databases;
 export const tableMetadata             = state => state.qb.tableMetadata;
 export const tableForeignKeys          = state => state.qb.tableForeignKeys;
 export const tableForeignKeyReferences = state => state.qb.tableForeignKeyReferences;
 export const tables = createSelector(
-	[card, databases],
-    (card, databases) => {
-    	const databaseId = card && card.dataset_query && card.dataset_query.database;
-    	if (databaseId && databases && databases.length > 0) {
+	[getDatabaseId, databases],
+    (databaseId, databases) => {
+    	if (databaseId != null && databases && databases.length > 0) {
     		let db = _.findWhere(databases, { id: databaseId });
 	        if (db && db.tables) {
 	            return db.tables;
@@ -36,6 +46,19 @@ export const tables = createSelector(
 
         return [];
     }
+);
+
+export const getSampleDatasetId = createSelector(
+	[databases],
+	(databases) => {
+		const sampleDataset = _.findWhere(databases, { is_sample: true });
+		return sampleDataset && sampleDataset.id;
+	}
+)
+
+export const getDatabaseFields = createSelector(
+	[getDatabaseId, state => state.qb.databaseFields],
+	(databaseId, databaseFields) => databaseFields[databaseId]
 );
 
 export const isObjectDetail = createSelector(
@@ -106,4 +129,23 @@ export const queryResult = createSelector(
 
         return queryResult;
 	}
+);
+
+export const getImplicitParameters = createSelector(
+	[card, parameterValues],
+	(card, parameterValues) =>
+		getTemplateTags(card)
+			.filter(tag => tag.type != null && tag.type !== "dimension")
+			.map(tag => ({
+				id: tag.id,
+				type: tag.type === "date" ? "date/single" : "category",
+				name: tag.display_name,
+				value: parameterValues[tag.id] != null ? parameterValues[tag.id] : tag.default,
+				default: tag.default
+			}))
+);
+
+export const getParameters = createSelector(
+	[getImplicitParameters],
+	(implicitParameters) => implicitParameters
 );
