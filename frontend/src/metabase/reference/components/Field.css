@@ -27,7 +27,7 @@
 }
 
 :local(.fieldType) {
-    composes: flex-half pr1 from "style";
+    composes: flex-half pr2 from "style";
     overflow: hidden;
     white-space: nowrap;
 }
@@ -43,7 +43,7 @@
 
 :local(.fieldActualName) {
     composes: fieldNameTitle;
-    font-family: "Monaco", monospace;
+    font-family: Monaco, monospace;
 }
 
 :local(.fieldForeignKey) {
