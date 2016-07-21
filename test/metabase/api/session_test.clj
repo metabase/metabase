@@ -241,6 +241,7 @@
 
 ;; test that a user that doesn't exist with the *same* domain as the auto-create accounts domain means a new user gets created
 (expect
-  (with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"]
+  (with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"
+                                  admin-email                             "rasta@toucans.com"]
     (u/prog1 (is-session? (google-auth-fetch-or-create-user! "Rasta" "Toucan" "rasta@sf-toucannery.com"))
       (db/cascade-delete! User :email "rasta@sf-toucannery.com"))))                                       ; clean up after ourselves

@@ -1,5 +1,6 @@
 (ns metabase.query-processor.parameters-test
-  (:require [clj-time.core :as t]
+  (:require [clojure.set :as set]
+            [clj-time.core :as t]
             [clj-time.format :as tf]
             [expectations :refer :all]
             [metabase.driver :as driver]
@@ -7,8 +8,13 @@
             [metabase.models.metric :refer [Metric]]
             [metabase.models.segment :refer [Segment]]
             [metabase.models.table :refer [Table]]
-            [metabase.query-processor.parameters :refer :all]
-            [metabase.test.data.users :refer :all]
+            [metabase.query-processor :as qp]
+            (metabase.query-processor [expand :as ql]
+                                      [parameters :refer :all])
+            [metabase.query-processor-test :refer [non-timeseries-engines first-row]]
+            [metabase.test.data :as data]
+            (metabase.test.data [datasets :as datasets]
+                                [users :refer :all])
             [metabase.test.util :as tu]))
 
 (tu/resolve-private-fns metabase.query-processor.parameters
@@ -226,13 +232,11 @@
 (expect
   {:database   1
    :type       :query
-   :query      {:aggregation ["rows"]
-                :filter      ["=" ["field-id" 123] "666"]
-                :breakout    [17]}}
+   :query      {:filter   ["=" ["field-id" 123] "666"]
+                :breakout [17]}}
   (expand-parameters {:database   1
                       :type       :query
-                      :query      {:aggregation ["rows"]
-                                   :breakout    [17]}
+                      :query      {:breakout [17]}
                       :parameters [{:hash   "abc123"
                                     :name   "foo"
                                     :type   "id"
@@ -243,14 +247,12 @@
 (expect
   {:database   1
    :type       :query
-   :query      {:aggregation ["rows"]
-                :filter      ["AND" ["AND" ["AND" ["=" 456 12]] ["=" ["field-id" 123] "666"]] ["=" ["field-id" 456] "999"]]
-                :breakout    [17]}}
+   :query      {:filter   ["AND" ["AND" ["AND" ["=" 456 12]] ["=" ["field-id" 123] "666"]] ["=" ["field-id" 456] "999"]]
+                :breakout [17]}}
   (expand-parameters {:database   1
                       :type       :query
-                      :query      {:aggregation ["rows"]
-                                   :filter      ["AND" ["=" 456 12]]
-                                   :breakout    [17]}
+                      :query      {:filter   ["AND" ["=" 456 12]]
+                                   :breakout [17]}
                       :parameters [{:hash   "abc123"
                                     :name   "foo"
                                     :type   "id"
@@ -266,13 +268,11 @@
 (expect
   {:database   1
    :type       :query
-   :query      {:aggregation ["rows"]
-                :filter      ["TIME_INTERVAL" ["field-id" 123] -30 "day"]
-                :breakout    [17]}}
+   :query      {:filter   ["TIME_INTERVAL" ["field-id" 123] -30 "day"]
+                :breakout [17]}}
   (expand-parameters {:database   1
                       :type       :query
-                      :query      {:aggregation ["rows"]
-                                   :breakout    [17]}
+                      :query      {:breakout [17]}
                       :parameters [{:hash   "abc123"
                                     :name   "foo"
                                     :type   "date"
@@ -282,13 +282,11 @@
 (expect
   {:database   1
    :type       :query
-   :query      {:aggregation ["rows"]
-                :filter      ["=" ["field-id" 123] ["relative_datetime" -1 "day"]]
-                :breakout    [17]}}
+   :query      {:filter   ["=" ["field-id" 123] ["relative_datetime" -1 "day"]]
+                :breakout [17]}}
   (expand-parameters {:database   1
                       :type       :query
-                      :query      {:aggregation ["rows"]
-                                   :breakout    [17]}
+                      :query      {:breakout [17]}
                       :parameters [{:hash   "abc123"
                                     :name   "foo"
                                     :type   "date"
@@ -298,15 +296,61 @@
 (expect
   {:database   1
    :type       :query
-   :query      {:aggregation ["rows"]
-                :filter      ["BETWEEN" ["field-id" 123] "2014-05-10" "2014-05-16"]
-                :breakout    [17]}}
+   :query      {:filter   ["BETWEEN" ["field-id" 123] "2014-05-10" "2014-05-16"]
+                :breakout [17]}}
   (expand-parameters {:database   1
                       :type       :query
-                      :query      {:aggregation ["rows"]
-                                   :breakout    [17]}
+                      :query      {:breakout [17]}
                       :parameters [{:hash   "abc123"
                                     :name   "foo"
                                     :type   "date"
                                     :target ["dimension" ["field-id" 123]]
                                     :value  "2014-05-10~2014-05-16"}]}))
+
+
+
+;;; +-------------------------------------------------------------------------------------------------------+
+;;; |                                           END-TO-END TESTS                                            |
+;;; +-------------------------------------------------------------------------------------------------------+
+
+;; for some reason param substitution tests fail on Redshift so just don't run those for now
+(def ^:private ^:const params-test-engines (set/difference non-timeseries-engines #{:redshift :crate}))
+
+;; check that date ranges work correctly
+(datasets/expect-with-engines params-test-engines
+  [29]
+  (first-row (qp/process-query {:database   (data/id)
+                                :type       :query
+                                :query      (data/query checkins
+                                              (ql/aggregation (ql/count)))
+                                :parameters [{:hash   "abc123"
+                                              :name   "foo"
+                                              :type   "date"
+                                              :target ["dimension" ["field-id" (data/id :checkins :date)]]
+                                              :value  "2015-04-01~2015-05-01"}]})))
+
+;; check that IDs work correctly (passed in as numbers)
+(datasets/expect-with-engines params-test-engines
+  [1]
+  (first-row (qp/process-query {:database   (data/id)
+                                :type       :query
+                                :query      (data/query checkins
+                                              (ql/aggregation (ql/count)))
+                                :parameters [{:hash   "abc123"
+                                              :name   "foo"
+                                              :type   "number"
+                                              :target ["dimension" ["field-id" (data/id :checkins :id)]]
+                                              :value  100}]})))
+
+;; check that IDs work correctly (passed in as strings, as the frontend is wont to do; should get converted)
+(datasets/expect-with-engines params-test-engines
+  [1]
+  (first-row (qp/process-query {:database   (data/id)
+                                :type       :query
+                                :query      (data/query checkins
+                                              (ql/aggregation (ql/count)))
+                                :parameters [{:hash   "abc123"
+                                              :name   "foo"
+                                              :type   "number"
+                                              :target ["dimension" ["field-id" (data/id :checkins :id)]]
+                                              :value  "100"}]})))

@@ -43,7 +43,8 @@
   [& {:keys [subject recipients message-type message]}]
   {:pre [(string? subject)
          (sequential? recipients)
-         (every? u/is-email? recipients)
+         (or (every? u/is-email? recipients)
+             (log/error "recipients contains an invalid email:" recipients))
          (contains? #{:text :html :attachments} message-type)
          (if (= message-type :attachments) (sequential? message) (string? message))]}
   (try
