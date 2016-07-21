@@ -172,7 +172,7 @@ export default class QueryHeader extends Component {
         var buttonSections = [];
 
         // NEW card
-        if (this.props.isNew && this.props.isDirsty) {
+        if (this.props.isNew && this.props.isDirty) {
             buttonSections.push([
                 <ModalWithTrigger
                     key="save"
