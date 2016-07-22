@@ -1,6 +1,7 @@
 import React, { Component, PropTypes } from "react";
 import cx from "classnames";
 import { assocIn } from "icepick";
+import _ from "underscore";
 
 import Visualization from "metabase/visualizations/components/Visualization.jsx"
 import { getSettings, getSettingsWidgets } from "metabase/lib/visualization_settings";
@@ -39,7 +40,7 @@ class ChartSettings extends Component {
         super(props);
         this.state = {
           currentTab: null,
-          card: props.series[0].card
+          settings: props.series[0].card.visualization_settings
       };
     }
 
@@ -47,14 +48,11 @@ class ChartSettings extends Component {
         this.setState({ currentTab: tab });
     }
 
-    getVisualizationSettings() {
-        const { card } = this.state;
-        const data = this.props.series[0].data;
-        return getSettings(card, data);
-    }
-
     onChangeSetting(setting, value, settings) {
-        let newSettings = { [setting.id]: value };
+        let newSettings = {
+            [setting.id]: value
+        };
+
         if (setting.dependentSettings) {
             for (let id of setting.dependentSettings) {
                 newSettings[id] = settings[id];
@@ -64,27 +62,32 @@ class ChartSettings extends Component {
         console.log("CHANGE", setting.id, value, newSettings)
 
         this.setState({
-            card: {
-                ...this.state.card,
-                visualization_settings: {
-                    ...this.state.card.visualization_settings,
-                    ...newSettings
-                }
+            settings: {
+                ...this.state.settings,
+                ...newSettings
             }
-        })
+        });
     }
 
     onDone() {
-        this.props.onChange(this.state.card.visualization_settings);
+        this.props.onChange(this.state.settings);
         this.props.onClose();
+    }
+
+    getSeries() {
+        return assocIn(this.props.series, [0, "card", "visualization_settings"], this.state.settings);
+    }
+
+    getVisualizationSettings() {
+        const series = this.getSeries();
+        return getSettings(series[0].card, series[0].data);
     }
 
     render () {
         const { onClose } = this.props;
-        const { card } = this.state;
-        const data = this.props.series[0].data;
 
-        const series = assocIn(this.props.series, [0, "card"], card);
+        const series = this.getSeries();
+        const { card, data } = series[0];
 
         const settings = this.getVisualizationSettings();
 
@@ -97,7 +100,7 @@ class ChartSettings extends Component {
         const currentTab = this.state.currentTab || tabNames[0];
         const widgets = tabs[currentTab];
 
-        const isDirty = JSON.stringify(card.visualization_settings) === JSON.stringify(this.props.series[0].card.visualization_settings);
+        const isDirty = !_.isEqual(this.props.series[0].card.visualization_settings, this.state.settings);
 
         return (
           <div className="flex flex-column spread p4">
@@ -107,21 +110,21 @@ class ChartSettings extends Component {
               }
               <div className="Grid flex-full mt3">
                   <div className="Grid-cell Cell--1of3 scroll-y p1">
-                      { widgets && widgets.map((setting) => {
-                          const value = settings[setting.id];
-                          const onChange = (value) => this.onChangeSetting(setting, value, settings);
+                      { widgets && widgets.map((widget) => {
+                          const value = settings[widget.id];
+                          const onChange = (value) => this.onChangeSetting(widget, value, settings);
                           return (
                               <Setting
-                                key={setting.id}
+                                key={widget.id}
                                 value={value}
                                 onChange={onChange}
-                                {...setting}
-                                {...(setting.getProps ? setting.getProps({ value, onChange, card, data }) : {})}
+                                {...widget}
+                                {...(widget.getProps ? widget.getProps({ value, onChange, card, data }) : {})}
                               />
                           );
                       })}
                       <pre>
-                        {JSON.stringify(card.visualization_settings, null, 2)}
+                        {JSON.stringify(this.state.settings, null, 2)}
                       </pre>
                   </div>
                   <div className="Grid-cell relative">
@@ -139,8 +142,11 @@ class ChartSettings extends Component {
                   </div>
               </div>
               <div className="pt1">
-                <a className={cx("Button Button--primary", { "disabled": !isDirty })} href="" onClick={() => this.onDone()}>Done</a>
+                <a className={cx("Button Button--primary", { disabled: !isDirty })} href="" onClick={() => this.onDone()}>Done</a>
                 <a className="text-grey-2 ml2" onClick={onClose}>Cancel</a>
+                { !_.isEqual(this.state.settings, {}) &&
+                    <a className="Button Button--warning float-right" onClick={() => this.setState({ settings: {} })}>Reset</a>
+                }
               </div>
           </div>
         )

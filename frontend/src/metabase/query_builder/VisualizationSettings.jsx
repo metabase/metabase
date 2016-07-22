@@ -93,6 +93,7 @@ export default class VisualizationSettings extends React.Component {
                     <ModalWithTrigger
                         className="Modal Modal--wide Modal--tall"
                         triggerElement={<Icon name="gear" />}
+                        triggerClasses="text-brand-hover"
                     >
                         <ChartSettings
                             series={[{ card: this.props.card, data: this.props.result.data }]}

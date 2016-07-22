@@ -306,10 +306,6 @@ function dimensionAndMetricsAreValid(dimension, metric, cols) {
     );
 }
 
-function getDefaultDimensionsAndMetrics(data) {
-
-}
-
 const SETTINGS = {
     "graph.dimensions": {
         section: "Data",
@@ -526,22 +522,35 @@ const SETTINGS_PREFIXES_BY_CHART_TYPE = {
     scalar: ["scalar."]
 }
 
+function getSetting(id, settings, card, data) {
+    if (id in settings) {
+        return;
+    }
+
+    const settingDef = SETTINGS[id];
+
+    for (let depId of settingDef.dependencies || []) {
+        getSetting(depId, settings, card, data);
+    }
+
+    if (settingDef.getValue) {
+        settings[id] = settingDef.getValue(card, data);
+    } else if (card.visualization_settings[id] === undefined && settingDef.getDefault) {
+        settings[id] = settingDef.getDefault(card, data);
+    } else if (card.visualization_settings[id] === undefined && "default" in settingDef) {
+        settings[id] = settingDef.default;
+    } else if (card.visualization_settings[id] !== undefined) {
+        settings[id] =  card.visualization_settings[id];
+    }
+}
+
 export function getSettings(card, data) {
     const prefixes = SETTINGS_PREFIXES_BY_CHART_TYPE[card.display] || [];
-    const settingEntries = Object.entries(SETTINGS)
-        .filter(([id, setting]) => _.any(prefixes, (p) => id.startsWith(p)))
+    const settingIds = Object.keys(SETTINGS).filter(id => _.any(prefixes, (p) => id.startsWith(p)))
 
     let settings = {};
-    for (let [id, setting] of settingEntries) {
-        if (setting.getValue) {
-            settings[id] = setting.getValue(card, data);
-        } else if (card.visualization_settings[id] === undefined && setting.getDefault) {
-            settings[id] = setting.getDefault(card, data);
-        } else if (card.visualization_settings[id] === undefined && "default" in setting) {
-            settings[id] = setting.default;
-        } else if (card.visualization_settings[id] !== undefined) {
-            settings[id] = card.visualization_settings[id];
-        }
+    for (let id of settingIds) {
+        getSetting(id, settings, card, data);
     }
 
     return {

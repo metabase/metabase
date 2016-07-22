@@ -4,8 +4,6 @@ import CardRenderer from "./CardRenderer.jsx";
 import LegendHeader from "./LegendHeader.jsx";
 import ChartTooltip from "./ChartTooltip.jsx";
 
-import ColorSetting from "./settings/ColorSetting.jsx";
-
 import lineAreaBarRenderer from "metabase/visualizations/lib/LineAreaBarRenderer";
 
 import { isNumeric, isDate, isDimension, isMetric } from "metabase/lib/schema_metadata";
@@ -63,7 +61,6 @@ export default class LineAreaBarChart extends Component {
     static supportsSeries = true;
 
     static minSize = { width: 4, height: 3 };
-    static settings = [ColorSetting()];
 
     static isSensible(cols, rows) {
         return getChartTypeFromData(cols, rows, false) != null;
