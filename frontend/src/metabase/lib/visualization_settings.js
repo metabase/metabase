@@ -292,7 +292,7 @@ const ChartSettingFieldPicker = ({ value = [], onChange, options, addAnother }) 
                     }}
                     isInitiallyOpen={v == null}
                 />
-                { value.length > 1 &&
+                { value.filter(v => v != null).length > 1 &&
                     <Icon
                         name="close"
                         className="ml1 text-grey-4 text-brand-hover cursor-pointer"
@@ -464,7 +464,7 @@ const SETTINGS = {
         },
         getProps: ([{ card, data }], vizSettings) => {
             const value = vizSettings["graph.dimensions"];
-            const options = data.cols.filter(isDimension).map(c => ({ name: c.display_name, value: c.name }));
+            const options = data.cols.filter(isDimension).map(c => ({ name: c.display_name || c.name, value: c.name }));
             return {
                 options,
                 addAnother: (options.length > value.length && value.length < 2) ? "Add a series breakout..." : null
@@ -490,7 +490,7 @@ const SETTINGS = {
         },
         getProps: ([{ card, data }], vizSettings) => {
             const value = vizSettings["graph.dimensions"];
-            const options = data.cols.filter(isMetric).map(c => ({ name: c.display_name, value: c.name }));
+            const options = data.cols.filter(isMetric).map(c => ({ name: c.display_name || c.name, value: c.name }));
             return {
                 options,
                 addAnother: options.length > value.length ? "Add another series..." : null
@@ -520,7 +520,12 @@ const SETTINGS = {
         section: "Display",
         title: "Stacked",
         widget: ChartSettingToggle,
-        getDefault: ([{ card, data }]) => card.display === "area"
+        getDefault: ([{ card, data }], vizSettings) => (
+            // area charts should usually be stacked
+            card.display === "area" ||
+            // legacy default for D-M-M+ charts
+            (card.display === "area" && vizSettings["graph.metrics"].length > 1)
+        )
     },
     "graph.colors": {
         section: "Display",

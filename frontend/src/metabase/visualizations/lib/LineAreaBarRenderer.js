@@ -8,7 +8,6 @@ import {
     getAvailableCanvasHeight,
     computeSplit,
     getFriendlyName,
-    getCardColors,
     getXValues
 } from "./utils";
 

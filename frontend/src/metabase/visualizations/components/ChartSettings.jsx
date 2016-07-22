@@ -4,7 +4,7 @@ import { assocIn } from "icepick";
 import _ from "underscore";
 
 import Visualization from "metabase/visualizations/components/Visualization.jsx"
-import { getSettings, getSettingsWidgets } from "metabase/lib/visualization_settings";
+import { getSettingsWidgets } from "metabase/lib/visualization_settings";
 
 const ChartSettingsTab = ({name, active, onClick}) =>
   <a
