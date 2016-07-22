@@ -235,7 +235,7 @@ import React, { Component } from "react";
 import Select from "metabase/components/Select.jsx";
 import Toggle from "metabase/components/Toggle.jsx";
 
-const ChartSettingSelect = ({ value, onChange, options = [] }) =>
+const ChartSettingSelect = ({ value, onChange, options = [], isInitiallyOpen }) =>
     <Select
         className="block"
         value={_.findWhere(options, { value })}
@@ -243,6 +243,7 @@ const ChartSettingSelect = ({ value, onChange, options = [] }) =>
         optionNameFn={(o) => o.name}
         optionValueFn={(o) => o.value}
         onChange={onChange}
+        isInitiallyOpen={isInitiallyOpen}
     />
 
 const ChartSettingInput = ({ value, onChange }) =>
@@ -289,6 +290,7 @@ const ChartSettingFieldPicker = ({ value = [], onChange, options, addAnother }) 
                         newValue.splice(index, 1, v);
                         onChange(newValue);
                     }}
+                    isInitiallyOpen={v == null}
                 />
                 { value.length > 1 &&
                     <Icon
@@ -302,7 +304,18 @@ const ChartSettingFieldPicker = ({ value = [], onChange, options, addAnother }) 
         )}
         { addAnother &&
             <div className="mt1">
-                <a onClick={() => onChange(value.concat([undefined]))}>{addAnother}</a>
+                <a onClick={() => {
+                    const remaining = options.filter(o => value.indexOf(o.value) < 0);
+                    if (remaining.length === 1) {
+                        // if there's only one unused option, use it
+                        onChange(value.concat([remaining[0].value]));
+                    } else {
+                        // otherwise leave it blank
+                        onChange(value.concat([undefined]));
+                    }
+                }}>
+                    {addAnother}
+                </a>
             </div>
         }
     </div>
