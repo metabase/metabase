@@ -278,17 +278,13 @@
   "Return a list of all Settings (as created with `defsetting`).
    This excludes Settings created with the option `:internal`."
   []
-  (->> (all-ns)
-       (mapcat ns-interns)
-       vals
-       (map meta)
-       (filter ::is-setting?)
-       (filter (complement (u/rpartial get-in [::options :internal]))) ; filter out :internal Settings
-       (map (fn [{k :name, description ::description, default ::default-value}]
-              {:key         (keyword k)
-               :description description
-               :default     (or (when (get-from-env-var k)
-                                  (format "Using $MB_%s" (-> (name k)
-                                                             (s/replace "-" "_")
-                                                             s/upper-case)))
-                                default)}))))
+  (for [namespce (all-ns)
+        [_ varr] (ns-interns namespce)
+        :let     [{k :name, description ::description, default ::default-value, :as metta} (meta varr)]
+        :when    (and (::is-setting? metta)
+                      (not (get-in metta [::options :internal])))]
+    {:key         (keyword k)
+     :description description
+     :default     (or (when (get-from-env-var k)
+                        (format "Using $MB_%s" (s/upper-case (s/replace (name k) "-" "_"))))
+                      default)}))
