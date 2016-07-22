@@ -13,7 +13,7 @@ import List from "metabase/components/List.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import IconBorder from "metabase/components/IconBorder.jsx";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
-import Item from "metabase/components/Item.jsx";
+import ListItem from "metabase/components/ListItem.jsx";
 import EmptyState from "metabase/components/EmptyState.jsx";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
@@ -94,7 +94,7 @@ export default class ReferenceEntityList extends Component {
                             { Object.values(entities).map((entity, index) =>
                                 entity && entity.id && entity.name &&
                                     <li className="relative" key={entity.id}>
-                                        <Item
+                                        <ListItem
                                             id={entity.id}
                                             index={index}
                                             name={entity.display_name || entity.name}

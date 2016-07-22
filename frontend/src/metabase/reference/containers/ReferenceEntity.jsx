@@ -281,7 +281,7 @@ export default class EntityItem extends Component {
                                 </li>
                             }
                             { section.type === 'field' &&
-                                //TODO: could use some refactoring. a lot of overlap with Field.jsx and Item.jsx
+                                //TODO: could use some refactoring. a lot of overlap with Field.jsx and ListItem.jsx
                                 <li className="relative">
                                     <div className={cx(D.detail)}>
                                         <div className={D.detailBody}>
