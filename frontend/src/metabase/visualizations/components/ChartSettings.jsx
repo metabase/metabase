@@ -23,13 +23,12 @@ const ChartSettingsTabs = ({ tabs, selectTab, activeTab}) =>
     )}
   </ul>
 
-const Setting = (props) => {
-    const { title } = props;
-    const Widget = props.widget;
+const Widget = ({ title, hidden, disabled, widget, value, onChange, props }) => {
+    const W = widget;
     return (
-        <div className={cx("mb3", { hide: props.hidden, disable: props.disabled })}>
+        <div className={cx("mb3", { hide: hidden, disable: disabled })}>
             { title && <h4 className="mb1">{title}</h4> }
-            { Widget && <Widget {...props}/> }
+            { W && <W value={value} onChange={onChange} {...props}/> }
         </div>
     );
 }
@@ -48,19 +47,7 @@ class ChartSettings extends Component {
         this.setState({ currentTab: tab });
     }
 
-    onChangeSetting(setting, value, settings) {
-        let newSettings = {
-            [setting.id]: value
-        };
-
-        if (setting.dependentSettings) {
-            for (let id of setting.dependentSettings) {
-                newSettings[id] = settings[id];
-            }
-        }
-
-        console.log("CHANGE", setting.id, value, newSettings)
-
+    onChangeSettings = (newSettings) => {
         this.setState({
             settings: {
                 ...this.state.settings,
@@ -78,21 +65,13 @@ class ChartSettings extends Component {
         return assocIn(this.props.series, [0, "card", "visualization_settings"], this.state.settings);
     }
 
-    getVisualizationSettings() {
-        const series = this.getSeries();
-        return getSettings(series[0].card, series[0].data);
-    }
-
     render () {
         const { onClose } = this.props;
 
         const series = this.getSeries();
-        const { card, data } = series[0];
-
-        const settings = this.getVisualizationSettings();
 
         const tabs = {};
-        for (let widget of getSettingsWidgets(card.display, settings)) {
+        for (let widget of getSettingsWidgets(series, this.onChangeSettings)) {
             tabs[widget.section] = tabs[widget.section] || [];
             tabs[widget.section].push(widget);
         }
@@ -110,19 +89,9 @@ class ChartSettings extends Component {
               }
               <div className="Grid flex-full mt3">
                   <div className="Grid-cell Cell--1of3 scroll-y p1">
-                      { widgets && widgets.map((widget) => {
-                          const value = settings[widget.id];
-                          const onChange = (value) => this.onChangeSetting(widget, value, settings);
-                          return (
-                              <Setting
-                                key={widget.id}
-                                value={value}
-                                onChange={onChange}
-                                {...widget}
-                                {...(widget.getProps ? widget.getProps({ value, onChange, card, data }) : {})}
-                              />
-                          );
-                      })}
+                      { widgets && widgets.map((widget) =>
+                          <Widget key={widget.id} {...widget} />
+                      )}
                       <pre>
                         {JSON.stringify(this.state.settings, null, 2)}
                       </pre>
@@ -145,7 +114,7 @@ class ChartSettings extends Component {
                 <a className={cx("Button Button--primary", { disabled: !isDirty })} href="" onClick={() => this.onDone()}>Done</a>
                 <a className="text-grey-2 ml2" onClick={onClose}>Cancel</a>
                 { !_.isEqual(this.state.settings, {}) &&
-                    <a className="Button Button--warning float-right" onClick={() => this.setState({ settings: {} })}>Reset</a>
+                    <a className="Button Button--warning float-right" onClick={() => this.setState({ settings: {} })}>Reset to defaults</a>
                 }
               </div>
           </div>

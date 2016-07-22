@@ -3,6 +3,8 @@ import { normal, harmony } from 'metabase/lib/colors'
 
 import _  from "underscore";
 
+import { getCardColors } from "metabase/visualizations/lib/utils";
+
 const DEFAULT_COLOR_HARMONY = Object.values(normal);
 const DEFAULT_COLOR = DEFAULT_COLOR_HARMONY[0];
 
@@ -284,8 +286,16 @@ const ChartSettingFieldPicker = ({ value = [], onChange, options, canAddAnother 
         }
     </div>
 
-const ChartSettingColorsPicker = ({ value, onChange }) =>
-    <div>colors</div>
+const ChartSettingColorsPicker = ({ value, onChange, seriesTitles = [null] }) =>
+    <div>
+    { seriesTitles.map((title, index) =>
+        <div key={index}>
+            <div className="bordered inline-block cursor-pointer" style={{ padding: 3, borderRadius: 3 }}>
+                <div style={{ width: 15, height: 15, backgroundColor: value[index] }} />
+            </div>
+        </div>
+    )}
+    </div>
 
 import { isMetric, isDimension } from "metabase/lib/schema_metadata";
 
@@ -311,7 +321,7 @@ const SETTINGS = {
         section: "Data",
         title: "X-axis",
         widget: ChartSettingFieldPicker,
-        getValue: (card, data) => {
+        getValue: ([{ card, data }]) => {
             if (dimensionAndMetricsAreValid(
                 card.visualization_settings["graph.dimensions"],
                 card.visualization_settings["graph.metrics"],
@@ -322,20 +332,21 @@ const SETTINGS = {
                 return [data.cols.filter(isDimension)[0].name];
             }
         },
-        getProps: ({ value, onChange, card, data }) => {
+        getProps: ([{ data }], vizSettings) => {
+            const value = vizSettings["graph.dimensions"];
             const options = data.cols.filter(isDimension).map(c => ({ name: c.display_name, value: c.name }));
             return {
                 options,
                 canAddAnother: !Array.isArray(value) || (options.length > value.length && value.length < 2)
             };
         },
-        dependentSettings: ["graph.metrics"]
+        writeDependencies: ["graph.metrics"]
     },
     "graph.metrics": {
         section: "Data",
         title: "Y-axis",
         widget: ChartSettingFieldPicker,
-        getValue: (card, data) => {
+        getValue: ([{ card, data }]) => {
             if (dimensionAndMetricsAreValid(
                 card.visualization_settings["graph.dimensions"],
                 card.visualization_settings["graph.metrics"],
@@ -346,24 +357,27 @@ const SETTINGS = {
                 return [data.cols.filter(isMetric)[0].name];
             }
         },
-        getProps: ({ value, onChange, card, data }) => {
+        getProps: ([{ data }], vizSettings) => {
+            const value = vizSettings["graph.dimensions"];
             const options = data.cols.filter(isMetric).map(c => ({ name: c.display_name, value: c.name }));
             return {
                 options,
                 canAddAnother: !Array.isArray(value) || (options.length > value.length)
             };
         },
-        dependentSettings: ["graph.dimensions"]
+        writeDependencies: ["graph.dimensions"]
     },
     "line.interpolate": {
         section: "Display",
         title: "Style",
         widget: ChartSettingSelect,
-        options: [
-            { name: "Line", value: "linear" },
-            { name: "Curve", value: "cardinal" },
-            { name: "Step", value: "step-after" },
-        ],
+        props: {
+            options: [
+                { name: "Line", value: "linear" },
+                { name: "Curve", value: "cardinal" },
+                { name: "Step", value: "step-after" },
+            ]
+        },
         getDefault: () => "linear"
     },
     "line.marker_enabled": {
@@ -375,11 +389,15 @@ const SETTINGS = {
         section: "Display",
         title: "Stacked",
         widget: ChartSettingToggle,
-        getDefault: (card, data) => card.display === "area" ? true : false
+        getDefault: ([{ card, data }]) => card.display === "area"
     },
     "graph.colors": {
         section: "Display",
-        widget: ChartSettingColorsPicker
+        widget: ChartSettingColorsPicker,
+        readDependencies: ["graph.dimensions", "graph.metrics"],
+        getDefault: ([{ card, data }], vizSettings) => {
+            return getCardColors(card)
+        }
     },
     "graph.x_axis.axis_enabled": {
         section: "Axes",
@@ -404,14 +422,14 @@ const SETTINGS = {
         title: "Min",
         widget: ChartSettingInputNumeric,
         default: 0,
-        isHidden: (settings) => settings["graph.y_axis.auto_range"] !== false
+        getHidden: (series, vizSettings) => vizSettings["graph.y_axis.auto_range"] !== false
     },
     "graph.y_axis.max": {
         section: "Axes",
         title: "Min",
         widget: ChartSettingInputNumeric,
         default: 100,
-        isHidden: (settings) => settings["graph.y_axis.auto_range"] !== false
+        getHidden: (series, vizSettings) => vizSettings["graph.y_axis.auto_range"] !== false
     },
 /*
     "graph.y_axis_right.auto_range": {
@@ -425,14 +443,14 @@ const SETTINGS = {
         title: "Min",
         widget: ChartSettingInputNumeric,
         default: 0,
-        isHidden: (settings) => settings["graph.y_axis_right.auto_range"] !== false
+        getHidden: (series, vizSettings) => vizSettings["graph.y_axis_right.auto_range"] !== false
     },
     "graph.y_axis_right.max": {
         section: "Axes",
         title: "Min",
         widget: ChartSettingInputNumeric,
         default: 100,
-        isHidden: (settings) => settings["graph.y_axis_right.auto_range"] !== false
+        getHidden: (series, vizSettings) => vizSettings["graph.y_axis_right.auto_range"] !== false
     },
 */
     "graph.y_axis.auto_split": {
@@ -451,7 +469,7 @@ const SETTINGS = {
         section: "Labels",
         title: "X-axis label",
         widget: ChartSettingInput,
-        isHidden: (settings) => settings["graph.x_axis.labels_enabled"] === false
+        getHidden: (series, vizSettings) => vizSettings["graph.x_axis.labels_enabled"] === false
     },
     "graph.y_axis.labels_enabled": {
         section: "Labels",
@@ -463,7 +481,7 @@ const SETTINGS = {
         section: "Labels",
         title: "Y-axis label",
         widget: ChartSettingInput,
-        isHidden: (settings) => settings["graph.y_axis.labels_enabled"] === false
+        getHidden: (series, vizSettings) => vizSettings["graph.y_axis.labels_enabled"] === false
     },
     "pie.dimension": {
         section: "Data",
@@ -489,11 +507,13 @@ const SETTINGS = {
     "scalar.separator": {
         title: "Separator",
         widget: ChartSettingSelect,
-        options: [
-            { name: "None", value: "" },
-            { name: "Comma", value: "," },
-            { name: "Period", value: "." },
-        ],
+        props: {
+            options: [
+                { name: "None", value: "" },
+                { name: "Comma", value: "," },
+                { name: "Period", value: "." },
+            ]
+        },
         default: ","
     },
     "scalar.decimals": {
@@ -522,35 +542,43 @@ const SETTINGS_PREFIXES_BY_CHART_TYPE = {
     scalar: ["scalar."]
 }
 
-function getSetting(id, settings, card, data) {
+function getSetting(id, vizSettings, series) {
     if (id in settings) {
         return;
     }
 
     const settingDef = SETTINGS[id];
+    const [{ card }] = series;
 
-    for (let depId of settingDef.dependencies || []) {
-        getSetting(depId, settings, card, data);
+    for (let dependentId of settingDef.readDependencies || []) {
+        getSetting(dependentId, vizSettings, series);
     }
 
     if (settingDef.getValue) {
-        settings[id] = settingDef.getValue(card, data);
+        vizSettings[id] = settingDef.getValue(series, vizSettings);
     } else if (card.visualization_settings[id] === undefined && settingDef.getDefault) {
-        settings[id] = settingDef.getDefault(card, data);
+        vizSettings[id] = settingDef.getDefault(series, vizSettings);
     } else if (card.visualization_settings[id] === undefined && "default" in settingDef) {
-        settings[id] = settingDef.default;
+        vizSettings[id] = settingDef.default;
     } else if (card.visualization_settings[id] !== undefined) {
-        settings[id] =  card.visualization_settings[id];
+        vizSettings[id] =  card.visualization_settings[id];
     }
+
+    return vizSettings[id];
 }
 
-export function getSettings(card, data) {
+function getSettingIdsForSeries(series) {
+    const [{ card }] = series;
     const prefixes = SETTINGS_PREFIXES_BY_CHART_TYPE[card.display] || [];
-    const settingIds = Object.keys(SETTINGS).filter(id => _.any(prefixes, (p) => id.startsWith(p)))
+    return Object.keys(SETTINGS).filter(id => _.any(prefixes, (p) => id.startsWith(p)))
+}
+
+export function getSettings(series) {
+    const [{ card }] = series;
 
     let settings = {};
-    for (let id of settingIds) {
-        getSetting(id, settings, card, data);
+    for (let id of getSettingIdsForSeries(series)) {
+        getSetting(id, settings, series);
     }
 
     return {
@@ -560,14 +588,33 @@ export function getSettings(card, data) {
     };
 }
 
-export function getSettingsWidgets(display, visualization_settings) {
-    const prefixes = SETTINGS_PREFIXES_BY_CHART_TYPE[display] || [];
-    return Object.entries(SETTINGS)
-        .filter(([id, setting]) => _.any(prefixes, (p) => id.startsWith(p)))
-        .map(([id, setting]) => ({
-            id: id,
-            ...setting,
-            hidden: setting.isHidden && setting.isHidden(visualization_settings, display),
-            disabled: setting.isDisabled && setting.isDisabled(visualization_settings, display)
-        }));
+function getSettingWidget(id, vizSettings, series, onChangeSettings) {
+    const settingDef = SETTINGS[id];
+    const value = vizSettings[id];
+    return {
+        ...settingDef,
+        id: id,
+        value: value,
+        hidden: settingDef.getHidden ? settingDef.getHidden(series, vizSettings) : false,
+        disabled: settingDef.getDisabled ? settingDef.getDisabled(series, vizSettings) : false,
+        props: {
+            ...(settingDef.props ? settingDef.props : {}),
+            ...(settingDef.getProps ? settingDef.getProps(series, vizSettings) : {})
+        },
+        onChange: (value) => {
+            const newSettings = { [id]: value };
+            for (const id of (settingDef.writeDependencies || [])) {
+                newSettings[id] = vizSettings[id];
+            }
+            onChangeSettings(newSettings)
+        }
+    };
+}
+
+export function getSettingsWidgets(series, onChangeSettings) {
+    const vizSettings = getSettings(series);
+
+    return getSettingIdsForSeries(series).map(id =>
+        getSettingWidget(id, vizSettings, series, onChangeSettings)
+    );
 }

@@ -168,7 +168,7 @@ export default class Visualization extends Component {
                         {...this.props}
                         className="flex-full"
                         series={series}
-                        settings={settings || getSettings(series[0].card, series[0].data)}
+                        settings={settings || getSettings(series)}
                         card={series[0].card} // convienence for single-series visualizations
                         data={series[0].data} // convienence for single-series visualizations
                         hovered={this.state.hovered}
