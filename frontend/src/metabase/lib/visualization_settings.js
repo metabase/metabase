@@ -740,10 +740,10 @@ const SETTINGS = {
         title: "Pivot the table",
         widget: ChartSettingToggle,
         getHidden: ([{ card, data }]) => (
-            data.cols.length !== 3
+            data && data.cols.length !== 3
         ),
         getDefault: ([{ card, data }]) => (
-            data.cols.length === 3 &&
+            (data && data.cols.length === 3) &&
             Query.isStructured(card.dataset_query) &&
             !Query.isBareRowsAggregation(card.dataset_query.query)
         )

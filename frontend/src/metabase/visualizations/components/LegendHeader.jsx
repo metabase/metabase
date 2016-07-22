@@ -9,6 +9,10 @@ import Urls from "metabase/lib/urls";
 
 import cx from "classnames";
 
+import { normal } from "metabase/lib/colors";
+
+const DEFAULT_COLORS = Object.values(normal);
+
 export default class LegendHeader extends Component {
     constructor(props, context) {
         super(props, context);
@@ -46,7 +50,7 @@ export default class LegendHeader extends Component {
         const isNarrow = this.state.width < 150;
         const showTitles = !showDots || !isNarrow;
 
-        let colors = settings["graph.colors"]
+        let colors = settings["graph.colors"] || DEFAULT_COLORS;
         return (
             <div  className={cx(styles.LegendHeader, "Card-title mx1 flex flex-no-shrink flex-row align-center")}>
                 { series.map((s, index) => [
