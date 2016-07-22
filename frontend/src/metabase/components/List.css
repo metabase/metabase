@@ -35,6 +35,11 @@
     border-color: #EDF5FB;
 }
 
+:local(.headerLink) {
+    composes: text-brand ml2 from "style";
+    font-size: 14px;
+}
+
 :local(.headerButton) {
     composes: flex ml1 align-center from "style";
     font-size: 14px;

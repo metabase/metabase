@@ -82,6 +82,7 @@ const getMetricSections = (metric, user) => metric ? {
         get: 'getMetric',
         icon: "document",
         headerIcon: "ruler",
+        headerLink: `/q?table=${metric.table_id}&metric=${metric.id}`,
         parent: referenceSections[`/reference/metrics`]
     },
     [`/reference/metrics/${metric.id}/questions`]: {
@@ -125,6 +126,7 @@ const getSegmentSections = (segment, user) => segment ? {
         get: 'getSegment',
         icon: "document",
         headerIcon: "clipboard",
+        headerLink: `/q?table=${segment.table_id}&segment=${segment.id}`,
         parent: referenceSections[`/reference/segments`]
     },
     [`/reference/segments/${segment.id}/fields`]: {
@@ -226,6 +228,7 @@ const getTableSections = (database, table) => database && table ? {
         get: 'getTable',
         icon: "document",
         headerIcon: "table2",
+        headerLink: `/q?table=${table.id}`,
         parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
     },
     [`/reference/databases/${database.id}/tables/${table.id}/fields`]: {

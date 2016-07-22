@@ -1,5 +1,6 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
+import { Link } from "react-router";
 import ReactDOM from "react-dom";
 import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
@@ -193,12 +194,26 @@ export default class EntityItem extends Component {
                                         {...name}
                                         defaultValue={entity.name}
                                     /> :
-                                <Ellipsified className="flex-full" tooltipMaxWidth="100%">
-                                    { hasDisplayName ?
-                                        entity.display_name || entity.name :
-                                        entity.name
-                                    }
-                                </Ellipsified>
+                                [
+                                    <Ellipsified className={!section.headerLink && "flex-full"} tooltipMaxWidth="100%">
+                                        { hasDisplayName ?
+                                            entity.display_name || entity.name :
+                                            entity.name
+                                        }
+                                    </Ellipsified>,
+                                    section.headerLink &&
+                                        <div className={cx("flex-full", S.headerButton)}>
+                                            <Link
+                                                to={section.headerLink}
+                                                className={cx("Button", "Button--borderless", R.editButton)}
+                                            >
+                                                <div className="flex align-center relative">
+                                                    <span className="mr1">See this {section.type}</span>
+                                                    <Icon name="chevronright" width="16px" height="16px" />
+                                                </div>
+                                            </Link>
+                                        </div>
+                                ]
                             }
                             { user.is_superuser && !isEditing &&
                                 <div className={S.headerButton}>
