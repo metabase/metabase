@@ -1,4 +1,5 @@
 /*global ace*/
+/* eslint "react/prop-types": "warn" */
 
 import React, { Component, PropTypes } from "react";
 
@@ -7,6 +8,7 @@ import { assocIn } from "icepick";
 
 import DataSelector from './DataSelector.jsx';
 import Icon from "metabase/components/Icon.jsx";
+import ParameterValueWidget from "metabase/dashboard/components/parameters/ParameterValueWidget.jsx";
 
 // This should return an object with information about the mode the ACE Editor should use to edit the query.
 // This object should have 2 properties:
@@ -44,12 +46,16 @@ export default class NativeQueryEditor extends Component {
     }
 
     static propTypes = {
+        card: PropTypes.object.isRequired,
         databases: PropTypes.array.isRequired,
         query: PropTypes.object.isRequired,
         setQueryFn: PropTypes.func.isRequired,
         setDatabaseFn: PropTypes.func.isRequired,
         autocompleteResultsFn: PropTypes.func.isRequired,
-        isOpen: PropTypes.bool
+        isOpen: PropTypes.bool,
+        parameters: PropTypes.array.isRequired,
+        parameterValues: PropTypes.object,
+        setParameterValue: PropTypes.func
     };
 
     static defaultProps = {
@@ -123,17 +129,17 @@ export default class NativeQueryEditor extends Component {
             showLineNumbers: true
         });
 
-        var autocompleteFn = this.props.autocompleteResultsFn;
         aceLanguageTools.addCompleter({
-            getCompletions: function(editor, session, pos, prefix, callback) {
+            getCompletions: async (editor, session, pos, prefix, callback) => {
                 if (prefix.length < 2) {
                     callback(null, []);
                     return;
                 }
-
-                autocompleteFn(prefix).then(function (results) {
+                try {
+                    // HACK: call this.props.autocompleteResultsFn rathern than caching the prop since it might change
+                    let results = await this.props.autocompleteResultsFn(prefix);
                     // transform results of the API call into what ACE expects
-                    var js_results = results.map(function(result) {
+                    let js_results = results.map(function(result) {
                         return {
                             name: result[0],
                             value: result[0],
@@ -141,11 +147,10 @@ export default class NativeQueryEditor extends Component {
                         };
                     });
                     callback(null, js_results);
-
-                }, function (error) {
+                } catch (error) {
                     console.log('error getting autocompletion data', error);
                     callback(null, []);
-                });
+                }
             }
         });
     }
@@ -183,6 +188,8 @@ export default class NativeQueryEditor extends Component {
     }
 
     render() {
+        const { parameters, setParameterValue } = this.props;
+
         let modeInfo = getModeInfo(this.props.query, this.props.databases);
 
         // we only render a db selector if there are actually multiple to choose from
@@ -247,6 +254,19 @@ export default class NativeQueryEditor extends Component {
                 <div className="NativeQueryEditor bordered rounded shadowed">
                     <div className="flex">
                         {dataSelectors}
+                        { parameters.map(parameter =>
+                            <div key={parameter.id} className="pl2 GuiBuilder-section GuiBuilder-data flex align-center">
+                                <span className="GuiBuilder-section-label Query-label">{parameter.name}</span>
+                                <ParameterValueWidget
+                                    key={parameter.id}
+                                    parameter={parameter}
+                                    value={parameter.value}
+                                    setValue={(v) => setParameterValue(parameter.id, v)}
+                                    noReset={parameter.value === parameter.default}
+                                    commitImmediately
+                                />
+                            </div>
+                        )}
                         <a className="Query-label no-decoration flex-align-right flex align-center px2" onClick={this.toggleEditor}>
                             <span className="mx2">{toggleEditorText}</span>
                             <Icon name={toggleEditorIcon} width="20" height="20"/>

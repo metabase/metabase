@@ -1,3 +1,4 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 
 const CategoryWidget = ({ value, values, setValue, onClose }) =>
@@ -14,5 +15,12 @@ const CategoryWidget = ({ value, values, setValue, onClose }) =>
     </ul>
 
 CategoryWidget.format = (value) => value;
+
+CategoryWidget.propTypes = {
+    value: PropTypes.any,
+    values: PropTypes.array.isRequired,
+    setValue: PropTypes.func.isRequired,
+    onClose: PropTypes.func.isRequired
+};
 
 export default CategoryWidget;

@@ -105,9 +105,12 @@
 (defn qualified-name-components
   "Return the pieces that represent a path to FIELD, of the form `[table-name parent-fields-name* field-name]`."
   [{field-name :name, table-id :table_id, parent-id :parent_id}]
-  (conj (if-let [parent (Field parent-id)]
-          (qualified-name-components parent)
-          [(db/select-one-field :name 'Table, :id table-id)])
+  (conj (vec (if-let [parent (Field parent-id)]
+               (qualified-name-components parent)
+               (let [{table-name :name, schema :schema} (db/select-one ['Table :name :schema], :id table-id)]
+                 (conj (when schema
+                         [schema])
+                       table-name))))
         field-name))
 
 (defn qualified-name

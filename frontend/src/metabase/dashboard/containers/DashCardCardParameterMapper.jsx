@@ -114,7 +114,7 @@ export default class DashCardCardParameterMapper extends Component {
                                 : selected ?
                                     selected.name
                                 :
-                                    "Select..."
+                                    "Select…"
                                 }
                                 </span>
                                 { selected ?

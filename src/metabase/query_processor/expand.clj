@@ -417,7 +417,7 @@
     (core/or (token->ql-fn token)
              (throw (Exception. (str "Illegal clause (no matching fn found): " token))))))
 
-(s/defn ^:always-validate ^:private expand-ql-sexpr
+(s/defn ^:always-validate expand-ql-sexpr
   "Expand a QL bracketed S-expression by dispatching to the appropriate `^:ql` function. If SEXPR is not a QL
    S-expression (the first item isn't a token), it is returned as-is.
 

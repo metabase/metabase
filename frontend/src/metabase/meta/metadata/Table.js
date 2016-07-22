@@ -11,6 +11,8 @@ export default class Table extends Base {
         fields: [Field]
     };
 
+    id: number;
+    display_name: string;
     db_id: number;
 
     database() {
