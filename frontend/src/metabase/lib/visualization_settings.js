@@ -517,7 +517,7 @@ const SETTINGS = {
         widget: ChartSettingFieldPicker,
         getValue: (series, vizSettings) => {
             const [{ card, data }] = series;
-            if (dimensionAndMetricsAreValid(
+            if (data && dimensionAndMetricsAreValid(
                 card.visualization_settings["graph.dimensions"],
                 card.visualization_settings["graph.metrics"],
                 data.cols
@@ -543,7 +543,7 @@ const SETTINGS = {
         widget: ChartSettingFieldPicker,
         getValue: (series, vizSettings) => {
             const [{ card, data }] = series;
-            if (dimensionAndMetricsAreValid(
+            if (data && dimensionAndMetricsAreValid(
                 card.visualization_settings["graph.dimensions"],
                 card.visualization_settings["graph.metrics"],
                 data.cols
