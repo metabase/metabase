@@ -439,7 +439,7 @@ function lineAndBarOnRender(chart, settings) {
 
 export default function lineAreaBar(element, { series, onHoverChange, onRender, chartType, isScalarSeries, allowSplitAxis }) {
     const settings = series[0].card.visualization_settings;
-    const colors = getCardColors(series[0].card);
+    const colors = settings["graph.colors"];
 
     const isTimeseries = dimensionIsTimeseries(series[0].data);
     const isLinear = false;

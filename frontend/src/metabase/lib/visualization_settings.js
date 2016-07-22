@@ -231,7 +231,7 @@ export function setLatitudeAndLongitude(settings, columnDefs) {
     }
 }
 
-import React from "react";
+import React, { Component } from "react";
 import Select from "metabase/components/Select.jsx";
 import Toggle from "metabase/components/Toggle.jsx";
 
@@ -269,15 +269,26 @@ const ChartSettingToggle = ({ value, onChange }) =>
         onChange={onChange}
     />
 
+import Icon from "metabase/components/Icon";
+
 const ChartSettingFieldPicker = ({ value = [], onChange, options, canAddAnother }) =>
     <div>
         { value.map((v, index) =>
-            <ChartSettingSelect
-                key={index}
-                value={v}
-                options={options}
-                onChange={(v) => onChange([...value.slice(0, index), v, ...value.slice(index + 1)])}
-            />
+            <div key={index} className="flex align-center">
+                <ChartSettingSelect
+                    value={v}
+                    options={options}
+                    onChange={(v) => onChange([...value.slice(0, index), v, ...value.slice(index + 1)])}
+                />
+                { value.length > 1 &&
+                    <Icon
+                        name="close"
+                        className="ml1 text-grey-4 text-brand-hover cursor-pointer"
+                        width={12} height={12}
+                        onClick={() => onChange([...value.slice(0, index), ...value.slice(index + 1)])}
+                    />
+                }
+            </div>
         )}
         { canAddAnother &&
             <div>
@@ -286,16 +297,51 @@ const ChartSettingFieldPicker = ({ value = [], onChange, options, canAddAnother 
         }
     </div>
 
-const ChartSettingColorsPicker = ({ value, onChange, seriesTitles = [null] }) =>
-    <div>
-    { seriesTitles.map((title, index) =>
-        <div key={index}>
-            <div className="bordered inline-block cursor-pointer" style={{ padding: 3, borderRadius: 3 }}>
-                <div style={{ width: 15, height: 15, backgroundColor: value[index] }} />
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
+
+class ChartSettingColorsPicker extends Component {
+    render() {
+        const { value, onChange, seriesTitles } = this.props;
+        return (
+            <div>
+                { seriesTitles.map((title, index) =>
+                    <div key={index} className="flex align-center">
+                        <PopoverWithTrigger
+                            ref="colorPopover"
+                            hasArrow={false}
+                            tetherOptions={{
+                                attachment: 'middle left',
+                                targetAttachment: 'middle right',
+                                targetOffset: '0 0',
+                                constraints: [{ to: 'window', attachment: 'together', pin: ['left', 'right']}]
+                            }}
+                            triggerElement={
+                                <span className="ml1 mr2 bordered inline-block cursor-pointer" style={{ padding: 4, borderRadius: 3 }}>
+                                    <div style={{ width: 15, height: 15, backgroundColor: value[index] }} />
+                                </span>
+                            }
+                        >
+                            <ol className="p1">
+                                {getDefaultColorHarmony().map((color, colorIndex) =>
+                                    <li
+                                        key={colorIndex}
+                                        className="CardSettings-colorBlock"
+                                        style={{ backgroundColor: color }}
+                                        onClick={() => {
+                                            onChange([...value.slice(0, index), color, ...value.slice(index + 1)]);
+                                        }}
+                                    ></li>
+                                )}
+                            </ol>
+                        </PopoverWithTrigger>
+
+                        <span className="text-bold">{title}</span>
+                    </div>
+                )}
             </div>
-        </div>
-    )}
-    </div>
+        );
+    }
+}
 
 import { isMetric, isDimension } from "metabase/lib/schema_metadata";
 
@@ -316,12 +362,71 @@ function dimensionAndMetricsAreValid(dimension, metric, cols) {
     );
 }
 
+import crossfilter from "crossfilter";
+
+function getSeriesTitles([{ data: { rows, cols } }], vizSettings) {
+    const seriesDimension = vizSettings["graph.dimensions"][1];
+    if (seriesDimension != null) {
+        let seriesIndex = _.findIndex(cols, (col) => col.name === seriesDimension);
+        return crossfilter(rows).dimension(d => d[seriesIndex]).group().all().map(v => v.key);
+    } else {
+        return vizSettings["graph.metrics"].map(name => {
+            let col = _.findWhere(cols, { name });
+            return col && col.display_name;
+        });
+    }
+}
+
+import {
+    getChartTypeFromData,
+    DIMENSION_DIMENSION_METRIC,
+    DIMENSION_METRIC,
+    DIMENSION_METRIC_METRIC
+} from "metabase/visualizations/lib/utils";
+
+import { isDate } from "metabase/lib/schema_metadata";
+
+function getDefaultDimensionsAndMetrics([{ data: { cols, rows } }]) {
+    let type = getChartTypeFromData(cols, rows, false);
+    switch (type) {
+        case DIMENSION_DIMENSION_METRIC:
+            let dimensions = [cols[0], cols[1]];
+            if (isDate(dimensions[1]) && !isDate(dimensions[0])) {
+                // if the series dimension is a date but the axis dimension is not then swap them
+                dimensions.reverse();
+            } else if (dimensions[1].cardinality > dimensions[0].cardinality) {
+                // if the series dimension is higher cardinality than the axis dimension then swap them
+                dimensions.reverse();
+            }
+            return {
+                dimensions: dimensions.map(col => col.name),
+                metrics: [cols[2].name]
+            };
+        case DIMENSION_METRIC:
+            return {
+                dimensions: [cols[0].name],
+                metrics: [cols[1].name]
+            };
+        case DIMENSION_METRIC_METRIC:
+            return {
+                dimensions: [cols[0].name],
+                metrics: cols.slice(1).map(col => col.name)
+            };
+        default:
+            return {
+                dimensions: [cols.filter(isDimension)[0].name],
+                metrics: [cols.filter(isMetric)[0].name]
+            };
+    }
+}
+
 const SETTINGS = {
     "graph.dimensions": {
         section: "Data",
         title: "X-axis",
         widget: ChartSettingFieldPicker,
-        getValue: ([{ card, data }]) => {
+        getValue: (series, vizSettings) => {
+            const [{ card, data }] = series;
             if (dimensionAndMetricsAreValid(
                 card.visualization_settings["graph.dimensions"],
                 card.visualization_settings["graph.metrics"],
@@ -329,10 +434,10 @@ const SETTINGS = {
             )) {
                 return card.visualization_settings["graph.dimensions"];
             } else {
-                return [data.cols.filter(isDimension)[0].name];
+                return getDefaultDimensionsAndMetrics(series).dimensions;
             }
         },
-        getProps: ([{ data }], vizSettings) => {
+        getProps: ([{ card, data }], vizSettings) => {
             const value = vizSettings["graph.dimensions"];
             const options = data.cols.filter(isDimension).map(c => ({ name: c.display_name, value: c.name }));
             return {
@@ -346,7 +451,8 @@ const SETTINGS = {
         section: "Data",
         title: "Y-axis",
         widget: ChartSettingFieldPicker,
-        getValue: ([{ card, data }]) => {
+        getValue: (series, vizSettings) => {
+            const [{ card, data }] = series;
             if (dimensionAndMetricsAreValid(
                 card.visualization_settings["graph.dimensions"],
                 card.visualization_settings["graph.metrics"],
@@ -354,10 +460,10 @@ const SETTINGS = {
             )) {
                 return card.visualization_settings["graph.metrics"];
             } else {
-                return [data.cols.filter(isMetric)[0].name];
+                return getDefaultDimensionsAndMetrics(series).metrics;
             }
         },
-        getProps: ([{ data }], vizSettings) => {
+        getProps: ([{ card, data }], vizSettings) => {
             const value = vizSettings["graph.dimensions"];
             const options = data.cols.filter(isMetric).map(c => ({ name: c.display_name, value: c.name }));
             return {
@@ -396,7 +502,10 @@ const SETTINGS = {
         widget: ChartSettingColorsPicker,
         readDependencies: ["graph.dimensions", "graph.metrics"],
         getDefault: ([{ card, data }], vizSettings) => {
-            return getCardColors(card)
+            return getCardColors(card);
+        },
+        getProps: (series, vizSettings) => {
+            return { seriesTitles: getSeriesTitles(series, vizSettings) };
         }
     },
     "graph.x_axis.axis_enabled": {

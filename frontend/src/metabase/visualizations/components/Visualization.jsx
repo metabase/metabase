@@ -70,9 +70,11 @@ export default class Visualization extends Component {
     }
 
     render() {
-        const { series, actionButtons, className, isDashboard, width, isSlow, expectedDuration, replacementContent, settings } = this.props;
+        const { series, actionButtons, className, isDashboard, width, isSlow, expectedDuration, replacementContent } = this.props;
         const CardVisualization = visualizations.get(series[0].card.display);
         const small = width < 330;
+
+        const settings = this.props.settings || getSettings(series);
 
         let error = this.props.error || this.state.error;
         let loading = !(series.length > 0 && _.every(series, (s) => s.data));
@@ -84,7 +86,7 @@ export default class Visualization extends Component {
             } else {
                 try {
                     if (CardVisualization.checkRenderable) {
-                        CardVisualization.checkRenderable(series[0].data.cols, series[0].data.rows);
+                        CardVisualization.checkRenderable(series[0].data.cols, series[0].data.rows, settings);
                     }
                 } catch (e) {
                     // MinRowsError
@@ -113,6 +115,7 @@ export default class Visualization extends Component {
                         <LegendHeader
                             series={series}
                             actionButtons={extra}
+                            settings={settings}
                         />
                     </div>
                 : null
@@ -168,7 +171,7 @@ export default class Visualization extends Component {
                         {...this.props}
                         className="flex-full"
                         series={series}
-                        settings={settings || getSettings(series)}
+                        settings={settings}
                         card={series[0].card} // convienence for single-series visualizations
                         data={series[0].data} // convienence for single-series visualizations
                         hovered={this.state.hovered}
