@@ -45,7 +45,10 @@ const Field = ({
                         <Select
                             triggerClasses={F.fieldSelect}
                             placeholder="Select a field type"
-                            value={MetabaseCore.field_special_types_map[field.special_type]}
+                            value={
+                                MetabaseCore.field_special_types_map[formField.special_type.value] ||
+                                MetabaseCore.field_special_types_map[field.special_type]
+                            }
                             options={
                                 MetabaseCore.field_special_types
                                     .concat({
@@ -58,7 +61,6 @@ const Field = ({
                                         true
                                     )
                             }
-                            changeOnSelect={true}
                             onChange={(type) => formField.special_type.onChange(type.id)}
                         /> :
                         <span>
@@ -85,9 +87,12 @@ const Field = ({
                         <Select
                             triggerClasses={F.fieldSelect}
                             placeholder="Select a field type"
-                            value={foreignKeys[field.fk_target_field_id] || {}}
+                            value={
+                                foreignKeys[formField.fk_target_field_id.value] ||
+                                foreignKeys[field.fk_target_field_id] ||
+                                {}
+                            }
                             options={Object.values(foreignKeys)}
-                            changeOnSelect={true}
                             onChange={(foreignKey) => formField.fk_target_field_id.onChange(foreignKey.id)}
                             optionNameFn={(foreignKey) => foreignKey.name}
                         /> :

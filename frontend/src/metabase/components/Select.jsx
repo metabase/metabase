@@ -150,7 +150,9 @@ class LegacySelect extends Component {
         onChange: PropTypes.func,
         optionNameFn: PropTypes.func,
         optionValueFn: PropTypes.func,
-        className: PropTypes.string
+        className: PropTypes.string,
+        //TODO: clean up hardcoded "AdminSelect" class on trigger to avoid this workaround
+        triggerClasses: PropTypes.string
     };
 
     static defaultProps = {
@@ -199,7 +201,7 @@ class LegacySelect extends Component {
                 ref="popover"
                 className={this.props.className}
                 triggerElement={triggerElement}
-                triggerClasses={"AdminSelect " + (this.props.className || "")}
+                triggerClasses={this.props.triggerClasses || cx("AdminSelect", this.props.className)}
             >
                 <div onClick={(e) => e.stopPropagation()}>
                     <ColumnarSelector
