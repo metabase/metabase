@@ -12915,6 +12915,9 @@
         }
       }
     },
+    "react-sortable": {
+      "version": "1.0.1"
+    },
     "react-virtualized": {
       "version": "6.3.2",
       "dependencies": {
