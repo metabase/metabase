@@ -132,7 +132,7 @@ export default class QueryVisualization extends Component {
     }
 
     onDownloadCSV() {
-        const form = this._downloadCsvForm.getDOMNode();
+        const form = ReactDOM.findDOMNode(this._downloadCsvForm);
         form.query.value = JSON.stringify(this.props.card.dataset_query);
         form.submit();
     }
