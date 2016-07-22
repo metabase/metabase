@@ -294,7 +294,10 @@ export default class EntityItem extends Component {
                                                         <Select
                                                             triggerClasses="rounded bordered p1 inline-block"
                                                             placeholder="Select a field type"
-                                                            value={MetabaseCore.field_special_types_map[entity.special_type]}
+                                                            value={
+                                                                MetabaseCore.field_special_types_map[special_type.value] ||
+                                                                MetabaseCore.field_special_types_map[entity.special_type]
+                                                            }
                                                             options={
                                                                 MetabaseCore.field_special_types
                                                                     .concat({
@@ -307,7 +310,6 @@ export default class EntityItem extends Component {
                                                                         true
                                                                     )
                                                             }
-                                                            changeOnSelect={true}
                                                             onChange={(type) => special_type.onChange(type.id)}
                                                         /> :
                                                         <span>
@@ -326,9 +328,12 @@ export default class EntityItem extends Component {
                                                         <Select
                                                             triggerClasses="rounded bordered p1 inline-block"
                                                             placeholder="Select a field type"
-                                                            value={foreignKeys[entity.fk_target_field_id] || {}}
+                                                            value={
+                                                                foreignKeys[fk_target_field_id.value] ||
+                                                                foreignKeys[entity.fk_target_field_id] ||
+                                                                {name: "Select a Foreign Key"}
+                                                            }
                                                             options={Object.values(foreignKeys)}
-                                                            changeOnSelect={true}
                                                             onChange={(foreignKey) => fk_target_field_id.onChange(foreignKey.id)}
                                                             optionNameFn={(foreignKey) => foreignKey.name}
                                                         /> :
