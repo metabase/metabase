@@ -25,6 +25,19 @@ export default class Modal extends Component {
 
     componentDidMount() {
         this._renderPopover();
+        document.addEventListener('keydown', this.handleModalKeyPress);
+    }
+
+    componentWillUnmount() {
+        document.removeEventListener('keydown')
+    }
+
+    handleModalKeyPress(event) {
+        event.preventDefault();
+        const escKey = 27;
+        if (event.charCode === escKey) {
+            this.setState({ isOpen: false });
+        }
     }
 
     componentDidUpdate() {
