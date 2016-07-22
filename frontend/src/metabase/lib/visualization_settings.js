@@ -4,6 +4,7 @@ import { normal, harmony } from 'metabase/lib/colors'
 import _  from "underscore";
 
 import { getCardColors } from "metabase/visualizations/lib/utils";
+import { getFriendlyName } from "metabase/visualizations/lib/utils";
 
 const DEFAULT_COLOR_HARMONY = Object.values(normal);
 const DEFAULT_COLOR = DEFAULT_COLOR_HARMONY[0];
@@ -366,6 +367,69 @@ class ChartSettingColorsPicker extends Component {
     }
 }
 
+
+import CheckBox from "metabase/components/CheckBox.jsx";
+import { Sortable } from "react-sortable";
+
+@Sortable
+class OrderedFieldListItem extends Component {
+  render() {
+    return (
+      <div {...this.props} className="list-item">{this.props.children}</div>
+    )
+  }
+}
+
+class ChartSettingsOrderedFields extends Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            draggingIndex: null,
+            data: { items: [...this.props.value] }
+        };
+    }
+
+    componentWillReceiveProps(nextProps) {
+        this.setState({ data: { items: [...nextProps.value] } })
+    }
+
+    updateState = (obj) => {
+        this.setState(obj);
+        if (obj.draggingIndex == null) {
+            this.props.onChange([...this.state.data.items]);
+        }
+    }
+
+    setEnabled = (index, checked) => {
+        const items = [...this.state.data.items];
+        items[index] = { ...items[index], enabled: checked };
+        this.setState({ data: { items } });
+        this.props.onChange([...items]);
+    }
+
+    render() {
+        return (
+            <div className="list">
+                {this.state.data.items.map((item, i) =>
+                    <OrderedFieldListItem
+                        key={i}
+                        updateState={this.updateState}
+                        items={this.state.data.items}
+                        draggingIndex={this.state.draggingIndex}
+                        sortId={i}
+                        outline="list"
+                    >
+                        <div className="flex align-center p1">
+                            <CheckBox checked={item.enabled} onChange={(e) => this.setEnabled(i, e.target.checked)} />
+                            <span className="ml1 h4">{item.display_name}</span>
+                        </div>
+                    </OrderedFieldListItem>
+                )}
+            </div>
+        )
+  }
+}
+
 import { isMetric, isDimension } from "metabase/lib/schema_metadata";
 
 function dimensionAndMetricsAreValid(dimension, metric, cols) {
@@ -395,7 +459,7 @@ function getSeriesTitles([{ data: { rows, cols } }], vizSettings) {
     } else {
         return vizSettings["graph.metrics"].map(name => {
             let col = _.findWhere(cols, { name });
-            return col && col.display_name;
+            return col && getFriendlyName(col);
         });
     }
 }
@@ -408,6 +472,7 @@ import {
 } from "metabase/visualizations/lib/utils";
 
 import { isDate } from "metabase/lib/schema_metadata";
+import Query from "metabase/lib/query";
 
 function getDefaultDimensionsAndMetrics([{ data: { cols, rows } }]) {
     let type = getChartTypeFromData(cols, rows, false);
@@ -464,7 +529,7 @@ const SETTINGS = {
         },
         getProps: ([{ card, data }], vizSettings) => {
             const value = vizSettings["graph.dimensions"];
-            const options = data.cols.filter(isDimension).map(c => ({ name: c.display_name || c.name, value: c.name }));
+            const options = data.cols.filter(isDimension).map(c => ({ name: getFriendlyName(c), value: c.name }));
             return {
                 options,
                 addAnother: (options.length > value.length && value.length < 2) ? "Add a series breakout..." : null
@@ -490,7 +555,7 @@ const SETTINGS = {
         },
         getProps: ([{ card, data }], vizSettings) => {
             const value = vizSettings["graph.dimensions"];
-            const options = data.cols.filter(isMetric).map(c => ({ name: c.display_name || c.name, value: c.name }));
+            const options = data.cols.filter(isMetric).map(c => ({ name: getFriendlyName(c), value: c.name }));
             return {
                 options,
                 addAnother: options.length > value.length ? "Add another series..." : null
@@ -670,6 +735,28 @@ const SETTINGS = {
     "scalar.scale": {
         title: "Multiply by a number",
         widget: ChartSettingInputNumeric
+    },
+    "table.pivot": {
+        title: "Pivot the table",
+        widget: ChartSettingToggle,
+        getHidden: ([{ card, data }]) => (
+            data.cols.length !== 3
+        ),
+        getDefault: ([{ card, data }]) => (
+            data.cols.length === 3 &&
+            Query.isStructured(card.dataset_query) &&
+            !Query.isBareRowsAggregation(card.dataset_query.query)
+        )
+    },
+    "table.fields": {
+        title: "Fields to include",
+        widget: ChartSettingsOrderedFields,
+        getHidden: (series, vizSettings) => vizSettings["table.pivot"],
+        getDefault: ([{ data: { cols }}]) => cols.map(col => ({
+            name: col.name,
+            display_name: col.display_name,
+            enabled: true
+        }))
     }
 };
 
@@ -678,7 +765,8 @@ const SETTINGS_PREFIXES_BY_CHART_TYPE = {
     area: ["graph.", "line.", "stackable."],
     bar: ["graph.", "stackable."],
     pie: ["pie."],
-    scalar: ["scalar."]
+    scalar: ["scalar."],
+    table: ["table."]
 }
 
 function getSetting(id, vizSettings, series) {
