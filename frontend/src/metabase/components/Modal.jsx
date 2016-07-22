@@ -25,19 +25,6 @@ export default class Modal extends Component {
 
     componentDidMount() {
         this._renderPopover();
-        document.addEventListener('keydown', this.handleModalKeyPress);
-    }
-
-    componentWillUnmount() {
-        document.removeEventListener('keydown')
-    }
-
-    handleModalKeyPress(event) {
-        event.preventDefault();
-        const escKey = 27;
-        if (event.charCode === escKey) {
-            this.setState({ isOpen: false });
-        }
     }
 
     componentDidUpdate() {
@@ -51,7 +38,7 @@ export default class Modal extends Component {
         }
     }
 
-    handleClickOutside() {
+    handleDismissal() {
         if (this.props.onClose) {
             this.props.onClose()
         }
@@ -59,7 +46,7 @@ export default class Modal extends Component {
 
     _modalComponent() {
         return (
-            <OnClickOutsideWrapper handleClickOutside={this.handleClickOutside.bind(this)}>
+            <OnClickOutsideWrapper handleDismissal={this.handleDismissal.bind(this)}>
                 <div className={this.props.className}>
                     {this.props.children}
                 </div>
