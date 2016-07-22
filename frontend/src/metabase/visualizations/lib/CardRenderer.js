@@ -105,7 +105,7 @@ function applyChartTimeseriesXAxis(chart, settings, series, xValues) {
         chart.xAxis().tickFormat(timestamp => {
             // these dates are in the browser's timezone, change to UTC
             let timestampUTC = moment(timestamp).format().replace(/[+-]\d+:\d+$/, "Z");
-            return formatValue(timestampUTC, { column: dimensionColumn })
+            return formatValue(timestampUTC, { column: dimensionColumn });
         });
 
         // Compute a sane interval to display based on the data granularity, domain, and chart width
@@ -408,7 +408,7 @@ function lineAndBarOnRender(chart, settings) {
     hideBadAxis();
 
     // should be run before adjusting margins
-    let mins = computeMinHorizontalMargins()
+    let mins = computeMinHorizontalMargins();
 
     // adjust the margins to fit the X and Y axis tick and label sizes, if enabled
     adjustMargin("bottom", "height", ".axis.x",  ".x-axis-label", settings.xAxis.labels_enabled);
@@ -489,7 +489,7 @@ export let CardRenderer = {
                 let dim = crossfilter(data).dimension(d => d[0]);
                 return data[0].slice(1).map((_, i) =>
                     dim.group().reduceSum(d => (d[i + 1] || 0))
-                )
+                );
             });
 
             let yExtents = groups.map(group => d3.extent(group[0].all(), d => d.value));
@@ -507,7 +507,7 @@ export let CardRenderer = {
 
         let parent;
         if (groups.length > 1) {
-            parent = initializeChart(series[0].card, element, "compositeChart")
+            parent = initializeChart(series[0].card, element, "compositeChart");
         } else {
             parent = element;
         }
@@ -519,23 +519,23 @@ export let CardRenderer = {
                 .dimension(dimension)
                 .group(group[0])
                 .transitionDuration(0)
-                .useRightYAxis(yAxisSplit.length > 1 && yAxisSplit[1].includes(index))
+                .useRightYAxis(yAxisSplit.length > 1 && yAxisSplit[1].includes(index));
 
             // multiple series
             if (groups.length > 1) {
                 // multiple stacks
                 if (group.length > 1) {
                     // compute shades of the assigned color
-                    chart.ordinalColors(colorShades(colors[index % colors.length], group.length))
+                    chart.ordinalColors(colorShades(colors[index % colors.length], group.length));
                 } else {
-                    chart.colors(colors[index % colors.length])
+                    chart.colors(colors[index % colors.length]);
                 }
             } else {
-                chart.ordinalColors(colors)
+                chart.ordinalColors(colors);
             }
 
             for (var i = 1; i < group.length; i++) {
-                chart.stack(group[i])
+                chart.stack(group[i]);
             }
 
             applyChartLineBarSettings(chart, settings, chartType, isLinear, isTimeseries);
@@ -566,18 +566,18 @@ export let CardRenderer = {
                             barChart.setAttribute("transform", "translate(" + ((newBarWidth + seriesPadding) * index) + ", 0)");
                         });
                     }
-                })
+                });
             }
 
             // HACK: compositeChart + ordinal X axis shenanigans
             if (chartType === "bar") {
-                chart._rangeBandPadding(BAR_PADDING_RATIO) // https://github.com/dc-js/dc.js/issues/678
+                chart._rangeBandPadding(BAR_PADDING_RATIO); // https://github.com/dc-js/dc.js/issues/678
             } else {
-                chart._rangeBandPadding(1) // https://github.com/dc-js/dc.js/issues/662
+                chart._rangeBandPadding(1); // https://github.com/dc-js/dc.js/issues/662
             }
         } else {
             chart = charts[0];
-            chart.transitionDuration(0)
+            chart.transitionDuration(0);
             applyChartBoundary(chart, element);
         }
 
