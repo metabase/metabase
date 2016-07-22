@@ -8,13 +8,6 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import cx from "classnames";
 
 export default class Select extends Component {
-    constructor(props, context) {
-        super(props, context);
-        this.state = {
-            value: null
-        };
-    }
-
     static propTypes = {
         children: PropTypes.any
     };
@@ -152,10 +145,8 @@ export class Option extends Component {
 class LegacySelect extends Component {
     static propTypes = {
         value: PropTypes.any,
-        changeOnSelect: PropTypes.bool,
         options: PropTypes.array.isRequired,
         placeholder: PropTypes.string,
-        triggerClasses: PropTypes.string,
         onChange: PropTypes.func,
         optionNameFn: PropTypes.func,
         optionValueFn: PropTypes.func,
@@ -173,14 +164,10 @@ class LegacySelect extends Component {
     }
 
     render() {
-        const value = this.props.changeOnSelect ?
-            this.state.value || this.props.value :
-            this.props.value;
-
-        var selectedName = value ? this.props.optionNameFn(value) : this.props.placeholder;
+        var selectedName = this.props.value ? this.props.optionNameFn(this.props.value) : this.props.placeholder;
 
         var triggerElement = (
-            <div className={"flex align-center " + (!value ? " text-grey-3" : "")}>
+            <div className={"flex align-center " + (!this.props.value ? " text-grey-3" : "")}>
                 <span className="mr1">{selectedName}</span>
                 <Icon className="flex-align-right" name="chevrondown" width={12} height={12}/>
             </div>
@@ -196,15 +183,12 @@ class LegacySelect extends Component {
 
         var columns = [
             {
-                selectedItem: this.state.value || value,
+                selectedItem: this.props.value,
                 sections: sections,
                 itemTitleFn: this.props.optionNameFn,
                 itemDescriptionFn: (item) => item.description,
                 itemSelectFn: (item) => {
-                    this.props.onChange(this.props.optionValueFn(item));
-                    if (this.props.changeOnSelect) {
-                        this.setState({value: this.props.optionValueFn(item)});
-                    }
+                    this.props.onChange(this.props.optionValueFn(item))
                     this.toggle();
                 }
             }
@@ -215,7 +199,7 @@ class LegacySelect extends Component {
                 ref="popover"
                 className={this.props.className}
                 triggerElement={triggerElement}
-                triggerClasses={this.props.triggerClasses || cx("AdminSelect", this.props.className)}
+                triggerClasses={"AdminSelect " + (this.props.className || "")}
             >
                 <div onClick={(e) => e.stopPropagation()}>
                     <ColumnarSelector
