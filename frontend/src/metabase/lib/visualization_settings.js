@@ -271,14 +271,24 @@ const ChartSettingToggle = ({ value, onChange }) =>
 
 import Icon from "metabase/components/Icon";
 
-const ChartSettingFieldPicker = ({ value = [], onChange, options, canAddAnother }) =>
+const ChartSettingFieldPicker = ({ value = [], onChange, options, addAnother }) =>
     <div>
         { value.map((v, index) =>
             <div key={index} className="flex align-center">
                 <ChartSettingSelect
                     value={v}
                     options={options}
-                    onChange={(v) => onChange([...value.slice(0, index), v, ...value.slice(index + 1)])}
+                    onChange={(v) => {
+                        let newValue = [...value];
+                        // this swaps the position of the existing value
+                        let existingIndex = value.indexOf(v);
+                        if (existingIndex >= 0) {
+                            newValue.splice(existingIndex, 1, value[index]);
+                        }
+                        // replace with the new value
+                        newValue.splice(index, 1, v);
+                        onChange(newValue);
+                    }}
                 />
                 { value.length > 1 &&
                     <Icon
@@ -290,9 +300,9 @@ const ChartSettingFieldPicker = ({ value = [], onChange, options, canAddAnother 
                 }
             </div>
         )}
-        { canAddAnother &&
-            <div>
-                <a onClick={() => onChange(value.concat([undefined]))}>Add another...</a>
+        { addAnother &&
+            <div className="mt1">
+                <a onClick={() => onChange(value.concat([undefined]))}>{addAnother}</a>
             </div>
         }
     </div>
@@ -413,9 +423,11 @@ function getDefaultDimensionsAndMetrics([{ data: { cols, rows } }]) {
                 metrics: cols.slice(1).map(col => col.name)
             };
         default:
+            const firstDimension = cols.filter(isDimension)[0].name;
+            const firstMetric = cols.filter((col) => col.name !== firstDimension && isMetric(col))[0].name;
             return {
-                dimensions: [cols.filter(isDimension)[0].name],
-                metrics: [cols.filter(isMetric)[0].name]
+                dimensions: [firstDimension],
+                metrics: [firstMetric]
             };
     }
 }
@@ -442,7 +454,7 @@ const SETTINGS = {
             const options = data.cols.filter(isDimension).map(c => ({ name: c.display_name, value: c.name }));
             return {
                 options,
-                canAddAnother: !Array.isArray(value) || (options.length > value.length && value.length < 2)
+                addAnother: (options.length > value.length && value.length < 2) ? "Add a series breakout..." : null
             };
         },
         writeDependencies: ["graph.metrics"]
@@ -468,7 +480,7 @@ const SETTINGS = {
             const options = data.cols.filter(isMetric).map(c => ({ name: c.display_name, value: c.name }));
             return {
                 options,
-                canAddAnother: !Array.isArray(value) || (options.length > value.length)
+                addAnother: options.length > value.length ? "Add another series..." : null
             };
         },
         writeDependencies: ["graph.dimensions"]
