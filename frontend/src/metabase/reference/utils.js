@@ -102,3 +102,20 @@ export const fieldsToFormFields = (fields) => Object.keys(fields)
         `${key}.fk_target_field_id`
     ])
     .reduce((array, keys) => array.concat(keys), []);
+
+export const tablesToSchemaSeparatedTables = (
+    tables,
+    section,
+    createSchemaSeparator,
+    createListItem
+) => Object.values(tables)
+    .sort(table => table.schema)
+    .map((table, index) => table && table.id && table.name &&
+        // add schema header for first element and schema is different from previous
+        index === 0 || tables[Object.keys(tables)[index - 1]].schema !== table.schema ?
+            [
+                createSchemaSeparator(table),
+                createListItem(table, index, section)
+            ] :
+            createListItem(table, index, section)
+    );

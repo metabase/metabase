@@ -19,6 +19,10 @@ import EmptyState from "metabase/components/EmptyState.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
 import {
+    tablesToSchemaSeparatedTables
+} from '../utils';
+
+import {
     getSection,
     getData,
     getUser,
@@ -60,6 +64,9 @@ const createListItem = (entity, index, section) =>
             }
         />
     </li>;
+
+const createSchemaSeparator = (entity) =>
+    <li className={R.schemaSeparator}>{entity.schema}</li>;
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class ReferenceEntityList extends Component {
@@ -113,17 +120,12 @@ export default class ReferenceEntityList extends Component {
                     <div className="wrapper wrapper--trim">
                         <List>
                             { section.type === "tables" ?
-                                Object.values(entities)
-                                    .sort(entity => entity.schema)
-                                    .map((entity, index) => entity && entity.id && entity.name &&
-                                        // add schema header for first element and schema is different from previous
-                                        index === 0 || entities[Object.keys(entities)[index - 1]].schema !== entity.schema ?
-                                            [
-                                                <li className={R.schemaSeparator}>{entity.schema}</li>,
-                                                createListItem(entity, index, section)
-                                            ] :
-                                            createListItem(entity, index, section)
-                                    ) :
+                                tablesToSchemaSeparatedTables(
+                                    entities,
+                                    section,
+                                    createSchemaSeparator,
+                                    createListItem
+                                ) :
                                 Object.values(entities).map((entity, index) =>
                                     entity && entity.id && entity.name &&
                                         createListItem(entity, index, section)
