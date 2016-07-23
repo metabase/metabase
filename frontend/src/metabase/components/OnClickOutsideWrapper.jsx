@@ -9,7 +9,17 @@ import ClickOutComponent from 'react-onclickout';
 // keep track of the order popovers were opened so we only close the last one when clicked outside
 var popoverStack = [];
 
+const ESC_KEY = 27;
+
 export default class OnClickOutsideWrapper extends ClickOutComponent {
+    static propTypes = {
+        handleDismissal: PropTypes.func.isRequired
+    }
+
+    constructor() {
+        super();
+        this.handleKeyPress = this.handleKeyPress.bind(this);
+    }
     componentDidMount() {
         super.componentDidMount();
         // necessary to ignore click events that fire immediately, causing modals/popovers to close prematurely
@@ -20,21 +30,19 @@ export default class OnClickOutsideWrapper extends ClickOutComponent {
             ReactDOM.findDOMNode(this).parentNode.style.zIndex = popoverStack.length + 2; // HACK: add 2 to ensure it's in front of main and nav elements
         }, 10);
 
-        // we unfortunately need to have this function here to access the proper context
-        const handleKeyPress = (event) => {
-            const escKey = 27; // the char code for the esc key
-            if (event.keyCode === escKey) {
-                event.preventDefault();
-                this.props.handleDismissal(event)
-            }
-        }
+        document.addEventListener('keydown', this.handleKeyPress, false)
+    }
 
-        document.addEventListener('keydown', handleKeyPress)
+    handleKeyPress (event) {
+        if (event.keyCode === ESC_KEY) {
+            event.preventDefault();
+            this.onClickOut();
+        }
     }
 
     componentWillUnmount() {
         super.componentWillUnmount();
-        document.removeEventListener('keydown', false)
+        document.removeEventListener('keydown', this.handleKeyPress, false);
         // remove popover from the stack
         var index = popoverStack.indexOf(this);
         if (index >= 0) {
