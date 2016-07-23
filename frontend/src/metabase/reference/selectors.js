@@ -282,7 +282,10 @@ const getTableFieldSections = (database, table, field) => database && table && f
 
 const idsToObjectMap = (ids, objects) => ids
     .map(id => objects[id])
-    .reduce((map, object) => i.assoc(map, object.id, object), {});
+    .reduce((map, object) => Object.assign({}, map, {[object.id]: object}), {});
+    // recursive freezing done by i.assoc here is too expensive
+    // hangs browser for large databases
+    // .reduce((map, object) => i.assoc(map, object.id, object), {});
 
 export const getUser = (state) => state.currentUser;
 

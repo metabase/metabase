@@ -88,7 +88,7 @@ export const field_special_types = [{
 }];
 
 export const field_special_types_map = field_special_types
-    .reduce((map, type) => i.assoc(map, type.id, type), {});
+    .reduce((map, type) => Object.assign({}, map, {[type.id]: type}), {});
 
 export const field_field_types = [{
     'id': 'info',

@@ -95,9 +95,9 @@ export function momentifyObjectsTimestamps(objects, keys) {
 //filters out angular cruft and turns into id indexed map
 export const resourceListToMap = (resources) => resources
     .filter(resource => resource.id !== undefined)
-    .reduce((map, resource) => i.assoc(map, resource.id, resource), {});
+    .reduce((map, resource) => Object.assign({}, map, {[resource.id]: resource}), {});
 
 //filters out angular cruft in resource
 export const cleanResource = (resource) => Object.keys(resource)
     .filter(key => key.charAt(0) !== "$")
-    .reduce((map, key) => i.assoc(map, key, resource[key]), {});
+    .reduce((map, key) => Object.assign({}, map, {[key]: resource[key]}), {});
