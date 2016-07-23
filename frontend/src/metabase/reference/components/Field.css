@@ -16,14 +16,14 @@
 }
 
 :local(.fieldNameTextInput) {
-    composes: rounded bordered p1 from "style";
+    composes: input p1 from "style";
     color: var(--title-color);
     width: 100%;
     font-size: 14px;
 }
 
 :local(.fieldSelect) {
-    composes: rounded bordered p1 block from "style";
+    composes: input p1 block from "style";
 }
 
 :local(.fieldType) {

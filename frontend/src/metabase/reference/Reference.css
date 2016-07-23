@@ -28,7 +28,7 @@
 }
 
 :local(.headerTextInput) {
-    composes: rounded bordered p1 from "style";
+    composes: input p1 from "style";
     font-size: 18px;
     color: var(--title-color);
     width: 100%;

@@ -177,7 +177,7 @@ export default class EntityItem extends Component {
                                 </IconBorder>
                             }
                         </div>
-                        { section.type === 'table' &&
+                        { section.type === 'table' && !isEditing &&
                             <div className={R.headerSchema}>{entity.schema}</div>
                         }
                         <div className={R.headerBody} style={isEditing ? {alignItems: "flex-start"} : {}}>
