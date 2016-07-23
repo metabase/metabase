@@ -85,8 +85,15 @@
     padding-left: 70px;
 }
 
-:local(.schemaHeader) {
-    composes: text-grey-2 mt3 mb1 from "style";
+:local(.schemaSeparator) {
+    composes: text-grey-2 mt2 from "style";
     margin-left: 70px;
     font-size: 18px;
+}
+
+:local(.headerSchema) {
+    composes: text-grey-2 absolute from "style";
+    left: 70px;
+    top: -10px;
+    font-size: 12px;
 }

@@ -164,7 +164,7 @@ export default class EntityItem extends Component {
                     </div>
                 }
                 <div className="wrapper wrapper--trim">
-                    <div className={S.header}>
+                    <div className={cx("relative", S.header)}>
                         <div className={S.leftIcons}>
                             { section.headerIcon &&
                                 <IconBorder borderWidth="0" style={{backgroundColor: "#E9F4F8"}}>
@@ -177,6 +177,9 @@ export default class EntityItem extends Component {
                                 </IconBorder>
                             }
                         </div>
+                        { section.type === 'table' &&
+                            <div className={R.headerSchema}>{entity.schema}</div>
+                        }
                         <div className={R.headerBody} style={isEditing ? {alignItems: "flex-start"} : {}}>
                             { isEditing ?
                                 hasDisplayName ?

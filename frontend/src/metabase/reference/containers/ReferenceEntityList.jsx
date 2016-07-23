@@ -119,7 +119,7 @@ export default class ReferenceEntityList extends Component {
                                         // add schema header for first element and schema is different from previous
                                         index === 0 || entities[Object.keys(entities)[index - 1]].schema !== entity.schema ?
                                             [
-                                                <li className={R.schemaHeader}>{entity.schema}</li>,
+                                                <li className={R.schemaSeparator}>{entity.schema}</li>,
                                                 createListItem(entity, index, section)
                                             ] :
                                             createListItem(entity, index, section)
