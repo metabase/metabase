@@ -84,3 +84,9 @@
     padding-top: 20px;
     padding-left: 70px;
 }
+
+:local(.schemaHeader) {
+    composes: text-grey-2 mt3 mb1 from "style";
+    margin-left: 70px;
+    font-size: 18px;
+}

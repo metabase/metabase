@@ -40,6 +40,27 @@ const mapDispatchToProps = {
     ...metadataActions
 };
 
+const createListItem = (entity, index, section) =>
+    <li className="relative" key={entity.id}>
+        <ListItem
+            id={entity.id}
+            index={index}
+            name={entity.display_name || entity.name}
+            description={section.type !== 'questions' ?
+                entity.description :
+                `Created ${moment(entity.created_at).fromNow()} by ${entity.creator.common_name}`
+            }
+            url={section.type !== 'questions' ?
+                `${section.id}/${entity.id}` :
+                `/card/${entity.id}`
+            }
+            icon={section.type !== 'questions' ?
+                null :
+                (visualizations.get(entity.display)||{}).iconName
+            }
+        />
+    </li>;
+
 @connect(mapStateToProps, mapDispatchToProps)
 export default class ReferenceEntityList extends Component {
     static propTypes = {
@@ -91,28 +112,23 @@ export default class ReferenceEntityList extends Component {
                 { () => Object.keys(entities).length > 0 ?
                     <div className="wrapper wrapper--trim">
                         <List>
-                            { Object.values(entities).map((entity, index) =>
-                                entity && entity.id && entity.name &&
-                                    <li className="relative" key={entity.id}>
-                                        <ListItem
-                                            id={entity.id}
-                                            index={index}
-                                            name={entity.display_name || entity.name}
-                                            description={section.type !== 'questions' ?
-                                                entity.description :
-                                                `Created ${moment(entity.created_at).fromNow()} by ${entity.creator.common_name}`
-                                            }
-                                            url={section.type !== 'questions' ?
-                                                `${section.id}/${entity.id}` :
-                                                `/card/${entity.id}`
-                                            }
-                                            icon={section.type !== 'questions' ?
-                                                null :
-                                                (visualizations.get(entity.display)||{}).iconName
-                                            }
-                                        />
-                                    </li>
-                            )}
+                            { section.type === "tables" ?
+                                Object.values(entities)
+                                    .sort(entity => entity.schema)
+                                    .map((entity, index) => entity && entity.id && entity.name &&
+                                        // add schema header for first element and schema is different from previous
+                                        index === 0 || entities[Object.keys(entities)[index - 1]].schema !== entity.schema ?
+                                            [
+                                                <li className={R.schemaHeader}>{entity.schema}</li>,
+                                                createListItem(entity, index, section)
+                                            ] :
+                                            createListItem(entity, index, section)
+                                    ) :
+                                Object.values(entities).map((entity, index) =>
+                                    entity && entity.id && entity.name &&
+                                        createListItem(entity, index, section)
+                                )
+                            }
                         </List>
                     </div>
                     :

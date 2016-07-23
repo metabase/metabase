@@ -204,6 +204,7 @@ const getDatabaseSections = (database) => database ? {
     [`/reference/databases/${database.id}/tables`]: {
         id: `/reference/databases/${database.id}/tables`,
         name: `Tables in ${database.name}`,
+        type: 'tables',
         empty: {
             message: `Tables in this database will appear here as they're added`,
             icon: "table2"
@@ -309,6 +310,7 @@ const getDatabase = createSelector(
 );
 
 export const getTableId = (state) => Number.parseInt(state.router.params.tableId);
+// export const getTableId = (state) => Number.parseInt(state.router.params.tableId);
 export const getTables = (state) => state.metadata.tables;
 const getTablesByDatabase = createSelector(
     [getTables, getDatabase],
