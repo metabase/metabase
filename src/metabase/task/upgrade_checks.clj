@@ -6,9 +6,9 @@
             (clojurewerkz.quartzite [jobs :as jobs]
                                     [triggers :as triggers])
             [clojurewerkz.quartzite.schedule.cron :as cron]
-            [metabase.config :as config]
-            [metabase.task :as task]
-            [metabase.models.setting :as setting]))
+            (metabase [config :as config]
+                      [public-settings :as public-settings]
+                      [task :as task])))
 
 (def ^:private ^:const upgrade-checks-job-key     "metabase.task.upgrade-checks.job")
 (def ^:private ^:const upgrade-checks-trigger-key "metabase.task.upgrade-checks.trigger")
@@ -26,12 +26,12 @@
 ;; simple job which looks up all databases and runs a sync on them
 (jobs/defjob CheckForNewVersions
   [ctx]
-  (when (= "true" (setting/check-for-updates))
+  (when (public-settings/check-for-updates)
     (log/debug "Checking for new Metabase version info.")
     (try
       ;; TODO: add in additional request params if anonymous tracking is enabled
       (when-let [version-info (get-version-info)]
-        (setting/version-info (json/generate-string version-info)))
+        (public-settings/version-info (json/generate-string version-info)))
       (catch Throwable e
         (log/error "Error fetching version info: " e)))))
 

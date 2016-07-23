@@ -331,10 +331,10 @@
   [setting-k value f]
   (let [original-value (setting/get setting-k)]
     (try
-      (setting/set* setting-k value)
+      (setting/set! setting-k value)
       (f)
       (finally
-        (setting/set* setting-k original-value)))))
+        (setting/set! setting-k original-value)))))
 
 (defmacro with-temporary-setting-values
   "Temporarily bind the values of one or more `Settings`, execute body, and re-establish the original values. This works much the same way as `binding`.

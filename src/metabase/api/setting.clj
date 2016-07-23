@@ -8,15 +8,15 @@
   "Get all `Settings` and their values. You must be a superuser to do this."
   []
   (check-superuser)
-  (setting/all-with-descriptions))
+  (setting/all))
 
 (defendpoint PUT "/"
   "Update multiple `Settings` values.  You must be a superuser to do this."
   [:as {settings :body}]
   {settings [Required Dict]}
   (check-superuser)
-  (setting/set-all settings)
-  (setting/all-with-descriptions))
+  (setting/set-many! settings)
+  (setting/all))
 
 (defendpoint GET "/:key"
   "Fetch a single `Setting`. You must be a superuser to do this."
@@ -31,13 +31,14 @@
   [key :as {{:keys [value]} :body}]
   {key Required}
   (check-superuser)
-  (setting/set* (keyword key) value))
+  (setting/set! key value))
 
+;; TODO - this endpoint is ultimately unneccesary because you can just PUT nil instead
 (defendpoint DELETE "/:key"
   "Delete a `Setting`. You must be a superuser to do this."
   [key]
   {key Required}
   (check-superuser)
-  (setting/delete (keyword key)))
+  (setting/set! key nil))
 
 (define-routes)
