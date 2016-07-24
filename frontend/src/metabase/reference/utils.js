@@ -103,7 +103,7 @@ export const fieldsToFormFields = (fields) => Object.keys(fields)
     ])
     .reduce((array, keys) => array.concat(keys), []);
 
-export const tablesToSchemaSeparatedTables = (
+export const separateTablesBySchema = (
     tables,
     section,
     createSchemaSeparator,

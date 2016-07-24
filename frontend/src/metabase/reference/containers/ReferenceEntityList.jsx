@@ -19,7 +19,7 @@ import EmptyState from "metabase/components/EmptyState.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
 import {
-    tablesToSchemaSeparatedTables
+    separateTablesBySchema
 } from '../utils';
 
 import {
@@ -120,7 +120,7 @@ export default class ReferenceEntityList extends Component {
                     <div className="wrapper wrapper--trim">
                         <List>
                             { section.type === "tables" ?
-                                tablesToSchemaSeparatedTables(
+                                separateTablesBySchema(
                                     entities,
                                     section,
                                     createSchemaSeparator,

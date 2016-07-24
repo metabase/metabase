@@ -1,4 +1,9 @@
-import { tryFetchData, tryUpdateData, tryUpdateFields } from 'metabase/reference/utils';
+import {
+    tryFetchData,
+    tryUpdateData,
+    tryUpdateFields,
+    separateTablesBySchema
+} from 'metabase/reference/utils';
 
 describe("Reference utils.js", () => {
     const getProps = ({
@@ -131,6 +136,33 @@ describe("Reference utils.js", () => {
             expect(props.updateField.calls.argsFor(0)[0]).toEqual({foo: 'bar', bar: ''});
             expect(props.updateField.calls.count()).toEqual(1);
             done();
+        });
+    });
+
+    describe("tablesToSchemaSeparatedTables()", () => {
+        it("should add schema separator to appropriate locations", () => {
+            const tables = {
+                1: { id: 1, schema: 'foo' },
+                2: { id: 2, schema: 'bar' },
+                3: { id: 3, schema: 'boo' },
+                4: { id: 4, schema: 'bar' },
+                5: { id: 5, schema: 'foo' },
+                6: { id: 6, schema: 'bar' }
+            };
+
+            const section = {};
+
+            const createSchemaSeparator = () => "separator";
+            const createListItem = (table) => table;
+
+            const schemaSeparatedTables = separateTablesBySchema(
+                tables,
+                section,
+                createSchemaSeparator,
+                createListItem
+            );
+            
+            expect(schemaSeparatedTables).toEqual({});
         });
     });
 });

@@ -1,6 +1,5 @@
 import moment from "moment";
 import _ from "underscore";
-import i from "icepick";
 
 import { createStore as originalCreateStore, applyMiddleware, compose } from "redux";
 import promise from 'redux-promise';

@@ -1,5 +1,3 @@
-import i from 'icepick';
-
 export const user_roles = [{
     'id': 'user',
     'name': 'User',
