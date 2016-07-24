@@ -163,14 +163,11 @@ describe("Reference utils.js", () => {
             );
 
             expect(schemaSeparatedTables).toEqual([
-                "bar",
-                { id: 2, name: 'table2', schema: 'bar' },
+                ["bar", { id: 2, name: 'table2', schema: 'bar' }],
                 { id: 4, name: 'table4', schema: 'bar' },
                 { id: 6, name: 'table6', schema: 'bar' },
-                "boo",
-                { id: 3, name: 'table3', schema: 'boo' },
-                "foo",
-                { id: 1, name: 'table1', schema: 'foo' },
+                ["boo", { id: 3, name: 'table3', schema: 'boo' }],
+                ["foo", { id: 1, name: 'table1', schema: 'foo' }],
                 { id: 5, name: 'table5', schema: 'foo' },
             ]);
         });
