@@ -152,7 +152,7 @@ describe("Reference utils.js", () => {
 
             const section = {};
 
-            const createSchemaSeparator = () => "separator";
+            const createSchemaSeparator = (table) => table.schema;
             const createListItem = (table) => table;
 
             const schemaSeparatedTables = separateTablesBySchema(
@@ -161,8 +161,18 @@ describe("Reference utils.js", () => {
                 createSchemaSeparator,
                 createListItem
             );
-            
-            expect(schemaSeparatedTables).toEqual({});
+
+            expect(schemaSeparatedTables).toEqual([
+                "bar",
+                { id: 2, schema: 'bar' },
+                { id: 4, schema: 'bar' },
+                { id: 6, schema: 'bar' },
+                "boo",
+                { id: 3, schema: 'boo' },
+                "foo",
+                { id: 1, schema: 'foo' },
+                { id: 5, schema: 'foo' },
+            ]);
         });
     });
 });
