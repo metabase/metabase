@@ -111,7 +111,7 @@ export const separateTablesBySchema = (
 ) => Object.values(tables)
     .sort(table => table.schema)
     .map((table, index) => table && table.id && table.name &&
-        // add schema header for first element and schema is different from previous
+        // add schema header for first element and if schema is different from previous
         index === 0 || tables[Object.keys(tables)[index - 1]].schema !== table.schema ?
             [
                 createSchemaSeparator(table),

@@ -142,12 +142,12 @@ describe("Reference utils.js", () => {
     describe("tablesToSchemaSeparatedTables()", () => {
         it("should add schema separator to appropriate locations", () => {
             const tables = {
-                1: { id: 1, schema: 'foo' },
-                2: { id: 2, schema: 'bar' },
-                3: { id: 3, schema: 'boo' },
-                4: { id: 4, schema: 'bar' },
-                5: { id: 5, schema: 'foo' },
-                6: { id: 6, schema: 'bar' }
+                1: { id: 1, name: 'table1', schema: 'foo' },
+                2: { id: 2, name: 'table2', schema: 'bar' },
+                3: { id: 3, name: 'table3', schema: 'boo' },
+                4: { id: 4, name: 'table4', schema: 'bar' },
+                5: { id: 5, name: 'table5', schema: 'foo' },
+                6: { id: 6, name: 'table6', schema: 'bar' }
             };
 
             const section = {};
@@ -164,14 +164,14 @@ describe("Reference utils.js", () => {
 
             expect(schemaSeparatedTables).toEqual([
                 "bar",
-                { id: 2, schema: 'bar' },
-                { id: 4, schema: 'bar' },
-                { id: 6, schema: 'bar' },
+                { id: 2, name: 'table2', schema: 'bar' },
+                { id: 4, name: 'table4', schema: 'bar' },
+                { id: 6, name: 'table6', schema: 'bar' },
                 "boo",
-                { id: 3, schema: 'boo' },
+                { id: 3, name: 'table3', schema: 'boo' },
                 "foo",
-                { id: 1, schema: 'foo' },
-                { id: 5, schema: 'foo' },
+                { id: 1, name: 'table1', schema: 'foo' },
+                { id: 5, name: 'table5', schema: 'foo' },
             ]);
         });
     });
