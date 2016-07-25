@@ -321,14 +321,6 @@
   ;; irrelevant changes (to other settings) are made.
   (events/publish-event :settings-update settings))
 
-
-(defn- obfuscated-env-var-value
-  "If SETTING was set via env var, return an obfuscated string like `USING $MB_MY_SETTING`.
-   This is meant to be user-facing (it is shown in the admin panel settings page)."
-  ^String [setting]
-  (when (env-var-value setting)
-    (format "Using $%s" (env-var-name setting))))
-
 (defn all
   "Return a sequence of Settings maps, including value and description.
    (For security purposes, this doesn't return the value of a setting if it was set via env var)."
@@ -339,17 +331,6 @@
      :value       (when (not= v (env-var-value setting))
                     v)
      :description (:description setting)
-     :default     (or (obfuscated-env-var-value setting)
-                      (:default setting))}))
-
-
-(defn- settings-list
-  "Return a list of all Settings (as created with `defsetting`).
-   This excludes Settings created with the option `:internal?`."
-  []
-  (for [[k setting] @registered-settings
-        :when       (not (:internal? setting))]
-    {:key         k
-     :description (:description setting)
-     :default     (or (obfuscated-env-var-value setting)
+     :default     (or (when (env-var-value setting)
+                        (format "Using $%s" (env-var-name setting)))
                       (:default setting))}))
