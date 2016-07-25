@@ -1,17 +1,10 @@
 
 .Modal {
-  position: fixed;
-
-  top: 50%;
-  left: 50%;
+  position: relative;
 
   margin: auto;
 
   width: 640px;
-
-  transform: translate3d(-50%, -50%, 0);
-
-  -webkit-font-smoothing: antialiased;
 
   background-color: #fff;
 
@@ -19,7 +12,7 @@
   border-radius: 4px;
   box-shadow: 0 0 6px rgba(0, 0, 0, .12);
 
-  outline: none;
+  /*outline: none;*/
 
   max-height: 90%;
   overflow-y: auto;

@@ -12,7 +12,7 @@ export default class Modal extends Component {
 
     static defaultProps = {
         className: "Modal",
-        backdropClassName: "Modal-backdrop",
+        backdropClassName: "Modal-backdrop flex justify-center align-center",
         isOpen: true
     };
 
