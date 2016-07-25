@@ -31,6 +31,7 @@
       (setting/all)"
   (:refer-clojure :exclude [get])
   (:require [clojure.string :as str]
+            [cheshire.core :as json]
             [environ.core :as env]
             [medley.core :as m]
             [schema.core :as s]
@@ -51,13 +52,13 @@
 
 
 (def ^:private Type
-  (s/enum :string :boolean))
+  (s/enum :string :boolean :json))
 
 (def ^:private SettingDefinition
   {:setting-name s/Keyword
    :description  s/Str            ; used for docstring and is user-facing in the admin panel
    :default      s/Any            ; this is a string because in the DB all settings are stored as strings; different getters can handle type conversion *from* string
-   :setting-type Type             ; :string or :boolean
+   :setting-type Type
    :getter       clojure.lang.IFn
    :setter       clojure.lang.IFn
    :internal?    s/Bool})         ; should the API never return this setting? (default: false)
@@ -150,9 +151,15 @@
   ^Boolean [setting-or-name]
   (string->boolean (get-string setting-or-name)))
 
+(defn get-json
+  "Get the string value of SETTING-OR-NAME and parse it as JSON."
+  [setting-or-name]
+  (json/parse-string (get-string setting-or-name) keyword))
+
 (def ^:private default-getter-for-type
   {:string  get-string
-   :boolean get-boolean})
+   :boolean get-boolean
+   :json    get-json})
 
 (defn get
   "Fetch the value of SETTING-OR-NAME. What this means depends on the Setting's `:getter`; by default, this looks for first for a corresponding env var,
@@ -197,9 +204,16 @@
                                    false "false"
                                    nil   nil))))
 
+(defn set-json!
+  "Serialize NEW-VALUE for SETTING-OR-NAME as a JSON string and save it."
+  [setting-or-name new-value]
+  (set-string! setting-or-name (when new-value
+                                 (json/generate-string new-value))))
+
 (def ^:private default-setter-for-type
   {:string  set-string!
-   :boolean set-boolean!})
+   :boolean set-boolean!
+   :json    set-json!})
 
 (defn set!
   "Set the value of SETTING-OR-NAME. What this means depends on the Setting's `:setter`; by default, this just updates the Settings cache and writes its value to the DB.

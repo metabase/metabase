@@ -31,7 +31,7 @@
     (try
       ;; TODO: add in additional request params if anonymous tracking is enabled
       (when-let [version-info (get-version-info)]
-        (public-settings/version-info (json/generate-string version-info)))
+        (public-settings/version-info version-info))
       (catch Throwable e
         (log/error "Error fetching version info: " e)))))
 

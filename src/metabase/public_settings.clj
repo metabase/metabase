@@ -15,7 +15,8 @@
 ;; TODO - define a JSON type ?
 (defsetting version-info
   "Information about available versions of Metabase."
-  :default "{}")
+  :type    :json
+  :default {})
 
 
 (defn- short-timezone-name*
