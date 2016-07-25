@@ -24,7 +24,7 @@ const referenceSections = {
             message: "Metrics will appear here once your admins have created some",
             image: "/app/img/metrics-list",
             adminAction: "Create a metric",
-            adminLink: "/admin/datamodel/database"
+            adminLink: "http://www.metabase.com/docs/latest/administration-guide/05-segments-and-metrics.html"
         },
         breadcrumb: "Metrics",
         // mapping of propname to args of dispatch function
@@ -42,7 +42,7 @@ const referenceSections = {
             message: "Segments will appear here once your admins have created some",
             image: "/app/img/segments-list",
             adminAction: "Create a segment",
-            adminLink: "/admin/datamodel/database"
+            adminLink: "http://www.metabase.com/docs/latest/administration-guide/05-segments-and-metrics.html"
         },
         breadcrumb: "Segments",
         fetch: {fetchSegments: []},
