@@ -2,7 +2,7 @@
   (:require [expectations :refer :all]
             (metabase.models [setting :as setting]
                              [setting-test :refer [set-settings!
-                                                   setting-exists?
+                                                   setting-exists-in-db?
                                                    test-setting-1
                                                    test-setting-2]])
             [metabase.test.data :refer :all]
@@ -10,9 +10,9 @@
 
 ;; ## Helper Fns
 (defn- fetch-test-settings  []
-  (sort-by :key (for [setting ((user->client :crowberto) :get 200 "setting")
-                      :when   (re-find #"^test-setting-\d$" (name (:key setting)))]
-                  setting)))
+  (for [setting ((user->client :crowberto) :get 200 "setting")
+        :when   (re-find #"^test-setting-\d$" (name (:key setting)))]
+    setting))
 
 (defn- fetch-setting [setting-name]
   ((user->client :crowberto) :get 200 (format "setting/%s" (name setting-name))))
@@ -67,10 +67,10 @@
 
 ;; ## DELETE /api/setting/:key
 (expect
- ["ABCDEFG"
-  nil
+ ["ABCDEFG" ; env var value
+  nil       ; API endpoint shouldn't return env var values
   false]
  (do ((user->client :crowberto) :delete 204 "setting/test-setting-1")
      [(test-setting-1)
       (fetch-setting :test-setting-1)
-      (setting-exists? :test-setting-1)]))
+      (setting-exists-in-db? :test-setting-1)]))

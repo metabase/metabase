@@ -26,7 +26,7 @@
   [setting-name]
   (db/select-one-field :value Setting, :key (name setting-name)))
 
-(defn setting-exists? [setting-name]
+(defn setting-exists-in-db? [setting-name]
   (boolean (Setting :key (name setting-name))))
 
 (defn set-settings! [setting-1-value setting-2-value]
@@ -75,20 +75,20 @@
 
 
 ;; ## DELETE
-;; Test defsetting delete w/o default value
+;; Test defsetting delete w/o default value, but with env var value
 (expect
   ["COOL"
    true
-   nil
-   nil
+   "ABCDEFG" ; env var value
+   "ABCDEFG"
    false]
   [(do (test-setting-1 "COOL")
        (test-setting-1))
-   (setting-exists? :test-setting-1)
+   (setting-exists-in-db? :test-setting-1)
    (do (test-setting-1 nil)
        (test-setting-1))
    (setting/get :test-setting-1)
-   (setting-exists? :test-setting-1)])
+   (setting-exists-in-db? :test-setting-1)])
 
 ;; Test defsetting delete w/ default value
 (expect
@@ -98,26 +98,28 @@
    false]            ; setting still shouldn't exist in the DB
   [(do (test-setting-2 "COOL")
        (test-setting-2))
-   (setting-exists? :test-setting-2)
+   (setting-exists-in-db? :test-setting-2)
    (do (test-setting-2 nil)
        (test-setting-2))
-   (setting-exists? :test-setting-2)])
+   (setting-exists-in-db? :test-setting-2)])
 
 
 ;; ## ALL SETTINGS FUNCTIONS
 
 ;; all
 (expect
-  {:test-setting-2 "TOUCANS"}
+  {:key :test-setting-2, :value "TOUCANS", :description "Test setting - this only shows up in dev (2)", :default "[Default Value]"}
   (do (set-settings! nil "TOUCANS")
-      (m/filter-keys #(re-find #"^test-setting-\d$" (name %)) ; filter out any non-test settings
-                     (setting/all))))
+      (some (fn [setting]
+              (when (re-find #"^test-setting-2$" (name (:key setting)))
+                setting))
+            (setting/all))))
 
 ;; all
 (expect
   [{:key :test-setting-1, :value nil,  :description "Test setting - this only shows up in dev (1)", :default "Using $MB_TEST_SETTING_1"}
    {:key :test-setting-2, :value "S2", :description "Test setting - this only shows up in dev (2)", :default "[Default Value]"}]
   (do (set-settings! nil "S2")
-      (filter (fn [{k :key}]
-                (re-find #"^test-setting-\d$" (name k)))
-              (setting/all))))
+      (for [setting (setting/all)
+            :when   (re-find #"^test-setting-\d$" (name (:key setting)))]
+        setting)))

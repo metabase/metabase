@@ -23,7 +23,11 @@
   [key]
   {key Required}
   (check-superuser)
-  (setting/get (keyword key)))
+  (let [k (keyword key)
+        v (setting/get k)]
+    ;; for security purposes, don't return value of a setting if it was defined via env var
+    (when (not= v (setting/env-var-value k))
+      v)))
 
 (defendpoint PUT "/:key"
   "Create/update a `Setting`. You must be a superuser to do this.
@@ -39,6 +43,7 @@
   [key]
   {key Required}
   (check-superuser)
-  (setting/set! key nil))
+  (setting/set! key nil)
+  {:status 204, :body nil})
 
 (define-routes)

@@ -53,22 +53,22 @@
 (def ^:private Type
   (s/enum :string :boolean))
 
-(s/defrecord SettingDefinition [setting-name :- s/Keyword
-                                description  :- s/Str            ; used for docstring and is user-facing in the admin panel
-                                default      :- (s/maybe s/Str)  ; this is a string because in the DB all settings are stored as strings; different getters can handle type conversion *from* string
-                                setting-type :- Type             ; :string or :boolean
-                                getter       :- clojure.lang.IFn
-                                setter       :- clojure.lang.IFn
-                                internal?    :- s/Bool]          ; should the API never return this setting? (default: false)
-  clojure.lang.Named
-  (getName [_] (name setting-name)))
+(def ^:private SettingDefinition
+  {:setting-name s/Keyword
+   :description  s/Str            ; used for docstring and is user-facing in the admin panel
+   :default      (s/maybe s/Str)  ; this is a string because in the DB all settings are stored as strings; different getters can handle type conversion *from* string
+   :setting-type Type             ; :string or :boolean
+   :getter       clojure.lang.IFn
+   :setter       clojure.lang.IFn
+   :internal?    s/Bool})         ; should the API never return this setting? (default: false)
+
 
 (defonce ^:private registered-settings
   (atom {}))
 
 (s/defn ^:private ^:always-validate resolve-setting :- SettingDefinition
   [setting-or-name]
-  (if (instance? SettingDefinition setting-or-name)
+  (if (map? setting-or-name)
     setting-or-name
     (let [k (keyword setting-or-name)]
       (or (@registered-settings k)
@@ -91,40 +91,47 @@
 
 ;;; ------------------------------------------------------------ get ------------------------------------------------------------
 
+(defn- setting-name ^String [setting-or-name]
+  (name (:setting-name (resolve-setting setting-or-name))))
+
 (defn- env-var-name
   "Get the env var corresponding to SETTING-OR-NAME.
    (This is used primarily for documentation purposes)."
   ^String [setting-or-name]
   (let [setting (resolve-setting setting-or-name)]
-    (str "MB_" (str/upper-case (str/replace (name setting) "-" "_")))))
+    (str "MB_" (str/upper-case (str/replace (setting-name setting) "-" "_")))))
 
-(defn get-from-env-var
+(defn env-var-value
   "Get the value of SETTING-OR-NAME from the corresponding env var, if any.
    The name of the Setting is converted to uppercase and dashes to underscores;
    for example, a setting named `default-domain` can be set with the env var `MB_DEFAULT_DOMAIN`."
-  [setting-or-name]
-  (let [setting (resolve-setting setting-or-name)]
-    (env/env (keyword (str "mb-" (name setting))))))
+  ^String [setting-or-name]
+  (let [setting (resolve-setting setting-or-name)
+        v       (env/env (keyword (str "mb-" (setting-name setting))))]
+    (when (seq v)
+      v)))
 
-(defn- get-from-db [setting-or-name]
+(defn- get-from-db
+  "Get the value, if any, of SETTING-OR-NAME from the DB (using / restoring the cache as needed)."
+  ^String [setting-or-name]
   (restore-cache-if-needed!)
-  (clojure.core/get @cache (name (resolve-setting setting-or-name))))
+  (clojure.core/get @cache (setting-name setting-or-name)))
 
 
 (defn get-string
   "Get string value of SETTING-OR-NAME. This is the default getter for `String` settings; valuBis fetched as follows:
 
-   1.  From corresponding env var, if any;
-   2.  From the database, if a value is present;
+   1.  From the database (i.e., set via the admin panel), if a value is present;
+   2.  From corresponding env var, if any;
    3.  The default value, if one was specified.
 
    If the fetched value is an empty string it is considered to be unset and this function returns `nil`."
   ^String [setting-or-name]
   (let [setting (resolve-setting setting-or-name)
-        v       (or (u/prog1 (get-from-env-var setting)
-                      (when <> (println "get-from-env-var" <>))) ; NOCOMMIT
-                    (u/prog1 (get-from-db setting)
+        v       (or (u/prog1 (get-from-db setting)
                       (when <> (println "get-from-db" <>)))
+                    (u/prog1 (env-var-value setting)
+                      (when <> (println "env-var-value" <>))) ; NOCOMMIT
                     (u/prog1 (:default setting)
                       (when <> (println ":default" <>))))]
     (when (seq v)
@@ -155,7 +162,7 @@
   "Fetch the value of SETTING-OR-NAME. What this means depends on the Setting's `:getter`; by default, this looks for first for a corresponding env var,
    then checks the cache, then returns the default value of the Setting, if any."
   [setting-or-name]
-  (println "get" (u/format-color 'blue (name setting-or-name))) ; NOCOMMIT
+  (println "get" (u/format-color 'blue (setting-name setting-or-name))) ; NOCOMMIT
   ((:getter (resolve-setting setting-or-name))))
 
 
@@ -167,7 +174,7 @@
   (let [new-value    (when (seq new-value)
                        new-value)
         setting      (resolve-setting setting-or-name)
-        setting-name (name setting)]
+        setting-name (setting-name setting)]
     (restore-cache-if-needed!)
     ;; write to DB
     (cond
@@ -208,7 +215,7 @@
 
      (mandrill-api-key \"xyz123\")"
   [setting-or-name new-value]
-  (println (u/format-color 'magenta "%s -> %s" (name setting-or-name) new-value)) ; NOCOMMIT
+  (println (u/format-color 'magenta "%s -> %s" (setting-name (resolve-setting setting-or-name)) new-value)) ; NOCOMMIT
   ((:setter (resolve-setting setting-or-name)) new-value))
 
 
@@ -219,18 +226,18 @@
    This is used internally be `defsetting`; you shouldn't need to use it yourself."
   [{setting-name :name, setting-type :type, default :default, :as setting}]
   (u/prog1 (let [setting-type (s/validate Type (or setting-type :string))]
-             (strict-map->SettingDefinition (merge {:setting-name setting-name
-                                                    :description  nil
-                                                    :setting-type setting-type
-                                                    :default      (when default
-                                                                    (str default))
-                                                    :getter       (partial (default-getter-for-type setting-type) setting-name)
-                                                    :setter       (partial (default-setter-for-type setting-type) setting-name)
-                                                    :internal?    false}
-                                                   (dissoc setting :name :type :default))))
+             (merge {:setting-name setting-name
+                     :description  nil
+                     :setting-type setting-type
+                     :default      (when default
+                                     (str default))
+                     :getter       (partial (default-getter-for-type setting-type) setting-name)
+                     :setter       (partial (default-setter-for-type setting-type) setting-name)
+                     :internal?    false}
+                    (dissoc setting :name :type :default)))
     (s/validate SettingDefinition <>)
     (swap! registered-settings assoc setting-name <>)
-    (println "Registered Setting" setting-name "\n" (u/pprint-to-str <>)))) ; NOCOMMIT
+    (println "Registered Setting" setting-name))) ; NOCOMMIT
 
 
 
@@ -238,22 +245,22 @@
 
 (defn metadata-for-setting-fn
   "Create metadata for the function automatically generated by `defsetting`."
-  [^SettingDefinition {:keys [default setting-type], :as setting}]
+  [{:keys [default setting-type], :as setting}]
   {:arglists '([] [new-value])
-   :doc      (str (format "`%s` is a %s `Setting`. You can get its value by calling\n\n" (name setting) (name setting-type))
-                  (format  "    (%s)\n\n" (name setting))
+   :doc      (str (format "`%s` is a %s `Setting`. You can get its value by calling\n\n" (setting-name setting) (name setting-type))
+                  (format  "    (%s)\n\n" (setting-name setting))
                   "and set its value by calling\n\n"
-                  (format "    (%s <new-value>)\n\n" (name setting))
+                  (format "    (%s <new-value>)\n\n" (setting-name setting))
                   (format "You can also set its value with the env var `%s`.\n" (env-var-name setting))
                   "Clear its value by calling\n\n"
-                  (format "    (%s nil)\n\n" (name setting))
+                  (format "    (%s nil)\n\n" (setting-name setting))
                   (format "Its default value is `%s`." (if (nil? default)
                                                          "nil"
                                                          default)))})
 
 (defn setting-fn
   "Create the automatically defined getter/setter function for settings defined by `defsetting`."
-  [^SettingDefinition setting]
+  [setting]
   (fn
     ([]
      (get setting))
@@ -309,18 +316,25 @@
   (events/publish-event :settings-update settings))
 
 
+(defn- obfuscated-env-var-value
+  "If SETTING was set via env var, return an obfuscated string like `USING $MB_MY_SETTING`.
+   This is meant to be user-facing (it is shown in the admin panel settings page)."
+  ^String [setting]
+  (when (env-var-value setting)
+    (format "Using $%s" (env-var-name setting))))
+
 (defn all
-  "Return a sequence of Settings maps, including value and description."
+  "Return a sequence of Settings maps, including value and description.
+   (For security purposes, this doesn't return the value of a setting if it was set via env var)."
   []
-  (println "ALL!" (sort (keys @registered-settings))) ; NOCOMMIT
-  (for [[k setting] @registered-settings
-        :let        [v       (get k)
-                     default (:default setting)]]
+  (for [[k setting] (sort-by first @registered-settings)
+        :let        [v (get k)]]
     {:key         k
-     :value       (when (not= v default)
+     :value       (when (not= v (env-var-value setting))
                     v)
      :description (:description setting)
-     :default     default}))
+     :default     (or (obfuscated-env-var-value setting)
+                      (:default setting))}))
 
 
 (defn- settings-list
@@ -331,6 +345,5 @@
         :when       (not (:internal? setting))]
     {:key         k
      :description (:description setting)
-     :default     (or (when (get-from-env-var setting)
-                        (format "Using $%s" (env-var-name setting)))
+     :default     (or (obfuscated-env-var-value setting)
                       (:default setting))}))
