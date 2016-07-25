@@ -8,7 +8,7 @@ Currently Metabase works with Google accounts for single sign on. As time goes o
 
 To let your team start signing in with Google you’ll first need to create an application through Google’s [developer console](https://console.developers.google.com/projectselector/apis/library).
 
-To create a new application follow the instructions from Google here. https://developers.google.com/identity/sign-in/web/devconsole-project]
+To create a new application follow [the instructions from Google here](https://developers.google.com/identity/sign-in/web/devconsole-project).
 
 Note that when creating the app you only need to specify the url of your Metabase install in the “Javascript Origins” field. You should leave the “redirect-url” blank.
 
@@ -20,6 +20,6 @@ Now existing Metabase users signed into a Google account that matches their Meta
 
 If you’ve added your Google client id to your Metabase settings you can also let users sign up on their own without creating accounts for them.
 
-To enable this, check the box on the Single Sign on Settings page and specify the email domain you want to allow. For example if you work at WidgetCo you could enter widgetco.com in the field to let anyone with a company email sign up on their own.
+To enable this, check the box on the Single Sign On Admin Settings page and specify the email domain you want to allow. For example if you work at WidgetCo you could enter widgetco.com in the field to let anyone with a company email sign up on their own.
 
-Note: Metabase accounts created with Single Sign on do not have passwords and must use Google to sign in to Metabase.
+Note: Metabase accounts created with Single Sign On do not have passwords and must use Google to sign in to Metabase.
