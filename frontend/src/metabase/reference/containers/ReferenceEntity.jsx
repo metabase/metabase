@@ -21,6 +21,7 @@ import IconBorder from "metabase/components/IconBorder.jsx";
 import Select from "metabase/components/Select.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
+import QueryButton from "metabase/query_builder/dataref/QueryButton.jsx";
 import RevisionMessageModal from "metabase/reference/components/RevisionMessageModal.jsx";
 
 import cx from "classnames";
@@ -55,6 +56,7 @@ const mapStateToProps = (state, props) => ({
     foreignKeys: getForeignKeys(state),
     isEditing: getIsEditing(state),
     hasSingleSchema: getHasSingleSchema(state),
+    hasQuestions: true,
     hasDisplayName: getHasDisplayName(state),
     hasRevisionHistory: getHasRevisionHistory(state)
 });
@@ -82,6 +84,7 @@ export default class ReferenceEntity extends Component {
         user: PropTypes.object.isRequired,
         foreignKeys: PropTypes.object,
         isEditing: PropTypes.bool,
+        hasQuestions: PropTypes.bool,
         startEditing: PropTypes.func.isRequired,
         endEditing: PropTypes.func.isRequired,
         startLoading: PropTypes.func.isRequired,
@@ -111,6 +114,7 @@ export default class ReferenceEntity extends Component {
             user,
             foreignKeys,
             isEditing,
+            hasQuestions,
             startEditing,
             endEditing,
             hasSingleSchema,
@@ -366,6 +370,31 @@ export default class ReferenceEntity extends Component {
                                                         </span>
                                                     }
                                                 </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+                            }
+                            { hasQuestions &&
+                                <li className="relative">
+                                    <div className={cx(D.detail)}>
+                                        <div className={D.detailBody}>
+                                            <div className={D.detailTitle}>
+                                                <span className={D.detailName}>Potentially Useful Questions</span>
+                                            </div>
+                                            <div className={R.usefulQuestions}>
+                                                    <QueryButton
+                                                        className="border-bottom pt1 pb1"
+                                                        text={`Number of ${entity.display_name || entity.name}`}
+                                                        icon="illustration-icon-table"
+                                                        link={`/q?${section.type}=${entity.id}`}
+                                                    />
+                                                    <QueryButton
+                                                        className="border-bottom pt1 pb1"
+                                                        text={`See raw data for ${entity.display_name || entity.name}`}
+                                                        icon="illustration-icon-table"
+                                                        link={`/q?${section.type}=${entity.id}`}
+                                                    />
                                             </div>
                                         </div>
                                     </div>

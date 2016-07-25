@@ -569,7 +569,7 @@
 }
 
 .DataRefererenceQueryButton-text {
-    max-width: 160px;
+    max-width: 100%;
 }
 
 .DataReference-paneCount {
