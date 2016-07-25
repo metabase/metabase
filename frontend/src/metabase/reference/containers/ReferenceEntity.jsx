@@ -38,6 +38,7 @@ import {
     getIsEditing,
     getHasDisplayName,
     getHasRevisionHistory,
+    getHasSingleSchema,
     getForeignKeys
 } from "../selectors";
 
@@ -53,6 +54,7 @@ const mapStateToProps = (state, props) => ({
     user: getUser(state),
     foreignKeys: getForeignKeys(state),
     isEditing: getIsEditing(state),
+    hasSingleSchema: getHasSingleSchema(state),
     hasDisplayName: getHasDisplayName(state),
     hasRevisionHistory: getHasRevisionHistory(state)
 });
@@ -90,6 +92,7 @@ export default class EntityItem extends Component {
         resetForm: PropTypes.func.isRequired,
         fields: PropTypes.object.isRequired,
         section: PropTypes.object.isRequired,
+        hasSingleSchema: PropTypes.bool,
         hasDisplayName: PropTypes.bool,
         hasRevisionHistory: PropTypes.bool,
         loading: PropTypes.bool,
@@ -110,6 +113,7 @@ export default class EntityItem extends Component {
             isEditing,
             startEditing,
             endEditing,
+            hasSingleSchema,
             hasDisplayName,
             hasRevisionHistory,
             handleSubmit,
@@ -177,7 +181,7 @@ export default class EntityItem extends Component {
                                 </IconBorder>
                             }
                         </div>
-                        { section.type === 'table' && !isEditing &&
+                        { section.type === 'table' && !hasSingleSchema && !isEditing &&
                             <div className={R.headerSchema}>{entity.schema}</div>
                         }
                         <div className={R.headerBody} style={isEditing ? {alignItems: "flex-start"} : {}}>

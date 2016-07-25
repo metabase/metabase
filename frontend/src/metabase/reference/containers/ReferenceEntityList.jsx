@@ -26,6 +26,7 @@ import {
     getSection,
     getData,
     getUser,
+    getHasSingleSchema,
     getError,
     getLoading
 } from "../selectors";
@@ -36,6 +37,7 @@ const mapStateToProps = (state, props) => ({
     section: getSection(state),
     entities: getData(state),
     user: getUser(state),
+    hasSingleSchema: getHasSingleSchema(state),
     loading: getLoading(state),
     loadingError: getError(state)
 });
@@ -85,6 +87,7 @@ export default class ReferenceEntityList extends Component {
             user,
             style,
             section,
+            hasSingleSchema,
             loadingError,
             loading
         } = this.props;
@@ -119,7 +122,7 @@ export default class ReferenceEntityList extends Component {
                 { () => Object.keys(entities).length > 0 ?
                     <div className="wrapper wrapper--trim">
                         <List>
-                            { section.type === "tables" ?
+                            { section.type === "tables" && !hasSingleSchema ?
                                 separateTablesBySchema(
                                     entities,
                                     section,

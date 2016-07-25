@@ -539,6 +539,13 @@ export const getBreadcrumbs = createSelector(
     buildBreadcrumbs
 )
 
+export const getHasSingleSchema = createSelector(
+    [getTablesByDatabase],
+    (tables) => tables && Object.keys(tables).length > 0 ?
+        Object.values(tables)
+            .every((table, index, tables) => table.schema === tables[0].schema) : true
+)
+
 export const getHasDisplayName = createSelector(
     [getSection],
     (section) =>
