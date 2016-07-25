@@ -188,49 +188,11 @@ function getSettingsGroupsForVisualization(visualization) {
     return groups;
 }
 
+// TODO: remove me
 export function getSettingsForVisualization_LEGACY(dbSettings, visualization) {
     var settings = angular.copy(dbSettings);
     var groups = _.union(_.keys(settings), getSettingsGroupsForVisualization(visualization));
     return getSettingsForGroups(settings, groups);
-}
-
-export function setLatitudeAndLongitude(settings, columnDefs) {
-    // latitude
-    var latitudeColumn,
-        latitudeColumnIndex;
-    columnDefs.forEach(function(col, index) {
-        if (col.special_type &&
-                col.special_type === "latitude" &&
-                latitudeColumn === undefined) {
-            latitudeColumn = col;
-            latitudeColumnIndex = index;
-        }
-    });
-
-    // longitude
-    var longitudeColumn,
-        longitudeColumnIndex;
-    columnDefs.forEach(function(col, index) {
-        if (col.special_type &&
-                col.special_type === "longitude" &&
-                longitudeColumn === undefined) {
-            longitudeColumn = col;
-            longitudeColumnIndex = index;
-        }
-    });
-
-    if (latitudeColumn && longitudeColumn) {
-        var settingsWithLatAndLon = angular.copy(settings);
-
-        settingsWithLatAndLon.map.latitude_source_table_field_id = latitudeColumn.id;
-        settingsWithLatAndLon.map.latitude_dataset_col_index = latitudeColumnIndex;
-        settingsWithLatAndLon.map.longitude_source_table_field_id = longitudeColumn.id;
-        settingsWithLatAndLon.map.longitude_dataset_col_index = longitudeColumnIndex;
-
-        return settingsWithLatAndLon;
-    } else {
-        return settings;
-    }
 }
 
 import React, { Component } from "react";

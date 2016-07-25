@@ -3,7 +3,6 @@
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
-import { setLatitudeAndLongitude } from "metabase/lib/visualization_settings";
 import { hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 
 import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
