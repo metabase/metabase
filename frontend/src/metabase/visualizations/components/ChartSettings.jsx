@@ -98,9 +98,6 @@ class ChartSettings extends Component {
                       { widgets && widgets.map((widget) =>
                           <Widget key={widget.id} {...widget} />
                       )}
-                      <pre>
-                        {JSON.stringify(this.state.settings, null, 2)}
-                      </pre>
                   </div>
                   <div className="Grid-cell relative">
                       <Visualization
