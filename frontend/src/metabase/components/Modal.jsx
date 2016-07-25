@@ -38,7 +38,7 @@ export default class Modal extends Component {
         }
     }
 
-    handleClickOutside() {
+    handleDismissal() {
         if (this.props.onClose) {
             this.props.onClose()
         }
@@ -46,7 +46,7 @@ export default class Modal extends Component {
 
     _modalComponent() {
         return (
-            <OnClickOutsideWrapper handleClickOutside={this.handleClickOutside.bind(this)}>
+            <OnClickOutsideWrapper handleDismissal={this.handleDismissal.bind(this)}>
                 <div className={this.props.className}>
                     {this.props.children}
                 </div>
