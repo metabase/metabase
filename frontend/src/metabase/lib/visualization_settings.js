@@ -138,7 +138,8 @@ var groupsForVisualizations = {
     'area': ['global', 'columns', 'chart', 'xAxis', 'yAxis', 'line', 'area'],
     'country': ['global', 'columns', 'chart', 'map'],
     'state': ['global', 'columns', 'chart', 'map'],
-    'pin_map': ['global', 'columns', 'chart', 'map']
+    'pin_map': ['global', 'columns', 'chart', 'map'],
+    'map': ['global', 'columns', 'chart', 'map']
 };
 
 export function getDefaultColor() {
@@ -238,7 +239,7 @@ import Toggle from "metabase/components/Toggle.jsx";
 
 const ChartSettingSelect = ({ value, onChange, options = [], isInitiallyOpen }) =>
     <Select
-        className="block"
+        className="block flex-full"
         value={_.findWhere(options, { value })}
         options={options}
         optionNameFn={(o) => o.name}
@@ -272,6 +273,7 @@ const ChartSettingToggle = ({ value, onChange }) =>
     />
 
 import Icon from "metabase/components/Icon";
+import cx from "classnames";
 
 const ChartSettingFieldPicker = ({ value = [], onChange, options, addAnother }) =>
     <div>
@@ -293,14 +295,14 @@ const ChartSettingFieldPicker = ({ value = [], onChange, options, addAnother }) 
                     }}
                     isInitiallyOpen={v == null}
                 />
-                { value.filter(v => v != null).length > 1 &&
-                    <Icon
-                        name="close"
-                        className="ml1 text-grey-4 text-brand-hover cursor-pointer"
-                        width={12} height={12}
-                        onClick={() => onChange([...value.slice(0, index), ...value.slice(index + 1)])}
-                    />
-                }
+                <Icon
+                    name="close"
+                    className={cx("ml1 text-grey-4 text-brand-hover cursor-pointer", {
+                        "disabled hidden": value.filter(v => v != null).length < 2
+                    })}
+                    width={12} height={12}
+                    onClick={() => onChange([...value.slice(0, index), ...value.slice(index + 1)])}
+                />
             </div>
         )}
         { addAnother &&
@@ -408,6 +410,7 @@ class ChartSettingsOrderedFields extends Component {
     }
 
     render() {
+        const { columnNames } = this.props;
         return (
             <div className="list">
                 {this.state.data.items.map((item, i) =>
@@ -421,7 +424,7 @@ class ChartSettingsOrderedFields extends Component {
                     >
                         <div className="flex align-center p1">
                             <CheckBox checked={item.enabled} onChange={(e) => this.setEnabled(i, e.target.checked)} />
-                            <span className="ml1 h4">{item.display_name}</span>
+                            <span className="ml1 h4">{columnNames[item.name]}</span>
                         </div>
                     </OrderedFieldListItem>
                 )}
@@ -430,7 +433,7 @@ class ChartSettingsOrderedFields extends Component {
   }
 }
 
-import { isMetric, isDimension } from "metabase/lib/schema_metadata";
+import { isNumeric, isMetric, isDimension, hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 
 function dimensionAndMetricsAreValid(dimension, metric, cols) {
     const colsByName = {};
@@ -510,6 +513,13 @@ function getDefaultDimensionsAndMetrics([{ data: { cols, rows } }]) {
     }
 }
 
+function getOptionFromColumn(col) {
+    return {
+        name: getFriendlyName(col),
+        value: col.name
+    };
+}
+
 const SETTINGS = {
     "graph.dimensions": {
         section: "Data",
@@ -529,7 +539,7 @@ const SETTINGS = {
         },
         getProps: ([{ card, data }], vizSettings) => {
             const value = vizSettings["graph.dimensions"];
-            const options = data.cols.filter(isDimension).map(c => ({ name: getFriendlyName(c), value: c.name }));
+            const options = data.cols.filter(isDimension).map(getOptionFromColumn);
             return {
                 options,
                 addAnother: (options.length > value.length && value.length < 2) ? "Add a series breakout..." : null
@@ -555,7 +565,7 @@ const SETTINGS = {
         },
         getProps: ([{ card, data }], vizSettings) => {
             const value = vizSettings["graph.dimensions"];
-            const options = data.cols.filter(isMetric).map(c => ({ name: getFriendlyName(c), value: c.name }));
+            const options = data.cols.filter(isMetric).map(getOptionFromColumn);
             return {
                 options,
                 addAnother: options.length > value.length ? "Add another series..." : null
@@ -754,9 +764,106 @@ const SETTINGS = {
         getHidden: (series, vizSettings) => vizSettings["table.pivot"],
         getDefault: ([{ data: { cols }}]) => cols.map(col => ({
             name: col.name,
-            display_name: col.display_name,
             enabled: true
-        }))
+        })),
+        getProps: ([{ data: { cols }}]) => ({
+            columnNames: cols.reduce((o, col) => ({ ...o, [col.name]: getFriendlyName(col)}), {})
+        })
+    },
+    "map.type": {
+        title: "Map type",
+        widget: ChartSettingSelect,
+        props: {
+            options: [
+                { name: "Pin map", value: "pin" },
+                { name: "Region map", value: "region" }
+            ]
+        },
+        getDefault: ([{ card, data: { cols } }]) => {
+            switch (card.display) {
+                case "state":
+                case "country":
+                    return "region";
+                case "pin_map":
+                    return "pin";
+                default:
+                    if (hasLatitudeAndLongitudeColumns(cols)) {
+                        return "pin";
+                    } else {
+                        return "region";
+                    }
+            }
+        }
+    },
+    "map.latitude_field": {
+        title: "Latitude field",
+        widget: ChartSettingSelect,
+        getDefault: ([{ card, data: { cols }}]) =>
+            (_.findWhere(cols, { special_type: "latitude" }) || {}).name,
+        getProps: ([{ card, data: { cols }}]) => ({
+            options: cols.filter(isNumeric).map(getOptionFromColumn)
+        }),
+        getHidden: (series, vizSettings) => vizSettings["map.type"] !== "pin"
+    },
+    "map.longitude_field": {
+        title: "Longitude field",
+        widget: ChartSettingSelect,
+        getDefault: ([{ card, data: { cols }}]) =>
+            (_.findWhere(cols, { special_type: "longitude" }) || {}).name,
+        getProps: ([{ card, data: { cols }}]) => ({
+            options: cols.filter(isNumeric).map(getOptionFromColumn)
+        }),
+        getHidden: (series, vizSettings) => vizSettings["map.type"] !== "pin"
+    },
+    "map.region": {
+        title: "Region map",
+        widget: ChartSettingSelect,
+        getDefault: ([{ card, data: { cols }}]) => {
+            switch (card.display) {
+                case "country":
+                    return "world_countries";
+                case "state":
+                default:
+                    return "us_states";
+            }
+        },
+        props: {
+            options: [
+                { name: "United States", value: "us_states" },
+                { name: "World", value: "world_countries" },
+            ]
+        },
+        getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region"
+    },
+    "map.metric": {
+        title: "Metric field",
+        widget: ChartSettingSelect,
+        getDefault: ([{ card, data: { cols }}]) =>
+            (_.find(cols, isMetric) || {}).name,
+        getProps: ([{ card, data: { cols }}]) => ({
+            options: cols.filter(isMetric).map(getOptionFromColumn)
+        }),
+        getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region"
+    },
+    "map.dimension": {
+        title: "Region field",
+        widget: ChartSettingSelect,
+        getDefault: ([{ card, data: { cols }}]) =>
+            (_.find(cols, isDimension) || {}).name,
+        getProps: ([{ card, data: { cols }}]) => ({
+            options: cols.filter(isDimension).map(getOptionFromColumn)
+        }),
+        getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region"
+    },
+    // TODO: translate legacy settings
+    "map.zoom": {
+        default: 9
+    },
+    "map.center_latitude": {
+        default: 37.7577 //defaults to SF ;-)
+    },
+    "map.center_longitude": {
+        default: -122.4376
     }
 };
 
@@ -766,7 +873,13 @@ const SETTINGS_PREFIXES_BY_CHART_TYPE = {
     bar: ["graph.", "stackable."],
     pie: ["pie."],
     scalar: ["scalar."],
-    table: ["table."]
+    table: ["table."],
+    map: ["map."]
+}
+
+// alias legacy map types
+for (const type of ["state", "country", "pin_map"]) {
+    SETTINGS_PREFIXES_BY_CHART_TYPE[type] = SETTINGS_PREFIXES_BY_CHART_TYPE["map"];
 }
 
 function getSetting(id, vizSettings, series) {

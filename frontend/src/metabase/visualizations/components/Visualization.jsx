@@ -49,6 +49,11 @@ export default class Visualization extends Component {
         onUpdateVisualizationSetting: (...args) => console.warn("onUpdateVisualizationSetting", args)
     };
 
+    componentWillReceiveProps() {
+        // clear the error so we can try to render again
+        this.setState({ error: null });
+    }
+
     onHoverChange(hovered) {
         const { renderInfo } = this.state;
         if (hovered) {

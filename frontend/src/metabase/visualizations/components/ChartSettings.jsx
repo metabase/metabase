@@ -47,6 +47,12 @@ class ChartSettings extends Component {
         this.setState({ currentTab: tab });
     }
 
+    onUpdateVisualizationSetting = (path, value) => {
+        this.onChangeSettings({
+            [path.join(".")]: value
+        });
+    }
+
     onChangeSettings = (newSettings) => {
         this.setState({
             settings: {
@@ -101,12 +107,7 @@ class ChartSettings extends Component {
                           className="spread"
                           series={series}
                           isEditing={true}
-                          // Table:
-                          setSortFn={this.props.setSortFn}
-                          cellIsClickableFn={this.props.cellIsClickableFn}
-                          cellClickedFn={this.props.cellClickedFn}
-                          onUpdateVisualizationSetting={this.props.onUpdateVisualizationSetting}
-                          onUpdateVisualizationSettings={this.props.onUpdateVisualizationSettings}
+                          onUpdateVisualizationSetting={this.onUpdateVisualizationSetting}
                       />
                   </div>
               </div>
