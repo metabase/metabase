@@ -85,8 +85,7 @@
 
 (defn- restore-cache-if-needed! []
   (when-not @cache
-    (reset! cache (u/prog1 (db/select-field->field :key :value Setting)
-                    (println "Restored cache:\n" (u/pprint-to-str 'green <>))))))
+    (reset! cache (db/select-field->field :key :value Setting))))
 
 
 ;;; ------------------------------------------------------------ get ------------------------------------------------------------
@@ -111,7 +110,7 @@
     (when (seq v)
       v)))
 
-(defn- get-from-db
+(defn- db-value
   "Get the value, if any, of SETTING-OR-NAME from the DB (using / restoring the cache as needed)."
   ^String [setting-or-name]
   (restore-cache-if-needed!)
@@ -128,12 +127,9 @@
    If the fetched value is an empty string it is considered to be unset and this function returns `nil`."
   ^String [setting-or-name]
   (let [setting (resolve-setting setting-or-name)
-        v       (or (u/prog1 (get-from-db setting)
-                      (when <> (println "get-from-db" <>)))
-                    (u/prog1 (env-var-value setting)
-                      (when <> (println "env-var-value" <>))) ; NOCOMMIT
-                    (u/prog1 (:default setting)
-                      (when <> (println ":default" <>))))]
+        v       (or (db-value setting)
+                    (env-var-value setting)
+                    (:default setting))]
     (when (seq v)
       v)))
 
@@ -162,7 +158,6 @@
   "Fetch the value of SETTING-OR-NAME. What this means depends on the Setting's `:getter`; by default, this looks for first for a corresponding env var,
    then checks the cache, then returns the default value of the Setting, if any."
   [setting-or-name]
-  (println "get" (u/format-color 'blue (setting-name setting-or-name))) ; NOCOMMIT
   ((:getter (resolve-setting setting-or-name))))
 
 
@@ -215,7 +210,6 @@
 
      (mandrill-api-key \"xyz123\")"
   [setting-or-name new-value]
-  (println (u/format-color 'magenta "%s -> %s" (setting-name (resolve-setting setting-or-name)) new-value)) ; NOCOMMIT
   ((:setter (resolve-setting setting-or-name)) new-value))
 
 
@@ -236,8 +230,7 @@
                      :internal?    false}
                     (dissoc setting :name :type :default)))
     (s/validate SettingDefinition <>)
-    (swap! registered-settings assoc setting-name <>)
-    (println "Registered Setting" setting-name))) ; NOCOMMIT
+    (swap! registered-settings assoc setting-name <>)))
 
 
 
