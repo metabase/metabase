@@ -75,7 +75,7 @@ const validate = (values, props) => props.hasRevisionHistory ?
     fields: ['name', 'display_name', 'description', 'revision_message', 'points_of_interest', 'caveats', 'how_is_this_calculated', 'special_type', 'fk_target_field_id'],
     validate
 })
-export default class EntityItem extends Component {
+export default class ReferenceEntity extends Component {
     static propTypes = {
         style: PropTypes.object.isRequired,
         entity: PropTypes.object.isRequired,
@@ -202,14 +202,14 @@ export default class EntityItem extends Component {
                                         defaultValue={entity.name}
                                     /> :
                                 [
-                                    <Ellipsified className={!section.headerLink && "flex-full"} tooltipMaxWidth="100%">
+                                    <Ellipsified key="1" className={!section.headerLink && "flex-full"} tooltipMaxWidth="100%">
                                         { hasDisplayName ?
                                             entity.display_name || entity.name :
                                             entity.name
                                         }
                                     </Ellipsified>,
                                     section.headerLink &&
-                                        <div className={cx("flex-full", S.headerButton)}>
+                                        <div key="2" className={cx("flex-full", S.headerButton)}>
                                             <Link
                                                 to={section.headerLink}
                                                 className={cx("Button", "Button--borderless", R.editButton)}

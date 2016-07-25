@@ -77,6 +77,7 @@ export default class ReferenceEntityList extends Component {
         entities: PropTypes.object.isRequired,
         user: PropTypes.object.isRequired,
         section: PropTypes.object.isRequired,
+        hasSingleSchema: PropTypes.bool,
         loading: PropTypes.bool,
         loadingError: PropTypes.object
     };
