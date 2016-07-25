@@ -230,7 +230,7 @@
                                                    (dissoc setting :name :type :default))))
     (s/validate SettingDefinition <>)
     (swap! registered-settings assoc setting-name <>)
-    (println "Registered Setting" setting-name))) ; NOCOMMIT
+    (println "Registered Setting" setting-name "\n" (u/pprint-to-str <>)))) ; NOCOMMIT
 
 
 
@@ -312,14 +312,15 @@
 (defn all
   "Return a sequence of Settings maps, including value and description."
   []
-  (restore-cache-if-needed!)
-  (let [registered @registered-settings]
-    (for [[k v] @cache
-          :let  [info (get registered k)]]
-      {:key         (keyword k)
-       :value       v
-       :description (:description info)
-       :default     (:default info)})))
+  (println "ALL!" (sort (keys @registered-settings))) ; NOCOMMIT
+  (for [[k setting] @registered-settings
+        :let        [v       (get k)
+                     default (:default setting)]]
+    {:key         k
+     :value       (when (not= v default)
+                    v)
+     :description (:description setting)
+     :default     default}))
 
 
 (defn- settings-list

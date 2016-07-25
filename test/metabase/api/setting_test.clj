@@ -9,10 +9,10 @@
             [metabase.test.data.users :refer :all]))
 
 ;; ## Helper Fns
-(defn- fetch-all-settings  []
-  (for [setting ((user->client :crowberto) :get 200 "setting")
-        :when   (re-find #"^test-setting-\d$" (name (:key setting)))]
-    setting))
+(defn- fetch-test-settings  []
+  (sort-by :key (for [setting ((user->client :crowberto) :get 200 "setting")
+                      :when   (re-find #"^test-setting-\d$" (name (:key setting)))]
+                  setting)))
 
 (defn- fetch-setting [setting-name]
   ((user->client :crowberto) :get 200 (format "setting/%s" (name setting-name))))
@@ -23,7 +23,7 @@
  [{:key "test-setting-1", :value nil,     :description "Test setting - this only shows up in dev (1)", :default "Using $MB_TEST_SETTING_1"}
   {:key "test-setting-2", :value "FANCY", :description "Test setting - this only shows up in dev (2)", :default "[Default Value]"}]
  (do (set-settings! nil "FANCY")
-     (fetch-all-settings)))
+     (fetch-test-settings)))
 
 ;; Check that non-superusers are denied access
 (expect "You don't have permissions to do that."
@@ -37,7 +37,7 @@
   {:key "test-setting-2", :value "Great gobs of goose shit!?", :description "Test setting - this only shows up in dev (2)", :default "[Default Value]"}]
  (do ((user->client :crowberto) :put 200 "setting" {:test-setting-1 "Jackpot!"
                                                     :test-setting-2 "Great gobs of goose shit!?"})
-     (fetch-all-settings)))
+     (fetch-test-settings)))
 
 ;; Check that non-superusers are denied access
 (expect
