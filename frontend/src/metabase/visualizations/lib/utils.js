@@ -190,7 +190,6 @@ function computeColumnCardinality(cols, rows) {
     for (const [index, col] of Object.entries(cols)) {
         if (col.cardinality == null) {
             col.cardinality = dataset.dimension(d => d[index]).group().size();
-            console.log("CARDINALITY OF ", col.name, "IS", col.cardinality);
         }
     }
 }
