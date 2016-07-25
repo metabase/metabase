@@ -36,6 +36,7 @@ import {
     getError,
     getLoading,
     getUser,
+    getHasQuestions,
     getIsEditing,
     getHasDisplayName,
     getHasRevisionHistory,
@@ -56,7 +57,7 @@ const mapStateToProps = (state, props) => ({
     foreignKeys: getForeignKeys(state),
     isEditing: getIsEditing(state),
     hasSingleSchema: getHasSingleSchema(state),
-    hasQuestions: true,
+    hasQuestions: getHasQuestions(state),
     hasDisplayName: getHasDisplayName(state),
     hasRevisionHistory: getHasRevisionHistory(state)
 });
@@ -383,18 +384,16 @@ export default class ReferenceEntity extends Component {
                                                 <span className={D.detailName}>Potentially Useful Questions</span>
                                             </div>
                                             <div className={R.usefulQuestions}>
+                                                { section.questions.map((question, index, questions) =>
                                                     <QueryButton
-                                                        className="border-bottom pt1 pb1"
-                                                        text={`Number of ${entity.display_name || entity.name}`}
-                                                        icon="illustration-icon-table"
-                                                        link={`/q?${section.type}=${entity.id}`}
+                                                        className={cx(
+                                                            index !== questions.length - 1 && "border-bottom",
+                                                            "pt1",
+                                                            "pb1"
+                                                        )}
+                                                        {...question}
                                                     />
-                                                    <QueryButton
-                                                        className="border-bottom pt1 pb1"
-                                                        text={`See raw data for ${entity.display_name || entity.name}`}
-                                                        icon="illustration-icon-table"
-                                                        link={`/q?${section.type}=${entity.id}`}
-                                                    />
+                                                )}
                                             </div>
                                         </div>
                                     </div>
