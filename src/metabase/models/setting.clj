@@ -56,7 +56,7 @@
 (def ^:private SettingDefinition
   {:setting-name s/Keyword
    :description  s/Str            ; used for docstring and is user-facing in the admin panel
-   :default      (s/maybe s/Str)  ; this is a string because in the DB all settings are stored as strings; different getters can handle type conversion *from* string
+   :default      s/Any            ; this is a string because in the DB all settings are stored as strings; different getters can handle type conversion *from* string
    :setting-type Type             ; :string or :boolean
    :getter       clojure.lang.IFn
    :setter       clojure.lang.IFn
@@ -129,7 +129,7 @@
   (let [setting (resolve-setting setting-or-name)
         v       (or (db-value setting)
                     (env-var-value setting)
-                    (:default setting))]
+                    (str (:default setting)))]
     (when (seq v)
       v)))
 
@@ -223,8 +223,7 @@
              (merge {:setting-name setting-name
                      :description  nil
                      :setting-type setting-type
-                     :default      (when default
-                                     (str default))
+                     :default      default
                      :getter       (partial (default-getter-for-type setting-type) setting-name)
                      :setter       (partial (default-setter-for-type setting-type) setting-name)
                      :internal?    false}
