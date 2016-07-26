@@ -14,7 +14,7 @@ import _ from "underscore";
 import { augmentDatabase, augmentTable } from "metabase/lib/table";
 import { setRequestState, clearRequestState } from "./requests";
 
-const MetabaseApi = new AngularResourceProxy("Metabase", ["db_list", "db_update", "db_metadata", "table_update", "table_query_metadata", "field_update"]);
+const MetabaseApi = new AngularResourceProxy("Metabase", ["db_list", "db_update", "db_metadata", "table_list", "table_update", "table_query_metadata", "field_update"]);
 const MetricApi = new AngularResourceProxy("Metric", ["list", "update"]);
 const SegmentApi = new AngularResourceProxy("Segment", ["list", "update"]);
 const RevisionApi = new AngularResourceProxy("Revisions", ["get"]);
@@ -240,6 +240,24 @@ export const updateTable = createThunkAction(UPDATE_TABLE, function(table) {
     };
 });
 
+const FETCH_TABLES = "metabase/metadata/FETCH_TABLES";
+export const fetchTables = createThunkAction(FETCH_TABLES, (reload = false) => {
+    return async (dispatch, getState) => {
+        const requestStatePath = ["metadata", "tables"];
+        const existingStatePath = requestStatePath;
+        const getData = async () => {
+            const tables = await MetabaseApi.table_list();
+            const tableMap = resourceListToMap(tables);
+            const existingTables = i.getIn(getState(), existingStatePath);
+            // to ensure existing tables with fetched metadata doesn't get
+            // overwritten when loading out of order, unless explicitly reloading
+            return {...tableMap, ...existingTables};
+        };
+
+        return await fetchData({dispatch, getState, requestStatePath, existingStatePath, getData, reload});
+    };
+});
+
 const FETCH_TABLE_METADATA = "metabase/metadata/FETCH_TABLE_METADATA";
 export const fetchTableMetadata = createThunkAction(FETCH_TABLE_METADATA, function(tableId, reload = false) {
     return async function(dispatch, getState) {
@@ -262,6 +280,7 @@ export const fetchTableMetadata = createThunkAction(FETCH_TABLE_METADATA, functi
 
 const tables = handleActions({
     [UPDATE_TABLE]: { next: (state, { payload }) => payload },
+    [FETCH_TABLES]: { next: (state, { payload }) => payload },
     [FETCH_TABLE_METADATA]: { next: (state, { payload }) => ({ ...state, ...payload.tables }) },
     [FETCH_DATABASE_METADATA]: { next: (state, { payload }) => ({ ...state, ...payload.tables }) }
 }, {});

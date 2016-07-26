@@ -71,18 +71,18 @@ const referenceSections = {
 
 const getReferenceSections = (state) => referenceSections;
 
-const getMetricSections = (metric, user) => metric ? {
+const getMetricSections = (metric, table, user) => metric ? {
     [`/reference/metrics/${metric.id}`]: {
         id: `/reference/metrics/${metric.id}`,
         name: 'Details',
         update: 'updateMetric',
         type: 'metric',
         breadcrumb: `${metric.name}`,
-        fetch: {fetchMetrics: []},
+        fetch: {fetchMetrics: [], fetchTables: []},
         get: 'getMetric',
         icon: "document",
         headerIcon: "ruler",
-        headerLink: `/q?table=${metric.table_id}&metric=${metric.id}`,
+        headerLink: `/q?db=${table && table.db_id}&table=${metric.table_id}&metric=${metric.id}`,
         parent: referenceSections[`/reference/metrics`]
     },
     [`/reference/metrics/${metric.id}/questions`]: {
@@ -92,12 +92,12 @@ const getMetricSections = (metric, user) => metric ? {
             message: `Questions about this metric will appear here as they're added`,
             icon: "all",
             action: "Ask a question",
-            link: `/q?table=${metric.table_id}&metric=${metric.id}`
+            link: `/q?db=${table && table.db_id}&table=${metric.table_id}&metric=${metric.id}`
         },
         type: 'questions',
         sidebar: 'Questions about this metric',
         breadcrumb: `${metric.name}`,
-        fetch: {fetchMetrics: [], fetchQuestions: []},
+        fetch: {fetchMetrics: [], fetchTables: [], fetchQuestions: []},
         get: 'getMetricQuestions',
         icon: "all",
         parent: referenceSections[`/reference/metrics`]
@@ -115,18 +115,18 @@ const getMetricSections = (metric, user) => metric ? {
     }
 } : {};
 
-const getSegmentSections = (segment, user) => segment ? {
+const getSegmentSections = (segment, table, user) => segment ? {
     [`/reference/segments/${segment.id}`]: {
         id: `/reference/segments/${segment.id}`,
         name: 'Details',
         update: 'updateSegment',
         type: 'segment',
         breadcrumb: `${segment.name}`,
-        fetch: {fetchSegments: []},
+        fetch: {fetchSegments: [], fetchTables: []},
         get: 'getSegment',
         icon: "document",
         headerIcon: "clipboard",
-        headerLink: `/q?table=${segment.table_id}&segment=${segment.id}`,
+        headerLink: `/q?db=${table && table.db_id}&table=${segment.table_id}&segment=${segment.id}`,
         parent: referenceSections[`/reference/segments`]
     },
     [`/reference/segments/${segment.id}/fields`]: {
@@ -150,12 +150,12 @@ const getSegmentSections = (segment, user) => segment ? {
             message: `Questions about this segment will appear here as they're added`,
             icon: "all",
             action: "Ask a question",
-            link: `/q?table=${segment.table_id}&segment=${segment.id}`
+            link: `/q?db=${table && table.db_id}&table=${segment.table_id}&segment=${segment.id}`
         },
         type: 'questions',
         sidebar: 'Questions about this segment',
         breadcrumb: `${segment.name}`,
-        fetch: {fetchSegments: [], fetchQuestions: []},
+        fetch: {fetchSegments: [], fetchTables: [], fetchQuestions: []},
         get: 'getSegmentQuestions',
         icon: "all",
         parent: referenceSections[`/reference/segments`]
@@ -229,7 +229,7 @@ const getTableSections = (database, table) => database && table ? {
         get: 'getTable',
         icon: "document",
         headerIcon: "table2",
-        headerLink: `/q?table=${table.id}`,
+        headerLink: `/q?db=${table.db_id}&table=${table.id}`,
         parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
     },
     [`/reference/databases/${database.id}/tables/${table.id}/fields`]: {
@@ -253,7 +253,7 @@ const getTableSections = (database, table) => database && table ? {
             message: `Questions about this table will appear here as they're added`,
             icon: "all",
             action: "Ask a question",
-            link: `/q?table=${table.id}`
+            link: `/q?db=${table.db_id}&table=${table.id}`
         },
         type: 'questions',
         sidebar: 'Questions about this table',
@@ -327,6 +327,10 @@ const getTable = createSelector(
 const getTableBySegment = createSelector(
     [getSegment, getTables],
     (segment, tables) => segment ? tables[segment.table_id] : {}
+);
+const getTableByMetric = createSelector(
+    [getMetric, getTables],
+    (metric, tables) => metric ? tables[metric.table_id] : {}
 );
 
 export const getFieldId = (state) => Number.parseInt(state.router.params.fieldId);
@@ -431,19 +435,19 @@ export const getForeignKeys = createSelector(
 )
 
 export const getSections = createSelector(
-    [getSectionId, getMetric, getSegment, getDatabase, getTable, getField, getFieldBySegment, getUser, getReferenceSections],
-    (sectionId, metric, segment, database, table, field, fieldBySegment, user, referenceSections) => {
+    [getSectionId, getMetric, getSegment, getDatabase, getTable, getField, getFieldBySegment, getTableBySegment, getTableByMetric, getUser, getReferenceSections],
+    (sectionId, metric, segment, database, table, field, fieldBySegment, tableBySegment, tableByMetric, user, referenceSections) => {
         // can be simplified if we had a single map of all sections
         if (referenceSections[sectionId]) {
             return referenceSections;
         }
 
-        const metricSections = getMetricSections(metric, user);
+        const metricSections = getMetricSections(metric, tableByMetric, user);
         if (metricSections[sectionId]) {
             return metricSections;
         }
 
-        const segmentSections = getSegmentSections(segment, user);
+        const segmentSections = getSegmentSections(segment, tableBySegment, user);
         if (segmentSections[sectionId]) {
             return segmentSections;
         }
