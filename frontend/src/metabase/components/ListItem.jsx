@@ -13,7 +13,7 @@ import pure from "recompose/pure";
 const ListItem = ({ index, name, description, placeholder, url, icon }) =>
     <div className={cx(S.item)}>
         <div className={S.leftIcons}>
-            { icon && <Icon className={S.chartIcon} name={icon} width={20} height={20} /> }
+            { icon && <Icon className={S.chartIcon} name={icon} size={20} /> }
         </div>
         <div className={S.itemBody} style={ index === 0 ? {borderTop: 'none'} : {}}>
             <div className={S.itemTitle}>

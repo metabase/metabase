@@ -26,7 +26,7 @@ const Field = ({
 }) => {
     return <div className={cx(S.item)}>
         <div className={S.leftIcons}>
-            { icon && <Icon className={S.chartIcon} name={icon} width={20} height={20} /> }
+            { icon && <Icon className={S.chartIcon} name={icon} size={20} /> }
         </div>
         <div className={S.itemBody} style={{maxWidth: "100%", borderTop: "none"}}>
             <div className={F.field}>

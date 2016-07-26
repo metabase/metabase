@@ -118,9 +118,9 @@ export default class DashCardCardParameterMapper extends Component {
                                 }
                                 </span>
                                 { selected ?
-                                    <Icon className="flex-align-right" name="close" width={16} height={16} onClick={(e) => { this.onChange(null); e.stopPropagation(); }}/>
+                                    <Icon className="flex-align-right" name="close" size={16} onClick={(e) => { this.onChange(null); e.stopPropagation(); }}/>
                                 : !disabled ?
-                                    <Icon className="flex-align-right" name="chevrondown" width={16} height={16} />
+                                    <Icon className="flex-align-right" name="chevrondown" size={16} />
                                 : null }
                             </button>
                         </Tooltip>
@@ -132,7 +132,7 @@ export default class DashCardCardParameterMapper extends Component {
                         sections={sections}
                         onChange={this.onChange}
                         itemIsSelected={(item) => _.isEqual(item.target, target)}
-                        renderItemIcon={(item) => <Icon name={item.icon || "unknown"} width={18} height={18} />}
+                        renderItemIcon={(item) => <Icon name={item.icon || "unknown"} size={18} />}
                         alwaysExpanded={true}
                         hideSingleSectionTitle={!hasFkOption}
                     />

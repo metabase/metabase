@@ -8,7 +8,7 @@ const EmptyState = ({ title, message, icon, image, action, link }) =>
             <h2 className="text-brand mb4">{title}</h2>
         }
         { icon &&
-            <Icon name={icon} width={40} height={40} />
+            <Icon name={icon} size={40} />
         }
         { image &&
             <img src={`${image}.png`} height="250px" alt={message} srcSet={`${image}@2x.png 2x`} />

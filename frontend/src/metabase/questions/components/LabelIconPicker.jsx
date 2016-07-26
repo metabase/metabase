@@ -114,7 +114,7 @@ export default class LabelIconPicker extends Component {
 const LabelIconButton = ({ value = "#eee" }) =>
     <span className={S.dropdownButton}>
         <LabelIcon icon={value} size={28} />
-        <Icon className={S.chevron} name="chevrondown" width={14} height={14} />
+        <Icon className={S.chevron} name="chevrondown" size={14} />
     </span>
 
 LabelIconButton.propTypes = {

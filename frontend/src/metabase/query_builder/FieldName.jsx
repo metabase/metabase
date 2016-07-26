@@ -34,7 +34,7 @@ export default class FieldName extends Component {
             // fk path
             for (let [index, fkField] of Object.entries(fieldTarget.path)) {
                 parts.push(<span key={"fkName"+index}>{stripId(fkField.display_name)}</span>);
-                parts.push(<span key={"fkIcon"+index} className="px1"><Icon name="connections" width="10" height="10" /></span>);
+                parts.push(<span key={"fkIcon"+index} className="px1"><Icon name="connections" size={10} /></span>);
             }
             // target field itself
             // using i.getIn to avoid exceptions when field is undefined
@@ -54,7 +54,7 @@ export default class FieldName extends Component {
                 </div>
                 { this.props.removeField &&
                     <a className="text-grey-2 no-decoration pr1 flex align-center" onClick={this.props.removeField}>
-                        <Icon name='close' width="14px" height="14px" />
+                        <Icon name='close' size={14} />
                     </a>
                 }
             </div>

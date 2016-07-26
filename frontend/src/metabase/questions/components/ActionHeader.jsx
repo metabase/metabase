@@ -31,7 +31,7 @@ const ActionHeader = ({ visibleCount, selectedCount, allAreSelected, sectionIsAr
                         <span className={S.actionButton}>
                             <Icon name="label" />
                             Labels
-                            <Icon name="chevrondown" width={12} height={12} />
+                            <Icon name="chevrondown" size={12} />
                         </span>
                     }
                     labels={labels}

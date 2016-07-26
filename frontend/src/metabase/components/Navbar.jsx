@@ -46,7 +46,7 @@ export default class Navbar extends Component {
             <nav className="AdminNav">
                 <div className="wrapper flex align-center">
                     <div className="NavTitle flex align-center">
-                        <Icon name={'gear'} className="AdminGear" width={22} height={22}></Icon>
+                        <Icon name={'gear'} className="AdminGear" size={22}></Icon>
                         <span className="NavItem-text ml1 hide sm-show">Site Administration</span>
                     </div>
 
@@ -107,7 +107,7 @@ export default class Navbar extends Component {
                             <a data-metabase-event={"Navbar;Dashboard Dropdown;Toggle"} style={this.styles.navButton} className={cx("NavDropdown-button NavItem text-white text-bold cursor-pointer px2 flex align-center transition-background", {"NavItem--selected": this.isActive("/dash/")})}>
                                 <span className="NavDropdown-button-layer">
                                     Dashboards
-                                    <Icon className="ml1" name={'chevrondown'} width={8} height={8}></Icon>
+                                    <Icon className="ml1" name={'chevrondown'} size={8}></Icon>
                                 </span>
                             </a>
                         </DashboardsDropdown>

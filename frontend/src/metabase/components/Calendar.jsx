@@ -87,13 +87,13 @@ export default class Calendar extends Component {
         return (
             <div className="Calendar-header flex align-center">
                 <div className="bordered rounded p1 cursor-pointer transition-border border-hover px1" onClick={this.previous}>
-                    <Icon name="chevronleft" width="10" height="12" />
+                    <Icon name="chevronleft" size={10} />
                 </div>
                 <span className="flex-full" />
                 <h4 className="bordered border-hover cursor-pointer rounded p1" onClick={this.cycleMode}>{this.state.current.format("MMMM YYYY")}</h4>
                 <span className="flex-full" />
                 <div className="bordered border-hover rounded p1 transition-border cursor-pointer px1" onClick={this.next}>
-                    <Icon name="chevronright" width="10" height="12" />
+                    <Icon name="chevronright" size={10} />
                 </div>
             </div>
         )

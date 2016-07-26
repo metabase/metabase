@@ -38,7 +38,7 @@ const ReferenceHeader = ({ section, user, isEditing, startEditing }) =>
                             className={cx("Button", "Button--borderless", R.editButton)}
                         >
                             <div className="flex align-center relative">
-                                <Icon name="pencil" width="16px" height="16px" />
+                                <Icon name="pencil" size={16} />
                                 <span className="ml1">Edit</span>
                             </div>
                         </a>

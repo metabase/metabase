@@ -24,7 +24,7 @@ export default class ListSearchField extends Component {
         return (
             <div className={className}>
                 <span className="px1">
-                    <Icon name="search" width="16" height="16"/>
+                    <Icon name="search" size={16}/>
                 </span>
                 <input
                     className={inputClassName}

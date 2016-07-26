@@ -131,7 +131,7 @@ export default class GuiQueryEditor extends Component {
     renderAddIcon(targetRefName) {
         return (
             <IconBorder borderRadius="3px" ref={targetRefName}>
-                <Icon name="add" width="14px" height="14px" />
+                <Icon name="add" size={14} />
             </IconBorder>
         )
     }

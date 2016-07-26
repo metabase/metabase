@@ -82,7 +82,7 @@ class BrowserSelect extends Component {
                 triggerElement={
                     <div className={"flex align-center " + (!this.props.value ? " text-grey-3" : "")}>
                         <span className="mr1">{selectedName}</span>
-                        <Icon className="flex-align-right" name="chevrondown" width={12} height={12} />
+                        <Icon className="flex-align-right" name="chevrondown" size={12} />
                     </div>
                 }
                 triggerClasses={cx("AdminSelect", className)}
@@ -135,7 +135,7 @@ export class Option extends Component {
                     "disabled": disabled
                 })}
             >
-                <Icon name="check"  width="14" height="14"/>
+                <Icon name="check"  size={14}/>
                 {children}
             </div>
         );
@@ -171,7 +171,7 @@ class LegacySelect extends Component {
         var triggerElement = (
             <div className={"flex align-center " + (!this.props.value ? " text-grey-3" : "")}>
                 <span className="mr1">{selectedName}</span>
-                <Icon className="flex-align-right" name="chevrondown" width={12} height={12}/>
+                <Icon className="flex-align-right" name="chevrondown" size={12}/>
             </div>
         );
 

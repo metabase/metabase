@@ -60,7 +60,7 @@ export default class PulseListChannel extends Component {
 
         return (
             <div className="h4 text-grey-4 py2 flex align-center">
-                { channelIcon && <Icon className="mr1" name={channelIcon} width={24} height={24}/> }
+                { channelIcon && <Icon className="mr1" name={channelIcon} size={24}/> }
                 <span>
                     {channelVerb + " "}
                     <strong>{channelSchedule}</strong>
@@ -87,11 +87,11 @@ export default class PulseListChannel extends Component {
                         { subscribed ?
                             <div className="flex align-center rounded bg-green text-white text-bold">
                                 <div className="pl2">You get this {channel.channel_type}</div>
-                                <Icon className="p2 text-grey-1 text-white-hover cursor-pointer" name="close" width={12} height={12} onClick={this.unsubscribe}/>
+                                <Icon className="p2 text-grey-1 text-white-hover cursor-pointer" name="close" size={12} onClick={this.unsubscribe}/>
                             </div>
                         :
                             <div className="flex align-center rounded bordered bg-white text-default text-bold cursor-pointer" onClick={this.subscribe}>
-                                <Icon className="p2" name="add" width={12} height={12}/>
+                                <Icon className="p2" name="add" size={12}/>
                                 <div className="pr2">Get this {channel.channel_type}</div>
                             </div>
                         }
