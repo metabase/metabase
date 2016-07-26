@@ -1,5 +1,6 @@
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
+import cx from "classnames";
 
 import ReactCSSTransitionGroup from "react-addons-css-transition-group";
 
@@ -12,7 +13,7 @@ export default class Modal extends Component {
 
     static defaultProps = {
         className: "Modal",
-        backdropClassName: "Modal-backdrop flex justify-center align-center",
+        backdropClassName: "Modal-backdrop",
         isOpen: true
     };
 
@@ -47,7 +48,7 @@ export default class Modal extends Component {
     _modalComponent() {
         return (
             <OnClickOutsideWrapper handleDismissal={this.handleDismissal.bind(this)}>
-                <div className={this.props.className}>
+                <div className={cx(this.props.className, 'relative bordered bg-white rounded')}>
                     {this.props.children}
                 </div>
             </OnClickOutsideWrapper>
@@ -55,10 +56,12 @@ export default class Modal extends Component {
     }
 
     _renderPopover() {
+        const { backdropClassName, isOpen, style } = this.props;
+        const backdropClassnames = 'flex justify-center align-center fixed top left bottom right';
         ReactDOM.render(
             <ReactCSSTransitionGroup transitionName="Modal" transitionAppear={true} transitionAppearTimeout={250} transitionEnterTimeout={250} transitionLeaveTimeout={250}>
-                { this.props.isOpen &&
-                    <div key="modal" className={this.props.backdropClassName} style={this.props.style}>
+                { isOpen &&
+                    <div key="modal" className={cx(backdropClassName, backdropClassnames)} style={style}>
                         {this._modalComponent()}
                     </div>
                 }
