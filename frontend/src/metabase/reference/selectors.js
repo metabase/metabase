@@ -30,8 +30,7 @@ const referenceSections = {
         // mapping of propname to args of dispatch function
         fetch: {fetchMetrics: []},
         get: 'getMetrics',
-        icon: "ruler",
-        headerIcon: "ruler"
+        icon: "ruler"
     },
     [`/reference/segments`]: {
         id: `/reference/segments`,
@@ -47,8 +46,7 @@ const referenceSections = {
         breadcrumb: "Segments",
         fetch: {fetchSegments: []},
         get: 'getSegments',
-        icon: "segment",
-        headerIcon: "segment"
+        icon: "segment"
     },
     [`/reference/databases`]: {
         id: `/reference/databases`,
@@ -65,7 +63,7 @@ const referenceSections = {
         fetch: {fetchDatabases: []},
         get: 'getDatabases',
         icon: "database",
-        headerIcon: "database"
+        itemIcon: "database"
     }
 };
 
@@ -100,6 +98,7 @@ const getMetricSections = (metric, table, user) => metric ? {
         fetch: {fetchMetrics: [], fetchTables: [], fetchQuestions: []},
         get: 'getMetricQuestions',
         icon: "all",
+        headerIcon: "ruler",
         parent: referenceSections[`/reference/metrics`]
     },
     [`/reference/metrics/${metric.id}/revisions`]: {
@@ -111,6 +110,7 @@ const getMetricSections = (metric, table, user) => metric ? {
         fetch: {fetchMetricRevisions: [metric.id]},
         get: 'getMetricRevisions',
         icon: "history",
+        headerIcon: "ruler",
         parent: referenceSections[`/reference/metrics`]
     }
 } : {};
@@ -125,7 +125,7 @@ const getSegmentSections = (segment, table, user) => segment ? {
         fetch: {fetchSegments: [], fetchTables: []},
         get: 'getSegment',
         icon: "document",
-        headerIcon: "clipboard",
+        headerIcon: "segment",
         headerLink: `/q?db=${table && table.db_id}&table=${segment.table_id}&segment=${segment.id}`,
         parent: referenceSections[`/reference/segments`]
     },
@@ -141,6 +141,7 @@ const getSegmentSections = (segment, table, user) => segment ? {
         get: "getFieldsBySegment",
         breadcrumb: `${segment.name}`,
         icon: "fields",
+        headerIcon: "segment",
         parent: referenceSections[`/reference/segments`]
     },
     [`/reference/segments/${segment.id}/questions`]: {
@@ -158,6 +159,7 @@ const getSegmentSections = (segment, table, user) => segment ? {
         fetch: {fetchSegments: [], fetchTables: [], fetchQuestions: []},
         get: 'getSegmentQuestions',
         icon: "all",
+        headerIcon: "segment",
         parent: referenceSections[`/reference/segments`]
     },
     [`/reference/segments/${segment.id}/revisions`]: {
@@ -169,6 +171,7 @@ const getSegmentSections = (segment, table, user) => segment ? {
         fetch: {fetchSegmentRevisions: [segment.id]},
         get: 'getSegmentRevisions',
         icon: "history",
+        headerIcon: "segment",
         parent: referenceSections[`/reference/segments`]
     }
 } : {};
@@ -214,6 +217,7 @@ const getDatabaseSections = (database) => database ? {
         fetch: {fetchDatabaseMetadata: [database.id]},
         get: 'getTablesByDatabase',
         icon: "table2",
+        headerIcon: "database",
         parent: referenceSections[`/reference/databases`]
     }
 } : {};
@@ -244,6 +248,7 @@ const getTableSections = (database, table) => database && table ? {
         fetch: {fetchDatabaseMetadata: [database.id]},
         get: "getFieldsByTable",
         icon: "fields",
+        headerIcon: "table2",
         parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
     },
     [`/reference/databases/${database.id}/tables/${table.id}/questions`]: {
@@ -261,6 +266,7 @@ const getTableSections = (database, table) => database && table ? {
         fetch: {fetchDatabaseMetadata: [database.id], fetchQuestions: []},
         get: 'getTableQuestions',
         icon: "all",
+        headerIcon: "table2",
         parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
     }
 } : {};

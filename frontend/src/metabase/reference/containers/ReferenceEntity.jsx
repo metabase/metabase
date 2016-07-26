@@ -167,6 +167,7 @@ export default class ReferenceEntity extends Component {
                         </div>
                     </div>
                 }
+                { /* NOTE: this doesn't currently use ReferenceHeader since it is much more complicated */ }
                 <div className="wrapper wrapper--trim">
                     <div className={cx("relative", S.header)}>
                         <div className={S.leftIcons}>

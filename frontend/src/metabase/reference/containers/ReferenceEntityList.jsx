@@ -10,13 +10,12 @@ import S from "metabase/components/List.css";
 import R from "metabase/reference/Reference.css";
 
 import List from "metabase/components/List.jsx";
-import Icon from "metabase/components/Icon.jsx";
-import IconBorder from "metabase/components/IconBorder.jsx";
-import Ellipsified from "metabase/components/Ellipsified.jsx";
 import ListItem from "metabase/components/ListItem.jsx";
 import EmptyState from "metabase/components/EmptyState.jsx";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+
+import ReferenceHeader from "../components/ReferenceHeader.jsx";
 
 import {
     separateTablesBySchema
@@ -60,9 +59,9 @@ const createListItem = (entity, index, section) =>
                 `${section.id}/${entity.id}` :
                 `/card/${entity.id}`
             }
-            icon={section.type !== 'questions' ?
-                null :
-                (visualizations.get(entity.display)||{}).iconName
+            icon={section.type === 'questions' ?
+                (visualizations.get(entity.display)||{}).iconName :
+                section.icon
             }
         />
     </li>;
@@ -95,30 +94,7 @@ export default class ReferenceEntityList extends Component {
 
         return (
             <div style={style} className="full">
-                <div className="wrapper wrapper--trim">
-                    <div className={S.header}>
-                        <div className={S.leftIcons}>
-                            { section.headerIcon &&
-                                <IconBorder
-                                    borderWidth="0"
-                                    style={{backgroundColor: "#E9F4F8"}}
-                                >
-                                    <Icon
-                                        className="text-brand"
-                                        name={section.headerIcon}
-                                        width={24}
-                                        height={24}
-                                    />
-                                </IconBorder>
-                            }
-                        </div>
-                        <div className={R.headerBody}>
-                            <Ellipsified className="flex-full" tooltipMaxWidth="100%">
-                                {section.name}
-                            </Ellipsified>
-                        </div>
-                    </div>
-                </div>
+                <ReferenceHeader section={section} />
                 <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>
                 { () => Object.keys(entities).length > 0 ?
                     <div className="wrapper wrapper--trim">

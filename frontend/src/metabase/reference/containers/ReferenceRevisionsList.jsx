@@ -23,6 +23,7 @@ import {
 import Revision from "metabase/admin/datamodel/components/revisions/Revision.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 import EmptyState from "metabase/components/EmptyState.jsx";
+import ReferenceHeader from "../components/ReferenceHeader.jsx";
 
 const mapStateToProps = (state, props) => {
     return {
@@ -84,16 +85,7 @@ export default class RevisionHistoryApp extends Component {
 
         return (
             <div style={style} className="full">
-                <div className="wrapper wrapper--trim">
-                    <div className={S.header}>
-                        <div className={S.leftIcons}>
-
-                        </div>
-                        <div className={R.headerBody}>
-                            {section.name}
-                        </div>
-                    </div>
-                </div>
+                <ReferenceHeader section={section} />
                 <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>
                     { () => Object.keys(revisions).length > 0 && tables[entity.table_id] ?
                         <div className="wrapper wrapper--trim">

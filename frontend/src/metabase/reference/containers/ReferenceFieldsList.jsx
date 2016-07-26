@@ -10,10 +10,9 @@ import F from "metabase/reference/components/Field.css"
 
 import Field from "metabase/reference/components/Field.jsx";
 import List from "metabase/components/List.jsx";
-import Ellipsified from "metabase/components/Ellipsified.jsx";
-import Icon from "metabase/components/Icon.jsx";
 import EmptyState from "metabase/components/EmptyState.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import ReferenceHeader from "metabase/reference/components/ReferenceHeader.jsx";
 
 import cx from "classnames";
 
@@ -31,6 +30,8 @@ import {
     tryUpdateFields,
     fieldsToFormFields
 } from '../utils';
+
+import { getIconForField } from "metabase/lib/schema_metadata";
 
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from 'metabase/reference/reference';
@@ -130,38 +131,7 @@ export default class ReferenceEntityList extends Component {
                         </div>
                     </div>
                 }
-                <div className="wrapper wrapper--trim">
-                    <div className={S.header}>
-                        <div className={S.leftIcons}>
-                            { section.headerIcon &&
-                                <Icon
-                                    className="text-brand"
-                                    name={section.headerIcon}
-                                    width={24}
-                                    height={24}
-                                />
-                            }
-                        </div>
-                        <div className={R.headerBody}>
-                            <Ellipsified className="flex-full" tooltipMaxWidth="100%">
-                                {section.name}
-                            </Ellipsified>
-                            { user.is_superuser && !isEditing &&
-                                <div className={S.headerButton}>
-                                    <a
-                                        onClick={startEditing}
-                                        className={cx("Button", "Button--borderless", R.editButton)}
-                                    >
-                                        <div className="flex align-center relative">
-                                            <Icon name="pencil" width="16px" height="16px" />
-                                            <span className="ml1">Edit</span>
-                                        </div>
-                                    </a>
-                                </div>
-                            }
-                        </div>
-                    </div>
-                </div>
+                <ReferenceHeader section={section} user={user} isEditing={isEditing} startEditing={startEditing} />
                 <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>
                 { () => Object.keys(entities).length > 0 ?
                     <div className="wrapper wrapper--trim">
@@ -179,14 +149,14 @@ export default class ReferenceEntityList extends Component {
                             </div>
                         </div>
                         <List>
-                            { Object.values(entities).map(entity =>
+                            { Object.values(entities).map(entity => console.log("entity", entity)||
                                 entity && entity.id && entity.name &&
                                     <li className="relative" key={entity.id}>
                                         <Field
                                             field={entity}
                                             foreignKeys={foreignKeys}
                                             url={`${section.id}/${entity.id}`}
-                                            icon="star"
+                                            icon={getIconForField(entity)}
                                             isEditing={isEditing}
                                             formField={fields[entity.id]}
                                         />

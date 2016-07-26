@@ -11,6 +11,7 @@ import S from "metabase/components/List.css";
 import F from "./Field.css";
 
 import Select from "metabase/components/Select.jsx";
+import Icon from "metabase/components/Icon.jsx";
 
 import cx from "classnames";
 import pure from "recompose/pure";
@@ -25,6 +26,7 @@ const Field = ({
 }) => {
     return <div className={cx(S.item)}>
         <div className={S.leftIcons}>
+            { icon && <Icon className={S.chartIcon} name={icon} width={20} height={20} /> }
         </div>
         <div className={S.itemBody} style={{maxWidth: "100%", borderTop: "none"}}>
             <div className={F.field}>
