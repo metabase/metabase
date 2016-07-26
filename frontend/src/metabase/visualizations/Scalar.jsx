@@ -7,6 +7,7 @@ import BarChart from "./BarChart.jsx";
 import Urls from "metabase/lib/urls";
 import { formatValue } from "metabase/lib/formatting";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
+import { getSettings } from "metabase/lib/visualization_settings";
 
 import cx from "classnames";
 import i from "icepick";
@@ -63,8 +64,8 @@ export default class Scalar extends Component {
                 card: { ...s.card, display: "bar" },
                 data: {
                     cols: [
-                        { base_type: "TextField", display_name: "Name" },
-                        { ...s.data.cols[0], display_name: "Value" }],
+                        { base_type: "TextField", display_name: "Name", name: "dimension" },
+                        { ...s.data.cols[0], display_name: "Value", name: "metric" }],
                     rows: [
                         [s.card.name, s.data.rows[0][0]]
                     ]
@@ -79,20 +80,18 @@ export default class Scalar extends Component {
     }
 
     render() {
-        let { card, data, isDashboard, className, onAddSeries, actionButtons, hovered, onHoverChange, gridSize, settings } = this.props;
+        let { card, data, className, actionButtons, gridSize, settings } = this.props;
 
         if (this.state.isMultiseries) {
             return (
                 <BarChart
-                    className={className}
-                    isDashboard={isDashboard}
-                    onAddSeries={onAddSeries}
-                    actionButtons={actionButtons}
+                    {...this.props}
                     series={this.state.series}
                     isScalarSeries={true}
-                    hovered={hovered}
-                    onHoverChange={onHoverChange}
-                    allowSplitAxis={false}
+                    settings={{
+                        ...settings,
+                        ...getSettings(this.state.series)
+                    }}
                 />
             );
         }

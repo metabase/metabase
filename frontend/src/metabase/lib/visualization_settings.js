@@ -173,6 +173,7 @@ const SETTINGS = {
         section: "Display",
         title: "Stacked",
         widget: ChartSettingToggle,
+        readDependencies: ["graph.metrics"],
         getDefault: ([{ card, data }], vizSettings) => (
             // area charts should usually be stacked
             card.display === "area" ||

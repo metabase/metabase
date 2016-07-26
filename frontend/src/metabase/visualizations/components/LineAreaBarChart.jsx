@@ -71,7 +71,6 @@ export default class LineAreaBarChart extends Component {
     };
 
     static defaultProps = {
-        allowSplitAxis: true
     };
 
     componentWillMount() {
@@ -86,18 +85,17 @@ export default class LineAreaBarChart extends Component {
     }
 
     transformSeries(newProps) {
-        let series = newProps.series;
+        let { series, settings } = newProps;
         let nextState = {
             series: series,
-            isMultiseries: false,
-            isStacked: false
+            isMultiseries: false
         };
         let s = series && series.length === 1 && series[0];
         if (s && s.data) {
             const { cols, rows } = s.data;
 
-            const dimensions = newProps.settings["graph.dimensions"].filter(d => d != null);
-            const metrics = newProps.settings["graph.metrics"].filter(d => d != null);
+            const dimensions = settings["graph.dimensions"].filter(d => d != null);
+            const metrics = settings["graph.metrics"].filter(d => d != null);
             const dimensionIndexes = dimensions.map(dimensionName =>
                 _.findIndex(cols, (col) => col.name === dimensionName)
             );
@@ -130,7 +128,6 @@ export default class LineAreaBarChart extends Component {
                 const dimensionIndex = dimensionIndexes[0];
 
                 nextState.isMultiseries = true;
-                nextState.isStacked = true;
                 nextState.series = metrics.map((col, index) => {
                     let metricIndex = metricIndexes[index];
                     return {
@@ -215,8 +212,8 @@ export default class LineAreaBarChart extends Component {
     }
 
     render() {
-        const { hovered, isDashboard, onAddSeries, onRemoveSeries, actionButtons, allowSplitAxis } = this.props;
-        const { series, isMultiseries, isStacked } = this.state;
+        const { hovered, isDashboard, onAddSeries, onRemoveSeries, actionButtons } = this.props;
+        const { series, isMultiseries } = this.state;
 
         const card = this.props.series[0].card;
 
@@ -244,8 +241,6 @@ export default class LineAreaBarChart extends Component {
                     chartType={this.getChartType()}
                     series={i.assocIn(series, [0, "card", "visualization_settings"], settings)}
                     className="flex-full"
-                    allowSplitAxis={isMultiseries ? false : allowSplitAxis}
-                    isStacked={isStacked}
                     renderer={lineAreaBarRenderer}
                 />
                 <ChartTooltip series={series} hovered={hovered} />
