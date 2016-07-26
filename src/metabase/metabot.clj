@@ -11,12 +11,15 @@
                       [stream :as s])
             [metabase.db :as db]
             [metabase.integrations.slack :as slack]
-            [metabase.models.setting :as setting]
-            [metabase.pulse :as pulse]
-            [metabase.util :as u]
+            [metabase.models.setting :refer [defsetting], :as setting]
+            (metabase [pulse :as pulse]
+                      [util :as u])
             [metabase.util.urls :as urls]))
 
-(setting/defsetting metabot-enabled "Enable Metabot, which lets you search for and view your saved questions directly via Slack." "true")
+(defsetting metabot-enabled
+  "Enable Metabot, which lets you search for and view your saved questions directly via Slack."
+  :type    :boolean
+  :default true)
 
 ;;; # ------------------------------------------------------------ Metabot Command Handlers ------------------------------------------------------------
 
@@ -250,7 +253,7 @@
    This will spin up a background thread that opens and maintains a Slack WebSocket connection."
   []
   (when (and (setting/get :slack-token)
-             (= "true" (metabot-enabled)))
+             (metabot-enabled))
     (log/info "Starting MetaBot WebSocket monitor thread...")
     (start-websocket-monitor!)))
 

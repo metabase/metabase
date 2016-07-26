@@ -30,7 +30,7 @@
                                                                    :email-smtp-password "gobble gobble"
                                                                    :email-from-address  "eating@hungry.com"})
         new-settings  (email-settings)
-        _             (setting/set-all orig-settings)]
+        _             (setting/set-many! orig-settings)]
     new-settings))
 
 

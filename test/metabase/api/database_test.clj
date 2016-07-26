@@ -8,7 +8,7 @@
             [metabase.test.data :refer :all]
             (metabase.test.data [datasets :as datasets]
                                 [users :refer :all])
-            [metabase.test.util :refer [match-$ random-name expect-eval-actual-first], :as tu]
+            [metabase.test.util :refer [match-$ random-name], :as tu]
             [metabase.util :as u]))
 
 ;; HELPER FNS
