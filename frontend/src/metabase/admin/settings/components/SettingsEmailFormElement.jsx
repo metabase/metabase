@@ -66,7 +66,7 @@ export default class SettingsEmailFormElement extends Component {
     }
 
     renderToggleInput(element) {
-        const on = (element.value == null ? element.default : element.value) === "true";
+        const on = (element.value == null ? element.default : element.value) === true;
         return (
             <div className="flex align-center pt1">
                 <Toggle value={on} onChange={this.props.handleChangeEvent.bind(null, element, on ? "false" : "true")}/>

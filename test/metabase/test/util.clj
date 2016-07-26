@@ -150,7 +150,8 @@
                                 :field_type      :info
                                 :name            (random-name)
                                 :position        1
-                                :preview_display true})})
+                                :preview_display true
+                                :table_id        (data/id :venues)})})
 
 (u/strict-extend (class Metric)
   WithTempDefaults
@@ -200,7 +201,8 @@
 
 (u/strict-extend (class Table)
   WithTempDefaults
-  {:with-temp-defaults (fn [_] {:active true
+  {:with-temp-defaults (fn [_] {:db_id  (data/id)
+                                :active true
                                 :name   (random-name)})})
 
 (u/strict-extend (class User)
@@ -328,13 +330,14 @@
    This works much the same way as `binding`.
 
    Prefer the macro `with-temporary-setting-values` over using this function directly."
+  {:style/indent 2}
   [setting-k value f]
   (let [original-value (setting/get setting-k)]
     (try
-      (setting/set* setting-k value)
+      (setting/set! setting-k value)
       (f)
       (finally
-        (setting/set* setting-k original-value)))))
+        (setting/set! setting-k original-value)))))
 
 (defmacro with-temporary-setting-values
   "Temporarily bind the values of one or more `Settings`, execute body, and re-establish the original values. This works much the same way as `binding`.

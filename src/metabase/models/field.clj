@@ -3,8 +3,8 @@
                      [string :as s])
             [medley.core :as m]
             [metabase.db :as db]
-            (metabase.models [common :as common]
-                             [field-values :refer [FieldValues]]
+            (metabase.models [field-values :refer [FieldValues]]
+                             [humanization :as humanization]
                              [interface :as i])
             [metabase.util :as u]))
 
@@ -82,7 +82,7 @@
                   :field_type      :info
                   :visibility_type :normal
                   :position        0
-                  :display_name    (common/name->human-readable-name (:name field))}]
+                  :display_name    (humanization/name->human-readable-name (:name field))}]
     (merge defaults field)))
 
 (defn- pre-cascade-delete [{:keys [id]}]
@@ -211,7 +211,7 @@
   (let [updated-field (assoc existing-field
                         :base_type    base-type
                         :display_name (or (:display_name existing-field)
-                                          (common/name->human-readable-name field-name))
+                                          (humanization/name->human-readable-name field-name))
                         :special_type (or (:special_type existing-field)
                                           special-type
                                           (when pk? :id)
@@ -240,7 +240,7 @@
     :table_id      table-id
     :raw_column_id raw-column-id
     :name          field-name
-    :display_name  (common/name->human-readable-name field-name)
+    :display_name  (humanization/name->human-readable-name field-name)
     :base_type     base-type
     :special_type  (or special-type
                        (when pk? :id)

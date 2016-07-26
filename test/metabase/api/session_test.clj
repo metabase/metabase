@@ -7,6 +7,7 @@
             [metabase.http-client :refer :all]
             (metabase.models [session :refer [Session]]
                              [user :refer [User]])
+            [metabase.public-settings :as public-settings]
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
             [metabase.util :as u]
@@ -172,7 +173,7 @@
 
 ;; GET /session/properties
 (expect
-  (vec (keys (metabase.models.setting/public-settings)))
+  (vec (keys (public-settings/public-settings)))
   (vec (keys ((user->client :rasta) :get 200 "session/properties"))))
 
 
