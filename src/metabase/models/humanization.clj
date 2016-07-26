@@ -53,15 +53,26 @@
       name->human-readable-name:simple) s))
 
 
+(defn- custom-display-name?
+  "Is DISPLAY-NAME a custom name that was set manually by the user in the metadata edit screen?"
+  [internal-name display-name]
+  (and (not= display-name (name->human-readable-name:simple   internal-name))
+       (not= display-name (name->human-readable-name:advanced internal-name))))
+
+(defn- re-humanize-names! [model]
+  (doseq [{id :id, internal-name :name, display-name :display_name} (db/select [model :id :name :display_name])
+          :let                                                      [new-display-name (name->human-readable-name internal-name)]
+          :when                                                     (and (not= display-name new-display-name)
+                                                                         (not (custom-display-name? internal-name display-name)))]
+    (log/info (format "Updating display name for %s '%s': '%s' -> '%s'" (name model) internal-name display-name new-display-name))
+    (db/update! model id
+      :display_name new-display-name)))
+
 (defn- re-humanize-table-and-field-names!
   "Update the display names of all tables in the database using new values obtained from the (obstensibly toggled implementation of) `name->human-readable-name`."
   []
-  (doseq [{id :id, table-name :name, display-name :display_name} (db/select ['Table :id :name :display_name])]
-    (let [new-display-name (name->human-readable-name table-name)]
-      (when (not= new-display-name display-name)
-        (log/info (format "Updating display name for Table '%s' -> '%s'" table-name new-display-name))
-        (db/update! 'Table id
-          :display_name new-display-name)))))
+  (re-humanize-names! 'Table)
+  (re-humanize-names! 'Field))
 
 
 (defn- set-enable-advanced-humanization! [^Boolean new-value]
