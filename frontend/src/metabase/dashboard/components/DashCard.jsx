@@ -134,12 +134,14 @@ export default class DashCard extends Component {
     }
 }
 
-const DashCardActionButtons = ({ series, visualization, onRemove, onAddSeries }) =>
+const DashCardActionButtons = ({ series, visualization, onRemove, onAddSeries, onUpdateVisualizationSettings }) =>
     <span className="DashCard-actions flex align-center">
         { visualization.supportsSeries &&
             <AddSeriesButton series={series} onAddSeries={onAddSeries} />
         }
-        <ChartSettingsButton series={series} />
+        { onUpdateVisualizationSettings &&
+            <ChartSettingsButton series={series} onChange={onUpdateVisualizationSettings} />
+        }
         <RemoveButton onRemove={onRemove} />
     </span>
 
