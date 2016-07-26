@@ -90,7 +90,7 @@ export default class PinMap extends Component {
             const { settings, series: [{ data }] } = this.props;
 
             const mapOptions = {
-                zoom: settings.map.zoom,
+                zoom: settings["map.zoom"],
                 center: new google.maps.LatLng(
                     settings["map.center_latitude"],
                     settings["map.center_longitude"]
