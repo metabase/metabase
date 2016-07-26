@@ -244,6 +244,10 @@
         map->instance         (symbol (str "map->" instance))]
     `(do
        (defrecord ~instance []
+         clojure.lang.Named
+         (~'getName [~'_]
+          ~(name entity))
+
          clojure.lang.IFn
          (~'invoke [this#]
           (invoke-entity-or-instance this#))
