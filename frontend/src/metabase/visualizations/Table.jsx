@@ -3,7 +3,6 @@ import React, { Component, PropTypes } from "react";
 import TableInteractive from "./TableInteractive.jsx";
 import TableSimple from "./TableSimple.jsx";
 
-import Query from "metabase/lib/query";
 import * as DataGrid from "metabase/lib/data_grid";
 import _ from "underscore";
 
