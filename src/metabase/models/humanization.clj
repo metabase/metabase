@@ -70,8 +70,8 @@
   (re-humanize-table-names!))
 
 (defsetting enable-advanced-humanization
-  "Should we use advanced humanization for table names? This breaks up names by frequently-occuring English words;
-   you may want to disable this for databases where tables names are in a language other than English."
+  "Metabase can attempt to transform your table names into more sensible human readable versions, e.g. \"somehorriblename\" becomes \"Some Horrible Name\".
+   This doesn’t work all that well if your table names are in a language other than English, however. Do you want us to take a guess?"
   :type    :boolean
   :default true
   :setter  set-enable-advanced-humanization!)
