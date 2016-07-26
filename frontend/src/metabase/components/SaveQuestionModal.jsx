@@ -80,31 +80,35 @@ export default class SaveQuestionModal extends Component {
         }
     }
 
-    formSubmitted(e) {
-        e.preventDefault();
+    async formSubmitted(e) {
+        try {
+            e.preventDefault();
 
-        let { details } = this.state;
-        let { card, addToDashboard, createFn, saveFn } = this.props;
+            let { details } = this.state;
+            let { card, addToDashboard, createFn, saveFn } = this.props;
 
-        card.name = details.name.trim();
-        // since description is optional, it can be null, so check for a description before trimming it
-        card.description = details.description ? details.description.trim() : null;
-        card.public_perms = 2; // public read/write
+            card = {
+                ...card,
+                name: details.name.trim(),
+                // since description is optional, it can be null, so check for a description before trimming it
+                description: details.description ? details.description.trim() : null,
+                public_perms: 2
+            };
 
-        if (details.saveType === "create") {
-            this.requestPromise = cancelable(createFn(card, addToDashboard));
-        } else if (details.saveType === "overwrite") {
-            card.id = this.props.originalCard.id;
-            this.requestPromise = cancelable(saveFn(card, addToDashboard));
-        }
+            if (details.saveType === "create") {
+                this.requestPromise = cancelable(createFn(card, addToDashboard));
+            } else if (details.saveType === "overwrite") {
+                card.id = this.props.originalCard.id;
+                this.requestPromise = cancelable(saveFn(card, addToDashboard));
+            }
 
-        this.requestPromise.then((success) => {
+            await this.requestPromise;
             this.props.closeFn();
-        }).catch((error) => {
-            if (!error.isCanceled) {
+        } catch (error) {
+            if (error && !error.isCanceled) {
                 this.setState({ error: error });
             }
-        });
+        }
     }
 
     render() {

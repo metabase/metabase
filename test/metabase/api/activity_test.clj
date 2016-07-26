@@ -9,7 +9,7 @@
                              [view-log :refer [ViewLog]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [match-$ expect-eval-actual-first random-name expect-with-temp]]
+            [metabase.test.util :refer [match-$ expect-with-temp resolve-private-fns]]
             [metabase.util :as u]))
 
 ;; GET /
@@ -78,7 +78,7 @@
                        :common_name  $})
       :model        $
       :model_id     $
-      :model_exists nil
+      :model_exists false
       :database_id  nil
       :database     nil
       :table_id     nil
@@ -92,24 +92,35 @@
       :user         nil
       :model        $
       :model_id     $
-      :model_exists nil
+      :model_exists false
       :database_id  nil
       :database     nil
       :table_id     nil
       :table        nil
       :custom_id    nil
       :details      $})]
-  (->> ((user->client :crowberto) :get 200 "activity")
-       (map #(dissoc % :timestamp))))
+  (for [activity ((user->client :crowberto) :get 200 "activity")]
+    (dissoc activity :timestamp)))
 
 
-;; GET /recent_views
+;;; GET /recent_views
 
-; Things we are testing for:
-;  1. ordering is sorted by most recent
-;  2. results are filtered to current user
-;  3. `:model_object` is hydrated in each result
-;  4. we filter out entries where `:model_object` is nil (object doesn't exist)
+;; Things we are testing for:
+;;  1. ordering is sorted by most recent
+;;  2. results are filtered to current user
+;;  3. `:model_object` is hydrated in each result
+;;  4. we filter out entries where `:model_object` is nil (object doesn't exist)
+
+(defn- create-view! [user model model-id]
+  (db/insert! ViewLog
+    :user_id  user
+    :model    model
+    :model_id model-id
+    :timestamp (u/new-sql-timestamp))
+  ;; we sleep a bit to ensure no events have the same timestamp
+  ;; sadly, MySQL doesn't support milliseconds so we have to wait a second
+  ;; otherwise our records are out of order and this test fails :(
+  (Thread/sleep 1000))
 
 (expect-with-temp [Card      [card1 {:name                   "rand-name"
                                      :creator_id             (user->id :crowberto)
@@ -127,44 +138,78 @@
                                      :display                "table"
                                      :dataset_query          {}
                                      :visualization_settings {}}]]
-  [{:cnt      1
-    :user_id  (user->id :crowberto)
-    :model    "card"
-    :model_id (:id card1)
+  [{:cnt          1
+    :user_id      (user->id :crowberto)
+    :model        "card"
+    :model_id     (:id card1)
     :model_object {:id          (:id card1)
                    :name        (:name card1)
                    :description (:description card1)
                    :display     (name (:display card1))}}
-   {:cnt      1
-    :user_id  (user->id :crowberto)
-    :model    "dashboard"
-    :model_id (:id dash1)
+   {:cnt          1
+    :user_id      (user->id :crowberto)
+    :model        "dashboard"
+    :model_id     (:id dash1)
     :model_object {:id          (:id dash1)
                    :name        (:name dash1)
                    :description (:description dash1)}}
-   {:cnt      1
-    :user_id  (user->id :crowberto)
-    :model    "card"
-    :model_id (:id card2)
+   {:cnt          1
+    :user_id      (user->id :crowberto)
+    :model        "card"
+    :model_id     (:id card2)
     :model_object {:id          (:id card2)
                    :name        (:name card2)
                    :description (:description card2)
                    :display     (name (:display card2))}}]
-  (let [create-view (fn [user model model-id]
-                      (db/insert! ViewLog
-                        :user_id  user
-                        :model    model
-                        :model_id model-id
-                        :timestamp (u/new-sql-timestamp))
-                      ;; we sleep a bit to ensure no events have the same timestamp
-                      ;; sadly, MySQL doesn't support milliseconds so we have to wait a second
-                      ;; otherwise our records are out of order and this test fails :(
-                      (Thread/sleep 1000))]
-    (do
-      (create-view (user->id :crowberto) "card" (:id card2))
-      (create-view (user->id :crowberto) "dashboard" (:id dash1))
-      (create-view (user->id :crowberto) "card" (:id card1))
-      (create-view (user->id :crowberto) "card" 36478)
-      (create-view (user->id :rasta) "card" (:id card1))
-      (->> ((user->client :crowberto) :get 200 "activity/recent_views")
-           (map #(dissoc % :max_ts))))))
+  (do
+    (create-view! (user->id :crowberto) "card"      (:id card2))
+    (create-view! (user->id :crowberto) "dashboard" (:id dash1))
+    (create-view! (user->id :crowberto) "card"      (:id card1))
+    (create-view! (user->id :crowberto) "card"      36478)
+    (create-view! (user->id :rasta)     "card"      (:id card1))
+    (for [recent-view ((user->client :crowberto) :get 200 "activity/recent_views")]
+      (dissoc recent-view :max_ts))))
+
+
+;;; activities->referenced-objects, referenced-objects->existing-objects, add-model-exists-info
+
+(resolve-private-fns metabase.api.activity activities->referenced-objects referenced-objects->existing-objects add-model-exists-info)
+
+(def ^:private ^:const fake-activities
+  [{:model "dashboard", :model_id  43, :topic :dashboard-create,    :details {}}
+   {:model "dashboard", :model_id  42, :topic :dashboard-create,    :details {}}
+   {:model "card",      :model_id 114, :topic :card-create,         :details {}}
+   {:model "card",      :model_id 113, :topic :card-create,         :details {}}
+   {:model "card",      :model_id 112, :topic :card-create,         :details {}}
+   {:model "card",      :model_id 111, :topic :card-create,         :details {}}
+   {:model "dashboard", :model_id  41, :topic :dashboard-add-cards, :details {:dashcards [{:card_id 109}]}}
+   {:model "card",      :model_id 109, :topic :card-create,         :details {}}
+   {:model "dashboard", :model_id  41, :topic :dashboard-add-cards, :details {:dashcards [{:card_id 108}]}}
+   {:model "dashboard", :model_id  41, :topic :dashboard-create,    :details {}}
+   {:model "card",      :model_id 108, :topic :card-create,         :details {}}
+   {:model "user",      :model_id  90, :topic :user-joined,         :details {}}
+   {:model nil,         :model_id nil, :topic :install,             :details {}}])
+
+(expect
+  {"dashboard" #{41 43 42}
+   "card"      #{113 108 109 111 112 114}
+   "user"      #{90}}
+  (activities->referenced-objects fake-activities))
+
+
+(expect-with-temp [Dashboard [{dashboard-id :id}]]
+  {"dashboard" #{dashboard-id}, "card" nil}
+  (referenced-objects->existing-objects {"dashboard" #{dashboard-id 0}
+                                         "card"      #{0}}))
+
+
+(expect-with-temp [Dashboard [{dashboard-id :id}]
+                   Card      [{card-id :id}]]
+  [{:model "dashboard", :model_id dashboard-id, :model_exists true}
+   {:model "card",      :model_id 0,            :model_exists false}
+   {:model "dashboard", :model_id 0,            :model_exists false, :topic :dashboard-remove-cards, :details {:dashcards [{:card_id card-id, :exists true}
+                                                                                                                           {:card_id 0,       :exists false}]}}]
+  (add-model-exists-info [{:model "dashboard", :model_id dashboard-id}
+                          {:model "card",      :model_id 0}
+                          {:model "dashboard", :model_id 0, :topic :dashboard-remove-cards, :details {:dashcards [{:card_id card-id}
+                                                                                                                  {:card_id 0}]}}]))

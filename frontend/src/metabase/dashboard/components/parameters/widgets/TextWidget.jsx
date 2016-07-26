@@ -1,3 +1,4 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 
 export default class TextWidget extends Component {
@@ -8,8 +9,18 @@ export default class TextWidget extends Component {
         };
     }
 
-    static propTypes = {};
-    static defaultProps = {};
+    static propTypes = {
+        value: PropTypes.any,
+        setValue: PropTypes.func.isRequired,
+        onClose: PropTypes.func.isRequired,
+        className: PropTypes.string,
+        isEditing: PropTypes.bool,
+        commitImmediately: PropTypes.bool,
+    };
+
+    static defaultProps = {
+        commitImmediately: false,
+    };
 
     static noPopover = true;
 
@@ -28,7 +39,12 @@ export default class TextWidget extends Component {
                 className={className}
                 type="text"
                 value={this.state.value}
-                onChange={(e) => this.setState({ value: e.target.value })}
+                onChange={(e) => {
+                    this.setState({ value: e.target.value })
+                    if (this.props.commitImmediately) {
+                        this.props.setValue(e.target.value || null);
+                    }
+                }}
                 onKeyUp={(e) => {
                     if (e.keyCode === 27) {
                         e.target.blur();

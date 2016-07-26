@@ -43,9 +43,9 @@
     ;; this results in a second db call, but it avoids redundant password code so figure it's worth it
     (set-user-password! (:id new-user) password)
     ;; set a couple preferences
-    (setting/set :site-name site_name)
-    (setting/set :admin-email email)
-    (setting/set :anon-tracking-enabled (or allow_tracking "true"))
+    (setting/set! :site-name site_name)
+    (setting/set! :admin-email email)
+    (setting/set! :anon-tracking-enabled (or allow_tracking true))
     ;; setup database (if needed)
     (when (driver/is-engine? engine)
       (->> (db/insert! Database
@@ -92,7 +92,7 @@
 ;;; Admin Checklist
 
 (defn- admin-checklist-values []
-  (let [has-dbs?           (db/exists? Database)
+  (let [has-dbs?           (db/exists? Database, :is_sample false)
         has-dashboards?    (db/exists? 'Dashboard)
         has-pulses?        (db/exists? 'Pulse)
         has-labels?        (db/exists? 'Label)
@@ -124,7 +124,7 @@
       :group       "Get connected"
       :description "Share answers and data with the rest of your team."
       :link        "/admin/people/"
-      :completed   (>= num-users 1)
+      :completed   (> num-users 1)
       :triggered   (or has-dashboards?
                        has-pulses?
                        (>= num-cards 5))}

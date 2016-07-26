@@ -113,6 +113,15 @@ const updateDashcardId = createAction(UPDATE_DASHCARD_ID, (oldDashcardId, newDas
 const CLEAR_CARD_DATA = "CLEAR_CARD_DATA";
 export const clearCardData = createAction(CLEAR_CARD_DATA, (cardId, dashcardId) => ({ cardId, dashcardId }));
 
+export async function fetchDataOrError(dataPromise) {
+    try {
+        return await dataPromise;
+    }
+    catch (error) {
+        return { error };
+    }
+}
+
 export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, dashcard, clearExisting = false) {
     return async function(dispatch, getState) {
         if (clearExisting) {
@@ -152,7 +161,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, d
             }
         }, DATASET_SLOW_TIMEOUT);
 
-        result = await MetabaseApi.dataset(datasetQuery);
+        result = await fetchDataOrError(MetabaseApi.dataset(datasetQuery));
 
         clearTimeout(slowCardTimer);
         return { dashcard_id: dashcard.id, card_id: card.id, result };

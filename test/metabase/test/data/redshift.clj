@@ -64,8 +64,7 @@
          {:create-db-sql             (constantly nil)
           :drop-db-if-exists-sql     (constantly nil)
           :drop-table-if-exists-sql  generic/drop-table-if-exists-cascade-sql
-          :field-base-type->sql-type (fn [_ base-type]
-                                       (field-base-type->sql-type base-type))
+          :field-base-type->sql-type (u/drop-first-arg field-base-type->sql-type)
           :pk-sql-type               (constantly "INTEGER IDENTITY(1,1)")
           :qualified-name-components qualified-name-components})
 

@@ -60,8 +60,7 @@
   (auth-enforced-handler (mock/request :get "/anyurl")))
 
 (defn- random-session-id []
-  {:post [(string? %)]}
-  (.toString (java.util.UUID/randomUUID)))
+  (str (java.util.UUID/randomUUID)))
 
 ;; valid session ID
 (expect

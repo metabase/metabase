@@ -1,8 +1,10 @@
 import { handleActions } from "redux-actions";
+import i from "icepick";
 
 import {
     INITIALIZE_QB,
     TOGGLE_DATA_REFERENCE,
+    TOGGLE_TEMPLATE_TAGS_EDITOR,
     CLOSE_QB_TUTORIAL,
     CLOSE_QB_NEWB_MODAL,
     BEGIN_EDITING,
@@ -10,6 +12,7 @@ import {
 
     LOAD_DATABASE,
     LOAD_TABLE_METADATA,
+    LOAD_DATABASE_FIELDS,
     RELOAD_CARD,
     NOTIFY_CARD_CREATED,
     NOTIFY_CARD_UPDATED,
@@ -18,6 +21,8 @@ import {
     SET_CARD_VISUALIZATION,
     SET_CARD_VISUALIZATION_SETTING,
     SET_CARD_VISUALIZATION_SETTINGS,
+    UPDATE_TEMPLATE_TAG,
+    SET_PARAMETER_VALUE,
 
     SET_QUERY_DATABASE,
     SET_QUERY_SOURCE_TABLE,
@@ -32,8 +37,9 @@ import {
 
 
 // TODO: these are here as work arounds until we are transitioned over to ReduxRouter and using their history approach
-export const router = handleActions({}, {location: {query: {}}, search: {}, params: {}});
-export const updateUrl = handleActions({}, () => null);
+export const updateUrl = handleActions({
+    [INITIALIZE_QB]: { next: (state, { payload }) => payload ? payload.updateUrl : state }
+}, () => console.log("default"));
 
 // TODO: once we are using the global redux store we can get this from there
 export const user = handleActions({
@@ -45,7 +51,9 @@ export const user = handleActions({
 export const uiControls = handleActions({
     [INITIALIZE_QB]: { next: (state, { payload }) => ({ ...state, ...payload.uiControls }) },
 
-    [TOGGLE_DATA_REFERENCE]: { next: (state, { payload }) => ({ ...state, isShowingDataReference: !state.isShowingDataReference }) },
+    [TOGGLE_DATA_REFERENCE]: { next: (state, { payload }) => ({ ...state, isShowingDataReference: !state.isShowingDataReference, isShowingTemplateTagsEditor: false }) },
+    [TOGGLE_TEMPLATE_TAGS_EDITOR]: { next: (state, { payload }) => ({ ...state, isShowingTemplateTagsEditor: !state.isShowingTemplateTagsEditor, isShowingDataReference: false }) },
+    [SET_QUERY]: { next: (state, { payload }) => ({ ...state, isShowingTemplateTagsEditor: payload.openTemplateTagsEditor }) },
     [CLOSE_QB_TUTORIAL]: { next: (state, { payload }) => ({ ...state, isShowingTutorial: false }) },
     [CLOSE_QB_NEWB_MODAL]: { next: (state, { payload }) => ({ ...state, isShowingNewbModal: false }) },
 
@@ -60,6 +68,7 @@ export const uiControls = handleActions({
     [QUERY_ERRORED]: { next: (state, { payload }) => ({ ...state, isRunning: false }) },
 }, {
     isShowingDataReference: false,
+    isShowingTemplateTagsEditor: false,
     isShowingTutorial: false,
     isShowingNewbModal: false,
     isEditing: false,
@@ -83,10 +92,12 @@ export const card = handleActions({
     [SET_CARD_VISUALIZATION_SETTING]: { next: (state, { payload }) => payload },
     [SET_CARD_VISUALIZATION_SETTINGS]: { next: (state, { payload }) => payload },
 
+    [UPDATE_TEMPLATE_TAG]: { next: (state, { payload }) => payload },
+
     [SET_QUERY_MODE]: { next: (state, { payload }) => payload },
     [SET_QUERY_DATABASE]: { next: (state, { payload }) => payload },
     [SET_QUERY_SOURCE_TABLE]: { next: (state, { payload }) => payload },
-    [SET_QUERY]: { next: (state, { payload }) => payload },
+    [SET_QUERY]: { next: (state, { payload }) => payload.card },
 
     [QUERY_COMPLETED]: { next: (state, { payload }) => ({ ...state, display: payload.cardDisplay }) }
 }, null);
@@ -121,6 +132,10 @@ export const tableForeignKeys = handleActions({
     [LOAD_TABLE_METADATA]: { next: (state, { payload }) => payload && payload.foreignKeys ? payload.foreignKeys : state }
 }, null);
 
+export const databaseFields = handleActions({
+    [LOAD_DATABASE_FIELDS]: { next: (state, { payload }) => ({ [payload.id]: payload.fields }) }
+}, {});
+
 // references to FK tables specifically used on the ObjectDetail page.
 export const tableForeignKeyReferences = handleActions({
     [LOAD_OBJECT_DETAIL_FK_REFERENCES]: { next: (state, { payload }) => payload}
@@ -129,8 +144,9 @@ export const tableForeignKeyReferences = handleActions({
 
 // the result of a query execution.  optionally an error if the query fails to complete successfully.
 export const queryResult = handleActions({
-    [QUERY_COMPLETED]: { next: (state, { payload }) => payload.queryResult},
-    [QUERY_ERRORED]: { next: (state, { payload }) => payload ? payload : state}
+    [QUERY_COMPLETED]: { next: (state, { payload }) => payload.queryResult },
+    [QUERY_ERRORED]: { next: (state, { payload }) => payload ? payload : state },
+    [INITIALIZE_QB]: { next: (state, { payload }) => null }
 }, null);
 
 // promise used for tracking a query execution in progress.  when a query is started we capture this.
@@ -140,3 +156,7 @@ export const queryExecutionPromise = handleActions({
     [QUERY_COMPLETED]: { next: (state, { payload }) => null},
     [QUERY_ERRORED]: { next: (state, { payload }) => null},
 }, null);
+
+export const parameterValues = handleActions({
+    [SET_PARAMETER_VALUE]: { next: (state, { payload: { id, value }}) => i.assoc(state, id, value) }
+}, {});

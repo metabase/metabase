@@ -3,27 +3,26 @@ import ReactDOM from "react-dom";
 
 import Icon from "metabase/components/Icon.jsx";
 import LoadingSpinner from 'metabase/components/LoadingSpinner.jsx';
-import QueryVisualizationObjectDetailTable from './QueryVisualizationObjectDetailTable.jsx';
 import RunButton from './RunButton.jsx';
 import VisualizationSettings from './VisualizationSettings.jsx';
 
-import Visualization from "metabase/visualizations/components/Visualization.jsx";
+import VisualizationError from "./VisualizationError.jsx";
+import VisualizationResult from "./VisualizationResult.jsx";
 
-import MetabaseSettings from "metabase/lib/settings";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import Query from "metabase/lib/query";
 
 import cx from "classnames";
 import _ from "underscore";
 
+const isEqualsDeep = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
 export default class QueryVisualization extends Component {
     constructor(props, context) {
         super(props, context);
         this.runQuery = this.runQuery.bind(this);
 
-        this.state = {
-            lastRunDatasetQuery: props.card.dataset_query
-        };
+        this.state = this._getStateFromProps(props);
     }
 
     static propTypes = {
@@ -49,18 +48,26 @@ export default class QueryVisualization extends Component {
         maxTableRows: 2000
     };
 
+    _getStateFromProps(props) {
+        return {
+            lastRunDatasetQuery: JSON.parse(JSON.stringify(props.card.dataset_query)),
+            lastRunParameterValues: JSON.parse(JSON.stringify(props.parameterValues))
+        };
+    }
+
     componentWillReceiveProps(nextProps) {
         // whenever we are told that we are running a query lets update our understanding of the "current" query
         if (nextProps.isRunning) {
-            this.setState({
-                lastRunDatasetQuery: JSON.parse(JSON.stringify(nextProps.card.dataset_query))
-            });
+            this.setState(this._getStateFromProps(nextProps));
         }
     }
 
     queryIsDirty() {
         // a query is considered dirty if ANY part of it has been changed
-        return JSON.stringify(this.props.card.dataset_query) !== JSON.stringify(this.state.lastRunDatasetQuery);
+        return (
+            !isEqualsDeep(this.props.card.dataset_query, this.state.lastRunDatasetQuery) ||
+            !isEqualsDeep(this.props.parameterValues, this.state.lastRunParameterValues)
+        );
     }
 
     isChartDisplay(display) {
@@ -81,19 +88,17 @@ export default class QueryVisualization extends Component {
     }
 
     renderHeader() {
-        var visualizationSettings = false;
-        if (!this.props.isObjectDetail) {
-            visualizationSettings = (<VisualizationSettings {...this.props}/>);
-        }
-
+        const { isObjectDetail, isRunning } = this.props;
         return (
             <div className="relative flex flex-no-shrink mt3 mb1" style={{ minHeight: "2em" }}>
-                <span className="relative z4">{visualizationSettings}</span>
+                <span className="relative z4">
+                  { !isObjectDetail && <VisualizationSettings {...this.props}/> }
+                </span>
                 <div className="absolute flex layout-centered left right z3">
                     <RunButton
                         canRun={this.canRun()}
                         isDirty={this.queryIsDirty()}
-                        isRunning={this.props.isRunning}
+                        isRunning={isRunning}
                         runFn={this.runQuery}
                         cancelFn={this.props.cancelQueryFn}
                     />
@@ -135,7 +140,7 @@ export default class QueryVisualization extends Component {
     }
 
     onDownloadCSV() {
-        const form = this._downloadCsvForm.getDOMNode();
+        const form = ReactDOM.findDOMNode(this._downloadCsvForm);
         form.query.value = JSON.stringify(this.props.card.dataset_query);
         form.submit();
     }
@@ -206,164 +211,43 @@ export default class QueryVisualization extends Component {
         }
     }
 
-    showDetailError() {
-        if (this._detailErrorLink && this._detailErrorBody ) {
-            ReactDOM.findDOMNode(this._detailErrorLink).style.display = "none";
-            ReactDOM.findDOMNode(this._detailErrorBody).style.display = "inherit";
-        }
-    }
 
     render() {
-        var loading,
-            viz;
+        const { card, databases, isObjectDetail, isRunning, result } = this.props
+        let viz;
 
-        if(this.props.isRunning) {
-            loading = (
-                <div className="Loading spread flex flex-column layout-centered text-brand z2">
-                    <LoadingSpinner />
-                    <h2 className="Loading-message text-brand text-uppercase my3">Doing science...</h2>
-                </div>
-            );
-        }
-
-        if (!this.props.result) {
-            let hasSampleDataset = !!_.findWhere(this.props.databases, { is_sample: true });
-            viz = (
-                <div className="flex full layout-centered text-grey-1 flex-column">
-                    <h1>If you give me some data I can show you something cool. Run a Query!</h1>
-                    { hasSampleDataset && <a className="link cursor-pointer my2" href="/q?tutorial">How do I use this thing?</a> }
-                </div>
-            );
+        if (!result) {
+            let hasSampleDataset = !!_.findWhere(databases, { is_sample: true });
+            viz = <VisualizationEmptyState showTutorialLink={hasSampleDataset} />
         } else {
-            let { result } = this.props;
             let error = result.error;
-            let adminEmail = MetabaseSettings.adminEmail();
+
             if (error) {
-                if (typeof error.status === "number") {
-                    // Assume if the request took more than 15 seconds it was due to a timeout
-                    // Some platforms like Heroku return a 503 for numerous types of errors so we can't use the status code to distinguish between timeouts and other failures.
-                    if (result.duration > 15*1000) {
-                        viz = (
-                            <div className="QueryError flex full align-center">
-                                <div className="QueryError-image QueryError-image--timeout"></div>
-                                <div className="QueryError-message text-centered">
-                                    <h1 className="text-bold">Your question took too long</h1>
-                                    <p className="QueryError-messageText">We didn't get an answer back from your database in time, so we had to stop. You can try again in a minute, or if the problem persists, you can email an admin to let them know.</p>
-                                    {adminEmail && <span className="QueryError-adminEmail"><a className="no-decoration" href={"mailto:"+adminEmail}>{adminEmail}</a></span>}
-                                </div>
-                            </div>
-                        );
-                    } else {
-                        viz = (
-                            <div className="QueryError flex full align-center">
-                                <div className="QueryError-image QueryError-image--serverError"></div>
-                                <div className="QueryError-message text-centered">
-                                    <h1 className="text-bold">We're experiencing server issues</h1>
-                                    <p className="QueryError-messageText">Try refreshing the page after waiting a minute or two. If the problem persists we'd recommend you contact an admin.</p>
-                                    {adminEmail && <span className="QueryError-adminEmail"><a className="no-decoration" href={"mailto:"+adminEmail}>{adminEmail}</a></span>}
-                                </div>
-                            </div>
-                        );
-                    }
-                } else if (this.props.card.dataset_query && this.props.card.dataset_query.type === 'native') {
-                    // always show errors for native queries
-                    viz = (
-                        <div className="QueryError flex full align-center text-error">
-                            <div className="QueryError-iconWrapper">
-                                <svg className="QueryError-icon" viewBox="0 0 32 32" width="64" height="64" fill="currentcolor">
-                                    <path d="M4 8 L8 4 L16 12 L24 4 L28 8 L20 16 L28 24 L24 28 L16 20 L8 28 L4 24 L12 16 z "></path>
-                                </svg>
-                            </div>
-                            <span className="QueryError-message">{error}</span>
-                        </div>
-                    );
-                } else {
-                    viz = (
-                        <div className="QueryError2 flex full justify-center">
-                            <div className="QueryError-image QueryError-image--queryError mr4"></div>
-                            <div className="QueryError2-details">
-                                <h1 className="text-bold">There was a problem with your question</h1>
-                                <p className="QueryError-messageText">Most of the time this is caused by an invalid selection or bad input value.  Double check your inputs and retry your query.</p>
-                                <div ref={(c) => this._detailErrorLink = c} className="pt2">
-                                    <a onClick={this.showDetailError.bind(this)} className="link cursor-pointer">Show error details</a>
-                                </div>
-                                <div ref={(c) => this._detailErrorBody = c} style={{display: "none"}} className="pt3 text-left">
-                                    <h2>Here's the full error message</h2>
-                                    <div style={{fontFamily: "monospace"}} className="QueryError2-detailBody bordered rounded bg-grey-0 text-bold p2 mt1">{error}</div>
-                                </div>
-                            </div>
-                        </div>
-                    );
-                }
-
-            } else if (this.props.result.data) {
-                if (this.props.isObjectDetail) {
-                    viz = (
-                        <QueryVisualizationObjectDetailTable
-                            data={this.props.result.data}
-                            tableMetadata={this.props.tableMetadata}
-                            tableForeignKeys={this.props.tableForeignKeys}
-                            tableForeignKeyReferences={this.props.tableForeignKeyReferences}
-                            cellIsClickableFn={this.props.cellIsClickableFn}
-                            cellClickedFn={this.props.cellClickedFn}
-                            followForeignKeyFn={this.props.followForeignKeyFn}
-                            loadObjectDetailFKReferences={this.props.loadObjectDetailFKReferences} />
-                    );
-
-                } else if (this.props.result.data.rows.length === 0) {
-                    // successful query but there were 0 rows returned with the result
-                    viz = (
-                        <div className="QueryError flex full align-center">
-                            <div className="QueryError-image QueryError-image--noRows"></div>
-                            <div className="QueryError-message text-centered">
-                                <h1 className="text-bold">No results!</h1>
-                                <p className="QueryError-messageText">This may be the answer you’re looking for. If not, chances are your filters are too specific. Try removing or changing your filters to see more data.</p>
-                                <button className="Button" onClick={() => window.history.back() }>
-                                    Back to last run
-                                </button>
-                            </div>
-                        </div>
-                    );
-
-                } else {
-                    // we want to provide the visualization with a card containing the latest
-                    // "display", "visualization_settings", etc, (to ensure the correct visualization is shown)
-                    // BUT the last executed "dataset_query" (to ensure data matches the query)
-                    let card = {
-                        ...this.props.card,
-                        dataset_query: this.state.lastRunDatasetQuery
-                    };
-                    viz = (
-                        <Visualization
-                            className="full"
-                            series={[{ card: card, data: this.props.result.data }]}
-                            isEditing={true}
-                            // Table:
-                            setSortFn={this.props.setSortFn}
-                            cellIsClickableFn={this.props.cellIsClickableFn}
-                            cellClickedFn={this.props.cellClickedFn}
-                            onUpdateVisualizationSetting={this.props.onUpdateVisualizationSetting}
-                            onUpdateVisualizationSettings={this.props.onUpdateVisualizationSettings}
-                        />
-                    );
-                }
+                viz = <VisualizationError error={error} card={card} duration={result.duration} />
+            } else if (result.data) {
+                viz = <VisualizationResult lastRunDatasetQuery={this.state.lastRunDatasetQuery} {...this.props} />
             }
         }
 
-        var wrapperClasses = cx('wrapper full relative mb2 z1', {
-            'flex': !this.props.isObjectDetail,
-            'flex-column': !this.props.isObjectDetail
+        const wrapperClasses = cx('wrapper full relative mb2 z1', {
+            'flex': !isObjectDetail,
+            'flex-column': !isObjectDetail
         });
 
-        var visualizationClasses = cx('flex flex-full Visualization z1 px1', {
-            'Visualization--errors': (this.props.result && this.props.result.error),
-            'Visualization--loading': this.props.isRunning
+        const visualizationClasses = cx('flex flex-full Visualization z1 px1', {
+            'Visualization--errors': (result && result.error),
+            'Visualization--loading': isRunning
         });
 
         return (
             <div className={wrapperClasses}>
                 {this.renderHeader()}
-                {loading}
+                { isRunning && (
+                    <div className="Loading spread flex flex-column layout-centered text-brand z2">
+                        <LoadingSpinner />
+                        <h2 className="Loading-message text-brand text-uppercase my3">Doing science...</h2>
+                    </div>
+                )}
                 <div className={visualizationClasses}>
                     {viz}
                 </div>
@@ -371,3 +255,9 @@ export default class QueryVisualization extends Component {
         );
     }
 }
+
+const VisualizationEmptyState = ({showTutorialLink}) =>
+    <div className="flex full layout-centered text-grey-1 flex-column">
+        <h1>If you give me some data I can show you something cool. Run a Query!</h1>
+        { showTutorialLink && <a className="link cursor-pointer my2" href="/q?tutorial">How do I use this thing?</a> }
+    </div>

@@ -136,7 +136,7 @@
   *  `:standard-deviation-aggregations` - Does this driver support [standard deviation aggregations](https://github.com/metabase/metabase/wiki/Query-Language-'98#stddev-aggregation)?
   *  `:expressions` - Does this driver support [expressions](https://github.com/metabase/metabase/wiki/Query-Language-'98#expressions) (e.g. adding the values of 2 columns together)?
   *  `:dynamic-schema` -  Does this Database have no fixed definitions of schemas? (e.g. Mongo)
-  *  `:native-parameters` - The driver supports parameter substitution on native queries.")
+  *  `:native-parameters` - Does the driver support parameter substitution on native queries?")
 
   (field-values-lazy-seq ^clojure.lang.Sequential [this, ^FieldInstance field]
     "Return a lazy sequence of all values of FIELD.
@@ -221,12 +221,13 @@
                                  (filter identity)
                                  (take max-sync-lazy-seq-results))
         field-values-count (count field-values)]
-    (if (= field-values-count 0) 0
-        (int (math/round (/ (->> field-values
-                                 (map str)
-                                 (map count)
-                                 (reduce +))
-                            field-values-count))))))
+    (if (zero? field-values-count)
+      0
+      (int (math/round (/ (->> field-values
+                               (map str)
+                               (map count)
+                               (reduce +))
+                          field-values-count))))))
 
 
 (def IDriverDefaultsMixin
@@ -286,7 +287,8 @@
   (contains? (features driver) feature))
 
 (defn class->base-type
-  "Return the `Field.base_type` that corresponds to a given class returned by the DB."
+  "Return the `Field.base_type` that corresponds to a given class returned by the DB.
+   This is used to infer the types of results that come back from native queries."
   [klass]
   (or ({Boolean                         :BooleanField
         Double                          :FloatField
@@ -337,6 +339,7 @@
    This loads the corresponding driver if needed."
   (let [db-id->engine (memoize (fn [db-id] (db/select-one-field :engine Database, :id db-id)))]
     (fn [db-id]
+      {:pre [db-id]}
       (engine->driver (db-id->engine db-id)))))
 
 

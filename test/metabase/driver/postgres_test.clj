@@ -15,6 +15,8 @@
             [metabase.util :as u])
   (:import metabase.driver.postgres.PostgresDriver))
 
+(def ^:private pg-driver (PostgresDriver.))
+
 ;; # Check that SSL params get added the connection details in the way we'd like
 ;; ## no SSL -- this should *not* include the key :ssl (regardless of its value) since that will cause the PG driver to use SSL anyway
 (expect
@@ -24,11 +26,11 @@
    :subname     "//localhost:5432/bird_sightings"
    :make-pool?  true
    :sslmode     "disable"}
-  (sql/connection-details->spec (PostgresDriver.) {:ssl    false
-                                                   :host   "localhost"
-                                                   :port   5432
-                                                   :dbname "bird_sightings"
-                                                   :user   "camsaul"}))
+  (sql/connection-details->spec pg-driver {:ssl    false
+                                           :host   "localhost"
+                                           :port   5432
+                                           :dbname "bird_sightings"
+                                           :user   "camsaul"}))
 
 ;; ## ssl - check that expected params get added
 (expect
@@ -40,11 +42,11 @@
    :user        "camsaul"
    :sslfactory  "org.postgresql.ssl.NonValidatingFactory"
    :subname     "//localhost:5432/bird_sightings"}
-  (sql/connection-details->spec (PostgresDriver.) {:ssl    true
-                                                   :host   "localhost"
-                                                   :port   5432
-                                                   :dbname "bird_sightings"
-                                                   :user   "camsaul"}))
+  (sql/connection-details->spec pg-driver {:ssl    true
+                                           :host   "localhost"
+                                           :port   5432
+                                           :dbname "bird_sightings"
+                                           :user   "camsaul"}))
 
 ;; Verify that we identify JSON columns and mark metadata properly during sync
 (expect-with-engine :postgres
@@ -131,15 +133,42 @@
 ;; As discussed in #2355 they don't come back from JDBC `DatabaseMetadata` so we have to fetch them manually.
 (expect-with-engine :postgres
   {:tables #{{:schema "public", :name "test_mview"}}}
-  (let [driver (PostgresDriver.)]
-    (jdbc/execute! (sql/connection-details->spec driver (i/database->connection-details driver :server nil))
+  (do
+    (jdbc/execute! (sql/connection-details->spec pg-driver (i/database->connection-details pg-driver :server nil))
                    ["DROP DATABASE IF EXISTS materialized_views_test;
                      CREATE DATABASE materialized_views_test;"]
-                   :transaction? false)
-    (let [details (i/database->connection-details driver :db {:database-name "materialized_views_test", :short-lived? true})]
-      (jdbc/execute! (sql/connection-details->spec driver details)
+                   {:transaction? false})
+    (let [details (i/database->connection-details pg-driver :db {:database-name "materialized_views_test", :short-lived? true})]
+      (jdbc/execute! (sql/connection-details->spec pg-driver details)
                      ["DROP MATERIALIZED VIEW IF EXISTS test_mview;
                        CREATE MATERIALIZED VIEW test_mview AS
                        SELECT 'Toucans are the coolest type of bird.' AS true_facts;"])
       (tu/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "materialized_views_test")}]
-        (driver/describe-database driver database)))))
+        (driver/describe-database pg-driver database)))))
+
+
+;; timezone tests
+
+(tu/resolve-private-fns metabase.driver.generic-sql.query-processor
+  run-query-with-timezone)
+
+(defn- get-timezone-with-report-timezone [report-timezone]
+  (ffirst (:rows (run-query-with-timezone pg-driver
+                                          {:report-timezone report-timezone}
+                                          (sql/connection-details->spec pg-driver (i/database->connection-details pg-driver :server nil))
+                                          {:query "SELECT current_setting('TIMEZONE') AS timezone;"}))))
+
+;; check that if we set report-timezone to US/Pacific that the session timezone is in fact US/Pacific
+(expect-with-engine :postgres
+  "US/Pacific"
+  (get-timezone-with-report-timezone "US/Pacific"))
+
+;; check that we can set it to something else: America/Chicago
+(expect-with-engine :postgres
+  "America/Chicago"
+  (get-timezone-with-report-timezone "America/Chicago"))
+
+;; ok, check that if we try to put in a fake timezone that the query still reëxecutes without a custom timezone. This should give us the same result as if we didn't try to set a timezone at all
+(expect-with-engine :postgres
+  (get-timezone-with-report-timezone nil)
+  (get-timezone-with-report-timezone "Crunk Burger"))

@@ -11,12 +11,15 @@
                       [stream :as s])
             [metabase.db :as db]
             [metabase.integrations.slack :as slack]
-            [metabase.models.setting :as setting]
-            [metabase.pulse :as pulse]
-            [metabase.util :as u]
+            [metabase.models.setting :refer [defsetting], :as setting]
+            (metabase [pulse :as pulse]
+                      [util :as u])
             [metabase.util.urls :as urls]))
 
-(setting/defsetting metabot-enabled "Enable Metabot, which lets you search for and view your saved questions directly via Slack." "true")
+(defsetting metabot-enabled
+  "Enable Metabot, which lets you search for and view your saved questions directly via Slack."
+  :type    :boolean
+  :default true)
 
 ;;; # ------------------------------------------------------------ Metabot Command Handlers ------------------------------------------------------------
 
@@ -26,9 +29,9 @@
   ([message m]
    (str message " " (keys-description m)))
   ([m]
-   (apply str (interpose ", " (sort (for [[k varr] m
-                                          :when    (not (:unlisted (meta varr)))]
-                                      (str \` (name k) \`)))))))
+   (str/join ", " (sort (for [[k varr] m
+                              :when    (not (:unlisted (meta varr)))]
+                          (str \` (name k) \`))))))
 
 (defn- dispatch-fn [verb tag]
   (let [fn-map (into {} (for [[symb varr] (ns-interns *ns*)
@@ -102,7 +105,7 @@
      (throw (Exception. "Not Found"))))
   ;; If the card name comes without spaces, e.g. (show 'my 'wacky 'card) turn it into a string an recur: (show "my wacky card")
   ([word & more]
-   (show (apply str (interpose " " (cons word more))))))
+   (show (str/join " " (cons word more)))))
 
 
 (defn meme:up-and-to-the-right
@@ -250,7 +253,7 @@
    This will spin up a background thread that opens and maintains a Slack WebSocket connection."
   []
   (when (and (setting/get :slack-token)
-             (= "true" (metabot-enabled)))
+             (metabot-enabled))
     (log/info "Starting MetaBot WebSocket monitor thread...")
     (start-websocket-monitor!)))
 

@@ -8,13 +8,12 @@
                              [table :refer [Table] :as table])
             [metabase.query-processor :as qp]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]
-            [metabase.test.util :refer [expect-eval-actual-first resolve-private-fns]])
+            [metabase.test.data.datasets :as datasets])
   (:import metabase.driver.mongo.MongoDriver))
 
 ;; ## Logic for selectively running mongo
 
-(defmacro expect-when-testing-mongo [expected actual]
+(defmacro expect-when-testing-mongo {:style/indent 0} [expected actual]
   `(datasets/expect-when-testing-engine :mongo
      ~expected
      ~actual))
@@ -75,13 +74,14 @@
     {\"$project\": {\"_id\": false, \"count\": true}}]")
 
 (expect-when-testing-mongo
-  {:status :completed
+  {:status    :completed
    :row_count 1
-   :data {:rows [[1]]
-          :columns ["count"]
-          :cols [{:description nil, :table_id nil, :special_type nil, :name "count", :extra_info {}, :id nil, :target nil, :display_name "count", :preview-display true, :base_type :UnknownField}]
-          :native_form {:collection "venues"
-                        :query      native-query}}}
+   :data      {:rows        [[1]]
+               :annotate?   nil
+               :columns     ["count"]
+               :cols        [{:name "count", :base_type :IntegerField}]
+               :native_form {:collection "venues"
+                             :query      native-query}}}
   (qp/process-query {:native   {:query      native-query
                                 :collection "venues"}
                      :type     :native
@@ -91,11 +91,11 @@
 
 ;; DESCRIBE-DATABASE
 (expect-when-testing-mongo
-    {:tables #{{:schema nil, :name "checkins"}
-               {:schema nil, :name "categories"}
-               {:schema nil, :name "users"}
-               {:schema nil, :name "venues"}}}
-    (driver/describe-database (MongoDriver.) (mongo-db)))
+  {:tables #{{:schema nil, :name "checkins"}
+             {:schema nil, :name "categories"}
+             {:schema nil, :name "users"}
+             {:schema nil, :name "venues"}}}
+  (driver/describe-database (MongoDriver.) (mongo-db)))
 
 ;; DESCRIBE-TABLE
 (expect-when-testing-mongo

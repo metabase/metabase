@@ -96,3 +96,13 @@
 .text-ellipsis {
     text-overflow: ellipsis;
 }
+
+.text-code {
+    font-family: monospace;
+    color: #8691AC;
+    background-color: #E9F2F5;
+    border-radius: 2px;
+    padding: 0.2em 0.4em;
+    line-height: 1.4em;
+    white-space: pre;
+}

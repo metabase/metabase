@@ -282,22 +282,12 @@
       {:query  sql
        :params args})))
 
-
-(defn- maybe-set-timezone!
-  "Set the timezone if applicable, catching exceptions if it fails."
-  [driver settings connection]
-  (when-let [timezone (:report-timezone settings)]
-    (log/debug (u/format-color 'green "%s" (sql/set-timezone-sql driver)))
-    (try (jdbc/db-do-prepared connection (sql/set-timezone-sql driver) [timezone])
-         (catch Throwable e
-           (log/error (u/format-color 'red "Failed to set timezone: %s" (.getMessage e)))))))
-
 (defn- run-query
   "Run the query itself."
   [{sql :query, params :params, remark :remark} connection]
   (let [sql              (str "-- " remark "\n" (hx/unescape-dots sql))
         statement        (into [sql] params)
-        [columns & rows] (jdbc/query connection statement, :identifiers identity, :as-arrays? true)]
+        [columns & rows] (jdbc/query connection statement {:identifiers identity, :as-arrays? true})]
     {:rows    (or rows [])
      :columns columns}))
 
@@ -310,6 +300,7 @@
 (defn- do-with-try-catch {:style/indent 0} [f]
   (try (f)
        (catch java.sql.SQLException e
+         (log/error (jdbc/print-sql-exception-chain e))
          (throw (Exception. (exception->nice-error-message e))))))
 
 (defn- do-with-auto-commit-disabled
@@ -321,6 +312,31 @@
   (try (f)
        (finally (.rollback connection))))
 
+(defn- do-in-transaction [connection f]
+  (jdbc/with-db-transaction [transaction-connection connection]
+    (do-with-auto-commit-disabled transaction-connection (partial f transaction-connection))))
+
+(defn- set-timezone!
+  "Set the timezone for the current connection."
+  [driver settings connection]
+  (let [timezone (:report-timezone settings)
+        sql      (sql/set-timezone-sql driver)]
+    (log/debug (u/pprint-to-str 'green [sql timezone]))
+    (jdbc/db-do-prepared connection [sql timezone])))
+
+(defn- run-query-without-timezone [driver settings connection query]
+  (do-in-transaction connection (partial run-query query)))
+
+(defn- run-query-with-timezone [driver settings connection query]
+  (try
+    (do-in-transaction connection (fn [transaction-connection]
+                                    (set-timezone! driver settings transaction-connection)
+                                    (run-query query transaction-connection)))
+    (catch java.sql.SQLException e
+      (log/error "Failed to set timezone:\n" (with-out-str (jdbc/print-sql-exception-chain e)))
+      (run-query-without-timezone driver settings connection query))))
+
+
 (defn execute-query
   "Process and run a native (raw SQL) QUERY."
   [driver {:keys [database settings], query :native, :as outer-query}]
@@ -328,8 +344,6 @@
     (do-with-try-catch
       (fn []
         (let [db-connection (sql/db->jdbc-connection-spec database)]
-          (jdbc/with-db-transaction [transaction-connection db-connection]
-            (do-with-auto-commit-disabled transaction-connection
-              (fn []
-                (maybe-set-timezone! driver settings transaction-connection)
-                (run-query query transaction-connection)))))))))
+          ((if (seq (:report-timezone settings))
+             run-query-with-timezone
+             run-query-without-timezone) driver settings db-connection query))))))

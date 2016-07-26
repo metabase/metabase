@@ -12,7 +12,7 @@ export function createCard(name = null) {
         public_perms: 0,
         display: "table",
         visualization_settings: {},
-        dataset_query: {},
+        dataset_query: {}
     };
 }
 
@@ -75,6 +75,7 @@ export function serializeCardForUrl(card) {
         description: card.description,
         dataset_query: dataset_query,
         display: card.display,
+        parameters: card.parameters,
         visualization_settings: card.visualization_settings
     };
     return utf8_to_b64url(JSON.stringify(cardCopy));

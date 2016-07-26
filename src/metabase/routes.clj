@@ -6,13 +6,13 @@
             [ring.util.response :as resp]
             [stencil.core :as stencil]
             [metabase.api.routes :as api]
-            [metabase.models.setting :as setting]))
+            [metabase.public-settings :as public-settings]))
 
 (defn- index [_]
-  (-> (if (@(resolve 'metabase.core/initialized?))
+  (-> (if ((resolve 'metabase.core/initialized?))
         (stencil/render-string (slurp (or (io/resource "frontend_client/index.html")
                                           (throw (Exception. "Cannot find './resources/frontend_client/index.html'. Did you remember to build the Metabase frontend?"))))
-                               {:bootstrap_json (json/generate-string (setting/public-settings))})
+                               {:bootstrap_json (json/generate-string (public-settings/public-settings))})
         (slurp (io/resource "frontend_client/init.html")))
       resp/response
       (resp/content-type "text/html")))

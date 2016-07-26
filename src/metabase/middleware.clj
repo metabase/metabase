@@ -87,7 +87,7 @@
   (fn [request]
     (if-let [current-user-id (:metabase-user-id request)]
       (binding [*current-user-id* current-user-id
-                *current-user*    (delay (db/select-one (vec (concat [User :is_active :is_staff]
+                *current-user*    (delay (db/select-one (vec (concat [User :is_active :is_staff :google_auth]
                                                                      (models/default-fields User)))
                                            :id current-user-id))]
         (handler request))
@@ -141,6 +141,7 @@
                                                                     "'unsafe-eval'"
                                                                     "'self'"
                                                                     "https://maps.google.com"
+                                                                    "https://apis.google.com"
                                                                     "https://www.google-analytics.com" ; Safari requires the protocol
                                                                     "https://*.googleapis.com"
                                                                     "*.gstatic.com"
@@ -148,6 +149,7 @@
                                                                     "*.intercom.io"
                                                                     (when config/is-dev?
                                                                       "localhost:8080")]
+                                                      :frame-src   ["https://accounts.google.com"] ; TODO - double check that we actually need this for Google Auth
                                                       :style-src   ["'unsafe-inline'"
                                                                     "'self'"
                                                                     "fonts.googleapis.com"]
@@ -235,7 +237,7 @@
 
 ;;; # ------------------------------------------------------------ LOGGING ------------------------------------------------------------
 
-(defn- log-response [{:keys [uri request-method]} {:keys [status body]} elapsed-time]
+(defn- log-response [{:keys [uri request-method]} {:keys [status body]} elapsed-time db-call-count]
   (let [log-error #(log/error %) ; these are macros so we can't pass by value :sad:
         log-debug #(log/debug %)
         log-warn  #(log/warn  %)
@@ -244,7 +246,7 @@
                                 (=  status 403) [true  'red   log-warn]
                                 (>= status 400) [true  'red   log-debug]
                                 :else           [false 'green log-debug])]
-    (log-fn (str (u/format-color color "%s %s %d (%s)" (.toUpperCase (name request-method)) uri status elapsed-time)
+    (log-fn (str (u/format-color color "%s %s %d (%s) (%d DB calls)" (.toUpperCase (name request-method)) uri status elapsed-time db-call-count)
                  ;; only print body on error so we don't pollute our environment by over-logging
                  (when (and error?
                             (or (string? body) (coll? body)))
@@ -257,5 +259,6 @@
     (if-not (api-call? request)
       (handler request)
       (let [start-time (System/nanoTime)]
-        (u/prog1 (handler request)
-          (log-response request <> (u/format-nanoseconds (- (System/nanoTime) start-time))))))))
+        (db/with-call-counting [call-count]
+          (u/prog1 (handler request)
+            (log-response request <> (u/format-nanoseconds (- (System/nanoTime) start-time)) (call-count))))))))

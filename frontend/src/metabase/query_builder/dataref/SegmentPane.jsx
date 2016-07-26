@@ -27,14 +27,14 @@ export default class SegmentPane extends Component {
     static propTypes = {
         segment: PropTypes.object.isRequired,
         query: PropTypes.object,
-        loadTableFn: PropTypes.func.isRequired,
+        loadTableAndForeignKeysFn: PropTypes.func.isRequired,
         runQueryFn: PropTypes.func.isRequired,
         setQueryFn: PropTypes.func.isRequired,
         setCardAndRun: PropTypes.func.isRequired
     };
 
     componentWillMount() {
-        this.props.loadTableFn(this.props.segment.table_id).then((result) => {
+        this.props.loadTableAndForeignKeysFn(this.props.segment.table_id).then((result) => {
             this.setState({
                 table: result.table,
                 tableForeignKeys: result.foreignKeys

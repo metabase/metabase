@@ -5,10 +5,9 @@
             [clojure.tools.logging :as log]
             (honeysql [core :as hsql]
                       [helpers :as h])
-            [korma.db :as kdb]
-            (metabase [config :as config]
-                      [db :as db]
-                      [driver :as driver])
+            [metabase.config :as config]
+            [metabase.db :as db]
+            [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
             [metabase.driver.generic-sql.query-processor :as sqlqp]
             (metabase.models [database :refer [Database]]
@@ -162,7 +161,7 @@
    :fields (set (table-schema->metabase-field-info (.getSchema (get-table database table-name))))})
 
 
-(def ^:private ^:const query-timeout-seconds 90)
+(def ^:private ^:const query-timeout-seconds 60)
 
 (defn- ^QueryResponse execute-bigquery
   ([{{:keys [project-id]} :details, :as database} query-string]
@@ -351,7 +350,7 @@
         results (if mbql?
                   (post-process-mbql dataset-id table-name results)
                   (update results :columns (partial map keyword)))]
-    (assoc results :annotate? true)))
+    (assoc results :annotate? mbql?)))
 
 ;; This provides an implementation of `prepare-value` that prevents HoneySQL from converting forms to prepared statement parameters (`?`)
 ;; TODO - Move this into `metabase.driver.generic-sql` and document it as an alternate implementation for `prepare-value` (?)
@@ -474,10 +473,9 @@
           ;; people can manually specifiy "foreign key" relationships in admin and everything should work correctly.
           ;; Since we can't infer any "FK" relationships during sync our normal FK tests are not appropriate for BigQuery, so they're disabled for the time being.
           ;; TODO - either write BigQuery-speciifc tests for FK functionality or add additional code to manually set up these FK relationships for FK tables
-          :features              (constantly (if (not config/is-test?)
-                                               #{:native-parameters :foreign-keys}
+          :features              (constantly (when-not config/is-test?
                                                ;; during unit tests don't treat bigquery as having FK support
-                                               #{:native-parameters}))
+                                               #{:foreign-keys}))
           :field-values-lazy-seq (u/drop-first-arg field-values-lazy-seq)
           :mbql->native          (u/drop-first-arg mbql->native)}))
 
