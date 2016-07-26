@@ -66,13 +66,12 @@
 
 (defn- set-enable-advanced-humanization! [^Boolean new-value]
   (setting/set-boolean! :enable-advanced-humanization new-value)
-  (when-not (nil? new-value)
-    (re-humanize-table-names!)))
+  (log/info (format "Now using %s table name humanization." (if (enable-advanced-humanization) "ADVANCED" "SIMPLE")))
+  (re-humanize-table-names!))
 
 (defsetting enable-advanced-humanization
-  "Should we enable the advanced, cost-based table name humanization?
-   This attempts to break apart identifiers based on frequently-occuring English words; you may want to disable this for databases
-   where tables names are in a language other than English."
+  "Should we use advanced humanization for table names? This breaks up names by frequently-occuring English words;
+   you may want to disable this for databases where tables names are in a language other than English."
   :type    :boolean
   :default true
   :setter  set-enable-advanced-humanization!)
