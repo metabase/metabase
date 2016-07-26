@@ -14,8 +14,7 @@
 }
 
 :local(.guideEmptyMessage) {
-    composes: text-dark mt3 from "style";
-    text-align: left;
+    composes: text-dark text-centered mt3 from "style";
     font-size: 1.1em;
     line-height: 1.457em;
 }

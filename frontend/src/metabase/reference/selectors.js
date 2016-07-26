@@ -23,7 +23,7 @@ const referenceSections = {
             adminMessage: "Defining common metrics for your team makes it even easier to ask questions",
             message: "Metrics will appear here once your admins have created some",
             image: "/app/img/metrics-list",
-            adminAction: "Create a metric",
+            adminAction: "Learn how to create metrics",
             adminLink: "http://www.metabase.com/docs/latest/administration-guide/05-segments-and-metrics.html"
         },
         breadcrumb: "Metrics",
@@ -40,7 +40,7 @@ const referenceSections = {
             adminMessage: "Defining common segments for your team makes it even easier to ask questions",
             message: "Segments will appear here once your admins have created some",
             image: "/app/img/segments-list",
-            adminAction: "Create a segment",
+            adminAction: "Learn how to create segments",
             adminLink: "http://www.metabase.com/docs/latest/administration-guide/05-segments-and-metrics.html"
         },
         breadcrumb: "Segments",
