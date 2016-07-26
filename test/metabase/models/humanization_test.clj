@@ -1,6 +1,7 @@
 (ns metabase.models.humanization-test
   (:require [expectations :refer :all]
-            (metabase.models [humanization :refer :all]
+            (metabase.models [field :refer [Field]]
+                             [humanization :refer :all]
                              [table :refer [Table]])
             [metabase.test.util :as tu]
             [metabase.db :as db]))
@@ -48,15 +49,27 @@
 (expect
   "Toucans Are Cool"
   (tu/with-temporary-setting-values [enable-advanced-humanization true]
-    (tu/with-temp* [Table [{table-id :id} {:name "toucansare_cool"}]]
+    (tu/with-temp Table [{table-id :id} {:name "toucansare_cool"}]
       (db/select-one-field :display_name Table, :id table-id))))
+
+(expect
+  "Fussy Bird Sightings"
+  (tu/with-temporary-setting-values [enable-advanced-humanization true]
+    (tu/with-temp Field [{field-id :id} {:name "fussybird_sightings"}]
+      (db/select-one-field :display_name Field, :id field-id))))
 
 ;; check that we get the expected :display_name with advanced humanization *disabled*
 (expect
   "Toucansare Cool"
   (tu/with-temporary-setting-values [enable-advanced-humanization false]
-    (tu/with-temp* [Table [{table-id :id} {:name "toucansare_cool"}]]
+    (tu/with-temp Table [{table-id :id} {:name "toucansare_cool"}]
       (db/select-one-field :display_name Table, :id table-id))))
+
+(expect
+  "Fussybird Sightings"
+  (tu/with-temporary-setting-values [enable-advanced-humanization false]
+    (tu/with-temp Field [{field-id :id} {:name "fussybird_sightings"}]
+      (db/select-one-field :display_name Field, :id field-id))))
 
 ;; now check that existing tables have their :display_names updated appropriately when the setting `enabled-advanced-humanization` is toggled
 (expect
@@ -64,10 +77,61 @@
    "Toucansare Cool"
    "Toucans Are Cool"]
   (tu/with-temporary-setting-values [enable-advanced-humanization true]
-    (tu/with-temp* [Table [{table-id :id} {:name "toucansare_cool"}]]
+    (tu/with-temp Table [{table-id :id} {:name "toucansare_cool"}]
       (let [display-name #(db/select-one-field :display_name Table, :id table-id)]
         [(display-name)
          (do (enable-advanced-humanization false)
              (display-name))
          (do (enable-advanced-humanization true)
              (display-name))]))))
+
+(expect
+  ["Fussy Bird Sightings"
+   "Fussybird Sightings"
+   "Fussy Bird Sightings"]
+  (tu/with-temporary-setting-values [enable-advanced-humanization true]
+    (tu/with-temp Field [{field-id :id} {:name "fussybird_sightings"}]
+      (let [display-name #(db/select-one-field :display_name Field, :id field-id)]
+        [(display-name)
+         (do (enable-advanced-humanization false)
+             (display-name))
+         (do (enable-advanced-humanization true)
+             (display-name))]))))
+
+;; check that if we give a field a custom display_name that re-humanization doesn't overwrite it
+(expect
+  "My Favorite Table"
+  (tu/with-temporary-setting-values [enable-advanced-humanization true]
+    (tu/with-temp Table [{table-id :id} {:name "toucansare_cool"}]
+      (db/update! Table table-id
+        :display_name "My Favorite Table")
+      (enable-advanced-humanization false)
+      (db/select-one-field :display_name Table, :id table-id))))
+
+(expect
+  "My Favorite Field"
+  (tu/with-temporary-setting-values [enable-advanced-humanization true]
+    (tu/with-temp Field [{field-id :id} {:name "fussybird_sightings"}]
+      (db/update! Field field-id
+        :display_name "My Favorite Field")
+      (enable-advanced-humanization false)
+      (db/select-one-field :display_name Field, :id field-id))))
+
+;; make sure switching in the other direction doesn't stomp all over custom names either
+(expect
+  "My Favorite Table"
+  (tu/with-temporary-setting-values [enable-advanced-humanization false]
+    (tu/with-temp Table [{table-id :id} {:name "toucansare_cool"}]
+      (db/update! Table table-id
+        :display_name "My Favorite Table")
+      (enable-advanced-humanization true)
+      (db/select-one-field :display_name Table, :id table-id))))
+
+(expect
+  "My Favorite Field"
+  (tu/with-temporary-setting-values [enable-advanced-humanization false]
+    (tu/with-temp Field [{field-id :id} {:name "fussybird_sightings"}]
+      (db/update! Field field-id
+        :display_name "My Favorite Field")
+      (enable-advanced-humanization true)
+      (db/select-one-field :display_name Field, :id field-id))))

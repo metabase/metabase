@@ -44,7 +44,7 @@ const SECTIONS = [
             },
             {
                 key: "enable-advanced-humanization",
-                display_name: "Friendly Table Names",
+                display_name: "Friendly Table and Field Names",
                 type: "boolean"
             }
         ]

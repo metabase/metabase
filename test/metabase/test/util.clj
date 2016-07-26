@@ -150,7 +150,8 @@
                                 :field_type      :info
                                 :name            (random-name)
                                 :position        1
-                                :preview_display true})})
+                                :preview_display true
+                                :table_id        (data/id :venues)})})
 
 (u/strict-extend (class Metric)
   WithTempDefaults

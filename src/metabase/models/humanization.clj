@@ -53,7 +53,7 @@
       name->human-readable-name:simple) s))
 
 
-(defn- re-humanize-table-names!
+(defn- re-humanize-table-and-field-names!
   "Update the display names of all tables in the database using new values obtained from the (obstensibly toggled implementation of) `name->human-readable-name`."
   []
   (doseq [{id :id, table-name :name, display-name :display_name} (db/select ['Table :id :name :display_name])]
@@ -67,11 +67,11 @@
 (defn- set-enable-advanced-humanization! [^Boolean new-value]
   (setting/set-boolean! :enable-advanced-humanization new-value)
   (log/info (format "Now using %s table name humanization." (if (enable-advanced-humanization) "ADVANCED" "SIMPLE")))
-  (re-humanize-table-names!))
+  (re-humanize-table-and-field-names!))
 
 (defsetting enable-advanced-humanization
-  "Metabase can attempt to transform your table names into more sensible human readable versions, e.g. \"somehorriblename\" becomes \"Some Horrible Name\".
-   This doesn’t work all that well if your table names are in a language other than English, however. Do you want us to take a guess?"
+  "Metabase can attempt to transform your table and field names into more sensible human readable versions, e.g. \"somehorriblename\" becomes \"Some Horrible Name\".
+   This doesn’t work all that well if the names are in a language other than English, however. Do you want us to take a guess?"
   :type    :boolean
   :default true
   :setter  set-enable-advanced-humanization!)
