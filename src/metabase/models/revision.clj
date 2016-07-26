@@ -1,6 +1,5 @@
 (ns metabase.models.revision
   (:require [clojure.data :as data]
-            [korma.db :as kdb]
             [metabase.db :as db]
             (metabase.models [hydrate :refer [hydrate]]
                              [interface :as i]
@@ -145,7 +144,7 @@
          (db/exists? User :id user-id)
          (integer? revision-id)]}
   (let [serialized-instance (db/select-one-field :object Revision, :model (:name entity), :model_id id, :id revision-id)]
-    (kdb/transaction
+    (db/transaction
       ;; Do the reversion of the object
       (revert-to-revision! entity id user-id serialized-instance)
       ;; Push a new revision to record this change

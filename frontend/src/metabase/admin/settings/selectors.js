@@ -126,10 +126,21 @@ const SECTIONS = [
                 type: "boolean"
             }
         ]
+    },
+    {
+        name: "Single Sign On",
+        settings: [
+            {
+                key: "google-auth-client-id"
+            },
+            {
+                key: "google-auth-auto-create-accounts-domain"
+            }
+        ]
     }
 ];
 
-export const getSettings = state => state.settings;
+export const getSettings = state => state.settings.settings;
 
 export const getNewVersionAvailable = createSelector(
     getSettings,
@@ -162,10 +173,12 @@ export const getSections = createSelector(
     }
 );
 
+export const getActiveSectionName = (state) => state.router && state.router.location && state.router.location.query.section
+
 export const getActiveSection = createSelector(
-    state => state.activeSection,
+    getActiveSectionName,
     getSections,
-    (section, sections) => {
+    (section = "Setup", sections) => {
         if (sections) {
             return _.findWhere(sections, {name: section});
         } else {

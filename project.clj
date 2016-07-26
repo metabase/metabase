@@ -11,50 +11,50 @@
             "generate-sample-dataset" ["with-profile" "+generate-sample-dataset" "run"]
             "h2" ["with-profile" "+h2-shell" "run" "-url" "jdbc:h2:./metabase.db" "-user" "" "-password" "" "-driver" "org.h2.Driver"]}
   :dependencies [[org.clojure/clojure "1.8.0"]
-                 [org.clojure/core.async "0.2.374"]
+                 [org.clojure/core.async "0.2.385"]
                  [org.clojure/core.match "0.3.0-alpha4"]              ; optimized pattern matching library for Clojure
                  [org.clojure/core.memoize "0.5.9"]                   ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
                  [org.clojure/data.csv "0.1.3"]                       ; CSV parsing / generation
-                 [org.clojure/java.classpath "0.2.3"]
-                 [org.clojure/java.jdbc "0.4.2"]                      ; basic jdbc access from clojure. *** DON'T UPDATE THIS UNTIL KORMA IS UPDATED TO STOP USING DEPRECATED FN SIGNATURES ***
+                 [org.clojure/java.classpath "0.2.3"]                 ; examine the Java classpath from Clojure programs
+                 [org.clojure/java.jdbc "0.6.1"]                      ; basic JDBC access from Clojure
                  [org.clojure/math.numeric-tower "0.0.4"]             ; math functions like `ceil`
                  [org.clojure/tools.logging "0.3.1"]                  ; logging framework
                  [org.clojure/tools.namespace "0.2.10"]
-                 [amalloy/ring-buffer "1.2"
+                 [amalloy/ring-buffer "1.2.1"
                   :exclusions [org.clojure/clojure
                                org.clojure/clojurescript]]            ; fixed length queue implementation, used in log buffering
                  [amalloy/ring-gzip-middleware "0.1.3"]               ; Ring middleware to GZIP responses if client can handle it
                  [aleph "0.4.1"]                                      ; Async HTTP library; WebSockets
-                 [cheshire "5.6.1"]                                   ; fast JSON encoding (used by Ring JSON middleware)
+                 [cheshire "5.6.3"]                                   ; fast JSON encoding (used by Ring JSON middleware)
                  [clj-http "3.1.0"                                    ; HTTP client
                   :exclusions [commons-codec
                                commons-io
                                slingshot]]
-                 [clj-time "0.11.0"]                                  ; library for dealing with date/time
+                 [clj-time "0.12.0"]                                  ; library for dealing with date/time
                  [clojurewerkz/quartzite "2.0.0"]                     ; scheduling library
                  [colorize "0.1.1" :exclusions [org.clojure/clojure]] ; string output with ANSI color codes (for logging)
-                 [com.cemerick/friend "0.2.1"                         ; auth library
+                 [com.cemerick/friend "0.2.3"                         ; auth library
                   :exclusions [commons-codec
                                org.apache.httpcomponents/httpclient
                                net.sourceforge.nekohtml/nekohtml
                                ring/ring-core]]
                  [com.draines/postal "2.0.0"]                         ; SMTP library
                  [com.google.apis/google-api-services-bigquery        ; Google BigQuery Java Client Library
-                  "v2-rev300-1.22.0"]
-                 [com.h2database/h2 "1.4.191"]                        ; embedded SQL database
+                  "v2-rev310-1.22.0"]
+                 [com.h2database/h2 "1.4.192"]                        ; embedded SQL database
                  [com.mattbertolini/liquibase-slf4j "2.0.0"]          ; Java Migrations lib
+                 [com.mchange/c3p0 "0.9.5.2"]                         ; connection pooling library
                  [com.novemberain/monger "3.0.2"]                     ; MongoDB Driver
-                 [compojure "1.5.0"]                                  ; HTTP Routing library built on Ring
+                 [compojure "1.5.1"]                                  ; HTTP Routing library built on Ring
                  [environ "1.0.3"]                                    ; easy environment management
                  [hiccup "1.0.5"]                                     ; HTML templating
-                 [honeysql "0.6.3"]                                   ; Transform Clojure data structures to SQL
-                 [korma "0.4.2"]                                      ; SQL generation
+                 [honeysql "0.6.3"]                                   ; Transform Clojure data structures to SQL (version 0.7.0+ makes CI fail -- probably need to fix something!)
                  [log4j/log4j "1.2.17"                                ; logging framework
                   :exclusions [javax.mail/mail
                                javax.jms/jms
                                com.sun.jdmk/jmxtools
                                com.sun.jmx/jmxri]]
-                 [medley "0.8.1"]                                     ; lightweight lib of useful functions
+                 [medley "0.8.2"]                                     ; lightweight lib of useful functions
                  [metabase/throttle "1.0.1"]                          ; Tools for throttling access to API endpoints and other code pathways
                  [mysql/mysql-connector-java "5.1.39"]                ; MySQL JDBC driver (don't upgrade to 6.0+ yet -- that's Java 8 only)
                  [net.sf.cssbox/cssbox "4.11"                         ; HTML / CSS rendering
@@ -65,10 +65,10 @@
                  [org.yaml/snakeyaml "1.17"]                          ; YAML parser (required by liquibase)
                  [org.xerial/sqlite-jdbc "3.8.11.2"]                  ; SQLite driver
                  [postgresql "9.3-1102.jdbc41"]                       ; Postgres driver
-                 [io.crate/crate-jdbc "1.11.0"]                       ; Crate JDBC driver
-                 [io.crate/crate-client "0.54.7"]                     ; Crate Java client (used by Crate JDBC)
-                 [prismatic/schema "1.1.1"]                           ; Data schema declaration and validation library
-                 [ring/ring-jetty-adapter "1.4.0"]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
+                 [io.crate/crate-jdbc "1.13.0"]                       ; Crate JDBC driver
+                 [io.crate/crate-client "0.55.2"]                     ; Crate Java client (used by Crate JDBC)
+                 [prismatic/schema "1.1.2"]                           ; Data schema declaration and validation library
+                 [ring/ring-jetty-adapter "1.5.0"]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically
                  [stencil "0.5.0"]                                    ; Mustache templates for Clojure
                  [swiss-arrows "1.0.0"]]                              ; 'Magic wand' macro -<>, etc.
@@ -130,9 +130,9 @@
                                        "-Xverify:none"]}              ; disable bytecode verification when running tests so they start slightly faster
              :uberjar {:aot :all
                        :jvm-opts ["-Dclojure.compiler.elide-meta=[:doc :added :file :line]" ; strip out metadata for faster load / smaller uberjar size
-                                  "-Dmanifold.disable-jvm8-primitives=true"]} ; disable Manifold Java 8 primitives (see https://github.com/ztellman/manifold#java-8-extensions)
+                                  "-Dmanifold.disable-jvm8-primitives=true"]}               ; disable Manifold Java 8 primitives (see https://github.com/ztellman/manifold#java-8-extensions)
              :generate-sample-dataset {:dependencies [[faker "0.2.2"]                   ; Fake data generator -- port of Perl/Ruby
-                                                      [incanter/incanter-core "1.9.0"]] ; Satistical functions like normal distibutions}})
+                                                      [incanter/incanter-core "1.9.1"]] ; Satistical functions like normal distibutions}})
                                        :source-paths ["sample_dataset"]
                                        :main ^:skip-aot metabase.sample-dataset.generate}
              ;; Run reset password from source: MB_DB_PATH=/path/to/metabase.db lein with-profile reset-password run email@address.com
@@ -146,4 +146,4 @@
                               ;; Exclude everything except for reset-password specific code in the created jar
                               :jar-exclusions [#"^(?!metabase/reset_password).*$"]
                               :target-path "reset-password-artifacts/%s"} ; different than ./target because otherwise lein uberjar will delete our artifacts and vice versa
-             :h2-shell {:main org.h2.tools.Shell}})
+             :h2-shell {:main org.h2.tools.Shell}}) ; get the H2 shell with 'lein h2'

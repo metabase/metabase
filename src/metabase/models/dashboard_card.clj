@@ -1,12 +1,11 @@
 (ns metabase.models.dashboard-card
   (:require [clojure.set :as set]
-            [korma.db :as kdb]
-            [metabase.db :as db]
-            [metabase.events :as events]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.hydrate :refer :all]
-            [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
-            [metabase.models.interface :as i]
+            (metabase [db :as db]
+                      [events :as events])
+            (metabase.models  [card :refer [Card]]
+                              [hydrate :refer :all]
+                              [dashboard-card-series :refer [DashboardCardSeries]]
+                              [interface :as i])
             [metabase.util :as u]))
 
 (i/defentity DashboardCard :report_dashboardcard)
@@ -74,7 +73,7 @@
   ;; first off, just delete all series on the dashboard card (we add them again below)
   (db/cascade-delete! DashboardCardSeries :dashboardcard_id id)
   ;; now just insert all of the series that were given to us
-  (when-not (empty? card-ids)
+  (when (seq card-ids)
     (let [cards (map-indexed (fn [i card-id]
                                {:dashboardcard_id id, :card_id card-id, :position i})
                              card-ids)]
@@ -85,10 +84,10 @@
    Returns the updated `DashboardCard` or throws an Exception."
   [{:keys [id series parameter_mappings] :as dashboard-card}]
   {:pre [(integer? id)
-         (u/nil-or-sequence-of-maps? parameter_mappings)
+         (u/maybe? u/sequence-of-maps? parameter_mappings)
          (every? integer? series)]}
   (let [{:keys [sizeX sizeY row col series]} (merge {:series []} dashboard-card)]
-    (kdb/transaction
+    (db/transaction
       ;; update the dashcard itself (positional attributes)
       (when (and sizeX sizeY row col)
         (db/update-non-nil-keys! DashboardCard id, :sizeX sizeX, :sizeY sizeY, :row row, :col col, :parameter_mappings parameter_mappings))
@@ -106,10 +105,10 @@
   {:pre [(integer? dashboard_id)
          (integer? card_id)
          (integer? creator_id)
-         (u/nil-or-sequence-of-maps? parameter_mappings)]}
+         (u/maybe? u/sequence-of-maps? parameter_mappings)]}
   (let [{:keys [sizeX sizeY row col series]} (merge {:sizeX 2, :sizeY 2, :series []}
                                                     dashboard-card)]
-    (kdb/transaction
+    (db/transaction
       (let [{:keys [id] :as dashboard-card} (db/insert! DashboardCard
                                               :dashboard_id       dashboard_id
                                               :card_id            card_id

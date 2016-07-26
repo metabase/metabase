@@ -17,8 +17,10 @@ import * as databaseActions from "../database";
 
 const mapStateToProps = (state, props) => {
     return {
-        database:    getEditingDatabase(state),
-        formState:   getFormState(state)
+        databaseId:       state.router && state.router.params && state.router.params.databaseId,
+        database:         getEditingDatabase(state),
+        formState:        getFormState(state),
+        onChangeLocation: props.onChangeLocation
     }
 }
 
@@ -36,7 +38,7 @@ export default class DatabaseEditApp extends Component {
     };
 
     componentWillMount() {
-        this.props.initializeDatabase(this.props.databaseId);
+        this.props.initializeDatabase(this.props.databaseId, this.props.onChangeLocation);
     }
 
     render() {
@@ -65,7 +67,7 @@ export default class DatabaseEditApp extends Component {
 
                     { /* Sidebar Actions */ }
                     { database && database.id != null &&
-                        <div className="Grid-cell Cell--1of3" ng-if="database.id">
+                        <div className="Grid-cell Cell--1of3">
                             <div className="Actions  bordered rounded shadowed">
                                 <h3>Actions</h3>
                                 <div className="Actions-group">

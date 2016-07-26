@@ -1,12 +1,7 @@
 (ns metabase.api.util-test
   "Tests for /api/util"
   (:require [expectations :refer :all]
-            [metabase.http-client :refer :all]
-            (metabase.models [session :refer [Session]]
-                             [user :refer [User]])
-            [metabase.test.data :refer :all]
-            [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [random-name expect-eval-actual-first]]))
+            [metabase.http-client :refer [client]]))
 
 
 ;; ## POST /api/util/password_check

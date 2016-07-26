@@ -1,15 +1,20 @@
 import _ from "underscore";
 
-import { handleActions, combineReducers, AngularResourceProxy, createThunkAction } from "metabase/lib/redux";
+import { handleActions, combineReducers, AngularResourceProxy, createAction, createThunkAction, momentifyTimestamps } from "metabase/lib/redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { augmentTable } from "metabase/lib/table";
+import { loadTableAndForeignKeys } from "metabase/lib/table";
 
 
 // resource wrappers
 const MetabaseApi = new AngularResourceProxy("Metabase", ["db_list", "db_metadata", "db_idfields", "table_update", "field_update"]);
 const SegmentApi = new AngularResourceProxy("Segment", ["delete"]);
 const MetricApi = new AngularResourceProxy("Metric", ["delete"]);
+const Segment = new AngularResourceProxy("Segment", ["get", "create", "update", "delete"]);
+const Metric = new AngularResourceProxy("Metric", ["get", "create", "update", "delete"]);
+const Metabase = new AngularResourceProxy("Metabase", ["dataset"]);
+const Revisions = new AngularResourceProxy("Revisions", ["get"]);
 
 
 async function loadDatabaseMetadata(databaseId) {
@@ -24,7 +29,7 @@ async function loadDatabaseMetadata(databaseId) {
 }
 
 // initializeMetadata
-export const initializeMetadata = createThunkAction("INITIALIZE_METADATA", function(databaseId, tableId) {
+export const initializeMetadata = createThunkAction("INITIALIZE_METADATA", function(databaseId, tableId, onChangeLocation) {
     return async function(dispatch, getState) {
         let databases, database;
         try {
@@ -45,6 +50,7 @@ export const initializeMetadata = createThunkAction("INITIALIZE_METADATA", funct
         }
 
         return {
+            onChangeLocation,
             databases,
             database,
             tableId
@@ -70,7 +76,7 @@ export const fetchDatabaseIdfields = createThunkAction("FETCH_IDFIELDS", functio
 // selectDatabase
 export const selectDatabase = createThunkAction("SELECT_DATABASE", function(db) {
     return async function(dispatch, getState) {
-        const { onChangeLocation } = getState();
+        const { datamodel: { onChangeLocation } } = getState();
 
         try {
             let database = await loadDatabaseMetadata(db.id);
@@ -90,7 +96,7 @@ export const selectDatabase = createThunkAction("SELECT_DATABASE", function(db) 
 // selectTable
 export const selectTable = createThunkAction("SELECT_TABLE", function(table) {
     return async function(dispatch, getState) {
-        const { onChangeLocation } = getState();
+        const { datamodel: { onChangeLocation } } = getState();
 
         // we also want to update our url to match our new state
         onChangeLocation('/admin/datamodel/database/'+table.db_id+'/table/'+table.id);
@@ -125,7 +131,7 @@ export const updateTable = createThunkAction("UPDATE_TABLE", function(table) {
 // updateField
 export const updateField = createThunkAction("UPDATE_FIELD", function(field) {
     return async function(dispatch, getState) {
-        const { editingDatabase } = getState();
+        const { datamodel: { editingDatabase } } = getState();
 
         try {
             // make sure we don't send all the computed metadata
@@ -184,7 +190,7 @@ export const updateFieldTarget = createThunkAction("UPDATE_FIELD_TARGET", functi
 // retireSegment
 export const onRetireSegment = createThunkAction("RETIRE_SEGMENT", function(segment) {
     return async function(dispatch, getState) {
-        const { editingDatabase } = getState();
+        const { datamodel: { editingDatabase } } = getState();
 
         await SegmentApi.delete(segment);
         MetabaseAnalytics.trackEvent("Data Model", "Retire Segment");
@@ -196,32 +202,90 @@ export const onRetireSegment = createThunkAction("RETIRE_SEGMENT", function(segm
 // retireMetric
 export const onRetireMetric = createThunkAction("RETIRE_METRIC", function(metric) {
     return async function(dispatch, getState) {
-        const { editingDatabase } = getState();
+        const { datamodel: { editingDatabase } } = getState();
 
         await MetricApi.delete(metric);
         MetabaseAnalytics.trackEvent("Data Model", "Retire Metric");
-        
+
         return await loadDatabaseMetadata(editingDatabase.id);
     };
 });
 
 
+// SEGMENTS
+
+export const GET_SEGMENT = "GET_SEGMENT";
+export const CREATE_SEGMENT = "CREATE_SEGMENT";
+export const UPDATE_SEGMENT = "UPDATE_SEGMENT";
+export const DELETE_SEGMENT = "DELETE_SEGMENT";
+
+export const getSegment    = createAction(GET_SEGMENT, Segment.get);
+export const createSegment = createAction(CREATE_SEGMENT, Segment.create);
+export const updateSegment = createAction(UPDATE_SEGMENT, Segment.update);
+export const deleteSegment = createAction(DELETE_SEGMENT, Segment.delete);
+
+// METRICS
+
+export const GET_METRIC = "GET_METRIC";
+export const CREATE_METRIC = "CREATE_METRIC";
+export const UPDATE_METRIC = "UPDATE_METRIC";
+export const DELETE_METRIC = "DELETE_METRIC";
+
+export const getMetric    = createAction(GET_METRIC, Metric.get);
+export const createMetric = createAction(CREATE_METRIC, Metric.create);
+export const updateMetric = createAction(UPDATE_METRIC, Metric.update);
+export const deleteMetric = createAction(DELETE_METRIC, Metric.delete);
+
+// SEGMENT DETAIL
+
+export const LOAD_TABLE_METADATA = "LOAD_TABLE_METADATA";
+export const UPDATE_PREVIEW_SUMMARY = "UPDATE_PREVIEW_SUMMARY";
+
+export const loadTableMetadata = createAction(LOAD_TABLE_METADATA, loadTableAndForeignKeys);
+export const updatePreviewSummary = createAction(UPDATE_PREVIEW_SUMMARY, async (query) => {
+    let result = await Metabase.dataset(query);
+    return result.data.rows[0][0];
+});
+
+// REVISION HISTORY
+
+export const FETCH_REVISIONS = "FETCH_REVISIONS";
+
+export const fetchRevisions = createThunkAction(FETCH_REVISIONS, ({ entity, id }) =>
+    async (dispatch, getState) => {
+        let action;
+        switch (entity) {
+            case "segment": action = getSegment({ segmentId: id }); break;
+            case "metric": action = getMetric({ metricId: id }); break;
+        }
+        let [object, revisions] = await Promise.all([
+            dispatch(action),
+            Revisions.get({ entity, id })
+        ]);
+        await dispatch(loadTableMetadata(object.payload.definition.source_table));
+        return { object: object.payload, revisions };
+    }
+);
+
+
 // reducers
 
 // this is a backwards compatibility thing with angular to allow programmatic route changes.  remove/change this when going to ReduxRouter
-const onChangeLocation = handleActions({}, () => null);
+const onChangeLocation = handleActions({
+    ["INITIALIZE_METADATA"]: { next: (state, { payload }) => payload.onChangeLocation }
+}, () => null);
 
 const databases = handleActions({
     ["INITIALIZE_METADATA"]: { next: (state, { payload }) => payload.databases }
 }, []);
 
 const idfields = handleActions({
-    ["FETCH_IDFIELDS"]: { next: (state, { payload }) => payload }
+    ["FETCH_IDFIELDS"]: { next: (state, { payload }) => payload ? payload : state }
 }, []);
 
 const editingDatabase = handleActions({
     ["INITIALIZE_METADATA"]: { next: (state, { payload }) => payload.database },
-    ["SELECT_DATABASE"]: { next: (state, { payload }) => payload ? payload.database : state },
+    ["SELECT_DATABASE"]: { next: (state, { payload }) => payload ? payload : state },
     ["RETIRE_SEGMENT"]: { next: (state, { payload }) => payload },
     ["RETIRE_METRIC"]: { next: (state, { payload }) => payload }
 }, null);
@@ -231,10 +295,44 @@ const editingTable = handleActions({
     ["SELECT_TABLE"]: { next: (state, { payload }) => payload }
 }, null);
 
+const segments = handleActions({
+    [GET_SEGMENT]:    { next: (state, { payload }) => ({ ...state, [payload.id]: momentifyTimestamps(payload) }) },
+    [CREATE_SEGMENT]: { next: (state, { payload }) => ({ ...state, [payload.id]: momentifyTimestamps(payload) }) },
+    [UPDATE_SEGMENT]: { next: (state, { payload }) => ({ ...state, [payload.id]: momentifyTimestamps(payload) }) },
+    [DELETE_SEGMENT]: { next: (state, { payload }) => { state = { ...state }; delete state[payload.id]; return state; }}
+}, {});
+
+const metrics = handleActions({
+    [GET_METRIC]:    { next: (state, { payload }) => ({ ...state, [payload.id]: momentifyTimestamps(payload) }) },
+    [CREATE_METRIC]: { next: (state, { payload }) => ({ ...state, [payload.id]: momentifyTimestamps(payload) }) },
+    [UPDATE_METRIC]: { next: (state, { payload }) => ({ ...state, [payload.id]: momentifyTimestamps(payload) }) },
+    [DELETE_METRIC]: { next: (state, { payload }) => { state = { ...state }; delete state[payload.id]; return state; }}
+}, {});
+
+const tableMetadata = handleActions({
+    [LOAD_TABLE_METADATA]: {
+        next: (state, { payload }) => (payload && payload.table) ? payload.table : null,
+        throw: (state, action) => null
+    }
+}, null);
+
+const previewSummary = handleActions({
+    [UPDATE_PREVIEW_SUMMARY]: { next: (state, { payload }) => payload }
+}, null);
+
+const revisionObject = handleActions({
+    [FETCH_REVISIONS]: { next: (state, { payload: revisionObject }) => revisionObject }
+}, null);
+
 export default combineReducers({
     databases,
     idfields,
     editingDatabase,
     editingTable,
-    onChangeLocation
+    onChangeLocation,
+    segments,
+    metrics,
+    tableMetadata,
+    previewSummary,
+    revisionObject
 });

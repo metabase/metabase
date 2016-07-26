@@ -3,8 +3,7 @@
             [clojure.set :as set]
             [honeysql.core :as hsql]
             [metabase.driver :as driver]
-            (metabase.driver.crate [analyze :as analyze]
-                                   [query-processor :as qp]
+            (metabase.driver.crate [query-processor :as qp]
                                    [util :as crate-util])
             [metabase.driver.generic-sql :as sql]
             [metabase.util :as u]))
@@ -67,16 +66,12 @@
 (u/strict-extend CrateDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {:analyze-table  analyze/analyze-table
-          :can-connect?   (u/drop-first-arg can-connect?)
+         {:can-connect?   (u/drop-first-arg can-connect?)
           :date-interval  crate-util/date-interval
           :details-fields (constantly [{:name         "hosts"
                                         :display-name "Hosts"
                                         :default      "//localhost:4300"}])
-          :execute-query  qp/execute-query
-          :features       (fn [this]
-                            (set/difference (sql/features this)
-                                            #{:foreign-keys}))})
+          :features       (comp (u/rpartial set/difference #{:foreign-keys}) sql/features)})
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
          {:connection-details->spec  (u/drop-first-arg crate-spec)

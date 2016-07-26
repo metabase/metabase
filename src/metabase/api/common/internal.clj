@@ -181,11 +181,12 @@
 
     (typify-route \"/:id/card\") -> [\"/:id/card\" :id #\"[0-9]+\"]"
   [route]
-  (if (vector? route) route
-      (let [arg-types (->> (route-arg-keywords route)
-                           typify-args)]
-        (if (empty? arg-types) route
-            (apply vector route arg-types)))))
+  (if (vector? route)
+    route
+    (let [arg-types (typify-args (route-arg-keywords route))]
+      (if (empty? arg-types)
+        route
+        (apply vector route arg-types)))))
 
 
 ;;; ## ROUTE ARG AUTO PARSING
@@ -195,11 +196,11 @@
   that can be used in a `let` form."
   [arg-symbol]
   (when (symbol? arg-symbol)
-    (some-> (arg-type arg-symbol)                                    ; :int
-            *auto-parse-types*                                       ; {:parser ... }
-            :parser                                                  ; Integer/parseInt
+    (some-> (arg-type arg-symbol)                                     ; :int
+            *auto-parse-types*                                        ; {:parser ... }
+            :parser                                                   ; Integer/parseInt
             ((fn [parser] `(when ~arg-symbol (~parser ~arg-symbol)))) ; (when id (Integer/parseInt id))
-            ((partial vector arg-symbol)))))                         ; [id (Integer/parseInt id)]
+            ((partial vector arg-symbol)))))                          ; [id (Integer/parseInt id)]
 
 (defmacro auto-parse
   "Create a `let` form that applies corresponding parse-fn for any symbols in ARGS that are present in `*auto-parse-types*`."

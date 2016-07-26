@@ -19,7 +19,7 @@
   "Create and set a new `@setup-token`.
    Returns the newly created token."
   []
-  (reset! setup-token (.toString (java.util.UUID/randomUUID))))
+  (reset! setup-token (str (java.util.UUID/randomUUID))))
 
 (defn token-clear
   "Clear the `@setup-token` if it exists and reset it to nil."

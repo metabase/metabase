@@ -2,7 +2,6 @@
   (:require [expectations :refer :all]
             [metabase.db :as db]
             [metabase.driver :as driver]
-            [metabase.driver.generic-sql :refer [korma-entity]]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [field-values :refer [FieldValues]]
@@ -54,11 +53,8 @@
 
 (driver/register-driver! :sync-test (SyncTestDriver.))
 
-(def ^:private users-table       (delay (Table, :name "USERS")))
-(def ^:private venues-table      (delay (Table (id :venues))))
-(def ^:private korma-users-table (delay (korma-entity @users-table)))
-(def ^:private users-name-field  (delay (Field (id :users :name))))
 
+(def ^:private venues-table (delay (Table (id :venues))))
 
 (defn- table-details [table]
   (into {} (-> (dissoc table :db :pk_field :field_values)
