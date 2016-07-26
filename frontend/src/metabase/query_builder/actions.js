@@ -312,7 +312,6 @@ export const updateTemplateTag = createThunkAction(UPDATE_TEMPLATE_TAG, (templat
 export const SET_PARAMETER_VALUE = "SET_PARAMETER_VALUE";
 export const setParameterValue = createThunkAction(SET_PARAMETER_VALUE, (parameterId, value) => {
     return (dispatch, getState) => {
-        console.log('parameter set', parameterId)
         let { qb: { parameterValues } } = getState();
 
         // apply this specific value
