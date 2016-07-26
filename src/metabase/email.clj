@@ -3,21 +3,27 @@
             [clojure.tools.logging :as log]
             (postal [core :as postal]
                     [support :refer [make-props]])
-            [metabase.models.setting :refer [defsetting] :as setting]
+            [metabase.models.setting :refer [defsetting], :as setting]
             [metabase.util :as u])
   (:import javax.mail.Session))
 
 ;; ## CONFIG
 
-(defsetting email-from-address  "Email address you want to use as the sender of Metabase." "notifications@metabase.com")
+(defsetting email-from-address  "Email address you want to use as the sender of Metabase." :default "notifications@metabase.com")
 (defsetting email-smtp-host     "The address of the SMTP server that handles your emails.")
 (defsetting email-smtp-username "SMTP username.")
 (defsetting email-smtp-password "SMTP password.")
 (defsetting email-smtp-port     "The port your SMTP server uses for outgoing emails.")
-(defsetting email-smtp-security "SMTP secure connection protocol. (tls, ssl, or none)" "none")
+(defsetting email-smtp-security
+  "SMTP secure connection protocol. (tls, ssl, or none)"
+  :default "none"
+  :setter  (fn [new-value]
+             (assert (contains? #{"tls" "ssl" "none"} new-value))
+             (setting/set-string! :email-smtp-security new-value)))
 
 ;; ## PUBLIC INTERFACE
 
+;; TODO - just use `with-redefs` for tests ?
 (def ^:dynamic *send-email-fn*
   "Internal function used to send messages. Should take 2 args - a map of SMTP credentials, and a map of email details.
    Provided so you can swap this out with an \"inbox\" for test purposes."
@@ -26,7 +32,7 @@
 (defn email-configured?
   "Predicate function which returns `true` if we have a viable email configuration for the app, `false` otherwise."
   []
-  (not (s/blank? (setting/get* :email-smtp-host))))
+  (not (s/blank? (setting/get :email-smtp-host))))
 
 (defn send-message
   "Send an email to one or more RECIPIENTS.

@@ -27,15 +27,24 @@
             (metabase.models [setting :refer [defsetting]]
                              [user :refer [User]])))
 
-;; ## CONFIG
+;;; CONFIG
 
-(defsetting site-name "The name used for this instance of Metabase." "Metabase")
+;; TODO - Should the be moved to `metabase.public-settings` ?
 
-(defsetting -site-url "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\"")
+(defsetting site-name
+  "The name used for this instance of Metabase."
+  :default "Metabase")
 
-(defsetting admin-email "The email address users should be referred to if they encounter a problem.")
+(defsetting -site-url
+  "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\"")
 
-(defsetting anon-tracking-enabled "Enable the collection of anonymous usage data in order to help Metabase improve." "true")
+(defsetting admin-email
+  "The email address users should be referred to if they encounter a problem.")
+
+(defsetting anon-tracking-enabled
+  "Enable the collection of anonymous usage data in order to help Metabase improve."
+  :type   :boolean
+  :default true)
 
 (defn site-url
   "Fetch the site base URL that should be used for password reset emails, etc.
@@ -55,7 +64,7 @@
 (def app
   "The primary entry point to the HTTP server"
   (-> routes/routes
-      (mb-middleware/log-api-call)
+      mb-middleware/log-api-call
       mb-middleware/add-security-headers ; Add HTTP headers to API responses to prevent them from being cached
       (wrap-json-body                    ; extracts json POST body and makes it avaliable on request
         {:keywords? true})

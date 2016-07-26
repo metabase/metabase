@@ -23,7 +23,11 @@
 (defonce ^:private follow-up-emails-job (atom nil))
 (defonce ^:private follow-up-emails-trigger (atom nil))
 
-(setting/defsetting follow-up-email-sent "have we sent a follow up email to the instance admin?" false :internal true)
+(setting/defsetting follow-up-email-sent
+  "have we sent a follow up email to the instance admin?"
+  :type      :boolean
+  :default   false
+  :internal? true)
 
 
 (def ^:private ^:const abandonment-emails-job-key     "metabase.task.abandonment-emails.job")
@@ -31,7 +35,11 @@
 (defonce ^:private abandonment-emails-job (atom nil))
 (defonce ^:private abandonment-emails-trigger (atom nil))
 
-(setting/defsetting abandonment-email-sent "have we sent an abandonment email to the instance admin?" false :internal true)
+(setting/defsetting abandonment-email-sent
+  "have we sent an abandonment email to the instance admin?"
+  :type      :boolean
+  :default   false
+  :internal? true)
 
 ;; 2 weeks of inactivity after 30 days of total install
 ;;
@@ -108,7 +116,7 @@
     (catch Throwable t
       (log/error "Problem sending follow-up email" t))
     (finally
-      (setting/set :follow-up-email-sent "true"))))
+      (setting/set! :follow-up-email-sent true))))
 
 (defn- send-abandonment-email!
   "Send an email to the instance admin about why Metabase usage has died down."
@@ -128,4 +136,4 @@
           (catch Throwable t
             (log/error "Problem sending abandonment email" t))
           (finally
-            (setting/set :abandonment-email-sent "true")))))))
+            (setting/set! :abandonment-email-sent "true")))))))
