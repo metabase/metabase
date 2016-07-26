@@ -357,9 +357,10 @@ const getQuestions = (state) => i.getIn(state, ['questions', 'entities', 'cards'
 const getMetricQuestions = createSelector(
     [getMetricId, getQuestions],
     (metricId, questions) => Object.values(questions)
-        .filter(question => AggregationClause.getMetric(
-            question.dataset_query.query.aggregation
-        ) === metricId)
+        .filter(question =>
+            question.dataset_query.type === "query" &&
+            AggregationClause.getMetric(question.dataset_query.query.aggregation) === metricId
+        )
         .reduce((map, question) => i.assoc(map, question.id, question), {})
 );
 
@@ -378,8 +379,10 @@ const getSegmentRevisions = createSelector(
 const getSegmentQuestions = createSelector(
     [getSegmentId, getQuestions],
     (segmentId, questions) => Object.values(questions)
-        .filter(question => Query.getFilters(question.dataset_query.query)
-            .some(filter => Query.isSegmentFilter(filter) && filter[1] === segmentId)
+        .filter(question =>
+            question.dataset_query.type === "query" &&
+            Query.getFilters(question.dataset_query.query)
+                .some(filter => Query.isSegmentFilter(filter) && filter[1] === segmentId)
         )
         .reduce((map, question) => i.assoc(map, question.id, question), {})
 );
