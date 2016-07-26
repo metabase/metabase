@@ -79,13 +79,15 @@ export default class Visualization extends Component {
         const CardVisualization = visualizations.get(series[0].card.display);
         const small = width < 330;
 
-        const settings = this.props.settings || getSettings(series);
-
         let error = this.props.error || this.state.error;
         let loading = !(series.length > 0 && _.every(series, (s) => s.data));
         let noResults = false;
 
+        // don't try to load settings unless data is loaded
+        let settings = this.props.settings || {};
+
         if (!loading && !error) {
+            settings = this.props.settings || getSettings(series);
             if (!CardVisualization) {
                 error = "Could not find visualization";
             } else {
