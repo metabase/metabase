@@ -41,6 +41,11 @@ const SECTIONS = [
                 key: "anon-tracking-enabled",
                 display_name: "Anonymous Tracking",
                 type: "boolean"
+            },
+            {
+                key: "enable-advanced-humanization",
+                display_name: "Friendly Table and Field Names",
+                type: "boolean"
             }
         ]
     },

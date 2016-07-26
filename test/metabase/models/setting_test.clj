@@ -18,6 +18,14 @@
   "Test setting - this only shows up in dev (2)"
   :default "[Default Value]")
 
+(defsetting test-boolean-setting
+  "Test setting - this only shows up in dev (3)"
+  :type :boolean)
+
+(defsetting test-json-setting
+  "Test setting - this only shows up in dev (4)"
+  :type :json)
+
 
 ;; ## HELPER FUNCTIONS
 
@@ -104,7 +112,58 @@
    (setting-exists-in-db? :test-setting-2)])
 
 
-;; ## ALL SETTINGS FUNCTIONS
+;;; ------------------------------------------------------------ all & user-facing-info ------------------------------------------------------------
+
+(resolve-private-fns metabase.models.setting resolve-setting user-facing-info)
+
+;; these tests are to check that settings get returned with the correct information; these functions are what feed into the API
+
+(defn- user-facing-info-with-db-and-env-var-values [setting db-value env-var-value]
+  (do-with-temporary-setting-value setting db-value
+    (fn []
+      (with-redefs [environ.core/env {(keyword (str "mb-" (name setting))) env-var-value}]
+        (dissoc (user-facing-info (resolve-setting setting))
+                :key :description)))))
+
+;; user-facing-info w/ no db value, no env var value, no default value
+(expect
+  {:value nil, :default nil}
+  (user-facing-info-with-db-and-env-var-values :test-setting-1 nil nil))
+
+;; user-facing-info w/ no db value, no env var value, default value
+(expect
+  {:value nil, :default "[Default Value]"}
+  (user-facing-info-with-db-and-env-var-values :test-setting-2 nil nil))
+
+;; user-facing-info w/ no db value, env var value, no default value -- shouldn't leak env var value
+(expect
+  {:value nil, :default "Using $MB_TEST_SETTING_1"}
+  (user-facing-info-with-db-and-env-var-values :test-setting-1 nil "TOUCANS"))
+
+;; user-facing-info w/ no db value, env var value, default value
+(expect
+  {:value nil, :default "Using $MB_TEST_SETTING_2"}
+  (user-facing-info-with-db-and-env-var-values :test-setting-2 nil "TOUCANS"))
+
+;; user-facing-info w/ db value, no env var value, no default value
+(expect
+  {:value "WOW", :default nil}
+  (user-facing-info-with-db-and-env-var-values :test-setting-1 "WOW" nil))
+
+;; user-facing-info w/ db value, no env var value, default value
+(expect
+  {:value "WOW", :default "[Default Value]"}
+  (user-facing-info-with-db-and-env-var-values :test-setting-2 "WOW" nil))
+
+;; user-facing-info w/ db value, env var value, no default value -- the DB value should take precedence over the env var
+(expect
+  {:value "WOW", :default "Using $MB_TEST_SETTING_1"}
+  (user-facing-info-with-db-and-env-var-values :test-setting-1 "WOW" "ENV VAR"))
+
+;; user-facing-info w/ db value, env var value, default value -- env var should take precedence over default value
+(expect
+  {:value "WOW", :default "Using $MB_TEST_SETTING_2"}
+  (user-facing-info-with-db-and-env-var-values :test-setting-2 "WOW" "ENV VAR"))
 
 ;; all
 (expect
@@ -123,3 +182,59 @@
       (for [setting (setting/all)
             :when   (re-find #"^test-setting-\d$" (name (:key setting)))]
         setting)))
+
+
+;;; ------------------------------------------------------------ BOOLEAN SETTINGS ------------------------------------------------------------
+
+(expect
+  {:value nil, :default nil}
+  (user-facing-info-with-db-and-env-var-values :test-boolean-setting nil nil))
+
+;; boolean settings shouldn't be obfuscated when set by env var
+(expect
+  {:value true, :default "Using $MB_TEST_BOOLEAN_SETTING"}
+  (user-facing-info-with-db-and-env-var-values :test-boolean-setting nil "true"))
+
+;; env var values should be case-insensitive
+(expect
+  (user-facing-info-with-db-and-env-var-values :test-boolean-setting nil "TRUE"))
+
+;; should throw exception if value isn't true / false
+(expect
+  Exception
+  (test-boolean-setting "X"))
+
+(expect
+  Exception
+  (user-facing-info-with-db-and-env-var-values :test-boolean-setting nil "X"))
+
+;; should be able to set value with a string...
+(expect
+  "false"
+  (test-boolean-setting "FALSE"))
+
+(expect
+  false
+  (do (test-boolean-setting "FALSE")
+      (test-boolean-setting)))
+
+;; ... or a boolean
+(expect
+  "false"
+  (test-boolean-setting false))
+
+(expect
+  false
+  (do (test-boolean-setting false)
+      (test-boolean-setting)))
+
+;;; ------------------------------------------------------------ JSON SETTINGS ------------------------------------------------------------
+
+(expect
+  "{\"a\":100,\"b\":200}"
+  (test-json-setting {:a 100, :b 200}))
+
+(expect
+  {:a 100, :b 200}
+  (do (test-json-setting {:a 100, :b 200})
+      (test-json-setting)))

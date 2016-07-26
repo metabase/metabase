@@ -653,6 +653,7 @@
   (let [entity (resolve-entity entity)]
     (apply select-one-field :id entity options)))
 
+;; TODO - maybe rename this `count`? e.g. `db/count` instead of `db/select-one-count`
 (defn select-one-count
   "Select the count of objects matching some condition.
 

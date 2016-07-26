@@ -61,8 +61,8 @@
   ["birds_50" [{:field-name "name", :base-type :TextField}] [["Rasta"] ["Lucky"]]]
   ["birds_51" [{:field-name "name", :base-type :TextField}] [["Rasta"] ["Lucky"]]])
 
-;; only run this test 1 out of every 4 times since it takes like 5-10 minutes just to sync the DB and we don't have all day
-(when (> (rand) 0.75)
+;; only run this test 1 out of every 5 times since it takes like 5-10 minutes just to sync the DB and we don't have all day
+(when (> (rand) 0.80)
   (expect-with-engine :bigquery
     51
     (data/with-temp-db [db fifty-one-different-tables]
