@@ -329,6 +329,7 @@
    This works much the same way as `binding`.
 
    Prefer the macro `with-temporary-setting-values` over using this function directly."
+  {:style/indent 2}
   [setting-k value f]
   (let [original-value (setting/get setting-k)]
     (try
