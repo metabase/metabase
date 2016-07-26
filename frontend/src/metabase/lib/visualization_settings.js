@@ -1,7 +1,17 @@
 import _  from "underscore";
+import crossfilter from "crossfilter";
 
-import { getCardColors } from "metabase/visualizations/lib/utils";
-import { getFriendlyName } from "metabase/visualizations/lib/utils";
+import {
+    getChartTypeFromData,
+    DIMENSION_DIMENSION_METRIC,
+    DIMENSION_METRIC,
+    DIMENSION_METRIC_METRIC
+} from "metabase/visualizations/lib/utils";
+
+import { isNumeric, isDate, isMetric, isDimension, hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
+import Query from "metabase/lib/query";
+
+import { getCardColors, getFriendlyName } from "metabase/visualizations/lib/utils";
 
 import ChartSettingInput from "metabase/visualizations/components/settings/ChartSettingInput.jsx";
 import ChartSettingInputNumeric from "metabase/visualizations/components/settings/ChartSettingInputNumeric.jsx";
@@ -10,8 +20,6 @@ import ChartSettingToggle from "metabase/visualizations/components/settings/Char
 import ChartSettingFieldPicker from "metabase/visualizations/components/settings/ChartSettingFieldPicker.jsx";
 import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker.jsx";
 import ChartSettingOrderedFields from "metabase/visualizations/components/settings/ChartSettingOrderedFields.jsx";
-
-import { isNumeric, isMetric, isDimension, hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 
 function dimensionAndMetricsAreValid(dimension, metric, cols) {
     const colsByName = {};
@@ -30,8 +38,6 @@ function dimensionAndMetricsAreValid(dimension, metric, cols) {
     );
 }
 
-import crossfilter from "crossfilter";
-
 function getSeriesTitles([{ data: { rows, cols } }], vizSettings) {
     const seriesDimension = vizSettings["graph.dimensions"][1];
     if (seriesDimension != null) {
@@ -44,16 +50,6 @@ function getSeriesTitles([{ data: { rows, cols } }], vizSettings) {
         });
     }
 }
-
-import {
-    getChartTypeFromData,
-    DIMENSION_DIMENSION_METRIC,
-    DIMENSION_METRIC,
-    DIMENSION_METRIC_METRIC
-} from "metabase/visualizations/lib/utils";
-
-import { isDate } from "metabase/lib/schema_metadata";
-import Query from "metabase/lib/query";
 
 function getDefaultDimensionsAndMetrics([{ data: { cols, rows } }]) {
     let type = getChartTypeFromData(cols, rows, false);
@@ -82,11 +78,9 @@ function getDefaultDimensionsAndMetrics([{ data: { cols, rows } }]) {
                 metrics: cols.slice(1).map(col => col.name)
             };
         default:
-            const firstDimension = cols.filter(isDimension)[0].name;
-            const firstMetric = cols.filter((col) => col.name !== firstDimension && isMetric(col))[0].name;
             return {
-                dimensions: [firstDimension],
-                metrics: [firstMetric]
+                dimensions: [null],
+                metrics: [null]
             };
     }
 }

@@ -14,7 +14,7 @@ import {
 
 import Urls from "metabase/lib/urls";
 
-import { MinRowsError } from "metabase/visualizations/lib/errors";
+import { MinRowsError, ChartSettingsError } from "metabase/visualizations/lib/errors";
 
 import crossfilter from "crossfilter";
 import _ from "underscore";
@@ -33,10 +33,10 @@ export default class LineAreaBarChart extends Component {
 
     static checkRenderable(cols, rows, settings) {
         if (rows.length < 1) { throw new MinRowsError(1, rows.length); }
-        const dimensions = settings["graph.dimensions"] || [];
-        const metrics = settings["graph.metrics"] || [];
+        const dimensions = (settings["graph.dimensions"] || []).filter(name => name);
+        const metrics = (settings["graph.metrics"] || []).filter(name => name);
         if (dimensions.length < 1 || metrics.length < 1) {
-            throw new Error("Please select columns for the X and Y axis in the chart settings.");
+            throw new ChartSettingsError("Please select columns for the X and Y axis in the chart settings.", "Data");
         }
     }
 

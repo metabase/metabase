@@ -23,7 +23,7 @@ const ChartSettingFieldPicker = ({ value = [], onChange, options, addAnother }) 
                         newValue.splice(index, 1, v);
                         onChange(newValue);
                     }}
-                    isInitiallyOpen={v == null}
+                    isInitiallyOpen={v === undefined}
                 />
                 <Icon
                     name="close"
