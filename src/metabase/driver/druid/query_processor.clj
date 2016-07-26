@@ -41,7 +41,7 @@
   Object                (->rvalue [this] this)
   AgFieldRef            (->rvalue [_] (let [ag-type (or (get-in *query* [:aggregation :aggregation-type])
                                                         (throw (Exception. "Unknown aggregation type!")))]
-                                        (if (= ag-type :distinct) :count
+                                        (if (= ag-type :distinct) :distinct___count
                                             ag-type)))
   Field                 (->rvalue [this] (:field-name this))
   DateTimeField         (->rvalue [this] (->rvalue (:field this)))
@@ -150,7 +150,7 @@
                                                            {:type :fieldAccess, :fieldName :___count}]}]}
 
                [:distinct _] {:aggregations [{:type       :cardinality
-                                              :name       :count
+                                              :name       :distinct___count
                                               :fieldNames [(->rvalue ag-field)]}]}
                [:sum      _] {:aggregations [(ag:doubleSum ag-field :sum)]}
                [:min      _] {:aggregations [(ag:doubleMin ag-field)]}
@@ -403,7 +403,7 @@
   (let [field             (->rvalue field)
         breakout-field    (->rvalue breakout-field)
         sort-by-breakout? (= field breakout-field)
-        ag-field          (if (= ag-type :distinct) :count ag-type)]
+        ag-field          (if (= ag-type :distinct) :distinct___count ag-type)]
     (assoc druid-query :metric (match [sort-by-breakout? direction]
                                  [true  :ascending]  {:type :alphaNumeric}
                                  [true  :descending] {:type :inverted, :metric {:type :alphaNumeric}}
@@ -554,15 +554,17 @@
 (defn- columns->getter-fns
   "Given a sequence of COLUMNS keywords, return a sequence of appropriate getter functions to get values from a single result row. Normally,
    these are just the keyword column names themselves, but for `:timestamp___int`, we'll also parse the result as an integer (for further
-   explanation, see the docstring for `units-that-need-post-processing-int-parsing`)."
+   explanation, see the docstring for `units-that-need-post-processing-int-parsing`). We also round `:distinct___count` in order to return an
+   integer since Druid returns the approximate floating point value for cardinality queries (See Druid documentation regarding cardinality and HLL)."
   [columns]
   (vec (for [k columns]
-         (if (not= k :timestamp___int)
-           k
-           (comp (fn [^String s]
-                   (when (seq s)
-                     (Integer/parseInt s)))
-                 k)))))
+         (case k
+            :distinct___count (comp #(Math/round %) k)
+            :timestamp___int  (comp (fn [^String s]
+                                      (when (seq s)
+                                        (Integer/parseInt s)))
+                                    k)
+            k))))
 
 (defn execute-query
   "Execute a query for a Druid DB."
@@ -579,7 +581,8 @@
         columns    (keys (first results))
         getters    (columns->getter-fns columns)]
     ;; rename any occurances of `:timestamp___int` to `:timestamp` in the results so the user doesn't know about our behind-the-scenes conversion
-    {:columns   (vec (replace {:timestamp___int :timestamp} columns))
+    ;; and apply any other post-processing on the value such as parsing some units to int and rounding up approximate cardinality values.
+    {:columns   (vec (replace {:timestamp___int :timestamp :distinct___count :count} columns))
      :rows      (for [row results]
                   (for [getter getters]
                     (getter row)))
