@@ -1,9 +1,9 @@
 (ns metabase.util.infer-spaces
-    (:require [clojure.java.io :as io]
-              [clojure.string :as s])
-    (:import java.lang.Math))
+  "Logic for automatically inferring where spaces should go in table names. Ported from ported from https://stackoverflow.com/questions/8870261/how-to-split-text-without-spaces-into-list-of-words/11642687#11642687."
+  (:require [clojure.java.io :as io]
+            [clojure.string :as s])
+  (:import java.lang.Math))
 
-;; ported from https://stackoverflow.com/questions/8870261/how-to-split-text-without-spaces-into-list-of-words/11642687#11642687
 
 (def ^:const ^:private special-words ["checkins"])
 
@@ -12,8 +12,9 @@
 
 ;; wordcost = dict((k, log((i+1)*log(len(words)))) for i,k in enumerate(words))
 (def ^:private word-cost
-  (apply hash-map (flatten (map-indexed
-    (fn [idx word] [word (Math/log (* (inc idx) (Math/log (count words))))]) words))))
+  (into {} (map-indexed (fn [idx word]
+                          [word (Math/log (* (inc idx) (Math/log (count words))))])
+                        words)))
 
 ;; maxword = max(len(x) for x in words)
 (def ^:private max-word (apply max (map count words)))

@@ -200,7 +200,8 @@
 
 (u/strict-extend (class Table)
   WithTempDefaults
-  {:with-temp-defaults (fn [_] {:active true
+  {:with-temp-defaults (fn [_] {:db_id  (data/id)
+                                :active true
                                 :name   (random-name)})})
 
 (u/strict-extend (class User)
