@@ -199,7 +199,6 @@ angular.module('metabase', [
 }])
 .controller('AppController', ['$scope', '$location', '$route', '$routeParams', '$rootScope', '$timeout', 'ipCookie', 'AppState',
     function($scope, $location, $route, $routeParams, $rootScope, $timeout, ipCookie, AppState) {
-        console.log("creating store");
         $scope.Component = Routes;
         $scope.props = {
             onChangeLocation(url) {
