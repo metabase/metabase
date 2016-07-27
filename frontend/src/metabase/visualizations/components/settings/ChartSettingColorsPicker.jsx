@@ -35,6 +35,7 @@ export default class ChartSettingColorsPicker extends Component {
                                         style={{ backgroundColor: color }}
                                         onClick={() => {
                                             onChange([...value.slice(0, index), color, ...value.slice(index + 1)]);
+                                            this.refs.colorPopover.close();
                                         }}
                                     ></li>
                                 )}

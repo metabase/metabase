@@ -92,6 +92,8 @@ function getOptionFromColumn(col) {
     };
 }
 
+const CURRENCIES = ["afn", "ars", "awg", "aud", "azn", "bsd", "bbd", "byr", "bzd", "bmd", "bob", "bam", "bwp", "bgn", "brl", "bnd", "khr", "cad", "kyd", "clp", "cny", "cop", "crc", "hrk", "cup", "czk", "dkk", "dop", "xcd", "egp", "svc", "eek", "eur", "fkp", "fjd", "ghc", "gip", "gtq", "ggp", "gyd", "hnl", "hkd", "huf", "isk", "inr", "idr", "irr", "imp", "ils", "jmd", "jpy", "jep", "kes", "kzt", "kpw", "krw", "kgs", "lak", "lvl", "lbp", "lrd", "ltl", "mkd", "myr", "mur", "mxn", "mnt", "mzn", "nad", "npr", "ang", "nzd", "nio", "ngn", "nok", "omr", "pkr", "pab", "pyg", "pen", "php", "pln", "qar", "ron", "rub", "shp", "sar", "rsd", "scr", "sgd", "sbd", "sos", "zar", "lkr", "sek", "chf", "srd", "syp", "tzs", "twd", "thb", "ttd", "try", "trl", "tvd", "ugx", "uah", "gbp", "usd", "uyu", "uzs", "vef", "vnd", "yer", "zwd"];
+
 const SETTINGS = {
     "graph.dimensions": {
         section: "Data",
@@ -213,7 +215,7 @@ const SETTINGS = {
     },
     "graph.y_axis.max": {
         section: "Axes",
-        title: "Min",
+        title: "Max",
         widget: ChartSettingInputNumeric,
         default: 100,
         getHidden: (series, vizSettings) => vizSettings["graph.y_axis.auto_range"] !== false
@@ -234,7 +236,7 @@ const SETTINGS = {
     },
     "graph.y_axis_right.max": {
         section: "Axes",
-        title: "Min",
+        title: "Max",
         widget: ChartSettingInputNumeric,
         default: 100,
         getHidden: (series, vizSettings) => vizSettings["graph.y_axis_right.auto_range"] !== false
@@ -292,7 +294,7 @@ const SETTINGS = {
         default: true
     },
     "scalar.locale": {
-        title: "Separator",
+        title: "Separators",
         widget: ChartSettingSelect,
         props: {
             options: [
@@ -301,6 +303,17 @@ const SETTINGS = {
                 { name: "123 456,78", value: "fr" },
                 { name: "123.456,78", value: "de" }
             ]
+        },
+        default: null
+    },
+    "scalar.currency": {
+        title: "Currency",
+        widget: ChartSettingSelect,
+        props: {
+            options: [{ name: "None", value: null}].concat(CURRENCIES.map(currency => ({
+                name: currency.toUpperCase(),
+                value: currency
+            })))
         },
         default: null
     },
