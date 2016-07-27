@@ -7,6 +7,7 @@
             [metabase.driver.generic-sql :as sql]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]])
+            [metabase.query-processor-test :refer [rows]]
             [metabase.query-processor.expand :as ql]
             [metabase.test.data :as data]
             (metabase.test.data [datasets :refer [expect-with-engine]]
@@ -85,13 +86,19 @@
 ;; Check that we can filter by a UUID Field
 (expect-with-engine :postgres
   [[2 #uuid "4652b2e7-d940-4d55-a971-7e484566663e"]]
-  (-> (data/dataset metabase.driver.postgres-test/with-uuid
-        (data/run-query users
-          (ql/filter (ql/= $user_id "4652b2e7-d940-4d55-a971-7e484566663e"))))
-      :data :rows))
+  (rows (data/dataset metabase.driver.postgres-test/with-uuid
+          (data/run-query users
+            (ql/filter (ql/= $user_id "4652b2e7-d940-4d55-a971-7e484566663e"))))))
+
+;; check that a nil value for a UUID field doesn't barf (#2152)
+(expect-with-engine :postgres
+  []
+  (rows (data/dataset metabase.driver.postgres-test/with-uuid
+          (data/run-query users
+            (ql/filter (ql/= $user_id nil))))))
 
 
-;;; # Make sure that Tables / Fields with dots in their names get escaped properly
+;; Make sure that Tables / Fields with dots in their names get escaped properly
 (i/def-database-definition ^:const ^:private dots-in-names
   ["objects.stuff"
    [{:field-name "dotted.name", :base-type :TextField}]
@@ -109,7 +116,7 @@
       :data (dissoc :cols :native_form)))
 
 
-;;; # Make sure that duplicate column names (e.g. caused by using a FK) still return both columns
+;; Make sure that duplicate column names (e.g. caused by using a FK) still return both columns
 (i/def-database-definition ^:const ^:private duplicate-names
   ["birds"
    [{:field-name "name", :base-type :TextField}]
