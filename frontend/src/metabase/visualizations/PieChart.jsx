@@ -5,7 +5,7 @@ import styles from "./PieChart.css";
 import ChartTooltip from "./components/ChartTooltip.jsx";
 import ChartWithLegend from "./components/ChartWithLegend.jsx";
 
-import { MinColumnsError, ChartSettingsError } from "metabase/visualizations/lib/errors";
+import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 
 import { formatValue } from "metabase/lib/formatting";

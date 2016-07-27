@@ -3,6 +3,8 @@ import React, { Component, PropTypes } from "react";
 import ChoroplethMap from "./components/ChoroplethMap.jsx";
 import PinMap from "./PinMap.jsx";
 
+import { ChartSettingsError } from "metabase/visualizations/lib/errors";
+
 export default class Map extends Component {
     static displayName = "Map";
     static identifier = "map";
@@ -16,7 +18,16 @@ export default class Map extends Component {
         return true;
     }
 
-    static checkRenderable(cols, rows) {
+    static checkRenderable(cols, rows, settings) {
+        if (settings["map.type"] === "pin") {
+            if (!settings["map.longitude_column"] || !settings["map.latitude_column"]) {
+                throw new ChartSettingsError("Please select longitude and latitude columns in the chart settings.", "Data");
+            }
+        } else if (settings["map.type"] === "region"){
+            if (!settings["map.dimension"] || !settings["map.metric"]) {
+                throw new ChartSettingsError("Please select region and metric columns in the chart settings.", "Data");
+            }
+        }
     }
 
     render() {
