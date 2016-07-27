@@ -17,25 +17,24 @@ import ChartSettingInput from "metabase/visualizations/components/settings/Chart
 import ChartSettingInputNumeric from "metabase/visualizations/components/settings/ChartSettingInputNumeric.jsx";
 import ChartSettingSelect from "metabase/visualizations/components/settings/ChartSettingSelect.jsx";
 import ChartSettingToggle from "metabase/visualizations/components/settings/ChartSettingToggle.jsx";
-import ChartSettingFieldPicker from "metabase/visualizations/components/settings/ChartSettingFieldPicker.jsx";
+import ChartSettingFieldsPicker from "metabase/visualizations/components/settings/ChartSettingFieldsPicker.jsx";
 import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker.jsx";
 import ChartSettingOrderedFields from "metabase/visualizations/components/settings/ChartSettingOrderedFields.jsx";
 
-function dimensionAndMetricsAreValid(dimension, metric, cols) {
+function columnsAreValid(colNames, data, filter = () => true) {
+    if (typeof colNames === "string") {
+        colNames = [colNames]
+    }
+    if (!data || !Array.isArray(colNames)) {
+        return false;
+    }
     const colsByName = {};
-    for (const col of cols) {
+    for (const col of data.cols) {
         colsByName[col.name] = col;
     }
-    return (
-        (dimension != null &&
-            dimension.reduce((acc, name) =>
-                acc && (name == undefined || (colsByName[name] && isDimension(colsByName[name])))
-            , true)) &&
-        (metric != null &&
-            metric.reduce((acc, name) =>
-                acc && (name == undefined || (colsByName[name] && isMetric(colsByName[name])))
-            , true))
-    );
+    return colNames.reduce((acc, name) =>
+        acc && (name == undefined || (colsByName[name] && filter(colsByName[name])))
+    , true);
 }
 
 function getSeriesTitles([{ data: { rows, cols } }], vizSettings) {
@@ -85,6 +84,21 @@ function getDefaultDimensionsAndMetrics([{ data: { cols, rows } }]) {
     }
 }
 
+function getDefaultDimensionAndMetric([{ data: { cols, rows } }]) {
+    const type = getChartTypeFromData(cols, rows, false);
+    if (type === DIMENSION_METRIC) {
+        return {
+            dimension: cols[0].name,
+            metric: cols[1].name
+        };
+    } else {
+        return {
+            dimension: null,
+            metric: null
+        };
+    }
+}
+
 function getOptionFromColumn(col) {
     return {
         name: getFriendlyName(col),
@@ -98,19 +112,12 @@ const SETTINGS = {
     "graph.dimensions": {
         section: "Data",
         title: "X-axis",
-        widget: ChartSettingFieldPicker,
-        getValue: (series, vizSettings) => {
-            const [{ card, data }] = series;
-            if (data && dimensionAndMetricsAreValid(
-                card.visualization_settings["graph.dimensions"],
-                card.visualization_settings["graph.metrics"],
-                data.cols
-            )) {
-                return card.visualization_settings["graph.dimensions"];
-            } else {
-                return getDefaultDimensionsAndMetrics(series).dimensions;
-            }
-        },
+        widget: ChartSettingFieldsPicker,
+        isValid: ([{ card, data }], vizSettings) =>
+            columnsAreValid(card.visualization_settings["graph.dimensions"], data, isDimension) &&
+            columnsAreValid(card.visualization_settings["graph.metrics"], data, isMetric),
+        getDefault: (series, vizSettings) =>
+            getDefaultDimensionsAndMetrics(series).dimensions,
         getProps: ([{ card, data }], vizSettings) => {
             const value = vizSettings["graph.dimensions"];
             const options = data.cols.filter(isDimension).map(getOptionFromColumn);
@@ -124,19 +131,12 @@ const SETTINGS = {
     "graph.metrics": {
         section: "Data",
         title: "Y-axis",
-        widget: ChartSettingFieldPicker,
-        getValue: (series, vizSettings) => {
-            const [{ card, data }] = series;
-            if (data && dimensionAndMetricsAreValid(
-                card.visualization_settings["graph.dimensions"],
-                card.visualization_settings["graph.metrics"],
-                data.cols
-            )) {
-                return card.visualization_settings["graph.metrics"];
-            } else {
-                return getDefaultDimensionsAndMetrics(series).metrics;
-            }
-        },
+        widget: ChartSettingFieldsPicker,
+        isValid: ([{ card, data }], vizSettings) =>
+            columnsAreValid(card.visualization_settings["graph.dimensions"], data, isDimension) &&
+            columnsAreValid(card.visualization_settings["graph.metrics"], data, isMetric),
+        getDefault: (series, vizSettings) =>
+            getDefaultDimensionsAndMetrics(series).metrics,
         getProps: ([{ card, data }], vizSettings) => {
             const value = vizSettings["graph.dimensions"];
             const options = data.cols.filter(isMetric).map(getOptionFromColumn);
@@ -275,12 +275,26 @@ const SETTINGS = {
     "pie.dimension": {
         section: "Data",
         title: "Measure",
-        widget: ChartSettingFieldPicker
+        widget: ChartSettingSelect,
+        isValid: ([{ card, data }], vizSettings) =>
+            columnsAreValid(card.visualization_settings["pie.dimension"], data, isDimension),
+        getDefault: (series, vizSettings) =>
+            getDefaultDimensionAndMetric(series).dimension,
+        getProps: ([{ card, data: { cols }}]) => ({
+            options: cols.filter(isDimension).map(getOptionFromColumn)
+        }),
     },
     "pie.metric": {
         section: "Data",
         title: "Slice by",
-        widget: ChartSettingFieldPicker
+        widget: ChartSettingSelect,
+        isValid: ([{ card, data }], vizSettings) =>
+            columnsAreValid(card.visualization_settings["pie.metric"], data, isMetric),
+        getDefault: (series, vizSettings) =>
+            getDefaultDimensionAndMetric(series).metric,
+        getProps: ([{ card, data: { cols }}]) => ({
+            options: cols.filter(isMetric).map(getOptionFromColumn)
+        }),
     },
     "pie.show_legend": {
         section: "Legend",
@@ -349,6 +363,9 @@ const SETTINGS = {
         title: "Fields to include",
         widget: ChartSettingOrderedFields,
         getHidden: (series, vizSettings) => vizSettings["table.pivot"],
+        isValid: ([{ card, data }]) =>
+            card.visualization_settings["table.fields"] &&
+            columnsAreValid(card.visualization_settings["table.fields"].map(x => x.name), data),
         getDefault: ([{ data: { cols }}]) => cols.map(col => ({
             name: col.name,
             enabled: true
@@ -425,8 +442,11 @@ const SETTINGS = {
     "map.metric": {
         title: "Metric field",
         widget: ChartSettingSelect,
-        getDefault: ([{ card, data: { cols }}]) =>
-            (_.find(cols, isMetric) || {}).name,
+        isValid: ([{ card, data }], vizSettings) =>
+            card.visualization_settings["map.metric"] &&
+            columnsAreValid(card.visualization_settings["map.metric"], data, isMetric),
+        getDefault: (series, vizSettings) =>
+            getDefaultDimensionAndMetric(series).metric,
         getProps: ([{ card, data: { cols }}]) => ({
             options: cols.filter(isMetric).map(getOptionFromColumn)
         }),
@@ -435,8 +455,11 @@ const SETTINGS = {
     "map.dimension": {
         title: "Region field",
         widget: ChartSettingSelect,
-        getDefault: ([{ card, data: { cols }}]) =>
-            (_.find(cols, isDimension) || {}).name,
+        isValid: ([{ card, data }], vizSettings) =>
+            card.visualization_settings["map.dimension"] &&
+            columnsAreValid(card.visualization_settings["map.dimension"], data, isDimension),
+        getDefault: (series, vizSettings) =>
+            getDefaultDimensionAndMetric(series).dimension,
         getProps: ([{ card, data: { cols }}]) => ({
             options: cols.filter(isDimension).map(getOptionFromColumn)
         }),
@@ -481,17 +504,28 @@ function getSetting(id, vizSettings, series) {
         getSetting(dependentId, vizSettings, series);
     }
 
-    if (settingDef.getValue) {
-        vizSettings[id] = settingDef.getValue(series, vizSettings);
-    } else if (card.visualization_settings[id] === undefined && settingDef.getDefault) {
-        vizSettings[id] = settingDef.getDefault(series, vizSettings);
-    } else if (card.visualization_settings[id] === undefined && "default" in settingDef) {
-        vizSettings[id] = settingDef.default;
-    } else if (card.visualization_settings[id] !== undefined) {
-        vizSettings[id] = card.visualization_settings[id];
-    }
+    try {
+        if (settingDef.getValue) {
+            return vizSettings[id] = settingDef.getValue(series, vizSettings);
+        }
 
-    return vizSettings[id];
+        if (card.visualization_settings[id] !== undefined) {
+            if (!settingDef.isValid || settingDef.isValid(series, vizSettings)) {
+                return vizSettings[id] = card.visualization_settings[id];
+            }
+        }
+
+        if (settingDef.getDefault) {
+            return vizSettings[id] = settingDef.getDefault(series, vizSettings);
+        }
+
+        if ("default" in settingDef) {
+            return vizSettings[id] = settingDef.default;
+        }
+    } catch (e) {
+        console.error("Error getting setting", id, e);
+    }
+    return vizSettings[id] = undefined;
 }
 
 function getSettingIdsForSeries(series) {

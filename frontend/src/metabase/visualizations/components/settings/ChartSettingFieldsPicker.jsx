@@ -5,9 +5,9 @@ import cx from "classnames";
 
 import ChartSettingSelect from "./ChartSettingSelect.jsx";
 
-const ChartSettingFieldPicker = ({ value = [], onChange, options, addAnother }) =>
+const ChartSettingFieldsPicker = ({ value = [], onChange, options, addAnother }) =>
     <div>
-        { value.map((v, index) =>
+        { Array.isArray(value) ? value.map((v, index) =>
             <div key={index} className="flex align-center">
                 <ChartSettingSelect
                     value={v}
@@ -34,7 +34,7 @@ const ChartSettingFieldPicker = ({ value = [], onChange, options, addAnother }) 
                     onClick={() => onChange([...value.slice(0, index), ...value.slice(index + 1)])}
                 />
             </div>
-        )}
+        ) : <span className="text-error">error</span>}
         { addAnother &&
             <div className="mt1">
                 <a onClick={() => {
@@ -53,4 +53,4 @@ const ChartSettingFieldPicker = ({ value = [], onChange, options, addAnother }) 
         }
     </div>
 
-export default ChartSettingFieldPicker;
+export default ChartSettingFieldsPicker;
