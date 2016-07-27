@@ -11,6 +11,7 @@ import { getSettings } from "metabase/lib/visualization_settings";
 
 import cx from "classnames";
 import i from "icepick";
+import d3 from "d3";
 
 export default class Scalar extends Component {
     static displayName = "Number";
@@ -97,51 +98,57 @@ export default class Scalar extends Component {
         }
 
         let isSmall = gridSize && gridSize.width < 4;
+        const column = i.getIn(data, ["cols", 0]);
 
         let scalarValue = i.getIn(data, ["rows", 0, 0]);
-
-        try {
-            if (typeof scalarValue === "number") {
-                // scale
-                const scale =  parseFloat(settings["scalar.scale"]);
-                if (!isNaN(scale)) {
-                    scalarValue *= scale;
-                }
-
-                // max decimals via rounding
-                let decimals = parseFloat(settings["scalar.decimals"]);
-                if (!isNaN(decimals)) {
-                    scalarValue = Math.round(scalarValue * Math.pow(10, decimals)) / Math.pow(10, decimals);
-                }
-
-                // min decimals
-                const localeStringOptions = {
-                    minimumFractionDigits: isNaN(decimals) ? undefined : decimals
-                };
-
-                // currency
-                if (settings["scalar.currency"] != null) {
-                    localeStringOptions.style = "currency";
-                    localeStringOptions.currency = settings["scalar.currency"];
-                }
-
-                // format with separators and correct number of decimals
-                const locale = settings["scalar.locale"];
-                if (locale) {
-                    scalarValue = scalarValue.toLocaleString(locale, localeStringOptions);
-                } else {
-                    // HACK: no locales that don't thousands separators?
-                    scalarValue = scalarValue.toLocaleString("en", localeStringOptions).replace(/,/g, "");
-                }
-            }
-        } catch (e) {
-            console.warn("error formatting scalar", e);
+        if (scalarValue == null) {
+            scalarValue = "";
         }
 
-        let compactScalarValue = scalarValue == undefined ? "" :
-            formatValue(scalarValue, { column: i.getIn(data, ["cols", 0]), compact: isSmall });
-        let fullScalarValue = scalarValue == undefined ? "" :
-            formatValue(scalarValue, { column: i.getIn(data, ["cols", 0]), compact: false });
+        let compactScalarValue, fullScalarValue;
+
+        // TODO: some or all of these options should be part of formatValue
+        if (typeof scalarValue === "number" && (column.special_type == null || column.special_type === "number")) {
+            let number = scalarValue;
+
+            // scale
+            const scale =  parseFloat(settings["scalar.scale"]);
+            if (!isNaN(scale)) {
+                number *= scale;
+            }
+
+            const localeStringOptions = {};
+
+            // decimals
+            let decimals = parseFloat(settings["scalar.decimals"]);
+            if (!isNaN(decimals)) {
+                number = d3.round(number, decimals);
+                localeStringOptions.minimumFractionDigits = decimals;
+            }
+
+            // currency
+            if (settings["scalar.currency"] != null) {
+                localeStringOptions.style = "currency";
+                localeStringOptions.currency = settings["scalar.currency"];
+            }
+
+            try {
+                // format with separators and correct number of decimals
+                if (settings["scalar.locale"]) {
+                    number = number.toLocaleString(settings["scalar.locale"], localeStringOptions);
+                } else {
+                    // HACK: no locales that don't thousands separators?
+                    number = number.toLocaleString("en", localeStringOptions).replace(/,/g, "");
+                }
+            } catch (e) {
+                console.warn("error formatting scalar", e);
+            }
+            fullScalarValue = formatValue(number, { column: column });
+        } else {
+            fullScalarValue = formatValue(scalarValue, { column: column });
+        }
+
+        compactScalarValue = isSmall ? formatValue(scalarValue, { column: column, compact: true }) : fullScalarValue
 
         if (settings["scalar.prefix"]) {
             compactScalarValue = settings["scalar.prefix"] + compactScalarValue;

@@ -308,29 +308,29 @@ const SETTINGS = {
         default: true
     },
     "scalar.locale": {
-        title: "Separators",
+        title: "Separator style",
         widget: ChartSettingSelect,
         props: {
             options: [
-                { name: "123456.78", value: null },
-                { name: "123,456.78", value: "en" },
-                { name: "123 456,78", value: "fr" },
-                { name: "123.456,78", value: "de" }
+                { name: "100000.00", value: null },
+                { name: "100,000.00", value: "en" },
+                { name: "100 000,00", value: "fr" },
+                { name: "100.000,00", value: "de" }
             ]
         },
-        default: null
+        default: "en"
     },
-    "scalar.currency": {
-        title: "Currency",
-        widget: ChartSettingSelect,
-        props: {
-            options: [{ name: "None", value: null}].concat(CURRENCIES.map(currency => ({
-                name: currency.toUpperCase(),
-                value: currency
-            })))
-        },
-        default: null
-    },
+    // "scalar.currency": {
+    //     title: "Currency",
+    //     widget: ChartSettingSelect,
+    //     props: {
+    //         options: [{ name: "None", value: null}].concat(CURRENCIES.map(currency => ({
+    //             name: currency.toUpperCase(),
+    //             value: currency
+    //         })))
+    //     },
+    //     default: null
+    // },
     "scalar.decimals": {
         title: "Number of decimal places",
         widget: ChartSettingInputNumeric
