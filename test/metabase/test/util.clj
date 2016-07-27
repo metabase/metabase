@@ -347,3 +347,10 @@
     (if (seq more)
       `(with-temporary-setting-values ~more ~body)
       body)))
+
+
+(defn is-uuid-string?
+  "Is string S a valid UUID string?"
+  ^Boolean [^String s]
+  (boolean (when (string? s)
+             (re-matches #"^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$" s))))

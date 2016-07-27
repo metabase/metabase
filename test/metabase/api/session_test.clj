@@ -13,16 +13,12 @@
             [metabase.util :as u]
             [metabase.test.util :refer [random-name resolve-private-fns with-temporary-setting-values with-temp], :as tu]))
 
-(defn- is-uuid-string? [s]
-  (boolean (when (string? s)
-             (re-matches #"^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$" s))))
-
 ;; ## POST /api/session
 ;; Test that we can login
 (expect
   ;; delete all other sessions for the bird first, otherwise test doesn't seem to work (TODO - why?)
   (do (db/delete! Session, :user_id (user->id :rasta))
-      (is-uuid-string? (:id (client :post 200 "session" (user->credentials :rasta))))))
+      (tu/is-uuid-string? (:id (client :post 200 "session" (user->credentials :rasta))))))
 
 ;; Test for required params
 (expect {:errors {:email "field is a required param."}}
@@ -126,7 +122,7 @@
                   (db/update! User id, :reset_token <>))]
       (-> (client :post 200 "session/reset_password" {:token    token
                                                       :password "whateverUP12!!"})
-          (update :session_id is-uuid-string?)))))
+          (update :session_id tu/is-uuid-string?)))))
 
 ;; Test that token and password are required
 (expect {:errors {:token "field is a required param."}}
@@ -230,7 +226,7 @@
 
 (defn- is-session? [session]
   (u/ignore-exceptions
-    (is-uuid-string? (:id session))))
+    (tu/is-uuid-string? (:id session))))
 
 ;; test that an existing user can log in with Google auth even if the auto-create accounts domain is different from their account
 ;; should return a Session
