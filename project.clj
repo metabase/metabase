@@ -48,7 +48,7 @@
                  [compojure "1.5.1"]                                  ; HTTP Routing library built on Ring
                  [environ "1.0.3"]                                    ; easy environment management
                  [hiccup "1.0.5"]                                     ; HTML templating
-                 [honeysql "0.6.3"]                                   ; Transform Clojure data structures to SQL (version 0.7.0+ makes CI fail -- probably need to fix something!)
+                 [honeysql "0.7.0"]                                   ; Transform Clojure data structures to SQL
                  [log4j/log4j "1.2.17"                                ; logging framework
                   :exclusions [javax.mail/mail
                                javax.jms/jms
