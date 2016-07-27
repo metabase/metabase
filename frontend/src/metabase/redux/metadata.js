@@ -264,10 +264,6 @@ export const fetchTableMetadata = createThunkAction(FETCH_TABLE_METADATA, functi
         const requestStatePath = ["metadata", "tables", tableId];
         const existingStatePath = ["metadata"];
         const getData = async () => {
-            const existingMetadata = i.getIn(getState(), existingStatePath);
-            if (i.getIn(existingMetadata, ['tables', tableId])) {
-                return existingMetadata;
-            }
             const tableMetadata = await MetabaseApi.table_query_metadata({ tableId });
             await augmentTable(tableMetadata);
 
