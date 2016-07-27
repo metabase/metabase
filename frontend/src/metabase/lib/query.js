@@ -46,6 +46,11 @@ const mbqlCompare = (a, b) => mbqlCanonicalize(a) === mbqlCanonicalize(b)
 
 var Query = {
 
+    // REFACTOR ME
+    clone(query){
+        return JSON.parse(JSON.stringify(query))
+    },
+
     isStructured(dataset_query) {
         return dataset_query && dataset_query.type === "query";
     },
