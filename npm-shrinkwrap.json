@@ -690,13 +690,13 @@
       "version": "1.2.2"
     },
     "angular": {
-      "version": "1.2.28"
+      "version": "1.2.30"
     },
     "angular-cookie": {
       "version": "4.1.0"
     },
     "angular-cookies": {
-      "version": "1.2.28"
+      "version": "1.2.30"
     },
     "angular-http-auth": {
       "version": "1.2.1"
@@ -705,10 +705,10 @@
       "version": "1.2.28"
     },
     "angular-resource": {
-      "version": "1.2.28"
+      "version": "1.2.30"
     },
     "angular-route": {
-      "version": "1.2.28"
+      "version": "1.2.30"
     },
     "babel-core": {
       "version": "6.10.4",
