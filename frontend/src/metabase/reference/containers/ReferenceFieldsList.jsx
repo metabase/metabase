@@ -149,7 +149,7 @@ export default class ReferenceEntityList extends Component {
                             </div>
                         </div>
                         <List>
-                            { Object.values(entities).map(entity => console.log("entity", entity)||
+                            { Object.values(entities).map(entity =>
                                 entity && entity.id && entity.name &&
                                     <li className="relative" key={entity.id}>
                                         <Field
