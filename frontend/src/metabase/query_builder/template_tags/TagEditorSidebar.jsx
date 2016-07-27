@@ -46,7 +46,7 @@ export default class TagEditorSidebar extends Component {
                         Variables
                     </h2>
                     <a className="flex-align-right text-default text-brand-hover no-decoration" onClick={() => this.props.onClose()}>
-                        <Icon name="close" width="18px" height="18px" />
+                        <Icon name="close" size={18} />
                     </a>
                 </div>
                 <div className="DataReference-content">

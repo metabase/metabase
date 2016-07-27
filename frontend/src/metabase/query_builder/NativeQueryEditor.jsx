@@ -269,7 +269,7 @@ export default class NativeQueryEditor extends Component {
                         )}
                         <a className="Query-label no-decoration flex-align-right flex align-center px2" onClick={this.toggleEditor}>
                             <span className="mx2">{toggleEditorText}</span>
-                            <Icon name={toggleEditorIcon} width="20" height="20"/>
+                            <Icon name={toggleEditorIcon} size={20}/>
                         </a>
                     </div>
                     <div className={"border-top " + editorClasses}>

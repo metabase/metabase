@@ -1,8 +1,8 @@
 (ns metabase.api.field-test
   (:require [expectations :refer :all]
             [metabase.db :as db]
-            [metabase.models.database :refer [Database]]
-            (metabase.models [field :refer [Field]]
+            (metabase.models [database :refer [Database]]
+                             [field :refer [Field]]
                              [field-values :refer [FieldValues]]
                              [table :refer [Table]])
             [metabase.test.data :refer :all]
@@ -13,56 +13,63 @@
 
 (defn- db-details []
   (tu/match-$ (db)
-    {:created_at      $
-     :engine          "h2"
-     :id              $
-     :updated_at      $
-     :name            "test-data"
-     :is_sample       false
-     :is_full_sync    true
-     :organization_id nil
-     :description     nil
-     :features        (mapv name (metabase.driver/features (metabase.driver/engine->driver :h2)))}))
+    {:created_at         $
+     :engine             "h2"
+     :caveats            nil
+     :points_of_interest nil
+     :id                 $
+     :updated_at         $
+     :name               "test-data"
+     :is_sample          false
+     :is_full_sync       true
+     :organization_id    nil
+     :description        nil
+     :features           (mapv name (metabase.driver/features (metabase.driver/engine->driver :h2)))}))
 
 
 ;; ## GET /api/field/:id
 (expect
-    (tu/match-$ (Field (id :users :name))
-      {:description     nil
-       :table_id        (id :users)
-       :raw_column_id   $
-       :table           (tu/match-$ (Table (id :users))
-                          {:description     nil
-                           :entity_type     nil
-                           :visibility_type nil
-                           :db              (db-details)
-                           :schema          "PUBLIC"
-                           :name            "USERS"
-                           :display_name    "Users"
-                           :rows            15
-                           :updated_at      $
-                           :entity_name     nil
-                           :active          true
-                           :id              (id :users)
-                           :db_id           (id)
-                           :raw_table_id    $
-                           :created_at      $})
-       :special_type    "name"
-       :name            "NAME"
-       :display_name    "Name"
-       :updated_at      $
-       :last_analyzed   $
-       :active          true
-       :id              (id :users :name)
-       :field_type      "info"
-       :visibility_type "normal"
-       :position        0
-       :preview_display true
-       :created_at      $
-       :base_type       "TextField"
-       :fk_target_field_id nil
-       :parent_id       nil})
-    ((user->client :rasta) :get 200 (format "field/%d" (id :users :name))))
+  (tu/match-$ (Field (id :users :name))
+    {:description        nil
+     :table_id           (id :users)
+     :raw_column_id      $
+     :table              (tu/match-$ (Table (id :users))
+                           {:description             nil
+                            :entity_type             nil
+                            :visibility_type         nil
+                            :db                      (db-details)
+                            :schema                  "PUBLIC"
+                            :name                    "USERS"
+                            :display_name            "Users"
+                            :rows                    15
+                            :updated_at              $
+                            :entity_name             nil
+                            :active                  true
+                            :id                      (id :users)
+                            :db_id                   (id)
+                            :caveats                 nil
+                            :points_of_interest      nil
+                            :show_in_getting_started false
+                            :raw_table_id            $
+                            :created_at              $})
+     :special_type       "name"
+     :name               "NAME"
+     :display_name       "Name"
+     :caveats            nil
+     :points_of_interest nil
+     :updated_at         $
+     :last_analyzed      $
+     :active             true
+     :id                 (id :users :name)
+     :field_type         "info"
+     :visibility_type    "normal"
+     :position           0
+     :preview_display    true
+     :created_at         $
+     :base_type          "TextField"
+     :fk_target_field_id nil
+     :parent_id          nil})
+  ((user->client :rasta) :get 200 (format "field/%d" (id :users :name))))
 
 
 ;; ## GET /api/field/:id/summary
@@ -93,10 +100,12 @@
     :description     nil
     :special_type    nil
     :visibility_type :sensitive}]
-  (tu/with-temp* [Database [{database-id :id} {:name      "Field Test"
-                                               :engine    :yeehaw
-                                               :details   {}
-                                               :is_sample false}]
+  (tu/with-temp* [Database [{database-id :id} {:name               "Field Test"
+                                               :engine             :yeehaw
+                                               :caveats            nil
+                                               :points_of_interest nil
+                                               :details            {}
+                                               :is_sample          false}]
                   Table    [{table-id :id}    {:name   "Field Test"
                                                :db_id  database-id
                                                :active true}]
@@ -110,14 +119,14 @@
                                                :position        1}]]
     (let [original-val (simple-field-details (Field field-id))]
       ;; set it
-      ((user->client :crowberto) :put 200 (format "field/%d" field-id) {:name "something else"
-                                                                        :display_name "yay"
-                                                                        :description "foobar"
-                                                                        :special_type :name
+      ((user->client :crowberto) :put 200 (format "field/%d" field-id) {:name            "something else"
+                                                                        :display_name    "yay"
+                                                                        :description     "foobar"
+                                                                        :special_type    :name
                                                                         :visibility_type :sensitive})
       (let [updated-val (simple-field-details (Field field-id))]
         ;; unset it
-        ((user->client :crowberto) :put 200 (format "field/%d" field-id) {:description nil
+        ((user->client :crowberto) :put 200 (format "field/%d" field-id) {:description  nil
                                                                           :special_type nil})
         [original-val
          updated-val
@@ -127,10 +136,12 @@
 (expect
   [true
    nil]
-  (tu/with-temp* [Database [{database-id :id} {:name      "Field Test"
-                                               :engine    :yeehaw
-                                               :details   {}
-                                               :is_sample false}]
+  (tu/with-temp* [Database [{database-id :id} {:name               "Field Test"
+                                               :engine             :yeehaw
+                                               :caveats            nil
+                                               :points_of_interest nil
+                                               :details            {}
+                                               :is_sample          false}]
                   Table    [{table-id :id}    {:name   "Field Test"
                                                :db_id  database-id
                                                :active true}]

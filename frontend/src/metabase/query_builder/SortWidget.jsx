@@ -88,7 +88,7 @@ export default class SortWidget extends Component {
                 />
 
                 <a onClick={this.props.removeSort}>
-                    <Icon name='close' width="12px" height="12px" />
+                    <Icon name='close' size={12} />
                 </a>
             </div>
         );

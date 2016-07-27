@@ -51,7 +51,7 @@ export default (options = {}) => class ColorSetting extends Component {
             <span className="px2 py1 text-bold cursor-pointer text-default flex align-center">
                 <div className="ColorWell rounded bordered" style={{ backgroundColor: currentColor }}></div>
                 Color
-                <Icon className="ml1" name="chevrondown" width="8px" height="8px"/>
+                <Icon className="ml1" name="chevrondown" size={8}/>
             </span>
         );
 

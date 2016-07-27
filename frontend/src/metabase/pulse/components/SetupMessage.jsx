@@ -40,7 +40,7 @@ export default class SetupMessage extends Component {
             let adminEmail = Settings.get("admin_email");
             heading = (
                 <span className="flex align-center relative" style={{top: "-10px"}}>
-                    <Icon name="mail" width={20} />
+                    <Icon name="mail" size={20} />
                     <span className="ml1 h5 text-uppercase text-bold">Admin Email</span>
                 </span>
             );

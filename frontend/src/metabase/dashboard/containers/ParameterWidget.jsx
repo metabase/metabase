@@ -110,7 +110,7 @@ export default class ParameterWidget extends Component {
                     :
                         <div className={S.name}>
                             {parameter.name}
-                            <Icon name="pencil" width={12} height={12} className="ml1 text-brand cursor-pointer" onClick={() => this.setState({ isEditingName: true })} />
+                            <Icon name="pencil" size={12} className="ml1 text-brand cursor-pointer" onClick={() => this.setState({ isEditingName: true })} />
                         </div>
                     }
                     {this.renderPopover(parameter.default, (value) => setDefaultValue(value))}

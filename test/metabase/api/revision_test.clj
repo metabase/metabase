@@ -11,7 +11,7 @@
             [metabase.test.util :refer [expect-with-temp with-temp]]))
 
 (def ^:private rasta-revision-info
-  (delay {:id (user->id :rasta) :common_name "Rasta Toucan", :first_name "Rasta", :last_name "Toucan"}))
+  (delay {:id (user->id :rasta), :common_name "Rasta Toucan", :first_name "Rasta", :last_name "Toucan"}))
 
 (defn- get-revisions [entity object-id]
   (for [revision ((user->client :rasta) :get 200 "revision", :entity entity, :id object-id)]
@@ -19,19 +19,19 @@
 
 (defn- create-card-revision [card is-creation?]
   (push-revision!
-    :object        card
-    :entity        Card
-    :id            (:id card)
-    :user-id       (user->id :rasta)
-    :is-creation?  is-creation?))
+    :object       card
+    :entity       Card
+    :id           (:id card)
+    :user-id      (user->id :rasta)
+    :is-creation? is-creation?))
 
 (defn- create-dashboard-revision! [dash is-creation?]
   (push-revision!
-    :object        (Dashboard (:id dash))
-    :entity        Dashboard
-    :id            (:id dash)
-    :user-id       (user->id :rasta)
-    :is-creation?  is-creation?))
+    :object       (Dashboard (:id dash))
+    :entity       Dashboard
+    :id           (:id dash)
+    :user-id      (user->id :rasta)
+    :is-creation? is-creation?))
 
 
 ;;; # GET /revision

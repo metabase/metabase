@@ -201,7 +201,7 @@ export default class QueryHeader extends Component {
                     buttonSections.push([
                         <button key="recentlySaved" className="cursor-pointer bg-white text-success text-strong text-uppercase">
                             <span>
-                                <Icon name='check' width="12px" height="12px" />
+                                <Icon name='check' size={12} />
                                 <span className="ml1">Saved</span>
                             </span>
                         </button>
@@ -212,7 +212,7 @@ export default class QueryHeader extends Component {
                     buttonSections.push([
                         <Tooltip key="edit" tooltip="Edit question">
                             <a className="cursor-pointer text-brand-hover" onClick={this.onBeginEditing}>
-                                <Icon name="pencil" width="16px" height="16px" />
+                                <Icon name="pencil" size={16} />
                             </a>
                         </Tooltip>
                     ]);
@@ -244,7 +244,7 @@ export default class QueryHeader extends Component {
                     <Tooltip key="delete" tooltip="Delete">
                         <ModalWithTrigger
                             ref="deleteModal"
-                            triggerElement={<span className="text-brand-hover"><Icon name="trash" width="16px" height="16px" /></span>}
+                            triggerElement={<span className="text-brand-hover"><Icon name="trash" size={16} /></span>}
                         >
                             <DeleteQuestionModal
                                 card={this.props.card}
@@ -266,7 +266,7 @@ export default class QueryHeader extends Component {
             buttonSections.push([
                 <Tooltip key="parameterEdititor" tooltip="Parameters">
                     <a className={parametersButtonClasses}>
-                        <Icon name="variable" width="16px" height="16px" onClick={this.props.toggleTemplateTagsEditor}></Icon>
+                        <Icon name="variable" size={16} onClick={this.props.toggleTemplateTagsEditor}></Icon>
                     </a>
                 </Tooltip>
             ]);
@@ -278,7 +278,7 @@ export default class QueryHeader extends Component {
             buttonSections.push([
                 <Tooltip key="addtodash" tooltip="Add to dashboard">
                     <span data-metabase-event={"QueryBuilder;AddToDash Modal;normal"} className="cursor-pointer text-brand-hover" onClick={() => this.setState({ modal: "add-to-dashboard" })}>
-                        <Icon name="addtodash" width="16px" height="16px" />
+                        <Icon name="addtodash" size={16} />
                     </span>
                 </Tooltip>
             ]);
@@ -289,7 +289,7 @@ export default class QueryHeader extends Component {
                     <ModalWithTrigger
                         ref="addToDashSaveModal"
                         triggerClasses="h4 text-brand-hover text-uppercase"
-                        triggerElement={<span data-metabase-event={"QueryBuilder;AddToDash Modal;pre-save"} className="text-brand-hover"><Icon name="addtodash" width="16px" height="16px" /></span>}
+                        triggerElement={<span data-metabase-event={"QueryBuilder;AddToDash Modal;pre-save"} className="text-brand-hover"><Icon name="addtodash" size={16} /></span>}
                     >
                         <SaveQuestionModal
                             card={this.props.card}
@@ -311,7 +311,7 @@ export default class QueryHeader extends Component {
                 <Tooltip key="history" tooltip="Revision history">
                     <ModalWithTrigger
                         ref="cardHistory"
-                        triggerElement={<span className="text-brand-hover"><Icon name="history" width="18px" height="17px" /></span>}
+                        triggerElement={<span className="text-brand-hover"><Icon name="history" size={18} /></span>}
                     >
                         <HistoryModal
                             revisions={this.state.revisions}
@@ -347,7 +347,7 @@ export default class QueryHeader extends Component {
         buttonSections.push([
             <Tooltip key="dataReference" tooltip="Learn about your data">
                 <a className={dataReferenceButtonClasses}>
-                    <Icon name='reference' width="16px" height="16px" onClick={this.onToggleDataReference}></Icon>
+                    <Icon name='reference' size={16} onClick={this.onToggleDataReference}></Icon>
                 </a>
             </Tooltip>
         ]);

@@ -41,7 +41,7 @@ export default class SaveStatus extends Component {
         } else if (this.state.recentlySavedTimeout != null) {
             return (
                 <div className="SaveStatus mx2 px2 border-right flex align-center text-success">
-                    <Icon name="check" width="16" height="16" />
+                    <Icon name="check" size={16} />
                     <div className="ml1 h3 text-bold">Saved</div>
                 </div>
             )

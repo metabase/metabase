@@ -233,10 +233,10 @@ export default class TableInteractive extends Component {
         });
 
         // set the initial state of the sorting indicator chevron
-        var sortChevron = (<Icon name="chevrondown" width="8px" height="8px"></Icon>);
+        var sortChevron = (<Icon name="chevrondown" size={8}></Icon>);
 
         if(this.props.sort && this.props.sort[0][1] === 'ascending') {
-            sortChevron = (<Icon name="chevronup" width="8px" height="8px"></Icon>);
+            sortChevron = (<Icon name="chevronup" size={8}></Icon>);
         }
 
         if (this.isSortable()) {

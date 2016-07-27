@@ -36,7 +36,7 @@ export default class Navbar extends Component {
     }
 
     isActive(path) {
-        return this.props.location.path().indexOf(path) >= 0;
+        return this.props.location.path().startsWith(path);
     }
 
     renderAdminNav() {
@@ -46,7 +46,7 @@ export default class Navbar extends Component {
             <nav className="AdminNav">
                 <div className="wrapper flex align-center">
                     <div className="NavTitle flex align-center">
-                        <Icon name={'gear'} className="AdminGear" width={22} height={22}></Icon>
+                        <Icon name={'gear'} className="AdminGear" size={22}></Icon>
                         <span className="NavItem-text ml1 hide sm-show">Site Administration</span>
                     </div>
 
@@ -107,7 +107,7 @@ export default class Navbar extends Component {
                             <a data-metabase-event={"Navbar;Dashboard Dropdown;Toggle"} style={this.styles.navButton} className={cx("NavDropdown-button NavItem text-white text-bold cursor-pointer px2 flex align-center transition-background", {"NavItem--selected": this.isActive("/dash/")})}>
                                 <span className="NavDropdown-button-layer">
                                     Dashboards
-                                    <Icon className="ml1" name={'chevrondown'} width={8} height={8}></Icon>
+                                    <Icon className="ml1" name={'chevrondown'} size={8}></Icon>
                                 </span>
                             </a>
                         </DashboardsDropdown>
@@ -117,6 +117,9 @@ export default class Navbar extends Component {
                     </li>
                     <li className="pl1">
                         <a data-metabase-event={"Navbar;Pulses"} style={this.styles.navButton} className={cx("NavItem cursor-pointer text-white text-bold no-decoration flex align-center px2 transition-background", {"NavItem--selected": this.isActive("/pulse") })} href="/pulse/">Pulses</a>
+                    </li>
+                    <li className="pl1">
+                        <a data-metabase-event={"Navbar;DataReference"} style={this.styles.navButton} className={cx("NavItem cursor-pointer text-white text-bold no-decoration flex align-center px2 transition-background", {"NavItem--selected": this.isActive("/reference") })} href="/reference/guide">Data Reference</a>
                     </li>
                     <li className="pl3">
                         <a data-metabase-event={"Navbar;New Question"} style={this.styles.newQuestion} className="NavNewQuestion rounded inline-block bg-white text-brand text-bold cursor-pointer px2 no-decoration transition-all" href="/q">New <span className="hide sm-show">Question</span></a>

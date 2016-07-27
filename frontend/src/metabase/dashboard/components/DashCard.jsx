@@ -134,13 +134,13 @@ const DashCardActionButtons = ({ series, visualization, onRemove, onAddSeries })
 
 const RemoveButton = ({ onRemove }) =>
     <a className="text-grey-2 text-grey-4-hover expand-clickable" data-metabase-event="Dashboard;Remove Card Modal" href="#" onClick={onRemove}>
-        <Icon name="close" width="14" height="14" />
+        <Icon name="close" size={14} />
     </a>
 
 const AddSeriesButton = ({ series, onAddSeries }) =>
     <a data-metabase-event={"Dashboard;Edit Series Modal;open"} className="text-grey-2 text-grey-4-hover cursor-pointer h3 ml1 mr2 flex align-center flex-no-shrink relative" onClick={onAddSeries}>
-        <Icon className="absolute" style={{ top: 2, left: 2 }} name="add" width={8} height={8} />
-        <Icon name={getSeriesIconName(series)} width={24} height={24} />
+        <Icon className="absolute" style={{ top: 2, left: 2 }} name="add" size={8} />
+        <Icon name={getSeriesIconName(series)} size={12} />
         <span className="flex-no-shrink">{ series.length > 1 ? "Edit" : "Add" }</span>
     </a>
 

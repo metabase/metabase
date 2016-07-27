@@ -75,7 +75,7 @@
 .text-italic { font-style: italic; }
 
 /* larger text size used for descriptions  */
-.text-body {
+.text-body, :local(.text-body) {
   font-size: 1.286em;
   line-height: 1.457em;
   color: var(--body-text-color); /* TODO - is this bad? */

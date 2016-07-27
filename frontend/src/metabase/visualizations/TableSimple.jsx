@@ -106,10 +106,10 @@ export default class TableSimple extends Component {
                     <div ref="footer" className="p1 flex flex-no-shrink flex-align-right fullscreen-normal-text fullscreen-night-text">
                         <span className="text-bold">Rows {start + 1}-{end + 1} of {rows.length}</span>
                         <span className={cx("text-brand-hover px1 cursor-pointer", { disabled: start === 0 })} onClick={() => this.setState({ page: page - 1 })}>
-                            <Icon name="left" height={10} />
+                            <Icon name="left" size={10} />
                         </span>
                         <span className={cx("text-brand-hover pr1 cursor-pointer", { disabled: end + 1 >= rows.length })} onClick={() => this.setState({ page: page + 1 })}>
-                            <Icon name="right" height={10} />
+                            <Icon name="right" size={10} />
                         </span>
                     </div>
                 : null }

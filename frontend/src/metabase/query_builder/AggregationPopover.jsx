@@ -149,7 +149,7 @@ export default class AggregationPopover extends Component {
                     sections={sections}
                     onChange={this.onPickAggregation}
                     itemIsSelected={this.itemIsSelected.bind(this)}
-                    renderSectionIcon={(s) => <Icon name={s.icon} width="18" height="18" />}
+                    renderSectionIcon={(s) => <Icon name={s.icon} size={18} />}
                     renderItemExtra={this.renderItemExtra.bind(this)}
                     getItemClasses={(item) => item.metric && !item.metric.is_active ? "text-grey-3" : null }
                 />
@@ -161,7 +161,7 @@ export default class AggregationPopover extends Component {
                 <div style={{width: 300}}>
                     <div className="text-grey-3 p1 py2 border-bottom flex align-center">
                         <a className="cursor-pointer flex align-center" onClick={this.onClearAggregation}>
-                            <Icon name="chevronleft" width="18" height="18"/>
+                            <Icon name="chevronleft" size={18}/>
                             <h3 className="inline-block pl1">{selectedAggregation.name}</h3>
                         </a>
                     </div>

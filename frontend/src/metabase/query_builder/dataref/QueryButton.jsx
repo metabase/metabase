@@ -16,7 +16,7 @@ export default class QueryButton extends Component {
                     <Icon name={this.props.icon} />
                     <span className="DataRefererenceQueryButton-text mx2 text-default text-brand-hover">{this.props.text}</span>
                     <span className="DataRefererenceQueryButton-circle flex-align-right text-brand">
-                        <Icon width="8" height="8" name="chevronright" />
+                        <Icon size={8} name="chevronright" />
                     </span>
                 </a>
             </div>

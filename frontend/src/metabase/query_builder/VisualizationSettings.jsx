@@ -33,9 +33,9 @@ export default class VisualizationSettings extends React.Component {
 
         var triggerElement = (
             <span className="px2 py1 text-bold cursor-pointer text-default flex align-center">
-                <Icon name={visualization.iconName} width="24px" height="24px"/>
+                <Icon name={visualization.iconName} size={12} />
                 {visualization.displayName}
-                <Icon className="ml1" name="chevrondown" width="8px" height="8px"/>
+                <Icon className="ml1" name="chevrondown" size={8} />
             </span>
         );
 
@@ -58,7 +58,7 @@ export default class VisualizationSettings extends React.Component {
                                 })}
                                 onClick={this.setDisplay.bind(null, vizType)}
                             >
-                                <Icon name={viz.iconName} width="24px" height="24px"/>
+                                <Icon name={viz.iconName} size={12} />
                                 <span className="ml1">{viz.displayName}</span>
                             </li>
                         )}

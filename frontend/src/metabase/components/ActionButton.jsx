@@ -88,7 +88,7 @@ export default class ActionButton extends Component {
                     this.props.activeText
                 : this.state.result === "success" ?
                     <span>
-                        <Icon name='check' width="12px" height="12px" />
+                        <Icon name='check' size={12} />
                         <span className="ml1">{this.props.successText}</span>
                     </span>
                 : this.state.result === "failed" ?
