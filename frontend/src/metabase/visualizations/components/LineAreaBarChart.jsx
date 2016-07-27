@@ -185,27 +185,27 @@ export default class LineAreaBarChart extends Component {
     getSettings() {
         let fidelity = this.getFidelity();
 
-        let settings = this.props.settings;
+        let settings = { ...this.props.settings };
 
         // no axis in < 1 fidelity
         if (fidelity.x < 1) {
-            settings = i.assocIn(settings, ["yAxis", "axis_enabled"], false);
+            settings["graph.y_axis.axis_enabled"] = false;
         }
         if (fidelity.y < 1) {
-            settings = i.assocIn(settings, ["xAxis", "axis_enabled"], false);
+            settings["graph.x_axis.axis_enabled"] = false;
         }
 
         // no labels in < 2 fidelity
         if (fidelity.x < 2) {
-            settings = i.assocIn(settings, ["yAxis", "labels_enabled"], false);
+            settings["graph.y_axis.labels_enabled"] = false;
         }
         if (fidelity.y < 2) {
-            settings = i.assocIn(settings, ["xAxis", "labels_enabled"], false);
+            settings["graph.x_axis.labels_enabled"] = false;
         }
 
         // smooth interpolation at smallest x/y fidelity
         if (fidelity.x === 0 && fidelity.y === 0) {
-            settings = i.assocIn(settings, ["line", "interpolate"], "cardinal");
+            settings["line.interpolate"] = "cardinal";
         }
 
         return settings;
