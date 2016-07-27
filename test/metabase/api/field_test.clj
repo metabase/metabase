@@ -80,7 +80,7 @@
 
 ;; ## PUT /api/field/:id
 
-(defn simple-field-details [field]
+(defn- simple-field-details [field]
   (select-keys field [:name :display_name :description :visibility_type :special_type]))
 
 ;; test that we can do basic field update work, including unsetting some fields such as special-type
@@ -184,66 +184,66 @@
   [table-kw field-kw]
   (FieldValues :field_id (id table-kw field-kw)))
 
+(defn- field-values-id [table-key field-key]
+  (:id (field->field-values table-key field-key)))
+
 ;; ## GET /api/field/:id/values
 ;; Should return something useful for a field that has special_type :category
-(tu/expect-eval-actual-first
-    (tu/match-$ (field->field-values :venues :price)
-      {:field_id              (id :venues :price)
-       :human_readable_values {}
-       :values                [1 2 3 4]
-       :updated_at            $
-       :created_at            $
-       :id                    $})
-  (do (db/update! FieldValues (:id (field->field-values :venues :price))
-        :human_readable_values nil) ; clear out existing human_readable_values in case they're set
-      ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price)))))
+(expect
+  {:field_id              (id :venues :price)
+   :human_readable_values {}
+   :values                [1 2 3 4]
+   :id                    (field-values-id :venues :price)}
+  (do
+    ;; clear out existing human_readable_values in case they're set
+    (db/update! FieldValues (field-values-id :venues :price)
+      :human_readable_values nil)
+    ;; now update the values via the API
+    (-> ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price)))
+        (dissoc :created_at :updated_at))))
 
 ;; Should return nothing for a field whose special_type is *not* :category
 (expect
-    {:values                {}
-     :human_readable_values {}}
+  {:values                {}
+   :human_readable_values {}}
   ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :id))))
 
 
 ;; ## POST /api/field/:id/value_map_update
 
 ;; Check that we can set values
-(tu/expect-eval-actual-first
+(expect
   [{:status "success"}
-   (tu/match-$ (FieldValues :field_id (id :venues :price))
-     {:field_id              (id :venues :price)
-      :human_readable_values {:1 "$"
-                              :2 "$$"
-                              :3 "$$$"
-                              :4 "$$$$"}
-      :values                [1 2 3 4]
-      :updated_at            $
-      :created_at            $
-      :id                    $})]
+   {:field_id              (id :venues :price)
+    :human_readable_values {:1 "$"
+                            :2 "$$"
+                            :3 "$$$"
+                            :4 "$$$$"}
+    :values                [1 2 3 4]
+    :id                    (field-values-id :venues :price)}]
   [((user->client :crowberto) :post 200 (format "field/%d/value_map_update" (id :venues :price)) {:values_map {:1 "$"
                                                                                                                :2 "$$"
                                                                                                                :3 "$$$"
                                                                                                                :4 "$$$$"}})
-   ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price)))])
+   (-> ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price)))
+       (dissoc :created_at :updated_at))])
 
 ;; Check that we can unset values
-(tu/expect-eval-actual-first
+(expect
   [{:status "success"}
    (tu/match-$ (FieldValues :field_id (id :venues :price))
      {:field_id              (id :venues :price)
       :human_readable_values {}
       :values                [1 2 3 4]
-      :updated_at            $
-      :created_at            $
-      :id                    $})]
+      :id                    (field-values-id :venues :price)})]
   [(do (db/update! FieldValues (:id (field->field-values :venues :price))
          :human_readable_values {:1 "$" ; make sure they're set
                                  :2 "$$"
                                  :3 "$$$"
                                  :4 "$$$$"})
-       ((user->client :crowberto) :post 200 (format "field/%d/value_map_update" (id :venues :price))
-        {:values_map {}}))
-   ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price)))])
+       ((user->client :crowberto) :post 200 (format "field/%d/value_map_update" (id :venues :price)) {:values_map {}}))
+   (-> ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price)))
+       (dissoc :created_at :updated_at))])
 
 ;; Check that we get an error if we call value_map_update on something that isn't a category
 (expect "You can only update the mapped values of a Field whose 'special_type' is 'category'/'city'/'state'/'country' or whose 'base_type' is 'BooleanField'."

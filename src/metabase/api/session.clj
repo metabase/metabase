@@ -105,7 +105,7 @@
 (defendpoint POST "/reset_password"
   "Reset password with a reset token."
   [:as {{:keys [token password]} :body}]
-  {token    Required
+  {token    [Required NonEmptyString]
    password [Required ComplexPassword]}
   (or (when-let [{user-id :id, :as user} (valid-reset-token->user token)]
         (set-user-password! user-id password)

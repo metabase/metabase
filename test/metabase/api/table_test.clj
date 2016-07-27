@@ -11,7 +11,7 @@
             (metabase.test.data [dataset-definitions :as defs]
                                 [datasets :as datasets]
                                 [users :refer :all])
-            [metabase.test.util :refer [match-$ expect-eval-actual-first resolve-private-fns]]
+            [metabase.test.util :refer [match-$ resolve-private-fns], :as tu]
             [metabase.util :as u]))
 
 (resolve-private-fns metabase.models.table pk-field-id)
@@ -486,54 +486,52 @@
 
 
 ;; ## PUT /api/table/:id
-(expect-eval-actual-first
- (match-$ (u/prog1 (Table (id :users))
-                   ;; reset Table back to its original state
-                   (db/update! Table (id :users), :display_name "Users", :entity_type nil, :visibility_type nil, :description nil))
-   {:description             "What a nice table!"
-    :caveats                 nil
-    :points_of_interest      nil
-    :show_in_getting_started false
-    :entity_type             "person"
-    :visibility_type         "hidden"
-    :db                      (match-$ (db)
-                               {:description        nil
-                                :caveats            nil
-                                :points_of_interest nil
-                                :organization_id    $
-                                :name               "test-data"
-                                :is_sample          false
-                                :is_full_sync       true
-                                :updated_at         $
-                                :details            $
-                                :id                 $
-                                :engine             "h2"
-                                :created_at         $
-                                :features           (mapv name (driver/features (driver/engine->driver :h2)))})
-    :schema                  "PUBLIC"
-    :name                    "USERS"
-    :rows                    15
-    :updated_at              $
-    :entity_name             nil
-    :display_name            "Userz"
-    :active                  true
-    :pk_field                (pk-field-id $$)
-    :id                      $
-    :db_id                   (id)
-    :raw_table_id            $
-    :created_at              $})
- (do ((user->client :crowberto) :put 200 (format "table/%d" (id :users)) {:display_name    "Userz"
-                                                                          :entity_type     "person"
-                                                                          :visibility_type "hidden"
-                                                                          :description     "What a nice table!"})
-     ((user->client :crowberto) :get 200 (format "table/%d" (id :users)))))
+(tu/expect-with-temp [Table [table {:rows 15}]]
+  (match-$ table
+    {:description             "What a nice table!"
+     :entity_type             "person"
+     :visibility_type         "hidden"
+     :caveats                 nil
+     :points_of_interest      nil
+     :show_in_getting_started false
+     :db                      (match-$ (db)
+                                {:description        nil
+                                 :caveats            nil
+                                 :points_of_interest nil
+                                 :organization_id    $
+                                 :name               "test-data"
+                                 :is_sample          false
+                                 :is_full_sync       true
+                                 :updated_at         $
+                                 :details            $
+                                 :id                 $
+                                 :engine             "h2"
+                                 :created_at         $
+                                 :features           (mapv name (driver/features (driver/engine->driver :h2)))})
+     :schema                  $
+     :name                    $
+     :rows                    15
+     :entity_name             nil
+     :display_name            "Userz"
+     :active                  true
+     :pk_field                (pk-field-id $$)
+     :id                      $
+     :db_id                   (id)
+     :raw_table_id            $
+     :created_at              $})
+  (do ((user->client :crowberto) :put 200 (format "table/%d" (:id table)) {:display_name    "Userz"
+                                                                           :entity_type     "person"
+                                                                           :visibility_type "hidden"
+                                                                           :description     "What a nice table!"})
+      (dissoc ((user->client :crowberto) :get 200 (format "table/%d" (:id table)))
+              :updated_at)))
 
 
 ;; ## GET /api/table/:id/fks
 ;; We expect a single FK from CHECKINS.USER_ID -> USERS.ID
 (expect
-  (let [checkins-user-field (Field :table_id (id :checkins), :name "USER_ID")
-        users-id-field (Field :table_id (id :users), :name "ID")]
+  (let [checkins-user-field (Field (id :checkins :user_id))
+        users-id-field      (Field (id :users :id))]
     [{:origin_id      (:id checkins-user-field)
       :destination_id (:id users-id-field)
       :relationship   "Mt1"
@@ -620,8 +618,8 @@
 
 
 ;; ## POST /api/table/:id/reorder
-(expect-eval-actual-first
-    {:result "success"}
+(expect
+  {:result "success"}
   (let [categories-id-field   (Field :table_id (id :categories), :name "ID")
         categories-name-field (Field :table_id (id :categories), :name "NAME")
         api-response          ((user->client :crowberto) :post 200 (format "table/%d/reorder" (id :categories))

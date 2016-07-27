@@ -8,6 +8,7 @@
 
 (alter-meta! #'honeysql.core/format assoc :style/indent 1)
 (alter-meta! #'honeysql.core/call   assoc :style/indent 1)
+
 ;; for some reason the metadata on these helper functions is wrong which causes Eastwood to fail, see https://github.com/jkk/honeysql/issues/123
 (alter-meta! #'honeysql.helpers/merge-left-join assoc
              :arglists '([m & clauses])
@@ -24,6 +25,15 @@
 ;; (hsql/format (hsql/call :extract :a :b)) -> "extract(a from b)"
 (defmethod hformat/fn-handler "extract" [_ unit expr]
   (str "extract(" (name unit) " from " (hformat/to-sql expr) ")"))
+
+
+;; HoneySQL 0.7.0+ parameterizes numbers to fix issues with NaN and infinity -- see https://github.com/jkk/honeysql/pull/122.
+;; However, this broke some of Metabase's behavior, specifically queries with calculated columns with numeric literals --
+;; some SQL databases can't recognize that a calculated field in a SELECT clause and a GROUP BY clause is the same thing if the calculation involves parameters.
+;; Go ahead an use the old behavior so we can keep our HoneySQL dependency up to date.
+(extend-protocol honeysql.format/ToSql
+  java.lang.Number
+  (to-sql [x] (str x)))
 
 ;; HoneySQL automatically assumes that dots within keywords are used to separate schema / table / field / etc.
 ;; To handle weird situations where people actually put dots *within* a single identifier we'll replace those dots with lozenges,

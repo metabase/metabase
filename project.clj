@@ -38,9 +38,9 @@
                                org.apache.httpcomponents/httpclient
                                net.sourceforge.nekohtml/nekohtml
                                ring/ring-core]]
-                 [com.draines/postal "2.0.0"]                         ; SMTP library
+                 [com.draines/postal "2.0.1"]                         ; SMTP library
                  [com.google.apis/google-api-services-bigquery        ; Google BigQuery Java Client Library
-                  "v2-rev310-1.22.0"]
+                  "v2-rev313-1.22.0"]
                  [com.h2database/h2 "1.4.192"]                        ; embedded SQL database
                  [com.mattbertolini/liquibase-slf4j "2.0.0"]          ; Java Migrations lib
                  [com.mchange/c3p0 "0.9.5.2"]                         ; connection pooling library
@@ -48,7 +48,7 @@
                  [compojure "1.5.1"]                                  ; HTTP Routing library built on Ring
                  [environ "1.0.3"]                                    ; easy environment management
                  [hiccup "1.0.5"]                                     ; HTML templating
-                 [honeysql "0.6.3"]                                   ; Transform Clojure data structures to SQL (version 0.7.0+ makes CI fail -- probably need to fix something!)
+                 [honeysql "0.7.0"]                                   ; Transform Clojure data structures to SQL
                  [log4j/log4j "1.2.17"                                ; logging framework
                   :exclusions [javax.mail/mail
                                javax.jms/jms
@@ -57,7 +57,7 @@
                  [medley "0.8.2"]                                     ; lightweight lib of useful functions
                  [metabase/throttle "1.0.1"]                          ; Tools for throttling access to API endpoints and other code pathways
                  [mysql/mysql-connector-java "5.1.39"]                ; MySQL JDBC driver (don't upgrade to 6.0+ yet -- that's Java 8 only)
-                 [net.sf.cssbox/cssbox "4.11"                         ; HTML / CSS rendering
+                 [net.sf.cssbox/cssbox "4.12"                         ; HTML / CSS rendering
                   :exclusions [org.slf4j/slf4j-api]]
                  [net.sourceforge.jtds/jtds "1.3.1"]                  ; Open Source SQL Server driver
                  [org.liquibase/liquibase-core "3.5.1"]               ; migration management (Java lib)
@@ -67,7 +67,7 @@
                  [postgresql "9.3-1102.jdbc41"]                       ; Postgres driver
                  [io.crate/crate-jdbc "1.13.0"]                       ; Crate JDBC driver
                  [io.crate/crate-client "0.55.2"]                     ; Crate Java client (used by Crate JDBC)
-                 [prismatic/schema "1.1.2"]                           ; Data schema declaration and validation library
+                 [prismatic/schema "1.1.3"]                           ; Data schema declaration and validation library
                  [ring/ring-jetty-adapter "1.5.0"]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically
                  [stencil "0.5.0"]                                    ; Mustache templates for Clojure
@@ -100,8 +100,8 @@
                       :exclude [#"test"
                                 #"^metabase\.http-client$"]}
   :profiles {:dev {:dependencies [[org.clojure/tools.nrepl "0.2.12"]  ; REPL <3
-                                  [expectations "2.1.3"]              ; unit tests *** DON'T UPDATE THIS UNTIL WE REMOVE USES OF DEPRECATED EXPECT-LET IN THE CODEBASE ***
-                                  [ring/ring-mock "0.3.0"]]
+                                  [expectations "2.1.9"]              ; unit tests
+                                  [ring/ring-mock "0.3.0"]]           ; Library to create mock Ring requests for unit tests
                    :plugins [[docstring-checker "1.0.0"]              ; Check that all public vars have docstrings. Run with 'lein docstring-checker'
                              [jonase/eastwood "0.2.3"
                               :exclusions [org.clojure/clojure]]      ; Linting
