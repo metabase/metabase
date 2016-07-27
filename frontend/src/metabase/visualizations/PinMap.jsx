@@ -57,8 +57,8 @@ export default class PinMap extends Component {
     getLatLongIndexes() {
         const { settings, series: [{ data: { cols }}] } = this.props;
         return {
-            latitudeIndex: _.findIndex(cols, (col) => col.name === settings["map.latitude_field"]),
-            longitudeIndex: _.findIndex(cols, (col) => col.name === settings["map.longitude_field"])
+            latitudeIndex: _.findIndex(cols, (col) => col.name === settings["map.latitude_column"]),
+            longitudeIndex: _.findIndex(cols, (col) => col.name === settings["map.longitude_column"])
         };
     }
 

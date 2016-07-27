@@ -359,13 +359,13 @@ const SETTINGS = {
             !Query.isBareRowsAggregation(card.dataset_query.query)
         )
     },
-    "table.fields": {
+    "table.columns": {
         title: "Fields to include",
         widget: ChartSettingOrderedFields,
         getHidden: (series, vizSettings) => vizSettings["table.pivot"],
         isValid: ([{ card, data }]) =>
-            card.visualization_settings["table.fields"] &&
-            columnsAreValid(card.visualization_settings["table.fields"].map(x => x.name), data),
+            card.visualization_settings["table.columns"] &&
+            columnsAreValid(card.visualization_settings["table.columns"].map(x => x.name), data),
         getDefault: ([{ data: { cols }}]) => cols.map(col => ({
             name: col.name,
             enabled: true
@@ -399,7 +399,7 @@ const SETTINGS = {
             }
         }
     },
-    "map.latitude_field": {
+    "map.latitude_column": {
         title: "Latitude field",
         widget: ChartSettingSelect,
         getDefault: ([{ card, data: { cols }}]) =>
@@ -409,7 +409,7 @@ const SETTINGS = {
         }),
         getHidden: (series, vizSettings) => vizSettings["map.type"] !== "pin"
     },
-    "map.longitude_field": {
+    "map.longitude_column": {
         title: "Longitude field",
         widget: ChartSettingSelect,
         getDefault: ([{ card, data: { cols }}]) =>

@@ -47,7 +47,7 @@ export default class Bar extends Component {
             });
         } else {
             const { cols, rows, columns } = data;
-            const colIndexes = settings["table.fields"]
+            const colIndexes = settings["table.columns"]
                 .filter(f => f.enabled)
                 .map(f => _.findIndex(cols, (c) => c.name === f.name))
                 .filter(i => i >= 0 && i < cols.length);
