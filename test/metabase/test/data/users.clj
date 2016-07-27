@@ -96,6 +96,10 @@
         (swap! tokens assoc username <>))
       (throw (Exception. (format "Authentication failed for %s with credentials %s" username (user->credentials username))))))
 
+;; TODO - does it make sense just to make this a non-higher-order function? Or a group of functions, e.g.
+;; (GET :rasta 200 "field/10/values")
+;; vs.
+;; ((user->client :rasta) :get 200 "field/10/values")
 (defn user->client
   "Returns a `metabase.http-client/client` partially bound with the credentials for User with USERNAME.
    In addition, it forces lazy creation of the User if needed.
