@@ -124,7 +124,7 @@ export default class LineAreaBarChart extends Component {
                         cols: rowIndexes.map(i => s.data.cols[i])
                     }
                 }));
-            } else {
+            } else if (metrics.length > 1) {
                 const dimensionIndex = dimensionIndexes[0];
 
                 nextState.isMultiseries = true;
