@@ -69,7 +69,7 @@ export default class EditUserForm extends Component {
 
         user.first_name = ReactDOM.findDOMNode(this.refs.firstName).value;
         user.last_name = ReactDOM.findDOMNode(this.refs.lastName).value;
-        user.email = email;
+        user.email = email.toLowerCase();
 
         this.props.submitFn(user);
     }

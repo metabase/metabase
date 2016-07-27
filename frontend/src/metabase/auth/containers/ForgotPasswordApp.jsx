@@ -33,7 +33,7 @@ export default class ForgotPasswordApp extends Component {
 
         if (!_.isEmpty(this.state.email)) {
             try {
-                await SessionApi.forgot_password({"email": this.state.email});
+                await SessionApi.forgot_password({"email": this.state.email.toLowerCase()});
                 this.setState({sentNotification: true, error: null});
             } catch (error) {
                 this.setState({error: error});

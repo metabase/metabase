@@ -35,7 +35,7 @@ export default class NewsletterForm extends Component {
         e.preventDefault();
 
         var formData = new FormData();
-        formData.append("EMAIL", ReactDOM.findDOMNode(this.refs.email).value);
+        formData.append("EMAIL", ReactDOM.findDOMNode(this.refs.email).value.toLowerCase());
         formData.append("b_869fec0e4689e8fd1db91e795_b9664113a8", "");
 
         let req = new XMLHttpRequest();

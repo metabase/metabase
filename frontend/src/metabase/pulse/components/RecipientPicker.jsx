@@ -129,7 +129,7 @@ export default class RecipientPicker extends Component {
         if (user) {
             this.addRecipient(user);
         } else if (VALID_EMAIL_REGEX.test(input.value)) {
-            this.addRecipient({ email: input.value });
+            this.addRecipient({ email: input.value.toLowerCase() });
         }
     }
 

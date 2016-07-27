@@ -100,7 +100,7 @@ export const resetPasswordManually = createThunkAction(RESET_PASSWORD_MANUAL, fu
 export const resetPasswordViaEmail = createThunkAction(RESET_PASSWORD_EMAIL, function(user) {
     return async function(dispatch, getState) {
         MetabaseAnalytics.trackEvent("People Admin", "Trigger User Password Reset");
-        return await SessionApi.forgot_password({email: user.email});
+        return await SessionApi.forgot_password({email: user.email.toLowerCase()});
     };
 });
 
