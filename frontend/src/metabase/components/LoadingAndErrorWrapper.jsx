@@ -55,7 +55,7 @@ export default class LoadingAndErrorWrapper extends Component {
             return React.Children.only(this.getChildren());
         }
         return (
-            <div {...this.props}>
+            <div className={this.props.className}>
                 { error ?
                     <div className={contentClassName}>
                         <h2 className="text-normal text-grey-2">{this.getErrorMessage()}</h2>

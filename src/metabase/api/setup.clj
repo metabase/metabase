@@ -1,5 +1,5 @@
 (ns metabase.api.setup
-  (:require [compojure.core :refer [defroutes GET POST]]
+  (:require [compojure.core :refer [GET POST]]
             (metabase.api [common :refer :all]
                           [database :refer [annotation:DBEngine]])
             (metabase [db :as db]

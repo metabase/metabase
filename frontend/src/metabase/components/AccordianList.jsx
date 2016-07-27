@@ -168,7 +168,7 @@ export default class AccordianList extends Component {
                                         <h3 className="List-section-title">{section.name}</h3>
                                         { section.items.length > 0 &&
                                             <span className="flex-align-right">
-                                                <Icon name={sectionIsOpen(sectionIndex) ? "chevronup" : "chevrondown"} width={12} height={12} />
+                                                <Icon name={sectionIsOpen(sectionIndex) ? "chevronup" : "chevrondown"} size={12} />
                                             </span>
                                         }
                                     </div>
@@ -211,7 +211,7 @@ export default class AccordianList extends Component {
                                         { this.renderItemExtra(item, itemIndex) }
                                         { showItemArrows &&
                                             <div className="List-item-arrow flex align-center px1">
-                                                <Icon name="chevronright" width={8} height={8} />
+                                                <Icon name="chevronright" size={8} />
                                             </div>
                                         }
                                     </li>

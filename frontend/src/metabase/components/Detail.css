@@ -1,0 +1,45 @@
+:root {
+    --title-color: #606E7B;
+    --subtitle-color: #AAB7C3;
+    --muted-color: #DEEAF1;
+    --blue-color: #2D86D4;
+}
+
+:local(.detail) {
+    composes: flex align-center from "style";
+    composes: relative from "style";
+    padding-left: 70px;
+}
+
+:local(.detailBody) {
+    composes: flex-full from "style";
+    max-width: 550px;
+    padding-top: 20px;
+    padding-bottom: 20px;
+}
+
+:local(.detailTitle) {
+    composes: text-bold from "style";
+    composes: inline-block from "style";
+    color: var(--title-color);
+    font-size: 18px;
+}
+
+:local(.detailSubtitle) {
+    composes: text-dark mt2 from "style";
+    font-size: 16px;
+}
+
+:local(.detailSubtitleLight) {
+    composes: mt2 from "style";
+    color: var(--subtitle-color);
+    font-size: 16px;
+}
+
+:local(.detailTextArea) {
+    composes: text-dark input p2 from "style";
+    resize: none;
+    font-size: 16px;
+    width: 100%;
+    min-height: 100px;
+}

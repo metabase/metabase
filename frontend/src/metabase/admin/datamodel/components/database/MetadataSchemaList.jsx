@@ -34,7 +34,7 @@ export default class MetadataSchemaList extends Component {
         return (
             <div className="MetadataEditor-table-list AdminList flex-no-shrink">
                 <div className="AdminList-search">
-                    <Icon name="search" width="16" height="16"/>
+                    <Icon name="search" size={16}/>
                     <input
                         className="AdminInput pl4 border-bottom"
                         type="text"

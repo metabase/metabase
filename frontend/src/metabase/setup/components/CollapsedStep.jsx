@@ -34,7 +34,7 @@ export default class SetupCollapsedStep extends Component {
                 <div className="flex align-center py2">
                     <span className="SetupStep-indicator flex layout-centered absolute bordered">
                         <span className="SetupStep-number">{stepNumber}</span>
-                        <Icon name={'check'} className="SetupStep-check" width={16} height={16}></Icon>
+                        <Icon name={'check'} className="SetupStep-check" size={16}></Icon>
                     </span>
                     <h3 className="SetupStep-title ml4 my1" onClick={this.gotoStep.bind(this)}>{stepText}</h3>
                 </div>

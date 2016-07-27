@@ -148,7 +148,7 @@ export default class DashboardHeader extends Component {
                           title="Parameters"
                           onClick={() => this.setState({ modal: "parameters" })}
                         >
-                            <Icon name="funneladd" width="16px" height="16px" />
+                            <Icon name="funneladd" size={16} />
                         </a>
                     </Tooltip>
 
@@ -170,7 +170,7 @@ export default class DashboardHeader extends Component {
                     triggerElement={
                         <Tooltip tooltip="Revision History">
                             <span data-metabase-event={"Dashboard;Revisions"}>
-                                <Icon className="text-brand-hover" name="history" width="16px" height="16px" />
+                                <Icon className="text-brand-hover" name="history" size={16} />
                             </span>
                         </Tooltip>
                     }
@@ -192,7 +192,7 @@ export default class DashboardHeader extends Component {
             buttons.push(
                 <Tooltip tooltip="Edit Dashboard">
                     <a data-metabase-event="Dashboard;Edit" key="edit" title="Edit Dashboard Layout" className="text-brand-hover cursor-pointer" onClick={() => this.onEdit()}>
-                        <Icon name="pencil" width="16px" height="16px" />
+                        <Icon name="pencil" size={16} />
                     </a>
                 </Tooltip>
             );
@@ -206,7 +206,7 @@ export default class DashboardHeader extends Component {
                     triggerElement={
                         <Tooltip tooltip="Add Card">
                             <span data-metabase-event="Dashboard;Add Card Modal" title="Add a question to this dashboard">
-                                <Icon className={cx("text-brand-hover cursor-pointer", { "Icon--pulse": isEmpty })} name="add" width="16px" height="16px" />
+                                <Icon className={cx("text-brand-hover cursor-pointer", { "Icon--pulse": isEmpty })} name="add" size={16} />
                             </span>
                         </Tooltip>
                     }

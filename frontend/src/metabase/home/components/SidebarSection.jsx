@@ -5,7 +5,7 @@ import Icon from "metabase/components/Icon.jsx";
 const SidebarSection = ({ title, icon, extra, children }) =>
     <div className="px2 pt1">
         <div className="text-dark-grey clearfix pt2 pb2">
-            <Icon className="float-left" name={icon} width={18} height={18}></Icon>
+            <Icon className="float-left" name={icon} size={18}></Icon>
             <span className="pl1 Sidebar-header">{title}</span>
             { extra && <span className="float-right">{extra}</span>}
         </div>

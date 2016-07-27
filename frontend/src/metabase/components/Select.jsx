@@ -82,7 +82,7 @@ class BrowserSelect extends Component {
                 triggerElement={
                     <div className={"flex align-center " + (!value ? " text-grey-3" : "")}>
                         <span className="mr1">{selectedName}</span>
-                        <Icon className="flex-align-right" name="chevrondown" width={12} height={12} />
+                        <Icon className="flex-align-right" name="chevrondown" size={12} />
                     </div>
                 }
                 triggerClasses={cx("AdminSelect", className)}
@@ -135,7 +135,7 @@ export class Option extends Component {
                     "disabled": disabled
                 })}
             >
-                <Icon name="check"  width="14" height="14"/>
+                <Icon name="check"  size={14}/>
                 {children}
             </div>
         );
@@ -152,6 +152,8 @@ class LegacySelect extends Component {
         optionValueFn: PropTypes.func,
         className: PropTypes.string,
         isInitiallyOpen: PropTypes.bool,
+        //TODO: clean up hardcoded "AdminSelect" class on trigger to avoid this workaround
+        triggerClasses: PropTypes.string
     };
 
     static defaultProps = {
@@ -173,7 +175,7 @@ class LegacySelect extends Component {
         var triggerElement = (
             <div className={"flex align-center " + (!value ? " text-grey-3" : "")}>
                 <span className="mr1">{selectedName}</span>
-                <Icon className="flex-align-right" name="chevrondown" width={12} height={12}/>
+                <Icon className="flex-align-right" name="chevrondown" size={12}/>
             </div>
         );
 
@@ -203,7 +205,7 @@ class LegacySelect extends Component {
                 ref="popover"
                 className={className}
                 triggerElement={triggerElement}
-                triggerClasses={"AdminSelect " + (className || "")}
+                triggerClasses={this.props.triggerClasses || cx("AdminSelect", this.props.className)}
                 isInitiallyOpen={isInitiallyOpen}
             >
                 <div onClick={(e) => e.stopPropagation()}>

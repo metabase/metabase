@@ -130,14 +130,14 @@ export default class FieldList extends Component {
             // TODO: need to make this better
             name = 'int';
         }
-        return <Icon name={name || 'unknown'} width={18} height={18} />;
+        return <Icon name={name || 'unknown'} size={18} />;
     }
 
     renderTimeGroupingTrigger(field) {
         return (
             <div className="FieldList-grouping-trigger flex align-center p1 cursor-pointer">
                 <h4 className="mr1">by {parseFieldBucketing(field, "day").split("-").join(" ")}</h4>
-                <Icon name="chevronright" width={16} height={16} />
+                <Icon name="chevronright" size={16} />
             </div>
         );
     }
@@ -163,9 +163,9 @@ export default class FieldList extends Component {
 
     renderSectionIcon(section, sectionIndex) {
         if (sectionIndex > 0) {
-            return <Icon name="connections" width={18} height={18} />
+            return <Icon name="connections" size={18} />
         } else {
-            return <Icon name="table2" width={18} height={18} />;
+            return <Icon name="table2" size={18} />;
         }
     }
 

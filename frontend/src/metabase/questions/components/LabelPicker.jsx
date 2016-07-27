@@ -2,7 +2,7 @@
 import React, { Component, PropTypes } from "react";
 import S from "./LabelPicker.css";
 
-import LabelIcon from "./LabelIcon.jsx";
+import LabelIcon from "metabase/components/LabelIcon.jsx";
 import Icon from "metabase/components/Icon.jsx";
 
 import cx from "classnames";

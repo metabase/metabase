@@ -18,7 +18,8 @@
   "SMTP secure connection protocol. (tls, ssl, or none)"
   :default "none"
   :setter  (fn [new-value]
-             (assert (contains? #{"tls" "ssl" "none"} new-value))
+             (when-not (nil? new-value)
+               (assert (contains? #{"tls" "ssl" "none"} new-value)))
              (setting/set-string! :email-smtp-security new-value)))
 
 ;; ## PUBLIC INTERFACE

@@ -28,13 +28,14 @@ export default class Ellipsified extends Component {
     }
 
     render() {
-        const { showTooltip, children, style, className, tooltip, alwaysShowTooltip } = this.props;
+        const { showTooltip, children, style, className, tooltip, alwaysShowTooltip, tooltipMaxWidth } = this.props;
         const { isTruncated } = this.state;
         return (
             <Tooltip
-                tooltip={tooltip || children}
+                tooltip={tooltip || children || ' '}
                 verticalAttachments={["top", "bottom"]}
                 isEnabled={showTooltip && (isTruncated || alwaysShowTooltip) || false}
+                maxWidth={tooltipMaxWidth}
             >
                 <div ref="content" className={className} style={{ ...style, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
                     {children}

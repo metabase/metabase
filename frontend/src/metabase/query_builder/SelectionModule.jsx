@@ -127,7 +127,7 @@ export default class SelectionModule extends Component {
                 // if children are provided, use the custom layout display
                 return (
                     <li className={itemClassName} onClick={this._select.bind(null, item)} key={index}>
-                        <Icon name="check" width="12px" height="12px" />
+                        <Icon name="check" size={12} />
                         <div className="flex-full">
                             <div className="SelectionModule-display">
                                 {display}
@@ -141,7 +141,7 @@ export default class SelectionModule extends Component {
             if (!isExpanded && items.length !== this.props.items.length) {
                 items.push(
                     <li className="SelectionItem border-top" onClick={this._expand} key="expand">
-                        <Icon name="chevrondown" width="12px" height="12px" />
+                        <Icon name="chevrondown" size={12} />
                         <div>
                             <div className="SelectionModule-display">
                                 {this.props.expandedTitle || "Advanced..."}
@@ -227,7 +227,7 @@ export default class SelectionModule extends Component {
         if(this.props.remove) {
             remove = (
                 <a className="text-grey-2 no-decoration pr1 flex align-center" onClick={this.props.remove.bind(null, this.props.index)}>
-                    <Icon name='close' width="14px" height="14px" />
+                    <Icon name='close' size={14} />
                 </a>
             );
         }

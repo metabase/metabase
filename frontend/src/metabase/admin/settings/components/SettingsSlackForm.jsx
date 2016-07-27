@@ -207,7 +207,7 @@ export default class SettingsSlackForm extends Component {
                     <div className="pt3">
                         <a href="https://api.slack.com/docs/oauth-test-tokens" target="_blank" className="Button Button--primary" style={{padding:0}}>
                             <div className="float-left py2 pl2">Get an API token from Slack</div>
-                            <Icon className="float-right p2 text-white cursor-pointer" style={{opacity:0.6}} name="external" width={18} height={18}/>
+                            <Icon className="float-right p2 text-white cursor-pointer" style={{opacity:0.6}} name="external" size={18}/>
                         </a>
                     </div>
                     <div className="py2">

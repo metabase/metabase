@@ -46,8 +46,8 @@
 (defendpoint PUT "/:id"
   "Update a `Dashboard`."
   [id :as {{:keys [description name parameters], :as dashboard} :body}]
-  {name         [Required NonEmptyString]
-   parameters   [ArrayOfMaps]}
+  {name       [Required NonEmptyString]
+   parameters [ArrayOfMaps]}
   (write-check Dashboard id)
   (check-500 (-> (assoc dashboard :id id)
                  (dashboard/update-dashboard! *current-user-id*))))

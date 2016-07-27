@@ -105,7 +105,7 @@
 
 (defendpoint PUT "/:id"
   "Update a `Database`."
-  [id :as {{:keys [name engine details is_full_sync]} :body}]
+  [id :as {{:keys [name engine details is_full_sync description caveats points_of_interest]} :body}]
   {name    [Required NonEmptyString]
    engine  [Required DBEngine]
    details [Required Dict]}
@@ -123,10 +123,13 @@
           ;; TODO: is there really a reason to let someone change the engine on an existing database?
           ;;       that seems like the kind of thing that will almost never work in any practical way
           (check-500 (db/update-non-nil-keys! Database id
-                       :name         name
-                       :engine       engine
-                       :details      details
-                       :is_full_sync is_full_sync))
+                       :name               name
+                       :engine             engine
+                       :details            details
+                       :is_full_sync       is_full_sync
+                       :description        description
+                       :caveats            caveats
+                       :points_of_interest points_of_interest)) ; TODO - this means one cannot unset the description. Does that matter?
           (events/publish-event :database-update (Database id)))
         ;; failed to connect, return error
         {:status 400

@@ -66,7 +66,7 @@ export default class ParameterValueWidget extends Component {
                 <div className={cx(S.parameter, S.noPopover, { [S.selected]: hasValue })}>
                     <Widget value={value} values={values} setValue={setValue} isEditing={isEditing} commitImmediately={commitImmediately} />
                     { hasValue && !noReset &&
-                        <Icon name="close" className="flex-align-right cursor-pointer" width={12} height={12} onClick={(e) => {
+                        <Icon name="close" className="flex-align-right cursor-pointer" size={12} onClick={(e) => {
                             if (hasValue) {
                                 e.stopPropagation();
                                 setValue(null);
@@ -86,13 +86,13 @@ export default class ParameterValueWidget extends Component {
                     <div ref="trigger" className={cx(S.parameter, { [S.selected]: hasValue })}>
                         <div className="mr1">{ hasValue ? Widget.format(value) : placeholderText }</div>
                         { hasValue && !noReset ?
-                            <Icon name="close" className="flex-align-right" width={12} height={12} onClick={(e) => {
+                            <Icon name="close" className="flex-align-right" size={12} onClick={(e) => {
                                 e.stopPropagation();
                                 setValue(null);
                                 this.refs.valuePopover.close();
                             }} />
                         :
-                            <Icon name="chevrondown" className="flex-align-right" width={12} height={12} />
+                            <Icon name="chevrondown" className="flex-align-right" size={12} />
                         }
                     </div>
                 }
