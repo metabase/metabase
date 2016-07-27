@@ -10277,6 +10277,9 @@
         }
       }
     },
+    "number-to-locale-string": {
+      "version": "1.0.1"
+    },
     "password-generator": {
       "version": "2.0.2",
       "dependencies": {

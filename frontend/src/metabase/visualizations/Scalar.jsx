@@ -100,15 +100,34 @@ export default class Scalar extends Component {
 
         let scalarValue = i.getIn(data, ["rows", 0, 0]);
 
-        const scale =  parseFloat(settings["scalar.scale"]);
-        if (typeof scalarValue === "number" && !isNaN(scale)) {
-            scalarValue *= scale;
-        }
+        try {
+            if (typeof scalarValue === "number") {
+                // scale
+                const scale =  parseFloat(settings["scalar.scale"]);
+                if (!isNaN(scale)) {
+                    scalarValue *= scale;
+                }
 
-        // const decimals = parseFloat(settings["scalar.decimals"]);
-        // if (typeof scalarValue === "number" && !isNaN(decimals)) {
-        //     scalarValue = Math.round(scalarValue * Math.pow(10, decimals)) / Math.pow(10, decimals);
-        // }
+                // round
+                let decimals = parseFloat(settings["scalar.decimals"]);
+                if (!isNaN(decimals)) {
+                    scalarValue = Math.round(scalarValue * Math.pow(10, decimals)) / Math.pow(10, decimals);
+                } else {
+                    decimals = undefined;
+                }
+
+                // format with separators and correct number of decimals
+                const locale = settings["scalar.locale"];
+                if (locale) {
+                    scalarValue = scalarValue.toLocaleString(locale, { minimumFractionDigits: decimals });
+                } else {
+                    // HACK: no locales that don't thousands separators?
+                    scalarValue = scalarValue.toLocaleString("en", { minimumFractionDigits: decimals }).replace(/,/g, "");
+                }
+            }
+        } catch (e) {
+            console.warn("error formatting scalar", e);
+        }
 
         let compactScalarValue = scalarValue == undefined ? "" :
             formatValue(scalarValue, { column: i.getIn(data, ["cols", 0]), compact: isSmall });

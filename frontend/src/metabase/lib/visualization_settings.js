@@ -291,17 +291,18 @@ const SETTINGS = {
         widget: ChartSettingToggle,
         default: true
     },
-    "scalar.separator": {
+    "scalar.locale": {
         title: "Separator",
         widget: ChartSettingSelect,
         props: {
             options: [
-                { name: "None", value: "" },
-                { name: "Comma", value: "," },
-                { name: "Period", value: "." },
+                { name: "123456.78", value: null },
+                { name: "123,456.78", value: "en" },
+                { name: "123 456,78", value: "fr" },
+                { name: "123.456,78", value: "de" }
             ]
         },
-        default: ","
+        default: null
     },
     "scalar.decimals": {
         title: "Number of decimal places",
