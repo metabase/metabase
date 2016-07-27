@@ -11,9 +11,8 @@
             (metabase.test.data [dataset-definitions :as defs]
                                 [datasets :as datasets]
                                 [users :refer :all])
-            [metabase.test.util :refer [match-$ resolve-private-fns]]
-            [metabase.util :as u]
-            [metabase.test.util :as tu]))
+            [metabase.test.util :refer [match-$ resolve-private-fns], :as tu]
+            [metabase.util :as u]))
 
 (resolve-private-fns metabase.models.table pk-field-id)
 
@@ -438,10 +437,8 @@
 
 
 ;; ## PUT /api/table/:id
-(tu/expect-eval-actual-first
-  (match-$ (u/prog1 (Table (id :users))
-             ;; reset Table back to its original state
-             (db/update! Table (id :users), :display_name "Users", :entity_type nil, :visibility_type nil, :description nil))
+(tu/expect-with-temp [Table [table {:rows 15}]]
+  (match-$ table
     {:description     "What a nice table!"
      :entity_type     "person"
      :visibility_type "hidden"
@@ -457,10 +454,9 @@
                          :engine          "h2"
                          :created_at      $
                          :features        (mapv name (driver/features (driver/engine->driver :h2)))})
-     :schema          "PUBLIC"
-     :name            "USERS"
+     :schema          $
+     :name            $
      :rows            15
-     :updated_at      $
      :entity_name     nil
      :display_name    "Userz"
      :active          true
@@ -469,18 +465,19 @@
      :db_id           (id)
      :raw_table_id    $
      :created_at      $})
-  (do ((user->client :crowberto) :put 200 (format "table/%d" (id :users)) {:display_name "Userz"
-                                                                           :entity_type "person"
+  (do ((user->client :crowberto) :put 200 (format "table/%d" (:id table)) {:display_name    "Userz"
+                                                                           :entity_type     "person"
                                                                            :visibility_type "hidden"
-                                                                           :description "What a nice table!"})
-      ((user->client :crowberto) :get 200 (format "table/%d" (id :users)))))
+                                                                           :description     "What a nice table!"})
+      (dissoc ((user->client :crowberto) :get 200 (format "table/%d" (:id table)))
+              :updated_at)))
 
 
 ;; ## GET /api/table/:id/fks
 ;; We expect a single FK from CHECKINS.USER_ID -> USERS.ID
 (expect
-  (let [checkins-user-field (Field :table_id (id :checkins), :name "USER_ID")
-        users-id-field (Field :table_id (id :users), :name "ID")]
+  (let [checkins-user-field (Field (id :checkins :user_id))
+        users-id-field      (Field (id :users :id))]
     [{:origin_id      (:id checkins-user-field)
       :destination_id (:id users-id-field)
       :relationship   "Mt1"
