@@ -22,11 +22,6 @@
 ;; Don't run unit tests whenever JVM shuts down
 (expectations/disable-run-on-shutdown)
 
-;; For good editors (i.e. Emacs) mark `expect-let` as `^:deprecated` so it will show up as such when editing code, discouraging future use
-;; TODO - this can be removed once we upgrade to a newer version of expectations that removes this
-(u/ignore-exceptions
-  (alter-meta! (resolve 'expectations/expect-let) assoc :deprecated true))
-
 
 ;; ## EXPECTATIONS FORMATTING OVERRIDES
 

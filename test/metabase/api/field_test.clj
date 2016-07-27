@@ -176,21 +176,21 @@
 ;; ## GET /api/field/:id/values
 ;; Should return something useful for a field that has special_type :category
 (tu/expect-eval-actual-first
-    (tu/match-$ (field->field-values :venues :price)
-      {:field_id              (id :venues :price)
-       :human_readable_values {}
-       :values                [1 2 3 4]
-       :updated_at            $
-       :created_at            $
-       :id                    $})
+  (tu/match-$ (field->field-values :venues :price)
+    {:field_id              (id :venues :price)
+     :human_readable_values {}
+     :values                [1 2 3 4]
+     :updated_at            $
+     :created_at            $
+     :id                    $})
   (do (db/update! FieldValues (:id (field->field-values :venues :price))
         :human_readable_values nil) ; clear out existing human_readable_values in case they're set
       ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price)))))
 
 ;; Should return nothing for a field whose special_type is *not* :category
 (expect
-    {:values                {}
-     :human_readable_values {}}
+  {:values                {}
+   :human_readable_values {}}
   ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :id))))
 
 
@@ -198,21 +198,21 @@
 
 ;; Check that we can set values
 (tu/expect-eval-actual-first
-    [{:status "success"}
-     (tu/match-$ (FieldValues :field_id (id :venues :price))
-       {:field_id              (id :venues :price)
-        :human_readable_values {:1 "$"
-                                :2 "$$"
-                                :3 "$$$"
-                                :4 "$$$$"}
-        :values                [1 2 3 4]
-        :updated_at            $
-        :created_at            $
-        :id                    $})]
+  [{:status "success"}
+   (tu/match-$ (FieldValues :field_id (id :venues :price))
+     {:field_id              (id :venues :price)
+      :human_readable_values {:1 "$"
+                              :2 "$$"
+                              :3 "$$$"
+                              :4 "$$$$"}
+      :values                [1 2 3 4]
+      :updated_at            $
+      :created_at            $
+      :id                    $})]
   [((user->client :crowberto) :post 200 (format "field/%d/value_map_update" (id :venues :price)) {:values_map {:1 "$"
-                                                                                                                    :2 "$$"
-                                                                                                                    :3 "$$$"
-                                                                                                                    :4 "$$$$"}})
+                                                                                                               :2 "$$"
+                                                                                                               :3 "$$$"
+                                                                                                               :4 "$$$$"}})
    ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price)))])
 
 ;; Check that we can unset values

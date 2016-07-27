@@ -8,7 +8,7 @@
                              [user :refer [User]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [match-$ random-name expect-eval-actual-first with-temp]]))
+            [metabase.test.util :refer [match-$ random-name expect-eval-actual-first with-temp], :as tu]))
 
 ;; ## /api/user/* AUTHENTICATION Tests
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
@@ -181,30 +181,26 @@
 
 ;; ## PUT /api/user/:id
 ;; Test that we can edit a User
-(expect-let [{old-first :first_name, last-name :last_name, old-email :email, id :id, :as user} (create-user!)
-             new-first  (random-name)
-             new-email  (.toLowerCase ^String (str new-first "@metabase.com"))
-             fetch-user (fn [] (dissoc (into {} (db/select-one [User :first_name :last_name :is_superuser :email], :id id))
-                                       :common_name))]
-  [{:email old-email
-    :is_superuser false
-    :last_name last-name
-    :first_name old-first}
-   {:email new-email
-    :is_superuser false
-    :last_name last-name
-    :first_name new-first}]
-  [(fetch-user)
-   (do ((user->client :crowberto) :put 200 (format "user/%d" id) {:first_name new-first
-                                                                  :email new-email})
-       (fetch-user))])
+(expect
+  [#metabase.models.user.UserInstance{:first_name "Cam", :last_name "Era",  :is_superuser true, :email "cam.era@metabase.com"}
+   #metabase.models.user.UserInstance{:first_name "Cam", :last_name "Eron", :is_superuser true, :email "cam.eron@metabase.com"}]
+  (tu/with-temp User [{user-id :id} {:first_name "Cam", :last_name "Era", :email "cam.era@metabase.com", :is_superuser true}]
+    (let [user (fn [] (dissoc (db/select-one [User :first_name :last_name :is_superuser :email], :id user-id)
+                              :common_name))]
+      [(user)
+       (do ((user->client :crowberto) :put 200 (str "user/" user-id) {:last_name "Eron"
+                                                                      :email     "cam.eron@metabase.com"})
+           (user))])))
 
 ;; Test that a normal user cannot change the :is_superuser flag for themselves
-(expect-let [fetch-user (fn [] (db/select-one [User :first_name :last_name :is_superuser :email], :id (user->id :rasta)))]
-  [(fetch-user)]
-  [(do ((user->client :rasta) :put 200 (str "user/" (user->id :rasta)) (-> (fetch-user)
-                                                                           (assoc :is_superuser true)))
-       (fetch-user))])
+(defn- fetch-rasta []
+  (db/select-one [User :first_name :last_name :is_superuser :email], :id (user->id :rasta)))
+
+(expect
+  (fetch-rasta)
+  (do ((user->client :rasta) :put 200 (str "user/" (user->id :rasta)) (assoc (fetch-rasta)
+                                                                        :is_superuser true))
+      (fetch-rasta)))
 
 ;; Check that a non-superuser CANNOT update someone else's user details
 (expect "You don't have permissions to do that."
@@ -216,46 +212,30 @@
 
 
 ;; ## PUT /api/user/:id/password
-;; Test that a User can change their password
-(expect-let [creds                 {:email    "abc@metabase.com"
-                                    :password "def"}
-             {:keys [id password]} (db/insert! User
-                                     :first_name "test"
-                                     :last_name  "user"
-                                     :email      "abc@metabase.com"
-                                     :password   "def")]
-  true
-  (do
-    ;; use API to reset the users password
-    (metabase.http-client/client creds :put 200 (format "user/%d/password" id) {:password     "abc123!!DEF"
-                                                                                :old_password (:password creds)})
-    ;; now simply grab the lastest pass from the db and compare to the one we have from before reset
-    (not= password (db/select-one-field :password User, :email (:email creds)))))
+;; Test that a User can change their password (superuser and non-superuser)
+(defn- user-can-reset-password? [superuser?]
+  (tu/with-temp User [user {:password "def", :is_superuser (boolean superuser?)}]
+    (let [creds           {:email (:email user), :password "def"}
+          hashed-password (db/select-one-field :password User, :email (:email user))]
+      ;; use API to reset the users password
+      (http/client creds :put 200 (format "user/%d/password" (:id user)) {:password     "abc123!!DEF"
+                                                                          :old_password "def"})
+      ;; now simply grab the lastest pass from the db and compare to the one we have from before reset
+      (not= hashed-password (db/select-one-field :password User, :email (:email user))))))
 
-;; Replicate the same test above with a superuser to ensure admins can reset their own password
-(expect-let [creds {:email    "hij@metabase.com"
-                    :password "def"}
-             {:keys [id password]} (db/insert! User
-                                     :first_name   "test"
-                                     :last_name    "user"
-                                     :email        "hij@metabase.com"
-                                     :password     "def"
-                                     :is_superuser true)]
-  true
-  (do
-    ;; use API to reset the users password
-    (metabase.http-client/client creds :put 200 (format "user/%d/password" id) {:password     "abc123!!DEF"
-                                                                                :old_password (:password creds)})
-    ;; now simply grab the lastest pass from the db and compare to the one we have from before reset
-    (not= password (db/select-one-field :password User, :email (:email creds)))))
+(expect (user-can-reset-password? :superuser))
+(expect (user-can-reset-password? (not :superuser)))
+
 
 ;; Check that a non-superuser CANNOT update someone else's password
-(expect "You don't have permissions to do that."
-  ((user->client :rasta) :put 403 (format "user/%d/password" (user->id :trashbird)) {:password "whateverUP12!!"
+(expect
+  "You don't have permissions to do that."
+  ((user->client :rasta) :put 403 (format "user/%d/password" (user->id :trashbird)) {:password     "whateverUP12!!"
                                                                                      :old_password "whatever"}))
 
 ;; Test input validations on password change
-(expect {:errors {:password "field is a required param."}}
+(expect
+  {:errors {:password "field is a required param."}}
   ((user->client :rasta) :put 400 (format "user/%d/password" (user->id :rasta)) {}))
 
 ;; Make sure that if current password doesn't match we get a 400
