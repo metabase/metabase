@@ -8,26 +8,27 @@
                              [user :refer [User]])
             [metabase.setup :as setup]
             (metabase.test [data :refer :all]
-                           [util :refer [match-$ random-name expect-eval-actual-first]])))
+                           [util :refer [match-$ random-name], :as tu])
+            [metabase.util :as u]))
 
 
 ;; ## POST /api/setup/user
 ;; Check that we can create a new superuser via setup-token
-(let [user-name (random-name)]
-  (expect-eval-actual-first
-    [(match-$ (Session :user_id (db/select-one-id User, :email (str user-name "@metabase.com")))
-      {:id $id})
-     (str user-name "@metabase.com")]
-    (let [resp (http/client :post 200 "setup" {:token (setup/token-create)
-                                               :prefs {:site_name "Metabase Test"}
-                                               :user  {:first_name user-name
-                                                       :last_name  user-name
-                                                       :email      (str user-name "@metabase.com")
-                                                       :password   "anythingUP12!!"}})]
-      ;; reset our setup token
-      (setup/token-create)
-      ;; return api response
-      [resp (setting/get :admin-email)])))
+(let [user-name (random-name)
+      email     (str user-name "@metbase.com")]
+  (expect
+    [true
+     email]
+    [(tu/is-uuid-string? (:id (http/client :post 200 "setup" {:token (setup/token-create)
+                                                              :prefs {:site_name "Metabase Test"}
+                                                              :user  {:first_name user-name
+                                                                      :last_name  user-name
+                                                                      :email      email
+                                                                      :password   "anythingUP12!!"}})))
+     (do
+       ;; reset our setup token
+       (setup/token-create)
+       (setting/get :admin-email))]))
 
 
 ;; Test input validations

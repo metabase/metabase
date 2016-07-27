@@ -5,9 +5,10 @@ import { connect } from "react-redux";
 
 import Dashboard from "../components/Dashboard.jsx";
 
+import { fetchDatabaseMetadata } from "metabase/redux/metadata";
+
 import { getIsEditing, getIsEditingParameter, getIsDirty, getSelectedDashboard, getDashboardComplete, getCardList, getRevisions, getCardData, getCardDurations, getDatabases, getEditingParameter, getParameterValues } from "../selectors";
 import * as dashboardActions from "../dashboard";
-import { fetchDatabaseMetadata } from "../metadata";
 
 const mapStateToProps = (state, props) => {
   return {

@@ -1,0 +1,191 @@
+databaseChangeLog:
+  - changeSet:
+      id: 38
+      author: camsaul
+      changes:
+        ######################################## Add "points_of_interest" metadata column to various models ########################################
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: points_of_interest
+                  type: text
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: points_of_interest
+                  type: text
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: points_of_interest
+                  type: text
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: points_of_interest
+                  type: text
+        - addColumn:
+            tableName: metric
+            columns:
+              - column:
+                  name: points_of_interest
+                  type: text
+        - addColumn:
+            tableName: segment
+            columns:
+              - column:
+                  name: points_of_interest
+                  type: text
+        ######################################## Add "caveats" metadata column to various models ########################################
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: caveats
+                  type: text
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: caveats
+                  type: text
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: caveats
+                  type: text
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: caveats
+                  type: text
+        - addColumn:
+            tableName: metric
+            columns:
+              - column:
+                  name: caveats
+                  type: text
+        - addColumn:
+            tableName: segment
+            columns:
+              - column:
+                  name: caveats
+                  type: text
+        ######################################## Add "how_is_this_calculated" to metric ########################################
+        - addColumn:
+            tableName: metric
+            columns:
+              - column:
+                  name: how_is_this_calculated
+                  type: text
+        ######################################## Add "most important dashboard" (0 or 1 dashboards) ########################################
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: show_in_getting_started
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: report_dashboard
+            indexName: idx_report_dashboard_show_in_getting_started
+            columns:
+              column:
+                name: show_in_getting_started
+        ######################################## Add "most important metrics" (0+ metrics) ########################################
+        - addColumn:
+            tableName: metric
+            columns:
+              - column:
+                  name: show_in_getting_started
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: metric
+            indexName: idx_metric_show_in_getting_started
+            columns:
+              column:
+                name: show_in_getting_started
+        ######################################## Add "most important tables (0+ tables) ########################################
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: show_in_getting_started
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: metabase_table
+            indexName: idx_metabase_table_show_in_getting_started
+            columns:
+              column:
+                name: show_in_getting_started
+        ######################################## Add "most important segments" (0+ segments) ########################################
+        - addColumn:
+            tableName: segment
+            columns:
+              - column:
+                  name: show_in_getting_started
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: segment
+            indexName: idx_segment_show_in_getting_started
+            columns:
+              column:
+                name: show_in_getting_started
+        ######################################## Add "metric_important_field" table ########################################
+        - createTable:
+            tableName: metric_important_field
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: metric_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: metric(id)
+                    foreignKeyName: fk_metric_important_field_metric_id
+              - column:
+                  name: field_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: metabase_field(id)
+                    foreignKeyName: fk_metric_important_field_metabase_field_id
+        - addUniqueConstraint:
+            tableName: metric_important_field
+            columnNames: metric_id, field_id
+            constraintName: unique_metric_important_field_metric_id_field_id
+        - createIndex:
+            tableName: metric_important_field
+            indexName: idx_metric_important_field_metric_id
+            columns:
+              column:
+                name: metric_id
+        - createIndex:
+            tableName: metric_important_field
+            indexName: idx_metric_important_field_field_id
+            columns:
+              column:
+                name: field_id

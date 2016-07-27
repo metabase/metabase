@@ -66,7 +66,7 @@ export default class ProfileLink extends Component {
                         <div className="NavDropdown-button-layer">
                             <div className="flex align-center">
                                 <UserAvatar user={user} style={{backgroundColor: 'transparent'}}/>
-                                <Icon name="chevrondown" className="Dropdown-chevron ml1" width="8px" height="8px" />
+                                <Icon name="chevrondown" className="Dropdown-chevron ml1" size={8} />
                             </div>
                         </div>
                     </a>
@@ -127,7 +127,7 @@ export default class ProfileLink extends Component {
                         <Modal className="Modal Modal--small">
                             <div className="px4 pt4 pb2 text-centered relative">
                                 <span className="absolute top right p4 text-normal text-grey-3 cursor-pointer" onClick={this.closeModal}>
-                                    <Icon name={'close'} width={16} height={16} />
+                                    <Icon name={'close'} size={16} />
                                 </span>
                                 <div className="text-brand pb2">
                                     <LogoIcon width={48} height={48} />

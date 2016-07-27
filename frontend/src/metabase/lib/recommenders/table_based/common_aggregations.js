@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import * as Query from "metabase/meta/Query";
 
 Common Aggregations

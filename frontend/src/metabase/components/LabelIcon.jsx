@@ -3,7 +3,7 @@ import React, { Component, PropTypes } from "react";
 
 import S from "./LabelIcon.css";
 
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "./Icon.jsx";
 import EmojiIcon from "./EmojiIcon.jsx";
 import cx from "classnames";
 

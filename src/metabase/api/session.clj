@@ -12,7 +12,8 @@
             [metabase.events :as events]
             (metabase.models [user :refer [User set-user-password! set-user-password-reset-token!], :as user]
                              [session :refer [Session]]
-                             [setting :refer [defsetting], :as setting])
+                             [setting :refer [defsetting]])
+            [metabase.public-settings :as public-settings]
             [metabase.util :as u]
             [metabase.util.password :as pass]))
 
@@ -104,7 +105,7 @@
 (defendpoint POST "/reset_password"
   "Reset password with a reset token."
   [:as {{:keys [token password]} :body}]
-  {token    Required
+  {token    [Required NonEmptyString]
    password [Required ComplexPassword]}
   (or (when-let [{user-id :id, :as user} (valid-reset-token->user token)]
         (set-user-password! user-id password)
@@ -124,7 +125,7 @@
 (defendpoint GET "/properties"
   "Get all global properties and their values. These are the specific `Settings` which are meant to be public."
   []
-  (setting/public-settings))
+  (public-settings/public-settings))
 
 
 ;;; ------------------------------------------------------------ GOOGLE AUTH ------------------------------------------------------------

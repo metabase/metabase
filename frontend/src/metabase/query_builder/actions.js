@@ -759,9 +759,7 @@ export const queryCompleted = createThunkAction(QUERY_COMPLETED, (card, queryRes
             // any time we were a scalar and now have more than 1x1 data switch to table view
             cardDisplay = "table";
 
-        } else if (Query.isStructured(card.dataset_query) &&
-                    Query.isBareRowsAggregation(card.dataset_query.query) &&
-                    card.display !== "pin_map") {
+        } else if (!card.display) {
             // if our query aggregation is "rows" then ALWAYS set the display to "table"
             cardDisplay = "table";
         }

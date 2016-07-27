@@ -1,83 +1,47 @@
 (ns metabase.api.pulse-test
   "Tests for /api/pulse endpoints."
   (:require [expectations :refer :all]
-            [metabase.db :as db]
-            (metabase [http-client :as http]
+            (metabase [db :as db]
+                      [http-client :as http]
                       [middleware :as middleware])
             (metabase.models [card :refer [Card]]
                              [common :as common]
                              [database :refer [Database]]
-                             [pulse :refer [Pulse create-pulse] :as pulse])
-            [metabase.test.util :refer [match-$ random-name with-temp]]
-            [metabase.test.data.users :refer :all]
+                             [pulse :refer [Pulse create-pulse], :as pulse])
             [metabase.test.data :refer :all]
+            [metabase.test.data.users :refer :all]
+            [metabase.test.util :as tu]
             [metabase.util :as u]))
 
 ;; ## Helper Fns
 
-(defn- new-card! []
-  (db/insert! Card
-    :name                   (random-name)
-    :creator_id             (user->id :crowberto)
-    :public_perms           common/perms-readwrite
-    :display                "table"
-    :dataset_query          {}
-    :visualization_settings {}))
-
-(defn- new-pulse! [& {:keys [name cards channels]
-                      :or   {name     (random-name)
-                             cards    nil
-                             channels nil}}]
-  (let [cards    (or cards [(new-card!)
-                            (new-card!)])
-        card-ids (filter identity (map :id cards))]
-    (pulse/create-pulse name (user->id :crowberto) card-ids [])))
-
 (defn- user-details [user]
-  (match-$ user
-    {:id $
-     :email $
-     :date_joined $
-     :first_name $
-     :last_name $
-     :last_login $
-     :is_superuser $
-     :is_qbnewb $
-     :common_name $}))
+  (select-keys user [:email :first_name :last_login :is_qbnewb :is_superuser :id :last_name :date_joined :common_name]))
 
 (defn- pulse-card-details [card]
-  (-> (select-keys card [:id :name :description])
-      (assoc :display (name (:display card)))))
+  (-> (select-keys card [:id :name :description :display])
+      (update :display name)))
 
 (defn- pulse-channel-details [channel]
-  (match-$ channel
-    {:id               $
-     :pulse_id         $
-     :enabled          $
-     :channel_type     $
-     :details          $
-     :schedule_type    $
-     :schedule_details $
-     :created_at       $
-     :updated_at       $}))
+  (select-keys channel [:schedule_type :schedule_details :channel_type :updated_at :details :pulse_id :id :enabled :created_at]))
 
 (defn- pulse-details [pulse]
-  (match-$ pulse
+  (tu/match-$ pulse
     {:id           $
      :name         $
      :public_perms $
      :created_at   $
      :updated_at   $
      :creator_id   $
-     :creator      (user-details (:creator pulse))
-     :cards        (mapv pulse-card-details (:cards pulse))
-     :channels     (mapv pulse-channel-details (:channels pulse))}))
+     :creator      (user-details (db/select-one 'User :id (:creator_id pulse)))
+     :cards        (map pulse-card-details (:cards pulse))
+     :channels     (map pulse-channel-details (:channels pulse))}))
 
-(defn- pulse-response [{:keys [created_at updated_at] :as pulse}]
+(defn- pulse-response [{:keys [created_at updated_at], :as pulse}]
   (-> pulse
       (dissoc :id)
-      (assoc :created_at (not (nil? created_at)))
-      (assoc :updated_at (not (nil? updated_at)))))
+      (assoc :created_at (not (nil? created_at))
+             :updated_at (not (nil? updated_at)))))
 
 
 ;; ## /api/pulse/* AUTHENTICATION Tests
@@ -118,8 +82,12 @@
                                             :cards    [{:id 100} {:id 200}]
                                             :channels ["abc"]}))
 
-(expect-let [card1 (new-card!)
-             card2 (new-card!)]
+(defn- remove-extra-channels-fields [channels]
+  (for [channel channels]
+    (dissoc channel :id :pulse_id :created_at :updated_at)))
+
+(tu/expect-with-temp [Card [card1]
+                      Card [card2]]
   {:name         "A Pulse"
    :public_perms common/perms-readwrite
    :creator_id   (user->id :rasta)
@@ -127,13 +95,13 @@
    :created_at   true
    :updated_at   true
    :cards        (mapv pulse-card-details [card1 card2])
-   :channels     [{:enabled       true
-                   :channel_type  "email"
-                   :schedule_type "daily"
-                   :schedule_hour 12
-                   :schedule_day  nil
+   :channels     [{:enabled        true
+                   :channel_type   "email"
+                   :schedule_type  "daily"
+                   :schedule_hour  12
+                   :schedule_day   nil
                    :schedule_frame nil
-                   :recipients    []}]}
+                   :recipients     []}]}
   (-> (pulse-response ((user->client :rasta) :post 200 "pulse" {:name     "A Pulse"
                                                                 :cards    [{:id (:id card1)} {:id (:id card2)}]
                                                                 :channels [{:enabled       true
@@ -142,8 +110,7 @@
                                                                             :schedule_hour 12
                                                                             :schedule_day  nil
                                                                             :recipients    []}]}))
-      (update :channels (fn [chans]
-                          (mapv #(dissoc % :id :pulse_id :created_at :updated_at) chans)))))
+      (update :channels remove-extra-channels-fields)))
 
 
 ;; ## PUT /api/pulse
@@ -176,17 +143,12 @@
                                              :cards    [{:id 100} {:id 200}]
                                              :channels ["abc"]}))
 
-(expect-let [pulse (new-pulse! :channels [{:enabled       true
-                                          :channel_type  "email"
-                                          :schedule_type "daily"
-                                          :schedule_hour 12
-                                          :schedule_day  nil
-                                          :recipients    []}])
-             card  (new-card!)]
+(tu/expect-with-temp [Pulse [pulse]
+                      Card  [card]]
   {:name         "Updated Pulse"
    :public_perms common/perms-readwrite
-   :creator_id   (user->id :crowberto)
-   :creator      (user-details (fetch-user :crowberto))
+   :creator_id   (user->id :rasta)
+   :creator      (user-details (fetch-user :rasta))
    :created_at   true
    :updated_at   true
    :cards        [(pulse-card-details card)]
@@ -207,35 +169,28 @@
                                                                                                    :schedule_day  "mon"
                                                                                                    :recipients    []
                                                                                                    :details       {:channels "#general"}}]}))
-      (update :channels (fn [chans]
-                          (mapv #(dissoc % :id :pulse_id :created_at :updated_at) chans)))))
+      (update :channels remove-extra-channels-fields)))
 
 
 ;; ## DELETE /api/pulse/:id
-(expect-let [pulse (new-pulse! :channels [{:enabled       true
-                                          :channel_type  "email"
-                                          :schedule_type "daily"
-                                          :schedule_hour 12
-                                          :schedule_day  nil
-                                          :recipients    [{:id (user->id :rasta)}]}])]
+(tu/expect-with-temp [Pulse [pulse]]
   nil
   (do
     ((user->client :rasta) :delete 204 (format "pulse/%d" (:id pulse)))
     (pulse/retrieve-pulse (:id pulse))))
 
 
-;; ## GET /api/pulse
-
-(expect-let [_      (db/cascade-delete! Pulse)
-             pulse1 (new-pulse! :name "ABC")
-             pulse2 (new-pulse! :name "DEF")]
+;; ## GET /api/pulse -- should come back in alphabetical order
+(tu/expect-with-temp [Pulse [pulse1 {:name "ABCDEF"}]
+                      Pulse [pulse2 {:name "GHIJKL"}]]
   [(pulse-details pulse1)
    (pulse-details pulse2)]
-  ((user->client :rasta) :get 200 "pulse"))
+  (do (db/cascade-delete! Pulse :id [:not-in #{(:id pulse1)
+                                               (:id pulse2)}]) ; delete anything else in DB just to be sure; this step may not be neccesary any more
+      ((user->client :rasta) :get 200 "pulse")))
 
 
 ;; ## GET /api/pulse/:id
-
-(expect-let [pulse1 (new-pulse!)]
-  (pulse-details pulse1)
-  ((user->client :rasta) :get 200 (format "pulse/%d" (:id pulse1))))
+(tu/expect-with-temp [Pulse [pulse]]
+  (pulse-details pulse)
+  ((user->client :rasta) :get 200 (str "pulse/" (:id pulse))))

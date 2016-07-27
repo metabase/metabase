@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import * as Query from "metabase/meta/Query";
 
      // data required:
@@ -9,12 +11,22 @@ import * as Query from "metabase/meta/Query";
 
 
 export function suggestDifferentTimeGranularity(query){
-	if(!Query.isBareRowsAggregation(query)){
-		new_query = Query.clone(query)
-		// TODO Create new query
-		// if query is grouped by a datetime 
-		// -> show other granularities
-		return [{target : new_query, source: RECOMMENDER_NAME, score: 1}]
+	const RECOMMENDER_NAME = "Change granularity"
+	if(!Query.isBrokenOutByTime(query)){
+		var allTimeGranularities = Query.getTimeGranularities()
+		var currentGranularity = Query.getTimeGranularity(query)
+		var allValidGranularities = _.filter(allTimeGranularities, function(granularity){return granularity==currentGranularity})	
+		
+		returnValues =  []
+
+		_.each(allValidGranularities, function(granularity){
+			new_query = Query.clone(query)
+			Query.changeTimeGranularity(new_query, granularity)
+			
+			returnValues.push({target : new_query, source: RECOMMENDER_NAME, score: 1})
+		})
+
+		return returnValues
 	}
 }                    
 

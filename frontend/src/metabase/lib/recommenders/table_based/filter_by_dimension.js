@@ -1,4 +1,6 @@
+import _ from "underscore";
 import * as Query from "metabase/meta/Query";
+
 
 const RECOMMENDER_NAME = "Filter by Dimension"
 const RECOMMENDER_WEIGHT = 50     

@@ -29,8 +29,8 @@ import Icon from "metabase/components/Icon.jsx";
 
 // import LabelEditor from "../components/LabelEditor.jsx";
 import LabelEditorForm from "./LabelEditorForm.jsx";
-import LabelIcon from "../components/LabelIcon.jsx";
-import EmptyState from "../components/EmptyState.jsx";
+import LabelIcon from "metabase/components/LabelIcon.jsx";
+import EmptyState from "metabase/components/EmptyState.jsx";
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class EditLabels extends Component {
@@ -74,7 +74,7 @@ export default class EditLabels extends Component {
                                     <span className={S.name}>{label.name}</span>
                                     <a className={S.edit} onClick={() => editLabel(label.id)}>Edit</a>
                                     <Confirm title={`Delete label "${label.name}"`} action={() => deleteLabel(label.id)}>
-                                        <Icon className={S.delete + " text-grey-1 text-grey-4-hover"} name="close" width={14} height={14} />
+                                        <Icon className={S.delete + " text-grey-1 text-grey-4-hover"} name="close" size={14} />
                                     </Confirm>
                                 </li>
                         )}

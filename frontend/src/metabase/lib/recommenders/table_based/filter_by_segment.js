@@ -1,20 +1,34 @@
+import _ from "underscore";
 import * as Query from "metabase/meta/Query";
+import {TableMetadata} from "metabase/lib/recommenders/thingsThatWouldBeUseful"
 
-     // data required:
-     //      All segments that belong to the table a query is hitting
+// data required:
+//      All segments that belong to the table a query is hitting
 
-     // useful extra data:
-     //      most commonly applied segments
+// useful extra data:
+//      most commonly applied segments
 
 
 
 export function suggestTableSegments(query){
+	const RECOMMENDER_NAME = "Filter by a segment"
+	
 	if(!Query.isBareRowsAggregation(query)){
-		new_query = Query.clone(query)
 		// TODO Create new query
+		var returnValues = []
+
+		var underlyingTable = Query.getUnderlyingTable(query)
 		// if query’s underlying table has segments
+		if(TableMetadata.hasSegments(underlyingTable)){
 		// -> filter by these segments
-		return [{target : new_query, source: RECOMMENDER_NAME, score: 1}]
+			_.each(TableMetadata.getSegments(underlyingTable), function(segment){
+
+			new_query = Query.clone(query)
+			new_query = Query.filterBySegment(query, segment)
+			returnValues.push({target : new_query, source: RECOMMENDER_NAME, score: 1})
+			})
+		}
+		return returnValues
 	}
 }          
 

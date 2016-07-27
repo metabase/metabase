@@ -17,12 +17,12 @@ export default class RevisionDiff extends Component {
 
         let icon;
         if (before != null && after != null) {
-            icon = <Icon name="pencil" className="text-brand" width={16} height={16} />
+            icon = <Icon name="pencil" className="text-brand" size={16} />
         } else if (before != null) {
-            icon = <Icon name="add" className="text-error" width={16} height={16} />
+            icon = <Icon name="add" className="text-error" size={16} />
         } else {
             // TODO: "minus" icon
-            icon = <Icon name="add" className="text-green" width={16} height={16} />
+            icon = <Icon name="add" className="text-green" size={16} />
         }
 
         return (

@@ -50,7 +50,7 @@ export default class SortableItemList extends Component {
                             <a className="no-decoration flex p2" onClick={() => this.onClickItem(item)}>
                                 <div className="flex align-center flex-full mr2">
                                     {this.props.showIcons ?
-                                        <div className="mr2"><Icon name={'illustration-'+item.display} width={48} height={48} /></div>
+                                        <div className="mr2"><Icon name={'illustration-'+item.display} size={48} /></div>
                                     : null}
                                     <div className="text-brand-hover">
                                         <h3 className="mb1">{item.name}</h3>

@@ -16,7 +16,7 @@ export default class Popover extends Component {
             height: null
         };
 
-        this.handleClickOutside = this.handleClickOutside.bind(this);
+        this.handleDismissal = this.handleDismissal.bind(this);
     }
 
     static propTypes = {
@@ -77,7 +77,7 @@ export default class Popover extends Component {
         this._cleanupPopoverElement();
     }
 
-    handleClickOutside(...args) {
+    handleDismissal(...args) {
         if (this.props.onClose) {
             this.props.onClose(...args)
         }
@@ -85,7 +85,7 @@ export default class Popover extends Component {
 
     _popoverComponent() {
         return (
-            <OnClickOutsideWrapper handleClickOutside={this.handleClickOutside}>
+            <OnClickOutsideWrapper handleDismissal={this.handleDismissal}>
                 <div className={cx("PopoverBody", { "PopoverBody--withArrow": this.props.hasArrow }, this.props.className)}>
                     { typeof this.props.children === "function" ?
                         this.props.children()

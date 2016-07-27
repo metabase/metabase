@@ -9,6 +9,7 @@ import Tooltip from "metabase/components/Tooltip.jsx";
 import { duration } from "metabase/lib/formatting";
 
 import visualizations from "metabase/visualizations";
+import { getSettings } from "metabase/lib/visualization_settings";
 
 import { assoc, getIn } from "icepick";
 import _ from "underscore";
@@ -48,6 +49,11 @@ export default class Visualization extends Component {
         onUpdateVisualizationSetting: (...args) => console.warn("onUpdateVisualizationSetting", args)
     };
 
+    componentWillReceiveProps() {
+        // clear the error so we can try to render again
+        this.setState({ error: null });
+    }
+
     onHoverChange(hovered) {
         const { renderInfo } = this.state;
         if (hovered) {
@@ -77,13 +83,17 @@ export default class Visualization extends Component {
         let loading = !(series.length > 0 && _.every(series, (s) => s.data));
         let noResults = false;
 
+        // don't try to load settings unless data is loaded
+        let settings = this.props.settings || {};
+
         if (!loading && !error) {
+            settings = this.props.settings || getSettings(series);
             if (!CardVisualization) {
                 error = "Could not find visualization";
             } else {
                 try {
                     if (CardVisualization.checkRenderable) {
-                        CardVisualization.checkRenderable(series[0].data.cols, series[0].data.rows);
+                        CardVisualization.checkRenderable(series[0].data.cols, series[0].data.rows, settings);
                     }
                 } catch (e) {
                     // MinRowsError
@@ -112,6 +122,7 @@ export default class Visualization extends Component {
                         <LegendHeader
                             series={series}
                             actionButtons={extra}
+                            settings={settings}
                         />
                     </div>
                 : null
@@ -133,7 +144,7 @@ export default class Visualization extends Component {
                 : error ?
                     <div className="flex-full px1 pb1 text-centered text-slate-light flex flex-column layout-centered">
                         <Tooltip tooltip={isDashboard ? ERROR_MESSAGE_GENERIC : error} isEnabled={small}>
-                            <Icon className="mb2" name="warning" width={50} height={50} />
+                            <Icon className="mb2" name="warning" size={50} />
                         </Tooltip>
                         { !small &&
                             <span className="h4 text-bold">
@@ -167,6 +178,7 @@ export default class Visualization extends Component {
                         {...this.props}
                         className="flex-full"
                         series={series}
+                        settings={settings}
                         card={series[0].card} // convienence for single-series visualizations
                         data={series[0].data} // convienence for single-series visualizations
                         hovered={this.state.hovered}

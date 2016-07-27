@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import * as Query from "metabase/meta/Query";
 
      // data required:
@@ -8,13 +10,23 @@ import * as Query from "metabase/meta/Query";
 
 
 export function suggestDifferentTimeExtract(query){
-	if(!Query.isBareRowsAggregation(query)){
-		new_query = Query.clone(query)
-		// TODO Create new query
-		// if query is grouped by a datetime 
-		// -> group by a time extract
-		return [{target : new_query, source: RECOMMENDER_NAME, score: 1}]
+	const RECOMMENDER_NAME = "Change Time Extract"
+	if(!Query.isBrokenOutByTime(query)){
+		var allTimeExtracts = Query.getAllTimeExtracts()
+		var currentExtract = Query.getTimeExtract(query)
+		var allValidExtracts = _.filter(allTimeExtracts, function(extract){return extract==currentExtract})	
+		
+		returnValues =  []
+
+		_.each(allValidExtracts, function(extract){
+			new_query = Query.clone(query)
+			Query.changeTimeExtract(new_query, extract)
+			
+			returnValues.push({target : new_query, source: RECOMMENDER_NAME, score: 1})
+		})
+
+		return returnValues
 	}
 }                    
 
-suggestDifferentTimeExtract.verboseName = "Change time extract"
+suggestDifferentTimeExtract.verboseName = "Change Time Extract"

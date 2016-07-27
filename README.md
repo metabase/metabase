@@ -2,11 +2,14 @@
 Metabase is the easy, open source way for everyone in your company to ask questions and learn from data.
 
 ![Metabase Product Screenshot](docs/metabase-product-screenshot.png)
+
 [![Latest Release](https://img.shields.io/github/release/metabase/metabase.svg?label=latest%20release)](https://github.com/metabase/metabase/releases)
 [![GitHub license](https://img.shields.io/badge/license-AGPL-05B8CC.svg)](https://raw.githubusercontent.com/metabase/metabase/master/LICENSE.txt)
 [![Circle CI](https://circleci.com/gh/metabase/metabase.svg?style=svg&circle-token=3ccf0aa841028af027f2ac9e8df17ce603e90ef9)](https://circleci.com/gh/metabase/metabase)
 [![Leiningen Dependencies Status](https://jarkeeper.com/metabase/metabase/status.svg)](https://jarkeeper.com/metabase/metabase)
 [![NPM Dependencies Status](https://david-dm.org/metabase/metabase.svg)](https://david-dm.org/metabase/metabase)
+[![Issue Stats](http://issuestats.com/github/metabase/metabase/badge/pr)](http://issuestats.com/github/metabase/metabase)
+[![Issue Stats](http://issuestats.com/github/metabase/metabase/badge/issue)](http://issuestats.com/github/metabase/metabase)
 
 # Features
 - 5 minute [setup](http://www.metabase.com/docs/latest/setting-up-metabase) (We're not kidding)

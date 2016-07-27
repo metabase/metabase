@@ -48,7 +48,7 @@ class BrowserSelect extends Component {
     }
 
     render() {
-        const { children, className, onChange, searchProp, searchCaseInsensitive, isInitiallyOpen, placeholder } = this.props;
+        const { className, children, value, onChange, searchProp, searchCaseInsensitive, isInitiallyOpen, placeholder } = this.props;
 
         let selectedName;
         for (const child of children) {
@@ -78,11 +78,11 @@ class BrowserSelect extends Component {
         return (
             <PopoverWithTrigger
                 ref="popover"
-                className={this.props.className}
+                className={className}
                 triggerElement={
-                    <div className={"flex align-center " + (!this.props.value ? " text-grey-3" : "")}>
+                    <div className={"flex align-center " + (!value ? " text-grey-3" : "")}>
                         <span className="mr1">{selectedName}</span>
-                        <Icon className="flex-align-right" name="chevrondown" width={12} height={12} />
+                        <Icon className="flex-align-right" name="chevrondown" size={12} />
                     </div>
                 }
                 triggerClasses={cx("AdminSelect", className)}
@@ -135,7 +135,7 @@ export class Option extends Component {
                     "disabled": disabled
                 })}
             >
-                <Icon name="check"  width="14" height="14"/>
+                <Icon name="check"  size={14}/>
                 {children}
             </div>
         );
@@ -150,13 +150,17 @@ class LegacySelect extends Component {
         onChange: PropTypes.func,
         optionNameFn: PropTypes.func,
         optionValueFn: PropTypes.func,
-        className: PropTypes.string
+        className: PropTypes.string,
+        isInitiallyOpen: PropTypes.bool,
+        //TODO: clean up hardcoded "AdminSelect" class on trigger to avoid this workaround
+        triggerClasses: PropTypes.string
     };
 
     static defaultProps = {
         placeholder: "",
         optionNameFn: (option) => option.name,
-        optionValueFn: (option) => option
+        optionValueFn: (option) => option,
+        isInitiallyOpen: false,
     };
 
     toggle() {
@@ -164,17 +168,19 @@ class LegacySelect extends Component {
     }
 
     render() {
-        var selectedName = this.props.value ? this.props.optionNameFn(this.props.value) : this.props.placeholder;
+        const { className, value, onChange, options, optionNameFn, optionValueFn, placeholder, isInitiallyOpen } = this.props;
+
+        var selectedName = value ? optionNameFn(value) : placeholder;
 
         var triggerElement = (
-            <div className={"flex align-center " + (!this.props.value ? " text-grey-3" : "")}>
+            <div className={"flex align-center " + (!value ? " text-grey-3" : "")}>
                 <span className="mr1">{selectedName}</span>
-                <Icon className="flex-align-right" name="chevrondown" width={12} height={12}/>
+                <Icon className="flex-align-right" name="chevrondown" size={12}/>
             </div>
         );
 
         var sections = {};
-        this.props.options.forEach(function (option) {
+        options.forEach(function (option) {
             var sectionName = option.section || "";
             sections[sectionName] = sections[sectionName] || { title: sectionName || undefined, items: [] };
             sections[sectionName].items.push(option);
@@ -183,12 +189,12 @@ class LegacySelect extends Component {
 
         var columns = [
             {
-                selectedItem: this.props.value,
+                selectedItem: value,
                 sections: sections,
-                itemTitleFn: this.props.optionNameFn,
+                itemTitleFn: optionNameFn,
                 itemDescriptionFn: (item) => item.description,
                 itemSelectFn: (item) => {
-                    this.props.onChange(this.props.optionValueFn(item))
+                    onChange(optionValueFn(item))
                     this.toggle();
                 }
             }
@@ -197,9 +203,10 @@ class LegacySelect extends Component {
         return (
             <PopoverWithTrigger
                 ref="popover"
-                className={this.props.className}
+                className={className}
                 triggerElement={triggerElement}
-                triggerClasses={"AdminSelect " + (this.props.className || "")}
+                triggerClasses={this.props.triggerClasses || cx("AdminSelect", this.props.className)}
+                isInitiallyOpen={isInitiallyOpen}
             >
                 <div onClick={(e) => e.stopPropagation()}>
                     <ColumnarSelector

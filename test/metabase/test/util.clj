@@ -62,29 +62,7 @@
       form))
 
 
-;; ## expect-eval-actual-first
-;; By default `expect` evaluates EXPECTED first. This isn't always what we want; for example, sometime API tests affect the DB
-;; and we'd like to check the results.
-
-(defmacro ^:deprecated -doexpect [e a]
-  `(let [a# (try ~a (catch java.lang.Throwable t# t#))
-         e# (try ~e (catch java.lang.Throwable t# t#))]
-     (report
-      (try (compare-expr e# a# '~e '~a)
-           (catch java.lang.Throwable e2#
-             (compare-expr e2# a# '~e '~a))))))
-
-(defmacro ^:deprecated expect-eval-actual-first
-  "Identical to `expect` but evaluates `actual` first (instead of evaluating `expected` first).
-   DEPRECATED: You shouldn't need to use this when writing new tests. `expect-with-temp` should be used instead, as it handles cleaning up after itself."
-  {:style/indent 0}
-  [expected actual]
-  (let [fn-name (gensym)]
-    `(def ~(vary-meta fn-name assoc :expectation true)
-       (fn [] (-doexpect ~expected ~actual)))))
-
-
-;; ## random-name
+;;; random-name
 (let [random-uppercase-letter (partial rand-nth (mapv char (range (int \A) (inc (int \Z)))))]
   (defn random-name
     "Generate a random string of 20 uppercase letters."
@@ -150,7 +128,8 @@
                                 :field_type      :info
                                 :name            (random-name)
                                 :position        1
-                                :preview_display true})})
+                                :preview_display true
+                                :table_id        (data/id :venues)})})
 
 (u/strict-extend (class Metric)
   WithTempDefaults
@@ -200,7 +179,8 @@
 
 (u/strict-extend (class Table)
   WithTempDefaults
-  {:with-temp-defaults (fn [_] {:active true
+  {:with-temp-defaults (fn [_] {:db_id  (data/id)
+                                :active true
                                 :name   (random-name)})})
 
 (u/strict-extend (class User)
@@ -328,13 +308,14 @@
    This works much the same way as `binding`.
 
    Prefer the macro `with-temporary-setting-values` over using this function directly."
+  {:style/indent 2}
   [setting-k value f]
   (let [original-value (setting/get setting-k)]
     (try
-      (setting/set* setting-k value)
+      (setting/set! setting-k value)
       (f)
       (finally
-        (setting/set* setting-k original-value)))))
+        (setting/set! setting-k original-value)))))
 
 (defmacro with-temporary-setting-values
   "Temporarily bind the values of one or more `Settings`, execute body, and re-establish the original values. This works much the same way as `binding`.
@@ -346,3 +327,10 @@
     (if (seq more)
       `(with-temporary-setting-values ~more ~body)
       body)))
+
+
+(defn is-uuid-string?
+  "Is string S a valid UUID string?"
+  ^Boolean [^String s]
+  (boolean (when (string? s)
+             (re-matches #"^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$" s))))

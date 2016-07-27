@@ -1,9 +1,9 @@
 (ns metabase.models.table
   (:require [metabase.db :as db]
-            (metabase.models [common :as common]
-                             [database :refer [Database]]
+            (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [field-values :refer [FieldValues]]
+                             [humanization :as humanization]
                              [interface :as i]
                              [metric :refer [Metric retrieve-metrics]]
                              [segment :refer [Segment retrieve-segments]])
@@ -20,7 +20,7 @@
 (i/defentity Table :metabase_table)
 
 (defn- pre-insert [table]
-  (let [defaults {:display_name (common/name->human-readable-name (:name table))}]
+  (let [defaults {:display_name (humanization/name->human-readable-name (:name table))}]
     (merge defaults table)))
 
 (defn- pre-cascade-delete [{:keys [id]}]
@@ -110,7 +110,7 @@
   [{:keys [id display_name], :as existing-table} {table-name :name}]
   {:pre [(integer? id)]}
   (let [updated-table (assoc existing-table
-                        :display_name (or display_name (common/name->human-readable-name table-name)))]
+                        :display_name (or display_name (humanization/name->human-readable-name table-name)))]
     ;; the only thing we need to update on a table is the :display_name, if it never got set
     (when (nil? display_name)
       (db/update! Table id
@@ -127,5 +127,5 @@
     :schema          schema-name
     :name            table-name
     :visibility_type visibility-type
-    :display_name    (common/name->human-readable-name table-name)
+    :display_name    (humanization/name->human-readable-name table-name)
     :active          true))

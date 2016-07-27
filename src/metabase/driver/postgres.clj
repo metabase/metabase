@@ -167,7 +167,8 @@
     message))
 
 (defn- prepare-value [{value :value, {:keys [base-type]} :field}]
-  (if (= base-type :UUIDField)
+  (if (and (= base-type :UUIDField)
+           value)
     (java.util.UUID/fromString value)
     value))
 

@@ -3,8 +3,8 @@
             [expectations :refer :all]
             [ring.mock.request :as mock]
             [metabase.api.common :refer [*current-user-id* *current-user*]]
-            [metabase.db :as db]
-            [metabase.middleware :refer :all]
+            (metabase [db :as db]
+                      [middleware :refer :all])
             [metabase.models.session :refer [Session]]
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]

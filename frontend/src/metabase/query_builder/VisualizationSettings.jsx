@@ -2,6 +2,9 @@ import React, { Component, PropTypes } from "react";
 
 import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
+
+import ChartSettings from "metabase/visualizations/components/ChartSettings.jsx";
 
 import visualizations from "metabase/visualizations";
 
@@ -10,7 +13,6 @@ import cx from "classnames";
 export default class VisualizationSettings extends React.Component {
     constructor(props, context) {
         super(props, context);
-        this.setDisplay = this.setDisplay.bind(this);
     }
 
     static propTypes = {
@@ -21,7 +23,7 @@ export default class VisualizationSettings extends React.Component {
         onUpdateVisualizationSettings: PropTypes.func.isRequired
     };
 
-    setDisplay(type) {
+    setDisplay = (type) => {
         // notify our parent about our change
         this.props.setDisplayFn(type);
         this.refs.displayPopover.toggle();
@@ -33,9 +35,9 @@ export default class VisualizationSettings extends React.Component {
 
         var triggerElement = (
             <span className="px2 py1 text-bold cursor-pointer text-default flex align-center">
-                <Icon name={visualization.iconName} width="24px" height="24px"/>
+                <Icon name={visualization.iconName} size={12} />
                 {visualization.displayName}
-                <Icon className="ml1" name="chevrondown" width="8px" height="8px"/>
+                <Icon className="ml1" name="chevrondown" size={8} />
             </span>
         );
 
@@ -58,7 +60,7 @@ export default class VisualizationSettings extends React.Component {
                                 })}
                                 onClick={this.setDisplay.bind(null, vizType)}
                             >
-                                <Icon name={viz.iconName} width="24px" height="24px"/>
+                                <Icon name={viz.iconName} size={12} />
                                 <span className="ml1">{viz.displayName}</span>
                             </li>
                         )}
@@ -88,6 +90,16 @@ export default class VisualizationSettings extends React.Component {
             return (
                 <div className="VisualizationSettings flex align-center">
                     {this.renderChartTypePicker()}
+                    <ModalWithTrigger
+                        className="Modal Modal--wide Modal--tall"
+                        triggerElement={<Icon name="gear" />}
+                        triggerClasses="text-brand-hover"
+                    >
+                        <ChartSettings
+                            series={[{ card: this.props.card, data: this.props.result.data }]}
+                            onChange={this.props.onUpdateVisualizationSettings}
+                        />
+                    </ModalWithTrigger>
                     {this.renderVisualizationSettings()}
                 </div>
             );

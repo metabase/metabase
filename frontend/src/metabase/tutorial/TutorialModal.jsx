@@ -13,7 +13,7 @@ export default class TutorialModal extends Component {
             <div className="TutorialModalContent p2">
                 <div className="flex">
                     <a className="text-grey-4 p1 cursor-pointer flex-align-right" onClick={this.props.onClose}>
-                        <Icon name='close' width="16px" height="16px"/>
+                        <Icon name='close' size={16}/>
                     </a>
                 </div>
                 <div className="px4">

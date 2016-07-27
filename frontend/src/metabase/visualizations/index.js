@@ -5,13 +5,12 @@ import LineChart  from "./LineChart.jsx";
 import BarChart   from "./BarChart.jsx";
 import PieChart   from "./PieChart.jsx";
 import AreaChart  from "./AreaChart.jsx";
-import USStateMap from "./USStateMap.jsx";
-import WorldMap   from "./WorldMap.jsx";
-import PinMap     from "./PinMap.jsx";
+import MapViz     from "./Map.jsx";
 
 const visualizations = new Map();
+const aliases = new Map();
 visualizations.get = function(key) {
-    return Map.prototype.get.call(this, key) || Table;
+    return Map.prototype.get.call(this, key) || aliases.get(key) || Table;
 }
 
 export function registerVisualization(visualization) {
@@ -23,6 +22,9 @@ export function registerVisualization(visualization) {
         throw new Error("Visualization with that identifier is already registered: " + visualization.name);
     }
     visualizations.set(identifier, visualization);
+    for (let alias of visualization.aliases || []) {
+        aliases.set(alias, visualization);
+    }
 }
 
 registerVisualization(Scalar);
@@ -31,9 +33,7 @@ registerVisualization(LineChart);
 registerVisualization(BarChart);
 registerVisualization(PieChart);
 registerVisualization(AreaChart);
-registerVisualization(USStateMap);
-registerVisualization(WorldMap);
-registerVisualization(PinMap);
+registerVisualization(MapViz);
 
 
 import { enableVisualizationEasterEgg } from "./lib/utils";

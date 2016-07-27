@@ -184,11 +184,15 @@
 (expect
   {:model        "Metric"
    :user_id      (user->id :rasta)
-   :object       {:name        "Toucans in the rainforest"
-                  :description "Lookin' for a blueberry"
-                  :is_active    true
-                  :creator_id  (user->id :rasta)
-                  :definition  {:a "b"}}
+   :object       {:name                    "Toucans in the rainforest"
+                  :description             "Lookin' for a blueberry"
+                  :how_is_this_calculated  nil
+                  :show_in_getting_started false
+                  :caveats                 nil
+                  :points_of_interest      nil
+                  :is_active               true
+                  :creator_id              (user->id :rasta)
+                  :definition              {:a "b"}}
    :is_reversion false
    :is_creation  true
    :message      nil}
@@ -206,11 +210,15 @@
 (expect
   {:model        "Metric"
    :user_id      (user->id :crowberto)
-   :object       {:name        "Toucans in the rainforest"
-                  :description "Lookin' for a blueberry"
-                  :is_active   true
-                  :creator_id  (user->id :rasta)
-                  :definition  {:a "b"}}
+   :object       {:name                    "Toucans in the rainforest"
+                  :description             "Lookin' for a blueberry"
+                  :how_is_this_calculated  nil
+                  :show_in_getting_started false
+                  :caveats                 nil
+                  :points_of_interest      nil
+                  :is_active               true
+                  :creator_id              (user->id :rasta)
+                  :definition              {:a "b"}}
    :is_reversion false
    :is_creation  false
    :message      "updated"}
@@ -219,8 +227,8 @@
                   Metric   [metric       {:table_id id, :definition {:a "b"}}]]
     (process-revision-event {:topic :metric-update
                              :item  (assoc metric
-                                           :actor_id         (user->id :crowberto)
-                                           :revision_message "updated")})
+                                      :actor_id         (user->id :crowberto)
+                                      :revision_message "updated")})
     (let [revision (db/select-one [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Metric", :model_id (:id metric))]
       (assoc revision :object (dissoc (:object revision) :id :table_id)))))
 
@@ -229,11 +237,15 @@
 (expect
   {:model        "Metric"
    :user_id      (user->id :rasta)
-   :object       {:name        "Toucans in the rainforest"
-                  :description "Lookin' for a blueberry"
-                  :is_active   false
-                  :creator_id  (user->id :rasta)
-                  :definition  {:a "b"}}
+   :object       {:name                    "Toucans in the rainforest"
+                  :description             "Lookin' for a blueberry"
+                  :how_is_this_calculated  nil
+                  :show_in_getting_started false
+                  :caveats                 nil
+                  :points_of_interest      nil
+                  :is_active               false
+                  :creator_id              (user->id :rasta)
+                  :definition              {:a "b"}}
    :is_reversion false
    :is_creation  false
    :message      nil}
@@ -250,11 +262,14 @@
 (expect
   {:model        "Segment"
    :user_id      (user->id :rasta)
-   :object       {:name        "Toucans in the rainforest"
-                  :description "Lookin' for a blueberry"
-                  :is_active    true
-                  :creator_id  (user->id :rasta)
-                  :definition  {:a "b"}}
+   :object       {:name                    "Toucans in the rainforest"
+                  :description             "Lookin' for a blueberry"
+                  :show_in_getting_started false
+                  :caveats                 nil
+                  :points_of_interest      nil
+                  :is_active               true
+                  :creator_id              (user->id :rasta)
+                  :definition              {:a "b"}}
    :is_reversion false
    :is_creation  true
    :message      nil}
@@ -272,11 +287,14 @@
 (expect
   {:model        "Segment"
    :user_id      (user->id :crowberto)
-   :object       {:name        "Toucans in the rainforest"
-                  :description "Lookin' for a blueberry"
-                  :is_active   true
-                  :creator_id  (user->id :rasta)
-                  :definition  {:a "b"}}
+   :object       {:name                    "Toucans in the rainforest"
+                  :description             "Lookin' for a blueberry"
+                  :show_in_getting_started false
+                  :caveats                 nil
+                  :points_of_interest      nil
+                  :is_active               true
+                  :creator_id              (user->id :rasta)
+                  :definition              {:a "b"}}
    :is_reversion false
    :is_creation  false
    :message      "updated"}
@@ -286,8 +304,8 @@
                                     :definition {:a "b"}}]]
     (process-revision-event {:topic :segment-update
                              :item  (assoc segment
-                                           :actor_id         (user->id :crowberto)
-                                           :revision_message "updated")})
+                                      :actor_id         (user->id :crowberto)
+                                      :revision_message "updated")})
     (update (db/select-one [Revision :model :user_id :object :is_reversion :is_creation :message], :model "Segment", :model_id (:id segment))
             :object (u/rpartial dissoc :id :table_id))))
 
@@ -295,11 +313,14 @@
 (expect
   {:model        "Segment"
    :user_id      (user->id :rasta)
-   :object       {:name        "Toucans in the rainforest"
-                  :description "Lookin' for a blueberry"
-                  :is_active   false
-                  :creator_id  (user->id :rasta)
-                  :definition  {:a "b"}}
+   :object       {:name                    "Toucans in the rainforest"
+                  :description             "Lookin' for a blueberry"
+                  :show_in_getting_started false
+                  :caveats                 nil
+                  :points_of_interest      nil
+                  :is_active               false
+                  :creator_id              (user->id :rasta)
+                  :definition              {:a "b"}}
    :is_reversion false
    :is_creation  false
    :message      nil}

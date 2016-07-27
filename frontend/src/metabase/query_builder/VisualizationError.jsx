@@ -38,7 +38,7 @@ class VisualizationError extends Component {
           if (duration > 15*1000) {
               return <VisualizationErrorMessage
                         type="timeout"
-                        title="Your question took to long"
+                        title="Your question took too long"
                         message="We didn't get an answer back from your database in time, so we had to stop. You can try again in a minute, or if the problem persists, you can email an admin to let them know."
                         action={<EmailAdmin />}
                     />

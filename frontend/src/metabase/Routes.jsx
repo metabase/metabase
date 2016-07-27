@@ -36,6 +36,13 @@ import NotFound from "metabase/components/NotFound.jsx";
 import Unauthorized from "metabase/components/Unauthorized.jsx";
 
 
+import ReferenceApp from "metabase/reference/containers/ReferenceApp.jsx";
+import ReferenceEntity from "metabase/reference/containers/ReferenceEntity.jsx";
+import ReferenceEntityList from "metabase/reference/containers/ReferenceEntityList.jsx";
+import ReferenceFieldsList from "metabase/reference/containers/ReferenceFieldsList.jsx";
+import ReferenceRevisionsList from "metabase/reference/containers/ReferenceRevisionsList.jsx";
+import ReferenceGettingStartedGuide from "metabase/reference/containers/ReferenceGettingStartedGuide.jsx";
+
 export default class Routes extends Component {
     // this lets us forward props we've injected from the Angular controller
     _forwardProps(ComposedComponent, propNames) {
@@ -70,6 +77,27 @@ export default class Routes extends Component {
 
                     <Route path="people" component={this._forwardProps(AdminPeopleApp, ["onChangeLocation"])} />
                     <Route path="settings" component={this._forwardProps(SettingsEditorApp, ["refreshSiteSettings"])} />
+                </Route>
+
+                <Route path="/reference" component={ReferenceApp}>
+                    <Route path="guide" component={ReferenceGettingStartedGuide} />
+                    <Route path="metrics" component={ReferenceEntityList} />
+                    <Route path="metrics/:metricId" component={ReferenceEntity} />
+                    <Route path="metrics/:metricId/questions" component={ReferenceEntityList} />
+                    <Route path="metrics/:metricId/revisions" component={ReferenceRevisionsList} />
+                    <Route path="segments" component={ReferenceEntityList} />
+                    <Route path="segments/:segmentId" component={ReferenceEntity} />
+                    <Route path="segments/:segmentId/fields" component={ReferenceFieldsList} />
+                    <Route path="segments/:segmentId/fields/:fieldId" component={ReferenceEntity} />
+                    <Route path="segments/:segmentId/questions" component={ReferenceEntityList} />
+                    <Route path="segments/:segmentId/revisions" component={ReferenceRevisionsList} />
+                    <Route path="databases" component={ReferenceEntityList} />
+                    <Route path="databases/:databaseId" component={ReferenceEntity} />
+                    <Route path="databases/:databaseId/tables" component={ReferenceEntityList} />
+                    <Route path="databases/:databaseId/tables/:tableId" component={ReferenceEntity} />
+                    <Route path="databases/:databaseId/tables/:tableId/fields" component={ReferenceFieldsList} />
+                    <Route path="databases/:databaseId/tables/:tableId/fields/:fieldId" component={ReferenceEntity} />
+                    <Route path="databases/:databaseId/tables/:tableId/questions" component={ReferenceEntityList} />
                 </Route>
 
                 <Route path="/auth/forgot_password" component={ForgotPasswordApp} />

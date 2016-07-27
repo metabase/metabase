@@ -140,7 +140,7 @@ export default class QueryVisualization extends Component {
     }
 
     onDownloadCSV() {
-        const form = this._downloadCsvForm.getDOMNode();
+        const form = ReactDOM.findDOMNode(this._downloadCsvForm);
         form.query.value = JSON.stringify(this.props.card.dataset_query);
         form.submit();
     }
@@ -173,11 +173,11 @@ export default class QueryVisualization extends Component {
                         key="download"
                         ref="downloadModal"
                         className="Modal Modal--small"
-                        triggerElement={<Icon className="mx1" title="Download this data" name='download' width="16px" height="16px" />}
+                        triggerElement={<Icon className="mx1" title="Download this data" name='download' size={16} />}
                     >
                         <div style={{width: "480px"}} className="Modal--small p4 text-centered relative">
                             <span className="absolute top right p4 text-normal text-grey-3 cursor-pointer" onClick={() => this.refs.downloadModal.toggle()}>
-                                <Icon name={'close'} width={16} height={16} />
+                                <Icon name={'close'} size={16} />
                             </span>
                             <div className="p3 text-strong">
                                 <h2 className="text-bold">Download large data set</h2>
@@ -194,7 +194,7 @@ export default class QueryVisualization extends Component {
                         <a className="mx1" title="Download this data" onClick={function() {
                             window.OSX.saveCSV(JSON.stringify(card.dataset_query));
                         }}>
-                            <Icon name='download' width="16px" height="16px" />
+                            <Icon name='download' size={16} />
                         </a>
                     );
                 } else {
@@ -202,7 +202,7 @@ export default class QueryVisualization extends Component {
                         <form ref={(c) => this._downloadCsvForm = c} method="POST" action="/api/dataset/csv">
                             <input type="hidden" name="query" value="" />
                             <a className="mx1" title="Download this data" onClick={() => this.onDownloadCSV()}>
-                                <Icon name='download' width="16px" height="16px" />
+                                <Icon name='download' size={16} />
                             </a>
                         </form>
                     );

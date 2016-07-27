@@ -4,7 +4,7 @@ import * as Query from "metabase/meta/Query";
 // eg. this should always be shown
 
 export function suggestUnderlyingData(query){
-	
+	const RECOMMENDER_NAME = "Underlying data"
 	if(!Query.isBareRowsAggregation(query)){
 		new_query = Query.clone(query)
 		// having to reach in and set "rows" manually is fugly

@@ -27,7 +27,7 @@ export default class PulseCardPreview extends Component {
         return (
             <div className="flex relative flex-full">
                 <a className="text-grey-2 absolute" style={{ top: "15px", right: "15px" }} onClick={this.props.onRemove}>
-                    <Icon name="close" width={16} height={16} />
+                    <Icon name="close" size={16} />
                 </a>
                 <div className="bordered rounded flex-full scroll-x" style={{ display: !cardPreview && "none" }} dangerouslySetInnerHTML={{__html: cardPreview && cardPreview.pulse_card_html}} />
                 { !cardPreview &&

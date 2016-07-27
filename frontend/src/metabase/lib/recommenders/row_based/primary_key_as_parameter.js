@@ -1,34 +1,55 @@
+import _ from "underscore";
+
 import * as Query from "metabase/meta/Query";
+import {Dashboards, Cards, FieldMetadata} from "metabase/lib/recommenders/thingsThatWouldBeUseful"
 
-     // data required:
-     //      lookup table of dashboards that take a given field as a parameter
-     //      lookup table of cards that take a given field as a parameter
-
-     // useful extra data:
-     //      most commonly viewed parameterized cards
-     //           bonus points: when that parameter is filled out (vs just using the default)
-     //           bonus points: when parameterized by that ID
-     //      most commonly viewed parameterized dashboards
+ // useful extra data:
+ //      most commonly viewed parameterized cards
+ //           bonus points: when that parameter is filled out (vs just using the default)
+ //           bonus points: when parameterized by that ID
+ //      most commonly viewed parameterized dashboards
 
 
-export function suggestDashboardParameterizedByID(query){
-	if(!Query.isBareRowsAggregation(query)){
-		new_query = Query.clone(query)
-		// TODO Create new query
-		// if the row has a PK or FK
-		//  -> find all dashboards that take that as a parameter
-		return [{target : new_query, source: RECOMMENDER_NAME, score: 1}]
-	}
+export function suggestDashboardParameterizedByID(query, resultRow, columnDefinitions){
+	const RECOMMENDER_NAME = "Suggest Dashboards with ID Parameters"
+
+	linkFields = _.filter(columnDefinitions, function(column){FieldMetadata.isFKorPK(column)})
+
+	_.each(linkFields, function(link){
+
+		var fieldID = linkFields.id
+
+		var relevantDashboards = Dashboards.getDashboardsParameterizedBy(fieldID)
+		var returnValues = []
+
+		_.each(relevantDashboards, function(dashboard){
+			return returnValues.push({target : dashboard, source: RECOMMENDER_NAME, score: 1})
+			
+		})
+	})
+	return returnValues
 }          
 suggestDashboardParameterizedByID.verboseName =  "Suggest Dashboards with ID Parameters" 
 
-export function suggestCardParameterizedByID(query){
-	if(!Query.isBareRowsAggregation(query)){
-		new_query = Query.clone(query)
-		// TODO Create new query
-		// if the row has a PK or FK
-		//  -> find all cards that take that as a parameter
-		return [{target : new_query, source: RECOMMENDER_NAME, score: 1}]
-	}
+export function suggestCardParameterizedByID(query, resultRow, columnDefinitions){
+	const RECOMMENDER_NAME = "Suggest Cards with ID Parameters"
+
+	linkFields = _.filter(columnDefinitions, function(column){FieldMetadata.isFKorPK(column)})
+
+	_.each(linkFields, function(link){
+
+		var fieldID = linkFields.id
+		
+		var relevantCards = Cards.getCardsParameterizedBy(fieldID)
+		var returnValues = []
+
+		
+		_.each(relevantCards, function(card){
+			return returnValues.push({target : card, source: RECOMMENDER_NAME, score: 1})
+			
+		})
+	})
+
+	return returnValues
 }                    
 suggestCardParameterizedByID.verboseName =  "Suggest Cards with ID Parameters" 
