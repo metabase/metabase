@@ -32,10 +32,10 @@ The table options allow you to hide and rearrange fields in the table you're loo
 
 #### Line, bar, and area charts
 These three charting types have very similar options, which are broken up into the following:
-* Data: choose the fields you want to plot on your x and y axes. This also allows you to plot fields from unaggregated tables.
-* Display: here's where you can make some cosmetic changes, like setting colors, and stacking bar or area charts.
-* Axes: this is where you can hide axis markers or change their ranges.
-* Labels: if you want to hide axis labels or customize them, here's where to go.
+* **Data** — choose the fields you want to plot on your x and y axes. This also allows you to plot fields from unaggregated tables.
+* **Display** — here's where you can make some cosmetic changes, like setting colors, and stacking bar or area charts.
+* **Axes** — this is where you can hide axis markers or change their ranges.
+* **Labels** — if you want to hide axis labels or customize them, here's where to go.
 
 #### Pie charts
 The options for pie charts let you choose which field to use as your measurement, and which one to use for the pie slices. You can also customize the pie chart's legend.
@@ -43,9 +43,9 @@ The options for pie charts let you choose which field to use as your measurement
 #### Maps
 When you select the Map visualization setting, Metabase will automatically try and pick the best kind of map to use based on the table or result you're currently looking at. Here are the maps that Metabase uses:
 
-* **United States Map** — Creating a map of the United States from your database requires your results to contain a column field with states. This lets you do things like visualize the count of your users broken out by state.
+* **United States Map** — Creating a map of the United States from your data requires your results to contain a column field with states. This lets you do things like visualize the count of your users broken out by state.
 * **Country Map** — To visualize your results in the format of a map of the world broken out by country, your result must contain a field with countries.
-* **Pin Map** — If your table contains a latitude and longitude field, Metabase will try to display it as a pin map of the world. This will put one pin on the map for each row in your table, based on the latitude and longitude fields.
+* **Pin Map** — If your table contains a latitude and longitude field, Metabase will try to display it as a pin map of the world. This will put one pin on the map for each row in your table, based on the latitude and longitude fields. *Note: this map option requires a [Google Maps API key](https://developers.google.com/maps/documentation/javascript/get-api-key).*
 
 When you open up the Map options, you can manually switch between a region map (i.e., United States or world) and a pin map. (And don't worry — a flexible way to add custom maps of other countries and regions will be coming soon.) If you're using a region map, you can also choose which field to use as the measurement, and which to use as the region (i.e. State or Country).
 
