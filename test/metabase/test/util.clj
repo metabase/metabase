@@ -62,29 +62,7 @@
       form))
 
 
-;; ## expect-eval-actual-first
-;; By default `expect` evaluates EXPECTED first. This isn't always what we want; for example, sometime API tests affect the DB
-;; and we'd like to check the results.
-
-(defmacro ^:deprecated -doexpect [e a]
-  `(let [a# (try ~a (catch java.lang.Throwable t# t#))
-         e# (try ~e (catch java.lang.Throwable t# t#))]
-     (report
-      (try (compare-expr e# a# '~e '~a)
-           (catch java.lang.Throwable e2#
-             (compare-expr e2# a# '~e '~a))))))
-
-(defmacro ^:deprecated expect-eval-actual-first
-  "Identical to `expect` but evaluates `actual` first (instead of evaluating `expected` first).
-   DEPRECATED: You shouldn't need to use this when writing new tests. `expect-with-temp` should be used instead, as it handles cleaning up after itself."
-  {:style/indent 0}
-  [expected actual]
-  (let [fn-name (gensym)]
-    `(def ~(vary-meta fn-name assoc :expectation true)
-       (fn [] (-doexpect ~expected ~actual)))))
-
-
-;; ## random-name
+;;; random-name
 (let [random-uppercase-letter (partial rand-nth (mapv char (range (int \A) (inc (int \Z)))))]
   (defn random-name
     "Generate a random string of 20 uppercase letters."
@@ -349,3 +327,10 @@
     (if (seq more)
       `(with-temporary-setting-values ~more ~body)
       body)))
+
+
+(defn is-uuid-string?
+  "Is string S a valid UUID string?"
+  ^Boolean [^String s]
+  (boolean (when (string? s)
+             (re-matches #"^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$" s))))
