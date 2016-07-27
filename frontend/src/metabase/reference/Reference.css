@@ -54,8 +54,8 @@
 }
 
 :local(.columnHeader) {
-    composes: flex flex-full from "style";
-    margin-left: 70px;
+    composes: flex flex-full pl2 from "style";
+    margin-left: 48px;
     padding-top: 20px;
     padding-bottom: 20px;
 }
