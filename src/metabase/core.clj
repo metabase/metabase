@@ -46,6 +46,9 @@
   :type   :boolean
   :default true)
 
+(defsetting google-maps-api-key
+  "A Google Maps API key is required to enable certain map visualizations.")
+
 (defn site-url
   "Fetch the site base URL that should be used for password reset emails, etc.
    This strips off any trailing slashes that may have been added.
