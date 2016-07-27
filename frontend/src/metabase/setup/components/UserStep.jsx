@@ -103,7 +103,7 @@ export default class UserStep extends Component {
             'details': {
                 'first_name': ReactDOM.findDOMNode(this.refs.firstName).value,
                 'last_name': ReactDOM.findDOMNode(this.refs.lastName).value,
-                'email': ReactDOM.findDOMNode(this.refs.email).value,
+                'email': ReactDOM.findDOMNode(this.refs.email).value.toLowerCase(),
                 'password': ReactDOM.findDOMNode(this.refs.password).value,
                 'site_name': ReactDOM.findDOMNode(this.refs.siteName).value
             }

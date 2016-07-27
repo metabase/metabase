@@ -46,6 +46,8 @@ export default class LoginApp extends Component {
 
         if (!credentials.email || !credentials.password) {
             valid = false;
+        } else {
+          credentials.email = credentials.email.toLowerCase()
         }
 
         if (this.state.valid !== valid) {

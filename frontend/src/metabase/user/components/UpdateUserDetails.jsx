@@ -72,7 +72,7 @@ export default class UpdateUserDetails extends Component {
 
         user.first_name = ReactDOM.findDOMNode(this.refs.firstName).value;
         user.last_name = ReactDOM.findDOMNode(this.refs.lastName).value;
-        user.email = ReactDOM.findDOMNode(this.refs.email).value;
+        user.email = ReactDOM.findDOMNode(this.refs.email).value.toLowerCase();
 
         this.props.submitFn(user);
     }
