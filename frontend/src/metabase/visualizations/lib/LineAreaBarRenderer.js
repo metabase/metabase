@@ -436,8 +436,7 @@ function lineAndBarOnRender(chart, settings) {
     chart.render();
 }
 
-export default function lineAreaBar(element, { series, onHoverChange, onRender, chartType, isScalarSeries }) {
-    const settings = series[0].card.visualization_settings;
+export default function lineAreaBar(element, { series, onHoverChange, onRender, chartType, isScalarSeries, settings }) {
     const colors = settings["graph.colors"];
 
     const isTimeseries = dimensionIsTimeseries(series[0].data);
@@ -490,7 +489,7 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
 
         let yExtents = groups.map(group => d3.extent(group[0].all(), d => d.value));
 
-        if (settings["graph.y_axis.auto_split"] !== false) {
+        if (!isScalarSeries && settings["graph.y_axis.auto_split"] !== false) {
             yAxisSplit = computeSplit(yExtents);
         } else {
             yAxisSplit = [series.map((s,i) => i)];

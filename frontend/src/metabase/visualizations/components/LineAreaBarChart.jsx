@@ -9,7 +9,8 @@ import lineAreaBarRenderer from "metabase/visualizations/lib/LineAreaBarRenderer
 import { isNumeric, isDate } from "metabase/lib/schema_metadata";
 import {
     isSameSeries,
-    getChartTypeFromData
+    getChartTypeFromData,
+    getFriendlyName
 } from "metabase/visualizations/lib/utils";
 
 import Urls from "metabase/lib/urls";
@@ -19,7 +20,6 @@ import { MinRowsError, ChartSettingsError } from "metabase/visualizations/lib/er
 import crossfilter from "crossfilter";
 import _ from "underscore";
 import cx from "classnames";
-import i from "icepick";
 
 export default class LineAreaBarChart extends Component {
     static noHeader = true;
@@ -128,13 +128,13 @@ export default class LineAreaBarChart extends Component {
                 const dimensionIndex = dimensionIndexes[0];
 
                 nextState.isMultiseries = true;
-                nextState.series = metrics.map((col, index) => {
-                    let metricIndex = metricIndexes[index];
+                nextState.series = metricIndexes.map(metricIndex => {
+                    const col = cols[metricIndex];
                     return {
                         card: {
                             ...s.card,
                             id: null,
-                            name: col.display_name || col.name
+                            name: getFriendlyName(col)
                         },
                         data: {
                             rows: rows.map(row => [row[dimensionIndex], row[metricIndex]]),
@@ -239,7 +239,7 @@ export default class LineAreaBarChart extends Component {
                 <CardRenderer
                     {...this.props}
                     chartType={this.getChartType()}
-                    series={i.assocIn(series, [0, "card", "visualization_settings"], settings)}
+                    settings={settings}
                     className="flex-full"
                     renderer={lineAreaBarRenderer}
                 />
