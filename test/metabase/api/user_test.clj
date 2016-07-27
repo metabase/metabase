@@ -8,7 +8,8 @@
                              [user :refer [User]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [match-$ random-name with-temp], :as tu]))
+            [metabase.test.util :refer [match-$ random-name with-temp], :as tu]
+            [metabase.util :as u]))
 
 ;; ## /api/user/* AUTHENTICATION Tests
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
@@ -18,42 +19,36 @@
 (expect (get middleware/response-unauthentic :body) (http/client :get 401 "user/current"))
 
 
-;; ## Helper Fns
-(defn create-user-via-api! [user-name]
-  ((user->client :crowberto) :post 200 "user" {:first_name user-name
-                                               :last_name  user-name
-                                               :email      (str user-name "@metabase.com")}))
-
 ;; ## GET /api/user
 ;; Check that anyone can get a list of all active Users
 (expect
-    #{(match-$ (fetch-user :crowberto)
-        {:common_name  "Crowberto Corv"
-         :last_name    "Corv"
-         :id           $
-         :is_superuser true
-         :last_login   $
-         :first_name   "Crowberto"
-         :email        "crowberto@metabase.com"
-         :google_auth  false})
-      (match-$ (fetch-user :lucky)
-        {:common_name  "Lucky Pigeon"
-         :last_name    "Pigeon"
-         :id           $
-         :is_superuser false
-         :last_login   $
-         :first_name   "Lucky"
-         :email        "lucky@metabase.com"
-         :google_auth  false})
-      (match-$ (fetch-user :rasta)
-        {:common_name  "Rasta Toucan"
-         :last_name    "Toucan"
-         :id           $
-         :is_superuser false
-         :last_login   $
-         :first_name   "Rasta"
-         :email        "rasta@metabase.com"
-         :google_auth  false})}
+  #{(match-$ (fetch-user :crowberto)
+      {:common_name  "Crowberto Corv"
+       :last_name    "Corv"
+       :id           $
+       :is_superuser true
+       :last_login   $
+       :first_name   "Crowberto"
+       :email        "crowberto@metabase.com"
+       :google_auth  false})
+    (match-$ (fetch-user :lucky)
+      {:common_name  "Lucky Pigeon"
+       :last_name    "Pigeon"
+       :id           $
+       :is_superuser false
+       :last_login   $
+       :first_name   "Lucky"
+       :email        "lucky@metabase.com"
+       :google_auth  false})
+    (match-$ (fetch-user :rasta)
+      {:common_name  "Rasta Toucan"
+       :last_name    "Toucan"
+       :id           $
+       :is_superuser false
+       :last_login   $
+       :first_name   "Rasta"
+       :email        "rasta@metabase.com"
+       :google_auth  false})}
   (do
     ;; Delete all the other random Users we've created so far
     (let [user-ids (set (map user->id [:crowberto :rasta :lucky :trashbird]))]
@@ -64,64 +59,61 @@
 
 ;; ## POST /api/user
 ;; Test that we can create a new User
-(let [rand-name (random-name)]
-  (tu/expect-eval-actual-first
-    (match-$ (User :first_name rand-name)
-      {:id           $
-       :email        $
-       :first_name   rand-name
-       :last_name    rand-name
-       :date_joined  $
-       :last_login   $
-       :common_name  $
-       :is_superuser false
-       :is_qbnewb    true})
-    (create-user-via-api! rand-name)))
+(let [user-name (random-name)
+      email     (str user-name "@metabase.com")]
+  (expect
+    {:email        email
+     :first_name   user-name
+     :last_name    user-name
+     :common_name  (str user-name " " user-name)
+     :is_superuser false
+     :is_qbnewb    true}
+    (do ((user->client :crowberto) :post 200 "user" {:first_name user-name
+                                                     :last_name  user-name
+                                                     :email      email})
+        (u/prog1 (db/select-one [User :email :first_name :last_name :is_superuser :is_qbnewb]
+                   :email email)
+          ;; clean up after ourselves
+          (db/cascade-delete! User :email email)))))
+
 
 ;; Test that reactivating a disabled account works
-(let [rand-name (random-name)]
-  (tu/expect-eval-actual-first
-    (match-$ (User :first_name rand-name, :is_active true)
-      {:id           $
-       :email        $
-       :first_name   rand-name
-       :last_name    "whatever"
-       :date_joined  $
-       :last_login   $
-       :common_name  $
-       :is_superuser false
-       :is_qbnewb    true})
-    (when-let [user (create-user-via-api! rand-name)]
-      ;; create a random user then set them to :inactive
-      (db/update! User (:id user)
-        :is_active false
-        :is_superuser true)
-      ;; then try creating the same user again
-      ((user->client :crowberto) :post 200 "user" {:first_name (:first_name user)
-                                                   :last_name "whatever"
-                                                   :email (:email user)}))))
+(expect
+  ;; create a random inactive user
+  (tu/with-temp User [user {:is_active false}]
+    ;; now try creating the same user again, should re-activiate the original
+    ((user->client :crowberto) :post 200 "user" {:first_name (:first_name user)
+                                                 :last_name  "whatever"
+                                                 :email      (:email user)})
+    ;; the user should now be active
+    (db/select-one-field :is_active User :id (:id user))))
 
 ;; Check that non-superusers are denied access
-(expect "You don't have permissions to do that."
+(expect
+  "You don't have permissions to do that."
   ((user->client :rasta) :post 403 "user" {:first_name "whatever"
-                                           :last_name "whatever"
-                                           :email "whatever@whatever.com"}))
+                                           :last_name  "whatever"
+                                           :email      "whatever@whatever.com"}))
 
 ;; Test input validations
-(expect {:errors {:first_name "field is a required param."}}
+(expect
+  {:errors {:first_name "field is a required param."}}
   ((user->client :crowberto) :post 400 "user" {}))
 
-(expect {:errors {:last_name "field is a required param."}}
+(expect
+  {:errors {:last_name "field is a required param."}}
   ((user->client :crowberto) :post 400 "user" {:first_name "whatever"}))
 
-(expect {:errors {:email "field is a required param."}}
+(expect
+  {:errors {:email "field is a required param."}}
   ((user->client :crowberto) :post 400 "user" {:first_name "whatever"
-                                               :last_name "whatever"}))
+                                               :last_name  "whatever"}))
 
-(expect {:errors {:email "Invalid value 'whatever' for 'email': Not a valid email address."}}
+(expect
+  {:errors {:email "Invalid value 'whatever' for 'email': Not a valid email address."}}
   ((user->client :crowberto) :post 400 "user" {:first_name "whatever"
-                                               :last_name "whatever"
-                                               :email "whatever"}))
+                                               :last_name  "whatever"
+                                               :email      "whatever"}))
 
 
 ;; ## GET /api/user/current
@@ -145,16 +137,17 @@
 
 ;; ## GET /api/user/:id
 ;; Should return a smaller set of fields, and should *not* return OrgPerms
-(expect (match-$ (fetch-user :rasta)
-          {:email        "rasta@metabase.com"
-           :first_name   "Rasta"
-           :last_login   $
-           :is_superuser false
-           :is_qbnewb    true
-           :id           $
-           :last_name    "Toucan"
-           :date_joined  $
-           :common_name  "Rasta Toucan"})
+(expect
+  (match-$ (fetch-user :rasta)
+    {:email        "rasta@metabase.com"
+     :first_name   "Rasta"
+     :last_login   $
+     :is_superuser false
+     :is_qbnewb    true
+     :id           $
+     :last_name    "Toucan"
+     :date_joined  $
+     :common_name  "Rasta Toucan"})
   ((user->client :rasta) :get 200 (str "user/" (user->id :rasta))))
 
 ;; Check that a non-superuser CANNOT fetch someone else's user details
@@ -182,11 +175,11 @@
 ;; ## PUT /api/user/:id
 ;; Test that we can edit a User
 (expect
-  [#metabase.models.user.UserInstance{:first_name "Cam", :last_name "Era",  :is_superuser true, :email "cam.era@metabase.com"}
-   #metabase.models.user.UserInstance{:first_name "Cam", :last_name "Eron", :is_superuser true, :email "cam.eron@metabase.com"}]
+  [{:first_name "Cam", :last_name "Era",  :is_superuser true, :email "cam.era@metabase.com"}
+   {:first_name "Cam", :last_name "Eron", :is_superuser true, :email "cam.eron@metabase.com"}]
   (tu/with-temp User [{user-id :id} {:first_name "Cam", :last_name "Era", :email "cam.era@metabase.com", :is_superuser true}]
-    (let [user (fn [] (dissoc (db/select-one [User :first_name :last_name :is_superuser :email], :id user-id)
-                              :common_name))]
+    (let [user (fn [] (into {} (dissoc (db/select-one [User :first_name :last_name :is_superuser :email], :id user-id)
+                                       :common_name)))]
       [(user)
        (do ((user->client :crowberto) :put 200 (str "user/" user-id) {:last_name "Eron"
                                                                       :email     "cam.eron@metabase.com"})
@@ -268,7 +261,7 @@
 ;; Disable a user account
 (expect
   {:success true}
-  (let [user (create-user-via-api! (random-name))]
+  (tu/with-temp User [user]
     ((user->client :crowberto) :delete 200 (format "user/%d" (:id user)) {})))
 
 ;; Check that a non-superuser CANNOT update someone else's password
