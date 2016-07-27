@@ -2,7 +2,6 @@
   "Tests for /api/activity endpoints."
   (:require [expectations :refer :all]
             [metabase.db :as db]
-            [metabase.http-client :refer :all]
             (metabase.models [activity :refer [Activity]]
                              [card :refer [Card]]
                              [dashboard :refer [Dashboard]]
@@ -14,11 +13,11 @@
 
 ;; GET /
 
-; Things we are testing for:
-;  1. ordered by timestamp DESC
-;  2. :user and :model_exists are hydrated
+;; Things we are testing for:
+;;  1. ordered by timestamp DESC
+;;  2. :user and :model_exists are hydrated
 
-; NOTE: timestamp matching was being a real PITA so I cheated a bit.  ideally we'd fix that
+;; NOTE: timestamp matching was being a real PITA so I cheated a bit.  ideally we'd fix that
 (expect-let [_         (db/cascade-delete! Activity)
              activity1 (db/insert! Activity
                          :topic     "install"
