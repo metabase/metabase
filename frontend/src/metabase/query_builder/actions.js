@@ -1014,6 +1014,38 @@ export const loadObjectDetailFKReferences = createThunkAction(LOAD_OBJECT_DETAIL
     };
 });
 
+const ADD_FIELD = "query_builder/ADD_FIELD";
+export const addField = createThunkAction(ADD_FIELD, (field, run = true) => {
+    return (dispatch, getState) => {
+        const { qb: { card } } = getState();
+        if (card.dataset_query.type === "query") {
+            dispatch(setQuery({
+                ...card.dataset_query,
+                query: {
+                    ...card.dataset_query.query,
+                    fields: (card.dataset_query.query.fields || []).concat([field])
+                }
+            }, true));
+        }
+    }
+});
+
+const REMOVE_FIELD = "query_builder/REMOVE_FIELD";
+export const removeField = createThunkAction(REMOVE_FIELD, (field, run = true) => {
+    return (dispatch, getState) => {
+        const { qb: { card } } = getState();
+        if (card.dataset_query.type === "query") {
+            console.log("field", field, card.dataset_query.query);
+            dispatch(setQuery({
+                ...card.dataset_query,
+                query: {
+                    ...card.dataset_query.query,
+                    fields: (card.dataset_query.query.fields || []).filter(f => !_.isEqual(f, field))
+                }
+            }, run));
+        }
+    }
+});
 
 // these are just temporary mappings to appease the existing QB code and it's naming prefs
 export const toggleDataReferenceFn = toggleDataReference;

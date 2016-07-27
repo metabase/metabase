@@ -546,7 +546,7 @@ const SETTINGS = {
             enabled: col.visibility_type !== "details-only"
         })),
         getProps: ([{ data: { cols }}]) => ({
-            columnNames: cols.reduce((o, col) => ({ ...o, [col.name]: getFriendlyName(col)}), {})
+            columnsByName: cols.reduce((o, col) => ({ ...o, [col.name]: col }), {})
         })
     },
     "map.type": {
