@@ -29,6 +29,10 @@ import Routes from "./Routes.jsx";
 
 import auth from "metabase/auth/auth";
 
+/* ducks */
+import metadata from "metabase/redux/metadata";
+import requests from "metabase/redux/requests";
+
 /* admin */
 import settings from "metabase/admin/settings/settings";
 import * as people from "metabase/admin/people/reducers";
@@ -37,7 +41,6 @@ import datamodel from "metabase/admin/datamodel/metadata";
 
 /* dashboards */
 import dashboard from "metabase/dashboard/dashboard";
-import metadata from "metabase/dashboard/metadata";
 import * as home from "metabase/home/reducers";
 
 /* questions / query builder */
@@ -45,6 +48,9 @@ import questions from "metabase/questions/questions";
 import labels from "metabase/questions/labels";
 import undo from "metabase/questions/undo";
 import * as qb from "metabase/query_builder/reducers";
+
+/* data reference */
+import reference from "metabase/reference/reference";
 
 /* pulses */
 import * as pulse from "metabase/pulse/reducers";
@@ -68,6 +74,7 @@ const reducers = combineReducers({
     auth,
     currentUser,
     metadata,
+    requests,
 
     // main app reducers
     dashboard,
@@ -76,6 +83,7 @@ const reducers = combineReducers({
     pulse: combineReducers(pulse),
     qb: combineReducers(qb),
     questions,
+    reference,
     setup: combineReducers(setup),
     undo,
     user: combineReducers(user),
@@ -134,6 +142,29 @@ angular.module('metabase', [
     $routeProvider.when('/admin/datamodel/:objectType/:objectId/revisions', route);
     $routeProvider.when('/admin/people/', route);
     $routeProvider.when('/admin/settings/', { ...route, template: '<div class="full-height" mb-redux-component />' });
+
+    $routeProvider.when('/reference', route);
+    $routeProvider.when('/reference/guide', route);
+    $routeProvider.when('/reference/metrics', route);
+    $routeProvider.when('/reference/metrics/:metricId', route);
+    $routeProvider.when('/reference/metrics/:metricId/questions', route);
+    $routeProvider.when('/reference/metrics/:metricId/questions/:cardId', route);
+    $routeProvider.when('/reference/metrics/:metricId/revisions', route);
+    $routeProvider.when('/reference/segments', route);
+    $routeProvider.when('/reference/segments/:segmentId', route);
+    $routeProvider.when('/reference/segments/:segmentId/fields', route);
+    $routeProvider.when('/reference/segments/:segmentId/fields/:fieldId', route);
+    $routeProvider.when('/reference/segments/:segmentId/questions', route);
+    $routeProvider.when('/reference/segments/:segmentId/questions/:cardId', route);
+    $routeProvider.when('/reference/segments/:segmentId/revisions', route);
+    $routeProvider.when('/reference/databases', route);
+    $routeProvider.when('/reference/databases/:databaseId', route);
+    $routeProvider.when('/reference/databases/:databaseId/tables', route);
+    $routeProvider.when('/reference/databases/:databaseId/tables/:tableId', route);
+    $routeProvider.when('/reference/databases/:databaseId/tables/:tableId/fields', route);
+    $routeProvider.when('/reference/databases/:databaseId/tables/:tableId/fields/:fieldId', route);
+    $routeProvider.when('/reference/databases/:databaseId/tables/:tableId/questions', route);
+    $routeProvider.when('/reference/databases/:databaseId/tables/:tableId/questions/:cardId', route);
 
     $routeProvider.when('/auth/', { redirectTo: () => ('/auth/login') });
     $routeProvider.when('/auth/forgot_password', { ...route, template: '<div mb-redux-component class="full-height" />' });

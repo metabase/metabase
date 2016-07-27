@@ -106,7 +106,7 @@ export function getXValues(datas, chartType) {
         // JavaScript's .sort() sorts lexicographically by default (e.x. 1, 10, 2)
         // We could implement a comparator but _.sortBy handles strings, numbers, and dates correctly
         xValues = _.sortBy(xValues, x => x).reverse();
-    } else if (isAscending || (chartType === "line" || chartType === "area")) {
+    } else if (isAscending) {
         // default line/area charts to ascending since otherwise lines could be wonky
         xValues = _.sortBy(xValues, x => x);
     }

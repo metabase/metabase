@@ -102,7 +102,7 @@
   "migrations/liquibase.json")
 
 (defn migrate
-  "Migrate the database:
+  "Migrate the database (this can also be ran via command line like `lein run migrate down-one`):
 
    *  `:up`            - Migrate up
    *  `:down`          - Rollback *all* migrations
@@ -653,6 +653,7 @@
   (let [entity (resolve-entity entity)]
     (apply select-one-field :id entity options)))
 
+;; TODO - maybe rename this `count`? e.g. `db/count` instead of `db/select-one-count`
 (defn select-one-count
   "Select the count of objects matching some condition.
 

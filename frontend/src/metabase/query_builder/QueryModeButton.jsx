@@ -53,7 +53,7 @@ export default class QueryModeButton extends Component {
             <div>
                 <Tooltip tooltip={tooltip}>
                     <span data-metabase-event={"QueryBuilder;Toggle Mode"} className={cx("cursor-pointer", {"text-brand-hover": onClick, "text-grey-1": !onClick})} onClick={onClick}>
-                        <Icon name="sql" width="16px" height="16px" />
+                        <Icon name="sql" size={16} />
                     </span>
                 </Tooltip>
 
@@ -61,7 +61,7 @@ export default class QueryModeButton extends Component {
                     <div className="p4">
                         <div className="mb3 flex flex-row flex-full align-center justify-between">
                             <h2>{capitalize(nativeQueryName)} for this question</h2>
-                            <span className="cursor-pointer" onClick={() => this.setState({isOpen: false})}><Icon name="close" width="16px" height="16px" /></span>
+                            <span className="cursor-pointer" onClick={() => this.setState({isOpen: false})}><Icon name="close" size={16} /></span>
                         </div>
 
                         <pre className="mb3 p2 sql-code">

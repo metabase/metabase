@@ -1,5 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
+import i from 'icepick';
+
 import Icon from "metabase/components/Icon.jsx";
 
 import Query from "metabase/lib/query";
@@ -27,14 +29,16 @@ export default class FieldName extends Component {
         let fieldTarget = Query.getFieldTarget(field, tableMetadata);
 
         let parts = [];
+
         if (fieldTarget) {
             // fk path
             for (let [index, fkField] of Object.entries(fieldTarget.path)) {
                 parts.push(<span key={"fkName"+index}>{stripId(fkField.display_name)}</span>);
-                parts.push(<span key={"fkIcon"+index} className="px1"><Icon name="connections" width="10" height="10" /></span>);
+                parts.push(<span key={"fkIcon"+index} className="px1"><Icon name="connections" size={10} /></span>);
             }
             // target field itself
-            parts.push(<span key="field">{fieldTarget.field.display_name}</span>);
+            // using i.getIn to avoid exceptions when field is undefined
+            parts.push(<span key="field">{i.getIn(fieldTarget, ['field', 'display_name'])}</span>);
             // datetime-field unit
             if (fieldTarget.unit != null) {
                 parts.push(<span key="unit">{": " + formatBucketing(fieldTarget.unit)}</span>);
@@ -50,7 +54,7 @@ export default class FieldName extends Component {
                 </div>
                 { this.props.removeField &&
                     <a className="text-grey-2 no-decoration pr1 flex align-center" onClick={this.props.removeField}>
-                        <Icon name='close' width="14px" height="14px" />
+                        <Icon name='close' size={14} />
                     </a>
                 }
             </div>

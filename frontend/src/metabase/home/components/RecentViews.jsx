@@ -31,12 +31,12 @@ export default class RecentViews extends Component {
     renderIllustration(item) {
         if (item.model === 'card' && 'display' in item.model_object) {
             return (
-                <Icon name={'illustration-'+item.model_object.display} width={22} height={22} />
+                <Icon name={'illustration-'+item.model_object.display} size={22} />
             );
 
         } else if(item.model === 'dashboard') {
             return (
-                <Icon name={'illustration-dashboard'} width={22} height={22} />
+                <Icon name={'illustration-dashboard'} size={22} />
             );
 
         } else {

@@ -2,43 +2,38 @@
   "Tests for /api/activity endpoints."
   (:require [expectations :refer :all]
             [metabase.db :as db]
-            [metabase.http-client :refer :all]
             (metabase.models [activity :refer [Activity]]
                              [card :refer [Card]]
                              [dashboard :refer [Dashboard]]
                              [view-log :refer [ViewLog]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [match-$ expect-with-temp resolve-private-fns]]
+            [metabase.test.util :refer [match-$ expect-with-temp resolve-private-fns], :as tu]
             [metabase.util :as u]))
 
 ;; GET /
 
-; Things we are testing for:
-;  1. ordered by timestamp DESC
-;  2. :user and :model_exists are hydrated
+;; Things we are testing for:
+;;  1. ordered by timestamp DESC
+;;  2. :user and :model_exists are hydrated
 
-; NOTE: timestamp matching was being a real PITA so I cheated a bit.  ideally we'd fix that
-(expect-let [_         (db/cascade-delete! Activity)
-             activity1 (db/insert! Activity
-                         :topic     "install"
-                         :details   {}
-                         :timestamp (u/->Timestamp "2015-09-09T12:13:14.888Z"))
-             activity2 (db/insert! Activity
-                         :topic     "dashboard-create"
-                         :user_id   (user->id :crowberto)
-                         :model     "dashboard"
-                         :model_id  1234
-                         :details   {:description  "Because I can!"
-                                     :name         "Bwahahaha"
-                                     :public_perms 2}
-                         :timestamp (u/->Timestamp "2015-09-10T18:53:01.632Z"))
-             activity3 (db/insert! Activity
-                         :topic     "user-joined"
-                         :user_id   (user->id :rasta)
-                         :model     "user"
-                         :details   {}
-                         :timestamp (u/->Timestamp "2015-09-10T05:33:43.641Z"))]
+;; NOTE: timestamp matching was being a real PITA so I cheated a bit.  ideally we'd fix that
+(tu/expect-with-temp [Activity [activity1 {:topic     "install"
+                                           :details   {}
+                                           :timestamp (u/->Timestamp "2015-09-09T12:13:14.888Z")}]
+                      Activity [activity2 {:topic     "dashboard-create"
+                                           :user_id   (user->id :crowberto)
+                                           :model     "dashboard"
+                                           :model_id  1234
+                                           :details   {:description  "Because I can!"
+                                                       :name         "Bwahahaha"
+                                                       :public_perms 2}
+                                           :timestamp (u/->Timestamp "2015-09-10T18:53:01.632Z")}]
+                      Activity [activity3 {:topic     "user-joined"
+                                           :user_id   (user->id :rasta)
+                                           :model     "user"
+                                           :details   {}
+                                           :timestamp (u/->Timestamp "2015-09-10T05:33:43.641Z")}]]
   [(match-$ (Activity (:id activity2))
      {:id           $
       :topic        "dashboard-create"
@@ -99,8 +94,12 @@
       :table        nil
       :custom_id    nil
       :details      $})]
-  (for [activity ((user->client :crowberto) :get 200 "activity")]
-    (dissoc activity :timestamp)))
+  ;; clear any other activities from the DB just in case; not sure this step is needed any more
+  (do (db/cascade-delete! Activity :id [:not-in #{(:id activity1)
+                                                  (:id activity2)
+                                                  (:id activity3)}])
+      (for [activity ((user->client :crowberto) :get 200 "activity")]
+        (dissoc activity :timestamp))))
 
 
 ;;; GET /recent_views

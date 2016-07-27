@@ -42,7 +42,7 @@ export default class MetadataHeader extends Component {
             var triggerElement = (
                 <span className="text-bold cursor-pointer text-default">
                     {database.name}
-                    <Icon className="ml1" name="chevrondown" width="8px" height="8px"/>
+                    <Icon className="ml1" name="chevrondown" size={8}/>
                 </span>
             );
             return (

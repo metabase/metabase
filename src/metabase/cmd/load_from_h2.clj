@@ -19,6 +19,7 @@
                              [field-values :refer [FieldValues]]
                              [label :refer [Label]]
                              [metric :refer [Metric]]
+                             [metric-important-field :refer [MetricImportantField]]
                              [pulse :refer [Pulse]]
                              [pulse-card :refer [PulseCard]]
                              [pulse-channel :refer [PulseChannel]]
@@ -50,6 +51,7 @@
    FieldValues
    Segment
    Metric
+   MetricImportantField
    Revision
    ViewLog
    Session

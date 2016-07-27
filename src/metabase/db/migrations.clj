@@ -97,7 +97,7 @@
     (when-let [email (db/select-one-field :email 'User
                        :is_superuser true
                        :is_active    true)]
-      (setting/set :admin-email email))))
+      (setting/set! :admin-email email))))
 
 
 ;; Remove old `database-sync` activity feed entries
