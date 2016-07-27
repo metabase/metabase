@@ -13,6 +13,7 @@ import ChartWithLegend from "./ChartWithLegend.jsx";
 import ChartTooltip from "./ChartTooltip.jsx";
 
 import d3 from "d3";
+import _ from "underscore";
 
 // const HEAT_MAP_COLORS = [
 //     "#E1F2FF",
@@ -37,14 +38,44 @@ const HEAT_MAP_COLORS = [
 ];
 const HEAT_MAP_ZERO_COLOR = '#CCC';
 
+const REGIONS = {
+    "us_states": {
+        geoJsonPath: "/app/charts/us-states.json",
+        projection: d3.geo.albersUsa(),
+        nameProperty: "name",
+        keyProperty: "name",
+
+        getFeatureKey: (feature) => String(feature.properties.name).toLowerCase(),
+        getFeatureName: (feature) => String(feature.properties.name)
+    },
+    "world_countries": {
+        geoJsonPath: "/app/charts/world.json",
+        projection: d3.geo.mercator(),
+        nameProperty: "NAME",
+        keyProperty: "ISO_A2",
+
+        getFeatureKey: (feature) => String(feature.properties.ISO_A2).toLowerCase(),
+        getFeatureName: (feature) => String(feature.properties.NAME)
+    }
+}
+
+const featureCache = new Map();
+function loadFeatures(geoJsonPath, callback) {
+    if (featureCache.has(geoJsonPath)) {
+        setTimeout(() =>
+            callback(featureCache.get(geoJsonPath))
+        , 0);
+    } else {
+        d3.json(geoJsonPath, (json) => {
+            const features = json && json.features;
+            featureCache.set(geoJsonPath, features)
+            callback(features);
+        });
+    }
+}
+
 export default class ChoroplethMap extends Component {
     static propTypes = {
-        geoJsonPath: PropTypes.string.isRequired,
-        projection: PropTypes.object.isRequired,
-        getRowKey: PropTypes.func.isRequired,
-        getRowValue: PropTypes.func.isRequired,
-        getFeatureKey: PropTypes.func.isRequired,
-        getFeatureName: PropTypes.func.isRequired
     };
 
     static minSize = { width: 4, height: 4 };
@@ -60,27 +91,34 @@ export default class ChoroplethMap extends Component {
     constructor(props, context) {
         super(props, context);
         this.state = {
-            features: null
+            features: null,
+            geoJsonPath: null
         };
     }
 
     componentWillMount() {
-        d3.json(this.props.geoJsonPath, (json) => {
-            this.setState({ features: json.features });
-        });
+        this.componentWillReceiveProps(this.props);
+    }
+
+    componentWillReceiveProps(nextProps) {
+        let details = REGIONS[nextProps.settings["map.region"]];
+        if (this.state.geoJsonPath !== details.geoJsonPath) {
+            this.setState({
+                features: null,
+                geoJsonPath: details.geoJsonPath
+            });
+            loadFeatures(details.geoJsonPath, (features) => {
+                this.setState({
+                    features: features,
+                    geoJsonPath: details.geoJsonPath
+                });
+            });
+        }
     }
 
     render() {
-        const {
-            series,
-            className,
-            gridSize,
-            hovered, onHoverChange,
-            projection,
-            getRowKey, getRowValue,
-            getFeatureKey, getFeatureName
-        } = this.props;
-
+        const { series, className, gridSize, hovered, onHoverChange, settings } = this.props;
+        const { projection, nameProperty, keyProperty } = REGIONS[settings["map.region"]];
         const { features } = this.state;
 
         if (!features) {
@@ -91,13 +129,19 @@ export default class ChoroplethMap extends Component {
             );
         }
 
-        const getFeatureValue = (feature) => valuesMap[getFeatureKey(feature)]
+        const [{ data: { cols, rows }}] = series;
+        const dimensionIndex = _.findIndex(cols, (col) => col.name === settings["map.dimension"]);
+        const metricIndex = _.findIndex(cols, (col) => col.name === settings["map.metric"]);
 
-        let rows = series[0].data.rows;
+        const getRowKey       = (row) => String(row[dimensionIndex]).toLowerCase();
+        const getRowValue     = (row) => row[metricIndex] || 0;
+        const getFeatureName  = (feature) => String(feature.properties[nameProperty]);
+        const getFeatureKey   = (feature) => String(feature.properties[keyProperty]).toLowerCase();
+        const getFeatureValue = (feature) => valuesMap[getFeatureKey(feature)];
 
-        let valuesMap = {};
-        for (let row of rows) {
-            valuesMap[getRowKey(row)] = (valuesMap[row[0]] || 0) + getRowValue(row);
+        const valuesMap = {};
+        for (const row of rows) {
+            valuesMap[getRowKey(row)] = (valuesMap[getRowKey(row)] || 0) + getRowValue(row);
         }
 
         var colorScale = d3.scale.quantize().domain(d3.extent(rows, d => d[1])).range(HEAT_MAP_COLORS);

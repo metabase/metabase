@@ -25,3 +25,5 @@ import 'ace/snippets/mysql';
 import 'ace/snippets/pgsql';
 import 'ace/snippets/sqlserver';
 import 'ace/snippets/json';
+
+import 'number-to-locale-string';
