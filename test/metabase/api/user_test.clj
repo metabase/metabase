@@ -8,7 +8,7 @@
                              [user :refer [User]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [match-$ random-name expect-eval-actual-first with-temp], :as tu]))
+            [metabase.test.util :refer [match-$ random-name with-temp], :as tu]))
 
 ;; ## /api/user/* AUTHENTICATION Tests
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
@@ -19,7 +19,7 @@
 
 
 ;; ## Helper Fns
-(defn create-user-api [user-name]
+(defn create-user-via-api! [user-name]
   ((user->client :crowberto) :post 200 "user" {:first_name user-name
                                                :last_name  user-name
                                                :email      (str user-name "@metabase.com")}))
@@ -65,7 +65,7 @@
 ;; ## POST /api/user
 ;; Test that we can create a new User
 (let [rand-name (random-name)]
-  (expect-eval-actual-first
+  (tu/expect-eval-actual-first
     (match-$ (User :first_name rand-name)
       {:id           $
        :email        $
@@ -76,11 +76,11 @@
        :common_name  $
        :is_superuser false
        :is_qbnewb    true})
-    (create-user-api rand-name)))
+    (create-user-via-api! rand-name)))
 
 ;; Test that reactivating a disabled account works
 (let [rand-name (random-name)]
-  (expect-eval-actual-first
+  (tu/expect-eval-actual-first
     (match-$ (User :first_name rand-name, :is_active true)
       {:id           $
        :email        $
@@ -91,7 +91,7 @@
        :common_name  $
        :is_superuser false
        :is_qbnewb    true})
-    (when-let [user (create-user-api rand-name)]
+    (when-let [user (create-user-via-api! rand-name)]
       ;; create a random user then set them to :inactive
       (db/update! User (:id user)
         :is_active false
@@ -266,11 +266,10 @@
 
 ;; ## DELETE /api/user/:id
 ;; Disable a user account
-(let [rand-name (random-name)]
-  (expect-eval-actual-first
-    {:success true}
-    (let [user (create-user-api rand-name)]
-      ((user->client :crowberto) :delete 200 (format "user/%d" (:id user)) {}))))
+(expect
+  {:success true}
+  (let [user (create-user-via-api! (random-name))]
+    ((user->client :crowberto) :delete 200 (format "user/%d" (:id user)) {})))
 
 ;; Check that a non-superuser CANNOT update someone else's password
 (expect "You don't have permissions to do that."

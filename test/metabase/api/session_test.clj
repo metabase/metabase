@@ -11,11 +11,11 @@
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
             [metabase.util :as u]
-            [metabase.test.util :refer [random-name expect-eval-actual-first resolve-private-fns with-temporary-setting-values with-temp]]))
+            [metabase.test.util :refer [random-name resolve-private-fns with-temporary-setting-values with-temp], :as tu]))
 
 ;; ## POST /api/session
 ;; Test that we can login
-(expect-eval-actual-first
+(tu/expect-eval-actual-first
   (db/select-one [Session :id], :user_id (user->id :rasta))
   (do (db/delete! Session, :user_id (user->id :rasta))             ; delete all other sessions for the bird first
       (client :post 200 "session" (user->credentials :rasta))))
@@ -53,7 +53,8 @@
 
 ;; ## DELETE /api/session
 ;; Test that we can logout
-(expect-eval-actual-first nil
+(expect
+  nil
   (let [{session_id :id} ((user->client :rasta) :post 200 "session" (user->credentials :rasta))]
     (assert session_id)
     ((user->client :rasta) :delete 204 "session" :session_id session_id)
@@ -63,7 +64,6 @@
 ;; ## POST /api/session/forgot_password
 ;; Test that we can initiate password reset
 (expect
-    true
   (let [reset-fields-set? (fn []
                             (let [{:keys [reset_token reset_triggered]} (db/select-one [User :reset_token :reset_triggered], :id (user->id :rasta))]
                               (boolean (and reset_token reset_triggered))))]
@@ -115,7 +115,7 @@
 
 ;; Check that password reset returns a valid session token
 (let [user-last-name (random-name)]
-  (expect-eval-actual-first
+  (tu/expect-eval-actual-first
     (let [id         (db/select-one-id User, :last_name user-last-name)
           session-id (db/select-one-id Session, :user_id id)]
       {:success    true

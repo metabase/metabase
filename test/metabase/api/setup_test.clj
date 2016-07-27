@@ -8,13 +8,13 @@
                              [user :refer [User]])
             [metabase.setup :as setup]
             (metabase.test [data :refer :all]
-                           [util :refer [match-$ random-name expect-eval-actual-first]])))
+                           [util :refer [match-$ random-name], :as tu])))
 
 
 ;; ## POST /api/setup/user
 ;; Check that we can create a new superuser via setup-token
 (let [user-name (random-name)]
-  (expect-eval-actual-first
+  (tu/expect-eval-actual-first
     [(match-$ (Session :user_id (db/select-one-id User, :email (str user-name "@metabase.com")))
       {:id $id})
      (str user-name "@metabase.com")]

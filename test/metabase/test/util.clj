@@ -62,10 +62,8 @@
       form))
 
 
-;; ## expect-eval-actual-first
 ;; By default `expect` evaluates EXPECTED first. This isn't always what we want; for example, sometime API tests affect the DB
 ;; and we'd like to check the results.
-
 (defmacro ^:deprecated -doexpect [e a]
   `(let [a# (try ~a (catch java.lang.Throwable t# t#))
          e# (try ~e (catch java.lang.Throwable t# t#))]
