@@ -153,7 +153,7 @@ const ChartSettingsButton = ({ series, onUpdateVisualizationSettings }) =>
     >
         <ChartSettings
             series={series}
-            onChange={() => alert("FIXME: NYI!")}
+            onChange={onUpdateVisualizationSettings}
         />
     </ModalWithTrigger>
 
