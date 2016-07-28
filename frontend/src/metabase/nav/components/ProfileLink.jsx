@@ -8,10 +8,9 @@ import MetabaseSettings from "metabase/lib/settings";
 import Modal from "metabase/components/Modal.jsx";
 import Logs from "metabase/components/Logs.jsx";
 
-import UserAvatar from './UserAvatar.jsx';
-import Icon from './Icon.jsx';
-import LogoIcon from './LogoIcon.jsx';
-
+import UserAvatar from 'metabase/components/UserAvatar.jsx';
+import Icon from 'metabase/components/Icon.jsx';
+import LogoIcon from 'metabase/components/LogoIcon.jsx';
 
 export default class ProfileLink extends Component {
 

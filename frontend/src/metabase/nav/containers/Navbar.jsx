@@ -2,29 +2,14 @@ import React, { Component, PropTypes } from 'react';
 import cx from "classnames";
 
 import { connect } from "react-redux";
-import { createSelector } from 'reselect';
 
-import DashboardsDropdown from "metabase/components/DashboardsDropdown.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import LogoIcon from "metabase/components/LogoIcon.jsx";
-import ProfileLink from "metabase/components/ProfileLink.jsx";
 
-const getPath = (state) => state.router.location.pathname;
-const getUser = (state) => state.currentUser;
-const getContext = createSelector(
-    [getPath],
-    (path) =>
-        path.startsWith('/auth/') ?
-            'auth'
-        : path.startsWith('/setup/') ?
-            'setup'
-        : path.startsWith('/admin/') ?
-            'admin'
-        : path === '/' ?
-            'home'
-        :
-            'main'
-);
+import DashboardsDropdown from "metabase/nav/containers/DashboardsDropdown.jsx";
+import ProfileLink from "metabase/nav/components/ProfileLink.jsx";
+
+import { getPath, getContext, getUser } from "../selectors";
 
 const mapStateToProps = (state, props) => ({
     path:       getPath(state),

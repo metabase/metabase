@@ -43,7 +43,7 @@ import ReferenceFieldsList from "metabase/reference/containers/ReferenceFieldsLi
 import ReferenceRevisionsList from "metabase/reference/containers/ReferenceRevisionsList.jsx";
 import ReferenceGettingStartedGuide from "metabase/reference/containers/ReferenceGettingStartedGuide.jsx";
 
-import Navbar from "metabase/components/Navbar.jsx";
+import Navbar from "metabase/nav/containers/Navbar.jsx";
 
 export default class Routes extends Component {
     // this lets us forward props we've injected from the Angular controller
@@ -60,7 +60,7 @@ export default class Routes extends Component {
             <ReduxRouter>
                 <Route component={({ children }) =>
                     <div className="spread flex flex-column">
-                        <Navbar className="flex-no-shrink" />
+                        <Navbar className="flex-no-shrink" onChangeLocation={this.props.onChangeLocation} />
                         {children}
                     </div>
                 }>

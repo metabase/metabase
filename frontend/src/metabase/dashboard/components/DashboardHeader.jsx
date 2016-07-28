@@ -76,8 +76,7 @@ export default class DashboardHeader extends Component {
 
     async onDelete() {
         await this.props.deleteDashboard(this.props.dashboard.id);
-        this.props.onDashboardDeleted(this.props.dashboard.id)
-        this.props.onChangeLocation("/")
+        this.props.onChangeLocation("/");
     }
 
     // 1. fetch revisions

@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from 'react';
+import { connect } from "react-redux";
 
 import OnClickOut from 'react-onclickout';
 
@@ -9,6 +10,19 @@ import Modal from "metabase/components/Modal.jsx";
 import _ from "underscore";
 import cx from "classnames";
 
+import { createDashboard, fetchDashboards } from "metabase/dashboard/dashboard";
+import { getDashboards } from "../selectors";
+
+const mapStateToProps = (state, props) => ({
+    dashboards: getDashboards(state)
+});
+
+const mapDispatchToProps = {
+    createDashboard,
+    fetchDashboards
+};
+
+@connect(mapStateToProps, mapDispatchToProps)
 export default class DashboardsDropdown extends Component {
     constructor(props, context) {
         super(props, context);
@@ -31,14 +45,25 @@ export default class DashboardsDropdown extends Component {
     }
 
     static propTypes = {
-        createDashboardFn: PropTypes.func.isRequired,
-        dashboards: PropTypes.array.isRequired
+        dashboards: PropTypes.array.isRequired,
+        createDashboard: PropTypes.func.isRequired,
+        fetchDashboards: PropTypes.func.isRequired,
     };
 
-    async onCreateDashboard(newDashboard) {
-        let { createDashboardFn } = this.props;
+    componentWillMount() {
+        this.props.fetchDashboards();
+    }
 
-        await createDashboardFn(newDashboard);
+    async onCreateDashboard(newDashboard) {
+        let { createDashboard } = this.props;
+
+        try {
+            let action = await createDashboard(newDashboard, true);
+            // FIXME: this doesn't feel right...
+            this.props.onChangeLocation(`/dash/${action.payload.id}`);
+        } catch (e) {
+            console.log("createDashboard failed", e);
+        }
 
         // close modal and add new dash to our dashboards list
         this.setState({

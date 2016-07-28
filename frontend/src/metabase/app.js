@@ -24,7 +24,6 @@ import { combineReducers } from "redux";
 import { reducer as form } from "redux-form";
 import { reduxReactRouter, routerStateReducer } from "redux-router";
 
-import Navbar from "./components/Navbar.jsx";
 import Routes from "./Routes.jsx";
 
 import auth from "metabase/auth/auth";
@@ -300,62 +299,6 @@ angular.module('metabase', [
         });
     }
 ])
-.controller('Nav', ['$scope', '$routeParams', '$location', '$rootScope', 'AppState', 'Dashboard',
-    function($scope, $routeParams, $location, $rootScope, AppState, Dashboard) {
-
-        function refreshDashboards() {
-            if (AppState.model.currentUser) {
-                Dashboard.list({ f: "all" }, function (dashes) {
-                    $scope.dashboards = dashes;
-                }, function (error) {
-                    console.log('error getting dahsboards list', error);
-                });
-            }
-        }
-
-        $scope.Navbar = Navbar;
-        $scope.location = $location;
-
-        $scope.dashboards = [];
-        $scope.createDashboardFn = async function(newDashboard) {
-            var dashboard = await Dashboard.create(newDashboard).$promise;
-            $rootScope.$broadcast("dashboard:create", dashboard.id);
-            $location.path("/dash/" + dashboard.id);
-
-            // this is important because it allows our caller to perform any of their own actions after the promis resolves
-            return dashboard;
-        };
-
-        $scope.$on("dashboard:create", function(event, dashboardId) {
-            refreshDashboards();
-        });
-
-        $scope.$on("dashboard:delete", function(event, dashboardId) {
-            refreshDashboards();
-        });
-
-        $scope.$on("dashboard:update", function(event, dashboardId) {
-            refreshDashboards();
-        });
-
-        $scope.$on("appstate:user", function(event, dashboardId) {
-            refreshDashboards();
-        });
-
-        $scope.$on("appstate:login", function(event, dashboardId) {
-            refreshDashboards();
-        });
-
-        $scope.$on("appstate:logout", function(event, dashboardId) {
-            $scope.dashboards = [];
-        });
-
-        // always initialize with a fresh listing
-        refreshDashboards();
-    }
-]);
-
-
 
 
 // async function refreshCurrentUser() {
