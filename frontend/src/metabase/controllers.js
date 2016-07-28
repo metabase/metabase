@@ -1,16 +1,13 @@
 
 angular
 .module('metabase.controllers', ['metabase.services'])
-.controller('Metabase', ['$scope', '$location', 'MetabaseCore', 'AppState', function($scope, $location, MetabaseCore, AppState) {
+.controller('Metabase', ['$scope', '$location', 'AppState', function($scope, $location, AppState) {
 
     var clearState = function() {
         $scope.siteName = undefined;
         $scope.user = undefined;
         $scope.userIsSuperuser = false;
     };
-
-    // make our utilities object available throughout the application
-    $scope.utils = MetabaseCore;
 
     // current User
     $scope.user = undefined;

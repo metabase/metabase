@@ -2,7 +2,6 @@ import _ from "underscore";
 
 import MetabaseAnalytics from 'metabase/lib/analytics';
 import MetabaseCookies from 'metabase/lib/cookies';
-import * as MetabaseCore from 'metabase/lib/core';
 import MetabaseSettings from 'metabase/lib/settings';
 
 
@@ -222,15 +221,6 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
     }
 ]);
 
-MetabaseServices.service('MetabaseCore', ['User', function(User) {
-    // this just makes it easier to access the current user
-    this.currentUser = User.current;
-
-    // copy over MetabaseCore properties and functions
-    angular.forEach(MetabaseCore, (value, key) => this[key] = value);
-}]);
-
-
 // API Services
 var CoreServices = angular.module('metabase.core.services', ['ngResource', 'ngCookies']);
 
@@ -375,7 +365,7 @@ CoreServices.factory('Slack', ['$resource', function($resource) {
     });
 }]);
 
-CoreServices.factory('Metabase', ['$resource', '$cookies', 'MetabaseCore', function($resource, $cookies, MetabaseCore) {
+CoreServices.factory('Metabase', ['$resource', '$cookies', function($resource, $cookies) {
     return $resource('/api/meta', {}, {
         db_list: {
             url: '/api/database/',
