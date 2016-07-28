@@ -123,101 +123,22 @@ angular.module('metabase', [
         }
     };
 
-    $routeProvider.when('/', route);
-
     $routeProvider.when('/admin/', { redirectTo: () => ('/admin/settings') });
-    $routeProvider.when('/admin/databases', route);
-    $routeProvider.when('/admin/databases/create', route);
-    $routeProvider.when('/admin/databases/:databaseId', route);
-    $routeProvider.when('/admin/datamodel/database', route);
-    $routeProvider.when('/admin/datamodel/database/:databaseId', route);
-    $routeProvider.when('/admin/datamodel/database/:databaseId/:mode', route);
-    $routeProvider.when('/admin/datamodel/database/:databaseId/:mode/:tableId', route);
-    $routeProvider.when('/admin/datamodel/metric', route);
-    $routeProvider.when('/admin/datamodel/metric/:segmentId', route);
-    $routeProvider.when('/admin/datamodel/segment', route);
-    $routeProvider.when('/admin/datamodel/segment/:segmentId', route);
-    $routeProvider.when('/admin/datamodel/:objectType/:objectId/revisions', route);
-    $routeProvider.when('/admin/people/', route);
-    $routeProvider.when('/admin/settings/', route);
-
-    $routeProvider.when('/reference', route);
-    $routeProvider.when('/reference/guide', route);
-    $routeProvider.when('/reference/metrics', route);
-    $routeProvider.when('/reference/metrics/:metricId', route);
-    $routeProvider.when('/reference/metrics/:metricId/questions', route);
-    $routeProvider.when('/reference/metrics/:metricId/questions/:cardId', route);
-    $routeProvider.when('/reference/metrics/:metricId/revisions', route);
-    $routeProvider.when('/reference/segments', route);
-    $routeProvider.when('/reference/segments/:segmentId', route);
-    $routeProvider.when('/reference/segments/:segmentId/fields', route);
-    $routeProvider.when('/reference/segments/:segmentId/fields/:fieldId', route);
-    $routeProvider.when('/reference/segments/:segmentId/questions', route);
-    $routeProvider.when('/reference/segments/:segmentId/questions/:cardId', route);
-    $routeProvider.when('/reference/segments/:segmentId/revisions', route);
-    $routeProvider.when('/reference/databases', route);
-    $routeProvider.when('/reference/databases/:databaseId', route);
-    $routeProvider.when('/reference/databases/:databaseId/tables', route);
-    $routeProvider.when('/reference/databases/:databaseId/tables/:tableId', route);
-    $routeProvider.when('/reference/databases/:databaseId/tables/:tableId/fields', route);
-    $routeProvider.when('/reference/databases/:databaseId/tables/:tableId/fields/:fieldId', route);
-    $routeProvider.when('/reference/databases/:databaseId/tables/:tableId/questions', route);
-    $routeProvider.when('/reference/databases/:databaseId/tables/:tableId/questions/:cardId', route);
-
     $routeProvider.when('/auth/', { redirectTo: () => ('/auth/login') });
-    $routeProvider.when('/auth/forgot_password', route);
-    $routeProvider.when('/auth/login', route);
-    $routeProvider.when('/auth/logout', route);
-    $routeProvider.when('/auth/reset_password/:token', route);
-
     $routeProvider.when('/card/', { redirectTo: () => ("/questions/all") });
-    $routeProvider.when('/card/:cardId', route);
     $routeProvider.when('/card/:cardId/:serializedCard', { redirectTo: (routeParams) => ("/card/"+routeParams.cardId+"#"+routeParams.serializedCard) });
-
-    $routeProvider.when('/dash/:dashboardId', route);
-
-    $routeProvider.when('/pulse/', route);
-    $routeProvider.when('/pulse/create', route);
-    $routeProvider.when('/pulse/:pulseId', route);
-
-    $routeProvider.when('/q', route);
     $routeProvider.when('/q/:serializedCard', { redirectTo: (routeParams) => ("/q#"+routeParams.serializedCard) });
-
-    $routeProvider.when('/questions', route);
-    $routeProvider.when('/questions/edit/:section', route);
-    $routeProvider.when('/questions/:section', route);
-    $routeProvider.when('/questions/:section/:slug', route);
-
-    $routeProvider.when('/setup/', route);
-
-    $routeProvider.when('/unauthorized/', route);
-    $routeProvider.when('/user/edit_current', route);
 
     $routeProvider.otherwise(route);
 }])
-.controller('AppController', ['$scope', '$location', '$route', '$routeParams', '$rootScope', '$timeout', 'ipCookie', 'AppState',
-    function($scope, $location, $route, $routeParams, $rootScope, $timeout, ipCookie, AppState) {
+.controller('AppController', ['$scope', '$location', '$route', '$rootScope', '$timeout', 'ipCookie', 'AppState',
+    function($scope, $location, $route, $rootScope, $timeout, ipCookie, AppState) {
         const props = {
             onChangeLocation(url) {
                 $scope.$apply(() => $location.url(url));
             },
             refreshSiteSettings() {
                 $scope.$apply(() => AppState.refreshSiteSettings());
-            },
-            setSessionFn(sessionId) {
-                // TODO - this session cookie code needs to be somewhere easily reusable
-                var isSecure = ($location.protocol() === "https") ? true : false;
-                ipCookie('metabase.SESSION_ID', sessionId, {
-                    path: '/',
-                    expires: 14,
-                    secure: isSecure
-                });
-
-                // send a login notification event
-                $scope.$emit('appstate:login', sessionId);
-
-                // this is ridiculously stupid.  we have to wait (300ms) for the cookie to actually be set in the browser :(
-                return $timeout(function(){}, 1000);
             },
             updateUrl: (card, isDirty=false, replaceState=false) => {
                 if (!card) {
@@ -281,21 +202,7 @@ angular.module('metabase', [
         // HACK: prevent reloading controllers as the URL changes
         let route = $route.current;
         $scope.$on('$locationChangeSuccess', function (event) {
-            let newParams = $route.current.params;
-            let oldParams = route.params;
-
-            if ($route.current.$$route.controller === 'AppController') {
-                $route.current = route;
-
-                angular.forEach(oldParams, function(value, key) {
-                    delete $route.current.params[key];
-                    delete $routeParams[key];
-                });
-                angular.forEach(newParams, function(value, key) {
-                    $route.current.params[key] = value;
-                    $routeParams[key] = value;
-                });
-            }
+            $route.current = route;
         });
     }
 ])

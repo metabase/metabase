@@ -19,9 +19,7 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
         var service = {
 
             model: {
-                setupToken: null,
-                currentUser: null,
-                requestedUrl: null
+                currentUser: null
             },
 
             init: function() {
@@ -133,7 +131,6 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
                     if ($location.path().indexOf('/auth/') !== 0 && $location.path().indexOf('/setup/') !== 0) {
                         // if the user is asking for a url outside of /auth/* then record the url then send them
                         // to login page, otherwise we will let the user continue on to their requested page
-                        service.model.requestedUrl = $location.path();
                         $location.path('/auth/login');
                     }
 
@@ -149,15 +146,6 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
 
                 }
             },
-
-            redirectAfterLogin: function() {
-                if (service.model.requestedUrl) {
-                    $location.path(service.model.requestedUrl);
-                    delete service.model.requestedUrl;
-                } else {
-                    $location.path('/');
-                }
-            }
         };
 
         // listen for location changes and use that as a trigger for page view tracking

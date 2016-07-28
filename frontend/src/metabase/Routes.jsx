@@ -108,13 +108,13 @@ export default class Routes extends Component {
                         <Route path="databases/:databaseId/tables/:tableId/questions" component={ReferenceEntityList} />
                     </Route>
 
-                    <Route path="/auth/forgot_password" component={ForgotPasswordApp} />
-                    <Route path="/auth/login" component={this._forwardProps(LoginApp, ["onChangeLocation", "setSessionFn"])} />
-                    <Route path="/auth/logout" component={this._forwardProps(LogoutApp, ["onChangeLocation"])} />
-                    <Route path="/auth/reset_password/:token" component={this._forwardProps(PasswordResetApp, ["onChangeLocation"])} />
-                    <Route path="/auth/google_no_mb_account" component={GoogleNoAccount} />
-
-                    <Route path="/card/:cardId" component={this._forwardProps(QueryBuilder, ["onChangeLocation", "updateUrl"])} />
+                    <Route path="/auth">
+                        <Route path="forgot_password" component={ForgotPasswordApp} />
+                        <Route path="login" component={this._forwardProps(LoginApp, ["onChangeLocation"])} />
+                        <Route path="logout" component={this._forwardProps(LogoutApp, ["onChangeLocation"])} />
+                        <Route path="reset_password/:token" component={this._forwardProps(PasswordResetApp, ["onChangeLocation"])} />
+                        <Route path="google_no_mb_account" component={GoogleNoAccount} />
+                    </Route>
 
                     <Route path="/dash/:dashboardId" component={this._forwardProps(DashboardApp, ["onChangeLocation"])} />
 
@@ -122,6 +122,7 @@ export default class Routes extends Component {
                     <Route path="/pulse/create" component={this._forwardProps(PulseEditApp, ["onChangeLocation"])} />
                     <Route path="/pulse/:pulseId" component={this._forwardProps(PulseEditApp, ["onChangeLocation"])} />
 
+                    <Route path="/card/:cardId" component={this._forwardProps(QueryBuilder, ["onChangeLocation", "updateUrl"])} />
                     <Route path="/q" component={this._forwardProps(QueryBuilder, ["onChangeLocation", "updateUrl"])} />
 
                     <Route path="/questions" component={EntityBrowser}>
@@ -130,7 +131,7 @@ export default class Routes extends Component {
                         <Route path=":section/:slug" component={EntityList} />
                     </Route>
 
-                    <Route path="/setup" component={this._forwardProps(SetupApp, ["setSessionFn"])} />
+                    <Route path="/setup" component={SetupApp} />
 
                     <Route path="/user/edit_current" component={UserSettingsApp} />
 
