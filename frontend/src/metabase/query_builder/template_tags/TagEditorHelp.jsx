@@ -92,7 +92,7 @@ const TagEditorHelp = ({ setQuery, sampleDatasetId }) => {
                 you should link that variable to a specific column. Dimensions should be used inside
                 of a "WHERE" clause.
             </p>
-            <TagExample datasetQuery={EXAMPLES.dimension} setQuery={setQueryWithSampleDatasetId} />
+            <TagExample datasetQuery={EXAMPLES.dimension} />
 
             <h4>Optional Clauses</h4>
             <p>
