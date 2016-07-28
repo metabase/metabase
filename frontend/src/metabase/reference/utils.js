@@ -1,5 +1,7 @@
 import i from "icepick";
 
+import { startNewCard, serializeCardForUrl } from "metabase/lib/card";
+
 export const tryFetchData = async (props) => {
     const {
         section,
@@ -126,3 +128,29 @@ export const separateTablesBySchema = (
                 ] :
                 createListItem(table, index, section);
     });
+
+const getQuestion = ({dbId, tableId, fieldId, metricId, segmentId, getCount, visualization}) => {
+    const newQuestion = startNewCard('query', dbId, tableId);
+
+    // consider taking a look at Ramda as a possible underscore alternative?
+    // http://ramdajs.com/0.21.0/index.html
+    const question = i.chain(newQuestion)
+        .updateIn(
+            ['dataset_query', 'query', 'aggregation'],
+            aggregation => getCount ? ['count'] : aggregation
+        )
+        .updateIn(['display'], display => visualization || display)
+        .value();
+
+    if (fieldId) {
+        return i.assocIn(question, ['dataset_query', 'query', 'breakout'], [fieldId]);
+    }
+
+    if (segmentId) {
+        return i.assocIn(question, ['dataset_query', 'query', 'filter'], ['AND', ['SEGMENT', segmentId]]);
+    }
+
+    return question;
+};
+
+export const getQuestionUrl = getQuestionArgs => `/q#${serializeCardForUrl(getQuestion(getQuestionArgs))}`;

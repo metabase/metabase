@@ -3,33 +3,7 @@ import i from "icepick";
 
 import Query, { AggregationClause } from 'metabase/lib/query';
 import { titleize, humanize } from "metabase/lib/formatting";
-import { startNewCard, serializeCardForUrl } from "metabase/lib/card";
-
-const getQuestion = ({dbId, tableId, fieldId, metricId, segmentId, getCount, visualization}) => {
-    const newQuestion = startNewCard('query', dbId, tableId);
-
-    // consider taking a look at Ramda as a possible underscore alternative?
-    // http://ramdajs.com/0.21.0/index.html
-    const question = i.chain(newQuestion)
-        .updateIn(
-            ['dataset_query', 'query', 'aggregation'],
-            aggregation => getCount ? ['count'] : aggregation
-        )
-        .updateIn(['display'], display => visualization || display)
-        .value();
-
-    if (fieldId) {
-        return i.assocIn(question, ['dataset_query', 'query', 'breakout'], [fieldId]);
-    }
-
-    if (segmentId) {
-        return i.assocIn(question, ['dataset_query', 'query', 'filter'], ['AND', ['SEGMENT', segmentId]]);
-    }
-
-    return question;
-};
-
-const getQuestionUrl = getQuestionArgs => `/q#${serializeCardForUrl(getQuestion(getQuestionArgs))}`;
+import { getQuestionUrl } from "./utils";
 
 // there might be a better way to organize sections
 // it feels like I'm duplicating a lot of routing logic here
@@ -40,7 +14,7 @@ const referenceSections = {
         id: `/reference/guide`,
         name: "Understanding our data",
         breadcrumb: "Guide",
-        icon: "all"
+        icon: "reference"
     },
     [`/reference/metrics`]: {
         id: `/reference/metrics`,
@@ -103,7 +77,7 @@ const getMetricSections = (metric, table, user) => metric ? {
         update: 'updateMetric',
         type: 'metric',
         breadcrumb: `${metric.name}`,
-        fetch: {fetchMetrics: [], fetchTables: []},
+        fetch: {fetchMetricTable: [metric.id]},
         get: 'getMetric',
         icon: "document",
         headerIcon: "ruler",
@@ -130,7 +104,7 @@ const getMetricSections = (metric, table, user) => metric ? {
         type: 'questions',
         sidebar: 'Questions about this metric',
         breadcrumb: `${metric.name}`,
-        fetch: {fetchMetrics: [], fetchTables: [], fetchQuestions: []},
+        fetch: {fetchMetricTable: [metric.id], fetchQuestions: []},
         get: 'getMetricQuestions',
         icon: "all",
         headerIcon: "ruler",
@@ -178,7 +152,7 @@ const getSegmentSections = (segment, table, user) => segment ? {
             }
         ],
         breadcrumb: `${segment.name}`,
-        fetch: {fetchSegments: [], fetchTables: []},
+        fetch: {fetchSegmentTable: [segment.id]},
         get: 'getSegment',
         icon: "document",
         headerIcon: "segment",
@@ -220,7 +194,7 @@ const getSegmentSections = (segment, table, user) => segment ? {
         type: 'questions',
         sidebar: 'Questions about this segment',
         breadcrumb: `${segment.name}`,
-        fetch: {fetchSegments: [], fetchTables: [], fetchQuestions: []},
+        fetch: {fetchSegmentTable: [segment.id], fetchQuestions: []},
         get: 'getSegmentQuestions',
         icon: "all",
         headerIcon: "segment",

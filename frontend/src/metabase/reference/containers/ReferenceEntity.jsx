@@ -27,7 +27,8 @@ import RevisionMessageModal from "metabase/reference/components/RevisionMessageM
 import cx from "classnames";
 
 import {
-    tryUpdateData
+    tryUpdateData,
+    getQuestionUrl
 } from '../utils';
 
 import {
@@ -429,7 +430,18 @@ export default class ReferenceEntity extends Component {
                                                 <span className={D.detailName}>Fields you can group this metric by</span>
                                             </div>
                                             <div className={R.usefulQuestions}>
-
+                                                { console.log(table) || table && table.fields_lookup && Object.values(table.fields_lookup)
+                                                    .map((field, index, fields) =>
+                                                        <QueryButton
+                                                            key={field.id}
+                                                            className={cx("border-bottom", "pt1", "pb1")}
+                                                            iconClass={S.icon}
+                                                            text={field.display_name}
+                                                            icon="reference"
+                                                            link={`/reference/databases/${table.db_id}/tables/${table.id}/fields/${field.id}`}
+                                                        />
+                                                    )
+                                                }
                                             </div>
                                         </div>
                                     </div>

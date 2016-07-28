@@ -333,6 +333,16 @@ const revisions = handleActions({
 }, {});
 
 // for fetches with data dependencies in /reference
+const FETCH_METRIC_TABLE = "metabase/metadata/FETCH_METRIC_TABLE";
+export const fetchMetricTable = createThunkAction(FETCH_METRIC_TABLE, (metricId, reload = false) => {
+    return async (dispatch, getState) => {
+        await dispatch(fetchMetrics());
+        const metric = i.getIn(getState(), ['metadata', 'metrics', metricId]);
+        const tableId = metric.table_id;
+        await dispatch(fetchTableMetadata(tableId));
+    };
+});
+
 const FETCH_METRIC_REVISIONS = "metabase/metadata/FETCH_METRIC_REVISIONS";
 export const fetchMetricRevisions = createThunkAction(FETCH_METRIC_REVISIONS, (metricId, reload = false) => {
     return async (dispatch, getState) => {
@@ -354,6 +364,16 @@ export const fetchSegmentFields = createThunkAction(FETCH_SEGMENT_FIELDS, (segme
         const table = i.getIn(getState(), ['metadata', 'tables', tableId]);
         const databaseId = table.db_id;
         await dispatch(fetchDatabaseMetadata(databaseId));
+    };
+});
+
+const FETCH_SEGMENT_TABLE = "metabase/metadata/FETCH_SEGMENT_TABLE";
+export const fetchSegmentTable = createThunkAction(FETCH_SEGMENT_TABLE, (segmentId, reload = false) => {
+    return async (dispatch, getState) => {
+        await dispatch(fetchSegments());
+        const segment = i.getIn(getState(), ['metadata', 'segments', segmentId]);
+        const tableId = segment.table_id;
+        await dispatch(fetchTableMetadata(tableId));
     };
 });
 
