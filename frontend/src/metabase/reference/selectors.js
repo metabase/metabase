@@ -6,14 +6,15 @@ import { titleize, humanize } from "metabase/lib/formatting";
 import { startNewCard, serializeCardForUrl } from "metabase/lib/card";
 import { createQuery } from "metabase/lib/query";
 
-const getQuestion = ({dbId, tableId, metricId, segmentId, getCount}) => {
+const getQuestion = ({dbId, tableId, fieldId, metricId, segmentId, getCount}) => {
     const newQuestion = startNewCard('query', dbId, tableId);
+
     const question = getCount ?
         i.assocIn(newQuestion, ['dataset_query', 'query', 'aggregation'], ['count']) :
         newQuestion;
 
-    if (metricId) {
-        return i.assocIn(question, ['dataset_query', 'query', 'aggregation'], ['METRIC', metricId]);
+    if (fieldId) {
+        return i.assocIn(question, ['dataset_query', 'query', 'breakout'], [fieldId]);
     }
 
     if (segmentId) {
@@ -152,7 +153,7 @@ const getSegmentSections = (segment, table, user) => segment ? {
         type: 'segment',
         questions: [
             {
-                text: `Count of ${segment.name}`,
+                text: `Number of ${segment.name}`,
                 icon: { name: "number", scale: 1, viewBox: "8 8 16 16" },
                 link: getQuestionUrl({
                     dbId: table && table.db_id,
@@ -162,7 +163,7 @@ const getSegmentSections = (segment, table, user) => segment ? {
                 })
             },
             {
-                text: `See raw data for ${segment.name}`,
+                text: `See all ${segment.name}`,
                 icon: "table2",
                 link: getQuestionUrl({
                     dbId: table && table.db_id,
@@ -360,6 +361,27 @@ const getTableFieldSections = (database, table, field) => database && table && f
         name: 'Details',
         update: 'updateField',
         type: 'field',
+        questions: [
+            {
+                text: `Number of ${table.display_name} grouped by ${field.display_name}`,
+                icon: { name: "number", scale: 1, viewBox: "8 8 16 16" },
+                link: getQuestionUrl({
+                    dbId: database.id,
+                    tableId: table.id,
+                    fieldId: field.id,
+                    getCount: true
+                })
+            },
+            {
+                text: `All distinct values of ${field.display_name}`,
+                icon: "table2",
+                link: getQuestionUrl({
+                    dbId: database.id,
+                    tableId: table.id,
+                    fieldId: field.id
+                })
+            }
+        ],
         breadcrumb: `${field.display_name}`,
         fetch: {fetchDatabaseMetadata: [database.id]},
         get: "getField",
