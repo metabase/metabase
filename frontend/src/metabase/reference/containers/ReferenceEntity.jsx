@@ -287,6 +287,7 @@ export default class ReferenceEntity extends Component {
                                         id="name"
                                         name="Actual name in database"
                                         description={entity.name}
+                                        subtitleClass={R.tableActualName}
                                     />
                                 </li>
                             }
