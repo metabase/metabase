@@ -62,8 +62,11 @@ server_https () {
         # if ($redirect_https) {
         #   rewrite ^ https://$host$request_uri? permanent;
         # }
-        #
-        sed -i 's|location \/ {|location \/ {|\n\n set $redirect_https 1;\n if ($uri ~* "\/api\/health*") {\n set $redirect_https 0;\n }\n if ($http_x_forwarded_proto = "https") {\n set $redirect_https 0;\n }\n if ($redirect_https) {\n rewrite ^ https://$host$request_uri? permanent;\n }\n\n' elasticbeanstalk-nginx-docker-proxy.conf
+        # 
+        # This command syntax is only working on Linux.
+        sed -r -i'' -e "s|location / \{|location / {\n\n set \$redirect_https 1;\n if (\$uri ~* \"/api/health*\") {\n set \$redirect_https 0;\n }\n if (\$http_x_forwarded_proto = \"https\") {\n set \$redirect_https 0;\n }\n if (\$redirect_https) {\n rewrite ^ https://\$host\$request_uri? permanent;\n }\n\n|" elasticbeanstalk-nginx-docker-proxy.conf
+    fi
+}
 
 # download, install and configure papertrail
 install_papertrail () {
