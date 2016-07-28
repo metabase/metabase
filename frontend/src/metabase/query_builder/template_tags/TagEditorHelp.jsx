@@ -57,8 +57,9 @@ const TagExample = ({ datasetQuery, setQuery }) =>
                 <div
                     className="Button Button--small"
                     data-metabase-event="QueryBuilder;Template Tage Example Query Used"
-                    }}>
-                        Try it
+                    onClick={() => setQuery(datasetQuery, true)}
+                >
+                    Try it
                 </div>
             )}
         </p>
@@ -117,7 +118,7 @@ const TagEditorHelp = ({ setQuery, sampleDatasetId }) => {
             <TagExample datasetQuery={EXAMPLES.multipleOptional} setQuery={setQueryWithSampleDatasetId} />
 
             <p>
-                <a href="http://www.metabase.com/docs/latest/users-guide/start" target="_blank" data-metabase-event="QueryBuilder;Template Tag Documentation Click">Read the full documentation</a>
+                <a href="http://www.metabase.com/docs/latest/users-guide/start" target="_blank" onClick={() => MetabaseAnalytics.trackEvent('QueryBuilder', 'Template Tag Documentation Click') }>Read the full documentation</a>
             </p>
         </div>
     )
