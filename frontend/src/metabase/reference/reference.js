@@ -1,4 +1,5 @@
 import { handleActions, createAction } from 'metabase/lib/redux';
+import MetabaseAnalytics from 'metabase/lib/analytics';
 
 import i from 'icepick';
 
@@ -15,10 +16,14 @@ const END_LOADING = "metabase/reference/END_LOADING";
 export const endLoading = createAction(END_LOADING);
 
 const START_EDITING = "metabase/reference/START_EDITING";
-export const startEditing = createAction(START_EDITING);
+export const startEditing = createAction(START_EDITING, () => {
+    MetabaseAnalytics.trackEvent('Data Reference', 'Started Editing');
+});
 
 const END_EDITING = "metabase/reference/END_EDITING";
-export const endEditing = createAction(END_EDITING);
+export const endEditing = createAction(END_EDITING, () => {
+    MetabaseAnalytics.trackEvent('Data Reference', 'Ended Editing');
+});
 
 const initialState = {
     error: null,
