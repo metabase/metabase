@@ -78,7 +78,7 @@ const getMetricSections = (metric, table, user) => metric ? {
         questions: [
             {
                 text: `See raw data for ${metric.name}`,
-                icon: "illustration-icon-table",
+                icon: "table2",
                 link: `/q?table=${metric.table_id}&metric=${metric.id}`
             }
         ],
@@ -131,7 +131,7 @@ const getSegmentSections = (segment, table, user) => segment ? {
         questions: [
             {
                 text: `See raw data for ${segment.name}`,
-                icon: "illustration-icon-table",
+                icon: "table2",
                 link: `/q?table=${segment.table_id}&segment=${segment.id}`
             }
         ],
@@ -244,8 +244,13 @@ const getTableSections = (database, table) => database && table ? {
         type: 'table',
         questions: [
             {
+                text: `Count of ${table.display_name}`,
+                icon: { name: "number", scale: 1, viewBox: "8 8 16 16" },
+                link: `/q?table=${table.id}`
+            },
+            {
                 text: `See raw data for ${table.display_name}`,
-                icon: "illustration-icon-table",
+                icon: "table2",
                 link: `/q?table=${table.id}`
             }
         ],

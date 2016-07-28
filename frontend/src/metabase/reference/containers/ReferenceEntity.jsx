@@ -386,11 +386,9 @@ export default class ReferenceEntity extends Component {
                                             <div className={R.usefulQuestions}>
                                                 { section.questions.map((question, index, questions) =>
                                                     <QueryButton
-                                                        className={cx(
-                                                            index !== questions.length - 1 && "border-bottom",
-                                                            "pt1",
-                                                            "pb1"
-                                                        )}
+                                                        key={index}
+                                                        className={cx("border-bottom", "pt1", "pb1")}
+                                                        iconClass={S.icon}
                                                         {...question}
                                                     />
                                                 )}
