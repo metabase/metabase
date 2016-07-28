@@ -56,8 +56,13 @@ const TagExample = ({ datasetQuery, setQuery }) =>
             { setQuery && (
                 <div
                     className="Button Button--small"
+<<<<<<< HEAD
                     data-metabase-event="QueryBuilder;Template Tage Example Query Used"
                     onClick={() => setQuery(datasetQuery, true)}
+=======
+                    data-metabase-event="QueryBuilder;Template Tag Example Query Used"
+                    onClick={ () => setQuery(datasetQuery, true) }
+>>>>>>> origin/master
                 >
                     Try it
                 </div>
@@ -101,7 +106,7 @@ const TagEditorHelp = ({ setQuery, sampleDatasetId }) => {
                 you should link that variable to a specific column. Dimensions should be used inside
                 of a "WHERE" clause.
             </p>
-            <TagExample datasetQuery={EXAMPLES.dimension} setQuery={setQueryWithSampleDatasetId} />
+            <TagExample datasetQuery={EXAMPLES.dimension} />
 
             <h4>Optional Clauses</h4>
             <p>
@@ -118,7 +123,7 @@ const TagEditorHelp = ({ setQuery, sampleDatasetId }) => {
             <TagExample datasetQuery={EXAMPLES.multipleOptional} setQuery={setQueryWithSampleDatasetId} />
 
             <p>
-                <a href="http://www.metabase.com/docs/latest/users-guide/start" target="_blank" onClick={() => MetabaseAnalytics.trackEvent('QueryBuilder', 'Template Tag Documentation Click') }>Read the full documentation</a>
+                <a href="http://www.metabase.com/docs/latest/users-guide/start" target="_blank" data-metabase-event="QueryBuilder;Template Tag Documentation Click">Read the full documentation</a>
             </p>
         </div>
     )

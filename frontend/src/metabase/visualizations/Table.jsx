@@ -3,8 +3,8 @@ import React, { Component, PropTypes } from "react";
 import TableInteractive from "./TableInteractive.jsx";
 import TableSimple from "./TableSimple.jsx";
 
-import Query from "metabase/lib/query";
 import * as DataGrid from "metabase/lib/data_grid";
+import _ from "underscore";
 
 export default class Bar extends Component {
     static displayName = "Table";
@@ -25,37 +25,48 @@ export default class Bar extends Component {
         super(props, context);
 
         this.state = {
-            data: null,
-            isPivoted: null
+            data: null
         };
     }
 
     componentWillMount() {
-        this.componentWillReceiveProps(this.props);
+        this._updateData(this.props);
     }
 
     componentWillReceiveProps(newProps) {
         // TODO: remove use of deprecated "card" and "data" props
-        if (newProps.data !== this.state.rawData && newProps.data) {
-            // check if the data is pivotable (2 groupings + 1 agg != 'rows')
-            const isPivoted = !!(
-                Query.isStructured(newProps.card.dataset_query) &&
-                !Query.isBareRowsAggregation(newProps.card.dataset_query.query) &&
-                newProps.data.cols.length === 3
-            );
-            const data = isPivoted ? DataGrid.pivot(newProps.data) : newProps.data;
+        if (newProps.data !== this.props.data || !_.isEqual(newProps.settings, this.props.settings)) {
+            this._updateData(newProps);
+        }
+    }
+
+    _updateData({ data, settings }) {
+        if (settings["table.pivot"]) {
             this.setState({
-                isPivoted: isPivoted,
-                data: data,
-                rawData: newProps.data
+                data: DataGrid.pivot(data)
+            });
+        } else {
+            const { cols, rows, columns } = data;
+            const colIndexes = settings["table.columns"]
+                .filter(f => f.enabled)
+                .map(f => _.findIndex(cols, (c) => c.name === f.name))
+                .filter(i => i >= 0 && i < cols.length);
+
+            this.setState({
+                data: {
+                    cols: colIndexes.map(i => cols[i]),
+                    columns: colIndexes.map(i => columns[i]),
+                    rows: rows.map(row => colIndexes.map(i => row[i]))
+                },
             });
         }
     }
 
     render() {
-        let { card, cellClickedFn, setSortFn, isDashboard } = this.props;
-        const { isPivoted, data } = this.state;
+        const { card, cellClickedFn, setSortFn, isDashboard, settings } = this.props;
+        const { data } = this.state;
         const sort = card.dataset_query.query && card.dataset_query.query.order_by || null;
+        const isPivoted = settings["table.pivot"];
         const TableComponent = isDashboard ? TableSimple : TableInteractive;
         return (
             <TableComponent

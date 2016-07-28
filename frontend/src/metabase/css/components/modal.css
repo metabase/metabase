@@ -10,6 +10,10 @@
 .Modal.Modal--medium  { width: 65%; }
 .Modal.Modal--wide    { width: 85%; }
 
+.Modal.Modal--tall {
+  min-height: 85%;
+}
+
 .Modal-backdrop {
     background-color: rgba(255, 255, 255, 0.6);
 }

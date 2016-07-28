@@ -6,9 +6,14 @@
 
 var http = require("http");
 var httpProxy = require("http-proxy");
+var url = require("url");
 
 var backendTarget = process.argv[2] || "https://staging.metabase.com/";
 var frontendTarget = process.argv[3] || "http://127.0.0.1:3000/";
+
+var backendHost = url.parse(backendTarget).host;
+var frontendHost = url.parse(frontendTarget).host;
+
 var listenPort = parseInt(process.argv[4] || "3001");
 
 var proxy = httpProxy.createProxyServer({ secure: false });
@@ -16,9 +21,11 @@ var proxy = httpProxy.createProxyServer({ secure: false });
 var server = http.createServer(function(req, res) {
     if (/^\/app\//.test(req.url)) {
         console.log("FRONTEND: " + req.url);
+        req.headers.host = frontendHost;
         proxy.web(req, res, { target: frontendTarget });
     } else {
         console.log("BACKEND:  " + req.url);
+        req.headers.host = backendHost;
         proxy.web(req, res, { target: backendTarget });
     }
 });

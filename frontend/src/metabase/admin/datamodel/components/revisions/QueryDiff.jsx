@@ -14,8 +14,10 @@ export default class QueryDiff extends Component {
     };
 
     render() {
-        let { diff: { before, after }, tableMetadata} = this.props;
-        let defintion = after || before;
+        const { diff: { before, after }, tableMetadata} = this.props;
+        const defintion = after || before;
+
+        const filters = Query.getFilters(defintion);
 
         return (
             <LoadingAndErrorWrapper loading={!tableMetadata}>
@@ -27,11 +29,13 @@ export default class QueryDiff extends Component {
                             tableMetadata={tableMetadata}
                         />
                     }
-                    <FilterList
-                        filters={Query.getFilters(defintion)}
-                        tableMetadata={tableMetadata}
-                        maxDisplayValues={Infinity}
-                    />
+                    { filters.length > 0 &&
+                        <FilterList
+                            filters={filters}
+                            tableMetadata={tableMetadata}
+                            maxDisplayValues={Infinity}
+                        />
+                    }
                 </div>
             }
             </LoadingAndErrorWrapper>

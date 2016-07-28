@@ -6,9 +6,9 @@
 }
 
 :local(.detail) {
-    composes: flex align-center from "style";
+    composes: flex align-center pl2 from "style";
     composes: relative from "style";
-    padding-left: 70px;
+    margin-left: 48px;
 }
 
 :local(.detailBody) {

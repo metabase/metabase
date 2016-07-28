@@ -46,4 +46,5 @@
    :report_timezone       (setting/get :report-timezone)
    :timezone_short        (short-timezone-name (setting/get :report-timezone))
    :has_sample_dataset    (db/exists? 'Database, :is_sample true)
-   :google_auth_client_id (setting/get :google-auth-client-id)})
+   :google_auth_client_id (setting/get :google-auth-client-id)
+   :google_maps_api_key   (setting/get :google-maps-api-key)})

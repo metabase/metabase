@@ -107,7 +107,7 @@ export const isSummable = isFieldType.bind(null, SUMMABLE);
 export const isCategory = isFieldType.bind(null, CATEGORY);
 
 export const isDimension = (col) => (col && col.source !== "aggregation");
-export const isMetric    = (col) => (col && col.source !== "breakout") && isNumeric(col);
+export const isMetric    = (col) => (col && col.source !== "breakout") && isSummable(col);
 
 export const isNumericBaseType = (field) => TYPES[NUMBER].base
     .some(type => type === field.base_type);
@@ -507,7 +507,8 @@ export const ICON_MAPPING = {
     [LOCATION]: 'location',
     [COORDINATE]: 'location',
     [STRING]: 'string',
-    [NUMBER]: 'int'
+    [NUMBER]: 'int',
+    [BOOLEAN]: 'io'
 };
 
 export function getIconForField(field) {

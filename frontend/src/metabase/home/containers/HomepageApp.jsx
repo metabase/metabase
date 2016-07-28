@@ -12,15 +12,14 @@ import NewUserOnboardingModal from '../components/NewUserOnboardingModal.jsx';
 import NextStep from "../components/NextStep.jsx";
 
 import * as homepageActions from "../actions";
-
+import { getActivity, getRecentViews, getUser, getShowOnboarding } from "../selectors";
 
 const mapStateToProps = (state, props) => {
     return {
-        activity:       state.home && state.home.activity,
-        recentViews:    state.home && state.home.recentViews,
-        user:           state.currentUser,
-        showOnboarding: state.router && state.router.location && "new" in state.router.location.query
-        // onChangeLocation
+        activity:       getActivity(state),
+        recentViews:    getRecentViews(state),
+        user:           getUser(state),
+        showOnboarding: getShowOnboarding(state)
     }
 }
 
