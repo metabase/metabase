@@ -397,6 +397,20 @@ export default class ReferenceEntity extends Component {
                                     </div>
                                 </li>
                             }
+                            { section.type === 'metric' &&
+                                <li className="relative">
+                                    <div className={cx(D.detail)}>
+                                        <div className={D.detailBody}>
+                                            <div className={D.detailTitle}>
+                                                <span className={D.detailName}>Fields you can group this metric by</span>
+                                            </div>
+                                            <div className={R.usefulQuestions}>
+
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+                            }
                         </List>
                     </div>
                 }

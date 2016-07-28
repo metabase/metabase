@@ -5,12 +5,18 @@ import Query, { AggregationClause } from 'metabase/lib/query';
 import { titleize, humanize } from "metabase/lib/formatting";
 import { startNewCard, serializeCardForUrl } from "metabase/lib/card";
 
-const getQuestion = ({dbId, tableId, fieldId, metricId, segmentId, getCount}) => {
+const getQuestion = ({dbId, tableId, fieldId, metricId, segmentId, getCount, visualization}) => {
     const newQuestion = startNewCard('query', dbId, tableId);
 
-    const question = getCount ?
-        i.assocIn(newQuestion, ['dataset_query', 'query', 'aggregation'], ['count']) :
-        newQuestion;
+    // consider taking a look at Ramda as a possible underscore alternative?
+    // http://ramdajs.com/0.21.0/index.html
+    const question = i.chain(newQuestion)
+        .updateIn(
+            ['dataset_query', 'query', 'aggregation'],
+            aggregation => getCount ? ['count'] : aggregation
+        )
+        .updateIn(['display'], display => visualization || display)
+        .value();
 
     if (fieldId) {
         return i.assocIn(question, ['dataset_query', 'query', 'breakout'], [fieldId]);
@@ -384,12 +390,24 @@ const getTableFieldSections = (database, table, field) => database && table && f
         questions: [
             {
                 text: `Number of ${table.display_name} grouped by ${field.display_name}`,
-                icon: { name: "number", scale: 1, viewBox: "8 8 16 16" },
+                icon: { name: "bar", scale: 1, viewBox: "8 8 16 16" },
                 link: getQuestionUrl({
                     dbId: database.id,
                     tableId: table.id,
                     fieldId: field.id,
-                    getCount: true
+                    getCount: true,
+                    visualization: 'bar'
+                })
+            },
+            {
+                text: `Number of ${table.display_name} grouped by ${field.display_name}`,
+                icon: { name: "pie", scale: 1, viewBox: "8 8 16 16" },
+                link: getQuestionUrl({
+                    dbId: database.id,
+                    tableId: table.id,
+                    fieldId: field.id,
+                    getCount: true,
+                    visualization: 'pie'
                 })
             },
             {
