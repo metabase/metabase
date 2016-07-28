@@ -109,11 +109,11 @@ export default class ReferenceEntityList extends Component {
                 )}
             >
                 { isEditing &&
-                    <div className={cx("EditHeader wrapper py1", R.subheader)}>
+                    <div className={cx("EditHeader wrapper py1", R.editHeader)}>
                         <div>
                             You are editing this page
                         </div>
-                        <div className={R.subheaderButtons}>
+                        <div className={R.editHeaderButtons}>
                             <button
                                 className={cx("Button", "Button--primary", "Button--white", "Button--small", R.saveButton)}
                                 type="submit"

@@ -1,6 +1,7 @@
 :root {
     --title-color: #606E7B;
-    --subheader-color: #6CAFED;
+    --edit-header-color: #6CAFED;
+    --icon-width: 48px;
 }
 
 :local(.guideEmpty) {
@@ -35,37 +36,55 @@
 }
 
 :local(.subheader) {
+    padding-left: var(--icon-width);
+}
+
+:local(.subheaderBody) {
+    composes: ml2 from "style";
+}
+
+:local(.subheaderLink) {
+    color: var(--primary-button-bg-color);
+    text-decoration: none;
+}
+
+:local(.subheaderLink):hover {
+    color: color(var(--primary-button-border-color) shade(10%));
+    transition: color .3s linear;
+}
+
+:local(.editHeader) {
     composes: text-white flex align-center from "style";
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     height: 43px;
-    background-color: var(--subheader-color);
+    background-color: var(--edit-header-color);
 }
 
-:local(.subheaderButtons) {
+:local(.editHeaderButtons) {
     composes: flex-align-right from "style";
 }
 
-:local(.subheaderButton) {
+:local(.editHeaderButton) {
     border: none;
-    color: var(--subheader-color);
+    color: var(--edit-header-color);
 }
 
 :local(.columnHeader) {
     composes: flex flex-full pl2 from "style";
-    margin-left: 48px;
+    margin-left: var(--icon-width);
     padding-top: 20px;
     padding-bottom: 20px;
 }
 
 :local(.saveButton) {
-    composes: subheaderButton;
+    composes: editHeaderButton;
 }
 
 :local(.cancelButton) {
-    composes: subheaderButton;
+    composes: editHeaderButton;
     opacity: 0.5;
 }
 

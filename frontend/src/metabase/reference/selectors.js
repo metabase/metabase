@@ -473,13 +473,13 @@ const getTable = createSelector(
     [getTableId, getTables],
     (tableId, tables) => tables[tableId] || { id: tableId }
 );
-const getTableBySegment = createSelector(
+export const getTableBySegment = createSelector(
     [getSegment, getTables],
-    (segment, tables) => segment ? tables[segment.table_id] : {}
+    (segment, tables) => segment && segment.table_id ? tables[segment.table_id] : {}
 );
-const getTableByMetric = createSelector(
+export const getTableByMetric = createSelector(
     [getMetric, getTables],
-    (metric, tables) => metric ? tables[metric.table_id] : {}
+    (metric, tables) => metric && metric.table_id ? tables[metric.table_id] : {}
 );
 
 export const getFieldId = (state) => Number.parseInt(state.router.params.fieldId);

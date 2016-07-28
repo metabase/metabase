@@ -19,8 +19,7 @@
 }
 
 :local(.detailTitle) {
-    composes: text-bold from "style";
-    composes: inline-block from "style";
+    composes: text-bold inline-block from "style";
     color: var(--title-color);
     font-size: 18px;
 }

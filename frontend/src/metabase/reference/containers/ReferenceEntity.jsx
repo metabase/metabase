@@ -33,6 +33,8 @@ import {
 import {
     getSection,
     getData,
+    getTableByMetric,
+    getTableBySegment,
     getError,
     getLoading,
     getUser,
@@ -47,20 +49,32 @@ import {
 import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';
 
-const mapStateToProps = (state, props) => ({
-    section: getSection(state),
-    entity: getData(state) || {},
-    loading: getLoading(state),
-    // naming this 'error' will conflict with redux form
-    loadingError: getError(state),
-    user: getUser(state),
-    foreignKeys: getForeignKeys(state),
-    isEditing: getIsEditing(state),
-    hasSingleSchema: getHasSingleSchema(state),
-    hasQuestions: getHasQuestions(state),
-    hasDisplayName: getHasDisplayName(state),
-    hasRevisionHistory: getHasRevisionHistory(state)
-});
+const mapStateToProps = (state, props) => {
+    const section = getSection(state);
+    // a bit hacky
+    // will have to do until we refactor to use 1 container per section type
+    const table = section.type === 'metric' ?
+        getTableByMetric(state) :
+        section.type === 'segment' ?
+            getTableBySegment(state) :
+            {};
+
+    return {
+        section,
+        entity: getData(state) || {},
+        table,
+        loading: getLoading(state),
+        // naming this 'error' will conflict with redux form
+        loadingError: getError(state),
+        user: getUser(state),
+        foreignKeys: getForeignKeys(state),
+        isEditing: getIsEditing(state),
+        hasSingleSchema: getHasSingleSchema(state),
+        hasQuestions: getHasQuestions(state),
+        hasDisplayName: getHasDisplayName(state),
+        hasRevisionHistory: getHasRevisionHistory(state)
+    };
+};
 
 const mapDispatchToProps = {
     ...metadataActions,
@@ -82,6 +96,7 @@ export default class ReferenceEntity extends Component {
     static propTypes = {
         style: PropTypes.object.isRequired,
         entity: PropTypes.object.isRequired,
+        table: PropTypes.object,
         user: PropTypes.object.isRequired,
         foreignKeys: PropTypes.object,
         isEditing: PropTypes.bool,
@@ -110,6 +125,7 @@ export default class ReferenceEntity extends Component {
             style,
             section,
             entity,
+            table,
             loadingError,
             loading,
             user,
@@ -134,11 +150,11 @@ export default class ReferenceEntity extends Component {
                 onSubmit={onSubmit}
             >
                 { isEditing &&
-                    <div className={cx("EditHeader wrapper py1", R.subheader)}>
+                    <div className={cx("EditHeader wrapper py1", R.editHeader)}>
                         <div>
                             You are editing this page
                         </div>
-                        <div className={R.subheaderButtons}>
+                        <div className={R.editHeaderButtons}>
                             { hasRevisionHistory ?
                                 <RevisionMessageModal
                                     action={() => onSubmit()}
@@ -243,6 +259,13 @@ export default class ReferenceEntity extends Component {
                             }
                         </div>
                     </div>
+                    { section.type === 'segment' && table &&
+                        <div className={R.subheader}>
+                            <div className={cx(R.subheaderBody, D.detailSubtitle)}>
+                                A subset of <Link className={R.subheaderLink} to={`/reference/databases/${table.db_id}/tables/${table.id}`}>{table.display_name}</Link>
+                            </div>
+                        </div>
+                    }
                 </div>
                 <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>
                 { () =>
