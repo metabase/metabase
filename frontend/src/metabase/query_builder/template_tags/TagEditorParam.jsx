@@ -86,7 +86,7 @@ export default class TagEditorParam extends Component {
                         <Option value="text">Text</Option>
                         <Option value="number">Number</Option>
                         <Option value="date">Date</Option>
-                        <Option value="dimension">Dimension</Option>
+                        <Option value="dimension">Field Filter</Option>
                     </Select>
                 </div>
 
