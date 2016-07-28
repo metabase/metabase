@@ -29,14 +29,14 @@ export default class OnClickOutsideWrapper extends Component {
                 document.addEventListener("keydown", this._handleKeyPress, false);
             }
             if (this.props.dismissOnClickOutside) {
-                window.addEventListener("click", this._handleClick, false);
+                window.addEventListener("click", this._handleClick, true);
             }
         }, 0);
     }
 
     componentWillUnmount() {
         document.removeEventListener("keydown", this._handleKeyPress, false);
-        window.removeEventListener("click", this._handleClick, false);
+        window.removeEventListener("click", this._handleClick, true);
         clearTimeout(this._timeout);
 
         // remove popover from the stack
@@ -48,18 +48,18 @@ export default class OnClickOutsideWrapper extends Component {
 
     _handleClick = (e) => {
         if (!ReactDOM.findDOMNode(this).contains(e.target)) {
+            setTimeout(this._handleDismissal, 0);
+        }
+    }
+
+    _handleKeyPress = (e) => {
+        if (e.keyCode === ESC_KEY) {
+            e.preventDefault();
             this._handleDismissal();
         }
     }
 
-    _handleKeyPress = (event) => {
-        if (event.keyCode === ESC_KEY) {
-            event.preventDefault();
-            this._handleDismissal();
-        }
-    }
-
-    _handleDismissal(e) {
+    _handleDismissal = (e) => {
         // only propagate event for the popover on top of the stack
         if (this === popoverStack[popoverStack.length - 1]) {
             this.props.handleDismissal(e);
