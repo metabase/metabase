@@ -190,7 +190,7 @@ export default class ReferenceEntity extends Component {
                 }
                 { /* NOTE: this doesn't currently use ReferenceHeader since it is much more complicated */ }
                 <div className="wrapper wrapper--trim">
-                    <div className={cx("relative", S.header)}>
+                    <div className={cx("relative", S.header)} style={section.type === 'segment' ? {marginBottom: 0} : {}}>
                         <div className={S.leftIcons}>
                             { section.headerIcon &&
                                 <IconBorder borderWidth="0" style={{backgroundColor: "#E9F4F8"}}>
@@ -261,7 +261,7 @@ export default class ReferenceEntity extends Component {
                     </div>
                     { section.type === 'segment' && table &&
                         <div className={R.subheader}>
-                            <div className={cx(R.subheaderBody, D.detailSubtitle)}>
+                            <div className={cx(R.subheaderBody)}>
                                 A subset of <Link className={R.subheaderLink} to={`/reference/databases/${table.db_id}/tables/${table.id}`}>{table.display_name}</Link>
                             </div>
                         </div>

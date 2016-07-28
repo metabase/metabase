@@ -1,7 +1,7 @@
 :root {
     --title-color: #606E7B;
     --edit-header-color: #6CAFED;
-    --icon-width: 48px;
+    --icon-width: calc(48px + 1rem);
 }
 
 :local(.guideEmpty) {
@@ -28,7 +28,7 @@
 }
 
 :local(.headerTextInput) {
-    composes: input p1 from "style";
+    composes: input p1 pl2 pr2 from "style";
     font-size: 18px;
     color: var(--title-color);
     width: 100%;
@@ -36,11 +36,12 @@
 }
 
 :local(.subheader) {
-    padding-left: var(--icon-width);
+    composes: mt1 mb2 from "style";
 }
 
 :local(.subheaderBody) {
-    composes: text-dark ml2 from "style";
+    composes: text-dark from "style";
+    margin-left: var(--icon-width);
     font-size: 16px;
 }
 
@@ -74,7 +75,7 @@
 }
 
 :local(.columnHeader) {
-    composes: flex flex-full pl2 from "style";
+    composes: flex flex-full from "style";
     margin-left: var(--icon-width);
     padding-top: 20px;
     padding-bottom: 20px;
@@ -103,18 +104,18 @@
 
 :local(.revisionsWrapper) {
     padding-top: 20px;
-    padding-left: 70px;
+    padding-left: var(--icon-width);
 }
 
 :local(.schemaSeparator) {
     composes: text-grey-2 mt2 from "style";
-    margin-left: 70px;
+    margin-left: var(--icon-width);
     font-size: 18px;
 }
 
 :local(.headerSchema) {
     composes: text-grey-2 absolute from "style";
-    left: 70px;
+    left: var(--icon-width);
     top: -10px;
     font-size: 12px;
 }

@@ -3,12 +3,13 @@
     --subtitle-color: #AAB7C3;
     --muted-color: #DEEAF1;
     --blue-color: #2D86D4;
+    --icon-width: calc(48px + 1rem);
 }
 
 :local(.detail) {
-    composes: flex align-center pl2 from "style";
+    composes: flex align-center from "style";
     composes: relative from "style";
-    margin-left: 48px;
+    margin-left: var(--icon-width);
 }
 
 :local(.detailBody) {
