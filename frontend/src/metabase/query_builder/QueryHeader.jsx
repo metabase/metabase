@@ -357,6 +357,10 @@ export default class QueryHeader extends Component {
         );
     }
 
+    onCloseModal = () => {
+        this.setState({ modal: null });
+    }
+
     render() {
         return (
             <div>
@@ -369,18 +373,18 @@ export default class QueryHeader extends Component {
                     setItemAttributeFn={this.props.onSetCardAttribute}
                 />
 
-                <Modal className="Modal Modal--small" isOpen={this.state.modal === "saved"}>
+                <Modal className="Modal Modal--small" isOpen={this.state.modal === "saved"} onClose={this.onCloseModal}>
                     <QuestionSavedModal
                         addToDashboardFn={() => this.setState({ modal: "add-to-dashboard" })}
-                        closeFn={() => this.setState({ modal: null })}
+                        closeFn={this.onCloseModal}
                     />
                 </Modal>
 
-                <Modal isOpen={this.state.modal === "add-to-dashboard"}>
+                <Modal isOpen={this.state.modal === "add-to-dashboard"} onClose={this.onCloseModal}>
                     <AddToDashSelectDashModal
                         card={this.props.card}
                         dashboardApi={this.props.dashboardApi}
-                        closeFn={() => this.setState({ modal: null })}
+                        closeFn={this.onCloseModal}
                         onChangeLocation={this.props.onChangeLocation}
                     />
                 </Modal>
