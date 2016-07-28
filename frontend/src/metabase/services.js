@@ -22,7 +22,6 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
             model: {
                 setupToken: null,
                 currentUser: null,
-                appContext: 'none',
                 requestedUrl: null
             },
 
@@ -99,32 +98,7 @@ MetabaseServices.factory('AppState', ['$rootScope', '$q', '$location', '$interva
                 $location.path('/unauthorized/');
             },
 
-            setAppContext: function(appContext) {
-                service.model.appContext = appContext;
-                $rootScope.$broadcast('appstate:context-changed', service.model.appContext);
-            },
-
             locationChanged: function(event) {
-                // establish our application context based on the route (URI)
-                // valid app contexts are: 'setup', 'auth', 'main', 'admin', or 'unknown'
-                var routeContext;
-                if ($location.path().indexOf('/auth/') === 0) {
-                    routeContext = 'auth';
-                } else if ($location.path().indexOf('/setup/') === 0) {
-                    routeContext = 'setup';
-                } else if ($location.path().indexOf('/admin/') === 0) {
-                    routeContext = 'admin';
-                } else if ($location.path() === '/') {
-                    routeContext = 'home';
-                } else {
-                    routeContext = 'main';
-                }
-
-                // if the context of the app has changed due to this route change then send out an event
-                if (service.model.appContext !== routeContext) {
-                    service.setAppContext(routeContext);
-                }
-
                 // this code is here to ensure that we have resolved our currentUser BEFORE we execute any other
                 // code meant to establish app context based on the current route
                 if (currentUserPromise) {

@@ -185,7 +185,7 @@ export default class QueryBuilder extends Component {
 
         const showDrawer = uiControls.isShowingDataReference || uiControls.isShowingTemplateTagsEditor;
         return (
-            <div>
+            <div className="flex-full relative">
                 <div className={cx("QueryBuilder flex flex-column bg-white spread", {"QueryBuilder--showSideDrawer": showDrawer})}>
                     <div id="react_qb_header">
                         <QueryHeader {...this.props}/>

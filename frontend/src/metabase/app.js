@@ -13,13 +13,13 @@ import 'angular-cookie';
 import 'angular-http-auth';
 
 import "./controllers";
-import "./directives";
 import "./services";
 
-
 import React from "react";
-//import { render } from "react-dom";
-//import { Provider } from "react-redux";
+import ReactDOM from "react-dom";
+
+import { Provider } from 'react-redux';
+
 import { combineReducers } from "redux";
 import { reducer as form } from "redux-form";
 import { reduxReactRouter, routerStateReducer } from "redux-router";
@@ -99,7 +99,6 @@ const reducers = combineReducers({
 angular.module('metabase', [
     'ngRoute',
     'ngCookies',
-    'metabase.directives',
     'metabase.controllers',
 ])
 .run(["AppState", function(AppState) {
@@ -116,33 +115,32 @@ angular.module('metabase', [
     });
 
     const route = {
-        template: '<div mb-redux-component class="flex flex-column spread" id="main" />',
+        template: '<div id="main" />',
         controller: 'AppController',
         resolve: {
             appState: ["AppState", function(AppState) {
                 return AppState.init();
             }]
-        },
-        className: "flex flex-column spread"
+        }
     };
 
-    $routeProvider.when('/', { ...route, className: "full-height"});
+    $routeProvider.when('/', route);
 
     $routeProvider.when('/admin/', { redirectTo: () => ('/admin/settings') });
     $routeProvider.when('/admin/databases', route);
     $routeProvider.when('/admin/databases/create', route);
     $routeProvider.when('/admin/databases/:databaseId', route);
-    $routeProvider.when('/admin/datamodel/database', { ...route, className: "full-height spread" });
-    $routeProvider.when('/admin/datamodel/database/:databaseId', { ...route, className: "full-height spread" });
-    $routeProvider.when('/admin/datamodel/database/:databaseId/:mode', { ...route, className: "full-height spread" });
-    $routeProvider.when('/admin/datamodel/database/:databaseId/:mode/:tableId', { ...route, className: "full-height spread" });
+    $routeProvider.when('/admin/datamodel/database', route);
+    $routeProvider.when('/admin/datamodel/database/:databaseId', route);
+    $routeProvider.when('/admin/datamodel/database/:databaseId/:mode', route);
+    $routeProvider.when('/admin/datamodel/database/:databaseId/:mode/:tableId', route);
     $routeProvider.when('/admin/datamodel/metric', route);
     $routeProvider.when('/admin/datamodel/metric/:segmentId', route);
     $routeProvider.when('/admin/datamodel/segment', route);
     $routeProvider.when('/admin/datamodel/segment/:segmentId', route);
     $routeProvider.when('/admin/datamodel/:objectType/:objectId/revisions', route);
     $routeProvider.when('/admin/people/', route);
-    $routeProvider.when('/admin/settings/', { ...route, className: "full-height" });
+    $routeProvider.when('/admin/settings/', route);
 
     $routeProvider.when('/reference', route);
     $routeProvider.when('/reference/guide', route);
@@ -168,22 +166,22 @@ angular.module('metabase', [
     $routeProvider.when('/reference/databases/:databaseId/tables/:tableId/questions/:cardId', route);
 
     $routeProvider.when('/auth/', { redirectTo: () => ('/auth/login') });
-    $routeProvider.when('/auth/forgot_password', { ...route, className: "full-height" });
-    $routeProvider.when('/auth/login', { ...route, className: "full-height" });
-    $routeProvider.when('/auth/logout', { ...route, className: "full-height" });
-    $routeProvider.when('/auth/reset_password/:token', { ...route, className: "full-height" });
+    $routeProvider.when('/auth/forgot_password', route);
+    $routeProvider.when('/auth/login', route);
+    $routeProvider.when('/auth/logout', route);
+    $routeProvider.when('/auth/reset_password/:token', route);
 
     $routeProvider.when('/card/', { redirectTo: () => ("/questions/all") });
-    $routeProvider.when('/card/:cardId', { ...route, className: "" });
+    $routeProvider.when('/card/:cardId', route);
     $routeProvider.when('/card/:cardId/:serializedCard', { redirectTo: (routeParams) => ("/card/"+routeParams.cardId+"#"+routeParams.serializedCard) });
 
     $routeProvider.when('/dash/:dashboardId', route);
 
-    $routeProvider.when('/pulse/', { ...route, className: "" });
-    $routeProvider.when('/pulse/create', { ...route, className: "flex flex-column flex-full" });
-    $routeProvider.when('/pulse/:pulseId', { ...route, className: "flex flex-column flex-full" });
+    $routeProvider.when('/pulse/', route);
+    $routeProvider.when('/pulse/create', route);
+    $routeProvider.when('/pulse/:pulseId', route);
 
-    $routeProvider.when('/q', { ...route, className: "" });
+    $routeProvider.when('/q', route);
     $routeProvider.when('/q/:serializedCard', { redirectTo: (routeParams) => ("/q#"+routeParams.serializedCard) });
 
     $routeProvider.when('/questions', route);
@@ -191,7 +189,7 @@ angular.module('metabase', [
     $routeProvider.when('/questions/:section', route);
     $routeProvider.when('/questions/:section/:slug', route);
 
-    $routeProvider.when('/setup/', { ...route, className: "full-height" });
+    $routeProvider.when('/setup/', route);
 
     $routeProvider.when('/unauthorized/', route);
     $routeProvider.when('/user/edit_current', route);
@@ -200,17 +198,9 @@ angular.module('metabase', [
 }])
 .controller('AppController', ['$scope', '$location', '$route', '$routeParams', '$rootScope', '$timeout', 'ipCookie', 'AppState',
     function($scope, $location, $route, $routeParams, $rootScope, $timeout, ipCookie, AppState) {
-        $scope.Component = Routes;
-        $scope.props = {
+        const props = {
             onChangeLocation(url) {
                 $scope.$apply(() => $location.url(url));
-            },
-            onChangeLocationSearch(name, value) {
-                // FIXME: this doesn't seem to work
-                $scope.$apply(() => $location.search(name, value));
-            },
-            onBroadcast(...args) {
-                $scope.$apply(() => $rootScope.$broadcast(...args));
             },
             refreshSiteSettings() {
                 $scope.$apply(() => AppState.refreshSiteSettings());
@@ -229,9 +219,6 @@ angular.module('metabase', [
 
                 // this is ridiculously stupid.  we have to wait (300ms) for the cookie to actually be set in the browser :(
                 return $timeout(function(){}, 1000);
-            },
-            broadcastEventFn: function(eventName, value) {
-                $rootScope.$broadcast(eventName, value);
             },
             updateUrl: (card, isDirty=false, replaceState=false) => {
                 if (!card) {
@@ -268,12 +255,26 @@ angular.module('metabase', [
                 });
             }
         };
-        $scope.store = createStoreWithAngularScope($scope, $location, reducers, {currentUser: AppState.model.currentUser});
+
+        const store = createStoreWithAngularScope($scope, $location, reducers, {currentUser: AppState.model.currentUser});
+
+        const element = document.getElementById("main");
+
+        ReactDOM.render(
+            <Provider store={store}>
+                <Routes {...props} />
+            </Provider>,
+            element
+        );
+
+        $scope.$on("$destroy", function() {
+            ReactDOM.unmountComponentAtNode(element);
+        });
 
         // ANGULAR_HACK™: this seems like the easiest way to keep the redux store up to date with the currentUser :-/
         let userSyncTimer = setInterval(() => {
-            if ($scope.store.getState().currentUser !== AppState.model.currentUser) {
-                $scope.store.dispatch(setUser(AppState.model.currentUser));
+            if (store.getState().currentUser !== AppState.model.currentUser) {
+                store.dispatch(setUser(AppState.model.currentUser));
             }
         }, 250);
         $scope.$on("$destroy", () => clearInterval(userSyncTimer));
@@ -285,7 +286,6 @@ angular.module('metabase', [
             let oldParams = route.params;
 
             if ($route.current.$$route.controller === 'AppController') {
-                updateClassName();
                 $route.current = route;
 
                 angular.forEach(oldParams, function(value, key) {
@@ -298,16 +298,6 @@ angular.module('metabase', [
                 });
             }
         });
-
-        // HACK: keep className up to date when changing location, since we don't actually change routes
-        function updateClassName() {
-            const el = document.getElementById("main");
-            if (el) {
-                el.className = $route.current.$$route.className;
-            }
-        }
-
-        updateClassName();
     }
 ])
 .controller('Nav', ['$scope', '$routeParams', '$location', '$rootScope', 'AppState', 'Dashboard',
@@ -323,10 +313,6 @@ angular.module('metabase', [
             }
         }
 
-        function setNavContext(context) {
-            $scope.context = context;
-        }
-
         $scope.Navbar = Navbar;
         $scope.location = $location;
 
@@ -339,10 +325,6 @@ angular.module('metabase', [
             // this is important because it allows our caller to perform any of their own actions after the promis resolves
             return dashboard;
         };
-
-        $scope.$on('appstate:context-changed', function(event, newAppContext) {
-            setNavContext(newAppContext);
-        });
 
         $scope.$on("dashboard:create", function(event, dashboardId) {
             refreshDashboards();
@@ -370,9 +352,6 @@ angular.module('metabase', [
 
         // always initialize with a fresh listing
         refreshDashboards();
-
-        // initialize our state from the current AppState model, which we expect to have resolved already
-        setNavContext(AppState.model.appContext);
     }
 ]);
 

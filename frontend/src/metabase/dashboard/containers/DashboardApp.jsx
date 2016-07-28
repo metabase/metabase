@@ -35,12 +35,7 @@ const mapDispatchToProps = {
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class DashboardApp extends Component {
-    componentDidMount() {
-        if (this.props.addCardOnLoad != null) {
-            this.props.onChangeLocationSearch("add", null);
-        }
-    }
     render() {
-        return <Dashboard {...this.props} onDashboardDeleted={(id) => this.props.onBroadcast("dashboard:delete", id)}/>;
+        return <Dashboard {...this.props} />;
     }
 }

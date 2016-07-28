@@ -43,6 +43,8 @@ import ReferenceFieldsList from "metabase/reference/containers/ReferenceFieldsLi
 import ReferenceRevisionsList from "metabase/reference/containers/ReferenceRevisionsList.jsx";
 import ReferenceGettingStartedGuide from "metabase/reference/containers/ReferenceGettingStartedGuide.jsx";
 
+import Navbar from "metabase/components/Navbar.jsx";
+
 export default class Routes extends Component {
     // this lets us forward props we've injected from the Angular controller
     _forwardProps(ComposedComponent, propNames) {
@@ -56,78 +58,85 @@ export default class Routes extends Component {
     render() {
         return (
             <ReduxRouter>
-                <Route path="/" component={this._forwardProps(HomepageApp, ["onChangeLocation"])} />
+                <Route component={({ children }) =>
+                    <div className="spread flex flex-column">
+                        <Navbar className="flex-no-shrink" />
+                        {children}
+                    </div>
+                }>
+                    <Route path="/" component={this._forwardProps(HomepageApp, ["onChangeLocation"])} />
 
-                <Route path="/admin">
-                    <Route path="databases" component={DatabaseListApp} />
-                    <Route path="databases/create" component={this._forwardProps(DatabaseEditApp, ["onChangeLocation"])} />
-                    <Route path="databases/:databaseId" component={this._forwardProps(DatabaseEditApp, ["onChangeLocation"])} />
+                    <Route path="/admin">
+                        <Route path="databases" component={DatabaseListApp} />
+                        <Route path="databases/create" component={this._forwardProps(DatabaseEditApp, ["onChangeLocation"])} />
+                        <Route path="databases/:databaseId" component={this._forwardProps(DatabaseEditApp, ["onChangeLocation"])} />
 
-                    <Route path="datamodel">
-                        <Route path="database" component={this._forwardProps(MetadataEditorApp, ["onChangeLocation"])} />
-                        <Route path="database/:databaseId" component={this._forwardProps(MetadataEditorApp, ["onChangeLocation"])} />
-                        <Route path="database/:databaseId/:mode" component={this._forwardProps(MetadataEditorApp, ["onChangeLocation"])} />
-                        <Route path="database/:databaseId/:mode/:tableId" component={this._forwardProps(MetadataEditorApp, ["onChangeLocation"])} />
-                        <Route path="metric/create" component={this._forwardProps(MetricApp, ["onChangeLocation"])} />
-                        <Route path="metric/:id" component={this._forwardProps(MetricApp, ["onChangeLocation"])} />
-                        <Route path="segment/create" component={this._forwardProps(SegmentApp, ["onChangeLocation"])} />
-                        <Route path="segment/:id" component={this._forwardProps(SegmentApp, ["onChangeLocation"])} />
-                        <Route path=":entity/:id/revisions" component={RevisionHistoryApp} />
+                        <Route path="datamodel">
+                            <Route path="database" component={this._forwardProps(MetadataEditorApp, ["onChangeLocation"])} />
+                            <Route path="database/:databaseId" component={this._forwardProps(MetadataEditorApp, ["onChangeLocation"])} />
+                            <Route path="database/:databaseId/:mode" component={this._forwardProps(MetadataEditorApp, ["onChangeLocation"])} />
+                            <Route path="database/:databaseId/:mode/:tableId" component={this._forwardProps(MetadataEditorApp, ["onChangeLocation"])} />
+                            <Route path="metric/create" component={this._forwardProps(MetricApp, ["onChangeLocation"])} />
+                            <Route path="metric/:id" component={this._forwardProps(MetricApp, ["onChangeLocation"])} />
+                            <Route path="segment/create" component={this._forwardProps(SegmentApp, ["onChangeLocation"])} />
+                            <Route path="segment/:id" component={this._forwardProps(SegmentApp, ["onChangeLocation"])} />
+                            <Route path=":entity/:id/revisions" component={RevisionHistoryApp} />
+                        </Route>
+
+                        <Route path="people" component={this._forwardProps(AdminPeopleApp, ["onChangeLocation"])} />
+                        <Route path="settings" component={this._forwardProps(SettingsEditorApp, ["refreshSiteSettings"])} />
                     </Route>
 
-                    <Route path="people" component={this._forwardProps(AdminPeopleApp, ["onChangeLocation"])} />
-                    <Route path="settings" component={this._forwardProps(SettingsEditorApp, ["refreshSiteSettings"])} />
+                    <Route path="/reference" component={ReferenceApp}>
+                        <Route path="guide" component={ReferenceGettingStartedGuide} />
+                        <Route path="metrics" component={ReferenceEntityList} />
+                        <Route path="metrics/:metricId" component={ReferenceEntity} />
+                        <Route path="metrics/:metricId/questions" component={ReferenceEntityList} />
+                        <Route path="metrics/:metricId/revisions" component={ReferenceRevisionsList} />
+                        <Route path="segments" component={ReferenceEntityList} />
+                        <Route path="segments/:segmentId" component={ReferenceEntity} />
+                        <Route path="segments/:segmentId/fields" component={ReferenceFieldsList} />
+                        <Route path="segments/:segmentId/fields/:fieldId" component={ReferenceEntity} />
+                        <Route path="segments/:segmentId/questions" component={ReferenceEntityList} />
+                        <Route path="segments/:segmentId/revisions" component={ReferenceRevisionsList} />
+                        <Route path="databases" component={ReferenceEntityList} />
+                        <Route path="databases/:databaseId" component={ReferenceEntity} />
+                        <Route path="databases/:databaseId/tables" component={ReferenceEntityList} />
+                        <Route path="databases/:databaseId/tables/:tableId" component={ReferenceEntity} />
+                        <Route path="databases/:databaseId/tables/:tableId/fields" component={ReferenceFieldsList} />
+                        <Route path="databases/:databaseId/tables/:tableId/fields/:fieldId" component={ReferenceEntity} />
+                        <Route path="databases/:databaseId/tables/:tableId/questions" component={ReferenceEntityList} />
+                    </Route>
+
+                    <Route path="/auth/forgot_password" component={ForgotPasswordApp} />
+                    <Route path="/auth/login" component={this._forwardProps(LoginApp, ["onChangeLocation", "setSessionFn"])} />
+                    <Route path="/auth/logout" component={this._forwardProps(LogoutApp, ["onChangeLocation"])} />
+                    <Route path="/auth/reset_password/:token" component={this._forwardProps(PasswordResetApp, ["onChangeLocation"])} />
+                    <Route path="/auth/google_no_mb_account" component={GoogleNoAccount} />
+
+                    <Route path="/card/:cardId" component={this._forwardProps(QueryBuilder, ["onChangeLocation", "updateUrl"])} />
+
+                    <Route path="/dash/:dashboardId" component={this._forwardProps(DashboardApp, ["onChangeLocation"])} />
+
+                    <Route path="/pulse" component={this._forwardProps(PulseListApp, ["onChangeLocation"])} />
+                    <Route path="/pulse/create" component={this._forwardProps(PulseEditApp, ["onChangeLocation"])} />
+                    <Route path="/pulse/:pulseId" component={this._forwardProps(PulseEditApp, ["onChangeLocation"])} />
+
+                    <Route path="/q" component={this._forwardProps(QueryBuilder, ["onChangeLocation", "updateUrl"])} />
+
+                    <Route path="/questions" component={EntityBrowser}>
+                        <Route path="edit/labels" component={EditLabels} />
+                        <Route path=":section" component={EntityList} />
+                        <Route path=":section/:slug" component={EntityList} />
+                    </Route>
+
+                    <Route path="/setup" component={this._forwardProps(SetupApp, ["setSessionFn"])} />
+
+                    <Route path="/user/edit_current" component={UserSettingsApp} />
+
+                    <Route path="/unauthorized" component={Unauthorized} />
+                    <Route path="/*" component={NotFound} />
                 </Route>
-
-                <Route path="/reference" component={ReferenceApp}>
-                    <Route path="guide" component={ReferenceGettingStartedGuide} />
-                    <Route path="metrics" component={ReferenceEntityList} />
-                    <Route path="metrics/:metricId" component={ReferenceEntity} />
-                    <Route path="metrics/:metricId/questions" component={ReferenceEntityList} />
-                    <Route path="metrics/:metricId/revisions" component={ReferenceRevisionsList} />
-                    <Route path="segments" component={ReferenceEntityList} />
-                    <Route path="segments/:segmentId" component={ReferenceEntity} />
-                    <Route path="segments/:segmentId/fields" component={ReferenceFieldsList} />
-                    <Route path="segments/:segmentId/fields/:fieldId" component={ReferenceEntity} />
-                    <Route path="segments/:segmentId/questions" component={ReferenceEntityList} />
-                    <Route path="segments/:segmentId/revisions" component={ReferenceRevisionsList} />
-                    <Route path="databases" component={ReferenceEntityList} />
-                    <Route path="databases/:databaseId" component={ReferenceEntity} />
-                    <Route path="databases/:databaseId/tables" component={ReferenceEntityList} />
-                    <Route path="databases/:databaseId/tables/:tableId" component={ReferenceEntity} />
-                    <Route path="databases/:databaseId/tables/:tableId/fields" component={ReferenceFieldsList} />
-                    <Route path="databases/:databaseId/tables/:tableId/fields/:fieldId" component={ReferenceEntity} />
-                    <Route path="databases/:databaseId/tables/:tableId/questions" component={ReferenceEntityList} />
-                </Route>
-
-                <Route path="/auth/forgot_password" component={ForgotPasswordApp} />
-                <Route path="/auth/login" component={this._forwardProps(LoginApp, ["onChangeLocation", "setSessionFn"])} />
-                <Route path="/auth/logout" component={this._forwardProps(LogoutApp, ["onChangeLocation"])} />
-                <Route path="/auth/reset_password/:token" component={this._forwardProps(PasswordResetApp, ["onChangeLocation"])} />
-                <Route path="/auth/google_no_mb_account" component={GoogleNoAccount} />
-
-                <Route path="/card/:cardId" component={this._forwardProps(QueryBuilder, ["onChangeLocation", "broadcastEventFn", "updateUrl"])} />
-
-                <Route path="/dash/:dashboardId" component={this._forwardProps(DashboardApp, ["onChangeLocation", "onChangeLocationSearch", "onBroadcast"])} />
-
-                <Route path="/pulse" component={this._forwardProps(PulseListApp, ["onChangeLocation"])} />
-                <Route path="/pulse/create" component={this._forwardProps(PulseEditApp, ["onChangeLocation"])} />
-                <Route path="/pulse/:pulseId" component={this._forwardProps(PulseEditApp, ["onChangeLocation"])} />
-
-                <Route path="/q" component={this._forwardProps(QueryBuilder, ["onChangeLocation", "broadcastEventFn", "updateUrl"])} />
-
-                <Route path="/questions" component={EntityBrowser}>
-                    <Route path="edit/labels" component={EditLabels} />
-                    <Route path=":section" component={EntityList} />
-                    <Route path=":section/:slug" component={EntityList} />
-                </Route>
-
-                <Route path="/setup" component={this._forwardProps(SetupApp, ["setSessionFn"])} />
-
-                <Route path="/user/edit_current" component={UserSettingsApp} />
-
-                <Route path="/unauthorized" component={Unauthorized} />
-                <Route path="/*" component={NotFound} />
             </ReduxRouter>
         );
     }

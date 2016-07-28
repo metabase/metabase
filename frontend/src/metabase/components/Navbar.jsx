@@ -1,17 +1,46 @@
 import React, { Component, PropTypes } from 'react';
 import cx from "classnames";
 
+import { connect } from "react-redux";
+import { createSelector } from 'reselect';
+
 import DashboardsDropdown from "metabase/components/DashboardsDropdown.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import LogoIcon from "metabase/components/LogoIcon.jsx";
 import ProfileLink from "metabase/components/ProfileLink.jsx";
 
-// TODO - this relies on props.location, which is angular's $location service
+const getPath = (state) => state.router.location.pathname;
+const getUser = (state) => state.currentUser;
+const getContext = createSelector(
+    [getPath],
+    (path) =>
+        path.startsWith('/auth/') ?
+            'auth'
+        : path.startsWith('/setup/') ?
+            'setup'
+        : path.startsWith('/admin/') ?
+            'admin'
+        : path === '/' ?
+            'home'
+        :
+            'main'
+);
 
+const mapStateToProps = (state, props) => ({
+    path:       getPath(state),
+    context:    getContext(state),
+    user:       getUser(state)
+});
+
+const mapDispatchToProps = {
+};
+
+@connect(mapStateToProps, mapDispatchToProps)
 export default class Navbar extends Component {
     static propTypes = {
+        className: PropTypes.string,
         context: PropTypes.string.isRequired,
-        location: PropTypes.object.isRequired,
+        path: PropTypes.string.isRequired,
         user: PropTypes.object
     };
 
@@ -36,14 +65,14 @@ export default class Navbar extends Component {
     }
 
     isActive(path) {
-        return this.props.location.path().startsWith(path);
+        return this.props.path.startsWith(path);
     }
 
     renderAdminNav() {
         const classes = "NavItem py1 px2 no-decoration";
 
         return (
-            <nav className="AdminNav">
+            <nav className={cx("Nav AdminNav", this.props.className)}>
                 <div className="wrapper flex align-center">
                     <div className="NavTitle flex align-center">
                         <Icon name={'gear'} className="AdminGear" size={22}></Icon>
@@ -81,7 +110,7 @@ export default class Navbar extends Component {
 
     renderEmptyNav() {
         return (
-            <nav className="py2 sm-py1 xl-py3 relative">
+            <nav className={cx("Nav py2 sm-py1 xl-py3 relative", this.props.className)}>
                 <ul className="wrapper flex align-center">
                     <li>
                         <a data-metabase-event={"Navbar;Logo"} className="NavItem cursor-pointer flex align-center" href="/">
@@ -95,7 +124,7 @@ export default class Navbar extends Component {
 
     renderMainNav() {
         return (
-            <nav className="CheckBg CheckBg-offset relative bg-brand sm-py2 sm-py1 xl-py3">
+            <nav className={cx("Nav CheckBg CheckBg-offset relative bg-brand sm-py2 sm-py1 xl-py3", this.props.className)}>
                 <ul className="pl4 pr1 flex align-center">
                     <li>
                         <a data-metabase-event={"Navbar;Logo"} className="NavItem cursor-pointer text-white flex align-center my1 transition-background" href="/">

@@ -77,14 +77,13 @@ export default class ReferenceApp extends Component {
             isEditing
         } = this.props;
         return (
-            <div>
-                <SidebarLayout
-                    style={ isEditing ? { paddingTop: '43px' } : {}}
-                    sidebar={<Sidebar sections={sections} breadcrumbs={breadcrumbs} />}
-                >
-                    {children}
-                </SidebarLayout>
-            </div>
+            <SidebarLayout
+                className="flex-full"
+                style={ isEditing ? { paddingTop: '43px' } : {}}
+                sidebar={<Sidebar sections={sections} breadcrumbs={breadcrumbs} />}
+            >
+                {children}
+            </SidebarLayout>
         )
     }
 }
