@@ -381,7 +381,7 @@ export default class ReferenceEntity extends Component {
                                     <div className={cx(D.detail)}>
                                         <div className={D.detailBody}>
                                             <div className={D.detailTitle}>
-                                                <span className={D.detailName}>Potentially Useful Questions</span>
+                                                <span className={D.detailName}>Potentially useful questions</span>
                                             </div>
                                             <div className={R.usefulQuestions}>
                                                 { section.questions.map((question, index, questions) =>

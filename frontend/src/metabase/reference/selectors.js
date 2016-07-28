@@ -4,7 +4,6 @@ import i from "icepick";
 import Query, { AggregationClause } from 'metabase/lib/query';
 import { titleize, humanize } from "metabase/lib/formatting";
 import { startNewCard, serializeCardForUrl } from "metabase/lib/card";
-import { createQuery } from "metabase/lib/query";
 
 const getQuestion = ({dbId, tableId, fieldId, metricId, segmentId, getCount}) => {
     const newQuestion = startNewCard('query', dbId, tableId);
