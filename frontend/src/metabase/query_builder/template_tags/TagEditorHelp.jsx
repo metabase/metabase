@@ -1,5 +1,4 @@
 import React, { Component, PropTypes } from "react";
-import MetabaseAnalytics from "metabase/lib/analytics";
 
 import Code from "metabase/components/Code.jsx";
 
@@ -57,10 +56,8 @@ const TagExample = ({ datasetQuery, setQuery }) =>
             { setQuery && (
                 <div
                     className="Button Button--small"
-                    onClick={() => {
-                        MetabaseAnalytics.trackEvent('QueryBuilder', 'Template Tage Example Query Used')
-                        setQuery(datasetQuery, true)
-                    }}>
+                    data-metabase-event="QueryBuilder;Template Tage Example Query Used"
+                >
                         Try it
                 </div>
             )}
@@ -120,7 +117,7 @@ const TagEditorHelp = ({ setQuery, sampleDatasetId }) => {
             <TagExample datasetQuery={EXAMPLES.multipleOptional} setQuery={setQueryWithSampleDatasetId} />
 
             <p>
-                <a href="http://www.metabase.com/docs/latest/users-guide/start" target="_blank" onClick={() => MetabaseAnalytics.trackEvent('QueryBuilder', 'Template Tag Documentation Click') }>Read the full documentation</a>
+                <a href="http://www.metabase.com/docs/latest/users-guide/start" target="_blank" data-metabase-event="QueryBuilder;Template Tag Documentation Click">Read the full documentation</a>
             </p>
         </div>
     )
