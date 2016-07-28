@@ -8,11 +8,9 @@ export default class Tooltip extends Component {
         super(props, context);
 
         this.state = {
-            isOpen: false
+            isOpen: false,
+            isHovered: false
         };
-
-        this._onMouseEnter = this._onMouseEnter.bind(this);
-        this._onMouseLeave = this._onMouseLeave.bind(this);
     }
 
     static propTypes = {
@@ -29,8 +27,17 @@ export default class Tooltip extends Component {
 
     componentDidMount() {
         let elem = ReactDOM.findDOMNode(this);
+
         elem.addEventListener("mouseenter", this._onMouseEnter, false);
         elem.addEventListener("mouseleave", this._onMouseLeave, false);
+
+        // HACK: These two event listeners ensure that if a click on the child causes the tooltip to
+        // unmount (e.x. navigating away) then the popover is removed by the time this component
+        // unmounts. Previously we were seeing difficult to debug error messages like
+        // "Cannot read property 'componentDidUpdate' of null"
+        elem.addEventListener("mousedown", this._onMouseDown, true);
+        elem.addEventListener("mouseup", this._onMouseUp, true);
+
         this._element = document.createElement('div');
         this.componentDidUpdate();
     }
@@ -52,15 +59,29 @@ export default class Tooltip extends Component {
         let elem = ReactDOM.findDOMNode(this);
         elem.removeEventListener("mouseenter", this._onMouseEnter, false);
         elem.removeEventListener("mouseleave", this._onMouseLeave, false);
+        elem.removeEventListener("mousedown", this._onMouseDown, true);
+        elem.removeEventListener("mouseup", this._onMouseUp, true);
         ReactDOM.unmountComponentAtNode(this._element);
+        clearTimeout(this.timer);
     }
 
-    _onMouseEnter(e) {
-        this.setState({ isOpen: true });
+    _onMouseEnter = (e) => {
+        this.setState({ isOpen: true, isHovered: true });
     }
 
-    _onMouseLeave(e) {
+    _onMouseLeave = (e) => {
+        this.setState({ isOpen: false, isHovered: false });
+    }
+
+    _onMouseDown = (e) => {
         this.setState({ isOpen: false });
+    }
+
+    _onMouseUp = (e) => {
+        // This is in a timeout to ensure the component has a chance to fully unmount
+        this.timer = setTimeout(() =>
+            this.setState({ isOpen: this.state.isHovered })
+        , 0);
     }
 
     render() {
