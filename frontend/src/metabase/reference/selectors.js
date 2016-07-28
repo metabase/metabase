@@ -3,6 +3,27 @@ import i from "icepick";
 
 import Query, { AggregationClause } from 'metabase/lib/query';
 import { titleize, humanize } from "metabase/lib/formatting";
+import { startNewCard, serializeCardForUrl } from "metabase/lib/card";
+import { createQuery } from "metabase/lib/query";
+
+const getQuestion = ({dbId, tableId, metricId, segmentId, getCount}) => {
+    const newQuestion = startNewCard('query', dbId, tableId);
+    const question = getCount ?
+        i.assocIn(newQuestion, ['dataset_query', 'query', 'aggregation'], ['count']) :
+        newQuestion;
+
+    if (metricId) {
+        return i.assocIn(question, ['dataset_query', 'query', 'aggregation'], ['METRIC', metricId]);
+    }
+
+    if (segmentId) {
+        return i.assocIn(question, ['dataset_query', 'query', 'filter'], ['AND', ['SEGMENT', segmentId]]);
+    }
+
+    return question;
+};
+
+const getQuestionUrl = getQuestionArgs => `/q#${serializeCardForUrl(getQuestion(getQuestionArgs))}`;
 
 // there might be a better way to organize sections
 // it feels like I'm duplicating a lot of routing logic here
@@ -75,19 +96,16 @@ const getMetricSections = (metric, table, user) => metric ? {
         name: 'Details',
         update: 'updateMetric',
         type: 'metric',
-        questions: [
-            {
-                text: `See raw data for ${metric.name}`,
-                icon: "table2",
-                link: `/q?table=${metric.table_id}&metric=${metric.id}`
-            }
-        ],
         breadcrumb: `${metric.name}`,
         fetch: {fetchMetrics: [], fetchTables: []},
         get: 'getMetric',
         icon: "document",
         headerIcon: "ruler",
-        headerLink: `/q?db=${table && table.db_id}&table=${metric.table_id}&metric=${metric.id}`,
+        headerLink: getQuestionUrl({
+            dbId: table && table.db_id,
+            tableId: metric.table_id,
+            metricId: metric.id
+        }),
         parent: referenceSections[`/reference/metrics`]
     },
     [`/reference/metrics/${metric.id}/questions`]: {
@@ -97,7 +115,11 @@ const getMetricSections = (metric, table, user) => metric ? {
             message: `Questions about this metric will appear here as they're added`,
             icon: "all",
             action: "Ask a question",
-            link: `/q?db=${table && table.db_id}&table=${metric.table_id}&metric=${metric.id}`
+            link: getQuestionUrl({
+                dbId: table && table.db_id,
+                tableId: metric.table_id,
+                metricId: metric.id
+            })
         },
         type: 'questions',
         sidebar: 'Questions about this metric',
@@ -130,9 +152,23 @@ const getSegmentSections = (segment, table, user) => segment ? {
         type: 'segment',
         questions: [
             {
+                text: `Count of ${segment.name}`,
+                icon: { name: "number", scale: 1, viewBox: "8 8 16 16" },
+                link: getQuestionUrl({
+                    dbId: table && table.db_id,
+                    tableId: segment.table_id,
+                    segmentId: segment.id,
+                    getCount: true
+                })
+            },
+            {
                 text: `See raw data for ${segment.name}`,
                 icon: "table2",
-                link: `/q?table=${segment.table_id}&segment=${segment.id}`
+                link: getQuestionUrl({
+                    dbId: table && table.db_id,
+                    tableId: segment.table_id,
+                    segmentId: segment.id
+                })
             }
         ],
         breadcrumb: `${segment.name}`,
@@ -140,7 +176,11 @@ const getSegmentSections = (segment, table, user) => segment ? {
         get: 'getSegment',
         icon: "document",
         headerIcon: "segment",
-        headerLink: `/q?db=${table && table.db_id}&table=${segment.table_id}&segment=${segment.id}`,
+        headerLink: getQuestionUrl({
+            dbId: table && table.db_id,
+            tableId: segment.table_id,
+            segmentId: segment.id
+        }),
         parent: referenceSections[`/reference/segments`]
     },
     [`/reference/segments/${segment.id}/fields`]: {
@@ -165,7 +205,11 @@ const getSegmentSections = (segment, table, user) => segment ? {
             message: `Questions about this segment will appear here as they're added`,
             icon: "all",
             action: "Ask a question",
-            link: `/q?db=${table && table.db_id}&table=${segment.table_id}&segment=${segment.id}`
+            link: getQuestionUrl({
+                dbId: table && table.db_id,
+                tableId: segment.table_id,
+                segmentId: segment.id
+            })
         },
         type: 'questions',
         sidebar: 'Questions about this segment',
@@ -246,12 +290,19 @@ const getTableSections = (database, table) => database && table ? {
             {
                 text: `Count of ${table.display_name}`,
                 icon: { name: "number", scale: 1, viewBox: "8 8 16 16" },
-                link: `/q?table=${table.id}`
+                link: getQuestionUrl({
+                    dbId: table.db_id,
+                    tableId: table.id,
+                    getCount: true
+                })
             },
             {
                 text: `See raw data for ${table.display_name}`,
                 icon: "table2",
-                link: `/q?table=${table.id}`
+                link: getQuestionUrl({
+                    dbId: table.db_id,
+                    tableId: table.id,
+                })
             }
         ],
         breadcrumb: `${table.display_name}`,
@@ -259,7 +310,10 @@ const getTableSections = (database, table) => database && table ? {
         get: 'getTable',
         icon: "document",
         headerIcon: "table2",
-        headerLink: `/q?db=${table.db_id}&table=${table.id}`,
+        headerLink: getQuestionUrl({
+            dbId: table.db_id,
+            tableId: table.id,
+        }),
         parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
     },
     [`/reference/databases/${database.id}/tables/${table.id}/fields`]: {
@@ -284,7 +338,10 @@ const getTableSections = (database, table) => database && table ? {
             message: `Questions about this table will appear here as they're added`,
             icon: "all",
             action: "Ask a question",
-            link: `/q?db=${table.db_id}&table=${table.id}`
+            link: getQuestionUrl({
+                dbId: table.db_id,
+                tableId: table.id,
+            })
         },
         type: 'questions',
         sidebar: 'Questions about this table',
@@ -601,11 +658,7 @@ export const getHasRevisionHistory = createSelector(
 
 export const getHasQuestions = createSelector(
     [getSection],
-    (section) =>
-        section.type === 'metric' ||
-        section.type === 'segment' ||
-        section.type === 'table' ||
-        section.type === 'field'
+    (section) => section.questions && section.questions.length > 0
 )
 
 export const getIsEditing = (state) => state.reference.isEditing;
