@@ -124,7 +124,7 @@ export default class ProfileLink extends Component {
                     : null }
 
                     { modalOpen === "about" ?
-                        <Modal className="Modal Modal--small">
+                        <Modal className="Modal Modal--small" onClose={this.closeModal}>
                             <div className="px4 pt4 pb2 text-centered relative">
                                 <span className="absolute top right p4 text-normal text-grey-3 cursor-pointer" onClick={this.closeModal}>
                                     <Icon name={'close'} size={16} />
