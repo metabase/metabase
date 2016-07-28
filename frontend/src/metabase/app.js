@@ -116,32 +116,33 @@ angular.module('metabase', [
     });
 
     const route = {
-        template: '<div mb-redux-component class="flex flex-column spread" />',
+        template: '<div mb-redux-component class="flex flex-column spread" id="main" />',
         controller: 'AppController',
         resolve: {
             appState: ["AppState", function(AppState) {
                 return AppState.init();
             }]
-        }
+        },
+        className: "flex flex-column spread"
     };
 
-    $routeProvider.when('/', { ...route, template: '<div mb-redux-component class="full-height" />'});
+    $routeProvider.when('/', { ...route, className: "full-height"});
 
     $routeProvider.when('/admin/', { redirectTo: () => ('/admin/settings') });
     $routeProvider.when('/admin/databases', route);
     $routeProvider.when('/admin/databases/create', route);
     $routeProvider.when('/admin/databases/:databaseId', route);
-    $routeProvider.when('/admin/datamodel/database', { ...route, template: '<div class="full-height spread" mb-redux-component />' });
-    $routeProvider.when('/admin/datamodel/database/:databaseId', { ...route, template: '<div class="full-height spread" mb-redux-component />' });
-    $routeProvider.when('/admin/datamodel/database/:databaseId/:mode', { ...route, template: '<div class="full-height spread" mb-redux-component />' });
-    $routeProvider.when('/admin/datamodel/database/:databaseId/:mode/:tableId', { ...route, template: '<div class="full-height spread" mb-redux-component />' });
+    $routeProvider.when('/admin/datamodel/database', { ...route, className: "full-height spread" });
+    $routeProvider.when('/admin/datamodel/database/:databaseId', { ...route, className: "full-height spread" });
+    $routeProvider.when('/admin/datamodel/database/:databaseId/:mode', { ...route, className: "full-height spread" });
+    $routeProvider.when('/admin/datamodel/database/:databaseId/:mode/:tableId', { ...route, className: "full-height spread" });
     $routeProvider.when('/admin/datamodel/metric', route);
     $routeProvider.when('/admin/datamodel/metric/:segmentId', route);
     $routeProvider.when('/admin/datamodel/segment', route);
     $routeProvider.when('/admin/datamodel/segment/:segmentId', route);
     $routeProvider.when('/admin/datamodel/:objectType/:objectId/revisions', route);
     $routeProvider.when('/admin/people/', route);
-    $routeProvider.when('/admin/settings/', { ...route, template: '<div class="full-height" mb-redux-component />' });
+    $routeProvider.when('/admin/settings/', { ...route, className: "full-height" });
 
     $routeProvider.when('/reference', route);
     $routeProvider.when('/reference/guide', route);
@@ -167,22 +168,22 @@ angular.module('metabase', [
     $routeProvider.when('/reference/databases/:databaseId/tables/:tableId/questions/:cardId', route);
 
     $routeProvider.when('/auth/', { redirectTo: () => ('/auth/login') });
-    $routeProvider.when('/auth/forgot_password', { ...route, template: '<div mb-redux-component class="full-height" />' });
-    $routeProvider.when('/auth/login', { ...route, template: '<div mb-redux-component class="full-height" />' });
-    $routeProvider.when('/auth/logout', { ...route, template: '<div mb-redux-component class="full-height"  />' });
-    $routeProvider.when('/auth/reset_password/:token', { ...route, template: '<div mb-redux-component class="full-height" />' });
+    $routeProvider.when('/auth/forgot_password', { ...route, className: "full-height" });
+    $routeProvider.when('/auth/login', { ...route, className: "full-height" });
+    $routeProvider.when('/auth/logout', { ...route, className: "full-height" });
+    $routeProvider.when('/auth/reset_password/:token', { ...route, className: "full-height" });
 
     $routeProvider.when('/card/', { redirectTo: () => ("/questions/all") });
-    $routeProvider.when('/card/:cardId', { ...route, template: '<div mb-redux-component />' });
+    $routeProvider.when('/card/:cardId', { ...route, className: "" });
     $routeProvider.when('/card/:cardId/:serializedCard', { redirectTo: (routeParams) => ("/card/"+routeParams.cardId+"#"+routeParams.serializedCard) });
 
     $routeProvider.when('/dash/:dashboardId', route);
 
-    $routeProvider.when('/pulse/', { ...route, template: '<div mb-redux-component />' });
-    $routeProvider.when('/pulse/create', { ...route, template: '<div mb-redux-component class="flex flex-column flex-full" />' });
-    $routeProvider.when('/pulse/:pulseId', { ...route, template: '<div mb-redux-component class="flex flex-column flex-full" />' });
+    $routeProvider.when('/pulse/', { ...route, className: "" });
+    $routeProvider.when('/pulse/create', { ...route, className: "flex flex-column flex-full" });
+    $routeProvider.when('/pulse/:pulseId', { ...route, className: "flex flex-column flex-full" });
 
-    $routeProvider.when('/q', { ...route, template: '<div mb-redux-component />' });
+    $routeProvider.when('/q', { ...route, className: "" });
     $routeProvider.when('/q/:serializedCard', { redirectTo: (routeParams) => ("/q#"+routeParams.serializedCard) });
 
     $routeProvider.when('/questions', route);
@@ -190,7 +191,7 @@ angular.module('metabase', [
     $routeProvider.when('/questions/:section', route);
     $routeProvider.when('/questions/:section/:slug', route);
 
-    $routeProvider.when('/setup/', { ...route, template: '<div mb-redux-component class="full-height" />' });
+    $routeProvider.when('/setup/', { ...route, className: "full-height" });
 
     $routeProvider.when('/unauthorized/', route);
     $routeProvider.when('/user/edit_current', route);
@@ -284,6 +285,7 @@ angular.module('metabase', [
             let oldParams = route.params;
 
             if ($route.current.$$route.controller === 'AppController') {
+                updateClassName();
                 $route.current = route;
 
                 angular.forEach(oldParams, function(value, key) {
@@ -296,6 +298,16 @@ angular.module('metabase', [
                 });
             }
         });
+
+        // HACK: keep className up to date when changing location, since we don't actually change routes
+        function updateClassName() {
+            const el = document.getElementById("main");
+            if (el) {
+                el.className = $route.current.$$route.className;
+            }
+        }
+
+        updateClassName();
     }
 ])
 .controller('Nav', ['$scope', '$routeParams', '$location', '$rootScope', 'AppState', 'Dashboard',
