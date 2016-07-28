@@ -235,12 +235,33 @@ const getSegmentSections = (segment, table, user) => segment ? {
     }
 } : {};
 
-const getSegmentFieldSections = (segment, field, user) => segment && field ? {
+const getSegmentFieldSections = (segment, table, field, user) => segment && field ? {
     [`/reference/segments/${segment.id}/fields/${field.id}`]: {
         id: `/reference/segments/${segment.id}/fields/${field.id}`,
         name: 'Details',
         update: 'updateField',
         type: 'field',
+        questions: [
+            {
+                text: `Number of ${table && table.display_name} grouped by ${field.display_name}`,
+                icon: { name: "number", scale: 1, viewBox: "8 8 16 16" },
+                link: getQuestionUrl({
+                    dbId: table && table.db_id,
+                    tableId: field.table_id,
+                    fieldId: field.id,
+                    getCount: true
+                })
+            },
+            {
+                text: `All distinct values of ${field.display_name}`,
+                icon: "table2",
+                link: getQuestionUrl({
+                    dbId: table && table.db_id,
+                    tableId: field.table_id,
+                    fieldId: field.id
+                })
+            }
+        ],
         breadcrumb: `${field.display_name}`,
         fetch: {fetchSegmentFields: [segment.id]},
         get: "getFieldBySegment",
@@ -566,7 +587,7 @@ export const getSections = createSelector(
             return segmentSections;
         }
 
-        const segmentFieldSections = getSegmentFieldSections(segment, fieldBySegment);
+        const segmentFieldSections = getSegmentFieldSections(segment, tableBySegment, fieldBySegment);
         if (segmentFieldSections[sectionId]) {
             return segmentFieldSections;
         }
