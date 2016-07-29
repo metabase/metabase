@@ -8,14 +8,6 @@
     margin-left: var(--icon-width);
     max-width: 550px;
     cursor: pointer;
-    /*FIXME: transition doesn't work. use ReactCSSTransitionGroup ?*/
-    max-height: calc(24px + 2px + 1rem);
-    overflow: hidden;
-    transition: max-height 1s ease-out;
-}
-
-:local(.formula.expanded) {
-    max-height: 100%;
 }
 
 :local(.formulaHeader) {
@@ -29,4 +21,24 @@
 
 :local(.formulaDefinition) {
     composes: p2 from "style";
+    overflow: hidden;
+}
+
+.formulaDefinition {
+    max-height: 100%;
+}
+
+.formulaDefinition-enter {
+    max-height: 1px;
+}
+.formulaDefinition-enter.formulaDefinition-enter-active {
+    max-height: 100%;
+    transition: max-height 1000ms ease-in;
+}
+.formulaDefinition-leave {
+    max-height: 100%;
+}
+.formulaDefinition-leave.formulaDefinition-leave-active {
+    max-height: 1px;
+    transition: max-height 1000ms ease-in;
 }

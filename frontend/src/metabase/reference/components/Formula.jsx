@@ -2,6 +2,8 @@ import React, { Component, PropTypes } from "react";
 import pure from "recompose/pure";
 import cx from "classnames";
 
+import ReactCSSTransitionGroup from "react-addons-css-transition-group";
+
 import S from "./Formula.css";
 
 import Icon from "metabase/components/Icon.jsx";
@@ -17,19 +19,27 @@ const Formula = ({
     collapseFormula
 }) =>
     <div
-        className={cx(S.formula, isExpanded && S.expanded)}
+        className={cx(S.formula)}
         onClick={isExpanded ? collapseFormula : expandFormula}
     >
         <div className={S.formulaHeader}>
             <Icon name="beaker" size={24} />
             <span className={S.formulaTitle}>View the {type} formula</span>
         </div>
-        <div className={S.formulaDefinition}>
-            <QueryDefinition
-                object={entity}
-                tableMetadata={table}
-            />
-        </div>
+        <ReactCSSTransitionGroup
+            transitionName="formulaDefinition"
+            transitionEnterTimeout={1000}
+            transitionLeaveTimeout={1000}
+        >
+            { isExpanded &&
+                <div key="formulaDefinition" className={S.formulaDefinition}>
+                    <QueryDefinition
+                        object={entity}
+                        tableMetadata={table}
+                    />
+                </div>
+            }
+        </ReactCSSTransitionGroup>
     </div>
 
 Formula.propTypes = {
