@@ -3,7 +3,7 @@
 }
 
 :local(.formula) {
-    composes: bordered rounded from "style";
+    composes: bordered rounded my2 from "style";
     background-color: #FBFCFD;
     margin-left: var(--icon-width);
     max-width: 550px;
