@@ -140,10 +140,14 @@ const getQuestion = ({dbId, tableId, fieldId, metricId, segmentId, getCount, vis
             aggregation => getCount ? ['count'] : aggregation
         )
         .updateIn(['display'], display => visualization || display)
+        .updateIn(
+            ['dataset_query', 'query', 'breakout'],
+            breakout => fieldId ? [fieldId] : breakout
+        )
         .value();
 
-    if (fieldId) {
-        return i.assocIn(question, ['dataset_query', 'query', 'breakout'], [fieldId]);
+    if (metricId) {
+        return i.assocIn(question, ['dataset_query', 'query', 'aggregation'], ['METRIC', metricId]);
     }
 
     if (segmentId) {

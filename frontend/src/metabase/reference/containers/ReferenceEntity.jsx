@@ -117,7 +117,8 @@ export default class ReferenceEntity extends Component {
         hasRevisionHistory: PropTypes.bool,
         loading: PropTypes.bool,
         loadingError: PropTypes.object,
-        submitting: PropTypes.bool
+        submitting: PropTypes.bool,
+        onChangeLocation: PropTypes.func
     };
 
     render() {
@@ -139,7 +140,8 @@ export default class ReferenceEntity extends Component {
             hasDisplayName,
             hasRevisionHistory,
             handleSubmit,
-            submitting
+            submitting,
+            onChangeLocation
         } = this.props;
 
         const onSubmit = handleSubmit(async (fields) =>
@@ -430,7 +432,7 @@ export default class ReferenceEntity extends Component {
                                                 <span className={D.detailName}>Fields you can group this metric by</span>
                                             </div>
                                             <div className={R.usefulQuestions}>
-                                                { console.log(table) || table && table.fields_lookup && Object.values(table.fields_lookup)
+                                                { table && table.fields_lookup && Object.values(table.fields_lookup)
                                                     .map((field, index, fields) =>
                                                         <QueryButton
                                                             key={field.id}
@@ -438,7 +440,17 @@ export default class ReferenceEntity extends Component {
                                                             iconClass={S.icon}
                                                             text={field.display_name}
                                                             icon="reference"
-                                                            link={`/reference/databases/${table.db_id}/tables/${table.id}/fields/${field.id}`}
+                                                            onClick={() => onChangeLocation(`/reference/databases/${table.db_id}/tables/${table.id}/fields/${field.id}`)}
+                                                            secondaryText={`see ${entity.name} by ${field.display_name}`}
+                                                            secondaryOnClick={(event) => {
+                                                                event.stopPropagation();
+                                                                onChangeLocation(getQuestionUrl({
+                                                                    dbId: table.db_id,
+                                                                    tableId: table.id,
+                                                                    fieldId: field.id,
+                                                                    metricId: entity.id
+                                                                }))
+                                                            }}
                                                         />
                                                     )
                                                 }

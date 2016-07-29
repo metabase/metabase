@@ -79,25 +79,25 @@ export default class Routes extends Component {
                     <Route path="settings" component={this._forwardProps(SettingsEditorApp, ["refreshSiteSettings"])} />
                 </Route>
 
-                <Route path="/reference" component={ReferenceApp}>
-                    <Route path="guide" component={ReferenceGettingStartedGuide} />
-                    <Route path="metrics" component={ReferenceEntityList} />
-                    <Route path="metrics/:metricId" component={ReferenceEntity} />
-                    <Route path="metrics/:metricId/questions" component={ReferenceEntityList} />
-                    <Route path="metrics/:metricId/revisions" component={ReferenceRevisionsList} />
-                    <Route path="segments" component={ReferenceEntityList} />
-                    <Route path="segments/:segmentId" component={ReferenceEntity} />
-                    <Route path="segments/:segmentId/fields" component={ReferenceFieldsList} />
-                    <Route path="segments/:segmentId/fields/:fieldId" component={ReferenceEntity} />
-                    <Route path="segments/:segmentId/questions" component={ReferenceEntityList} />
-                    <Route path="segments/:segmentId/revisions" component={ReferenceRevisionsList} />
-                    <Route path="databases" component={ReferenceEntityList} />
-                    <Route path="databases/:databaseId" component={ReferenceEntity} />
-                    <Route path="databases/:databaseId/tables" component={ReferenceEntityList} />
-                    <Route path="databases/:databaseId/tables/:tableId" component={ReferenceEntity} />
-                    <Route path="databases/:databaseId/tables/:tableId/fields" component={ReferenceFieldsList} />
-                    <Route path="databases/:databaseId/tables/:tableId/fields/:fieldId" component={ReferenceEntity} />
-                    <Route path="databases/:databaseId/tables/:tableId/questions" component={ReferenceEntityList} />
+                <Route path="/reference" component={this._forwardProps(ReferenceApp, ["onChangeLocation"])}>
+                    <Route path="guide" component={this._forwardProps(ReferenceGettingStartedGuide, ["onChangeLocation"])} />
+                    <Route path="metrics" component={this._forwardProps(ReferenceEntityList, ["onChangeLocation"])} />
+                    <Route path="metrics/:metricId" component={this._forwardProps(ReferenceEntity, ["onChangeLocation"])} />
+                    <Route path="metrics/:metricId/questions" component={this._forwardProps(ReferenceEntityList, ["onChangeLocation"])} />
+                    <Route path="metrics/:metricId/revisions" component={this._forwardProps(ReferenceRevisionsList, ["onChangeLocation"])} />
+                    <Route path="segments" component={this._forwardProps(ReferenceEntityList, ["onChangeLocation"])} />
+                    <Route path="segments/:segmentId" component={this._forwardProps(ReferenceEntity, ["onChangeLocation"])} />
+                    <Route path="segments/:segmentId/fields" component={this._forwardProps(ReferenceFieldsList, ["onChangeLocation"])} />
+                    <Route path="segments/:segmentId/fields/:fieldId" component={this._forwardProps(ReferenceEntity, ["onChangeLocation"])} />
+                    <Route path="segments/:segmentId/questions" component={this._forwardProps(ReferenceEntityList, ["onChangeLocation"])} />
+                    <Route path="segments/:segmentId/revisions" component={this._forwardProps(ReferenceRevisionsList, ["onChangeLocation"])} />
+                    <Route path="databases" component={this._forwardProps(ReferenceEntityList, ["onChangeLocation"])} />
+                    <Route path="databases/:databaseId" component={this._forwardProps(ReferenceEntity, ["onChangeLocation"])} />
+                    <Route path="databases/:databaseId/tables" component={this._forwardProps(ReferenceEntityList, ["onChangeLocation"])} />
+                    <Route path="databases/:databaseId/tables/:tableId" component={this._forwardProps(ReferenceEntity, ["onChangeLocation"])} />
+                    <Route path="databases/:databaseId/tables/:tableId/fields" component={this._forwardProps(ReferenceFieldsList, ["onChangeLocation"])} />
+                    <Route path="databases/:databaseId/tables/:tableId/fields/:fieldId" component={this._forwardProps(ReferenceEntity, ["onChangeLocation"])} />
+                    <Route path="databases/:databaseId/tables/:tableId/questions" component={this._forwardProps(ReferenceEntityList, ["onChangeLocation"])} />
                 </Route>
 
                 <Route path="/auth/forgot_password" component={ForgotPasswordApp} />
