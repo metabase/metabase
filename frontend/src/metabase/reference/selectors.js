@@ -2,8 +2,12 @@ import { createSelector } from 'reselect';
 import i from "icepick";
 
 import Query, { AggregationClause } from 'metabase/lib/query';
-import { titleize, humanize } from "metabase/lib/formatting";
-import { getQuestionUrl } from "./utils";
+import {
+    idsToObjectMap,
+    buildBreadcrumbs,
+    databaseToForeignKeys,
+    getQuestionUrl
+} from "./utils";
 
 // there might be a better way to organize sections
 // it feels like I'm duplicating a lot of routing logic here
@@ -403,13 +407,6 @@ const getTableFieldSections = (database, table, field) => database && table && f
     }
 } : {};
 
-const idsToObjectMap = (ids, objects) => ids
-    .map(id => objects[id])
-    .reduce((map, object) => Object.assign({}, map, {[object.id]: object}), {});
-    // recursive freezing done by i.assoc here is too expensive
-    // hangs browser for large databases
-    // .reduce((map, object) => i.assoc(map, object.id, object), {});
-
 export const getUser = (state) => state.currentUser;
 
 export const getSectionId = (state) => state.router.location.pathname;
@@ -522,28 +519,6 @@ const getDatabaseBySegment = createSelector(
         databases[tables[segment.table_id].db_id] || {}
 );
 
-export const databaseToForeignKeys = (database) => database && database.tables_lookup ?
-    Object.values(database.tables_lookup)
-        // ignore tables without primary key
-        .filter(table => table && table.fields_lookup &&
-            Object.values(table.fields_lookup)
-                .find(field => field.special_type === 'id')
-        )
-        .map(table => ({
-            table: table,
-            field: table && table.fields_lookup && Object.values(table.fields_lookup)
-                .find(field => field.special_type === 'id')
-        }))
-        .map(({ table, field }) => ({
-            id: field.id,
-            name: table.schema && table.schema !== "public" ?
-                `${titleize(humanize(table.schema))}.${table.display_name} → ${field.display_name}` :
-                `${table.display_name} → ${field.display_name}`,
-            description: field.description
-        }))
-        .reduce((map, foreignKey) => i.assoc(map, foreignKey.id, foreignKey), {}) :
-    {};
-
 const getForeignKeysBySegment = createSelector(
     [getDatabaseBySegment],
     databaseToForeignKeys
@@ -645,24 +620,6 @@ export const getData = (state) => {
 export const getLoading = (state) => state.reference.isLoading;
 
 export const getError = (state) => state.reference.error;
-
-const getBreadcrumb = (section, index, sections) => index !== sections.length - 1 ?
-    [section.breadcrumb, section.id] : [section.breadcrumb];
-
-const getParentSections = (section) => {
-    if (!section.parent) {
-        return [section];
-    }
-
-    const parentSections = []
-        .concat(getParentSections(section.parent), section);
-
-    return parentSections;
-};
-
-export const buildBreadcrumbs = (section) => getParentSections(section)
-    .map(getBreadcrumb)
-    .slice(-3);
 
 export const getBreadcrumbs = createSelector(
     [getSection],
