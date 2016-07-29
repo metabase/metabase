@@ -22,8 +22,8 @@ import Select from "metabase/components/Select.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
 import QueryButton from "metabase/query_builder/dataref/QueryButton.jsx";
-import QueryDefinition from "metabase/query_builder/dataref/QueryDefinition.jsx";
 import RevisionMessageModal from "metabase/reference/components/RevisionMessageModal.jsx";
+import Formula from "metabase/reference/components/Formula.jsx";
 
 import cx from "classnames";
 
@@ -45,6 +45,7 @@ import {
     getHasDisplayName,
     getHasRevisionHistory,
     getHasSingleSchema,
+    getIsFormulaExpanded,
     getForeignKeys
 } from "../selectors";
 
@@ -74,6 +75,7 @@ const mapStateToProps = (state, props) => {
         hasSingleSchema: getHasSingleSchema(state),
         hasQuestions: getHasQuestions(state),
         hasDisplayName: getHasDisplayName(state),
+        isFormulaExpanded: getIsFormulaExpanded(state),
         hasRevisionHistory: getHasRevisionHistory(state)
     };
 };
@@ -107,6 +109,8 @@ export default class ReferenceEntity extends Component {
         endEditing: PropTypes.func.isRequired,
         startLoading: PropTypes.func.isRequired,
         endLoading: PropTypes.func.isRequired,
+        expandFormula: PropTypes.func.isRequired,
+        collapseFormula: PropTypes.func.isRequired,
         setError: PropTypes.func.isRequired,
         updateField: PropTypes.func.isRequired,
         handleSubmit: PropTypes.func.isRequired,
@@ -115,6 +119,7 @@ export default class ReferenceEntity extends Component {
         section: PropTypes.object.isRequired,
         hasSingleSchema: PropTypes.bool,
         hasDisplayName: PropTypes.bool,
+        isFormulaExpanded: PropTypes.bool,
         hasRevisionHistory: PropTypes.bool,
         loading: PropTypes.bool,
         loadingError: PropTypes.object,
@@ -137,8 +142,11 @@ export default class ReferenceEntity extends Component {
             hasQuestions,
             startEditing,
             endEditing,
+            expandFormula,
+            collapseFormula,
             hasSingleSchema,
             hasDisplayName,
+            isFormulaExpanded,
             hasRevisionHistory,
             handleSubmit,
             submitting,
@@ -327,11 +335,16 @@ export default class ReferenceEntity extends Component {
                                     />
                                 </li>
                             }
-                            { (section.type === 'metric' || section.type === 'segment') && table &&
+                            { (section.type === 'metric' || section.type === 'segment') &&
+                                table &&
                                 <li className="relative">
-                                    <QueryDefinition
-                                        object={entity}
-                                        tableMetadata={table}
+                                    <Formula
+                                        type={section.type}
+                                        entity={entity}
+                                        table={table}
+                                        isExpanded={isFormulaExpanded}
+                                        expandFormula={expandFormula}
+                                        collapseFormula={collapseFormula}
                                     />
                                 </li>
                             }

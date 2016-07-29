@@ -696,3 +696,5 @@ export const getHasQuestions = createSelector(
 )
 
 export const getIsEditing = (state) => state.reference.isEditing;
+
+export const getIsFormulaExpanded = (state) => state.reference.isFormulaExpanded;

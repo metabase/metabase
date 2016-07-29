@@ -20,10 +20,17 @@ export const startEditing = createAction(START_EDITING);
 const END_EDITING = "metabase/reference/END_EDITING";
 export const endEditing = createAction(END_EDITING);
 
+const EXPAND_FORMULA = "metabase/reference/EXPAND_FORMULA";
+export const expandFormula = createAction(EXPAND_FORMULA);
+
+const COLLAPSE_FORMULA = "metabase/reference/COLLAPSE_FORMULA";
+export const collapseFormula = createAction(COLLAPSE_FORMULA);
+
 const initialState = {
     error: null,
     isLoading: false,
-    isEditing: false
+    isEditing: false,
+    isFormulaExpanded: false,
 };
 export default handleActions({
     [SET_ERROR]: {
@@ -43,5 +50,11 @@ export default handleActions({
     },
     [END_EDITING]: {
         next: (state) => i.assoc(state, 'isEditing', false)
+    },
+    [EXPAND_FORMULA]: {
+        next: (state) => i.assoc(state, 'isFormulaExpanded', true)
+    },
+    [COLLAPSE_FORMULA]: {
+        next: (state) => i.assoc(state, 'isFormulaExpanded', false)
     }
 }, initialState);

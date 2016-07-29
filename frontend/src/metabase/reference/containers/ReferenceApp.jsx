@@ -65,6 +65,7 @@ export default class ReferenceApp extends Component {
         newProps.endEditing();
         newProps.endLoading();
         newProps.clearError();
+        newProps.collapseFormula();
 
         await tryFetchData(newProps);
     }
