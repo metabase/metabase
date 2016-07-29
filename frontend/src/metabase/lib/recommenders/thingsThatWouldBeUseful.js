@@ -2,7 +2,7 @@ export var TableMetadata = {
 
 	hasSegments(table){
 		return true
-	}
+	},
 
 	getSegments(table){
 		return [{name: 'Fake Segment 1', definition: 'XXX'}]
@@ -11,7 +11,7 @@ export var TableMetadata = {
 
 }
 
-export var FieldMetadata {
+export var FieldMetadata = {
 
 	isFKorPK(field){
 		return field.special_type == "FK" || field.special_type == "PK"

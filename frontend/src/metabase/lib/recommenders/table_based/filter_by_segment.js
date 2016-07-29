@@ -23,7 +23,7 @@ export function suggestTableSegments(query){
 		// -> filter by these segments
 			_.each(TableMetadata.getSegments(underlyingTable), function(segment){
 
-			new_query = Query.clone(query)
+			var new_query = Query.clone(query)
 			new_query = Query.filterBySegment(query, segment)
 			returnValues.push({target : new_query, source: RECOMMENDER_NAME, score: 1})
 			})

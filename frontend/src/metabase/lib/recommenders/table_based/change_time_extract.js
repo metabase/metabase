@@ -16,10 +16,10 @@ export function suggestDifferentTimeExtract(query){
 		var currentExtract = Query.getTimeExtract(query)
 		var allValidExtracts = _.filter(allTimeExtracts, function(extract){return extract==currentExtract})	
 		
-		returnValues =  []
+		var returnValues =  []
 
 		_.each(allValidExtracts, function(extract){
-			new_query = Query.clone(query)
+			var new_query = Query.clone(query)
 			Query.changeTimeExtract(new_query, extract)
 			
 			returnValues.push({target : new_query, source: RECOMMENDER_NAME, score: 1})

@@ -17,10 +17,10 @@ export function suggestDifferentTimeGranularity(query){
 		var currentGranularity = Query.getTimeGranularity(query)
 		var allValidGranularities = _.filter(allTimeGranularities, function(granularity){return granularity==currentGranularity})	
 		
-		returnValues =  []
+		var returnValues =  []
 
 		_.each(allValidGranularities, function(granularity){
-			new_query = Query.clone(query)
+			var new_query = Query.clone(query)
 			Query.changeTimeGranularity(new_query, granularity)
 			
 			returnValues.push({target : new_query, source: RECOMMENDER_NAME, score: 1})

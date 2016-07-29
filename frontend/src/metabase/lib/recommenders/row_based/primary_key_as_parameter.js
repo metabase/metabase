@@ -1,6 +1,5 @@
 import _ from "underscore";
 
-import * as Query from "metabase/meta/Query";
 import {Dashboards, Cards, FieldMetadata} from "metabase/lib/recommenders/thingsThatWouldBeUseful"
 
  // useful extra data:
@@ -13,14 +12,14 @@ import {Dashboards, Cards, FieldMetadata} from "metabase/lib/recommenders/things
 export function suggestDashboardParameterizedByID(query, resultRow, columnDefinitions){
 	const RECOMMENDER_NAME = "Suggest Dashboards with ID Parameters"
 
-	linkFields = _.filter(columnDefinitions, function(column){FieldMetadata.isFKorPK(column)})
+	var linkFields = _.filter(columnDefinitions, function(column){FieldMetadata.isFKorPK(column)})
 
+	var returnValues = []
 	_.each(linkFields, function(link){
 
 		var fieldID = linkFields.id
 
 		var relevantDashboards = Dashboards.getDashboardsParameterizedBy(fieldID)
-		var returnValues = []
 
 		_.each(relevantDashboards, function(dashboard){
 			return returnValues.push({target : dashboard, source: RECOMMENDER_NAME, score: 1})
@@ -34,14 +33,14 @@ suggestDashboardParameterizedByID.verboseName =  "Suggest Dashboards with ID Par
 export function suggestCardParameterizedByID(query, resultRow, columnDefinitions){
 	const RECOMMENDER_NAME = "Suggest Cards with ID Parameters"
 
-	linkFields = _.filter(columnDefinitions, function(column){FieldMetadata.isFKorPK(column)})
+	var linkFields = _.filter(columnDefinitions, function(column){FieldMetadata.isFKorPK(column)})
 
+	var returnValues = []
 	_.each(linkFields, function(link){
 
 		var fieldID = linkFields.id
 		
 		var relevantCards = Cards.getCardsParameterizedBy(fieldID)
-		var returnValues = []
 
 		
 		_.each(relevantCards, function(card){

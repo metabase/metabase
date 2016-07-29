@@ -8,7 +8,7 @@ import Popover from "metabase/components/Popover.jsx";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { formatValue, capitalize } from "metabase/lib/formatting";
-
+import { suggestionsForCell } from "metabase/lib/recommenders/recommenders"
 import _ from "underscore";
 import cx from "classnames";
 
@@ -155,6 +155,10 @@ export default class TableInteractive extends Component {
     }
 
     showPopover(rowIndex, cellDataKey) {
+        console.log("SUGGESTIONS", suggestionsForCell(this.props.card.dataset_query, 
+                                                         this.props.data.rows[rowIndex], 
+                                                         this.props.data.cols, 
+                                                         cellDataKey));
         this.setState({
             popover: {
                 rowIndex: rowIndex,

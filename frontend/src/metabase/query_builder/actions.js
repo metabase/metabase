@@ -17,6 +17,8 @@ import Utils from "metabase/lib/utils";
 
 import { getParameters } from "./selectors";
 
+import { suggestionsForQuery } from "metabase/lib/recommenders/recommenders"
+
 const Metabase = new AngularResourceProxy("Metabase", ["db_list_with_tables", "db_fields", "dataset", "table_query_metadata"]);
 const User = new AngularResourceProxy("User", ["update_qbnewb"]);
 
@@ -392,7 +394,7 @@ export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (runCard) => {
 export const SET_QUERY = "SET_QUERY";
 export const setQuery = createThunkAction(SET_QUERY, (dataset_query, run = false) => {
     return (dispatch, getState) => {
-        const { qb: { card, uiControls } } = getState();
+        const { qb: { card, uiControls, tableMetadata } } = getState();
 
         let updatedCard = JSON.parse(JSON.stringify(card)),
             openTemplateTagsEditor = uiControls.isShowingTemplateTagsEditor;
@@ -474,6 +476,9 @@ export const setQuery = createThunkAction(SET_QUERY, (dataset_query, run = false
                 }
             }
         }
+
+        // Suggest some next questions
+        console.log("SUGGESTIONS", suggestionsForQuery(updatedCard.dataset_query), tableMetadata);
 
         // run updated query
         if (run) {
