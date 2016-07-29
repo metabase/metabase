@@ -101,7 +101,12 @@ export default class SegmentPane extends Component {
                 useForCurrentQuestion={useForCurrentQuestion}
                 usefulQuestions={usefulQuestions}
                 error={error}
-                extra={table && <QueryDefinition objectType="Segment" object={segment} tableMetadata={table} />}
+                extra={table &&
+                    <div>
+                        <p className="text-bold">Segment Definition</p>
+                        <QueryDefinition object={segment} tableMetadata={table} />
+                    </div>
+                }
             />
         );
     }

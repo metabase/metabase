@@ -22,6 +22,7 @@ import Select from "metabase/components/Select.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
 import QueryButton from "metabase/query_builder/dataref/QueryButton.jsx";
+import QueryDefinition from "metabase/query_builder/dataref/QueryDefinition.jsx";
 import RevisionMessageModal from "metabase/reference/components/RevisionMessageModal.jsx";
 
 import cx from "classnames";
@@ -326,6 +327,14 @@ export default class ReferenceEntity extends Component {
                                     />
                                 </li>
                             }
+                            { (section.type === 'metric' || section.type === 'segment') && table &&
+                                <li className="relative">
+                                    <QueryDefinition
+                                        object={entity}
+                                        tableMetadata={table}
+                                    />
+                                </li>
+                            }
                             { !isEditing && section.type === 'field' &&
                                 <li className="relative">
                                     <Detail
@@ -403,7 +412,7 @@ export default class ReferenceEntity extends Component {
                                     </div>
                                 </li>
                             }
-                            { hasQuestions &&
+                            { hasQuestions && !isEditing &&
                                 <li className="relative">
                                     <div className={cx(D.detail)}>
                                         <div className={D.detailBody}>
@@ -424,7 +433,7 @@ export default class ReferenceEntity extends Component {
                                     </div>
                                 </li>
                             }
-                            { section.type === 'metric' &&
+                            { section.type === 'metric' && !isEditing &&
                                 <li className="relative">
                                     <div className={cx(D.detail)}>
                                         <div className={D.detailBody}>

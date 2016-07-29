@@ -74,7 +74,12 @@ export default class MetricPane extends Component {
                 useForCurrentQuestion={useForCurrentQuestion}
                 usefulQuestions={usefulQuestions}
                 error={error}
-                extra={table && <QueryDefinition objectType="Metric" object={metric} tableMetadata={table} />}
+                extra={table &&
+                    <div>
+                        <p className="text-bold">Metric Definition</p>
+                        <QueryDefinition object={metric} tableMetadata={table} />
+                    </div>
+                }
             />
         );
     }
