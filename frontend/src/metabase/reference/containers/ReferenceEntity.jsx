@@ -6,7 +6,6 @@ import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
 
 import S from "metabase/components/List.css";
-import D from "metabase/components/Detail.css";
 import R from "metabase/reference/Reference.css";
 
 import List from "metabase/components/List.jsx";
@@ -16,17 +15,16 @@ import Ellipsified from "metabase/components/Ellipsified.jsx";
 import IconBorder from "metabase/components/IconBorder.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
-import QueryButton from "metabase/query_builder/dataref/QueryButton.jsx";
 import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail.jsx";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions.jsx";
+import FieldsToGroupBy from "metabase/reference/components/FieldsToGroupBy.jsx";
 import RevisionMessageModal from "metabase/reference/components/RevisionMessageModal.jsx";
 import Formula from "metabase/reference/components/Formula.jsx";
 
 import cx from "classnames";
 
 import {
-    tryUpdateData,
-    getQuestionUrl
+    tryUpdateData
 } from '../utils';
 
 import {
@@ -373,37 +371,12 @@ export default class ReferenceEntity extends Component {
                             }
                             { section.type === 'metric' && !isEditing &&
                                 <li className="relative">
-                                    <div className={cx(D.detail)}>
-                                        <div className={D.detailBody}>
-                                            <div className={D.detailTitle}>
-                                                <span className={D.detailName}>Fields you can group this metric by</span>
-                                            </div>
-                                            <div className={R.usefulQuestions}>
-                                                { table && table.fields_lookup && Object.values(table.fields_lookup)
-                                                    .map((field, index, fields) =>
-                                                        <QueryButton
-                                                            key={field.id}
-                                                            className={cx("border-bottom", "pt1", "pb1")}
-                                                            iconClass={S.icon}
-                                                            text={field.display_name}
-                                                            icon="reference"
-                                                            onClick={() => onChangeLocation(`/reference/databases/${table.db_id}/tables/${table.id}/fields/${field.id}`)}
-                                                            secondaryText={`see ${entity.name} by ${field.display_name}`}
-                                                            secondaryOnClick={(event) => {
-                                                                event.stopPropagation();
-                                                                onChangeLocation(getQuestionUrl({
-                                                                    dbId: table.db_id,
-                                                                    tableId: table.id,
-                                                                    fieldId: field.id,
-                                                                    metricId: entity.id
-                                                                }))
-                                                            }}
-                                                        />
-                                                    )
-                                                }
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <FieldsToGroupBy
+                                        table={table}
+                                        metric={entity}
+                                        title={"Fields you can group this metric by"}
+                                        onChangeLocation={onChangeLocation}
+                                    />
                                 </li>
                             }
                         </List>

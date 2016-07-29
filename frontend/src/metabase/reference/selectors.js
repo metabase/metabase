@@ -13,6 +13,8 @@ import {
 // it feels like I'm duplicating a lot of routing logic here
 //TODO: refactor to use different container components for each section
 // initialize section metadata in there
+// may not be worthwhile due to the extra boilerplate required
+// ideal solution is to pass metadata to each section through router
 const referenceSections = {
     [`/reference/guide`]: {
         id: `/reference/guide`,
