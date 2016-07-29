@@ -247,6 +247,7 @@ export default class ReferenceEntity extends Component {
                                             <Link
                                                 to={section.headerLink}
                                                 className={cx("Button", "Button--borderless", R.editButton)}
+                                                data-metabase-event={`Data Reference;Entity -> QB click;${section.type}`}
                                             >
                                                 <div className="flex align-center relative">
                                                     <span className="mr1">See this {section.type}</span>

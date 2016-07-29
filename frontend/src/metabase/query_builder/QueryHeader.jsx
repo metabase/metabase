@@ -264,7 +264,7 @@ export default class QueryHeader extends Component {
                 'text-brand-hover': !this.props.uiControls.isShowingTemplateTagsEditor
             });
             buttonSections.push([
-                <Tooltip key="parameterEdititor" tooltip="Parameters">
+                <Tooltip key="parameterEdititor" tooltip="Variables">
                     <a className={parametersButtonClasses}>
                         <Icon name="variable" size={16} onClick={this.props.toggleTemplateTagsEditor}></Icon>
                     </a>
