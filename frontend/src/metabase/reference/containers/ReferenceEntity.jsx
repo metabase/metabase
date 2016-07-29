@@ -4,10 +4,6 @@ import { Link } from "react-router";
 import ReactDOM from "react-dom";
 import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
-import i from "icepick";
-
-import * as MetabaseCore from "metabase/lib/core";
-import { isNumericBaseType } from "metabase/lib/schema_metadata";
 
 import S from "metabase/components/List.css";
 import D from "metabase/components/Detail.css";
@@ -18,10 +14,10 @@ import Detail from "metabase/components/Detail.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
 import IconBorder from "metabase/components/IconBorder.jsx";
-import Select from "metabase/components/Select.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
 import QueryButton from "metabase/query_builder/dataref/QueryButton.jsx";
+import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail.jsx";
 import RevisionMessageModal from "metabase/reference/components/RevisionMessageModal.jsx";
 import Formula from "metabase/reference/components/Formula.jsx";
 
@@ -359,71 +355,14 @@ export default class ReferenceEntity extends Component {
                                 </li>
                             }
                             { section.type === 'field' &&
-                                //TODO: could use some refactoring. a lot of overlap with Field.jsx and ListItem.jsx
                                 <li className="relative">
-                                    <div className={cx(D.detail)}>
-                                        <div className={D.detailBody}>
-                                            <div className={D.detailTitle}>
-                                                <span className={D.detailName}>Field type</span>
-                                            </div>
-                                            <div className={cx(D.detailSubtitle, { "mt1" : true })}>
-                                                <span>
-                                                    { isEditing ?
-                                                        <Select
-                                                            triggerClasses="rounded bordered p1 inline-block"
-                                                            placeholder="Select a field type"
-                                                            value={
-                                                                MetabaseCore.field_special_types_map[special_type.value] ||
-                                                                MetabaseCore.field_special_types_map[entity.special_type]
-                                                            }
-                                                            options={
-                                                                MetabaseCore.field_special_types
-                                                                    .concat({
-                                                                        'id': null,
-                                                                        'name': 'No field type',
-                                                                        'section': 'Other'
-                                                                    })
-                                                                    .filter(type => !isNumericBaseType(entity) ?
-                                                                        !(type.id && type.id.startsWith("timestamp_")) :
-                                                                        true
-                                                                    )
-                                                            }
-                                                            onChange={(type) => special_type.onChange(type.id)}
-                                                        /> :
-                                                        <span>
-                                                            { i.getIn(
-                                                                    MetabaseCore.field_special_types_map,
-                                                                    [entity.special_type, 'name']
-                                                                ) || 'No field type'
-                                                            }
-                                                        </span>
-                                                    }
-                                                </span>
-                                                <span className="ml4">
-                                                    { isEditing ?
-                                                        (special_type.value === 'fk' ||
-                                                        (entity.special_type === 'fk' && special_type.value === undefined)) &&
-                                                        <Select
-                                                            triggerClasses="rounded bordered p1 inline-block"
-                                                            placeholder="Select a field type"
-                                                            value={
-                                                                foreignKeys[fk_target_field_id.value] ||
-                                                                foreignKeys[entity.fk_target_field_id] ||
-                                                                {name: "Select a Foreign Key"}
-                                                            }
-                                                            options={Object.values(foreignKeys)}
-                                                            onChange={(foreignKey) => fk_target_field_id.onChange(foreignKey.id)}
-                                                            optionNameFn={(foreignKey) => foreignKey.name}
-                                                        /> :
-                                                        entity.special_type === 'fk' &&
-                                                        <span>
-                                                            {i.getIn(foreignKeys, [entity.fk_target_field_id, "name"])}
-                                                        </span>
-                                                    }
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <FieldTypeDetail
+                                        field={entity}
+                                        foreignKeys={foreignKeys}
+                                        fieldTypeFormField={special_type}
+                                        foreignKeyFormField={fk_target_field_id}
+                                        isEditing={isEditing}
+                                    />
                                 </li>
                             }
                             { hasQuestions && !isEditing &&
