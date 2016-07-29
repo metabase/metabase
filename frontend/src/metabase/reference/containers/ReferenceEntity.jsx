@@ -18,6 +18,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.j
 
 import QueryButton from "metabase/query_builder/dataref/QueryButton.jsx";
 import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail.jsx";
+import UsefulQuestions from "metabase/reference/components/UsefulQuestions.jsx";
 import RevisionMessageModal from "metabase/reference/components/RevisionMessageModal.jsx";
 import Formula from "metabase/reference/components/Formula.jsx";
 
@@ -367,23 +368,7 @@ export default class ReferenceEntity extends Component {
                             }
                             { hasQuestions && !isEditing &&
                                 <li className="relative">
-                                    <div className={cx(D.detail)}>
-                                        <div className={D.detailBody}>
-                                            <div className={D.detailTitle}>
-                                                <span className={D.detailName}>Potentially useful questions</span>
-                                            </div>
-                                            <div className={R.usefulQuestions}>
-                                                { section.questions.map((question, index, questions) =>
-                                                    <QueryButton
-                                                        key={index}
-                                                        className={cx("border-bottom", "pt1", "pb1")}
-                                                        iconClass={S.icon}
-                                                        {...question}
-                                                    />
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <UsefulQuestions questions={section.questions} />
                                 </li>
                             }
                             { section.type === 'metric' && !isEditing &&

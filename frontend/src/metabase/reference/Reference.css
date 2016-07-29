@@ -120,11 +120,6 @@
     font-size: 12px;
 }
 
-:local(.usefulQuestions) {
-    composes: text-brand mt1 from "style";
-    font-size: 14px;
-}
-
 :local(.tableActualName) {
     color: #AAB7C3;
 }
