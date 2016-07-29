@@ -34,11 +34,12 @@
     max-height: 0px;
 }
 .formulaDefinition-enter.formulaDefinition-enter-active {
-    max-height: 200px;
+    /* using 100% max-height breaks the transition */
+    max-height: 150px;
     transition: max-height 300ms ease-out;
 }
 .formulaDefinition-leave {
-    max-height: 200px;
+    max-height: 150px;
 }
 .formulaDefinition-leave.formulaDefinition-leave-active {
     max-height: 0px;
