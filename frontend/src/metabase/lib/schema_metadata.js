@@ -507,7 +507,8 @@ export const ICON_MAPPING = {
     [LOCATION]: 'location',
     [COORDINATE]: 'location',
     [STRING]: 'string',
-    [NUMBER]: 'int'
+    [NUMBER]: 'int',
+    [BOOLEAN]: 'io'
 };
 
 export function getIconForField(field) {

@@ -136,10 +136,14 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (updateUrl) => {
 
 
 export const TOGGLE_DATA_REFERENCE = "TOGGLE_DATA_REFERENCE";
-export const toggleDataReference = createAction(TOGGLE_DATA_REFERENCE);
+export const toggleDataReference = createAction(TOGGLE_DATA_REFERENCE, () => {
+    MetabaseAnalytics.trackEvent("QueryBuilder", "Toggle Data Reference");
+});
 
 export const TOGGLE_TEMPLATE_TAGS_EDITOR = "TOGGLE_TEMPLATE_TAGS_EDITOR";
-export const toggleTemplateTagsEditor = createAction(TOGGLE_TEMPLATE_TAGS_EDITOR);
+export const toggleTemplateTagsEditor = createAction(TOGGLE_TEMPLATE_TAGS_EDITOR, () => {
+    MetabaseAnalytics.trackEvent("QueryBuilder", "Toggle Template Tags Editor");
+});
 
 export const CLOSE_QB_TUTORIAL = "CLOSE_QB_TUTORIAL";
 export const closeQbTutorial = createAction(CLOSE_QB_TUTORIAL, () => {

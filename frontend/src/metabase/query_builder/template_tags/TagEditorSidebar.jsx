@@ -3,6 +3,7 @@ import React, { Component, PropTypes } from "react";
 import Icon from "metabase/components/Icon.jsx";
 import TagEditorParam from "./TagEditorParam.jsx";
 import TagEditorHelp from "./TagEditorHelp.jsx";
+import MetabaseAnalytics from "metabase/lib/analytics";
 
 import cx from "classnames";
 import { getTemplateTags } from "metabase/meta/Card";
@@ -24,6 +25,11 @@ export default class TagEditorSidebar extends Component {
         setQuery: PropTypes.func.isRequired,
         sampleDatasetId: PropTypes.number,
     };
+
+    setSection (section) {
+        this.setState({ section: section });
+        MetabaseAnalytics.trackEvent("QueryBuilder", "Template Tag Editor Section Change", section)
+    }
 
     render() {
 
@@ -51,8 +57,8 @@ export default class TagEditorSidebar extends Component {
                 </div>
                 <div className="DataReference-content">
                     <div className="Button-group Button-group--brand text-uppercase mb2">
-                        <a className={cx("Button Button--small", { "Button--active": section === "settings" , "disabled": tags.length === 0 })} onClick={() => this.setState({ section: "settings" })}>Settings</a>
-                        <a className={cx("Button Button--small", { "Button--active": section === "help" })} onClick={() => this.setState({ section: "help" })}>Help</a>
+                        <a className={cx("Button Button--small", { "Button--active": section === "settings" , "disabled": tags.length === 0 })} onClick={() => this.setSection("settings")}>Settings</a>
+                        <a className={cx("Button Button--small", { "Button--active": section === "help" })} onClick={() => this.setSection("help")}>Help</a>
                     </div>
                     { section === "settings" ?
                         <SettingsPane tags={tags} onUpdate={this.props.updateTemplateTag} databaseFields={this.props.databaseFields}/>
