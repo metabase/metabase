@@ -28,12 +28,13 @@ const Formula = ({
         </div>
         <ReactCSSTransitionGroup
             transitionName="formulaDefinition"
-            transitionEnterTimeout={1000}
-            transitionLeaveTimeout={1000}
+            transitionEnterTimeout={300}
+            transitionLeaveTimeout={300}
         >
             { isExpanded &&
                 <div key="formulaDefinition" className={S.formulaDefinition}>
                     <QueryDefinition
+                        className={S.formulaDefinitionInner}
                         object={entity}
                         tableMetadata={table}
                     />

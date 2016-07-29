@@ -20,25 +20,27 @@
 }
 
 :local(.formulaDefinition) {
-    composes: p2 from "style";
     overflow: hidden;
+}
+:local(.formulaDefinitionInner) {
+    composes: p2 from "style";
 }
 
 .formulaDefinition {
-    max-height: 100%;
+    overflow: hidden;
 }
 
 .formulaDefinition-enter {
-    max-height: 1px;
+    max-height: 0px;
 }
 .formulaDefinition-enter.formulaDefinition-enter-active {
-    max-height: 100%;
-    transition: max-height 1000ms ease-in;
+    max-height: 200px;
+    transition: max-height 300ms ease-out;
 }
 .formulaDefinition-leave {
-    max-height: 100%;
+    max-height: 200px;
 }
 .formulaDefinition-leave.formulaDefinition-leave-active {
-    max-height: 1px;
-    transition: max-height 1000ms ease-in;
+    max-height: 0px;
+    transition: max-height 300ms ease-out;
 }

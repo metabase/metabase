@@ -5,8 +5,8 @@ import AggregationWidget from "../AggregationWidget.jsx";
 
 import Query from "metabase/lib/query";
 
-const QueryDefinition = ({ object, tableMetadata }) =>
-    <div style={{ pointerEvents: "none" }}>
+const QueryDefinition = ({ className, object, tableMetadata }) =>
+    <div className={className} style={{ pointerEvents: "none" }}>
         { object.definition.aggregation &&
             <AggregationWidget
                 aggregation={object.definition.aggregation}
