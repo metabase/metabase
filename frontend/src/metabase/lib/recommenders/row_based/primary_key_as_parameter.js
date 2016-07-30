@@ -17,12 +17,16 @@ export function suggestDashboardParameterizedByID(query, resultRow, columnDefini
 	var returnValues = []
 	_.each(linkFields, function(link){
 
-		var fieldID = linkFields.id
+		var fieldID = link.id
 
 		var relevantDashboards = Dashboards.getDashboardsParameterizedBy(fieldID)
 
 		_.each(relevantDashboards, function(dashboard){
-			return returnValues.push({target : dashboard, source: RECOMMENDER_NAME, score: 1})
+			return returnValues.push({target : dashboard, 
+									  source: RECOMMENDER_NAME, 
+									  recommendation: "See Dashboard " + dashboard.name + " limited by " + link.name, 
+									  url: "/dashboard/" + dashboard.id, 
+									  score: 1})
 			
 		})
 	})
@@ -38,13 +42,16 @@ export function suggestCardParameterizedByID(query, resultRow, columnDefinitions
 	var returnValues = []
 	_.each(linkFields, function(link){
 
-		var fieldID = linkFields.id
+		var fieldID = link.id
 		
 		var relevantCards = Cards.getCardsParameterizedBy(fieldID)
 
 		
 		_.each(relevantCards, function(card){
-			return returnValues.push({target : card, source: RECOMMENDER_NAME, score: 1})
+			return returnValues.push({target : card, source: RECOMMENDER_NAME, 
+									  recommendation: "See Card " + card.name + " limited by " + link.name,  
+									  url: "/card/" + card.id, 
+									  score: 1})
 			
 		})
 	})

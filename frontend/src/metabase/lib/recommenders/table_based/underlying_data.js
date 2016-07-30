@@ -10,7 +10,11 @@ export function suggestUnderlyingData(query){
 		// having to reach in and set "rows" manually is fugly
 		// TODO Refactor me
 		Query.updateAggregation(query, ["rows"])
-		return [{target : new_query, source: RECOMMENDER_NAME,  score: 1}]
+		return [{target : new_query, 
+				 source: RECOMMENDER_NAME, 
+				 recommendation: "See underlying data", 
+				 url: Query.toURL(new_query),
+				 score: 1}]
 	}
 }
 

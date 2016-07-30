@@ -88,6 +88,15 @@ var Query = {
     changeTimeGranularity(query, field, newTimGranularity){
         return {}
     },
+    toUrl(query){
+        return "/q/fake_url"
+    },
+    replaceAggregationWithMetric(query, metric){
+        return query
+    },
+    replaceBreakout(query, field){
+        return query
+    },
     // End Make Me
 
     isStructured(dataset_query) {

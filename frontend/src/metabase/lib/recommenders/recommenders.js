@@ -26,6 +26,7 @@ function calculateScores(recommendations){
 
 export function allSuggestionsForQuery(query){
 	var all_recommendations =  _.flatten(_.map(TableBasedRecommenders, function(recommender){
+		console.log("Trying out recommender ", recommender)
 		var recommendation = recommender.recommender(query)
 		recommendation.recommenderWeight = recommender.base_weight
 		return recommendation

@@ -14,7 +14,11 @@ export function suggestObjectDetailView(query, resultRow, columnDefinitions){
 	
 	_.each(linkFields, function(columnPair){
 		var new_query = Query.objectDetailFor(columnPair[0], columnPair[1])
-		returnValues.push({target : new_query, source: RECOMMENDER_NAME, score: 1})
+		returnValues.push({target : new_query, 
+			     		   source: RECOMMENDER_NAME, 
+			     		   recommendation: "See object detail for " + columnPair[1], 
+			     		   url: Query.toURL(new_query), 
+			     		   score: 1})
 
 	})
 

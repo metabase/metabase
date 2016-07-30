@@ -2,9 +2,6 @@ import _ from "underscore";
 
 import * as Query from "metabase/meta/Query";
 
-     // data required:
-     //      All time dimensions in the currently queried table
-
      // useful extra data:
      //      Most common time extract for the dimension in question
 
@@ -22,7 +19,11 @@ export function suggestDifferentTimeExtract(query){
 			var new_query = Query.clone(query)
 			Query.changeTimeExtract(new_query, extract)
 			
-			returnValues.push({target : new_query, source: RECOMMENDER_NAME, score: 1})
+			returnValues.push({target : new_query, 
+							   source: RECOMMENDER_NAME, 
+							   recommendation: "See by " + extract + "instead" ,  
+							   url: Query.toURL(new_query), 
+							   score: 1})
 		})
 
 		return returnValues

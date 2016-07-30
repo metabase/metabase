@@ -22,7 +22,11 @@ export function suggestDashboardParameterizedByID(query, resultRow, columnDefini
 	var returnValues = []
 
 	_.each(relevantDashboards, function(dashboard){
-		return returnValues.push({target : dashboard, source: RECOMMENDER_NAME, score: 1})
+		return returnValues.push({target : dashboard, 
+								  source: RECOMMENDER_NAME, 
+								  recommendation: "See Dashboard " + dashboard.name + " limited by " + columnDefinitions[cellIndex].name, 
+								  url: "/dashboard/"+dashboard.id, 
+								  score: 1})
 		
 	})
 	return returnValues
@@ -42,7 +46,11 @@ export function suggestCardParameterizedByID(query, resultRow, columnDefinitions
 	var returnValues = []
 	
 	_.each(relevantCards, function(card){
-		return returnValues.push({target : card, source: RECOMMENDER_NAME, score: 1})
+		return returnValues.push({target : card, 
+								  source: RECOMMENDER_NAME, 
+								  recommendation: "See Card " + card.name + " limited by " + columnDefinitions[cellIndex].name, 
+								  url: "/card/" + card.id, 
+								  score: 1})
 		
 	})
 	return returnValues

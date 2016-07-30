@@ -2,16 +2,13 @@ import _ from "underscore";
 
 import * as Query from "metabase/meta/Query";
 
-     // data required:
-     //      All time dimensions in the currently queried table
-
      // useful extra data:
      //      Most common time granularity for the dimension in question
 
 
 
 export function suggestDifferentTimeGranularity(query){
-	const RECOMMENDER_NAME = "Change granularity"
+	const RECOMMENDER_NAME = "Suggest different granularity"
 	if(!Query.isBrokenOutByTime(query)){
 		var allTimeGranularities = Query.getTimeGranularities()
 		var currentGranularity = Query.getTimeGranularity(query)
@@ -23,11 +20,15 @@ export function suggestDifferentTimeGranularity(query){
 			var new_query = Query.clone(query)
 			Query.changeTimeGranularity(new_query, granularity)
 			
-			returnValues.push({target : new_query, source: RECOMMENDER_NAME, score: 1})
+			returnValues.push({target : new_query, 
+							   source: RECOMMENDER_NAME, 
+							   recommendation: "See by " + granularity + "instead" , 
+							   url: Query.toURL(new_query), 
+							   score: 1})
 		})
 
 		return returnValues
 	}
 }                    
 
-suggestDifferentTimeGranularity.verboseName = "Change granularity"
+suggestDifferentTimeGranularity.verboseName = "Suggest different granularity"
