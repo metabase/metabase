@@ -442,17 +442,20 @@ const getTablesByDatabase = createSelector(
     (tables, database) => tables && database && database.tables ?
         idsToObjectMap(database.tables, tables) : {}
 );
-const getTable = createSelector(
-    [getTableId, getTables],
-    (tableId, tables) => tables[tableId] || { id: tableId }
-);
-export const getTableBySegment = createSelector(
+const getTableBySegment = createSelector(
     [getSegment, getTables],
     (segment, tables) => segment && segment.table_id ? tables[segment.table_id] : {}
 );
-export const getTableByMetric = createSelector(
+const getTableByMetric = createSelector(
     [getMetric, getTables],
     (metric, tables) => metric && metric.table_id ? tables[metric.table_id] : {}
+);
+export const getTable = createSelector(
+    [getTableId, getTables, getMetricId, getTableByMetric, getSegmentId, getTableBySegment],
+    (tableId, tables, metricId, tableByMetric, segmentId, tableBySegment) => tableId ?
+        tables[tableId] || { id: tableId } :
+        metricId ? tableByMetric :
+            segmentId ? tableBySegment : {}
 );
 
 export const getFieldId = (state) => Number.parseInt(state.router.params.fieldId);

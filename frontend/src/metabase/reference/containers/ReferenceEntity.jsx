@@ -24,8 +24,7 @@ import {
 import {
     getSection,
     getData,
-    getTableByMetric,
-    getTableBySegment,
+    getTable,
     getError,
     getLoading,
     getUser,
@@ -41,33 +40,22 @@ import {
 import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';
 
-const mapStateToProps = (state, props) => {
-    const section = getSection(state);
-    // a bit hacky
-    // will have to do until we refactor to use 1 container per section type
-    const table = section.type === 'metric' ?
-        getTableByMetric(state) :
-        section.type === 'segment' ?
-            getTableBySegment(state) :
-            {};
-
-    return {
-        section,
-        entity: getData(state) || {},
-        table,
-        loading: getLoading(state),
-        // naming this 'error' will conflict with redux form
-        loadingError: getError(state),
-        user: getUser(state),
-        foreignKeys: getForeignKeys(state),
-        isEditing: getIsEditing(state),
-        hasSingleSchema: getHasSingleSchema(state),
-        hasQuestions: getHasQuestions(state),
-        hasDisplayName: getHasDisplayName(state),
-        isFormulaExpanded: getIsFormulaExpanded(state),
-        hasRevisionHistory: getHasRevisionHistory(state)
-    };
-};
+const mapStateToProps = (state, props) => ({
+    section: getSection(state),
+    entity: getData(state) || {},
+    table: getTable(state),
+    loading: getLoading(state),
+    // naming this 'error' will conflict with redux form
+    loadingError: getError(state),
+    user: getUser(state),
+    foreignKeys: getForeignKeys(state),
+    isEditing: getIsEditing(state),
+    hasSingleSchema: getHasSingleSchema(state),
+    hasQuestions: getHasQuestions(state),
+    hasDisplayName: getHasDisplayName(state),
+    isFormulaExpanded: getIsFormulaExpanded(state),
+    hasRevisionHistory: getHasRevisionHistory(state)
+});
 
 const mapDispatchToProps = {
     ...metadataActions,
