@@ -1,20 +1,16 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
-import { Link } from "react-router";
 import ReactDOM from "react-dom";
 import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
 
-import S from "metabase/components/List.css";
-import R from "metabase/reference/Reference.css";
+import S from "metabase/reference/Reference.css";
 
 import List from "metabase/components/List.jsx";
 import Detail from "metabase/components/Detail.jsx";
-import Icon from "metabase/components/Icon.jsx";
-import Ellipsified from "metabase/components/Ellipsified.jsx";
-import IconBorder from "metabase/components/IconBorder.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
+import ReferenceHeader from "metabase/reference/components/ReferenceHeader.jsx";
 import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail.jsx";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions.jsx";
 import FieldsToGroupBy from "metabase/reference/components/FieldsToGroupBy.jsx";
@@ -157,11 +153,11 @@ export default class ReferenceEntity extends Component {
                 onSubmit={onSubmit}
             >
                 { isEditing &&
-                    <div className={cx("EditHeader wrapper py1", R.editHeader)}>
+                    <div className={cx("EditHeader wrapper py1", S.editHeader)}>
                         <div>
                             You are editing this page
                         </div>
-                        <div className={R.editHeaderButtons}>
+                        <div className={S.editHeaderButtons}>
                             { hasRevisionHistory ?
                                 <RevisionMessageModal
                                     action={() => onSubmit()}
@@ -169,7 +165,7 @@ export default class ReferenceEntity extends Component {
                                     submitting={submitting}
                                 >
                                     <button
-                                        className={cx("Button", "Button--primary", "Button--white", "Button--small", R.saveButton)}
+                                        className={cx("Button", "Button--primary", "Button--white", "Button--small", S.saveButton)}
                                         type="button"
                                         disabled={submitting}
                                     >
@@ -177,7 +173,7 @@ export default class ReferenceEntity extends Component {
                                     </button>
                                 </RevisionMessageModal> :
                                 <button
-                                    className={cx("Button", "Button--primary", "Button--white", "Button--small", R.saveButton)}
+                                    className={cx("Button", "Button--primary", "Button--white", "Button--small", S.saveButton)}
                                     type="submit"
                                     disabled={submitting}
                                 >
@@ -187,7 +183,7 @@ export default class ReferenceEntity extends Component {
 
                             <button
                                 type="button"
-                                className={cx("Button", "Button--white", "Button--small", R.cancelButton)}
+                                className={cx("Button", "Button--white", "Button--small", S.cancelButton)}
                                 onClick={endEditing}
                             >
                                 CANCEL
@@ -195,86 +191,18 @@ export default class ReferenceEntity extends Component {
                         </div>
                     </div>
                 }
-                { /* NOTE: this doesn't currently use ReferenceHeader since it is much more complicated */ }
-                <div className="wrapper wrapper--trim">
-                    <div className={cx("relative", S.header)} style={section.type === 'segment' ? {marginBottom: 0} : {}}>
-                        <div className={S.leftIcons}>
-                            { section.headerIcon &&
-                                <IconBorder borderWidth="0" style={{backgroundColor: "#E9F4F8"}}>
-                                    <Icon
-                                        className="text-brand"
-                                        name={section.headerIcon}
-                                        width={24}
-                                        height={24}
-                                    />
-                                </IconBorder>
-                            }
-                        </div>
-                        { section.type === 'table' && !hasSingleSchema && !isEditing &&
-                            <div className={R.headerSchema}>{entity.schema}</div>
-                        }
-                        <div className={R.headerBody} style={isEditing ? {alignItems: "flex-start"} : {}}>
-                            { isEditing ?
-                                hasDisplayName ?
-                                    <input
-                                        className={R.headerTextInput}
-                                        type="text"
-                                        placeholder={entity.name}
-                                        {...display_name}
-                                        defaultValue={entity.display_name}
-                                    /> :
-                                    <input
-                                        className={R.headerTextInput}
-                                        type="text"
-                                        placeholder={entity.name}
-                                        {...name}
-                                        defaultValue={entity.name}
-                                    /> :
-                                [
-                                    <Ellipsified key="1" className={!section.headerLink && "flex-full"} tooltipMaxWidth="100%">
-                                        { hasDisplayName ?
-                                            entity.display_name || entity.name :
-                                            entity.name
-                                        }
-                                    </Ellipsified>,
-                                    section.headerLink &&
-                                        <div key="2" className={cx("flex-full", S.headerButton)}>
-                                            <Link
-                                                to={section.headerLink}
-                                                className={cx("Button", "Button--borderless", R.editButton)}
-                                                data-metabase-event={`Data Reference;Entity -> QB click;${section.type}`}
-                                            >
-                                                <div className="flex align-center relative">
-                                                    <span className="mr1">See this {section.type}</span>
-                                                    <Icon name="chevronright" size={16} />
-                                                </div>
-                                            </Link>
-                                        </div>
-                                ]
-                            }
-                            { user.is_superuser && !isEditing &&
-                                <div className={S.headerButton}>
-                                    <a
-                                        onClick={startEditing}
-                                        className={cx("Button", "Button--borderless", R.editButton)}
-                                    >
-                                        <div className="flex align-center relative">
-                                            <Icon name="pencil" size={16} />
-                                            <span className="ml1">Edit</span>
-                                        </div>
-                                    </a>
-                                </div>
-                            }
-                        </div>
-                    </div>
-                    { section.type === 'segment' && table &&
-                        <div className={R.subheader}>
-                            <div className={cx(R.subheaderBody)}>
-                                A subset of <Link className={R.subheaderLink} to={`/reference/databases/${table.db_id}/tables/${table.id}`}>{table.display_name}</Link>
-                            </div>
-                        </div>
-                    }
-                </div>
+                <ReferenceHeader
+                    entity={entity}
+                    table={table}
+                    section={section}
+                    user={user}
+                    isEditing={isEditing}
+                    hasSingleSchema={hasSingleSchema}
+                    hasDisplayName={hasDisplayName}
+                    startEditing={startEditing}
+                    displayNameFormField={display_name}
+                    nameFormField={name}
+                />
                 <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>
                 { () =>
                     <div className="wrapper wrapper--trim">
@@ -295,7 +223,7 @@ export default class ReferenceEntity extends Component {
                                         id="name"
                                         name="Actual name in database"
                                         description={entity.name}
-                                        subtitleClass={R.tableActualName}
+                                        subtitleClass={S.tableActualName}
                                     />
                                 </li>
                             }
