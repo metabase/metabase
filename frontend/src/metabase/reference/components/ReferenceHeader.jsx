@@ -3,8 +3,8 @@ import { Link } from "react-router";
 import cx from "classnames";
 import pure from "recompose/pure";
 
-import S from "metabase/components/List.css";
-import R from "metabase/reference/Reference.css";
+import S from "./ReferenceHeader.css";
+import L from "metabase/components/List.css";
 
 import IconBorder from "metabase/components/IconBorder.jsx";
 import Icon from "metabase/components/Icon.jsx";
@@ -23,8 +23,8 @@ const ReferenceHeader = ({
     nameFormField
 }) =>
     <div className="wrapper wrapper--trim">
-        <div className={cx("relative", S.header)} style={section.type === 'segment' ? {marginBottom: 0} : {}}>
-            <div className={S.leftIcons}>
+        <div className={cx("relative", L.header)} style={section.type === 'segment' ? {marginBottom: 0} : {}}>
+            <div className={L.leftIcons}>
                 { section.headerIcon &&
                     <IconBorder
                         borderWidth="0"
@@ -40,23 +40,23 @@ const ReferenceHeader = ({
                 }
             </div>
             { section.type === 'table' && !hasSingleSchema && !isEditing &&
-                <div className={R.headerSchema}>{entity.schema}</div>
+                <div className={S.headerSchema}>{entity.schema}</div>
             }
             <div
-                className={R.headerBody}
+                className={S.headerBody}
                 style={isEditing && section.name === 'Details' ? {alignItems: "flex-start"} : {}}
             >
                 { isEditing && section.name === 'Details' ?
                     hasDisplayName ?
                         <input
-                            className={R.headerTextInput}
+                            className={S.headerTextInput}
                             type="text"
                             placeholder={entity.name}
                             {...displayNameFormField}
                             defaultValue={entity.display_name}
                         /> :
                         <input
-                            className={R.headerTextInput}
+                            className={S.headerTextInput}
                             type="text"
                             placeholder={entity.name}
                             {...nameFormField}
@@ -76,10 +76,10 @@ const ReferenceHeader = ({
                             }
                         </Ellipsified>,
                         section.headerLink &&
-                            <div key="2" className={cx("flex-full", S.headerButton)}>
+                            <div key="2" className={cx("flex-full", L.headerButton)}>
                                 <Link
                                     to={section.headerLink}
-                                    className={cx("Button", "Button--borderless", R.editButton)}
+                                    className={cx("Button", "Button--borderless", S.editButton)}
                                     data-metabase-event={`Data Reference;Entity -> QB click;${section.type}`}
                                 >
                                     <div className="flex align-center relative">
@@ -91,10 +91,10 @@ const ReferenceHeader = ({
                     ]
                 }
                 { user && user.is_superuser && !isEditing &&
-                    <div className={S.headerButton}>
+                    <div className={L.headerButton}>
                         <a
                             onClick={startEditing}
-                            className={cx("Button", "Button--borderless", R.editButton)}
+                            className={cx("Button", "Button--borderless", S.editButton)}
                         >
                             <div className="flex align-center relative">
                                 <Icon name="pencil" size={16} />
@@ -106,10 +106,10 @@ const ReferenceHeader = ({
             </div>
         </div>
         { section.type === 'segment' && table &&
-            <div className={R.subheader}>
-                <div className={cx(R.subheaderBody)}>
+            <div className={S.subheader}>
+                <div className={cx(S.subheaderBody)}>
                     A subset of <Link
-                        className={R.subheaderLink}
+                        className={S.subheaderLink}
                         to={`/reference/databases/${table.db_id}/tables/${table.id}`}
                     >
                         {table.display_name}
