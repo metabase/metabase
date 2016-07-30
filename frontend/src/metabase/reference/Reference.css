@@ -1,6 +1,5 @@
 :root {
     --title-color: #606E7B;
-    --edit-header-color: #6CAFED;
     --icon-width: calc(48px + 1rem);
 }
 
@@ -55,39 +54,11 @@
     transition: color .3s linear;
 }
 
-:local(.editHeader) {
-    composes: text-white flex align-center from "style";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 43px;
-    background-color: var(--edit-header-color);
-}
-
-:local(.editHeaderButtons) {
-    composes: flex-align-right from "style";
-}
-
-:local(.editHeaderButton) {
-    border: none;
-    color: var(--edit-header-color);
-}
-
 :local(.columnHeader) {
     composes: flex flex-full from "style";
     margin-left: var(--icon-width);
     padding-top: 20px;
     padding-bottom: 20px;
-}
-
-:local(.saveButton) {
-    composes: editHeaderButton;
-}
-
-:local(.cancelButton) {
-    composes: editHeaderButton;
-    opacity: 0.5;
 }
 
 :local(.editButton) {

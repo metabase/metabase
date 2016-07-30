@@ -10,14 +10,12 @@ import List from "metabase/components/List.jsx";
 import Detail from "metabase/components/Detail.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
+import EditHeader from "metabase/reference/components/EditHeader.jsx";
 import ReferenceHeader from "metabase/reference/components/ReferenceHeader.jsx";
 import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail.jsx";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions.jsx";
 import FieldsToGroupBy from "metabase/reference/components/FieldsToGroupBy.jsx";
-import RevisionMessageModal from "metabase/reference/components/RevisionMessageModal.jsx";
 import Formula from "metabase/reference/components/Formula.jsx";
-
-import cx from "classnames";
 
 import {
     tryUpdateData
@@ -153,43 +151,13 @@ export default class ReferenceEntity extends Component {
                 onSubmit={onSubmit}
             >
                 { isEditing &&
-                    <div className={cx("EditHeader wrapper py1", S.editHeader)}>
-                        <div>
-                            You are editing this page
-                        </div>
-                        <div className={S.editHeaderButtons}>
-                            { hasRevisionHistory ?
-                                <RevisionMessageModal
-                                    action={() => onSubmit()}
-                                    field={revision_message}
-                                    submitting={submitting}
-                                >
-                                    <button
-                                        className={cx("Button", "Button--primary", "Button--white", "Button--small", S.saveButton)}
-                                        type="button"
-                                        disabled={submitting}
-                                    >
-                                        SAVE
-                                    </button>
-                                </RevisionMessageModal> :
-                                <button
-                                    className={cx("Button", "Button--primary", "Button--white", "Button--small", S.saveButton)}
-                                    type="submit"
-                                    disabled={submitting}
-                                >
-                                    SAVE
-                                </button>
-                            }
-
-                            <button
-                                type="button"
-                                className={cx("Button", "Button--white", "Button--small", S.cancelButton)}
-                                onClick={endEditing}
-                            >
-                                CANCEL
-                            </button>
-                        </div>
-                    </div>
+                    <EditHeader
+                        hasRevisionHistory={hasRevisionHistory}
+                        onSubmit={onSubmit}
+                        endEditing={endEditing}
+                        submitting={submitting}
+                        revisionMessageFormField={revision_message}
+                    />
                 }
                 <ReferenceHeader
                     entity={entity}
