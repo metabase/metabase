@@ -1,6 +1,7 @@
 import React, { Component, PropTypes } from "react";
 import { Link } from "react-router";
 import cx from "classnames";
+import pure from "recompose/pure";
 
 import S from "metabase/components/List.css";
 import R from "metabase/reference/Reference.css";
@@ -130,4 +131,4 @@ ReferenceHeader.propTypes = {
     nameFormField: PropTypes.object
 };
 
-export default ReferenceHeader;
+export default pure(ReferenceHeader);

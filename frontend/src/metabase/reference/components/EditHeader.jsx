@@ -8,9 +8,9 @@ import RevisionMessageModal from "metabase/reference/components/RevisionMessageM
 
 const EditHeader = ({
     hasRevisionHistory,
-    onSubmit,
     endEditing,
     submitting,
+    onSubmit,
     revisionMessageFormField
 }) =>
     <div className={cx("EditHeader wrapper py1", S.editHeader)}>
@@ -52,10 +52,10 @@ const EditHeader = ({
     </div>;
 EditHeader.propTypes = {
     hasRevisionHistory: PropTypes.bool.isRequired,
-    onSubmit: PropTypes.func.isRequired,
     endEditing: PropTypes.func.isRequired,
     submitting: PropTypes.bool.isRequired,
-    revisionMessageFormField: PropTypes.object.isRequired
+    onSubmit: PropTypes.func,
+    revisionMessageFormField: PropTypes.object
 };
 
 export default pure(EditHeader);
