@@ -37,7 +37,7 @@ import {
 } from "../selectors";
 
 import * as actions from "../actions";
-
+import { push } from "react-router-redux";
 
 const cardApi = new AngularResourceProxy("Card", ["create", "update", "delete"]);
 const dashboardApi = new AngularResourceProxy("Dashboard", ["list", "create"]);
@@ -108,6 +108,7 @@ const mapStateToProps = (state, props) => {
 
 const mapDispatchToProps = {
     ...actions,
+    onChangeLocation: push
 };
 
 @connect(mapStateToProps, mapDispatchToProps)

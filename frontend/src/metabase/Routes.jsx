@@ -133,8 +133,8 @@ const Routes =
             <Route path="/dash/:dashboardId" component={FIXME_forwardOnChangeLocation(DashboardApp)} />
 
             {/* QUERY BUILDER */}
-            <Route path="/card/:cardId" component={FIXME_forwardOnChangeLocation(QueryBuilder, ["onChangeLocation", "updateUrl"])} />
-            <Route path="/q" component={FIXME_forwardOnChangeLocation(QueryBuilder, ["onChangeLocation", "updateUrl"])} />
+            <Route path="/card/:cardId" component={QueryBuilder} />
+            <Route path="/q" component={QueryBuilder} />
 
             {/* QUESTIONS */}
             <Route path="/questions" component={EntityBrowser}>
