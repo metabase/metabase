@@ -12,19 +12,19 @@ import * as dashboardActions from "../dashboard";
 
 const mapStateToProps = (state, props) => {
   return {
-      isEditing:            getIsEditing(state),
-      isEditingParameter:   getIsEditingParameter(state),
-      isDirty:              getIsDirty(state),
-      selectedDashboard:    getSelectedDashboard(state),
-      dashboard:            getDashboardComplete(state),
-      cards:                getCardList(state),
-      revisions:            getRevisions(state),
-      dashcardData:             getCardData(state),
-      cardDurations:        getCardDurations(state),
-      databases:            getDatabases(state),
-      editingParameter:     getEditingParameter(state),
-      parameterValues:      getParameterValues(state),
-      addCardOnLoad:        parseInt(state.router.location.query.add) || null
+      isEditing:            getIsEditing(state, props),
+      isEditingParameter:   getIsEditingParameter(state, props),
+      isDirty:              getIsDirty(state, props),
+      selectedDashboard:    getSelectedDashboard(state, props),
+      dashboard:            getDashboardComplete(state, props),
+      cards:                getCardList(state, props),
+      revisions:            getRevisions(state, props),
+      dashcardData:         getCardData(state, props),
+      cardDurations:        getCardDurations(state, props),
+      databases:            getDatabases(state, props),
+      editingParameter:     getEditingParameter(state, props),
+      parameterValues:      getParameterValues(state, props),
+      addCardOnLoad:        props.location.query.add ? parseInt(props.location.query.add) : null
   }
 }
 

@@ -11,10 +11,14 @@
 
         <script type="text/javascript">
          window.MetabaseBootstrap = {{{bootstrap_json}}};
+         console.log("DEBUG_LOAD_COUNT", localStorage.DEBUG_LOAD_COUNT = parseInt(localStorage.DEBUG_LOAD_COUNT || 0) + 1);
         </script>
     </head>
 
-    <body ng-controller="Metabase" ng-view></body>
+    <body>
+        <div id="root" />
+        <div style="display: none;" ng-controller="Metabase" ng-view />
+    </body>
 
     <script type="text/javascript">
      // Load scripts asyncronously after the page has finished loading

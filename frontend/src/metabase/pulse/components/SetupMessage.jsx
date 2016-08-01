@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import { Link } from "react-router";
 
 import Icon from "metabase/components/Icon.jsx";
 
@@ -30,7 +31,7 @@ export default class SetupMessage extends Component {
                     </div>
                     <div className="mt2">
                         {channels.map(c =>
-                            <a className="Button Button--primary mr1" href={"/admin/settings?section="+c} target={window.OSX ? null : "_blank"}>Configure {c}</a>
+                            <Link to={"/admin/settings/"+c.toLowerCase()} className="Button Button--primary mr1" target={window.OSX ? null : "_blank"}>Configure {c}</Link>
                         )}
                     </div>
                 </div>

@@ -36,11 +36,6 @@ import {
 } from "./actions";
 
 
-// TODO: these are here as work arounds until we are transitioned over to ReduxRouter and using their history approach
-export const updateUrl = handleActions({
-    [INITIALIZE_QB]: { next: (state, { payload }) => payload ? payload.updateUrl : state }
-}, () => console.log("default"));
-
 // TODO: once we are using the global redux store we can get this from there
 export const user = handleActions({
     [CLOSE_QB_NEWB_MODAL]: { next: (state, { payload }) => ({...state, is_qbnewb: false}) }

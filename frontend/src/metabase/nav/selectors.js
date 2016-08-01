@@ -1,7 +1,7 @@
 
 import { createSelector } from 'reselect';
 
-export const getPath = (state) => state.router.location.pathname;
+export const getPath = (state, props) => props.location.pathname;
 
 export const getUser = (state) => state.currentUser;
 

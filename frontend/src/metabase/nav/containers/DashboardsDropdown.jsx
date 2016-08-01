@@ -1,5 +1,6 @@
 import React, { Component, PropTypes } from 'react';
 import { connect } from "react-redux";
+import { Link } from "react-router";
 
 import OnClickOut from 'react-onclickout';
 
@@ -135,7 +136,7 @@ export default class DashboardsDropdown extends Component {
                                     <ul className="NavDropdown-content-layer">
                                         { dashboards.map(dash =>
                                             <li key={dash.id} className="block">
-                                                <a data-metabase-event={"Navbar;Dashboard Dropdown;Open Dashboard;"+dash.id} className="Dropdown-item block text-white no-decoration" href={"/dash/"+dash.id} onClick={this.closeDropdown}>
+                                                <Link to={"/dash/"+dash.id} data-metabase-event={"Navbar;Dashboard Dropdown;Open Dashboard;"+dash.id} className="Dropdown-item block text-white no-decoration" onClick={this.closeDropdown}>
                                                     <div className="flex text-bold">
                                                         {dash.name}
                                                     </div>
@@ -144,7 +145,7 @@ export default class DashboardsDropdown extends Component {
                                                             {dash.description}
                                                         </div>
                                                     : null }
-                                                </a>
+                                                </Link>
                                             </li>
                                         )}
                                         <li className="block border-top border-light">

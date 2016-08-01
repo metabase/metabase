@@ -2,6 +2,8 @@ import React, { Component, PropTypes } from 'react';
 import cx from "classnames";
 
 import { connect } from "react-redux";
+import { push } from "react-router-redux";
+import { Link } from "react-router";
 
 import Icon from "metabase/components/Icon.jsx";
 import LogoIcon from "metabase/components/LogoIcon.jsx";
@@ -12,12 +14,13 @@ import ProfileLink from "metabase/nav/components/ProfileLink.jsx";
 import { getPath, getContext, getUser } from "../selectors";
 
 const mapStateToProps = (state, props) => ({
-    path:       getPath(state),
-    context:    getContext(state),
+    path:       getPath(state, props),
+    context:    getContext(state, props),
     user:       getUser(state)
 });
 
 const mapDispatchToProps = {
+    onChangeLocation: push
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -54,7 +57,9 @@ export default class Navbar extends Component {
     }
 
     renderAdminNav() {
-        const classes = "NavItem py1 px2 no-decoration";
+        const getClasses = (path) => cx("NavItem py1 px2 no-decoration", {
+            "is--selected": this.isActive(path)
+        });
 
         return (
             <nav className={cx("Nav AdminNav", this.props.className)}>
@@ -66,24 +71,24 @@ export default class Navbar extends Component {
 
                     <ul className="sm-ml4 flex flex-full">
                         <li>
-                            <a data-metabase-event={"Navbar;Settings"} className={cx(classes, {"is--selected": this.isActive("/admin/settings")})}  href="/admin/settings/">
+                            <Link to="/admin/settings" data-metabase-event={"Navbar;Settings"} className={getClasses("/admin/settings")}  >
                                 Settings
-                            </a>
+                            </Link>
                         </li>
                         <li>
-                            <a data-metabase-event={"Navbar;People"} className={cx(classes, {"is--selected": this.isActive("/admin/people")})} href="/admin/people/">
+                            <Link to="/admin/people" data-metabase-event={"Navbar;People"} className={getClasses("/admin/people")} >
                                 People
-                            </a>
+                            </Link>
                         </li>
                         <li>
-                            <a data-metabase-event={"Navbar;Data Model"} className={cx(classes, {"is--selected": this.isActive("/admin/datamodel")})} href="/admin/datamodel/database">
+                            <Link to="/admin/datamodel/database" data-metabase-event={"Navbar;Data Model"} className={getClasses("/admin/datamodel")} >
                                 Data Model
-                            </a>
+                            </Link>
                         </li>
                         <li>
-                            <a data-metabase-event={"Navbar;Databases"} className={cx(classes, {"is--selected": this.isActive("/admin/databases")})} href="/admin/databases/">
+                            <Link to="/admin/databases" data-metabase-event={"Navbar;Databases"} className={getClasses("/admin/databases")}>
                                 Databases
-                            </a>
+                            </Link>
                         </li>
                     </ul>
 
@@ -98,9 +103,9 @@ export default class Navbar extends Component {
             <nav className={cx("Nav py2 sm-py1 xl-py3 relative", this.props.className)}>
                 <ul className="wrapper flex align-center">
                     <li>
-                        <a data-metabase-event={"Navbar;Logo"} className="NavItem cursor-pointer flex align-center" href="/">
+                        <Link to="/" data-metabase-event={"Navbar;Logo"} className="NavItem cursor-pointer flex align-center">
                             <LogoIcon className="text-brand my2"></LogoIcon>
-                        </a>
+                        </Link>
                     </li>
                 </ul>
             </nav>
@@ -112,9 +117,9 @@ export default class Navbar extends Component {
             <nav className={cx("Nav CheckBg CheckBg-offset relative bg-brand sm-py2 sm-py1 xl-py3", this.props.className)}>
                 <ul className="pl4 pr1 flex align-center">
                     <li>
-                        <a data-metabase-event={"Navbar;Logo"} className="NavItem cursor-pointer text-white flex align-center my1 transition-background" href="/">
-                            <span><LogoIcon className="text-white m1"></LogoIcon></span>
-                        </a>
+                        <Link to="/" data-metabase-event={"Navbar;Logo"} className="NavItem cursor-pointer text-white flex align-center my1 transition-background">
+                            <LogoIcon className="text-white m1"></LogoIcon>
+                        </Link>
                     </li>
                     <li className="pl3">
                         <DashboardsDropdown {...this.props}>
@@ -127,16 +132,16 @@ export default class Navbar extends Component {
                         </DashboardsDropdown>
                     </li>
                     <li className="pl1">
-                        <a data-metabase-event={"Navbar;Questions"} style={this.styles.navButton} className={cx("NavItem cursor-pointer text-white text-bold no-decoration flex align-center px2 transition-background", {"NavItem--selected": this.isActive("/questions") })} href="/questions/all">Questions</a>
+                        <Link to="/questions/all" data-metabase-event={"Navbar;Questions"} style={this.styles.navButton} className={cx("NavItem cursor-pointer text-white text-bold no-decoration flex align-center px2 transition-background")} activeClassName="NavItem--selected">Questions</Link>
                     </li>
                     <li className="pl1">
-                        <a data-metabase-event={"Navbar;Pulses"} style={this.styles.navButton} className={cx("NavItem cursor-pointer text-white text-bold no-decoration flex align-center px2 transition-background", {"NavItem--selected": this.isActive("/pulse") })} href="/pulse/">Pulses</a>
+                        <Link to="/pulse" data-metabase-event={"Navbar;Pulses"} style={this.styles.navButton} className={cx("NavItem cursor-pointer text-white text-bold no-decoration flex align-center px2 transition-background")} activeClassName="NavItem--selected">Pulses</Link>
                     </li>
                     <li className="pl1">
-                        <a data-metabase-event={"Navbar;DataReference"} style={this.styles.navButton} className={cx("NavItem cursor-pointer text-white text-bold no-decoration flex align-center px2 transition-background", {"NavItem--selected": this.isActive("/reference") })} href="/reference/guide">Data Reference</a>
+                        <Link to="/reference/guide" data-metabase-event={"Navbar;DataReference"} style={this.styles.navButton} className={cx("NavItem cursor-pointer text-white text-bold no-decoration flex align-center px2 transition-background")} activeClassName="NavItem--selected">Data Reference</Link>
                     </li>
                     <li className="pl3">
-                        <a data-metabase-event={"Navbar;New Question"} style={this.styles.newQuestion} className="NavNewQuestion rounded inline-block bg-white text-brand text-bold cursor-pointer px2 no-decoration transition-all" href="/q">New <span className="hide sm-show">Question</span></a>
+                        <Link to="/q" data-metabase-event={"Navbar;New Question"} style={this.styles.newQuestion} className="NavNewQuestion rounded inline-block bg-white text-brand text-bold cursor-pointer px2 no-decoration transition-all">New <span className="hide sm-show">Question</span></Link>
                     </li>
                     <li className="flex-align-right transition-background">
                         <div className="inline-block text-white"><ProfileLink {...this.props}></ProfileLink></div>

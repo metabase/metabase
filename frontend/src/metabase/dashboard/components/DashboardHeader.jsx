@@ -61,7 +61,7 @@ export default class DashboardHeader extends Component {
     }
 
     onRevert() {
-        this.props.fetchDashboard(this.props.dashboard.id);
+        this.props.fetchDashboard(this.props.dashboard.id, this.props.location.query);
     }
 
     async onSave() {
@@ -92,7 +92,7 @@ export default class DashboardHeader extends Component {
     // 3. finished reverting to a revision
     onRevertedRevision() {
         this.refs.dashboardHistory.toggle();
-        this.props.fetchDashboard(this.props.dashboard.id);
+        this.props.fetchDashboard(this.props.dashboard.id, this.props.location.query);
     }
 
     getEditingButtons() {

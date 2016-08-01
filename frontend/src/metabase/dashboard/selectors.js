@@ -13,7 +13,7 @@ import Query from "metabase/lib/query";
 import type { CardObject } from "metabase/meta/types/Card";
 import type { ParameterMappingOption, ParameterObject } from "metabase/meta/types/Dashboard";
 
-export const getSelectedDashboard = state => state.router.params.dashboardId;
+export const getSelectedDashboard = (state, props) => props.params.dashboardId;
 export const getIsEditing         = state => state.dashboard.isEditing;
 export const getCards             = state => state.dashboard.cards;
 export const getDashboards        = state => state.dashboard.dashboards;

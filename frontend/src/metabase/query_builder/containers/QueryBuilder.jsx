@@ -70,10 +70,9 @@ function autocompleteResults(card, prefix) {
 
 const mapStateToProps = (state, props) => {
     return {
-        updateUrl:                 props.updateUrl,
         user:                      state.currentUser,
-        fromUrl:                   state.router && state.router.location && state.router.location.query.from,
-        location:                  state.router && state.router.location,
+        fromUrl:                   props.location.query.from,
+        location:                  props.location,
 
         card:                      card(state),
         originalCard:              originalCard(state),
@@ -124,7 +123,7 @@ export default class QueryBuilder extends Component {
     }
 
     componentWillMount() {
-        this.props.initializeQB(this.props.updateUrl);
+        this.props.initializeQB(this.props.location, this.props.params);
     }
 
     componentDidMount() {
@@ -141,7 +140,7 @@ export default class QueryBuilder extends Component {
         }
         // HACK: if we switch to the tutorial from within the QB we need to manually re-initialize
         if (!this.props.location.query.tutorial && nextProps.location.query.tutorial) {
-            this.props.initializeQB(nextProps.updateUrl);
+            this.props.initializeQB(this.props.location, this.props.params);
         }
     }
 
@@ -157,6 +156,7 @@ export default class QueryBuilder extends Component {
     }
 
     popStateListener(e) {
+        // FIXME: e.state is not what we expect when using react-router
         if (e.state && e.state.card) {
             e.preventDefault();
             this.props.setCardAndRun(e.state.card);

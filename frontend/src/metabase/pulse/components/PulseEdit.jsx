@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import { Link } from "react-router";
 
 import PulseEditName from "./PulseEditName.jsx";
 import PulseEditCards from "./PulseEditCards.jsx";
@@ -148,7 +149,7 @@ export default class PulseEdit extends Component {
                         failedText="Save failed"
                         successText="Saved"
                     />
-                    <a className="text-bold flex-align-right no-decoration text-brand-hover" href="/pulse">Cancel</a>
+                    <Link to="/pulse" className="text-bold flex-align-right no-decoration text-brand-hover">Cancel</Link>
                 </div>
             </div>
         );

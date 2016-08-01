@@ -21,13 +21,13 @@ import * as metadataActions from "../metadata";
 
 const mapStateToProps = (state, props) => {
     return {
-        databaseId:           state.router && state.router.params && parseInt(state.router.params.databaseId),
-        tableId:              state.router && state.router.params && parseInt(state.router.params.tableId),
+        databaseId:           parseInt(props.params.databaseId),
+        tableId:              parseInt(props.params.tableId),
         onChangeLocation:     props.onChangeLocation,
-        databases:            getDatabases(state),
-        idfields:             getDatabaseIdfields(state),
-        databaseMetadata:     getEditingDatabaseWithTableMetadataStrengths(state),
-        editingTable:         getEditingTable(state)
+        databases:            getDatabases(state, props),
+        idfields:             getDatabaseIdfields(state, props),
+        databaseMetadata:     getEditingDatabaseWithTableMetadataStrengths(state, props),
+        editingTable:         getEditingTable(state, props)
     }
 }
 

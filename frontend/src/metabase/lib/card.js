@@ -82,6 +82,8 @@ export function serializeCardForUrl(card) {
 }
 
 export function deserializeCardFromUrl(serialized) {
+    serialized = serialized.replace(/^#/, "");
+    console.log("deserializing", serialized)
     return JSON.parse(b64url_to_utf8(serialized));
 }
 

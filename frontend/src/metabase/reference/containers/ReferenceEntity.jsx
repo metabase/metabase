@@ -46,17 +46,17 @@ import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';
 
 const mapStateToProps = (state, props) => ({
-    section: getSection(state),
-    entity: getData(state) || {},
-    loading: getLoading(state),
+    section: getSection(state, props),
+    entity: getData(state, props) || {},
+    loading: getLoading(state, props),
     // naming this 'error' will conflict with redux form
-    loadingError: getError(state),
-    user: getUser(state),
-    foreignKeys: getForeignKeys(state),
-    isEditing: getIsEditing(state),
-    hasSingleSchema: getHasSingleSchema(state),
-    hasDisplayName: getHasDisplayName(state),
-    hasRevisionHistory: getHasRevisionHistory(state)
+    loadingError: getError(state, props),
+    user: getUser(state, props),
+    foreignKeys: getForeignKeys(state, props),
+    isEditing: getIsEditing(state, props),
+    hasSingleSchema: getHasSingleSchema(state, props),
+    hasDisplayName: getHasDisplayName(state, props),
+    hasRevisionHistory: getHasRevisionHistory(state, props)
 });
 
 const mapDispatchToProps = {

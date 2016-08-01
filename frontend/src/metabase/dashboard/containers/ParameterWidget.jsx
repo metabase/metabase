@@ -12,7 +12,7 @@ import { getMappingsByParameter } from "../selectors";
 
 const makeMapStateToProps = () => {
     const mapStateToProps = (state, props) => ({
-        mappingsByParameter: getMappingsByParameter(state)
+        mappingsByParameter: getMappingsByParameter(state, props)
     });
     return mapStateToProps;
 }

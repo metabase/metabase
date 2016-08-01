@@ -17,7 +17,7 @@ import * as databaseActions from "../database";
 
 const mapStateToProps = (state, props) => {
     return {
-        databaseId:       state.router && state.router.params && state.router.params.databaseId,
+        databaseId:       props.params.databaseId,
         database:         getEditingDatabase(state),
         formState:        getFormState(state),
         onChangeLocation: props.onChangeLocation

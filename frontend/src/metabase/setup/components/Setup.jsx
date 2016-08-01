@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import { Link } from "react-router";
 
 import LogoIcon from 'metabase/components/LogoIcon.jsx';
 import NewsletterForm from 'metabase/components/NewsletterForm.jsx';
@@ -82,7 +83,7 @@ export default class Setup extends Component {
                                         <NewsletterForm initialEmail={userDetails.email} />
                                     </div>
                                     <div className="pt4 pb2">
-                                        <a className="Button Button--primary" href="/?new" onClick={this.completeSetup.bind(this)}>Take me to Metabase</a>
+                                        <Link to="/?new" className="Button Button--primary" onClick={this.completeSetup.bind(this)}>Take me to Metabase</Link>
                                     </div>
                                 </section>
                             : null }

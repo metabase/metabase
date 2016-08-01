@@ -138,7 +138,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, d
         let result = null;
 
         // if we have a parameter, apply it to the card query before we execute
-        let { dashboardId } = getState().router.params;
+        let { dashboardId } = getState().dashboard;
         let { dashboards, parameterValues } = getState().dashboard;
 
         let dashboard = dashboards[dashboardId];
@@ -188,19 +188,26 @@ export const fetchCardDuration = createThunkAction(FETCH_CARD_DURATION, function
     };
 });
 
-export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(id, enableQueryParameters = true, enableDefaultParameters = true) {
+const SET_DASHBOARD_ID = "metabase/dashboard/SET_DASHBOARD_ID";
+export const setDashboardId = createAction(SET_DASHBOARD_ID);
+
+export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(dashId, queryParams, enableDefaultParameters = true) {
     return async function(dispatch, getState) {
-        let result = await DashboardApi.get({ dashId: id });
+        let result = await DashboardApi.get({ dashId: dashId });
+
+        dispatch(setDashboardId(dashId));
+
         if (result.parameters) {
-            const { query } = getState().router.location;
             for (const parameter of result.parameters) {
-                if (enableQueryParameters && query[parameter.slug] != null) {
-                    dispatch(setParameterValue(parameter.id, query[parameter.slug]));
+                if (queryParams && queryParams[parameter.slug] != null) {
+                    dispatch(setParameterValue(parameter.id, queryParams[parameter.slug]));
                 } else if (enableDefaultParameters && parameter.default != null) {
                     dispatch(setParameterValue(parameter.id, parameter.default));
                 }
             }
         }
+
+        // fetch database metadata for every card
         _.chain(result.ordered_cards)
             .map((dc) => [dc.card].concat(dc.series))
             .flatten()
@@ -214,10 +221,10 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(id, en
 
 export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) {
     return async function(dispatch, getState) {
-        let { dashboards, dashcards } = getState().dashboard;
+        let { dashboards, dashcards, dashboardId } = getState().dashboard;
         let dashboard = {
-            ...dashboards[dashId],
-            ordered_cards: dashboards[dashId].ordered_cards.map(dashcardId => dashcards[dashcardId])
+            ...dashboards[dashboardId],
+            ordered_cards: dashboards[dashboardId].ordered_cards.map(dashcardId => dashcards[dashcardId])
         };
 
         // remove isRemoved dashboards
@@ -270,7 +277,7 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
         }
 
         // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
-        dispatch(fetchDashboard(dashId, false, true)); // disable using query parameters when saving
+        dispatch(fetchDashboard(dashId, null, true)); // disable using query parameters when saving
 
         MetabaseAnalytics.trackEvent("Dashboard", "Update");
 
@@ -327,6 +334,10 @@ export const setParameterValue = createThunkAction(SET_PARAMETER_VALUE, (paramet
 )
 
 // reducers
+
+const dashboardId = handleActions({
+    [SET_DASHBOARD_ID]: { next: (state, { payload }) => payload }
+}, null);
 
 const isEditing = handleActions({
     [SET_EDITING_DASHBOARD]: { next: (state, { payload }) => payload }
@@ -422,6 +433,7 @@ const dashboardListing = handleActions({
 }, []);
 
 export default combineReducers({
+    dashboardId,
     isEditing,
     cards,
     cardList,

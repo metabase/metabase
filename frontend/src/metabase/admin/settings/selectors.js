@@ -2,6 +2,7 @@ import _ from "underscore";
 import { createSelector } from "reselect";
 import MetabaseSettings from "metabase/lib/settings";
 
+import { slugify } from "metabase/lib/formatting";
 
 const SECTIONS = [
     {
@@ -149,6 +150,9 @@ const SECTIONS = [
         ]
     }
 ];
+for (const section of SECTIONS) {
+    section.slug = slugify(section.name);
+}
 
 export const getSettings = state => state.settings.settings;
 
@@ -183,14 +187,14 @@ export const getSections = createSelector(
     }
 );
 
-export const getActiveSectionName = (state) => state.router && state.router.location && state.router.location.query.section
+export const getActiveSectionName = (state, props) => props.params.section
 
 export const getActiveSection = createSelector(
     getActiveSectionName,
     getSections,
-    (section = "Setup", sections) => {
+    (section = "setup", sections) => {
         if (sections) {
-            return _.findWhere(sections, {name: section});
+            return _.findWhere(sections, { slug: section });
         } else {
             return null;
         }

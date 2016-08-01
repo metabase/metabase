@@ -60,7 +60,6 @@ export default class Dashboard extends Component {
         setDashCardVisualizationSetting: PropTypes.func.isRequired,
 
         onChangeLocation: PropTypes.func.isRequired,
-        onDashboardDeleted: PropTypes.func.isRequired,
     };
 
     async componentDidMount() {
@@ -101,10 +100,10 @@ export default class Dashboard extends Component {
 
     async loadDashboard(dashboardId) {
         this.loadParams();
-        const { addCardOnLoad, fetchDashboard, fetchCards, addCardToDashboard, onChangeLocation } = this.props;
+        const { addCardOnLoad, fetchDashboard, fetchCards, addCardToDashboard, onChangeLocation, location } = this.props;
 
         try {
-            await fetchDashboard(dashboardId);
+            await fetchDashboard(dashboardId, location.query);
             if (addCardOnLoad != null) {
                 // we have to load our cards before we can add one
                 await fetchCards();
@@ -285,7 +284,7 @@ export default class Dashboard extends Component {
         if (refreshElapsed >= this.state.refreshPeriod) {
             refreshElapsed = 0;
 
-            await this.props.fetchDashboard(this.props.selectedDashboard);
+            await this.props.fetchDashboard(this.props.selectedDashboard, this.props.location.query);
             this.fetchDashboardCardData(this.props);
         }
         this.setState({ refreshElapsed });

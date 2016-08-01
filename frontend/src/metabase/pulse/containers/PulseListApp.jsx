@@ -7,7 +7,7 @@ import { listPulseSelectors } from "../selectors";
 
 const mapStateToProps = (state, props) => {
     return {
-        ...listPulseSelectors(state),
+        ...listPulseSelectors(state, props),
         user: state.currentUser,
         // onChangeLocation: onChangeLocation
     }

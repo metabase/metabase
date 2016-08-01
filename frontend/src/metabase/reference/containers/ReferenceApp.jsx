@@ -27,12 +27,12 @@ import {
 } from 'metabase/questions/questions';
 
 const mapStateToProps = (state, props) => ({
-    sectionId: getSectionId(state),
-    databaseId: getDatabaseId(state),
-    sections: getSections(state),
-    section: getSection(state),
-    breadcrumbs: getBreadcrumbs(state),
-    isEditing: getIsEditing(state)
+    sectionId: getSectionId(state, props),
+    databaseId: getDatabaseId(state, props),
+    sections: getSections(state, props),
+    section: getSection(state, props),
+    breadcrumbs: getBreadcrumbs(state, props),
+    isEditing: getIsEditing(state, props)
 });
 
 const mapDispatchToProps = {

@@ -9,9 +9,9 @@ import { connect } from "react-redux";
 
 const mapStateToProps = (state, props) => {
     return {
-        ...revisionHistorySelectors(state),
-        entity: state.router && state.router.params && state.router.params.entity,
-        id:     state.router && state.router.params && state.router.params.id
+        ...revisionHistorySelectors(state, props),
+        entity: props.params.entity,
+        id:     props.params.id
     }
 }
 

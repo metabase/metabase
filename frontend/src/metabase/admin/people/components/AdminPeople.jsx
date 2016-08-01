@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import { Link } from "react-router";
 import _ from "underscore";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
@@ -183,7 +184,7 @@ export default class AdminPeople extends Component {
 
                             <PasswordReveal password={user.password} />
 
-                            <div style={{paddingLeft: "5em", paddingRight: "5em"}} className="pt4 text-centered">If you want to be able to send email invites, just go to the <a className="link text-bold" href="/admin/settings/?section=Email">Email Settings</a> page.</div>
+                            <div style={{paddingLeft: "5em", paddingRight: "5em"}} className="pt4 text-centered">If you want to be able to send email invites, just go to the <Link to="/admin/settings/email" className="link text-bold">Email Settings</Link> page.</div>
                         </div>
 
                         <div className="Form-actions">

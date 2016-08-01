@@ -24,11 +24,11 @@ import type { DatabaseId } from "metabase/meta/types/base";
 const makeMapStateToProps = () => {
     const getParameterMappingOptions = makeGetParameterMappingOptions()
     const mapStateToProps = (state, props) => ({
-        parameter:           getEditingParameter(state),
+        parameter:           getEditingParameter(state, props),
         mappingOptions:      getParameterMappingOptions(state, props),
         mappingOptionSections: _.groupBy(getParameterMappingOptions(state, props), "sectionName"),
         target:              getParameterTarget(state, props),
-        mappingsByParameter: getMappingsByParameter(state)
+        mappingsByParameter: getMappingsByParameter(state, props)
     });
     return mapStateToProps;
 }

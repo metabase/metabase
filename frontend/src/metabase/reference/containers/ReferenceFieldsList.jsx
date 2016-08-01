@@ -37,15 +37,15 @@ import * as metadataActions from "metabase/redux/metadata";
 import * as actions from 'metabase/reference/reference';
 
 const mapStateToProps = (state, props) => {
-    const data = getData(state);
+    const data = getData(state, props);
     return {
-        section: getSection(state),
+        section: getSection(state, props),
         entities: data,
-        foreignKeys: getForeignKeys(state),
-        loading: getLoading(state),
-        loadingError: getError(state),
-        user: getUser(state),
-        isEditing: getIsEditing(state),
+        foreignKeys: getForeignKeys(state, props),
+        loading: getLoading(state, props),
+        loadingError: getError(state, props),
+        user: getUser(state, props),
+        isEditing: getIsEditing(state, props),
         fields: fieldsToFormFields(data)
     };
 }
