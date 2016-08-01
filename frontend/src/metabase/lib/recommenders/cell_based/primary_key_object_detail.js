@@ -6,7 +6,11 @@ export function suggestObjectDetailView(query, resultRow, columnDefinitions, cel
 
 	if(FieldMetadata.isFKorPK(columnDefinitions[cellIndex])){
 		var new_query = Query.objectDetailFor(columnDefinitions[cellIndex], resultRow[cellIndex])
-		return [{target : new_query, source: RECOMMENDER_NAME, recommendation: "", url: Query.toURL(new_query), score: 1}]
+		return [{target : new_query, 
+      		     source: RECOMMENDER_NAME, 
+			     recommendation: "See object detail for " + resultRow[cellIndex], 
+			     url: Query.toURL(new_query), 
+			     score: 1}]
 	} 
 
 	return []
