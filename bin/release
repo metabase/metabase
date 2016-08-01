@@ -1,0 +1,124 @@
+#!/usr/bin/env bash
+
+set -eu
+
+DEFAULT_KEYSTORE_PATH="$PWD/certs/metabase_keystore.jks"
+DEFAULT_KEY_PEM_PATH="$PWD/certs/key.pem"
+DEFAULT_CONFIG_JSON_PATH="$PWD/config.json"
+
+if [ $# -lt 1 ]; then
+    echo "usage: $0 X.Y.Z [BRANCH]"
+    exit 1
+fi
+VERSION=$1
+
+if [ $# -lt 2 ]; then
+    BRANCH="release-$VERSION"
+else
+    BRANCH=$2
+fi
+
+# check that docker is running
+docker ps > /dev/null
+
+# ensure DockerHub credentials are configured
+if [ -z ${DOCKERHUB_EMAIL+x} ] || [ -z ${DOCKERHUB_USERNAME+x} ] || [ -z ${DOCKERHUB_PASSWORD+x} ]; then
+    echo "Ensure DOCKERHUB_EMAIL, DOCKERHUB_USERNAME, and DOCKERHUB_PASSWORD are set.";
+    exit 1
+fi
+
+# ensure AWS is configured
+if [ -z ${AWS_DEFAULT_PROFILE+x} ]; then
+    echo "Ensure AWS_DEFAULT_PROFILE is set.";
+    exit 1
+fi
+
+# ensure we have access to the keystore
+if [ -f "$DEFAULT_KEYSTORE_PATH" ]; then
+    KEYSTORE_PATH="$DEFAULT_KEYSTORE_PATH"
+else
+    echo "Enter the path to JAR signing keystore ($DEFAULT_KEYSTORE_PATH by default)"
+    read KEYSTORE_PATH
+    [ -f "$KEYSTORE_PATH" ] || exit 1
+fi
+
+# # ensure we've configured the Mac signing key
+# if [ -f "$DEFAULT_KEY_PEM_PATH" ]; then
+#     KEY_PEM_PATH="$DEFAULT_KEY_PEM_PATH"
+# else
+#     echo "Enter the path to Mac signing key ($DEFAULT_KEY_PEM_PATH by default)"
+#     read KEY_PEM_PATH
+#     [ -f "$KEY_PEM_PATH" ] || exit 1
+# fi
+#
+# # ensure we have access to the Mac build config
+# if [ -f "$DEFAULT_CONFIG_JSON_PATH" ]; then
+#     CONFIG_JSON_PATH="$DEFAULT_CONFIG_JSON_PATH"
+# else
+#     echo "Enter the path to Mac build config ($DEFAULT_CONFIG_JSON_PATH by default, template at metabase/bin/config.json.template)"
+#     read CONFIG_JSON_PATH
+#     [ -f "$CONFIG_JSON_PATH" ] || exit 1
+# fi
+
+# confirm the version and branch
+echo "Releasing v$VERSION from branch $BRANCH. Press enter to continue or ctrl-C to abort."
+read
+
+# ensure the main repo is cloned
+if ! [ -d "metabase" ]; then
+    git clone git@github.com:metabase/metabase.git
+fi
+
+cd metabase
+git fetch
+
+# checkout the correct branch
+git co -b "$BRANCH" "origin/$BRANCH"
+
+# ensure the version is correct
+sed -i '' s/^VERSION.*/VERSION=\"v$VERSION\"/ bin/version
+git commit -m "v$VERSION" bin/version || true
+
+# tag it
+git tag -a "v$VERSION" -m "v$VERSION"
+git push --follow-tags -u origin "$BRANCH"
+
+# build it
+bin/build
+
+# sign it
+jarsigner -tsa "http://timestamp.digicert.com" -keystore "$KEYSTORE_PATH" "target/uberjar/metabase.jar" server
+
+# verify it
+jarsigner -verify "target/uberjar/metabase.jar"
+
+# s3 it
+aws s3 cp "target/uberjar/metabase.jar" "s3://downloads.metabase.com/v$VERSION/metabase.jar"
+
+# docker it
+bin/docker/build_image.sh release "v$VERSION" --publish
+
+# elastic beanstalk it
+bin/aws-eb-docker/release-eb-version.sh "v$VERSION"
+
+# mac it
+# git submodule update --init
+# brew install curl && brew link curl --force || true
+# sudo cpan install File::Copy::Recursive JSON Readonly String::Util Text::Caml WWW::Curl::Simple
+# ./bin/osx-setup
+# echo "ok"
+
+cd ..
+
+# heroku it
+if ! [ -d "metabase-deploy" ]; then
+    git clone git@github.com:metabase/metabase-deploy.git
+fi
+
+cd metabase-deploy
+git fetch
+git co "origin/master"
+
+bin/release-heroku "v$VERSION"
+
+# technologic
