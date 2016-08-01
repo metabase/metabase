@@ -197,6 +197,16 @@ export default class TableInteractive extends Component {
                     </Popover>
                 );
             }
+            var imgRegex = new RegExp('^http.*\.jpg$', 'i');
+            if (imgRegex.test(cellData)) {
+                return (
+                    <div key={key} onClick={this.showPopover.bind(this, rowIndex, cellDataKey)}>
+                        <span className="cellData"><img style={{ height: 34 }} src={cellData} /></span>
+                        {popover}
+                    </div>
+                );
+            }
+
             return (
                 <div key={key} onClick={this.showPopover.bind(this, rowIndex, cellDataKey)}>
                     <span className="cellData">{cellData}</span>
@@ -291,7 +301,7 @@ export default class TableInteractive extends Component {
             <span className={cx('MB-DataTable', { 'MB-DataTable--pivot': this.props.isPivoted, 'MB-DataTable--ready': this.state.contentWidths })}>
                 <Table
                     ref="table"
-                    rowHeight={35}
+                    rowHeight={50}
                     rowGetter={this.rowGetter}
                     rowsCount={this.props.data.rows.length}
                     width={this.state.width}

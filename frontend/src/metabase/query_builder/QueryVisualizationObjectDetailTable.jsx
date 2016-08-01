@@ -62,7 +62,7 @@ export default class QueryVisualizationObjectDetailTable extends Component {
             var colValue = (row[0] !== null) ? (row[0].display_name.toString() || row[0].name.toString()) : null;
             return (<div key={key}>{colValue}</div>);
         } else {
-
+            var imgRegex = new RegExp('^http.*\.jpg$', 'i');
             var cellValue;
             if (row[1] === null || row[1] === undefined || (typeof row[1] === "string" && row[1].length === 0)) {
                 cellValue = (<span className="text-grey-2">Empty</span>);
@@ -72,6 +72,8 @@ export default class QueryVisualizationObjectDetailTable extends Component {
             } else if (typeof row[1] === "object") {
                 let formattedJson = JSON.stringify(row[1], null, 2);
                 cellValue = (<pre className="ObjectJSON">{formattedJson}</pre>);
+            } else if (imgRegex.test(row[1].toString())) {
+                cellValue = (<img src={row[1].toString()} />);
             } else {
                 // TODO: should we be casting all values toString()?
                 cellValue = (<ExpandableString str={row[1].toString()} length={140}></ExpandableString>);
