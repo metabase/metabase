@@ -92,7 +92,7 @@ export default class VisualizationSettings extends React.Component {
                     {this.renderChartTypePicker()}
                     <ModalWithTrigger
                         className="Modal Modal--wide Modal--tall"
-                        triggerElement={<Icon name="gear" />}
+                        triggerElement={<span data-metabase-event="Query Builder;Chart Settings"><Icon name="gear"/></span>}
                         triggerClasses="text-brand-hover"
                     >
                         <ChartSettings
