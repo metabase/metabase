@@ -11,7 +11,7 @@ import 'angular-cookie';
 import "./services";
 
 angular
-.module('metabase', ['ngCookies', 'metabase.controllers'])
+.module('metabase', ['ipCookie', 'metabase.controllers'])
 .run([function() {
     registerAnalyticsClickListener();
 }])

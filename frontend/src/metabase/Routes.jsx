@@ -1,6 +1,6 @@
 import React, { Component, PropTypes } from "react";
 
-import { Route, IndexRoute, IndexRedirect, Redirect } from 'react-router';
+import { Route, IndexRedirect, Redirect } from 'react-router';
 
 // auth containers
 import ForgotPasswordApp from "metabase/auth/containers/ForgotPasswordApp.jsx";
@@ -63,26 +63,30 @@ const redirectAction = routerActions.replace;
 // };
 // END redux-router
 
-// Create the wrapper that checks if user is authenticated.
 const UserIsAuthenticated = UserAuthWrapper({
-  // Select the field of the state with auth data
-  authSelector: state => state.currentUser,
-  redirectAction: redirectAction,
-  // Choose the url to redirect not authenticated users.
-  failureRedirectPath: '/auth/login',
-  wrapperDisplayName: 'UserIsAuthenticated'
-})
+    failureRedirectPath: '/auth/login',
+    authSelector: state => state.currentUser,
+    wrapperDisplayName: 'UserIsAuthenticated',
+    redirectAction: redirectAction,
+});
 
-// Do the same to create the wrapper that checks if user is NOT authenticated.
+const UserIsAdmin = UserAuthWrapper({
+    predicate: currentUser => currentUser && currentUser.is_superuser,
+    failureRedirectPath: '/unauthorized',
+    authSelector: state => state.currentUser,
+    allowRedirectBack: false,
+    wrapperDisplayName: 'UserIsAdmin',
+    redirectAction: redirectAction,
+});
+
 const UserIsNotAuthenticated = UserAuthWrapper({
-  authSelector: state => state.currentUser,
-  redirectAction: redirectAction,
-  failureRedirectPath: '/',
-  // Choose what exactly you need to check in the selected field of the state
-  // (in the previous wrapper it checks by default).
-  predicate: currentUser => !currentUser,
-  wrapperDisplayName: 'UserIsNotAuthenticated'
-})
+    predicate: currentUser => !currentUser,
+    failureRedirectPath: '/',
+    authSelector: state => state.currentUser,
+    allowRedirectBack: false,
+    wrapperDisplayName: 'UserIsNotAuthenticated',
+    redirectAction: redirectAction,
+});
 
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
@@ -91,13 +95,11 @@ function FIXME_forwardOnChangeLocation(Component) {
     return connect(null, { onChangeLocation: push })(Component)
 }
 
-const NotAuthenticated = UserIsNotAuthenticated(({ children }) => children);
-const Authenticated = UserIsAuthenticated(({ children }) => children);
+const IsAuthenticated = UserIsAuthenticated(({ children }) => children);
+const IsAdmin = UserIsAuthenticated(UserIsAdmin(({ children }) => children));
+const IsNotAuthenticated = UserIsNotAuthenticated(({ children }) => children);
 
 class App extends Component {
-    componentWillMount() {
-        console.log('will mount app')
-    }
     render() {
         const { children, location } = this.props;
         return (
@@ -114,9 +116,11 @@ const Routes =
         {/* AUTH */}
         <Route path="/auth">
             <IndexRedirect to="/auth/login" />
-            <Route path="forgot_password" component={ForgotPasswordApp} />
-            <Route path="login" component={LoginApp} />
+            <Route component={IsNotAuthenticated}>
+                <Route path="login" component={LoginApp} />
+            </Route>
             <Route path="logout" component={LogoutApp} />
+            <Route path="forgot_password" component={ForgotPasswordApp} />
             <Route path="reset_password/:token" component={PasswordResetApp} />
             <Route path="google_no_mb_account" component={GoogleNoAccount} />
         </Route>
@@ -125,7 +129,7 @@ const Routes =
         <Route path="/setup" component={SetupApp} />
 
         {/* MAIN */}
-        <Route component={Authenticated}>
+        <Route component={IsAuthenticated}>
             {/* HOME */}
             <Route path="/" component={HomepageApp} />
 
@@ -176,7 +180,7 @@ const Routes =
         </Route>
 
         {/* ADMIN */}
-        <Route path="/admin" component={Authenticated}>
+        <Route path="/admin" component={IsAdmin}>
             <IndexRedirect to="/admin/settings" />
             <Route path="databases" component={DatabaseListApp} />
             <Route path="databases/create" component={FIXME_forwardOnChangeLocation(DatabaseEditApp)} />

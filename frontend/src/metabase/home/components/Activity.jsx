@@ -40,7 +40,7 @@ export default class Activity extends Component {
         const maxColorUsed = (_.isEmpty(userColors)) ? 0 : _.max(_.values(userColors));
         var currColor =  (maxColorUsed && maxColorUsed < colors.length) ? maxColorUsed : 0;
 
-        if (user) {
+        if (user && activity) {
             for (var item of activity) {
                 if (!(item.user_id in userColors)) {
                     // assign the user a color
