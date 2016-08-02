@@ -140,11 +140,15 @@ export default class AdminPeople extends Component {
         this.props.dispatch(deleteUser(user));
     }
 
+    onCloseModal = () => {
+        this.props.dispatch(showModal(null));
+    }
+
     renderAddPersonModal(modalDetails) {
         return (
-            <Modal>
+            <Modal onClose={this.onCloseModal}>
                 <ModalContent title="Add Person"
-                              closeFn={() => this.props.dispatch(showModal(null))}>
+                              closeFn={this.onCloseModal}>
                     <EditUserForm
                         buttonText="Add Person"
                         submitFn={this.onAddPerson.bind(this)} />
@@ -157,9 +161,9 @@ export default class AdminPeople extends Component {
         let { user } = modalDetails;
 
         return (
-            <Modal>
+            <Modal onClose={this.onCloseModal}>
                 <ModalContent title="Edit Details"
-                              closeFn={() => this.props.dispatch(showModal(null))}>
+                              closeFn={this.onCloseModal}>
                     <EditUserForm
                         user={user}
                         submitFn={this.onEditDetails.bind(this)} />
@@ -172,9 +176,9 @@ export default class AdminPeople extends Component {
         let { user } = modalDetails;
 
         return (
-            <Modal className="Modal Modal--small">
+            <Modal className="Modal Modal--small" onClose={this.onCloseModal}>
                 <ModalContent title={user.first_name+" has been added"}
-                              closeFn={() => this.props.dispatch(showModal(null))}
+                              closeFn={this.onCloseModal}
                               className="Modal-content Modal-content--small NewForm">
                     <div>
                         <div className="px4 pb4">
@@ -188,7 +192,7 @@ export default class AdminPeople extends Component {
                         </div>
 
                         <div className="Form-actions">
-                            <button className="Button Button--primary" onClick={() => this.props.dispatch(showModal(null))}>Done</button>
+                            <button className="Button Button--primary" onClick={this.onCloseModal}>Done</button>
                             <span className="pl1">or<a className="link ml1 text-bold" href="" onClick={() => this.props.dispatch(showModal({type: MODAL_ADD_PERSON}))}>Add another person</a></span>
                         </div>
                     </div>
@@ -201,15 +205,15 @@ export default class AdminPeople extends Component {
         let { user } = modalDetails;
 
         return (
-            <Modal className="Modal Modal--small">
+            <Modal className="Modal Modal--small" onClose={this.onCloseModal}>
                 <ModalContent title={user.first_name+" has been added"}
-                              closeFn={() => this.props.dispatch(showModal(null))}
+                              closeFn={this.onCloseModal}
                               className="Modal-content Modal-content--small NewForm">
                     <div>
                         <div style={{paddingLeft: "5em", paddingRight: "5em"}} className="pb4">We’ve sent an invite to <span className="text-bold">{user.email}</span> with instructions to set their password.</div>
 
                         <div className="Form-actions">
-                            <button className="Button Button--primary" onClick={() => this.props.dispatch(showModal(null))}>Done</button>
+                            <button className="Button Button--primary" onClick={this.onCloseModal}>Done</button>
                             <span className="pl1">or<a className="link ml1 text-bold" href="" onClick={() => this.props.dispatch(showModal({type: MODAL_ADD_PERSON}))}>Add another person</a></span>
                         </div>
                     </div>
@@ -222,15 +226,15 @@ export default class AdminPeople extends Component {
         let { user } = modalDetails;
 
         return (
-            <Modal className="Modal Modal--small">
+            <Modal className="Modal Modal--small" onClose={this.onCloseModal}>
                 <ModalContent title={"We've Re-sent "+user.first_name+"'s Invite"}
-                              closeFn={() => this.props.dispatch(showModal(null))}
+                              closeFn={this.onCloseModal}
                               className="Modal-content Modal-content--small NewForm">
                     <div>
                         <div className="px4 pb4">Any previous email invites they have will no longer work.</div>
 
                         <div className="Form-actions">
-                            <button className="Button Button--primary mr2" onClick={() => this.props.dispatch(showModal(null))}>Okay</button>
+                            <button className="Button Button--primary mr2" onClick={this.onCloseModal}>Okay</button>
                         </div>
                     </div>
                 </ModalContent>
@@ -242,9 +246,9 @@ export default class AdminPeople extends Component {
         let { user } = modalDetails;
 
         return (
-            <Modal className="Modal Modal--small">
+            <Modal className="Modal Modal--small" onClose={this.onCloseModal}>
                 <ModalContent title={"Remove "+user.common_name}
-                              closeFn={() => this.props.dispatch(showModal(null))}
+                              closeFn={this.onCloseModal}
                               className="Modal-content Modal-content--small NewForm">
                     <div>
                         <div className="px4 pb4">
@@ -253,7 +257,7 @@ export default class AdminPeople extends Component {
 
                         <div className="Form-actions">
                             <button className="Button Button--warning" onClick={() => this.onRemoveUserConfirm(user)}>Yes</button>
-                            <button className="Button Button--primary ml2" onClick={() => this.props.dispatch(showModal(null))}>No</button>
+                            <button className="Button Button--primary ml2" onClick={this.onCloseModal}>No</button>
                         </div>
                     </div>
                 </ModalContent>
@@ -265,9 +269,9 @@ export default class AdminPeople extends Component {
         let { user } = modalDetails;
 
         return (
-            <Modal className="Modal Modal--small">
+            <Modal className="Modal Modal--small" onClose={this.onCloseModal}>
                 <ModalContent title={"Reset "+user.first_name+"'s Password"}
-                              closeFn={() => this.props.dispatch(showModal(null))}
+                              closeFn={this.onCloseModal}
                               className="Modal-content Modal-content--small NewForm">
                     <div>
                         <div className="px4 pb4">
@@ -276,7 +280,7 @@ export default class AdminPeople extends Component {
 
                         <div className="Form-actions">
                             <button className="Button Button--warning" onClick={() => this.onPasswordResetConfirm(user)}>Yes</button>
-                            <button className="Button Button--primary ml2" onClick={() => this.props.dispatch(showModal(null))}>No</button>
+                            <button className="Button Button--primary ml2" onClick={this.onCloseModal}>No</button>
                         </div>
                     </div>
                 </ModalContent>
@@ -288,9 +292,9 @@ export default class AdminPeople extends Component {
         let { user, password } = modalDetails;
 
         return (
-            <Modal className="Modal Modal--small">
+            <Modal className="Modal Modal--small" onClose={this.onCloseModal}>
                 <ModalContent title={user.first_name+"'s Password Has Been Reset"}
-                              closeFn={() => this.props.dispatch(showModal(null))}
+                              closeFn={this.onCloseModal}
                               className="Modal-content Modal-content--small NewForm">
                     <div>
                         <div className="px4 pb4">
@@ -300,7 +304,7 @@ export default class AdminPeople extends Component {
                         </div>
 
                         <div className="Form-actions">
-                            <button className="Button Button--primary mr2" onClick={() => this.props.dispatch(showModal(null))}>Done</button>
+                            <button className="Button Button--primary mr2" onClick={this.onCloseModal}>Done</button>
                         </div>
                     </div>
                 </ModalContent>
@@ -312,15 +316,15 @@ export default class AdminPeople extends Component {
         let { user } = modalDetails;
 
         return (
-            <Modal className="Modal Modal--small">
+            <Modal className="Modal Modal--small" onClose={this.onCloseModal}>
                 <ModalContent title={user.first_name+"'s Password Has Been Reset"}
-                              closeFn={() => this.props.dispatch(showModal(null))}
+                              closeFn={this.onCloseModal}
                               className="Modal-content Modal-content--small NewForm">
                     <div>
                         <div className="px4 pb4">We've sent them an email with instructions for creating a new password.</div>
 
                         <div className="Form-actions">
-                            <button className="Button Button--primary mr2" onClick={() => this.props.dispatch(showModal(null))}>Done</button>
+                            <button className="Button Button--primary mr2" onClick={this.onCloseModal}>Done</button>
                         </div>
                     </div>
                 </ModalContent>

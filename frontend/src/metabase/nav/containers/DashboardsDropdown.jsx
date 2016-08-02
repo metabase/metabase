@@ -2,7 +2,7 @@ import React, { Component, PropTypes } from 'react';
 import { connect } from "react-redux";
 import { Link } from "react-router";
 
-import OnClickOut from 'react-onclickout';
+import OnClickOutsideWrapper from 'metabase/components/OnClickOutsideWrapper.jsx';
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import CreateDashboardModal from "metabase/components/CreateDashboardModal.jsx";
@@ -115,7 +115,7 @@ export default class DashboardsDropdown extends Component {
             <div>
                 { modalOpen ? this.renderCreateDashboardModal() : null }
 
-                <OnClickOut onClickOut={this.closeDropdown}>
+                <OnClickOutsideWrapper handleDismissal={this.closeDropdown}>
                     <div className={cx('NavDropdown inline-block cursor-pointer', { 'open': dropdownOpen })}>
                         <span onClick={this.toggleDropdown}>
                             {children}
@@ -156,7 +156,7 @@ export default class DashboardsDropdown extends Component {
                             </div>
                         : null }
                     </div>
-                </OnClickOut>
+                </OnClickOutsideWrapper>
             </div>
         );
     }
