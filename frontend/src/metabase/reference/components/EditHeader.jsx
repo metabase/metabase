@@ -51,7 +51,7 @@ const EditHeader = ({
         </div>
     </div>;
 EditHeader.propTypes = {
-    hasRevisionHistory: PropTypes.bool.isRequired,
+    hasRevisionHistory: PropTypes.bool,
     endEditing: PropTypes.func.isRequired,
     submitting: PropTypes.bool.isRequired,
     onSubmit: PropTypes.func,
