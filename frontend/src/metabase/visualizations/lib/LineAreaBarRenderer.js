@@ -503,15 +503,18 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
     // HACK: This ensures each group is sorted by the same order as xValues,
     // otherwise we can end up with line charts with x-axis labels in the correct order
     // but the points in the wrong order. There may be a more efficient way to do this.
-    let sortMap = new Map()
-    for (const [index, key] of xValues.entries()) {
-        sortMap.set(key, index);
-    }
-    for (const group of groups) {
-        group.forEach(g => {
-            const sorted = g.top(Infinity).sort((a, b) => sortMap.get(a.key) - sortMap.get(b.key));
-            g.all = () => sorted;
-        });
+    // Don't apply to linear or timeseries X-axis since the points are always plotted in order
+    if (!isTimeseries && !isLinear) {
+        let sortMap = new Map()
+        for (const [index, key] of xValues.entries()) {
+            sortMap.set(key, index);
+        }
+        for (const group of groups) {
+            group.forEach(g => {
+                const sorted = g.top(Infinity).sort((a, b) => sortMap.get(a.key) - sortMap.get(b.key));
+                g.all = () => sorted;
+            });
+        }
     }
 
     let parent;

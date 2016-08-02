@@ -5,6 +5,7 @@ import _ from "underscore";
 
 import Visualization from "metabase/visualizations/components/Visualization.jsx"
 import { getSettingsWidgets } from "metabase/lib/visualization_settings";
+import MetabaseAnalytics from "metabase/lib/analytics";
 
 const ChartSettingsTab = ({name, active, onClick}) =>
   <a
@@ -54,6 +55,9 @@ class ChartSettings extends Component {
     }
 
     onChangeSettings = (newSettings) => {
+        for (const key of Object.keys(newSettings)) {
+            MetabaseAnalytics.trackEvent("Chart Settings", "Change Setting", key);
+        }
         this.setState({
             settings: {
                 ...this.state.settings,
@@ -109,10 +113,10 @@ class ChartSettings extends Component {
                   </div>
               </div>
               <div className="pt1">
-                <a className={cx("Button Button--primary", { disabled: !isDirty })} href="" onClick={() => this.onDone()}>Done</a>
-                <a className="text-grey-2 ml2" onClick={onClose}>Cancel</a>
+                <a className={cx("Button Button--primary", { disabled: !isDirty })} onClick={() => this.onDone()} data-metabase-event="Chart Settings;Done">Done</a>
+                <a className="text-grey-2 ml2" onClick={onClose} data-metabase-event="Chart Settings;Cancel">Cancel</a>
                 { !_.isEqual(this.state.settings, {}) &&
-                    <a className="Button Button--warning float-right" onClick={() => this.setState({ settings: {} })}>Reset to defaults</a>
+                    <a className="Button Button--warning float-right" onClick={() => this.setState({ settings: {} })} data-metabase-event="Chart Settings;Reset">Reset to defaults</a>
                 }
               </div>
           </div>
