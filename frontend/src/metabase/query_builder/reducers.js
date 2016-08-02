@@ -32,7 +32,9 @@ import {
     CANCEL_QUERY,
     QUERY_COMPLETED,
     QUERY_ERRORED,
-    LOAD_OBJECT_DETAIL_FK_REFERENCES
+    LOAD_OBJECT_DETAIL_FK_REFERENCES,
+
+    SET_CURRENT_STATE
 } from "./actions";
 
 
@@ -155,3 +157,7 @@ export const queryExecutionPromise = handleActions({
 export const parameterValues = handleActions({
     [SET_PARAMETER_VALUE]: { next: (state, { payload: { id, value }}) => i.assoc(state, id, value) }
 }, {});
+
+export const currentState = handleActions({
+    [SET_CURRENT_STATE]: { next: (state, { payload }) => payload }
+}, null);

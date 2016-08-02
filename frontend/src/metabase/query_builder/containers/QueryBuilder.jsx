@@ -105,6 +105,9 @@ const mapStateToProps = (state, props) => {
     }
 }
 
+const getURL = (location) =>
+    location.pathname + location.search + location.hash;
+
 
 const mapDispatchToProps = {
     ...actions,
@@ -117,7 +120,7 @@ export default class QueryBuilder extends Component {
     constructor(props, context) {
         super(props, context);
 
-        _.bindAll(this, "popStateListener", "handleResize");
+        _.bindAll(this, "handleResize");
 
         // TODO: React tells us that forceUpdate() is not the best thing to use, so ideally we can find a different way to trigger this
         this.forceUpdateDebounced = _.debounce(this.forceUpdate.bind(this), 400);
@@ -128,7 +131,6 @@ export default class QueryBuilder extends Component {
     }
 
     componentDidMount() {
-        window.addEventListener('popstate', this.popStateListener);
         window.addEventListener('resize', this.handleResize);
     }
 
@@ -139,14 +141,19 @@ export default class QueryBuilder extends Component {
             // ensure that some components are updated after the animation completes (e.g. card visualization)
             window.setTimeout(this.forceUpdateDebounced, 300);
         }
-        // HACK: if we switch to the tutorial from within the QB we need to manually re-initialize
-        if (!this.props.location.query.tutorial && nextProps.location.query.tutorial) {
-            this.props.initializeQB(this.props.location, this.props.params);
+
+        if (nextProps.location.action === "POP" && getURL(nextProps.location) !== getURL(this.props.location)) {
+            this.props.popState(nextProps.location);
+        } else if (this.props.location.query.tutorial === undefined && nextProps.location.query.tutorial !== undefined) {
+            console.log("QB TUTORIAL");
+            this.props.initializeQB(nextProps.location, nextProps.params);
+        } else if (getURL(nextProps.location) === "/q" && getURL(this.props.location) !== "/q") {
+            console.log("QB NEW");
+            this.props.initializeQB(nextProps.location, nextProps.params);
         }
     }
 
     componentWillUnmount() {
-        window.removeEventListener('popstate', this.popStateListener);
         window.removeEventListener('resize', this.handleResize);
     }
 
@@ -154,14 +161,6 @@ export default class QueryBuilder extends Component {
     // Debounce the function to improve resizing performance.
     handleResize(e) {
         this.forceUpdateDebounced();
-    }
-
-    popStateListener(e) {
-        // FIXME: e.state is not what we expect when using react-router
-        if (e.state && e.state.card) {
-            e.preventDefault();
-            this.props.setCardAndRun(e.state.card);
-        }
     }
 
     render() {
