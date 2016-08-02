@@ -47,12 +47,21 @@ const EXAMPLES = {
     },
 }
 
+
 const TagExample = ({ datasetQuery, setQuery }) =>
     <div>
         <h5>Example:</h5>
         <p>
             <Code>{datasetQuery.native.query}</Code>
-            { setQuery && <div className="Button Button--small" onClick={() => setQuery(datasetQuery, true)}>Try it</div> }
+            { setQuery && (
+                <div
+                    className="Button Button--small"
+                    data-metabase-event="QueryBuilder;Template Tage Example Query Used"
+                    onClick={() => setQuery(datasetQuery, true) }
+                >
+                    Try it
+                </div>
+            )}
         </p>
     </div>
 
@@ -92,7 +101,7 @@ const TagEditorHelp = ({ setQuery, sampleDatasetId }) => {
                 you should link that variable to a specific column. Dimensions should be used inside
                 of a "WHERE" clause.
             </p>
-            <TagExample datasetQuery={EXAMPLES.dimension} setQuery={setQueryWithSampleDatasetId} />
+            <TagExample datasetQuery={EXAMPLES.dimension} />
 
             <h4>Optional Clauses</h4>
             <p>
@@ -109,7 +118,7 @@ const TagEditorHelp = ({ setQuery, sampleDatasetId }) => {
             <TagExample datasetQuery={EXAMPLES.multipleOptional} setQuery={setQueryWithSampleDatasetId} />
 
             <p>
-                <a href="http://www.metabase.com/docs/latest/users-guide/start" target="_blank">Read the full documentation</a>
+                <a href="http://www.metabase.com/docs/latest/users-guide/start" target="_blank" data-metabase-event="QueryBuilder;Template Tag Documentation Click">Read the full documentation</a>
             </p>
         </div>
     )
