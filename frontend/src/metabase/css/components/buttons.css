@@ -54,6 +54,11 @@
     font-size: 0.8rem;
 }
 
+.Button--large {
+    padding: 0.8rem 1.25rem;
+    font-size: 1rem;
+}
+
 .Button-normal {
     font-weight: normal;
 }

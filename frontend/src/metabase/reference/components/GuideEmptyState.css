@@ -1,0 +1,25 @@
+:local(.guideEmpty) {
+    composes: flex full justify-center from "style";
+    padding-top: 75px;
+}
+
+:local(.guideEmptyWrapper) {
+    composes: text-centered from "style";
+    width: 550px;
+}
+
+:local(.guideEmptyBody) {
+    composes: flex justify-center align-center mb4 from "style";
+    flex-direction: column;
+}
+
+:local(.guideEmptyMessage) {
+    composes: text-dark text-centered mt3 from "style";
+    max-width: 450px;
+    font-size: 1.1em;
+    line-height: 1.457em;
+}
+
+:local(.guideEmptyAction) {
+    composes: pt4 border-top from "style";
+}

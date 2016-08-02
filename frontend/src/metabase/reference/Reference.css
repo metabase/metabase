@@ -2,22 +2,6 @@
     --icon-width: calc(48px + 1rem);
 }
 
-:local(.guideEmpty) {
-    composes: flex full justify-center from "style";
-    padding-top: 75px;
-}
-
-:local(.guideEmptyBody) {
-    composes: text-centered from "style";
-    max-width: 400px;
-}
-
-:local(.guideEmptyMessage) {
-    composes: text-dark text-centered mt3 from "style";
-    font-size: 1.1em;
-    line-height: 1.457em;
-}
-
 :local(.columnHeader) {
     composes: flex flex-full from "style";
     margin-left: var(--icon-width);
