@@ -274,7 +274,7 @@ const SETTINGS = {
     },
     "pie.dimension": {
         section: "Data",
-        title: "Measure",
+        title: "Dimension",
         widget: ChartSettingSelect,
         isValid: ([{ card, data }], vizSettings) =>
             columnsAreValid(card.visualization_settings["pie.dimension"], data, isDimension),
@@ -286,7 +286,7 @@ const SETTINGS = {
     },
     "pie.metric": {
         section: "Data",
-        title: "Slice by",
+        title: "Measure",
         widget: ChartSettingSelect,
         isValid: ([{ card, data }], vizSettings) =>
             columnsAreValid(card.visualization_settings["pie.metric"], data, isMetric),
