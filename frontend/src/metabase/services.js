@@ -1,4 +1,6 @@
-angular.module('metabase.services', ['metabase.core.services']);
+import 'angular-http-auth';
+
+angular.module('metabase.services', ['metabase.core.services', 'http-auth-interceptor']);
 
 // API Services
 var CoreServices = angular.module('metabase.core.services', ['ngResource', 'ngCookies']);

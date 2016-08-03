@@ -9,7 +9,7 @@ export const METABASE_SESSION_COOKIE = 'metabase.SESSION_ID';
 var MetabaseCookies = {
     // set the session cookie.  if sessionId is null, clears the cookie
     setSessionCookie: function(sessionId) {
-        let ipCookie = angular.element(document.querySelector("body")).injector().get("ipCookie");
+        let ipCookie = angular.element(document.body).injector().get("ipCookie");
 
         const options = {
             path: '/',
