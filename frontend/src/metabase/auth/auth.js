@@ -72,7 +72,7 @@ export const loginGoogle = createThunkAction("AUTH_LOGIN_GOOGLE", function(googl
 
 // logout
 export const logout = createThunkAction("AUTH_LOGOUT", function() {
-    return async function(dispatch, getState) {
+    return function(dispatch, getState) {
         // TODO: as part of a logout we want to clear out any saved state that we have about anything
 
         let sessionId = MetabaseCookies.setSessionCookie();

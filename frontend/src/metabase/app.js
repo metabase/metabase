@@ -25,7 +25,7 @@ import { getStore } from './store'
 import { Router, browserHistory } from "react-router";
 import { syncHistoryWithStore } from 'react-router-redux'
 
-async function init() {
+function init() {
     const store = getStore(browserHistory);
     const routes = getRoutes(store);
     const history = syncHistoryWithStore(browserHistory, store);

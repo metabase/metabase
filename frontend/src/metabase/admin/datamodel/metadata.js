@@ -93,7 +93,7 @@ export const selectDatabase = createThunkAction("SELECT_DATABASE", function(db) 
 
 // selectTable
 export const selectTable = createThunkAction("SELECT_TABLE", function(table) {
-    return async function(dispatch, getState) {
+    return function(dispatch, getState) {
         // we also want to update our url to match our new state
         dispatch(push('/admin/datamodel/database/'+table.db_id+'/table/'+table.id));
 
@@ -156,7 +156,7 @@ export const updateField = createThunkAction("UPDATE_FIELD", function(field) {
 
 // updateFieldSpecialType
 export const updateFieldSpecialType = createThunkAction("UPDATE_FIELD_SPECIAL_TYPE", function(field) {
-    return async function(dispatch, getState) {
+    return function(dispatch, getState) {
 
         // If we are changing the field from a FK to something else, we should delete any FKs present
         if (field.target && field.target.id != null && field.special_type !== "fk") {
@@ -175,7 +175,7 @@ export const updateFieldSpecialType = createThunkAction("UPDATE_FIELD_SPECIAL_TY
 
 // updateFieldTarget
 export const updateFieldTarget = createThunkAction("UPDATE_FIELD_TARGET", function(field) {
-    return async function(dispatch, getState) {
+    return function(dispatch, getState) {
         // This function notes a change in the target of the target of a foreign key
         dispatch(updateField(field));
 

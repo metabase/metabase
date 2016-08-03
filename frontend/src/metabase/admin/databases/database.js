@@ -120,7 +120,7 @@ export const deleteDatabase = createThunkAction("DELETE_DATABASE", function(data
 
 // syncDatabase
 export const syncDatabase = createThunkAction("SYNC_DATABASE", function(databaseId) {
-    return async function(dispatch, getState) {
+    return function(dispatch, getState) {
         try {
             let call = MetabaseApi.db_sync_metadata({"dbId": databaseId});
             MetabaseAnalytics.trackEvent("Databases", "Manual Sync");
