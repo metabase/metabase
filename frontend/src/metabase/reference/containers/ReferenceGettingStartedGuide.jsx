@@ -8,6 +8,7 @@ import S from "metabase/reference/Reference.css";
 import EditHeader from "metabase/reference/components/EditHeader.jsx";
 import GuideEmptyState from "metabase/reference/components/GuideEmptyState.jsx"
 import GuideHeader from "metabase/reference/components/GuideHeader.jsx"
+import GuideDetail from "metabase/reference/components/GuideDetail.jsx"
 
 import * as actions from 'metabase/reference/reference';
 
@@ -71,15 +72,15 @@ export default class ReferenceGettingStartedGuide extends Component {
                         submitting={submitting}
                     />
                 }
-                { guide && (isGuideEmpty(guide) ?
+                { isGuideEmpty(guide) ? 
                     <GuideEmptyState 
                         isSuperuser={user && user.is_superuser}
                         startEditing={startEditing} 
                     /> :
                     <div className="full">
                         <GuideHeader startEditing={startEditing} />
-                        <GuideDetail name={} description={} value={} link={} linkClass={} />
-                    </div>)
+                        <GuideDetail name={'test'} description={'test'} value={'test'} link={'test'} linkClass={'test'} />
+                    </div>
                 }
             </form>
         );

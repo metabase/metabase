@@ -6,8 +6,9 @@ import S from "./GuideHeader.css";
 const GuideHeader = ({
     startEditing
 }) =>
-    <div>
+    <div className={S.guideHeader}>
         Understanding our data
+
     </div>;
 GuideHeader.propTypes = {
     startEditing: PropTypes.func.isRequired

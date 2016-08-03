@@ -217,11 +217,11 @@ export const isGuideEmpty = ({
     important_metrics,
     important_segments,
     important_tables
-}) => things_to_know !== null ? false :
-    name !== null ? false :
-    email !== null ? false :
-    most_important_dashboard !== null ? false :
-    important_metrics.length !== 0 ? false :
-    important_segments.length !== 0 ? false :
-    important_tables.length !== 0 ? false : 
+} = {}) => things_to_know ? false :
+    name ? false :
+    email ? false :
+    most_important_dashboard ? false :
+    important_metrics && important_metrics.length !== 0 ? false :
+    important_segments && important_segments.length !== 0 ? false :
+    important_tables && important_tables.length !== 0 ? false : 
     true;

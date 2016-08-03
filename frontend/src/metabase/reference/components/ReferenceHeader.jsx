@@ -9,6 +9,8 @@ import L from "metabase/components/List.css";
 import IconBorder from "metabase/components/IconBorder.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
+import EditButton from "metabase/reference/components/EditButton.jsx"
+
 
 const ReferenceHeader = ({
     entity = {},
@@ -83,7 +85,7 @@ const ReferenceHeader = ({
                                     data-metabase-event={`Data Reference;Entity -> QB click;${section.type}`}
                                 >
                                     <div className="flex align-center relative">
-                                        <span className="mr1">See this {section.type}</span>
+                                        <span className="mr1 flex-no-shrink">See this {section.type}</span>
                                         <Icon name="chevronright" size={16} />
                                     </div>
                                 </Link>
@@ -91,17 +93,7 @@ const ReferenceHeader = ({
                     ]
                 }
                 { user && user.is_superuser && !isEditing &&
-                    <div className={L.headerButton}>
-                        <a
-                            onClick={startEditing}
-                            className={cx("Button", "Button--borderless", S.editButton)}
-                        >
-                            <div className="flex align-center relative">
-                                <Icon name="pencil" size={16} />
-                                <span className="ml1">Edit</span>
-                            </div>
-                        </a>
-                    </div>
+                    <EditButton className="ml1" startEditing={startEditing} />
                 }
             </div>
         </div>
