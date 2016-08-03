@@ -1,4 +1,4 @@
-import * as Query from "metabase/meta/Query";
+import Query from "metabase/lib/query";
 
 // if query is an aggregate -> `go to raw data`  (subscore is always 1)
 // eg. this should always be shown
@@ -6,12 +6,9 @@ import * as Query from "metabase/meta/Query";
 export function suggestUnderlyingData(query){
 	const RECOMMENDER_NAME = "Underlying data"
 	if(!Query.isBareRowsAggregation(query)){
-		var new_query = Query.clone(query)
-		// having to reach in and set "rows" manually is fugly
-		// TODO Refactor me
-		Query.updateAggregation(query, ["rows"])
-		return [{target : new_query, 
-				 source: RECOMMENDER_NAME, 
+		var new_query = Query.getUnderlyingData(query)
+
+		return [{source: RECOMMENDER_NAME, 
 				 recommendation: "See underlying data", 
 				 url: Query.toURL(new_query),
 				 score: 1}]

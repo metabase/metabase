@@ -16,14 +16,11 @@ export function suggestDashboardParameterizedByID(query, resultRow, columnDefini
 		return []
 	} 
 
-	var fieldID = columnDefinitions[cellIndex].id
-
-	var relevantDashboards = Dashboards.getDashboardsParameterizedBy(fieldID)
+	var relevantDashboards = Dashboards.getDashboardsParameterizedBy(columnDefinitions[cellIndex])
 	var returnValues = []
 
 	_.each(relevantDashboards, function(dashboard){
-		return returnValues.push({target : dashboard, 
-								  source: RECOMMENDER_NAME, 
+		return returnValues.push({source: RECOMMENDER_NAME, 
 								  recommendation: "See Dashboard " + dashboard.name + " limited by " + columnDefinitions[cellIndex].name, 
 								  url: "/dashboard/"+dashboard.id, 
 								  score: 1})
@@ -40,14 +37,11 @@ export function suggestCardParameterizedByID(query, resultRow, columnDefinitions
 		return []
 	} 
 
-	var fieldID = columnDefinitions[cellIndex].id
-
-	var relevantCards = Cards.getCardsParameterizedBy(fieldID)
+	var relevantCards = Cards.getCardsParameterizedBy(columnDefinitions[cellIndex])
 	var returnValues = []
 	
 	_.each(relevantCards, function(card){
-		return returnValues.push({target : card, 
-								  source: RECOMMENDER_NAME, 
+		return returnValues.push({source: RECOMMENDER_NAME, 
 								  recommendation: "See Card " + card.name + " limited by " + columnDefinitions[cellIndex].name, 
 								  url: "/card/" + card.id, 
 								  score: 1})

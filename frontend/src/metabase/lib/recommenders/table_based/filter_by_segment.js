@@ -1,5 +1,5 @@
 import _ from "underscore";
-import * as Query from "metabase/meta/Query";
+import Query from "metabase/lib/Query";
 import {TableMetadata} from "metabase/lib/recommenders/thingsThatWouldBeUseful"
 
 // useful extra data:

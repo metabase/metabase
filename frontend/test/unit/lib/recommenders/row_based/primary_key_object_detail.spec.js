@@ -8,18 +8,22 @@ describe("Row based Recommender -- Primary Key Object Details", () => {
             let query = createQuery("query", 1, 1)
             let resultRow = [[1,1,"John"]]
             let columnDefinitions = [{special_type: 'PK', name: 'id'}, {special_type:"FK", name: 'user_id'}, {name: "name"}]
-            let result = suggestObjectDetailView(query, resultRow, columnDefinitions)
+            let results = suggestObjectDetailView(query, resultRow[0], columnDefinitions)
 
-            expect(result).toEqual([{target : {name: 'FIX ME', id: 1}, 
-                                     source: suggestObjectDetailView.verbose_name, 
-                                     recommendation: "See object detail for 1",
-                                     url: "/q/fake_url",
-                                     score: 1},
-                                    {target : {name: 'FIX ME', id: 1}, 
-                                     source: suggestObjectDetailView.verbose_name, 
-                                     recommendation: "See object detail for 1",
-                                     url: "/q/fake_url",
-                                     score: 1}]);
+            expect(results.length).toEqual(2)
+            let result = results[0]
+            let result2 = results[1]
+
+            expect(result.source).toEqual(suggestObjectDetailView.verboseName);
+            expect(result.recommendation).toEqual("See object detail for 1");
+            expect(result.url).toEqual("/q/fake_url");
+            expect(result.score).toEqual(1);
+
+            expect(result2.source).toEqual(suggestObjectDetailView.verboseName);
+            expect(result2.recommendation).toEqual("See object detail for 1");
+            expect(result2.url).toEqual("/q/fake_url");
+            expect(result2.score).toEqual(1);
+
         });
     });
 });

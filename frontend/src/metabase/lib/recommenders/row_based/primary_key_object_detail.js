@@ -1,13 +1,13 @@
 import _ from "underscore";
 
-import * as Query from "metabase/meta/Query";
+import Query from "metabase/lib/Query";
 import {FieldMetadata} from "metabase/lib/recommenders/thingsThatWouldBeUseful"
 
 export function suggestObjectDetailView(query, resultRow, columnDefinitions){
 	const RECOMMENDER_NAME = "Suggested Object Detail View"
 
 	var linkFields = _.filter(_.zip(columnDefinitions, resultRow), function(columnPair){
-		FieldMetadata.isFKorPK(columnPair[0])
+		return FieldMetadata.isFKorPK(columnPair[0])
 	})
 	
 	var returnValues = []

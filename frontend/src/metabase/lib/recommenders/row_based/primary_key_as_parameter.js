@@ -12,18 +12,20 @@ import {Dashboards, Cards, FieldMetadata} from "metabase/lib/recommenders/things
 export function suggestDashboardParameterizedByID(query, resultRow, columnDefinitions){
 	const RECOMMENDER_NAME = "Suggest Dashboards with ID Parameters"
 
-	var linkFields = _.filter(columnDefinitions, function(column){FieldMetadata.isFKorPK(column)})
+	var linkFields = _.filter(_.zip(columnDefinitions, resultRow), function(columnPair){
+		return FieldMetadata.isFKorPK(columnPair[0])
+	})
 
 	var returnValues = []
-	_.each(linkFields, function(link){
+	
+	_.each(linkFields, function(linkedFieldPairs){
+		var link = linkedFieldPairs[0]
+		var linkValue = linkedFieldPairs[1]
 
-		var fieldID = link.id
-
-		var relevantDashboards = Dashboards.getDashboardsParameterizedBy(fieldID)
+		var relevantDashboards = Dashboards.getDashboardsParameterizedBy(link)
 
 		_.each(relevantDashboards, function(dashboard){
-			return returnValues.push({target : dashboard, 
-									  source: RECOMMENDER_NAME, 
+			return returnValues.push({source: RECOMMENDER_NAME, 
 									  recommendation: "See Dashboard " + dashboard.name + " limited by " + link.name, 
 									  url: "/dashboard/" + dashboard.id, 
 									  score: 1})
@@ -37,18 +39,18 @@ suggestDashboardParameterizedByID.verboseName =  "Suggest Dashboards with ID Par
 export function suggestCardParameterizedByID(query, resultRow, columnDefinitions){
 	const RECOMMENDER_NAME = "Suggest Cards with ID Parameters"
 
-	var linkFields = _.filter(columnDefinitions, function(column){FieldMetadata.isFKorPK(column)})
+	var linkFields = _.filter(columnDefinitions, function(column){return FieldMetadata.isFKorPK(column)})
 
 	var returnValues = []
 	_.each(linkFields, function(link){
 
 		var fieldID = link.id
 		
-		var relevantCards = Cards.getCardsParameterizedBy(fieldID)
+		var relevantCards = Cards.getCardsParameterizedBy(link)
 
 		
 		_.each(relevantCards, function(card){
-			return returnValues.push({target : card, source: RECOMMENDER_NAME, 
+			return returnValues.push({source: RECOMMENDER_NAME, 
 									  recommendation: "See Card " + card.name + " limited by " + link.name,  
 									  url: "/card/" + card.id, 
 									  score: 1})

@@ -1,4 +1,4 @@
-import * as Query from "metabase/meta/Query";
+import Query from "metabase/lib/query";
 import {FieldMetadata} from "metabase/lib/recommenders/thingsThatWouldBeUseful"
 
 export function suggestObjectDetailView(query, resultRow, columnDefinitions, cellIndex){
@@ -6,8 +6,7 @@ export function suggestObjectDetailView(query, resultRow, columnDefinitions, cel
 
 	if(FieldMetadata.isFKorPK(columnDefinitions[cellIndex])){
 		var new_query = Query.objectDetailFor(columnDefinitions[cellIndex], resultRow[cellIndex])
-		return [{target : new_query, 
-      		     source: RECOMMENDER_NAME, 
+		return [{source: RECOMMENDER_NAME, 
 			     recommendation: "See object detail for " + resultRow[cellIndex], 
 			     url: Query.toURL(new_query), 
 			     score: 1}]
