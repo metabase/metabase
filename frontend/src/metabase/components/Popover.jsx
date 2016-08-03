@@ -152,18 +152,17 @@ export default class Popover extends Component {
         if (this.props.isOpen) {
             // popover is open, lets do this!
             const popoverElement = this._getPopoverElement();
-            ReactDOM.render(
-              <ReactCSSTransitionGroup
-                transitionName="Popover"
-                transitionAppear={true}
-                transitionAppearTimeout={250}
-                transitionEnterTimeout={250}
-                transitionLeaveTimeout={250}
-              >
-                {this._popoverComponent()}
-              </ReactCSSTransitionGroup>
-              , popoverElement
-            );
+            ReactDOM.unstable_renderSubtreeIntoContainer(this,
+                <ReactCSSTransitionGroup
+                    transitionName="Popover"
+                    transitionAppear={true}
+                    transitionAppearTimeout={250}
+                    transitionEnterTimeout={250}
+                    transitionLeaveTimeout={250}
+                >
+                    {this._popoverComponent()}
+                </ReactCSSTransitionGroup>
+            , popoverElement);
 
             var tetherOptions = {};
 
