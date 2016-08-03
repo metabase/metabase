@@ -166,6 +166,7 @@ export const getRoutes = (store) =>
             {/* ADMIN */}
             <Route path="/admin" component={IsAdmin}>
                 <IndexRedirect to="/admin/settings" />
+
                 <Route path="databases" component={DatabaseListApp} />
                 <Route path="databases/create" component={DatabaseEditApp} />
                 <Route path="databases/:databaseId" component={DatabaseEditApp} />

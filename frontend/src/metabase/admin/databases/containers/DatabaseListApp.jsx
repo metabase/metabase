@@ -19,7 +19,7 @@ import * as databaseActions from "../database";
 
 const mapStateToProps = (state, props) => {
     return {
-        created:              props.params.created,
+        created:              props.location.query.created,
         databases:            getDatabasesSorted(state),
         hasSampleDataset:     hasSampleDataset(state),
         engines:              MetabaseSettings.get('engines')
@@ -108,6 +108,7 @@ export default class DatabaseList extends Component {
                     isInitiallyOpen={created}
                 >
                     <CreatedDatabaseModal
+                        databaseId={parseInt(created)}
                         onDone={() => this.refs.createdDatabaseModal.toggle() }
                         onClose={() => this.refs.createdDatabaseModal.toggle() }
                     />

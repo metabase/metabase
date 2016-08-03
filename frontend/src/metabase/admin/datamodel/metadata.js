@@ -82,7 +82,7 @@ export const selectDatabase = createThunkAction("SELECT_DATABASE", function(db) 
             dispatch(fetchDatabaseIdfields(db.id));
 
             // we also want to update our url to match our new state
-            push('/admin/datamodel/database/'+db.id);
+            dispatch(push('/admin/datamodel/database/'+db.id));
 
             return database;
         } catch (error) {
@@ -95,7 +95,7 @@ export const selectDatabase = createThunkAction("SELECT_DATABASE", function(db) 
 export const selectTable = createThunkAction("SELECT_TABLE", function(table) {
     return async function(dispatch, getState) {
         // we also want to update our url to match our new state
-        push('/admin/datamodel/database/'+table.db_id+'/table/'+table.id);
+        dispatch(push('/admin/datamodel/database/'+table.db_id+'/table/'+table.id));
 
         return table.id;
     };
