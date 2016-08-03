@@ -36,8 +36,6 @@
 ace.require(["ace/lib/oop", "ace/mode/behaviour", "ace/token_iterator", "ace/lib/lang"],
 function(oop, { Behaviour }, { TokenIterator }, lang) {
 
-console.log(oop, Behaviour, TokenIterator, lang);
-
     var SAFE_INSERT_IN_TOKENS =
         ["text", "paren.rparen", "punctuation.operator"];
     var SAFE_INSERT_BEFORE_TOKENS =
