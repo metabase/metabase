@@ -120,7 +120,7 @@ export default class SettingsEditorApp extends Component {
                     />
                 </div>
             );
-        } else if (section.name === "Single Sign On") {
+        } else if (section.name === "Single Sign-On") {
             return (
                 <div className="px2">
                     <SettingsSingleSignOnForm

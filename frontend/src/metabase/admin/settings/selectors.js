@@ -139,7 +139,7 @@ const SECTIONS = [
         ]
     },
     {
-        name: "Single Sign On",
+        name: "Single Sign-On",
         settings: [
             {
                 key: "google-auth-client-id"
