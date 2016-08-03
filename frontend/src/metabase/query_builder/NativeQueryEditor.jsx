@@ -3,6 +3,8 @@
 
 import React, { Component, PropTypes } from "react";
 
+import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
+
 import _ from "underscore";
 import { assocIn } from "icepick";
 
@@ -82,7 +84,7 @@ export default class NativeQueryEditor extends Component {
     }
 
     componentDidUpdate() {
-        var editor = ace.edit("id_sql");
+        let editor = ace.edit("id_sql");
         if (editor.getValue() !== this.props.query.native.query) {
             // This is a weird hack, but the purpose is to avoid an infinite loop caused by the fact that calling editor.setValue()
             // will trigger the editor 'change' event, update the query, and cause another rendering loop which we don't want, so
@@ -96,11 +98,15 @@ export default class NativeQueryEditor extends Component {
         if (this.state.modeInfo && editor.getSession().$modeId !== this.state.modeInfo.mode) {
             console.log('Setting ACE Editor mode to:', this.state.modeInfo.mode);
             editor.getSession().setMode(this.state.modeInfo.mode);
+            // monkey patch the mode to add our bracket/paren/braces-matching behavior
+            if (!editor.getSession().$mode.$behaviour) {
+                editor.getSession().$mode.$behaviour = new SQLBehaviour();
+            }
         }
     }
 
     loadAceEditor() {
-        var editor = ace.edit("id_sql");
+        let editor = ace.edit("id_sql");
 
         // listen to onChange events
         editor.getSession().on('change', this.onChange);
@@ -118,7 +124,7 @@ export default class NativeQueryEditor extends Component {
             editor: editor
         });
 
-        var aceLanguageTools = ace.require('ace/ext/language_tools');
+        let aceLanguageTools = ace.require('ace/ext/language_tools');
         editor.setOptions({
             enableBasicAutocompletion: true,
             enableSnippets: true,
@@ -193,7 +199,7 @@ export default class NativeQueryEditor extends Component {
         let modeInfo = getModeInfo(this.props.query, this.props.databases);
 
         // we only render a db selector if there are actually multiple to choose from
-        var dataSelectors = [];
+        let dataSelectors = [];
         if (this.state.showEditor && this.props.databases && (this.props.databases.length > 1 || modeInfo.requiresTable)) {
             if (this.props.databases.length > 1) {
                 dataSelectors.push(
@@ -238,7 +244,7 @@ export default class NativeQueryEditor extends Component {
             dataSelectors = <span className="p2 text-grey-4">{'This question is written in ' + modeInfo.description + '.'}</span>;
         }
 
-        var editorClasses, toggleEditorText, toggleEditorIcon;
+        let editorClasses, toggleEditorText, toggleEditorIcon;
         if (this.state.showEditor) {
             editorClasses = "";
             toggleEditorText = "Hide Editor";
