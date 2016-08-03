@@ -206,3 +206,22 @@ export const getQuestion = ({dbId, tableId, fieldId, metricId, segmentId, getCou
 };
 
 export const getQuestionUrl = getQuestionArgs => `/q#${serializeCardForUrl(getQuestion(getQuestionArgs))}`;
+
+export const isGuideEmpty = ({
+    things_to_know,
+    contact: {
+        name,
+        email
+    },
+    most_important_dashboard,
+    important_metrics,
+    important_segments,
+    important_tables
+}) => things_to_know !== null ? false :
+    name !== null ? false :
+    email !== null ? false :
+    most_important_dashboard !== null ? false :
+    important_metrics.length !== 0 ? false :
+    important_segments.length !== 0 ? false :
+    important_tables.length !== 0 ? false : 
+    true;

@@ -15,8 +15,19 @@ import {
     getIsEditing
 } from '../selectors';
 
+import {
+    isGuideEmpty
+} from '../utils';
+
 const mapStateToProps = (state, props) => ({
-    guide: {},
+    guide: {
+        things_to_know: "test",
+        contact: { name: null, email: null },
+        most_important_dashboard: null,
+        important_metrics: [],
+        important_tables: [],
+        important_segments: []
+    },
     user: getUser(state),
     isEditing: getIsEditing(state)
 });
@@ -38,6 +49,7 @@ export default class ReferenceGettingStartedGuide extends Component {
     render() {
         const {
             style,
+            guide,
             user,
             isEditing,
             startEditing,
@@ -58,10 +70,15 @@ export default class ReferenceGettingStartedGuide extends Component {
                         submitting={submitting}
                     />
                 }
-                <GuideEmptyState 
-                    isSuperuser={user && user.is_superuser}
-                    startEditing={startEditing} 
-                />
+                { guide && (isGuideEmpty(guide) ?
+                    <GuideEmptyState 
+                        isSuperuser={user && user.is_superuser}
+                        startEditing={startEditing} 
+                    /> :
+                    <div>
+
+                    </div>)
+                }
             </form>
         );
     }
