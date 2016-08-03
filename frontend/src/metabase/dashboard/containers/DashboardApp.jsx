@@ -8,7 +8,7 @@ import Dashboard from "../components/Dashboard.jsx";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 
-import { getIsEditing, getIsEditingParameter, getIsDirty, getSelectedDashboard, getDashboardComplete, getCardList, getRevisions, getCardData, getCardDurations, getDatabases, getEditingParameter, getParameterValues } from "../selectors";
+import { getIsEditing, getIsEditingParameter, getIsDirty, getDashboardComplete, getCardList, getRevisions, getCardData, getCardDurations, getDatabases, getEditingParameter, getParameterValues } from "../selectors";
 import * as dashboardActions from "../dashboard";
 
 const mapStateToProps = (state, props) => {
@@ -16,7 +16,6 @@ const mapStateToProps = (state, props) => {
       isEditing:            getIsEditing(state, props),
       isEditingParameter:   getIsEditingParameter(state, props),
       isDirty:              getIsDirty(state, props),
-      selectedDashboard:    getSelectedDashboard(state, props),
       dashboard:            getDashboardComplete(state, props),
       cards:                getCardList(state, props),
       revisions:            getRevisions(state, props),

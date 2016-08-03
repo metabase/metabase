@@ -63,7 +63,7 @@ export default class Dashboard extends Component {
     };
 
     async componentDidMount() {
-        this.loadDashboard(this.props.selectedDashboard);
+        this.loadDashboard(this.props.params.dashboardId);
     }
 
     componentDidUpdate() {
@@ -77,8 +77,8 @@ export default class Dashboard extends Component {
     }
 
     componentWillReceiveProps(nextProps) {
-        if (this.props.selectedDashboard !== nextProps.selectedDashboard) {
-            this.loadDashboard(nextProps.selectedDashboard);
+        if (this.props.params.dashboardId !== nextProps.params.dashboardId) {
+            this.loadDashboard(nextProps.params.dashboardId);
         } else if (!_.isEqual(this.props.parameterValues, nextProps.parameterValues) || !this.props.dashboard) {
             this.fetchDashboardCardData(nextProps, true);
         }
@@ -284,7 +284,7 @@ export default class Dashboard extends Component {
         if (refreshElapsed >= this.state.refreshPeriod) {
             refreshElapsed = 0;
 
-            await this.props.fetchDashboard(this.props.selectedDashboard, this.props.location.query);
+            await this.props.fetchDashboard(this.props.params.dashboardId, this.props.location.query);
             this.fetchDashboardCardData(this.props);
         }
         this.setState({ refreshElapsed });
