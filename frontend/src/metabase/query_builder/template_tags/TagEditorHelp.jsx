@@ -56,7 +56,7 @@ const TagExample = ({ datasetQuery, setQuery }) =>
             { setQuery && (
                 <div
                     className="Button Button--small"
-                    data-metabase-event="QueryBuilder;Template Tage Example Query Used"
+                    data-metabase-event="QueryBuilder;Template Tag Example Query Used"
                     onClick={() => setQuery(datasetQuery, true) }
                 >
                     Try it

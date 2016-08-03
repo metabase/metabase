@@ -13244,9 +13244,6 @@
         }
       }
     },
-    "react-onclickout": {
-      "version": "2.0.4"
-    },
     "react-redux": {
       "version": "4.4.5",
       "dependencies": {

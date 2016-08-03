@@ -24,4 +24,6 @@
 
 > [Some helpful tips on building your data model](11-data-model-reference.md)
 
+> [Creating SQL Templates](12-sql-parameters.md)
+
 Let's get started with an overview of [What Metabase does](01-what-is-metabase.md).

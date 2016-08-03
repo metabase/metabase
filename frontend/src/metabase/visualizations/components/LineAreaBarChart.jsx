@@ -239,6 +239,7 @@ export default class LineAreaBarChart extends Component {
                 <CardRenderer
                     {...this.props}
                     chartType={this.getChartType()}
+                    series={series}
                     settings={settings}
                     className="flex-full"
                     renderer={lineAreaBarRenderer}
