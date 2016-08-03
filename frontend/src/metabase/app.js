@@ -1,20 +1,15 @@
 /* @flow weak */
 
 // angular:
-import 'angular';
-import 'angular-resource';
-import 'angular-cookie';
 import "./services";
 
 angular
 .module('metabase', ['ipCookie', 'metabase.controllers'])
-.run([function() {
-}])
+.run([function() {}])
 
 angular
 .module('metabase.controllers', ['metabase.services'])
-.controller('Metabase', [function() {
-}]);
+.controller('Metabase', [function() {}]);
 
 import React from 'react'
 import ReactDOM from 'react-dom'

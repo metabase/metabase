@@ -3,9 +3,9 @@ import 'angular-http-auth';
 angular.module('metabase.services', ['metabase.core.services', 'http-auth-interceptor']);
 
 // API Services
-var CoreServices = angular.module('metabase.core.services', ['ngResource', 'ngCookies']);
+var CoreServices = angular.module('metabase.core.services', ['ngResource']);
 
-CoreServices.factory('Activity', ['$resource', '$cookies', function($resource, $cookies) {
+CoreServices.factory('Activity', ['$resource', function($resource) {
     return $resource('/api/activity', {}, {
         list: {
             method: 'GET',
@@ -19,7 +19,7 @@ CoreServices.factory('Activity', ['$resource', '$cookies', function($resource, $
     });
 }]);
 
-CoreServices.factory('Card', ['$resource', '$cookies', function($resource, $cookies) {
+CoreServices.factory('Card', ['$resource', function($resource) {
     return $resource('/api/card/:cardId', {}, {
         list: {
             url: '/api/card',
@@ -80,7 +80,7 @@ CoreServices.factory('Card', ['$resource', '$cookies', function($resource, $cook
     });
 }]);
 
-CoreServices.factory('Dashboard', ['$resource', '$cookies', function($resource, $cookies) {
+CoreServices.factory('Dashboard', ['$resource', function($resource) {
     return $resource('/api/dashboard/:dashId', {}, {
         list: {
             url:'/api/dashboard',
@@ -146,7 +146,7 @@ CoreServices.factory('Slack', ['$resource', function($resource) {
     });
 }]);
 
-CoreServices.factory('Metabase', ['$resource', '$cookies', function($resource, $cookies) {
+CoreServices.factory('Metabase', ['$resource', function($resource) {
     return $resource('/api/meta', {}, {
         db_list: {
             url: '/api/database/',
@@ -352,7 +352,7 @@ CoreServices.factory('Metabase', ['$resource', '$cookies', function($resource, $
     });
 }]);
 
-CoreServices.factory('Pulse', ['$resource', '$cookies', function($resource, $cookies) {
+CoreServices.factory('Pulse', ['$resource', function($resource) {
     return $resource('/api/pulse/:pulseId', {}, {
         list: {
             url: '/api/pulse',
@@ -391,7 +391,7 @@ CoreServices.factory('Pulse', ['$resource', '$cookies', function($resource, $coo
     });
 }]);
 
-CoreServices.factory('Segment', ['$resource', '$cookies', function($resource, $cookies) {
+CoreServices.factory('Segment', ['$resource', function($resource) {
     return $resource('/api/segment/:segmentId', {}, {
         list: {
             url: '/api/segment',
@@ -417,7 +417,7 @@ CoreServices.factory('Segment', ['$resource', '$cookies', function($resource, $c
     });
 }]);
 
-CoreServices.factory('Metric', ['$resource', '$cookies', function($resource, $cookies) {
+CoreServices.factory('Metric', ['$resource', function($resource) {
     return $resource('/api/metric/:metricId', {}, {
         list: {
             url: '/api/metric',
@@ -506,7 +506,7 @@ CoreServices.factory('Label', ['$resource', function($resource) {
     });
 }]);
 
-CoreServices.factory('Session', ['$resource', '$cookies', function($resource, $cookies) {
+CoreServices.factory('Session', ['$resource', function($resource) {
     return $resource('/api/session/', {}, {
         create: {
             method: 'POST',
@@ -570,7 +570,7 @@ CoreServices.factory('Settings', ['$resource', function($resource) {
     });
 }]);
 
-CoreServices.factory('Setup', ['$resource', '$cookies', function($resource, $cookies) {
+CoreServices.factory('Setup', ['$resource', function($resource) {
     return $resource('/api/setup/', {}, {
         create: {
             method: 'POST'
@@ -582,7 +582,7 @@ CoreServices.factory('Setup', ['$resource', '$cookies', function($resource, $coo
     });
 }]);
 
-CoreServices.factory('User', ['$resource', '$cookies', function($resource, $cookies) {
+CoreServices.factory('User', ['$resource', function($resource) {
     return $resource('/api/user/:userId', {}, {
         create: {
             url: '/api/user',
@@ -642,7 +642,7 @@ CoreServices.factory('User', ['$resource', '$cookies', function($resource, $cook
     });
 }]);
 
-CoreServices.factory('Util', ['$resource', '$cookies', function($resource, $cookies) {
+CoreServices.factory('Util', ['$resource', function($resource) {
     return $resource('/api/util/', {}, {
         password_check: {
             url: '/api/util/password_check',
