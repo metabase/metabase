@@ -1,3 +1,4 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 
 import _ from "underscore";
@@ -16,8 +17,6 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 
 import { channelIsValid } from "metabase/lib/pulse";
 
-import { testPulse } from "../actions";
-
 import cx from "classnames";
 
 const CHANNEL_ICONS = {
@@ -31,7 +30,16 @@ export default class PulseEditChannels extends Component {
         this.state = {};
     }
 
-    static propTypes = {};
+    static propTypes = {
+        pulse: PropTypes.object.isRequired,
+        pulseId: PropTypes.number,
+        pulseIsValid: PropTypes.bool.isRequired,
+        formInput: PropTypes.object.isRequired,
+        user: PropTypes.object.isRequired,
+        userList: PropTypes.array.isRequired,
+        setPulse: PropTypes.func.isRequired,
+        testPulse: PropTypes.func.isRequired
+    };
     static defaultProps = {};
 
     addChannel(type) {
@@ -123,7 +131,7 @@ export default class PulseEditChannels extends Component {
 
     onTestPulseChannel(channel) {
         // test a single channel
-        return this.props.dispatch(testPulse({ ...this.props.pulse, channels: [channel] }));
+        return this.props.testPulse({ ...this.props.pulse, channels: [channel] });
     }
 
     renderFields(channel, index, channelSpec) {

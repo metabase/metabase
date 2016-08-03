@@ -1,5 +1,6 @@
 import React, { Component, PropTypes } from "react";
 import { connect } from "react-redux";
+
 import _ from "underscore";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
@@ -9,7 +10,6 @@ import MetadataTablePicker from '../components/database/MetadataTablePicker.jsx'
 import MetadataTable from '../components/database/MetadataTable.jsx';
 import MetadataSchema from '../components/database/MetadataSchema.jsx';
 
-
 import {
     getDatabases,
     getDatabaseIdfields,
@@ -18,12 +18,10 @@ import {
 } from "../selectors";
 import * as metadataActions from "../metadata";
 
-
 const mapStateToProps = (state, props) => {
     return {
         databaseId:           parseInt(props.params.databaseId),
         tableId:              parseInt(props.params.tableId),
-        onChangeLocation:     props.onChangeLocation,
         databases:            getDatabases(state, props),
         idfields:             getDatabaseIdfields(state, props),
         databaseMetadata:     getEditingDatabaseWithTableMetadataStrengths(state, props),
@@ -32,7 +30,7 @@ const mapStateToProps = (state, props) => {
 }
 
 const mapDispatchToProps = {
-    ...metadataActions
+    ...metadataActions,
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -64,7 +62,7 @@ export default class MetadataEditor extends Component {
 
     componentWillMount() {
         // if we know what database we are initialized with, include that
-        this.props.initializeMetadata(this.props.databaseId, this.props.tableId, this.props.onChangeLocation);
+        this.props.initializeMetadata(this.props.databaseId, this.props.tableId);
     }
 
     toggleShowSchema() {

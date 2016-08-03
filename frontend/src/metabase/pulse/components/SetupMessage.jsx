@@ -1,3 +1,4 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 import { Link } from "react-router";
 
@@ -31,7 +32,7 @@ export default class SetupMessage extends Component {
                     </div>
                     <div className="mt2">
                         {channels.map(c =>
-                            <Link to={"/admin/settings/"+c.toLowerCase()} className="Button Button--primary mr1" target={window.OSX ? null : "_blank"}>Configure {c}</Link>
+                            <Link to={"/admin/settings/"+c.toLowerCase()} key={c.toLowerCase()} className="Button Button--primary mr1" target={window.OSX ? null : "_blank"}>Configure {c}</Link>
                         )}
                     </div>
                 </div>

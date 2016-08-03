@@ -1,6 +1,13 @@
 import React, { Component, PropTypes } from "react";
 
 import { Route, IndexRedirect, Redirect } from 'react-router';
+import { routerActions } from 'react-router-redux';
+import { UserAuthWrapper } from 'redux-auth-wrapper';
+
+import { refreshCurrentUser } from "metabase/user";
+import MetabaseSettings from "metabase/lib/settings";
+
+import App from "metabase/App.jsx";
 
 // auth containers
 import ForgotPasswordApp from "metabase/auth/containers/ForgotPasswordApp.jsx";
@@ -34,7 +41,6 @@ import SettingsEditorApp from "metabase/admin/settings/containers/SettingsEditor
 import NotFound from "metabase/components/NotFound.jsx";
 import Unauthorized from "metabase/components/Unauthorized.jsx";
 
-
 import ReferenceApp from "metabase/reference/containers/ReferenceApp.jsx";
 import ReferenceEntity from "metabase/reference/containers/ReferenceEntity.jsx";
 import ReferenceEntityList from "metabase/reference/containers/ReferenceEntityList.jsx";
@@ -42,32 +48,20 @@ import ReferenceFieldsList from "metabase/reference/containers/ReferenceFieldsLi
 import ReferenceRevisionsList from "metabase/reference/containers/ReferenceRevisionsList.jsx";
 import ReferenceGettingStartedGuide from "metabase/reference/containers/ReferenceGettingStartedGuide.jsx";
 
-import Navbar from "metabase/nav/containers/Navbar.jsx";
-
-import { UserAuthWrapper } from 'redux-auth-wrapper';
-
-// START react-router-redux
-import { routerActions } from 'react-router-redux';
-const redirectAction = routerActions.replace;
-// END react-router-redux
-
-// START redux-router
-// import { push } from 'redux-router';
-// const redirectAction = ({ pathname, query }) => {
-//     console.log("REDIRECT", pathname, query);
-//     if (query.redirect) {
-//         return push(`${pathname}?next=${query.redirect}`)
-//     } else {
-//         return push(pathname)
-//     }
-// };
-// END redux-router
+const MetabaseIsSetup = UserAuthWrapper({
+    predicate: authData => !authData.hasSetupToken,
+    failureRedirectPath: "/setup",
+    authSelector: state => ({ hasSetupToken: MetabaseSettings.hasSetupToken() }), // HACK
+    wrapperDisplayName: 'MetabaseIsSetup',
+    allowRedirectBack: false,
+    redirectAction: routerActions.replace,
+});
 
 const UserIsAuthenticated = UserAuthWrapper({
     failureRedirectPath: '/auth/login',
     authSelector: state => state.currentUser,
     wrapperDisplayName: 'UserIsAuthenticated',
-    redirectAction: redirectAction,
+    redirectAction: routerActions.replace,
 });
 
 const UserIsAdmin = UserAuthWrapper({
@@ -76,7 +70,7 @@ const UserIsAdmin = UserAuthWrapper({
     authSelector: state => state.currentUser,
     allowRedirectBack: false,
     wrapperDisplayName: 'UserIsAdmin',
-    redirectAction: redirectAction,
+    redirectAction: routerActions.replace,
 });
 
 const UserIsNotAuthenticated = UserAuthWrapper({
@@ -85,133 +79,122 @@ const UserIsNotAuthenticated = UserAuthWrapper({
     authSelector: state => state.currentUser,
     allowRedirectBack: false,
     wrapperDisplayName: 'UserIsNotAuthenticated',
-    redirectAction: redirectAction,
+    redirectAction: routerActions.replace,
 });
 
-import { connect } from "react-redux";
-import { push } from "react-router-redux";
+const IsAuthenticated = MetabaseIsSetup(UserIsAuthenticated(({ children }) => children));
+const IsAdmin = MetabaseIsSetup(UserIsAuthenticated(UserIsAdmin(({ children }) => children)));
+const IsNotAuthenticated = MetabaseIsSetup(UserIsNotAuthenticated(({ children }) => children));
 
-function FIXME_forwardOnChangeLocation(Component) {
-    return connect(null, { onChangeLocation: push })(Component)
-}
-
-const IsAuthenticated = UserIsAuthenticated(({ children }) => children);
-const IsAdmin = UserIsAuthenticated(UserIsAdmin(({ children }) => children));
-const IsNotAuthenticated = UserIsNotAuthenticated(({ children }) => children);
-
-class App extends Component {
-    render() {
-        const { children, location } = this.props;
-        return (
-            <div className="spread flex flex-column">
-                <Navbar location={location} className="flex-no-shrink" />
-                {children}
-            </div>
-        )
-    }
-}
-
-const Routes =
+export const getRoutes = (store) =>
     <Route component={App}>
-        {/* AUTH */}
-        <Route path="/auth">
-            <IndexRedirect to="/auth/login" />
-            <Route component={IsNotAuthenticated}>
-                <Route path="login" component={LoginApp} />
-            </Route>
-            <Route path="logout" component={LogoutApp} />
-            <Route path="forgot_password" component={ForgotPasswordApp} />
-            <Route path="reset_password/:token" component={PasswordResetApp} />
-            <Route path="google_no_mb_account" component={GoogleNoAccount} />
-        </Route>
-
         {/* SETUP */}
-        <Route path="/setup" component={SetupApp} />
+        <Route path="/setup" component={SetupApp} onEnter={(nextState, replace) => {
+            if (!MetabaseSettings.hasSetupToken()) {
+                replace("/");
+            }
+        }} />
 
-        {/* MAIN */}
-        <Route component={IsAuthenticated}>
-            {/* HOME */}
-            <Route path="/" component={HomepageApp} />
-
-            {/* DASHBOARD */}
-            <Route path="/dash/:dashboardId" component={FIXME_forwardOnChangeLocation(DashboardApp)} />
-
-            {/* QUERY BUILDER */}
-            <Route path="/card/:cardId" component={QueryBuilder} />
-            <Route path="/q" component={QueryBuilder} />
-
-            {/* QUESTIONS */}
-            <Route path="/questions" component={EntityBrowser}>
-                <Route path="edit/labels" component={EditLabels} />
-                <Route path=":section" component={EntityList} />
-                <Route path=":section/:slug" component={EntityList} />
+        {/* APP */}
+        <Route onEnter={async (nextState, replace, done) => {
+            await store.dispatch(refreshCurrentUser());
+            done();
+        }}>
+            {/* AUTH */}
+            <Route path="/auth">
+                <IndexRedirect to="/auth/login" />
+                <Route component={IsNotAuthenticated}>
+                    <Route path="login" component={LoginApp} />
+                </Route>
+                <Route path="logout" component={LogoutApp} />
+                <Route path="forgot_password" component={ForgotPasswordApp} />
+                <Route path="reset_password/:token" component={PasswordResetApp} />
+                <Route path="google_no_mb_account" component={GoogleNoAccount} />
             </Route>
 
-            {/* REFERENCE */}
-            <Route path="/reference" component={ReferenceApp}>
-                <IndexRedirect to="/reference/guide" />
-                <Route path="guide" component={ReferenceGettingStartedGuide} />
-                <Route path="metrics" component={ReferenceEntityList} />
-                <Route path="metrics/:metricId" component={ReferenceEntity} />
-                <Route path="metrics/:metricId/questions" component={ReferenceEntityList} />
-                <Route path="metrics/:metricId/revisions" component={ReferenceRevisionsList} />
-                <Route path="segments" component={ReferenceEntityList} />
-                <Route path="segments/:segmentId" component={ReferenceEntity} />
-                <Route path="segments/:segmentId/fields" component={ReferenceFieldsList} />
-                <Route path="segments/:segmentId/fields/:fieldId" component={ReferenceEntity} />
-                <Route path="segments/:segmentId/questions" component={ReferenceEntityList} />
-                <Route path="segments/:segmentId/revisions" component={ReferenceRevisionsList} />
-                <Route path="databases" component={ReferenceEntityList} />
-                <Route path="databases/:databaseId" component={ReferenceEntity} />
-                <Route path="databases/:databaseId/tables" component={ReferenceEntityList} />
-                <Route path="databases/:databaseId/tables/:tableId" component={ReferenceEntity} />
-                <Route path="databases/:databaseId/tables/:tableId/fields" component={ReferenceFieldsList} />
-                <Route path="databases/:databaseId/tables/:tableId/fields/:fieldId" component={ReferenceEntity} />
-                <Route path="databases/:databaseId/tables/:tableId/questions" component={ReferenceEntityList} />
+            {/* MAIN */}
+            <Route component={IsAuthenticated}>
+                {/* HOME */}
+                <Route path="/" component={HomepageApp} />
+
+                {/* DASHBOARD */}
+                <Route path="/dash/:dashboardId" component={DashboardApp} />
+
+                {/* QUERY BUILDER */}
+                <Route path="/card/:cardId" component={QueryBuilder} />
+                <Route path="/q" component={QueryBuilder} />
+
+                {/* QUESTIONS */}
+                <Route path="/questions" component={EntityBrowser}>
+                    <Route path="edit/labels" component={EditLabels} />
+                    <Route path=":section" component={EntityList} />
+                    <Route path=":section/:slug" component={EntityList} />
+                </Route>
+
+                {/* REFERENCE */}
+                <Route path="/reference" component={ReferenceApp}>
+                    <IndexRedirect to="/reference/guide" />
+                    <Route path="guide" component={ReferenceGettingStartedGuide} />
+                    <Route path="metrics" component={ReferenceEntityList} />
+                    <Route path="metrics/:metricId" component={ReferenceEntity} />
+                    <Route path="metrics/:metricId/questions" component={ReferenceEntityList} />
+                    <Route path="metrics/:metricId/revisions" component={ReferenceRevisionsList} />
+                    <Route path="segments" component={ReferenceEntityList} />
+                    <Route path="segments/:segmentId" component={ReferenceEntity} />
+                    <Route path="segments/:segmentId/fields" component={ReferenceFieldsList} />
+                    <Route path="segments/:segmentId/fields/:fieldId" component={ReferenceEntity} />
+                    <Route path="segments/:segmentId/questions" component={ReferenceEntityList} />
+                    <Route path="segments/:segmentId/revisions" component={ReferenceRevisionsList} />
+                    <Route path="databases" component={ReferenceEntityList} />
+                    <Route path="databases/:databaseId" component={ReferenceEntity} />
+                    <Route path="databases/:databaseId/tables" component={ReferenceEntityList} />
+                    <Route path="databases/:databaseId/tables/:tableId" component={ReferenceEntity} />
+                    <Route path="databases/:databaseId/tables/:tableId/fields" component={ReferenceFieldsList} />
+                    <Route path="databases/:databaseId/tables/:tableId/fields/:fieldId" component={ReferenceEntity} />
+                    <Route path="databases/:databaseId/tables/:tableId/questions" component={ReferenceEntityList} />
+                </Route>
+
+                {/* PULSE */}
+                <Route path="/pulse" component={PulseListApp} />
+                <Route path="/pulse/create" component={PulseEditApp} />
+                <Route path="/pulse/:pulseId" component={PulseEditApp} />
+
+                {/* USER */}
+                <Route path="/user/edit_current" component={UserSettingsApp} />
             </Route>
 
-            {/* PULSE */}
-            <Route path="/pulse" component={FIXME_forwardOnChangeLocation(PulseListApp)} />
-            <Route path="/pulse/create" component={FIXME_forwardOnChangeLocation(PulseEditApp)} />
-            <Route path="/pulse/:pulseId" component={FIXME_forwardOnChangeLocation(PulseEditApp)} />
+            {/* ADMIN */}
+            <Route path="/admin" component={IsAdmin}>
+                <IndexRedirect to="/admin/settings" />
+                <Route path="databases" component={DatabaseListApp} />
+                <Route path="databases/create" component={DatabaseEditApp} />
+                <Route path="databases/:databaseId" component={DatabaseEditApp} />
 
-            {/* USER */}
-            <Route path="/user/edit_current" component={UserSettingsApp} />
+                <Route path="datamodel">
+                    <Route path="database" component={MetadataEditorApp} />
+                    <Route path="database/:databaseId" component={MetadataEditorApp} />
+                    <Route path="database/:databaseId/:mode" component={MetadataEditorApp} />
+                    <Route path="database/:databaseId/:mode/:tableId" component={MetadataEditorApp} />
+                    <Route path="metric/create" component={MetricApp} />
+                    <Route path="metric/:id" component={MetricApp} />
+                    <Route path="segment/create" component={SegmentApp} />
+                    <Route path="segment/:id" component={SegmentApp} />
+                    <Route path=":entity/:id/revisions" component={RevisionHistoryApp} />
+                </Route>
+
+                <Route path="people" component={AdminPeopleApp} />
+
+                <Route path="settings" component={SettingsEditorApp} />
+                <Route path="settings/:section" component={SettingsEditorApp} />
+            </Route>
+
+            {/* MISC */}
+            <Route path="/unauthorized" component={Unauthorized} />
+            <Route path="/*" component={NotFound} />
+
+            {/* LEGACY */}
+            <Redirect from="/card" to="/questions" />
+            <Redirect from="/card/:cardId/:serializedCard" to="/questions/:cardId#:serializedCard" />
+            <Redirect from="/q/:serializedCard" to="/q#:serializedCard" />
         </Route>
-
-        {/* ADMIN */}
-        <Route path="/admin" component={IsAdmin}>
-            <IndexRedirect to="/admin/settings" />
-            <Route path="databases" component={DatabaseListApp} />
-            <Route path="databases/create" component={FIXME_forwardOnChangeLocation(DatabaseEditApp)} />
-            <Route path="databases/:databaseId" component={FIXME_forwardOnChangeLocation(DatabaseEditApp)} />
-
-            <Route path="datamodel">
-                <Route path="database" component={FIXME_forwardOnChangeLocation(MetadataEditorApp)} />
-                <Route path="database/:databaseId" component={FIXME_forwardOnChangeLocation(MetadataEditorApp)} />
-                <Route path="database/:databaseId/:mode" component={FIXME_forwardOnChangeLocation(MetadataEditorApp)} />
-                <Route path="database/:databaseId/:mode/:tableId" component={FIXME_forwardOnChangeLocation(MetadataEditorApp)} />
-                <Route path="metric/create" component={FIXME_forwardOnChangeLocation(MetricApp)} />
-                <Route path="metric/:id" component={FIXME_forwardOnChangeLocation(MetricApp)} />
-                <Route path="segment/create" component={FIXME_forwardOnChangeLocation(SegmentApp)} />
-                <Route path="segment/:id" component={FIXME_forwardOnChangeLocation(SegmentApp)} />
-                <Route path=":entity/:id/revisions" component={RevisionHistoryApp} />
-            </Route>
-
-            <Route path="people" component={FIXME_forwardOnChangeLocation(AdminPeopleApp)} />
-
-            <Route path="settings" component={SettingsEditorApp} />
-            <Route path="settings/:section" component={SettingsEditorApp} />
-        </Route>
-
-        {/* MISC */}
-        <Route path="/unauthorized" component={Unauthorized} />
-        <Route path="/*" component={NotFound} />
-
-        {/* LEGACY */}
-        <Redirect from="/card" to="/questions" />
-        <Redirect from="/card/:cardId/:serializedCard" to="/questions/:cardId#:serializedCard" />
-        <Redirect from="/q/:serializedCard" to="/q#:serializedCard" />
     </Route>
-
-export default Routes;

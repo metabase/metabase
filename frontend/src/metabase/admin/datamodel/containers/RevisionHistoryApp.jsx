@@ -1,11 +1,10 @@
 import React, { Component, PropTypes } from "react";
+import { connect } from "react-redux";
 
 import RevisionHistory from "../components/revisions/RevisionHistory.jsx";
 
 import { revisionHistorySelectors } from "../selectors";
 import * as actions from "../metadata";
-
-import { connect } from "react-redux";
 
 const mapStateToProps = (state, props) => {
     return {
@@ -15,7 +14,11 @@ const mapStateToProps = (state, props) => {
     }
 }
 
-@connect(mapStateToProps, actions)
+const mapDispatchToProps = {
+    ...actions,
+};
+
+@connect(mapStateToProps, mapDispatchToProps)
 export default class RevisionHistoryApp extends Component {
     componentWillMount() {
         let { entity, id } = this.props;

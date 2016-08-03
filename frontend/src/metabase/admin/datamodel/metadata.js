@@ -1,6 +1,7 @@
 import _ from "underscore";
 
 import { handleActions, combineReducers, AngularResourceProxy, createAction, createThunkAction, momentifyTimestamps } from "metabase/lib/redux";
+import { push } from "react-router-redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { augmentTable } from "metabase/lib/table";
@@ -29,7 +30,7 @@ async function loadDatabaseMetadata(databaseId) {
 }
 
 // initializeMetadata
-export const initializeMetadata = createThunkAction("INITIALIZE_METADATA", function(databaseId, tableId, onChangeLocation) {
+export const initializeMetadata = createThunkAction("INITIALIZE_METADATA", function(databaseId, tableId) {
     return async function(dispatch, getState) {
         let databases, database;
         try {
@@ -50,7 +51,6 @@ export const initializeMetadata = createThunkAction("INITIALIZE_METADATA", funct
         }
 
         return {
-            onChangeLocation,
             databases,
             database,
             tableId
@@ -76,15 +76,13 @@ export const fetchDatabaseIdfields = createThunkAction("FETCH_IDFIELDS", functio
 // selectDatabase
 export const selectDatabase = createThunkAction("SELECT_DATABASE", function(db) {
     return async function(dispatch, getState) {
-        const { datamodel: { onChangeLocation } } = getState();
-
         try {
             let database = await loadDatabaseMetadata(db.id);
 
             dispatch(fetchDatabaseIdfields(db.id));
 
             // we also want to update our url to match our new state
-            onChangeLocation('/admin/datamodel/database/'+db.id);
+            push('/admin/datamodel/database/'+db.id);
 
             return database;
         } catch (error) {
@@ -96,10 +94,8 @@ export const selectDatabase = createThunkAction("SELECT_DATABASE", function(db) 
 // selectTable
 export const selectTable = createThunkAction("SELECT_TABLE", function(table) {
     return async function(dispatch, getState) {
-        const { datamodel: { onChangeLocation } } = getState();
-
         // we also want to update our url to match our new state
-        onChangeLocation('/admin/datamodel/database/'+table.db_id+'/table/'+table.id);
+        push('/admin/datamodel/database/'+table.db_id+'/table/'+table.id);
 
         return table.id;
     };
@@ -270,11 +266,6 @@ export const fetchRevisions = createThunkAction(FETCH_REVISIONS, ({ entity, id }
 
 // reducers
 
-// this is a backwards compatibility thing with angular to allow programmatic route changes.  remove/change this when going to ReduxRouter
-const onChangeLocation = handleActions({
-    ["INITIALIZE_METADATA"]: { next: (state, { payload }) => payload.onChangeLocation }
-}, () => null);
-
 const databases = handleActions({
     ["INITIALIZE_METADATA"]: { next: (state, { payload }) => payload.databases }
 }, []);
@@ -329,7 +320,6 @@ export default combineReducers({
     idfields,
     editingDatabase,
     editingTable,
-    onChangeLocation,
     segments,
     metrics,
     tableMetadata,

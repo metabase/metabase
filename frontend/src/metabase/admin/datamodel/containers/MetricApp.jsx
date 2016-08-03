@@ -1,4 +1,6 @@
 import React, { Component, PropTypes } from "react";
+import { connect } from "react-redux";
+import { push } from "react-router-redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
@@ -7,9 +9,12 @@ import MetricForm from "./MetricForm.jsx";
 import { metricEditSelectors } from "../selectors";
 import * as actions from "../metadata";
 
-import { connect } from "react-redux";
+const mapDispatchToProps = {
+    ...actions,
+    onChangeLocation: push
+};
 
-@connect(metricEditSelectors, actions)
+@connect(metricEditSelectors, mapDispatchToProps)
 export default class MetricApp extends Component {
     async componentWillMount() {
         const { params, location } = this.props;

@@ -1,3 +1,4 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 import { Link } from "react-router";
@@ -11,7 +12,9 @@ export default class PulseListItem extends Component {
     static propTypes = {
         pulse: PropTypes.object.isRequired,
         formInput: PropTypes.object.isRequired,
-        user: PropTypes.object.isRequired
+        user: PropTypes.object.isRequired,
+        scrollTo: PropTypes.bool.isRequired,
+        savePulse: PropTypes.func.isRequired
     };
 
     componentDidMount() {
@@ -51,8 +54,8 @@ export default class PulseListItem extends Component {
                                 pulse={pulse}
                                 channel={channel}
                                 channelSpec={formInput.channels && formInput.channels[channel.channel_type]}
-                                dispatch={this.props.dispatch}
                                 user={user}
+                                savePulse={this.props.savePulse}
                             />
                         </li>
                     )}

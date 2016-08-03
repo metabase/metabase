@@ -1,5 +1,6 @@
 import React, { Component, PropTypes } from "react";
 import { connect } from "react-redux";
+
 import MetabaseSettings from "metabase/lib/settings";
 import DeleteDatabaseModal from "../components/DeleteDatabaseModal.jsx";
 import DatabaseEditForms from "../components/DatabaseEditForms.jsx";
@@ -19,13 +20,12 @@ const mapStateToProps = (state, props) => {
     return {
         databaseId:       props.params.databaseId,
         database:         getEditingDatabase(state),
-        formState:        getFormState(state),
-        onChangeLocation: props.onChangeLocation
+        formState:        getFormState(state)
     }
 }
 
 const mapDispatchToProps = {
-    ...databaseActions
+    ...databaseActions,
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -38,7 +38,7 @@ export default class DatabaseEditApp extends Component {
     };
 
     componentWillMount() {
-        this.props.initializeDatabase(this.props.databaseId, this.props.onChangeLocation);
+        this.props.initializeDatabase(this.props.databaseId);
     }
 
     render() {

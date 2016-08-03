@@ -21,54 +21,32 @@ angular
 .controller('Metabase', [function() {
 }]);
 
-import Routes from "./Routes.jsx";
 
 import React from 'react'
 import ReactDOM from 'react-dom'
 import { Provider } from 'react-redux'
+
+import { getRoutes } from "./routes.jsx";
 import { getStore } from './store'
 
-// START react-router-redux
 import { Router, browserHistory } from "react-router";
 import { syncHistoryWithStore } from 'react-router-redux'
-// END react-router-redux
-
-// START redux-router
-// import { ReduxRouter } from "redux-router";
-// END redux-router
-
-import { refreshCurrentUser } from "./user";
 
 async function init() {
-    // const user = await getCurrentUser();
-
-    // START react-router-redux
     const store = getStore(browserHistory);
 
-    await store.dispatch(refreshCurrentUser());
+    const routes = getRoutes(store);
 
     const history = syncHistoryWithStore(browserHistory, store);
+
     ReactDOM.render(
         <Provider store={store}>
           <Router history={history}>
-            {Routes}
+            {routes}
           </Router>
         </Provider>,
       document.getElementById('root')
     )
-    // END react-router-redux
-
-    // START redux-router
-    // const store = getStore(Routes);
-    // ReactDOM.render(
-    //     <Provider store={store}>
-    //       <ReduxRouter>
-    //         {Routes}
-    //       </ReduxRouter>
-    //     </Provider>,
-    //   document.getElementById('root')
-    // )
-    // END redux-router
 }
 
 if (document.readyState != 'loading') {

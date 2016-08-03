@@ -1,3 +1,4 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 import { Link } from "react-router";
 
@@ -10,8 +11,6 @@ import UserStep from './UserStep.jsx';
 import DatabaseStep from './DatabaseStep.jsx';
 import PreferencesStep from './PreferencesStep.jsx';
 
-import { setActiveStep } from '../actions';
-
 const WELCOME_STEP_NUMBER = 0;
 const USER_STEP_NUMBER = 1;
 const DATABASE_STEP_NUMBER = 2;
@@ -20,11 +19,14 @@ const PREFERENCES_STEP_NUMBER = 3;
 
 export default class Setup extends Component {
     static propTypes = {
-        dispatch: PropTypes.func.isRequired
+        activeStep: PropTypes.number.isRequired,
+        setupComplete: PropTypes.bool.isRequired,
+        userDetails: PropTypes.object,
+        setActiveStep: PropTypes.func.isRequired,
     }
 
     completeWelcome() {
-        this.props.dispatch(setActiveStep(USER_STEP_NUMBER));
+        this.props.setActiveStep(USER_STEP_NUMBER);
         MetabaseAnalytics.trackEvent('Setup', 'Welcome');
     }
 
@@ -80,7 +82,7 @@ export default class Setup extends Component {
                                 <section className="SetupStep rounded SetupStep--active flex flex-column layout-centered p4">
                                     <h1 style={{fontSize: "xx-large"}} className="text-light pt2 pb2">You're all set up!</h1>
                                     <div className="pt4">
-                                        <NewsletterForm initialEmail={userDetails.email} />
+                                        <NewsletterForm initialEmail={userDetails && userDetails.email} />
                                     </div>
                                     <div className="pt4 pb2">
                                         <Link to="/?new" className="Button Button--primary" onClick={this.completeSetup.bind(this)}>Take me to Metabase</Link>

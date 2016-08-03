@@ -2,6 +2,7 @@
 
 import React, { Component, PropTypes } from "react";
 import { connect } from "react-redux";
+import { push } from "react-router-redux";
 
 import Dashboard from "../components/Dashboard.jsx";
 
@@ -30,7 +31,8 @@ const mapStateToProps = (state, props) => {
 
 const mapDispatchToProps = {
     ...dashboardActions,
-    fetchDatabaseMetadata
+    fetchDatabaseMetadata,
+    onChangeLocation: push
 }
 
 @connect(mapStateToProps, mapDispatchToProps)

@@ -2,6 +2,7 @@ import _ from "underscore";
 
 import { createAction } from "redux-actions";
 import { handleActions, combineReducers, AngularResourceProxy, createThunkAction } from "metabase/lib/redux";
+import { push } from "react-router-redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
@@ -26,15 +27,11 @@ export const fetchDatabases = createThunkAction("FETCH_DATABASES", function() {
 });
 
 // initializeDatabase
-export const initializeDatabase = createThunkAction("INITIALIZE_DATABASE", function(databaseId, onChangeLocation) {
+export const initializeDatabase = createThunkAction("INITIALIZE_DATABASE", function(databaseId) {
     return async function(dispatch, getState) {
         if (databaseId) {
             try {
-                let database = await MetabaseApi.db_get({"dbId": databaseId});
-                return {
-                    database,
-                    onChangeLocation
-                }
+                return await MetabaseApi.db_get({"dbId": databaseId});
             } catch (error) {
                 if (error.status == 404) {
                     //$location.path('/admin/databases/');
@@ -42,16 +39,12 @@ export const initializeDatabase = createThunkAction("INITIALIZE_DATABASE", funct
                     console.log("error fetching database", databaseId, error);
                 }
             }
-
         } else {
             return {
-                database: {
-                    name: '',
-                    engine: Object.keys(MetabaseSettings.get('engines'))[0],
-                    details: {},
-                    created: false
-                },
-                onChangeLocation
+                name: '',
+                engine: Object.keys(MetabaseSettings.get('engines'))[0],
+                details: {},
+                created: false
             }
         }
     }
@@ -75,8 +68,6 @@ export const addSampleDataset = createThunkAction("ADD_SAMPLE_DATASET", function
 // saveDatabase
 export const saveDatabase = createThunkAction("SAVE_DATABASE", function(database, details) {
     return async function(dispatch, getState) {
-        const { databases: { onChangeLocation } } = getState();
-
         let savedDatabase, formState;
 
         try {
@@ -91,7 +82,7 @@ export const saveDatabase = createThunkAction("SAVE_DATABASE", function(database
                 //$scope.$emit("database:created", new_database);
                 savedDatabase = await MetabaseApi.db_create(database);
                 MetabaseAnalytics.trackEvent("Databases", "Create", database.engine);
-                onChangeLocation('/admin/databases?created');
+                push('/admin/databases?created');
             }
 
             // this object format is what FormMessage expects:
@@ -114,15 +105,11 @@ export const saveDatabase = createThunkAction("SAVE_DATABASE", function(database
 // deleteDatabase
 export const deleteDatabase = createThunkAction("DELETE_DATABASE", function(databaseId, redirect=false) {
     return async function(dispatch, getState) {
-        const { databases: { onChangeLocation } } = getState();
-
         try {
-            console.log("deleting database", databaseId);
             await MetabaseApi.db_delete({"dbId": databaseId});
             MetabaseAnalytics.trackEvent("Databases", "Delete", redirect ? "Using Detail" : "Using List");
             if (redirect) {
-                console.log("redirecting");
-                onChangeLocation('/admin/databases/');
+                push('/admin/databases/');
             }
             return databaseId;
         } catch(error) {
@@ -147,11 +134,6 @@ export const syncDatabase = createThunkAction("SYNC_DATABASE", function(database
 
 // reducers
 
-// this is a backwards compatibility thing with angular to allow programmatic route changes.  remove/change this when going to ReduxRouter
-const onChangeLocation = handleActions({
-    ["INITIALIZE_DATABASE"]: { next: (state, { payload }) => payload ? payload.onChangeLocation : state },
-}, () => null);
-
 const databases = handleActions({
     ["FETCH_DATABASES"]: { next: (state, { payload }) => payload },
     ["ADD_SAMPLE_DATASET"]: { next: (state, { payload }) => payload ? [...state, payload] : state },
@@ -159,7 +141,7 @@ const databases = handleActions({
 }, null);
 
 const editingDatabase = handleActions({
-    ["INITIALIZE_DATABASE"]: { next: (state, { payload }) => payload ? payload.database : state },
+    ["INITIALIZE_DATABASE"]: { next: (state, { payload }) => payload },
     ["SAVE_DATABASE"]: { next: (state, { payload }) => payload.database || state },
     ["DELETE_DATABASE"]: { next: (state, { payload }) => null },
     ["SELECT_ENGINE"]: { next: (state, { payload }) => ({...state, engine: payload }) }
@@ -172,6 +154,5 @@ const formState = handleActions({
 export default combineReducers({
     databases,
     editingDatabase,
-    formState,
-    onChangeLocation
+    formState
 });
