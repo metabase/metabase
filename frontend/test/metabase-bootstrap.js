@@ -1,3 +1,5 @@
+import "metabase/vendor";
+
 window.MetabaseBootstrap = {
   "timezones": [
     "GMT",
