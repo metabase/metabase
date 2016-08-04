@@ -31,6 +31,9 @@ Run `./bin/osx-setup` again at any time in the future to copy the latest version
 A handy Perl script called `./bin/osx-release` takes care of all of the details for you. Before you run it for the first time, you'll need to set up a few additional things:
 
 ```bash
+# Install aws command-line client (if needed)
+brew install aws
+
 # Configure AWS Credentials
 # You'll need credentials that give you permission to write the metabase-osx-releases S3 bucket.
 aws configure --profile metabase
