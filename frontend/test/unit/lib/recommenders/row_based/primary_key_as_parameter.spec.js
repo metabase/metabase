@@ -15,7 +15,7 @@ describe("Row Based Recommender -- Primary Key Parameterized", () => {
 
             expect(result.source).toEqual(suggestDashboardParameterizedByID.verboseName);
             expect(result.recommendation).toEqual("See Dashboard Fake Dashboard limited by id");
-            expect(result.url).toEqual("/dashboard/1");
+            expect(result.url).toEqual("/dashboard/1?id=1");
             expect(result.score).toEqual(1);
 
         });
@@ -32,7 +32,7 @@ describe("Row Based Recommender -- Primary Key Parameterized", () => {
 
             expect(result.source).toEqual(suggestCardParameterizedByID.verboseName);
             expect(result.recommendation).toEqual("See Card Fake Card limited by id");
-            expect(result.url).toEqual("/card/1");
+            expect(result.url).toEqual("/card/1?id=1");
             expect(result.score).toEqual(1);
 
 

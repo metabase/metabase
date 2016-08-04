@@ -12,6 +12,7 @@ export function findElement(arrayCDF, probability) {
  	// Check that we have a valid CDF
  	if (arrayCDF[0] <= 0 || arrayCDF[0] > 1 || arrayCDF[arrayCDF.length - 1] != 1) {
 		// invalid CDF
+		console.log("Invalid CDF", arrayCDF)
 		throw "Invalid CDF"
 	}
 
@@ -35,11 +36,9 @@ export function calculateCDF(arrayWithWeights) {
 	// This calculates the cummulative distribution function of an arrayWithWeights.
 	// Expects an array of dictionaries with a "weight" attribute
 	// This modifies the arrayCDF
-	
 	var totalWeights = _.reduce(arrayWithWeights, function(memo, weightedElement){
 		return memo + weightedElement.weight;
 	}, 0)
-	
 	var currentTotalWeight = 0.0
 	var returnValue = []
 
@@ -47,7 +46,6 @@ export function calculateCDF(arrayWithWeights) {
 		currentTotalWeight = currentTotalWeight + weightedElement.weight
 		returnValue.push(currentTotalWeight / totalWeights)
 	}
-	
 	return returnValue;
 }
 
