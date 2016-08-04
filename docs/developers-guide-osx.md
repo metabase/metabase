@@ -28,13 +28,13 @@
    brew install curl && brew link curl --force
    
    # The new version of LLVM is snippy so have CPAN pass the Makefiles a flag that will tell it not to barf
-   sed -i -e "s/'make_arg' => q\[\]/'make_arg' => q\[CCFLAGS=\"-Wno-return-type\"\]/" ~/.cpan/CPAN/MyConfig.pm
+   sed -i '' -e "s/'make_arg' => q\[\]/'make_arg' => q\[CCFLAGS=\"-Wno-return-type\"\]/" ~/.cpan/CPAN/MyConfig.pm
 
    # Install Perl modules used by ./setup and ./release
    cpan install File::Copy::Recursive JSON Readonly String::Util Text::Caml WWW::Curl::Simple
    
    # Fix script not using updated version of Perl
-   sed -i -e 's!usr/bin/perl!usr/bin/env perl!' ./bin/osx-setup
+   sed -i '' -e 's!usr/bin/perl!usr/bin/env perl!' ./bin/osx-setup
    
    # Copy JRE and uberjar
    ./bin/osx-setup
@@ -63,15 +63,15 @@ emacs bin/config.json
 # Obtain a copy of the private key used for signing the app (ask Cam)
 # and put a copy of it at ./dsa_priv.pem
 cp /path/to/private/key.pem OSX/dsa_priv.pem
+
+# Fix script not using updated version of Perl
+sed -i '' -e 's!usr/bin/perl!usr/bin/env perl!' ./bin/osx-release
 ```
 
 You'll probably also want an Apple Developer ID Application Certificate in your computer's keychain (ask Cam).
 
 After that, you are good to go:
 ```bash
-# Fix script not using updated version of Perl
-sed -i -e 's!usr/bin/perl!usr/bin/env perl!' ./bin/osx-release
-   
 # Bundle entire app, and upload to s3
 ./bin/osx-release
 ```
