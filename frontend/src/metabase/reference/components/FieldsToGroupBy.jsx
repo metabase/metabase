@@ -10,7 +10,7 @@ import {
     getQuestionUrl
 } from '../utils';
 
-import QueryButton from "metabase/components/QueryButton.jsx";
+import FieldToGroupBy from "metabase/reference/components/FieldToGroupBy.jsx";
 
 const FieldsToGroupBy = ({
     table,
@@ -27,14 +27,13 @@ const FieldsToGroupBy = ({
                 { table && table.fields_lookup &&
                     Object.values(table.fields_lookup)
                         .map((field, index, fields) =>
-                            <QueryButton
+                            <FieldToGroupBy
                                 key={field.id}
                                 className={cx("border-bottom", "pt1", "pb1")}
                                 iconClass={L.icon}
-                                text={field.display_name}
-                                icon="reference"
+                                field={field}
+                                metric={metric}
                                 onClick={() => onChangeLocation(`/reference/databases/${table.db_id}/tables/${table.id}/fields/${field.id}`)}
-                                secondaryText={`see ${metric.name} by ${field.display_name}`}
                                 secondaryOnClick={(event) => {
                                     event.stopPropagation();
                                     onChangeLocation(getQuestionUrl({
@@ -52,6 +51,7 @@ const FieldsToGroupBy = ({
     </div>;
 FieldsToGroupBy.propTypes = {
     table: PropTypes.object.isRequired,
+    metric: PropTypes.object.isRequired,
     title: PropTypes.string.isRequired,
     onChangeLocation: PropTypes.func.isRequired
 };
