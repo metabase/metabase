@@ -105,7 +105,8 @@ function pickRecommendations(allRecommendations){
 	return _.groupBy(proposedRecommendations, function(recommendation){ return recommendation.source})
 }
 
-export function suggestionsForQuery(query){
+export function suggestionsForQuery(table, query){
+    console.log("table", table)
 	return pickRecommendations(allSuggestionsForQuery(query))
 }
 

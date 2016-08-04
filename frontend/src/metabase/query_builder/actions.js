@@ -15,7 +15,7 @@ import { createQuery } from "metabase/lib/query";
 import { loadTableAndForeignKeys } from "metabase/lib/table";
 import Utils from "metabase/lib/utils";
 
-import { getParameters } from "./selectors";
+import { getTable, getParameters } from "./selectors";
 
 import { suggestionsForQuery } from "metabase/lib/recommenders/recommenders"
 
@@ -482,7 +482,7 @@ export const setQuery = createThunkAction(SET_QUERY, (dataset_query, run = false
         }
 
         // Suggest some next questions
-        console.log("SUGGESTIONS", suggestionsForQuery(updatedCard.dataset_query), tableMetadata);
+        console.log("SUGGESTIONS", suggestionsForQuery(getTable(getState()), updatedCard.dataset_query));
 
         // run updated query
         if (run) {
