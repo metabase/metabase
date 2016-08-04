@@ -33,7 +33,7 @@
    # Install Perl modules used by ./setup and ./release
    cpan install File::Copy::Recursive JSON Readonly String::Util Text::Caml WWW::Curl::Simple
    
-   # Fix script not using updated version of Perl
+   # Fix script not using updated version of Perl (this is fixed in master as of August 4th 2016)
    sed -i '' -e 's!usr/bin/perl!usr/bin/env perl!' ./bin/osx-setup
    
    # Copy JRE and uberjar
@@ -64,7 +64,7 @@ emacs bin/config.json
 # and put a copy of it at ./dsa_priv.pem
 cp /path/to/private/key.pem OSX/dsa_priv.pem
 
-# Fix script not using updated version of Perl
+# Fix script not using updated version of Perl (this is fixed in master as of August 4th 2016)
 sed -i '' -e 's!usr/bin/perl!usr/bin/env perl!' ./bin/osx-release
 ```
 
