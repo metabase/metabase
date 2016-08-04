@@ -58,7 +58,7 @@ export default class Modal extends Component {
     _renderPopover() {
         const { backdropClassName, isOpen, style } = this.props;
         const backdropClassnames = 'flex justify-center align-center fixed top left bottom right';
-        ReactDOM.render(
+        ReactDOM.unstable_renderSubtreeIntoContainer(this,
             <ReactCSSTransitionGroup transitionName="Modal" transitionAppear={true} transitionAppearTimeout={250} transitionEnterTimeout={250} transitionLeaveTimeout={250}>
                 { isOpen &&
                     <div key="modal" className={cx(backdropClassName, backdropClassnames)} style={style}>

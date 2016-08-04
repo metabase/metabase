@@ -7,8 +7,6 @@ import SetupModal from "./SetupModal.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 import Modal from "metabase/components/Modal.jsx";
 
-import { fetchPulses, fetchPulseFormInput } from "../actions";
-
 import _ from "underscore";
 
 export default class PulseList extends Component {
@@ -26,8 +24,8 @@ export default class PulseList extends Component {
     static defaultProps = {};
 
     componentDidMount() {
-        this.props.dispatch(fetchPulses());
-        this.props.dispatch(fetchPulseFormInput());
+        this.props.fetchPulses();
+        this.props.fetchPulseFormInput();
     }
 
     create() {
@@ -59,7 +57,7 @@ export default class PulseList extends Component {
                                     pulse={pulse}
                                     user={user}
                                     formInput={this.props.formInput}
-                                    dispatch={this.props.dispatch}
+                                    savePulse={this.props.savePulse}
                                 />
                             </li>
                         )}

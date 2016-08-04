@@ -1,5 +1,5 @@
 .Nav {
-    z-index: 2;
+    z-index: 3;
 }
 
 .CheckBg {
@@ -97,7 +97,11 @@
 }
 .NavDropdown .NavDropdown-button:before {
     z-index: -1;
+    opacity: 0;
     border-radius: 8px;
+}
+.NavDropdown.open .NavDropdown-button:before {
+    opacity: 1;
 }
 .NavDropdown .NavDropdown-content-layer {
     position: relative;

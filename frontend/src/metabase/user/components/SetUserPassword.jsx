@@ -1,3 +1,4 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
@@ -20,7 +21,8 @@ export default class SetUserPassword extends Component {
 
     static propTypes = {
         submitFn: PropTypes.func.isRequired,
-        user: PropTypes.object
+        user: PropTypes.object,
+        updatePasswordResult: PropTypes.object.isRequired
     };
 
     componentDidMount() {

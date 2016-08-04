@@ -1,5 +1,7 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
+import { Link } from "react-router";
 
 import cx from "classnames";
 
@@ -10,7 +12,9 @@ export default class PulseListItem extends Component {
     static propTypes = {
         pulse: PropTypes.object.isRequired,
         formInput: PropTypes.object.isRequired,
-        user: PropTypes.object.isRequired
+        user: PropTypes.object.isRequired,
+        scrollTo: PropTypes.bool.isRequired,
+        savePulse: PropTypes.func.isRequired
     };
 
     componentDidMount() {
@@ -31,15 +35,15 @@ export default class PulseListItem extends Component {
                         <span>Pulse by <span className="text-bold">{pulse.creator && pulse.creator.common_name}</span></span>
                     </div>
                     <div className="flex-align-right">
-                        <a className="PulseEditButton PulseButton Button no-decoration text-bold" href={"/pulse/" + pulse.id}>Edit</a>
+                        <Link to={"/pulse/" + pulse.id} className="PulseEditButton PulseButton Button no-decoration text-bold">Edit</Link>
                     </div>
                 </div>
                 <ol className="mb2 px4 flex flex-wrap">
                     { pulse.cards.map((card, index) =>
                         <li key={index} className="mr1 mb1">
-                            <a className="Button" href={Urls.card(card.id)}>
+                            <Link to={Urls.card(card.id)} className="Button">
                                 {card.name}
-                            </a>
+                            </Link>
                         </li>
                     )}
                 </ol>
@@ -50,8 +54,8 @@ export default class PulseListItem extends Component {
                                 pulse={pulse}
                                 channel={channel}
                                 channelSpec={formInput.channels && formInput.channels[channel.channel_type]}
-                                dispatch={this.props.dispatch}
                                 user={user}
+                                savePulse={this.props.savePulse}
                             />
                         </li>
                     )}

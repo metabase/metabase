@@ -30,19 +30,7 @@ const userListSelector = createSelector(
     (users) => Object.values(users)
 );
 
-const getPulseId = createSelector(
-    state => state.router,
-    (router) => {
-        if (router && router.params && router.params.pulseId) {
-            return parseInt(router.params.pulseId);
-        } else if (router && router.location && router.location.hash) {
-            return parseInt(router.location.hash.substr(1));
-        } else {
-            return null;
-        }
-    }
-);
-
+const getPulseId = (state, props) => props.params.pulseId ? parseInt(props.params.pulseId) : null;
 
 // LIST
 export const listPulseSelectors = createSelector(

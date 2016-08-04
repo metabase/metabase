@@ -39,11 +39,14 @@ export default class OnClickOutsideWrapper extends Component {
         window.removeEventListener("click", this._handleClick, true);
         clearTimeout(this._timeout);
 
-        // remove popover from the stack
-        var index = popoverStack.indexOf(this);
-        if (index >= 0) {
-            popoverStack.splice(index, 1);
-        }
+        // remove from the stack after a delay, if it is removed through some other
+        // means this will happen too early causing parent modal to close
+        setTimeout(() => {
+            var index = popoverStack.indexOf(this);
+            if (index >= 0) {
+                popoverStack.splice(index, 1);
+            }
+        }, 0);
     }
 
     _handleClick = (e) => {
