@@ -1,0 +1,15 @@
+:local(.guideDetail) {
+    composes: flex full justify-center from "style";
+}
+
+:local(.guideDetailTitle) {
+    composes: flex-full text-bold from "style";
+    font-size: 18px;
+    max-width: 200px;
+}
+
+:local(.guideDetailBody) {
+    composes: flex-full text-bold from "style";
+    max-width: 550px;
+}
+

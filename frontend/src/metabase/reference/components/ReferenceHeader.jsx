@@ -10,7 +10,7 @@ import E from "metabase/reference/components/EditButton.css";
 import IconBorder from "metabase/components/IconBorder.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
-import EditButton from "metabase/reference/components/EditButton.jsx"
+import EditButton from "metabase/reference/components/EditButton.jsx";
 
 
 const ReferenceHeader = ({

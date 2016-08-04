@@ -79,7 +79,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                     /> :
                     <div className="full">
                         <GuideHeader startEditing={startEditing} />
-                        <GuideDetail name={'test'} description={'test'} value={'test'} link={'test'} linkClass={'test'} />
+                        <GuideDetail title={'test'} description={'test'} value={'test'} link={'test'} linkClass={'test'} />
                     </div>
                 }
             </form>

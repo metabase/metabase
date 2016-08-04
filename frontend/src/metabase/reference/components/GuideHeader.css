@@ -1,9 +1,26 @@
 :local(.guideHeader) {
-    composes: flex full align-center border-bottom from "style";
+    composes: full border-bottom from "style";
     height: 150px;
 }
 
-:local(.guideHeader) {
-    composes: text-dark text-bold from "style";
+:local(.guideHeaderBody) {
+    composes: flex full align-center justify-center align-center relative from "style";
+    height: 100%;
+}
+
+:local(.guideHeaderTitle) {
+    composes: flex-full text-dark text-bold from "style";
+    max-width: 750px;
+    padding-left: 200px;
     font-size: 30px;
+}
+
+:local(.guideHeaderButtons) {
+    composes: flex align-center absolute from "style";
+    height: 100%;
+    top: 0;
+    right: 0;
+}
+
+:local(.guideHeaderEditButton) {
 }
