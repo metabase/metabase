@@ -12,11 +12,29 @@
    # Fetch and initialize git submodule
    git submodule update --init
    
-   # Install libcurl (needed by WWW::Curl::Simple)
+   # Upgrade Perl 
+   brew install perl
+   
+   # Add new version of perl to your $PATH
+   # (replace "5.24.0_1" below with whatever version you installed)
+   echo 'export PATH="/usr/local/Cellar/perl/5.24.0_1/bin:$PATH"' >> ~/.bash_profile
+   source ~/.bash_profile
+   
+   # Double-check that we're using the newer version of CPAN
+   # (If this is your first time running CPAN, use the default config settings when prompted)
+   cpan --version # You should see a line like "running under Perl version 5.24.0."
+   
+   # Install libcurl (needed by WWW::Curl::Simple) (I think)
    brew install curl && brew link curl --force
    
+   # The new version of LLVM is snippy so have CPAN pass the Makefiles a flag that will tell it not to barf
+   sed -i -e "s/'make_arg' => q\[\]/'make_arg' => q\[CCFLAGS=\"-Wno-return-type\"\]/" ~/.cpan/CPAN/MyConfig.pm
+
    # Install Perl modules used by ./setup and ./release
-   sudo cpan install File::Copy::Recursive JSON Readonly String::Util Text::Caml WWW::Curl::Simple
+   cpan install File::Copy::Recursive JSON Readonly String::Util Text::Caml WWW::Curl::Simple
+   
+   # Fix script not using updated version of Perl
+   sed -i -e 's!usr/bin/perl!usr/bin/env perl!' ./bin/osx-setup
    
    # Copy JRE and uberjar
    ./bin/osx-setup
@@ -51,6 +69,9 @@ You'll probably also want an Apple Developer ID Application Certificate in your 
 
 After that, you are good to go:
 ```bash
+# Fix script not using updated version of Perl
+sed -i -e 's!usr/bin/perl!usr/bin/env perl!' ./bin/osx-release
+   
 # Bundle entire app, and upload to s3
 ./bin/osx-release
 ```
