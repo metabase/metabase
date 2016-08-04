@@ -56,7 +56,8 @@ export default class SettingsSetting extends Component {
     }
 
     renderToggleInput(setting) {
-        const on = (setting.value == null ? setting.default : setting.value) === true;
+        const value = setting.value == null ? setting.default : setting.value,
+              on    = value === true || value === "true";
         return (
             <div className="flex align-center pt1">
                 <Toggle value={on} onChange={!this.props.disabled ? this.props.updateSetting.bind(null, setting, on ? "false" : "true") : null}/>
