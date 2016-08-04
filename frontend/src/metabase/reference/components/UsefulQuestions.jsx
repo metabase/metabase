@@ -6,7 +6,7 @@ import S from "./UsefulQuestions.css";
 import D from "metabase/components/Detail.css";
 import L from "metabase/components/List.css";
 
-import QueryButton from "metabase/query_builder/dataref/QueryButton.jsx";
+import QueryButton from "metabase/components/QueryButton.jsx";
 
 const UsefulQuestions = ({
     questions

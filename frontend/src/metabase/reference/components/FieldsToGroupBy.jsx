@@ -10,7 +10,7 @@ import {
     getQuestionUrl
 } from '../utils';
 
-import QueryButton from "metabase/query_builder/dataref/QueryButton.jsx";
+import QueryButton from "metabase/components/QueryButton.jsx";
 
 const FieldsToGroupBy = ({
     table,
