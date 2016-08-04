@@ -66,7 +66,7 @@ brew install awscli
 # You just need the access key ID and secret key; use the defaults for locale and other options.
 aws configure --profile metabase
 
-# Copy & Edit Config file
+# Copy & Edit Config file. Alternative ask Cam for a copy of his
 cp bin/config.json.template bin/config.json
 emacs bin/config.json
 
