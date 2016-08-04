@@ -33,15 +33,15 @@ const FieldsToGroupBy = ({
                                 iconClass={L.icon}
                                 field={field}
                                 metric={metric}
-                                onClick={() => onChangeLocation(`/reference/databases/${table.db_id}/tables/${table.id}/fields/${field.id}`)}
-                                secondaryOnClick={(event) => {
-                                    event.stopPropagation();
-                                    onChangeLocation(getQuestionUrl({
+                                onClick={() => onChangeLocation(getQuestionUrl({
                                         dbId: table.db_id,
                                         tableId: table.id,
                                         fieldId: field.id,
                                         metricId: metric.id
-                                    }))
+                                    }))}
+                                secondaryOnClick={(event) => {
+                                    event.stopPropagation();
+                                    onChangeLocation(`/reference/databases/${table.db_id}/tables/${table.id}/fields/${field.id}`);
                                 }}
                             />
                         )

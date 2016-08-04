@@ -18,21 +18,22 @@ const FieldToGroupBy = ({
     secondaryOnClick,
 }) => 
     <div className={className}>
-        <span className={Q.queryButton} onClick={onClick}>
+        <a className={Q.queryButton} onClick={onClick}>
             <span className={S.fieldToGroupByText}>
                 <span>
                     {`${metric.name} by `}
                 </span>
                 <span className="ml1 text-brand">
-                    {field.name}
+                    {field.display_name}
                 </span>
             </span>
             <Icon 
                 className={iconClass} 
                 size={20} 
                 name="reference"
+                onClick={secondaryOnClick}
             />
-        </span>
+        </a>
     </div>;
 FieldToGroupBy.propTypes = {
     className: PropTypes.string,
