@@ -32,11 +32,8 @@ export const popState = createThunkAction(POP_STATE, (location) =>
         const { card } = getState().qb;
         if (location.state && location.state.card) {
             if (!angular.equals(card, location.state.card)) {
-                console.log("QB POP", location);
                 dispatch(setCardAndRun(location.state.card, false));
                 dispatch(setCurrentState(location.state));
-            } else {
-                console.log("QB SKIP POP")
             }
         }
     }
@@ -58,7 +55,6 @@ export const updateUrl = createThunkAction(UPDATE_URL, (card, isDirty = false, r
         const { currentState } = getState().qb;
 
         if (angular.equals(currentState, newState)) {
-            console.log("QB SKIP PUSH")
             return;
         }
 
@@ -82,8 +78,6 @@ export const updateUrl = createThunkAction(UPDATE_URL, (card, isDirty = false, r
         ) {
             replaceState = true;
         }
-
-        console.log("QB " + (replaceState ? "REPLACE" : "PUSH"), locationDescriptor);
 
         // this is necessary because we can't get the state from history.state
         dispatch(setCurrentState(newState));
