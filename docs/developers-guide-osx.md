@@ -12,15 +12,15 @@
    # Fetch and initialize git submodule
    git submodule update --init
    
-   # Upgrade Perl 
+   # Upgrade Perl (not 100% sure this is neccesary)
    brew install perl
    
-   # Add new version of perl to your $PATH
+   # Add new version of perl to your $PATH (if you upgraded)
    # (replace "5.24.0_1" below with whatever version you installed)
    echo 'export PATH="/usr/local/Cellar/perl/5.24.0_1/bin:$PATH"' >> ~/.bash_profile
    source ~/.bash_profile
    
-   # Double-check that we're using the newer version of CPAN
+   # Double-check that we're using the newer version of CPAN (if you upgraded)
    # (If this is your first time running CPAN, use the default config settings when prompted)
    cpan --version # You should see a line like "running under Perl version 5.24.0."
    
