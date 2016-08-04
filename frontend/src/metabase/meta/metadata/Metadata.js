@@ -9,6 +9,13 @@ export default class Metadata extends Base {
     static type = "metadata";
     static schema = { databases: [Database] };
 
+    static fromEntities(entities) {
+        const m = new Metadata([]);
+        m._entityMaps = entities;
+        m._object = { databases: Object.keys(entities.databases) };
+        return m;
+    }
+
     constructor(databases: Array<Object>) {
         super({ databases, id: 0 });
     }

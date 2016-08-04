@@ -184,7 +184,7 @@ function fieldFilterForParameter(parameter: ParameterObject): FieldFilter {
     switch (type) {
         case "date":        return (field: Field) => field.isDate();
         case "location":    return (field: Field) => field.special_type === subtype;
-        case "id":          return (field: Field) => console.log("isID", field.isID())||field.isID();
+        case "id":          return (field: Field) => field.isID();
         case "category":    return (field: Field) => field.isCategory();
     }
     return (field: Field) => false;

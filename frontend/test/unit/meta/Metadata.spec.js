@@ -7,4 +7,13 @@ describe("Metadata", () => {
             expect(m.databases().length).toEqual(3);
         });
     });
+
+    describe("fromEntities()", () => {
+        it("should return the right number of databases", () => {
+            const m = Metadata.fromEntities({
+                databases: { 1: {}, 2: {}, 3: {}}
+            });
+            expect(m.databases().length).toEqual(3);
+        });
+    });
 });
