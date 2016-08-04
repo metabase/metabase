@@ -50,7 +50,7 @@ A handy Perl script called `./bin/osx-release` takes care of all of the details 
 
 ```bash
 # Install aws command-line client (if needed)
-brew install aws
+brew install awscli
 
 # Configure AWS Credentials
 # You'll need credentials that give you permission to write the metabase-osx-releases S3 bucket.
