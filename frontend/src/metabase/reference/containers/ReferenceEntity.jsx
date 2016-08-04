@@ -216,7 +216,7 @@ export default class ReferenceEntity extends Component {
                                 </li>
                             }
                             { (section.type === 'metric' || section.type === 'segment') &&
-                                table &&
+                                table && !isEditing &&
                                 <li className="relative">
                                     <Formula
                                         type={section.type}
