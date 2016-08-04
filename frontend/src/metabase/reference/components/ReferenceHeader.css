@@ -4,7 +4,7 @@
 }
 
 :local(.headerBody) {
-    composes: flex flex-full border-bottom from "style";
+    composes: flex flex-full border-bottom text-dark text-bold from "style";
     overflow: hidden;
     align-items: center;
     border-color: #EDF5FB;

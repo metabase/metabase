@@ -1,0 +1,9 @@
+:local(.guideHeader) {
+    composes: flex full align-center border-bottom from "style";
+    height: 150px;
+}
+
+:local(.guideHeader) {
+    composes: text-dark text-bold from "style";
+    font-size: 30px;
+}

@@ -7,8 +7,7 @@ const GuideHeader = ({
     startEditing
 }) =>
     <div className={S.guideHeader}>
-        Understanding our data
-
+        <span className={S.guideHeaderTitle}>Understanding our data</span>
     </div>;
 GuideHeader.propTypes = {
     startEditing: PropTypes.func.isRequired
