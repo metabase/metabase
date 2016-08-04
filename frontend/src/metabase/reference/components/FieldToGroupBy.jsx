@@ -1,7 +1,5 @@
 import React, { Component, PropTypes } from "react";
-import { Link } from "react-router";
 import pure from "recompose/pure";
-import cx from "classnames";
 
 import S from "./FieldToGroupBy.css";
 import Q from "metabase/components/QueryButton.css";

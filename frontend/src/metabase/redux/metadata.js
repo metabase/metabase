@@ -346,7 +346,7 @@ export const fetchMetricTable = createThunkAction(FETCH_METRIC_TABLE, (metricId,
 const FETCH_METRIC_REVISIONS = "metabase/metadata/FETCH_METRIC_REVISIONS";
 export const fetchMetricRevisions = createThunkAction(FETCH_METRIC_REVISIONS, (metricId, reload = false) => {
     return async (dispatch, getState) => {
-        dispatch(fetchRevisions('metric', metricId));
+        await dispatch(fetchRevisions('metric', metricId));
         await dispatch(fetchMetrics());
         const metric = i.getIn(getState(), ['metadata', 'metrics', metricId]);
         const tableId = metric.table_id;
@@ -380,7 +380,7 @@ export const fetchSegmentTable = createThunkAction(FETCH_SEGMENT_TABLE, (segment
 const FETCH_SEGMENT_REVISIONS = "metabase/metadata/FETCH_SEGMENT_REVISIONS";
 export const fetchSegmentRevisions = createThunkAction(FETCH_SEGMENT_REVISIONS, (segmentId, reload = false) => {
     return async (dispatch, getState) => {
-        dispatch(fetchRevisions('segment', segmentId));
+        await dispatch(fetchRevisions('segment', segmentId));
         await dispatch(fetchSegments());
         const segment = i.getIn(getState(), ['metadata', 'segments', segmentId]);
         const tableId = segment.table_id;

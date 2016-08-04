@@ -3,6 +3,7 @@ import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
+import { push } from "react-router-redux";
 
 import S from "metabase/reference/Reference.css";
 
@@ -59,7 +60,8 @@ const mapStateToProps = (state, props) => ({
 
 const mapDispatchToProps = {
     ...metadataActions,
-    ...actions
+    ...actions,
+    onChangeLocation: push
 };
 
 const validate = (values, props) => props.hasRevisionHistory ?
@@ -101,7 +103,7 @@ export default class ReferenceEntity extends Component {
         loading: PropTypes.bool,
         loadingError: PropTypes.object,
         submitting: PropTypes.bool,
-        onChangeLocation: PropTypes.func
+        onChangeLocation: PropTypes.func.isRequired
     };
 
     render() {
