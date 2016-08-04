@@ -52,7 +52,8 @@ export default class EntityBrowser extends Component {
     render() {
         return (
             <SidebarLayout
-                sidebar={<Sidebar {...this.props} children={undefined}/>}
+                className="flex-full"
+                sidebar={<Sidebar {...this.props}/>}
             >
                 {this.props.children}
             </SidebarLayout>

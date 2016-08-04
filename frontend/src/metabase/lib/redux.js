@@ -48,14 +48,14 @@ export const createStoreWithAngularScope = ($scope, $location, ...args) => {
 export function AngularResourceProxy(serviceName, methods) {
     methods.forEach((methodName) => {
         this[methodName] = function(...args) {
-            let service = angular.element(document.querySelector("body")).injector().get(serviceName);
+            let service = angular.element(document.body).injector().get(serviceName);
             return service[methodName](...args).$promise;
         }
     });
 }
 
 export function angularPromise() {
-    let $q = angular.element(document.querySelector("body")).injector().get("$q");
+    let $q = angular.element(document.body).injector().get("$q");
     return $q.defer();
 }
 

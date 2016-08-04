@@ -1,3 +1,4 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
@@ -23,6 +24,9 @@ export default class CardPicker extends Component {
         onChange: PropTypes.func.isRequired
     };
 
+    componentWillUnmount() {
+        clearTimeout(this._timer);
+    }
 
     onInputChange(e) {
         this.setState({ inputValue: e.target.value });
@@ -36,7 +40,8 @@ export default class CardPicker extends Component {
         // Without a timeout here isOpen gets set to false when an item is clicked
         // which causes the click handler to not fire. For some reason this even
         // happens with a 100ms delay, but not 200ms?
-        setTimeout(() => this.setState({ isOpen: false }), 250);
+        clearTimeout(this._timer);
+        this._timer = setTimeout(() => this.setState({ isOpen: false }), 250);
     }
 
     onChange(id) {
@@ -57,14 +62,14 @@ export default class CardPicker extends Component {
 
         if (error) {
             return (
-                <li className="px2 py1">
+                <li key={card.id} className="px2 py1">
                     <h4 className="text-grey-2">{card.name}</h4>
                     <h4 className="text-gold mt1">{error}</h4>
                 </li>
             )
         } else {
             return (
-                <li className="List-item cursor-pointer" onClickCapture={this.onChange.bind(this, card.id)}>
+                <li key={card.id} className="List-item cursor-pointer" onClickCapture={this.onChange.bind(this, card.id)}>
                     <h4 className="List-item-title px2 py1">{card.name}</h4>
                 </li>
             );

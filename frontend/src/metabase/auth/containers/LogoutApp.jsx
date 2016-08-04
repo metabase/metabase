@@ -1,25 +1,19 @@
 import React, { Component, PropTypes } from "react";
 import { connect } from "react-redux";
 
-import * as authActions from "../auth";
+import { logout } from "../auth";
 
-
-const mapStateToProps = (state, props) => {
-    return {
-        user:             state.currentUser,
-        onChangeLocation: props.onChangeLocation
-    }
-}
+const mapStateToProps = null;
 
 const mapDispatchToProps = {
-    ...authActions
-}
+    logout
+};
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class LogoutApp extends Component {
 
     componentWillMount() {
-        this.props.logout(this.props.onChangeLocation);
+        this.props.logout();
     }
 
     render() {

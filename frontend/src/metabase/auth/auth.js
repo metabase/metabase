@@ -1,19 +1,22 @@
 
 import { handleActions, combineReducers, AngularResourceProxy, createThunkAction } from "metabase/lib/redux";
 
+import { push } from "react-router-redux";
+
 import MetabaseCookies from "metabase/lib/cookies";
 import MetabaseUtils from "metabase/lib/utils";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 import { clearGoogleAuthCredentials } from "metabase/lib/auth";
 
+import { refreshCurrentUser } from "metabase/user";
 
 // resource wrappers
 const SessionApi = new AngularResourceProxy("Session", ["create", "createWithGoogleAuth", "delete", "reset_password"]);
 
 
 // login
-export const login = createThunkAction("AUTH_LOGIN", function(credentials, onChangeLocation) {
+export const login = createThunkAction("AUTH_LOGIN", function(credentials) {
     return async function(dispatch, getState) {
 
         if (!MetabaseUtils.validEmail(credentials.email)) {
@@ -28,8 +31,8 @@ export const login = createThunkAction("AUTH_LOGIN", function(credentials, onCha
 
             MetabaseAnalytics.trackEvent('Auth', 'Login');
             // TODO: redirect after login (carry user to intended destination)
-            // this is ridiculously stupid.  we have to wait (300ms) for the cookie to actually be set in the browser :(
-            setTimeout(() => onChangeLocation("/"), 300);
+            await dispatch(refreshCurrentUser());
+            dispatch(push("/"));
 
         } catch (error) {
             return error;
@@ -39,7 +42,7 @@ export const login = createThunkAction("AUTH_LOGIN", function(credentials, onCha
 
 
 // login Google
-export const loginGoogle = createThunkAction("AUTH_LOGIN_GOOGLE", function(googleUser, onChangeLocation) {
+export const loginGoogle = createThunkAction("AUTH_LOGIN_GOOGLE", function(googleUser) {
     return async function(dispatch, getState) {
         try {
             let newSession = await SessionApi.createWithGoogleAuth({
@@ -52,14 +55,14 @@ export const loginGoogle = createThunkAction("AUTH_LOGIN_GOOGLE", function(googl
             MetabaseAnalytics.trackEvent('Auth', 'Google Auth Login');
 
             // TODO: redirect after login (carry user to intended destination)
-            // this is ridiculously stupid.  we have to wait (300ms) for the cookie to actually be set in the browser :(
-            setTimeout(() => onChangeLocation("/"), 300);
+            await dispatch(refreshCurrentUser());
+            dispatch(push("/"));
 
         } catch (error) {
             clearGoogleAuthCredentials();
             // If we see a 428 ("Precondition Required") that means we need to show the "No Metabase account exists for this Google Account" page
             if (error.status === 428) {
-                onChangeLocation('/auth/google_no_mb_account');
+                dispatch(push("/auth/google_no_mb_account"));
             } else {
                 return error;
             }
@@ -68,8 +71,8 @@ export const loginGoogle = createThunkAction("AUTH_LOGIN_GOOGLE", function(googl
 });
 
 // logout
-export const logout = createThunkAction("AUTH_LOGOUT", function(onChangeLocation) {
-    return async function(dispatch, getState) {
+export const logout = createThunkAction("AUTH_LOGOUT", function() {
+    return function(dispatch, getState) {
         // TODO: as part of a logout we want to clear out any saved state that we have about anything
 
         let sessionId = MetabaseCookies.setSessionCookie();
@@ -79,12 +82,12 @@ export const logout = createThunkAction("AUTH_LOGOUT", function(onChangeLocation
         }
         MetabaseAnalytics.trackEvent('Auth', 'Logout');
 
-        setTimeout(() => onChangeLocation("/auth/login"), 300);
+        dispatch(push("/auth/login"));
     };
 });
 
 // passwordReset
-export const passwordReset = createThunkAction("AUTH_PASSWORD_RESET", function(token, credentials, onChangeLocation) {
+export const passwordReset = createThunkAction("AUTH_PASSWORD_RESET", function(token, credentials) {
     return async function(dispatch, getState) {
 
         if (credentials.password !== credentials.password2) {

@@ -1,3 +1,4 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 
 import Icon from "metabase/components/Icon.jsx";
@@ -8,24 +9,24 @@ import { MODAL_EDIT_DETAILS,
          MODAL_INVITE_RESENT,
          MODAL_REMOVE_USER,
          MODAL_RESET_PASSWORD } from "./AdminPeople.jsx";
-import { resendInvite, showModal } from "../actions";
-
 
 export default class UserActionsSelect extends Component {
 
     static propTypes = {
         user: PropTypes.object.isRequired,
-        isActiveUser: PropTypes.bool.isRequired
+        isActiveUser: PropTypes.bool.isRequired,
+        showModal: PropTypes.func.isRequired,
+        resendInvite: PropTypes.func.isRequired,
     };
 
     onEditDetails() {
-        this.props.dispatch(showModal({type: MODAL_EDIT_DETAILS, details: {user: this.props.user}}));
+        this.props.showModal({type: MODAL_EDIT_DETAILS, details: {user: this.props.user}});
         this.refs.popover.toggle();
     }
 
     onResendInvite() {
-        this.props.dispatch(resendInvite(this.props.user));
-        this.props.dispatch(showModal({type: MODAL_INVITE_RESENT, details: {user: this.props.user}}));
+        this.props.resendInvite(this.props.user);
+        this.props.showModal({type: MODAL_INVITE_RESENT, details: {user: this.props.user}});
         this.refs.popover.toggle();
     }
 
@@ -35,12 +36,12 @@ export default class UserActionsSelect extends Component {
             return;
         }
 
-        this.props.dispatch(showModal({type: MODAL_RESET_PASSWORD, details: {user: this.props.user}}));
+        this.props.showModal({type: MODAL_RESET_PASSWORD, details: {user: this.props.user}});
         this.refs.popover.toggle();
     }
 
     onRemoveUser() {
-        this.props.dispatch(showModal({type: MODAL_REMOVE_USER, details: {user: this.props.user}}));
+        this.props.showModal({type: MODAL_REMOVE_USER, details: {user: this.props.user}});
         this.refs.popover.toggle();
     }
 

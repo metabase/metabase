@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from 'react';
+import { Link } from "react-router";
 import _ from 'underscore';
 
 import LoadingAndErrorWrapper from 'metabase/components/LoadingAndErrorWrapper.jsx';
@@ -39,7 +40,7 @@ export default class Activity extends Component {
         const maxColorUsed = (_.isEmpty(userColors)) ? 0 : _.max(_.values(userColors));
         var currColor =  (maxColorUsed && maxColorUsed < colors.length) ? maxColorUsed : 0;
 
-        if (user) {
+        if (user && activity) {
             for (var item of activity) {
                 if (!(item.user_id in userColors)) {
                     // assign the user a color
@@ -88,7 +89,7 @@ export default class Activity extends Component {
             case "card-create":
             case "card-update":
                 if(item.table) {
-                    description.summary = (<span>saved a question about <a data-metabase-event={"Activity Feed;Header Clicked;Database -> "+item.topic} className="link text-dark" href={Urls.tableRowsQuery(item.database_id, item.table_id)}>{item.table.display_name}</a></span>);
+                    description.summary = (<span>saved a question about <Link to={Urls.tableRowsQuery(item.database_id, item.table_id)} data-metabase-event={"Activity Feed;Header Clicked;Database -> "+item.topic} className="link text-dark">{item.table.display_name}</Link></span>);
                 } else {
                     description.summary = "saved a question";
                 }
@@ -104,14 +105,14 @@ export default class Activity extends Component {
                 break;
             case "dashboard-add-cards":
                 if(item.model_exists) {
-                    description.summary = (<span>added a question to the dashboard - <a data-metabase-event={"Activity Feed;Header Clicked;Dashboard -> "+item.topic} className="link text-dark" href={Urls.dashboard(item.model_id)}>{item.details.name}</a></span>);
+                    description.summary = (<span>added a question to the dashboard - <Link to={Urls.dashboard(item.model_id)} data-metabase-event={"Activity Feed;Header Clicked;Dashboard -> "+item.topic} className="link text-dark">{item.details.name}</Link></span>);
                 } else {
                     description.summary = (<span>added a question to the dashboard - <span className="text-dark">{item.details.name}</span></span>);
                 }
                 break;
             case "dashboard-remove-cards":
                 if(item.model_exists) {
-                    description.summary = (<span>removed a question from the dashboard - <a data-metabase-event={"Activity Feed;Header Clicked;Dashboard -> "+item.topic} className="link text-dark" href={Urls.dashboard(item.model_id)}>{item.details.name}</a></span>);
+                    description.summary = (<span>removed a question from the dashboard - <Link to={Urls.dashboard(item.model_id)} data-metabase-event={"Activity Feed;Header Clicked;Dashboard -> "+item.topic} className="link text-dark">{item.details.name}</Link></span>);
                 } else {
                     description.summary = (<span>removed a question from the dashboard - <span className="text-dark">{item.details.name}</span></span>);
                 }
@@ -133,14 +134,14 @@ export default class Activity extends Component {
                 break;
             case "metric-create":
                 if(item.model_exists) {
-                    description.summary = (<span>added the metric <a data-metabase-event={"Activity Feed;Header Clicked;Metric -> "+item.topic} className="link text-dark" href={Urls.tableRowsQuery(item.database_id, item.table_id, item.model_id)}>{item.details.name}</a> to the <a data-metabase-event={"Activity Feed;Header Clicked;Table -> "+item.topic} className="link text-dark" href={Urls.tableRowsQuery(item.database_id, item.table_id)}>{item.table.display_name}</a> table</span>);
+                    description.summary = (<span>added the metric <Link to={Urls.tableRowsQuery(item.database_id, item.table_id, item.model_id)} data-metabase-event={"Activity Feed;Header Clicked;Metric -> "+item.topic} className="link text-dark">{item.details.name}</Link> to the <Link to={Urls.tableRowsQuery(item.database_id, item.table_id)} data-metabase-event={"Activity Feed;Header Clicked;Table -> "+item.topic} className="link text-dark">{item.table.display_name}</Link> table</span>);
                 } else {
                     description.summary = (<span>added the metric <span className="text-dark">{item.details.name}</span></span>);
                 }
                 break;
             case "metric-update":
                 if(item.model_exists) {
-                    description.summary = (<span>made changes to the metric <a data-metabase-event={"Activity Feed;Header Clicked;Metric -> "+item.topic} className="link text-dark" href={Urls.tableRowsQuery(item.database_id, item.table_id, item.model_id)}>{item.details.name}</a> in the <a data-metabase-event={"Activity Feed;Header Clicked;Table -> "+item.topic} className="link text-dark" href={Urls.tableRowsQuery(item.database_id, item.table_id)}>{item.table.display_name}</a> table</span>);
+                    description.summary = (<span>made changes to the metric <Link to={Urls.tableRowsQuery(item.database_id, item.table_id, item.model_id)} data-metabase-event={"Activity Feed;Header Clicked;Metric -> "+item.topic} className="link text-dark">{item.details.name}</Link> in the <Link to={Urls.tableRowsQuery(item.database_id, item.table_id)} data-metabase-event={"Activity Feed;Header Clicked;Table -> "+item.topic} className="link text-dark">{item.table.display_name}</Link> table</span>);
                 } else {
                     description.summary = (<span>made changes to the metric <span className="text-dark">{item.details.name}</span></span>);
                 }
@@ -156,14 +157,22 @@ export default class Activity extends Component {
                 break;
             case "segment-create":
                 if(item.model_exists) {
-                    description.summary = (<span>added the filter <a data-metabase-event={"Activity Feed;Header Clicked;Segment -> "+item.topic} className="link text-dark" href={Urls.tableRowsQuery(item.database_id, item.table_id, null, item.model_id)}>{item.details.name}</a> to the <a data-metabase-event={"Activity Feed;Header Clicked;Table -> "+item.topic} className="link text-dark" href={Urls.tableRowsQuery(item.database_id, item.table_id)}>{item.table.display_name}</a> table</span>);
+                    description.summary = (
+                        <span>
+                            added the filter
+                            <Link to={Urls.tableRowsQuery(item.database_id, item.table_id, null, item.model_id)} data-metabase-event={"Activity Feed;Header Clicked;Segment -> "+item.topic} className="link text-dark">{item.details.name}</Link>
+                            to the
+                            <Link to={Urls.tableRowsQuery(item.database_id, item.table_id)} data-metabase-event={"Activity Feed;Header Clicked;Table -> "+item.topic} className="link text-dark">{item.table.display_name}</Link>
+                            table
+                        </span>
+                    );
                 } else {
                     description.summary = (<span>added the filter <span className="text-dark">{item.details.name}</span></span>);
                 }
                 break;
             case "segment-update":
                 if(item.model_exists) {
-                    description.summary = (<span>made changes to the filter <a data-metabase-event={"Activity Feed;Header Clicked;Segment -> "+item.topic} className="link text-dark" href={Urls.tableRowsQuery(item.database_id, item.table_id, null, item.model_id)}>{item.details.name}</a> in the <a data-metabase-event={"Activity Feed;Header Clicked;Table -> "+item.topic} className="link text-dark" href={Urls.tableRowsQuery(item.database_id, item.table_id)}>{item.table.display_name}</a> table</span>);
+                    description.summary = (<span>made changes to the filter <Link to={Urls.tableRowsQuery(item.database_id, item.table_id, null, item.model_id)} data-metabase-event={"Activity Feed;Header Clicked;Segment -> "+item.topic} className="link text-dark">{item.details.name}</Link> in the <Link to={Urls.tableRowsQuery(item.database_id, item.table_id)} data-metabase-event={"Activity Feed;Header Clicked;Table -> "+item.topic} className="link text-dark">{item.table.display_name}</Link> table</span>);
                 } else {
                     description.summary = (<span>made changes to the filter <span className="text-dark">{item.details.name}</span></span>);
                 }

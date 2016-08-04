@@ -74,7 +74,7 @@ const referenceSections = {
     }
 };
 
-const getReferenceSections = (state) => referenceSections;
+const getReferenceSections = (state, props) => referenceSections;
 
 const getMetricSections = (metric, table, user) => metric ? {
     [`/reference/metrics/${metric.id}`]: {
@@ -409,34 +409,34 @@ const getTableFieldSections = (database, table, field) => database && table && f
     }
 } : {};
 
-export const getUser = (state) => state.currentUser;
+export const getUser = (state, props) => state.currentUser;
 
-export const getSectionId = (state) => state.router.location.pathname;
+export const getSectionId = (state, props) => props.location.pathname;
 
-export const getMetricId = (state) => Number.parseInt(state.router.params.metricId);
-const getMetrics = (state) => state.metadata.metrics;
+export const getMetricId = (state, props) => Number.parseInt(props.params.metricId);
+const getMetrics = (state, props) => state.metadata.metrics;
 export const getMetric = createSelector(
     [getMetricId, getMetrics],
     (metricId, metrics) => metrics[metricId] || { id: metricId }
 );
 
-export const getSegmentId = (state) => Number.parseInt(state.router.params.segmentId);
-const getSegments = (state) => state.metadata.segments;
+export const getSegmentId = (state, props) => Number.parseInt(props.params.segmentId);
+const getSegments = (state, props) => state.metadata.segments;
 export const getSegment = createSelector(
     [getSegmentId, getSegments],
     (segmentId, segments) => segments[segmentId] || { id: segmentId }
 );
 
-export const getDatabaseId = (state) => Number.parseInt(state.router.params.databaseId);
-const getDatabases = (state) => state.metadata.databases;
+export const getDatabaseId = (state, props) => Number.parseInt(props.params.databaseId);
+const getDatabases = (state, props) => state.metadata.databases;
 const getDatabase = createSelector(
     [getDatabaseId, getDatabases],
     (databaseId, databases) => databases[databaseId] || { id: databaseId }
 );
 
-export const getTableId = (state) => Number.parseInt(state.router.params.tableId);
-// export const getTableId = (state) => Number.parseInt(state.router.params.tableId);
-export const getTables = (state) => state.metadata.tables;
+export const getTableId = (state, props) => Number.parseInt(props.params.tableId);
+// export const getTableId = (state, props) => Number.parseInt(props.params.tableId);
+export const getTables = (state, props) => state.metadata.tables;
 const getTablesByDatabase = createSelector(
     [getTables, getDatabase],
     (tables, database) => tables && database && database.tables ?
@@ -458,8 +458,8 @@ export const getTable = createSelector(
             segmentId ? tableBySegment : {}
 );
 
-export const getFieldId = (state) => Number.parseInt(state.router.params.fieldId);
-const getFields = (state) => state.metadata.fields;
+export const getFieldId = (state, props) => Number.parseInt(props.params.fieldId);
+const getFields = (state, props) => state.metadata.fields;
 const getFieldsByTable = createSelector(
     [getTable, getFields],
     (table, fields) => table && table.fields ? idsToObjectMap(table.fields, fields) : {}
@@ -477,7 +477,7 @@ const getFieldBySegment = createSelector(
     (fieldId, fields) => fields[fieldId] || { id: fieldId }
 );
 
-const getQuestions = (state) => i.getIn(state, ['questions', 'entities', 'cards']) || {};
+const getQuestions = (state, props) => i.getIn(state, ['questions', 'entities', 'cards']) || {};
 
 const getMetricQuestions = createSelector(
     [getMetricId, getQuestions],
@@ -489,7 +489,7 @@ const getMetricQuestions = createSelector(
         .reduce((map, question) => i.assoc(map, question.id, question), {})
 );
 
-const getRevisions = (state) => state.metadata.revisions;
+const getRevisions = (state, props) => state.metadata.revisions;
 
 const getMetricRevisions = createSelector(
     [getMetricId, getRevisions],
@@ -609,8 +609,8 @@ const dataSelectors = {
     getFieldsBySegment
 };
 
-export const getData = (state) => {
-    const section = getSection(state);
+export const getData = (state, props) => {
+    const section = getSection(state, props);
     if (!section) {
         return {};
     }
@@ -619,12 +619,12 @@ export const getData = (state) => {
         return {};
     }
 
-    return selector(state);
+    return selector(state, props);
 };
 
-export const getLoading = (state) => state.reference.isLoading;
+export const getLoading = (state, props) => state.reference.isLoading;
 
-export const getError = (state) => state.reference.error;
+export const getError = (state, props) => state.reference.error;
 
 export const getBreadcrumbs = createSelector(
     [getSection],
@@ -657,6 +657,6 @@ export const getHasQuestions = createSelector(
     (section) => section.questions && section.questions.length > 0
 )
 
-export const getIsEditing = (state) => state.reference.isEditing;
+export const getIsEditing = (state, props) => state.reference.isEditing;
 
-export const getIsFormulaExpanded = (state) => state.reference.isFormulaExpanded;
+export const getIsFormulaExpanded = (state, props) => state.reference.isFormulaExpanded;
