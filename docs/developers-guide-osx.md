@@ -31,7 +31,11 @@
    # Install libcurl (needed by WWW::Curl::Simple (I think))
    brew install curl && brew link curl --force
    
-   # The new version of LLVM is snippy so have CPAN pass the Makefiles a flag that will tell it not to barf
+   # The new version of LLVM is snippy so have CPAN pass compiler flags to fix errors
+   # (Make sure this file exists first. If you didn't upgrade Perl in the step above, 
+   # it might be in a different location; perhaps called "Config.pm". 
+   # You may need to run "cpan" (no arguments) to generate an appropriate initial config. 
+   # As above, you can go with the defaults).
    sed -i '' -e "s/'make_arg' => q\[\]/'make_arg' => q\[CCFLAGS=\"-Wno-return-type\"\]/" ~/.cpan/CPAN/MyConfig.pm
 
    # Install Perl modules used by ./bin/osx-setup and ./bin/osx-release
@@ -58,6 +62,7 @@ brew install awscli
 
 # Configure AWS Credentials
 # You'll need credentials that give you permission to write the metabase-osx-releases S3 bucket.
+# You just need the access key ID and secret key; use the defaults for locale and other options.
 aws configure --profile metabase
 
 # Copy & Edit Config file
