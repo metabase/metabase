@@ -39,6 +39,7 @@
    sed -i '' -e "s/'make_arg' => q\[\]/'make_arg' => q\[CCFLAGS=\"-Wno-return-type\"\]/" ~/.cpan/CPAN/MyConfig.pm
 
    # Install Perl modules used by ./bin/osx-setup and ./bin/osx-release
+   # You may have to run this as sudo if you didn't upgrade perl as described in step above
    cpan install File::Copy::Recursive JSON Readonly String::Util Text::Caml WWW::Curl::Simple
    
    # Fix script not using updated version of Perl (this is fixed in master as of August 4th 2016)
