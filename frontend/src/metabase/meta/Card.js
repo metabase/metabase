@@ -2,7 +2,7 @@
 
 import type { StructuredQueryObject, NativeQueryObject, TemplateTag } from "./types/Query";
 import type { CardObject, DatasetQueryObject, StructuredDatasetQueryObject, NativeDatasetQueryObject } from "./types/Card";
-import type { ParameterObject, ParameterId, ParameterMappingObject, ParameterMappingTarget } from "metabase/meta/types/Dashboard";
+import type { ParameterObject, ParameterId, ParameterMappingObject } from "metabase/meta/types/Dashboard";
 
 declare class Object {
     static values<T>(object: { [key:string]: T }): Array<T>;
