@@ -52,3 +52,9 @@ export type ParameterOption = {
     description?: string,
     type: ParameterType
 };
+
+export type ParameterInstance = {
+    type: ParameterType,
+    target: ParameterMappingTarget,
+    value: string
+};
