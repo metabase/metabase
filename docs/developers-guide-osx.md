@@ -6,31 +6,35 @@
 
 2.  Run `./bin/build` to build the latest version of the uberjar.
 
-3.  Next, you'll need to run the following commands before building the app:
+3.  Update Perl. I'm not sure these steps are actually needed, so feel free to try skipping it and come back to it if it fails:
+  
+   ```bash
+   # Upgrade Perl
+   brew install perl
+   
+   # Add new version of perl to your $PATH
+   # (replace "5.24.0_1" below with whatever version you installed)
+   echo 'export PATH="/usr/local/Cellar/perl/5.24.0_1/bin:$PATH"' >> ~/.bash_profile
+   source ~/.bash_profile
+   
+   # Double-check that we're using the newer version of CPAN
+   # (If this is your first time running CPAN, use the default config settings when prompted)
+   cpan --version # You should see a line like "running under Perl version 5.24.0."
+   ```
+
+4.  Next, you'll need to run the following commands before building the app:
 
     ```bash
    # Fetch and initialize git submodule
    git submodule update --init
    
-   # Upgrade Perl (not 100% sure this is neccesary)
-   brew install perl
-   
-   # Add new version of perl to your $PATH (if you upgraded)
-   # (replace "5.24.0_1" below with whatever version you installed)
-   echo 'export PATH="/usr/local/Cellar/perl/5.24.0_1/bin:$PATH"' >> ~/.bash_profile
-   source ~/.bash_profile
-   
-   # Double-check that we're using the newer version of CPAN (if you upgraded)
-   # (If this is your first time running CPAN, use the default config settings when prompted)
-   cpan --version # You should see a line like "running under Perl version 5.24.0."
-   
-   # Install libcurl (needed by WWW::Curl::Simple) (I think)
+   # Install libcurl (needed by WWW::Curl::Simple (I think))
    brew install curl && brew link curl --force
    
    # The new version of LLVM is snippy so have CPAN pass the Makefiles a flag that will tell it not to barf
    sed -i '' -e "s/'make_arg' => q\[\]/'make_arg' => q\[CCFLAGS=\"-Wno-return-type\"\]/" ~/.cpan/CPAN/MyConfig.pm
 
-   # Install Perl modules used by ./setup and ./release
+   # Install Perl modules used by ./bin/osx-setup and ./bin/osx-release
    cpan install File::Copy::Recursive JSON Readonly String::Util Text::Caml WWW::Curl::Simple
    
    # Fix script not using updated version of Perl (this is fixed in master as of August 4th 2016)
