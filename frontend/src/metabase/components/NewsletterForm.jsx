@@ -1,3 +1,4 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
@@ -28,7 +29,7 @@ export default class NewsletterForm extends Component {
     }
 
     static propTypes = {
-        password: PropTypes.string.isRequired
+        initialEmail: PropTypes.string.isRequired
     };
 
     subscribeUser(e) {

@@ -1,4 +1,5 @@
 import React, { PropTypes } from "react";
+import { Link } from "react-router";
 
 import Icon from "metabase/components/Icon.jsx";
 
@@ -17,7 +18,7 @@ const EmptyState = ({ title, message, icon, image, action, link }) =>
             <h3 className="text-grey-2 mt4" style={{maxWidth: "350px"}}>{message}</h3>
         </div>
         { action &&
-            <a className="Button Button--primary mt3" href={link} target={link.startsWith('http') ? "_blank" : ""}>{action}</a>
+            <Link to={link} className="Button Button--primary mt3" target={link.startsWith('http') ? "_blank" : ""}>{action}</Link>
         }
     </div>
 

@@ -27,14 +27,14 @@ import ReferenceHeader from "../components/ReferenceHeader.jsx";
 
 const mapStateToProps = (state, props) => {
     return {
-        section: getSection(state),
-        revisions: getData(state),
-        metric: getMetric(state),
-        segment: getSegment(state),
-        tables: getTables(state),
-        user: getUser(state),
-        loading: getLoading(state),
-        loadingError: getError(state)
+        section: getSection(state, props),
+        revisions: getData(state, props),
+        metric: getMetric(state, props),
+        segment: getSegment(state, props),
+        tables: getTables(state, props),
+        user: getUser(state, props),
+        loading: getLoading(state, props),
+        loadingError: getError(state, props)
     }
 }
 

@@ -1,5 +1,6 @@
 import React, { Component, PropTypes } from "react";
 import { connect } from "react-redux";
+import { Link } from "react-router";
 import { AngularResourceProxy } from "metabase/lib/redux";
 
 import cx from "classnames";
@@ -19,11 +20,10 @@ const SessionApi = new AngularResourceProxy("Session", ["password_reset_token_va
 
 const mapStateToProps = (state, props) => {
     return {
-        token:            state.router && state.router.params && state.router.params.token,
+        token:            props.params.token,
         resetError:       state.auth && state.auth.resetError,
         resetSuccess:     state.auth && state.auth.resetSuccess,
-        newUserJoining:   state.router && state.router.location && state.router.location.hash === "#new",
-        onChangeLocation: props.onChangeLocation
+        newUserJoining:   props.location.hash === "#new"
     }
 }
 
@@ -83,10 +83,10 @@ export default class PasswordResetApp extends Component {
     formSubmitted(e) {
         e.preventDefault();
 
-        let { token, passwordReset, onChangeLocation } = this.props;
+        let { token, passwordReset } = this.props;
         let { credentials } = this.state;
 
-        passwordReset(token, credentials, onChangeLocation);
+        passwordReset(token, credentials);
     }
 
     render() {
@@ -106,7 +106,7 @@ export default class PasswordResetApp extends Component {
                                     <h3 className="Login-header Form-offset mt4">Whoops, that's an expired link</h3>
                                     <p className="Form-offset mb4 mr4">
                                         For security reasons, password reset links expire after a little while. If you still need
-                                        to reset your password, you can <a href="/auth/forgot_password" className="link">request a new reset email</a>.
+                                        to reset your password, you can <Link to="/auth/forgot_password" className="link">request a new reset email</Link>.
                                     </p>
                                 </div>
                             </div>
@@ -160,9 +160,9 @@ export default class PasswordResetApp extends Component {
                                   <p>Your password has been reset.</p>
                                   <p>
                                       { newUserJoining ?
-                                      <a href="/?new" className="Button Button--primary">Sign in with your new password</a>
+                                      <Link to="/?new" className="Button Button--primary">Sign in with your new password</Link>
                                       :
-                                      <a href="/" className="Button Button--primary">Sign in with your new password</a>
+                                      <Link to="/" className="Button Button--primary">Sign in with your new password</Link>
                                       }
                                   </p>
                               </div>

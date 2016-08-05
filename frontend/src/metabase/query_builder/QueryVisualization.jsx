@@ -1,5 +1,6 @@
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
+import { Link } from "react-router";
 
 import Icon from "metabase/components/Icon.jsx";
 import LoadingSpinner from 'metabase/components/LoadingSpinner.jsx';
@@ -259,5 +260,5 @@ export default class QueryVisualization extends Component {
 const VisualizationEmptyState = ({showTutorialLink}) =>
     <div className="flex full layout-centered text-grey-1 flex-column">
         <h1>If you give me some data I can show you something cool. Run a Query!</h1>
-        { showTutorialLink && <a className="link cursor-pointer my2" href="/q?tutorial">How do I use this thing?</a> }
+        { showTutorialLink && <Link to="/q?tutorial" className="link cursor-pointer my2">How do I use this thing?</Link> }
     </div>

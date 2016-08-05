@@ -111,13 +111,13 @@
      {:title       "Set up email"
       :group       "Get connected"
       :description "Add email credentials so you can more easily invite team members and get updates via Pulses."
-      :link        "/admin/settings/?section=Email"
+      :link        "/admin/settings/email"
       :completed   (email/email-configured?)
       :triggered   :always}
      {:title       "Set Slack credentials"
       :group       "Get connected"
       :description "Does your team use Slack?  If so, you can send automated updates via pulses and ask questions with Metabot."
-      :link        "/admin/settings/?section=Slack"
+      :link        "/admin/settings/slack"
       :completed   (slack/slack-configured?)
       :triggered   :always}
      {:title       "Invite team members"

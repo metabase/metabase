@@ -1,3 +1,4 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
@@ -19,7 +20,8 @@ export default class UpdateUserDetails extends Component {
 
     static propTypes = {
         submitFn: PropTypes.func.isRequired,
-        user: PropTypes.object
+        user: PropTypes.object,
+        updateUserResult: PropTypes.object.isRequired
     };
 
     componentDidMount() {

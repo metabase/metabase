@@ -41,7 +41,7 @@ export default class DeleteModalWithConfirm extends Component {
             <div className="px4 pb4">
                 <ul>
                     {confirmItems.map((item, index) =>
-                        <li className="pb2 mb2 border-row-divider flex align-center">
+                        <li key={index} className="pb2 mb2 border-row-divider flex align-center">
                             <span className="text-error">
                                 <CheckBox
                                     checkColor="currentColor" borderColor={checked[index] ? "currentColor" : undefined} size={20}

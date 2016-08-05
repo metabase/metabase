@@ -1,19 +1,20 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 import cx from "classnames";
 import Icon from "metabase/components/Icon.jsx";
-import { setActiveStep } from "../actions";
 
 
-export default class SetupCollapsedStep extends Component {
+export default class CollapsedStep extends Component {
     static propTypes = {
         stepNumber: PropTypes.number.isRequired,
         stepText: PropTypes.string.isRequired,
-        isCompleted: PropTypes.bool.isRequired
+        setActiveStep: PropTypes.func.isRequired,
+        isCompleted: PropTypes.bool.isRequired,
     }
 
     gotoStep() {
         if (this.props.isCompleted) {
-            this.props.dispatch(setActiveStep(this.props.stepNumber));
+            this.props.setActiveStep(this.props.stepNumber);
         }
     }
 
