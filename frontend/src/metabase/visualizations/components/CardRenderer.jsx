@@ -1,16 +1,13 @@
 /* eslint "react/prop-types": "warn" */
 
-import React, { Component, PropTypes } from "react";
+import React, {Component, PropTypes} from "react";
 import ReactDOM from "react-dom";
 
-import ExplicitSize from "metabase/components/ExplicitSize.jsx";
-
-import { isSameSeries } from "metabase/visualizations/lib/utils";
+import {isSameSeries} from "metabase/visualizations/lib/utils";
 
 import dc from "dc";
 import cx from "classnames";
 
-@ExplicitSize
 export default class CardRenderer extends Component {
     static propTypes = {
         series: PropTypes.array.isRequired,
@@ -25,7 +22,8 @@ export default class CardRenderer extends Component {
         // a chart only needs re-rendering when the result itself changes OR the chart type is different
         let sameSize = (this.props.width === nextProps.width && this.props.height === nextProps.height);
         let sameSeries = isSameSeries(this.props.series, nextProps.series);
-        return !(sameSize && sameSeries);
+        let sameRenderer = (this.props.renderer === nextProps.renderer);
+        return !(sameSize && sameSeries && sameRenderer);
     }
 
     componentDidMount() {

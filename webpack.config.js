@@ -133,20 +133,8 @@ var config = module.exports = {
             'angular-cookie':       __dirname + '/node_modules/angular-cookie/angular-cookie.min.js',
             'angular-http-auth':    __dirname + '/node_modules/angular-http-auth/src/http-auth-interceptor.js',
             // ace
-            'ace/ace':              __dirname + '/node_modules/ace-builds/src-min-noconflict/ace.js',
-            'ace/ext-language_tools':__dirname+ '/node_modules/ace-builds/src-min-noconflict/ext-language_tools.js',
+            'ace':                  __dirname + '/node_modules/ace-builds/src-min-noconflict',
 
-            'ace/mode-sql':         __dirname + '/node_modules/ace-builds/src-min-noconflict/mode-sql.js',
-            'ace/mode-mysql':       __dirname + '/node_modules/ace-builds/src-min-noconflict/mode-mysql.js',
-            'ace/mode-pgsql':       __dirname + '/node_modules/ace-builds/src-min-noconflict/mode-pgsql.js',
-            'ace/mode-sqlserver':   __dirname + '/node_modules/ace-builds/src-min-noconflict/mode-sqlserver.js',
-            'ace/mode-json':        __dirname + '/node_modules/ace-builds/src-min-noconflict/mode-json.js',
-
-            'ace/snippets/sql':     __dirname + '/node_modules/ace-builds/src-min-noconflict/snippets/sql.js',
-            'ace/snippets/mysql':   __dirname + '/node_modules/ace-builds/src-min-noconflict/snippets/mysql.js',
-            'ace/snippets/pgsql':   __dirname + '/node_modules/ace-builds/src-min-noconflict/snippets/pgsql.js',
-            'ace/snippets/sqlserver':   __dirname + '/node_modules/ace-builds/src-min-noconflict/snippets/sqlserver.js',
-            'ace/snippets/json':    __dirname + '/node_modules/ace-builds/src-min-noconflict/snippets/json.js',
             // react
             'fixed-data-table':     __dirname + '/node_modules/fixed-data-table/dist/fixed-data-table.min.js',
             // misc

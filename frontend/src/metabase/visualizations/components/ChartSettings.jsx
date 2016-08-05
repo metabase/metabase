@@ -16,7 +16,7 @@ const ChartSettingsTab = ({name, active, onClick}) =>
   </a>
 
 const ChartSettingsTabs = ({ tabs, selectTab, activeTab}) =>
-  <ul className="bordered rounded flex justify-around overflow-hidden">
+  <ul className="mb3 bordered rounded flex justify-around overflow-hidden">
     { tabs.map((tab, index) =>
         <li className="flex-full border-left" key={index}>
           <ChartSettingsTab name={tab} active={tab === activeTab} onClick={selectTab} />
@@ -26,8 +26,8 @@ const ChartSettingsTabs = ({ tabs, selectTab, activeTab}) =>
 
 const Widget = ({ title, hidden, disabled, widget, value, onChange, props }) => {
     const W = widget;
-    return (
-        <div className={cx("mb3", { hide: hidden, disable: disabled })}>
+    return hidden ? null : (
+        <div className={cx("mb3", { disable: disabled })}>
             { title && <h4 className="mb1">{title}</h4> }
             { W && <W value={value} onChange={onChange} {...props}/> }
         </div>
@@ -97,7 +97,7 @@ class ChartSettings extends Component {
               { tabNames.length > 1 &&
                   <ChartSettingsTabs tabs={tabNames} selectTab={this.selectTab} activeTab={currentTab}/>
               }
-              <div className="Grid flex-full mt3">
+              <div className="Grid flex-full">
                   <div className="Grid-cell Cell--1of3 scroll-y p1">
                       { widgets && widgets.map((widget) =>
                           <Widget key={widget.id} {...widget} />

@@ -150,7 +150,8 @@
                                                                     "*.intercom.io"
                                                                     (when config/is-dev?
                                                                       "localhost:8080")]
-                                                      :frame-src   ["https://accounts.google.com"] ; TODO - double check that we actually need this for Google Auth
+                                                      :frame-src   ["*"]
+                                                    ;   :frame-src   ["https://accounts.google.com"] ; TODO - double check that we actually need this for Google Auth
                                                       :style-src   ["'unsafe-inline'"
                                                                     "'self'"
                                                                     "fonts.googleapis.com"]
