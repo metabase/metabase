@@ -4,9 +4,7 @@ import ReactDOM from "react-dom";
 import { connect } from "react-redux";
 
 import Sidebar from "../components/Sidebar.jsx";
-import SidebarLayout from "../components/SidebarLayout.jsx";
-
-import cx from "classnames";
+import SidebarLayout from "metabase/components/SidebarLayout.jsx";
 
 import * as questionsActions from "../questions";
 import * as labelsActions from "../labels";
@@ -54,8 +52,8 @@ export default class EntityBrowser extends Component {
     render() {
         return (
             <SidebarLayout
-                className={cx("spread")}
-                sidebar={<Sidebar {...this.props} children={undefined}/>}
+                className="flex-full"
+                sidebar={<Sidebar {...this.props}/>}
             >
                 {this.props.children}
             </SidebarLayout>

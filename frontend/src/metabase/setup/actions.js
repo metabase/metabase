@@ -49,7 +49,7 @@ export const validatePassword = createThunkAction(VALIDATE_PASSWORD, function(pa
 
 export const submitSetup = createThunkAction(SUBMIT_SETUP, function() {
     return async function(dispatch, getState) {
-        let { allowTracking, databaseDetails, userDetails} = getState();
+        let { setup: { allowTracking, databaseDetails, userDetails} } = getState();
 
         try {
             let response = await SetupApi.create({

@@ -11,7 +11,7 @@
     transition: margin-right 0.35s;
  }
 
-.QueryBuilder--showDataReference {
+.QueryBuilder--showSideDrawer {
     margin-right: 300px;
 }
 
@@ -535,7 +535,7 @@
 
 /* DATA REFERENCE */
 
-.DataReference {
+.SideDrawer {
     z-index: -1;
     position: absolute;
     top: 0;
@@ -544,6 +544,10 @@
     height: 100%;
     background-color: #F9FBFC;
     overflow: hidden;
+}
+
+.SideDrawer--show {
+    z-index: 0;
 }
 
 .DataReference-container {
@@ -772,4 +776,24 @@
   background-color: #F9FBFC;
   border: 1px solid #D5DBE3;
   border-radius: 4px;
+}
+
+.ParameterValuePickerNoPopover input {
+    font-size: 16px;
+    color: var(--default-font-color);
+    border: none;
+}
+
+.ParameterValuePickerNoPopover--selected input {
+    font-weight: bold;
+    color: var(--brand-color);
+}
+
+.ParameterValuePickerNoPopover input:focus {
+    outline: none;
+    color: var(--default-font-color);
+}
+
+.ParameterValuePickerNoPopover input::-webkit-input-placeholder {
+    color: var(--grey-4);
 }

@@ -70,7 +70,7 @@ export default class DataReference extends Component {
         if (this.state.stack.length > 0) {
             backButton = (
                 <a className="flex align-center mb2 text-default text-brand-hover no-decoration" onClick={this.back}>
-                    <Icon name="chevronleft" width="18px" height="18px" />
+                    <Icon name="chevronleft" size={18} />
                     <span className="text-uppercase">Back</span>
                 </a>
             )
@@ -78,7 +78,7 @@ export default class DataReference extends Component {
 
         var closeButton = (
             <a className="flex-align-right text-default text-brand-hover no-decoration" onClick={this.close}>
-                <Icon name="close" width="18px" height="18px" />
+                <Icon name="close" size={18} />
             </a>
         );
 

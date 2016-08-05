@@ -1,15 +1,20 @@
 import React, { Component, PropTypes } from "react";
+import { connect } from "react-redux";
+import { push } from "react-router-redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 import MetricForm from "./MetricForm.jsx";
 
 import { metricEditSelectors } from "../selectors";
-import * as actions from "../actions";
+import * as actions from "../metadata";
 
-import { connect } from "react-redux";
+const mapDispatchToProps = {
+    ...actions,
+    onChangeLocation: push
+};
 
-@connect(metricEditSelectors, actions)
+@connect(metricEditSelectors, mapDispatchToProps)
 export default class MetricApp extends Component {
     async componentWillMount() {
         const { params, location } = this.props;
@@ -38,7 +43,7 @@ export default class MetricApp extends Component {
             MetabaseAnalytics.trackEvent("Data Model", "Metric Created");
         }
 
-        this.onLocationChange("/admin/datamodel/database/" + tableMetadata.db_id + "/table/" + tableMetadata.id);
+        this.props.onChangeLocation("/admin/datamodel/database/" + tableMetadata.db_id + "/table/" + tableMetadata.id);
     }
 
     render() {
@@ -50,13 +55,5 @@ export default class MetricApp extends Component {
                 />
             </div>
         );
-    }
-
-    // HACK: figure out a better way to do this that works with both redux-router and Angular's router
-    onLocationChange(path) {
-        const el = angular.element(document.querySelector("body"));
-        el.scope().$apply(function() {
-            el.injector().get("$location").path(path);
-        });
     }
 }

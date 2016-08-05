@@ -10,7 +10,7 @@ export function isQueryable(table) {
     return table.visibility_type == null;
 }
 
-export async function loadTable(tableId) {
+export async function loadTableAndForeignKeys(tableId) {
     let [table, foreignKeys] = await Promise.all([
         Metabase.table_query_metadata({ tableId }),
         Metabase.table_fks({ tableId })

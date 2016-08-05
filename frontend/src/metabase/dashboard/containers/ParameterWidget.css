@@ -1,0 +1,112 @@
+:local(.container) {
+    composes: flex align-center mr3 from "style";
+    transition: opacity 500ms linear;
+}
+
+:local(.container.deemphasized) {
+    opacity: 0.4;
+}
+:local(.container.deemphasized:hover) {
+    opacity: 1;
+}
+
+:local(.parameter) {
+    font-size: 16px;
+    border: 2px solid var(--border-color);
+    border-radius: 4px;
+    min-height: 36px;
+    min-width: 200px;
+    background-color: white;
+    display: flex;
+    align-items: center;
+    padding: 0.25em 0.5em 0.25em 0.5em;
+    color: var(--grey-4);
+}
+
+:local(.fullscreen) {
+    margin-right: 0;
+    margin-left: 0;
+}
+
+:local(.fullscreen .name) {
+    font-size: 14px;
+}
+:local(.fullscreen .parameter) {
+    min-width: 0;
+    min-height: 0;
+    background-color: transparent;
+    font-size: 14px;
+}
+
+:local(.parameter.selected) {
+    font-weight: bold;
+    color: var(--brand-color);
+    border-color: var(--brand-color);
+}
+
+:local(.parameter.noPopover) {
+    padding: 0 0.5em 0 0.5em;
+}
+
+:local(.parameter.noPopover) input {
+    font-size: 16px;
+    color: var(--default-font-color);
+    border: none;
+}
+:local(.parameter.noPopover.selected) input {
+    font-weight: bold;
+    color: var(--brand-color);
+}
+
+:local(.parameter.noPopover) input:focus {
+    outline: none;
+    color: var(--default-font-color);
+}
+:local(.parameter.noPopover) input::-webkit-input-placeholder {
+    color: var(--grey-4);
+}
+
+:local(.input) {
+    composes: parameter;
+    composes: mb1 from "style";
+    color: var(--grey-4);
+}
+
+:local(.nameInput:focus),
+:local(.input:focus) {
+    outline: none;
+}
+
+:local(.name) {
+    composes: mr1 from "style";
+    font-size: 16px;
+    font-weight: bold;
+    color: var(--grey-4);
+}
+
+:local(.nameInput) {
+    composes: parameter;
+    composes: mr1 from "style";
+    font-size: 16px;
+    font-weight: bold;
+    color: var(--grey-4);
+}
+
+:local(.parameterButtons) {
+    display: flex;
+    justify-content: space-around;
+    font-size: smaller;
+}
+
+:local(.editButton),
+:local(.removeButton) {
+    composes: flex align-center cursor-pointer from "style";
+}
+
+:local(.editButton:hover) {
+    color: var(--brand-color);
+}
+
+:local(.removeButton:hover) {
+    color: var(--warning-color);
+}

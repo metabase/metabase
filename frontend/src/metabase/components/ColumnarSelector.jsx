@@ -26,7 +26,7 @@ export default class ColumnarSelector extends Component {
                             'flex': true,
                             'no-decoration': true
                         });
-                        var checkIcon = lastColumn ? <Icon name="check" width="14" height="14"/> : null;
+                        var checkIcon = lastColumn ? <Icon name="check" size={14}/> : null;
                         var descriptionElement;
                         var description = column.itemDescriptionFn && column.itemDescriptionFn(item);
                         if (description) {

@@ -1,234 +1,585 @@
-
-import { normal, harmony } from 'metabase/lib/colors'
-
 import _  from "underscore";
+import crossfilter from "crossfilter";
 
-const DEFAULT_COLOR_HARMONY = Object.values(normal);
-const DEFAULT_COLOR = DEFAULT_COLOR_HARMONY[0];
+import {
+    getChartTypeFromData,
+    DIMENSION_DIMENSION_METRIC,
+    DIMENSION_METRIC,
+    DIMENSION_METRIC_METRIC
+} from "metabase/visualizations/lib/utils";
 
-const EXPANDED_COLOR_HARMONY = harmony;
+import { isNumeric, isDate, isMetric, isDimension, isLatLon, hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
+import Query from "metabase/lib/query";
 
-/* *** visualization settings ***
- *
- * This object defines default settings for card visualizations (i.e. charts, maps, etc).
- * Each visualization type can be associated with zero or more top-level settings groups defined in this object
- * (i.e. line charts may use 'chart', 'xAxis', 'yAxis', 'line'), depending on the settings that are appropriate
- * for the particular visualization type (the associations are defined below in groupsForVisualizations).
- *
- * Before a card renders, the default settings from the appropriate groups are first copied from this object,
- * creating an in-memory default settings object for that rendering.
- * Then, a settings object stored in the card's record in the database is read and any attributes defined there
- * are applied to that in-memory default settings object (using _.defaults()).
- * The resulting in-memory settings object is made available to the card renderer at the time
- * visualization is rendered.
- *
- * The settings object stored in the DB is 'sparse': only settings that differ from the defaults
- * (at the time the settings were set) are recorded in the DB. This allows us to easily change the appearance of
- * visualizations globally, except in cases where the user has explicitly changed the default setting.
- *
- * Some settings accept aribtrary numbers or text (i.e. titles) and some settings accept only certain values
- * (i.e. *_enabled settings must be one of true or false). However, this object does not define the constraints.
- * Instead, the controller that presents the UI to change the settings is currently responsible for enforcing the
- * appropriate contraints for each setting.
- *
- * Search for '*** visualization settings ***' in card.controllers.js to find the objects that contain
- * choices for the settings that require them.
- * Additional constraints are enforced by the input elements in the views for each settings group
- * (see app/card/partials/settings/*.html).
- *
- */
-var settings = {
-    'global': {
-        'title': null
-    },
-    'columns': {
-        'dataset_column_titles': [] //allows the user to define custom titles for each column in the resulting dataset. Each item in this array corresponds to a column in the dataset's data.columns array.
-    },
-    'chart': {
-        'plotBackgroundColor': '#FFFFFF',
-        'borderColor': '#528ec5',
-        'zoomType': 'x',
-        'panning': true,
-        'panKey': 'shift',
-        'export_menu_enabled': false,
-        'legend_enabled': false
-    },
-    'xAxis': {
-        'title_enabled': true,
-        'title_text': null,
-        'title_text_default_READONLY': 'Values', //copied into title_text when re-enabling title from disabled state; user will be expected to change title_text
-        'title_color': "#707070",
-        'title_font_size': 12, //in pixels
-        'min': null,
-        'max': null,
-        'gridLine_enabled': false,
-        'gridLineColor': '#999999',
-        'gridLineWidth': 0,
-        'gridLineWidth_default_READONLY': 1, //copied into gridLineWidth when re-enabling grid lines from disabled state
-        'tickInterval': null,
-        'labels_enabled': true,
-        'labels_step': null,
-        'labels_staggerLines': null,
-        'axis_enabled': true
-    },
-    'yAxis': {
-        'title_enabled': true,
-        'title_text': null,
-        'title_text_default_READONLY': 'Values', //copied into title_text when re-enabling title from disabled state; user will be expected to change title_text
-        'title_color': "#707070",
-        'title_font_size': 12, //in pixels
-        'min': null,
-        'max': null,
-        'gridLine_enabled': true,
-        'gridLineColor': '#999999',
-        'gridLineWidth': 1,
-        'gridLineWidth_default_READONLY': 1, //copied into gridLineWidth when re-enabling grid lines from disabled state
-        'tickInterval': null,
-        'labels_enabled': true,
-        'labels_step': null,
-        'axis_enabled': true
-    },
-    'line': {
-        'lineColor': DEFAULT_COLOR,
-        'colors': DEFAULT_COLOR_HARMONY,
-        'lineWidth': 2,
-        'step': false,
-        'marker_enabled': true,
-        'marker_fillColor': '#528ec5',
-        'marker_lineColor': '#FFFFFF',
-        'marker_radius': 2,
-        'xAxis_column': null,
-        'yAxis_columns': []
-    },
-    'area': {
-        'fillColor': DEFAULT_COLOR,
-        'fillOpacity': 0.75
-    },
-    'pie': {
-        'legend_enabled': true,
-        'dataLabels_enabled': false,
-        'dataLabels_color': '#777',
-        'connectorColor': '#999',
-        'colors': EXPANDED_COLOR_HARMONY
-    },
-    'bar': {
-        'colors': DEFAULT_COLOR_HARMONY,
-        'color': DEFAULT_COLOR
-    },
-    'map': {
-        'latitude_source_table_field_id': null,
-        'longitude_source_table_field_id': null,
-        'latitude_dataset_col_index': null,
-        'longitude_dataset_col_index': null,
-        'zoom': 7,
-        'center_latitude': null,
-        'center_longitude': null
+import { getCardColors, getFriendlyName } from "metabase/visualizations/lib/utils";
+
+import ChartSettingInput from "metabase/visualizations/components/settings/ChartSettingInput.jsx";
+import ChartSettingInputNumeric from "metabase/visualizations/components/settings/ChartSettingInputNumeric.jsx";
+import ChartSettingSelect from "metabase/visualizations/components/settings/ChartSettingSelect.jsx";
+import ChartSettingToggle from "metabase/visualizations/components/settings/ChartSettingToggle.jsx";
+import ChartSettingFieldsPicker from "metabase/visualizations/components/settings/ChartSettingFieldsPicker.jsx";
+import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker.jsx";
+import ChartSettingOrderedFields from "metabase/visualizations/components/settings/ChartSettingOrderedFields.jsx";
+
+function columnsAreValid(colNames, data, filter = () => true) {
+    if (typeof colNames === "string") {
+        colNames = [colNames]
     }
-};
-
-var groupsForVisualizations = {
-    'scalar': ['global'],
-    'table': ['global', 'columns'],
-    'pie': ['global', 'chart', 'pie'],
-    'bar': ['global', 'columns', 'chart', 'xAxis', 'yAxis', 'bar'],
-    'line': ['global', 'columns', 'chart', 'xAxis', 'yAxis', 'line'],
-    'area': ['global', 'columns', 'chart', 'xAxis', 'yAxis', 'line', 'area'],
-    'country': ['global', 'columns', 'chart', 'map'],
-    'state': ['global', 'columns', 'chart', 'map'],
-    'pin_map': ['global', 'columns', 'chart', 'map']
-};
-
-export function getDefaultColor() {
-    return DEFAULT_COLOR;
+    if (!data || !Array.isArray(colNames)) {
+        return false;
+    }
+    const colsByName = {};
+    for (const col of data.cols) {
+        colsByName[col.name] = col;
+    }
+    return colNames.reduce((acc, name) =>
+        acc && (name == undefined || (colsByName[name] && filter(colsByName[name])))
+    , true);
 }
 
-export function getDefaultColorHarmony() {
-    return DEFAULT_COLOR_HARMONY;
+function getSeriesTitles([{ data: { rows, cols } }], vizSettings) {
+    const seriesDimension = vizSettings["graph.dimensions"][1];
+    if (seriesDimension != null) {
+        let seriesIndex = _.findIndex(cols, (col) => col.name === seriesDimension);
+        return crossfilter(rows).dimension(d => d[seriesIndex]).group().all().map(v => v.key);
+    } else {
+        return vizSettings["graph.metrics"].map(name => {
+            let col = _.findWhere(cols, { name });
+            return col && getFriendlyName(col);
+        });
+    }
 }
 
-function getSettingsForGroup(dbSettings, groupName) {
-    if (typeof dbSettings != "object") {
-        dbSettings = {};
+function getDefaultDimensionsAndMetrics([{ data: { cols, rows } }]) {
+    let type = getChartTypeFromData(cols, rows, false);
+    switch (type) {
+        case DIMENSION_DIMENSION_METRIC:
+            let dimensions = [cols[0], cols[1]];
+            if (isDate(dimensions[1]) && !isDate(dimensions[0])) {
+                // if the series dimension is a date but the axis dimension is not then swap them
+                dimensions.reverse();
+            } else if (dimensions[1].cardinality > dimensions[0].cardinality) {
+                // if the series dimension is higher cardinality than the axis dimension then swap them
+                dimensions.reverse();
+            }
+            return {
+                dimensions: dimensions.map(col => col.name),
+                metrics: [cols[2].name]
+            };
+        case DIMENSION_METRIC:
+            return {
+                dimensions: [cols[0].name],
+                metrics: [cols[1].name]
+            };
+        case DIMENSION_METRIC_METRIC:
+            return {
+                dimensions: [cols[0].name],
+                metrics: cols.slice(1).map(col => col.name)
+            };
+        default:
+            return {
+                dimensions: [null],
+                metrics: [null]
+            };
     }
-
-    if (typeof settings[groupName] == "undefined") {
-        return dbSettings;
-    }
-
-    if (typeof dbSettings[groupName] == "undefined") {
-        dbSettings[groupName] = {};
-    }
-    //make a deep copy of default settings, otherwise default settings that are objects
-    //will not be recognized as 'dirty' after changing the value in the UI, because
-    //_.defaults make a shallow copy, so objects / arrays are copied by reference,
-    //so changing the settings in the UI would change the default settings.
-    var newSettings = _.defaults(dbSettings[groupName], angular.copy(settings[groupName]));
-
-    return newSettings;
 }
 
-function getSettingsForGroups(dbSettings, groups) {
-    var newSettings = {};
-    for (var i = 0; i < groups.length; i++) {
-        var groupName = groups[i];
-        newSettings[groupName] = getSettingsForGroup(dbSettings, groupName);
+function getDefaultDimensionAndMetric([{ data: { cols, rows } }]) {
+    const type = getChartTypeFromData(cols, rows, false);
+    if (type === DIMENSION_METRIC) {
+        return {
+            dimension: cols[0].name,
+            metric: cols[1].name
+        };
+    } else {
+        return {
+            dimension: null,
+            metric: null
+        };
     }
-    return newSettings;
 }
 
-function getSettingsGroupsForVisualization(visualization) {
-    var groups = ['global'];
-    if (typeof groupsForVisualizations[visualization] != "undefined") {
-        groups = groupsForVisualizations[visualization];
-    }
-    return groups;
+function getOptionFromColumn(col) {
+    return {
+        name: getFriendlyName(col),
+        value: col.name
+    };
 }
 
-export function getSettingsForVisualization(dbSettings, visualization) {
-    var settings = angular.copy(dbSettings);
-    var groups = _.union(_.keys(settings), getSettingsGroupsForVisualization(visualization));
-    return getSettingsForGroups(settings, groups);
-}
+// const CURRENCIES = ["afn", "ars", "awg", "aud", "azn", "bsd", "bbd", "byr", "bzd", "bmd", "bob", "bam", "bwp", "bgn", "brl", "bnd", "khr", "cad", "kyd", "clp", "cny", "cop", "crc", "hrk", "cup", "czk", "dkk", "dop", "xcd", "egp", "svc", "eek", "eur", "fkp", "fjd", "ghc", "gip", "gtq", "ggp", "gyd", "hnl", "hkd", "huf", "isk", "inr", "idr", "irr", "imp", "ils", "jmd", "jpy", "jep", "kes", "kzt", "kpw", "krw", "kgs", "lak", "lvl", "lbp", "lrd", "ltl", "mkd", "myr", "mur", "mxn", "mnt", "mzn", "nad", "npr", "ang", "nzd", "nio", "ngn", "nok", "omr", "pkr", "pab", "pyg", "pen", "php", "pln", "qar", "ron", "rub", "shp", "sar", "rsd", "scr", "sgd", "sbd", "sos", "zar", "lkr", "sek", "chf", "srd", "syp", "tzs", "twd", "thb", "ttd", "try", "trl", "tvd", "ugx", "uah", "gbp", "usd", "uyu", "uzs", "vef", "vnd", "yer", "zwd"];
 
-function getColAndIndexByType(columnDefs, type) {
-    for (let index=0; index < columnDefs.length; index++) {
-        let column = columnDefs[index];
-        if (column.special_type && column.special_type === type) {
-            return {column, index}
+const SETTINGS = {
+    "graph.dimensions": {
+        section: "Data",
+        title: "X-axis",
+        widget: ChartSettingFieldsPicker,
+        isValid: ([{ card, data }], vizSettings) =>
+            columnsAreValid(card.visualization_settings["graph.dimensions"], data, isDimension) &&
+            columnsAreValid(card.visualization_settings["graph.metrics"], data, isMetric),
+        getDefault: (series, vizSettings) =>
+            getDefaultDimensionsAndMetrics(series).dimensions,
+        getProps: ([{ card, data }], vizSettings) => {
+            const value = vizSettings["graph.dimensions"];
+            const options = data.cols.filter(isDimension).map(getOptionFromColumn);
+            return {
+                options,
+                addAnother: (options.length > value.length && value.length < 2) ? "Add a series breakout..." : null
+            };
+        },
+        writeDependencies: ["graph.metrics"]
+    },
+    "graph.metrics": {
+        section: "Data",
+        title: "Y-axis",
+        widget: ChartSettingFieldsPicker,
+        isValid: ([{ card, data }], vizSettings) =>
+            columnsAreValid(card.visualization_settings["graph.dimensions"], data, isDimension) &&
+            columnsAreValid(card.visualization_settings["graph.metrics"], data, isMetric),
+        getDefault: (series, vizSettings) =>
+            getDefaultDimensionsAndMetrics(series).metrics,
+        getProps: ([{ card, data }], vizSettings) => {
+            const value = vizSettings["graph.dimensions"];
+            const options = data.cols.filter(isMetric).map(getOptionFromColumn);
+            return {
+                options,
+                addAnother: options.length > value.length ? "Add another series..." : null
+            };
+        },
+        writeDependencies: ["graph.dimensions"]
+    },
+    "line.interpolate": {
+        section: "Display",
+        title: "Style",
+        widget: ChartSettingSelect,
+        props: {
+            options: [
+                { name: "Line", value: "linear" },
+                { name: "Curve", value: "cardinal" },
+                { name: "Step", value: "step-after" },
+            ]
+        },
+        getDefault: () => "linear"
+    },
+    "line.marker_enabled": {
+        section: "Display",
+        title: "Show point markers on lines",
+        widget: ChartSettingToggle
+    },
+    "stackable.stacked": {
+        section: "Display",
+        title: "Stacked",
+        widget: ChartSettingToggle,
+        readDependencies: ["graph.metrics"],
+        getDefault: ([{ card, data }], vizSettings) => (
+            // area charts should usually be stacked
+            card.display === "area" ||
+            // legacy default for D-M-M+ charts
+            (card.display === "area" && vizSettings["graph.metrics"].length > 1)
+        )
+    },
+    "graph.colors": {
+        section: "Display",
+        widget: ChartSettingColorsPicker,
+        readDependencies: ["graph.dimensions", "graph.metrics"],
+        getDefault: ([{ card, data }], vizSettings) => {
+            return getCardColors(card);
+        },
+        getProps: (series, vizSettings) => {
+            return { seriesTitles: getSeriesTitles(series, vizSettings) };
         }
+    },
+    "graph.x_axis.axis_enabled": {
+        section: "Axes",
+        title: "Show x-axis line and marks",
+        widget: ChartSettingToggle,
+        default: true
+    },
+    "graph.y_axis.axis_enabled": {
+        section: "Axes",
+        title: "Show y-axis line and marks",
+        widget: ChartSettingToggle,
+        default: true
+    },
+    "graph.y_axis.auto_range": {
+        section: "Axes",
+        title: "Auto y-axis range",
+        widget: ChartSettingToggle,
+        default: true
+    },
+    "graph.y_axis.min": {
+        section: "Axes",
+        title: "Min",
+        widget: ChartSettingInputNumeric,
+        default: 0,
+        getHidden: (series, vizSettings) => vizSettings["graph.y_axis.auto_range"] !== false
+    },
+    "graph.y_axis.max": {
+        section: "Axes",
+        title: "Max",
+        widget: ChartSettingInputNumeric,
+        default: 100,
+        getHidden: (series, vizSettings) => vizSettings["graph.y_axis.auto_range"] !== false
+    },
+/*
+    "graph.y_axis_right.auto_range": {
+        section: "Axes",
+        title: "Auto right-hand y-axis range",
+        widget: ChartSettingToggle,
+        default: true
+    },
+    "graph.y_axis_right.min": {
+        section: "Axes",
+        title: "Min",
+        widget: ChartSettingInputNumeric,
+        default: 0,
+        getHidden: (series, vizSettings) => vizSettings["graph.y_axis_right.auto_range"] !== false
+    },
+    "graph.y_axis_right.max": {
+        section: "Axes",
+        title: "Max",
+        widget: ChartSettingInputNumeric,
+        default: 100,
+        getHidden: (series, vizSettings) => vizSettings["graph.y_axis_right.auto_range"] !== false
+    },
+*/
+    "graph.y_axis.auto_split": {
+        section: "Axes",
+        title: "Use a split y-axis when necessary",
+        widget: ChartSettingToggle,
+        default: true
+    },
+    "graph.x_axis.labels_enabled": {
+        section: "Labels",
+        title: "Show label on x-axis",
+        widget: ChartSettingToggle,
+        default: true
+    },
+    "graph.x_axis.title_text": {
+        section: "Labels",
+        title: "X-axis label",
+        widget: ChartSettingInput,
+        getHidden: (series, vizSettings) => vizSettings["graph.x_axis.labels_enabled"] === false
+    },
+    "graph.y_axis.labels_enabled": {
+        section: "Labels",
+        title: "Show label on y-axis",
+        widget: ChartSettingToggle,
+        default: true
+    },
+    "graph.y_axis.title_text": {
+        section: "Labels",
+        title: "Y-axis label",
+        widget: ChartSettingInput,
+        getHidden: (series, vizSettings) => vizSettings["graph.y_axis.labels_enabled"] === false
+    },
+    "pie.dimension": {
+        section: "Data",
+        title: "Dimension",
+        widget: ChartSettingSelect,
+        isValid: ([{ card, data }], vizSettings) =>
+            columnsAreValid(card.visualization_settings["pie.dimension"], data, isDimension),
+        getDefault: (series, vizSettings) =>
+            getDefaultDimensionAndMetric(series).dimension,
+        getProps: ([{ card, data: { cols }}]) => ({
+            options: cols.filter(isDimension).map(getOptionFromColumn)
+        }),
+    },
+    "pie.metric": {
+        section: "Data",
+        title: "Measure",
+        widget: ChartSettingSelect,
+        isValid: ([{ card, data }], vizSettings) =>
+            columnsAreValid(card.visualization_settings["pie.metric"], data, isMetric),
+        getDefault: (series, vizSettings) =>
+            getDefaultDimensionAndMetric(series).metric,
+        getProps: ([{ card, data: { cols }}]) => ({
+            options: cols.filter(isMetric).map(getOptionFromColumn)
+        }),
+    },
+    "pie.show_legend": {
+        section: "Legend",
+        title: "Show legend",
+        widget: ChartSettingToggle
+    },
+    "pie.show_legend_perecent": {
+        section: "Legend",
+        title: "Show percentages in legend",
+        widget: ChartSettingToggle,
+        default: true
+    },
+    "scalar.locale": {
+        title: "Separator style",
+        widget: ChartSettingSelect,
+        props: {
+            options: [
+                { name: "100000.00", value: null },
+                { name: "100,000.00", value: "en" },
+                { name: "100 000,00", value: "fr" },
+                { name: "100.000,00", value: "de" }
+            ]
+        },
+        default: "en"
+    },
+    // "scalar.currency": {
+    //     title: "Currency",
+    //     widget: ChartSettingSelect,
+    //     props: {
+    //         options: [{ name: "None", value: null}].concat(CURRENCIES.map(currency => ({
+    //             name: currency.toUpperCase(),
+    //             value: currency
+    //         })))
+    //     },
+    //     default: null
+    // },
+    "scalar.decimals": {
+        title: "Number of decimal places",
+        widget: ChartSettingInputNumeric
+    },
+    "scalar.prefix": {
+        title: "Add a prefix",
+        widget: ChartSettingInput
+    },
+    "scalar.suffix": {
+        title: "Add a suffix",
+        widget: ChartSettingInput
+    },
+    "scalar.scale": {
+        title: "Multiply by a number",
+        widget: ChartSettingInputNumeric
+    },
+    "table.pivot": {
+        title: "Pivot the table",
+        widget: ChartSettingToggle,
+        getHidden: ([{ card, data }]) => (
+            data && data.cols.length !== 3
+        ),
+        getDefault: ([{ card, data }]) => (
+            (data && data.cols.length === 3) &&
+            Query.isStructured(card.dataset_query) &&
+            !Query.isBareRowsAggregation(card.dataset_query.query)
+        )
+    },
+    "table.columns": {
+        title: "Fields to include",
+        widget: ChartSettingOrderedFields,
+        getHidden: (series, vizSettings) => vizSettings["table.pivot"],
+        isValid: ([{ card, data }]) =>
+            card.visualization_settings["table.columns"] &&
+            columnsAreValid(card.visualization_settings["table.columns"].map(x => x.name), data),
+        getDefault: ([{ data: { cols }}]) => cols.map(col => ({
+            name: col.name,
+            enabled: true
+        })),
+        getProps: ([{ data: { cols }}]) => ({
+            columnNames: cols.reduce((o, col) => ({ ...o, [col.name]: getFriendlyName(col)}), {})
+        })
+    },
+    "map.type": {
+        title: "Map type",
+        widget: ChartSettingSelect,
+        props: {
+            options: [
+                { name: "Pin map", value: "pin" },
+                { name: "Region map", value: "region" }
+            ]
+        },
+        getDefault: ([{ card, data: { cols } }]) => {
+            switch (card.display) {
+                case "state":
+                case "country":
+                    return "region";
+                case "pin_map":
+                    return "pin";
+                default:
+                    if (hasLatitudeAndLongitudeColumns(cols)) {
+                        return "pin";
+                    } else {
+                        return "region";
+                    }
+            }
+        }
+    },
+    "map.latitude_column": {
+        title: "Latitude field",
+        widget: ChartSettingSelect,
+        getDefault: ([{ card, data: { cols }}]) =>
+            (_.findWhere(cols, { special_type: "latitude" }) || {}).name,
+        getProps: ([{ card, data: { cols }}]) => ({
+            options: cols.filter(isNumeric).map(getOptionFromColumn)
+        }),
+        getHidden: (series, vizSettings) => vizSettings["map.type"] !== "pin"
+    },
+    "map.longitude_column": {
+        title: "Longitude field",
+        widget: ChartSettingSelect,
+        getDefault: ([{ card, data: { cols }}]) =>
+            (_.findWhere(cols, { special_type: "longitude" }) || {}).name,
+        getProps: ([{ card, data: { cols }}]) => ({
+            options: cols.filter(isNumeric).map(getOptionFromColumn)
+        }),
+        getHidden: (series, vizSettings) => vizSettings["map.type"] !== "pin"
+    },
+    "map.category_column": {
+        title: "Category field",
+        widget: ChartSettingSelect,
+        getDefault: ([{ card, data: { cols }}]) => {
+            let otherCols = cols.filter(col => !isLatLon(col));
+            return otherCols.length === 1 ? otherCols[0].name : null;
+        },
+        getProps: ([{ card, data: { cols }}]) => ({
+            options: cols.filter(col => !isLatLon(col)).map(getOptionFromColumn)
+        }),
+        getHidden: (series, vizSettings) => vizSettings["map.type"] !== "pin"
+    },
+    "map.region": {
+        title: "Region map",
+        widget: ChartSettingSelect,
+        getDefault: ([{ card, data: { cols }}]) => {
+            switch (card.display) {
+                case "country":
+                    return "world_countries";
+                case "state":
+                default:
+                    return "us_states";
+            }
+        },
+        props: {
+            options: [
+                { name: "United States", value: "us_states" },
+                { name: "World", value: "world_countries" },
+            ]
+        },
+        getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region"
+    },
+    "map.metric": {
+        title: "Metric field",
+        widget: ChartSettingSelect,
+        isValid: ([{ card, data }], vizSettings) =>
+            card.visualization_settings["map.metric"] &&
+            columnsAreValid(card.visualization_settings["map.metric"], data, isMetric),
+        getDefault: (series, vizSettings) =>
+            getDefaultDimensionAndMetric(series).metric,
+        getProps: ([{ card, data: { cols }}]) => ({
+            options: cols.filter(isMetric).map(getOptionFromColumn)
+        }),
+        getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region"
+    },
+    "map.dimension": {
+        title: "Region field",
+        widget: ChartSettingSelect,
+        isValid: ([{ card, data }], vizSettings) =>
+            card.visualization_settings["map.dimension"] &&
+            columnsAreValid(card.visualization_settings["map.dimension"], data, isDimension),
+        getDefault: (series, vizSettings) =>
+            getDefaultDimensionAndMetric(series).dimension,
+        getProps: ([{ card, data: { cols }}]) => ({
+            options: cols.filter(isDimension).map(getOptionFromColumn)
+        }),
+        getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region"
+    },
+    // TODO: translate legacy settings
+    "map.zoom": {
+        default: 2
+    },
+    "map.center_latitude": {
+        // default: 37.7577 //defaults to SF ;-)
+    },
+    "map.center_longitude": {
+        // default: -122.4376
     }
+};
 
-    return {}
+const SETTINGS_PREFIXES_BY_CHART_TYPE = {
+    line: ["graph.", "line."],
+    area: ["graph.", "line.", "stackable."],
+    bar: ["graph.", "stackable."],
+    pie: ["pie."],
+    scalar: ["scalar."],
+    table: ["table."],
+    map: ["map."]
 }
 
-export function setLatitudeAndLongitude(settings, columnDefs) {
-    // latitude
-    let {column: latitudeColumn,
-         index: latitudeColumnIndex} = getColAndIndexByType(columnDefs, "latitude")
-
-    // longitude
-    let {column: longitudeColumn,
-         index: longitudeColumnIndex} = getColAndIndexByType(columnDefs, "longitude")
-
-    if (latitudeColumn && longitudeColumn) {
-        settings.map.latitude_source_table_field_id = latitudeColumn.id;
-        settings.map.latitude_dataset_col_index = latitudeColumnIndex;
-        settings.map.longitude_source_table_field_id = longitudeColumn.id;
-        settings.map.longitude_dataset_col_index = longitudeColumnIndex;
-
-    }
-
-    return settings;
+// alias legacy map types
+for (const type of ["state", "country", "pin_map"]) {
+    SETTINGS_PREFIXES_BY_CHART_TYPE[type] = SETTINGS_PREFIXES_BY_CHART_TYPE["map"];
 }
 
-export function setCategory(settings, columnDefs){
-    let {column: categoryColumn,
-         index: categoryColumnIndex} = getColAndIndexByType(columnDefs, "category")
-
-    if (categoryColumn) {
-        settings.map.category_source_table_field_id = categoryColumn.id;
-        settings.map.category_dataset_col_index = categoryColumnIndex;
+function getSetting(id, vizSettings, series) {
+    if (id in vizSettings) {
+        return;
     }
 
-    return settings;
+    const settingDef = SETTINGS[id];
+    const [{ card }] = series;
+
+    for (let dependentId of settingDef.readDependencies || []) {
+        getSetting(dependentId, vizSettings, series);
+    }
+
+    try {
+        if (settingDef.getValue) {
+            return vizSettings[id] = settingDef.getValue(series, vizSettings);
+        }
+
+        if (card.visualization_settings[id] !== undefined) {
+            if (!settingDef.isValid || settingDef.isValid(series, vizSettings)) {
+                return vizSettings[id] = card.visualization_settings[id];
+            }
+        }
+
+        if (settingDef.getDefault) {
+            return vizSettings[id] = settingDef.getDefault(series, vizSettings);
+        }
+
+        if ("default" in settingDef) {
+            return vizSettings[id] = settingDef.default;
+        }
+    } catch (e) {
+        console.error("Error getting setting", id, e);
+    }
+    return vizSettings[id] = undefined;
+}
+
+function getSettingIdsForSeries(series) {
+    const [{ card }] = series;
+    const prefixes = SETTINGS_PREFIXES_BY_CHART_TYPE[card.display] || [];
+    return Object.keys(SETTINGS).filter(id => _.any(prefixes, (p) => id.startsWith(p)))
+}
+
+export function getSettings(series) {
+    let vizSettings = {};
+    for (let id of getSettingIdsForSeries(series)) {
+        getSetting(id, vizSettings, series);
+    }
+    return vizSettings;
+}
+
+function getSettingWidget(id, vizSettings, series, onChangeSettings) {
+    const settingDef = SETTINGS[id];
+    const value = vizSettings[id];
+    return {
+        ...settingDef,
+        id: id,
+        value: value,
+        hidden: settingDef.getHidden ? settingDef.getHidden(series, vizSettings) : false,
+        disabled: settingDef.getDisabled ? settingDef.getDisabled(series, vizSettings) : false,
+        props: {
+            ...(settingDef.props ? settingDef.props : {}),
+            ...(settingDef.getProps ? settingDef.getProps(series, vizSettings) : {})
+        },
+        onChange: (value) => {
+            const newSettings = { [id]: value };
+            for (const id of (settingDef.writeDependencies || [])) {
+                newSettings[id] = vizSettings[id];
+            }
+            onChangeSettings(newSettings)
+        }
+    };
+}
+
+export function getSettingsWidgets(series, onChangeSettings) {
+    const vizSettings = getSettings(series);
+    return getSettingIdsForSeries(series).map(id =>
+        getSettingWidget(id, vizSettings, series, onChangeSettings)
+    );
 }

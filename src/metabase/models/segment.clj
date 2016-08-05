@@ -51,7 +51,7 @@
 
 ;; ## Persistence Functions
 
-(defn create-segment
+(defn create-segment!
   "Create a new `Segment`.
 
    Returns the newly created `Segment` or throws an Exception."
@@ -70,15 +70,14 @@
     (-> (events/publish-event :segment-create segment)
         (hydrate :creator))))
 
-(defn exists-segment?
-  "Predicate function which checks for a given `Segment` with ID.
-   Returns true if `Segment` exists and is active, false otherwise."
-  [id]
+(defn exists?
+  "Does an *active* `Segment` with ID exist?"
+  ^Boolean [id]
   {:pre [(integer? id)]}
   (db/exists? Segment, :id id, :is_active true))
 
 (defn retrieve-segment
-  "Fetch a single `Segment` by its ID value."
+  "Fetch a single `Segment` by its ID value. Hydrates the Segment's `:creator`."
   [id]
   {:pre [(integer? id)]}
   (-> (Segment id)
@@ -96,11 +95,11 @@
          (db/select Segment, :table_id table-id, :is_active (= :active state), {:order-by [[:name :asc]]}))
        (hydrate :creator))))
 
-(defn update-segment
+(defn update-segment!
   "Update an existing `Segment`.
 
    Returns the updated `Segment` or throws an Exception."
-  [{:keys [id name description definition revision_message]} user-id]
+  [{:keys [id name description caveats points_of_interest definition revision_message]} user-id]
   {:pre [(integer? id)
          (string? name)
          (map? definition)
@@ -108,13 +107,15 @@
          (string? revision_message)]}
   ;; update the segment itself
   (db/update! Segment id
-    :name        name
-    :description description
-    :definition  definition)
+    :name               name
+    :description        description
+    :caveats            caveats
+    :points_of_interest points_of_interest
+    :definition         definition)
   (u/prog1 (retrieve-segment id)
     (events/publish-event :segment-update (assoc <> :actor_id user-id, :revision_message revision_message))))
 
-(defn delete-segment
+(defn delete-segment!
   "Delete a `Segment`.
 
    This does a soft delete and simply marks the `Segment` as deleted but does not actually remove the

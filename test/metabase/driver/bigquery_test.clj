@@ -1,6 +1,7 @@
 (ns metabase.driver.bigquery-test
   (:require metabase.driver.bigquery
             [metabase.models.database :as database]
+            [metabase.query-processor :as qp]
             [metabase.test.data :as data]
             (metabase.test.data [datasets :refer [expect-with-engine]]
                                 [interface :refer [def-database-definition]])))
@@ -60,7 +61,33 @@
   ["birds_50" [{:field-name "name", :base-type :TextField}] [["Rasta"] ["Lucky"]]]
   ["birds_51" [{:field-name "name", :base-type :TextField}] [["Rasta"] ["Lucky"]]])
 
+;; only run this test 1 out of every 5 times since it takes like 5-10 minutes just to sync the DB and we don't have all day
+(when (> (rand) 0.80)
+  (expect-with-engine :bigquery
+    51
+    (data/with-temp-db [db fifty-one-different-tables]
+      (count (database/tables db)))))
+
+
+;; Test native queries
 (expect-with-engine :bigquery
-  51
-  (data/with-temp-db [db fifty-one-different-tables]
-    (count (database/tables db))))
+  [[100]
+   [99]]
+  (get-in (qp/process-query {:native   {:query "SELECT [test_data.venues.id] FROM [test_data.venues] ORDER BY [test_data.venues.id] DESC LIMIT 2;"}
+                             :type     :native
+                             :database (data/id)})
+          [:data :rows]))
+
+
+;; make sure that BigQuery native queries maintain the column ordering specified in the SQL -- post-processing ordering shouldn't apply (Issue #2821)
+(expect-with-engine :bigquery
+  {:columns ["venue_id" "user_id" "checkins_id"]
+   :cols    [{:name "venue_id",    :base_type :IntegerField}
+             {:name "user_id",     :base_type :IntegerField}
+             {:name "checkins_id", :base_type :IntegerField}]}
+  (select-keys (:data (qp/process-query {:native   {:query "SELECT [test_data.checkins.venue_id] AS [venue_id], [test_data.checkins.user_id] AS [user_id], [test_data.checkins.id] AS [checkins_id]
+                                                            FROM [test_data.checkins]
+                                                            LIMIT 2"}
+                                         :type     :native
+                                         :database (data/id)}))
+               [:cols :columns]))

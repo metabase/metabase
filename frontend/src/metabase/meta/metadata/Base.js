@@ -3,6 +3,7 @@
 import memoize from "./memoize";
 
 import { Schema, arrayOf, normalize } from "normalizr";
+import { getIn } from "icepick";
 
 type MetaSchemaClass = { type: string, schema: MetaSchema }
 type MetaSchemaArrayOf = Array<MetaSchemaClass>
@@ -51,21 +52,25 @@ export default class Base {
             return null;
         }
 
-        const object = this._metadata._entityMaps[Klass.type][id];
-        if (object == null) {
-            throw new Error("Entity " + Klass.type + "[" + id + "] not found in loaded metadata.");
-        }
-        return new Klass(object, this._metadata);
+        const object = getIn(this._metadata._entityMaps, [Klass.type, id]);
+        return object && new Klass(object, this._metadata);
     }
 
     // return an array of wrapped entities
     @memoize
-    _entities<T: Base>(Klass: Class<T>, ids: Array<number>): Array<?T> {
+    _entities<T: Base>(Klass: Class<T>, ids: Array<number>): Array<T> {
         if (this !== this._metadata) {
             return this._metadata._entities(...arguments);
         }
 
-        return ids.map(id => this._entity(Klass, id));
+        let entities: Array<T> = [];
+        for (const id of ids) {
+            let entity = this._entity(Klass, id);
+            if (entity != null) {
+                entities.push(entity);
+            }
+        }
+        return entities;
     }
 }
 

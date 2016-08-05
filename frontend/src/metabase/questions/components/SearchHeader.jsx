@@ -8,7 +8,7 @@ import cx from "classnames";
 
 const SearchHeader = ({ searchText, setSearchText }) =>
     <div className={S.searchHeader}>
-        <Icon className={S.searchIcon} name="search" width={18} height={18} />
+        <Icon className={S.searchIcon} name="search" size={18} />
         <input
             className={cx("input", S.searchBox)}
             type="text"

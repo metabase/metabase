@@ -17,18 +17,6 @@
                   :details {}}]
     (merge defaults activity)))
 
-(defn model-exists?
-  "Does the object associated with this `Activity` exist in the DB?"
-  {:hydrate :model_exists, :arglists '([activity])}
-  [{:keys [model model_id]}]
-  (case model
-    "card"      (db/exists? Card,      :id model_id)
-    "dashboard" (db/exists? Dashboard, :id model_id)
-    "metric"    (db/exists? Metric,    :id model_id, :is_active true)
-    "pulse"     (db/exists? Pulse,     :id model_id)
-    "segment"   (db/exists? Segment,   :id model_id, :is_active true)
-                 nil))
-
 (u/strict-extend (class Activity)
   i/IEntity
   (merge i/IEntityDefaults
@@ -40,7 +28,7 @@
 
 ;; ## Persistence Functions
 
-(defn record-activity
+(defn record-activity!
   "Inserts a new `Activity` entry.
 
    Takes the following kwargs:
@@ -53,12 +41,13 @@
      :model          Optional.  name of the model representing the activity.  defaults to (events/topic->model topic)
      :model-id       Optional.  ID of the model representing the activity.  defaults to (events/object->model-id topic object)
 
-   ex: (record-activity
+   ex: (record-activity!
          :topic       :segment-update
          :object      segment
          :database-id 1
          :table-id    13
          :details-fn  #(dissoc % :some-key))"
+  {:style/indent 0}
   [& {:keys [topic object details-fn database-id table-id user-id model model-id]}]
   {:pre [(keyword? topic)]}
   (let [object (or object {})]

@@ -13,11 +13,10 @@
 (def ^:private ^:const event-based-dbs
   #{:druid})
 
-;; this is a function rather than a straight delay because clojure complains when they delay gets embedding in the expanded macros below
 (def ^:private flattened-db-def
-  (let [def (delay (i/flatten-dbdef defs/test-data "checkins"))]
-    (fn []
-      @def)))
+  "The normal test-data DB definition as a flattened, single-table DB definition.
+  (this is a function rather than a straight delay because clojure complains when they delay gets embedding in expanded macros)"
+  (delay (i/flatten-dbdef defs/test-data "checkins")))
 
 ;; force loading of the flattened db definitions for the DBs that need it
 (defn- load-event-based-db-data!
@@ -25,11 +24,17 @@
   []
   (doseq [engine event-based-dbs]
     (datasets/with-engine-when-testing engine
-      (data/do-with-temp-db (flattened-db-def) (constantly nil)))))
+      (data/do-with-temp-db @flattened-db-def (constantly nil)))))
 
-(defmacro ^:private with-flattened-dbdef [& body]
-  `(data/with-temp-db [~'_ (flattened-db-def)]
-     ~@body))
+(defn do-with-flattened-dbdef
+  "Execute F with a flattened version of the test data DB as the current DB def."
+  [f]
+  (data/do-with-temp-db @flattened-db-def (u/drop-first-arg f)))
+
+(defmacro with-flattened-dbdef
+  "Execute BODY using the flattened test data DB definition."
+  [& body]
+  `(do-with-flattened-dbdef (fn [] ~@body)))
 
 (defmacro ^:private expect-with-timeseries-dbs
   {:style/indent 0}
@@ -409,7 +414,7 @@
 ;;; date bucketing - minute-of-hour
 (expect-with-timeseries-dbs
   {:columns ["timestamp" "count"]
-   :rows    [["00" 1000]]}
+   :rows    [[0 1000]]}
   (data (data/run-query checkins
           (ql/aggregation (ql/count))
           (ql/breakout (ql/datetime-field $timestamp :minute-of-hour))
@@ -431,8 +436,8 @@
 ;;; date bucketing - hour-of-day
 (expect-with-timeseries-dbs
   {:columns ["timestamp" "count"]
-   :rows    [["07" 719]
-             ["08" 281]]}
+   :rows    [[7 719]
+             [8 281]]}
   (data (data/run-query checkins
           (ql/aggregation (ql/count))
           (ql/breakout (ql/datetime-field $timestamp :hour-of-day))
@@ -467,11 +472,11 @@
 ;;; date bucketing - day-of-week
 (expect-with-timeseries-dbs
   {:columns ["timestamp" "count"]
-   :rows    [["1" 135]
-             ["2" 143]
-             ["3" 153]
-             ["4" 136]
-             ["5" 139]]}
+   :rows    [[1 135]
+             [2 143]
+             [3 153]
+             [4 136]
+             [5 139]]}
   (data (data/run-query checkins
           (ql/aggregation (ql/count))
           (ql/breakout (ql/datetime-field $timestamp :day-of-week))
@@ -480,11 +485,11 @@
 ;;; date bucketing - day-of-month
 (expect-with-timeseries-dbs
   {:columns ["timestamp" "count"]
-   :rows    [["01" 36]
-             ["02" 36]
-             ["03" 42]
-             ["04" 35]
-             ["05" 43]]}
+   :rows    [[1 36]
+             [2 36]
+             [3 42]
+             [4 35]
+             [5 43]]}
   (data (data/run-query checkins
           (ql/aggregation (ql/count))
           (ql/breakout (ql/datetime-field $timestamp :day-of-month))
@@ -493,11 +498,11 @@
 ;;; date bucketing - day-of-year
 (expect-with-timeseries-dbs
   {:columns ["timestamp" "count"]
-   :rows    [["003" 2]
-             ["004" 6]
-             ["005" 1]
-             ["006" 1]
-             ["007" 2]]}
+   :rows    [[3 2]
+             [4 6]
+             [5 1]
+             [6 1]
+             [7 2]]}
   (data (data/run-query checkins
           (ql/aggregation (ql/count))
           (ql/breakout (ql/datetime-field $timestamp :day-of-year))
@@ -506,11 +511,11 @@
 ;;; date bucketing - week-of-year
 (expect-with-timeseries-dbs
   {:columns ["timestamp" "count"]
-   :rows    [["01" 10]
-             ["02"  7]
-             ["03"  8]
-             ["04" 10]
-             ["05"  4]]}
+   :rows    [[1 10]
+             [2  7]
+             [3  8]
+             [4 10]
+             [5  4]]}
   (data (data/run-query checkins
           (ql/aggregation (ql/count))
           (ql/breakout (ql/datetime-field $timestamp :week-of-year))
@@ -532,11 +537,11 @@
 ;;; date bucketing - month-of-year
 (expect-with-timeseries-dbs
   {:columns ["timestamp" "count"]
-   :rows    [["01" 38]
-             ["02" 70]
-             ["03" 92]
-             ["04" 89]
-             ["05" 111]]}
+   :rows    [[1  38]
+             [2  70]
+             [3  92]
+             [4  89]
+             [5 111]]}
   (data (data/run-query checkins
           (ql/aggregation (ql/count))
           (ql/breakout (ql/datetime-field $timestamp :month-of-year))
@@ -558,10 +563,10 @@
 ;;; date bucketing - quarter-of-year
 (expect-with-timeseries-dbs
   {:columns ["timestamp" "count"]
-   :rows    [["1" 200]
-             ["2" 284]
-             ["3" 278]
-             ["4" 238]]}
+   :rows    [[1 200]
+             [2 284]
+             [3 278]
+             [4 238]]}
   (data (data/run-query checkins
           (ql/aggregation (ql/count))
           (ql/breakout (ql/datetime-field $timestamp :quarter-of-year))
@@ -570,9 +575,9 @@
 ;;; date bucketing - year
 (expect-with-timeseries-dbs
   {:columns ["timestamp" "count"]
-   :rows    [["2013" 235]
-             ["2014" 498]
-             ["2015" 267]]}
+   :rows    [[2013 235]
+             [2014 498]
+             [2015 267]]}
   (data (data/run-query checkins
           (ql/aggregation (ql/count))
           (ql/breakout (ql/datetime-field $timestamp :year))

@@ -1,10 +1,6 @@
-/*global PruneClusterForLeaflet*/
-/*global PruneCluster*/
-
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
-import { getSettingsForVisualization, setLatitudeAndLongitude, setCategory } from "metabase/lib/visualization_settings";
 import { hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 
 import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
@@ -12,9 +8,18 @@ import categoryClusterIcon from "metabase/visualizations/lib/categoryClusterIcon
 
 import _ from "underscore";
 import cx from "classnames";
-import L from "leaflet";
+
+import L from "leaflet/dist/leaflet-src.js";
+import { PruneCluster, PruneClusterForLeaflet } from "imports?L=leaflet/dist/leaflet-src.js!exports?PruneCluster&PruneClusterForLeaflet!prunecluster/dist/PruneCluster.js";
+import "Leaflet.vector-markers";
+
+import "leaflet/dist/leaflet.css";
+import "Leaflet.vector-markers/dist/leaflet-vector-markers.css";
+import "PruneCluster/dist/LeafletStyleSheet.css"
+
 import tinycolor from "tinycolor2";
 import ColorHash from "color-hash";
+
 const ch = new ColorHash();
 
 export default class PinMap extends Component {
@@ -65,6 +70,32 @@ export default class PinMap extends Component {
         return L.VectorMarkers.icon({ markerColor: color });
     }
 
+    getIndexes() {
+        const { settings, series: [{ data: { cols }}] } = this.props;
+        return {
+            latitudeIndex: _.findIndex(cols, (col) => col.name === settings["map.latitude_column"]),
+            longitudeIndex: _.findIndex(cols, (col) => col.name === settings["map.longitude_column"]),
+            categoryIndex: _.findIndex(cols, (col) => col.name === settings["map.category_column"])
+        };
+    }
+
+    getTileUrl = (coord, zoom) => {
+        const [{ card: { dataset_query }, data: { cols }}] = this.props.series;
+
+        const { latitudeIndex, longitudeIndex } = this.getIndexes();
+        const latitudeField = cols[latitudeIndex];
+        const longitudeField = cols[longitudeIndex];
+
+        if (!latitudeField || !longitudeField) {
+            return;
+        }
+
+        return '/api/tiles/' + zoom + '/' + coord.x + '/' + coord.y + '/' +
+            latitudeField.id + '/' + longitudeField.id + '/' +
+            latitudeIndex + '/' + longitudeIndex + '/' +
+            '?query=' + encodeURIComponent(JSON.stringify(dataset_query))
+    }
+
     genPopup(row, cols) {
         let popup = document.createElement("div");
         ReactDOM.render(<ObjectDetailTooltip row={row} cols={cols} />, popup);
@@ -72,26 +103,15 @@ export default class PinMap extends Component {
     }
     componentDidMount() {
         try {
-            let element = ReactDOM.findDOMNode(this.refs.map);
-            let { card, data } = this.props.series[0];
-            let settings = card.visualization_settings;
+            const element = ReactDOM.findDOMNode(this.refs.map);
+            const { settings, series: [{ data }] } = this.props;
 
-            settings = getSettingsForVisualization(settings, "pin_map");
-            settings = setLatitudeAndLongitude(settings, data.cols);
-            settings = setCategory(settings, data.cols);
+            const { latitudeIndex, longitudeIndex, categoryIndex } = this.getIndexes();
 
-            let {
-                center_latitude,
-                center_longitude,
-                latitude_dataset_col_index: latColIndex,
-                longitude_dataset_col_index: lonColIndex,
-                category_dataset_col_index: catColIndex,
-            } = settings.map;
+            let centerLatitude = settings["map.center_latitude"] || average(_.pluck(data.rows, latitudeIndex));
+            let centerLongitude = settings["map.center_longitude"] || average(_.pluck(data.rows, longitudeIndex));
 
-            center_latitude = center_latitude ? center_latitude : average(_.pluck(data.rows, latColIndex));
-            center_longitude = center_longitude ? center_longitude : average(_.pluck(data.rows, lonColIndex));
-
-            let map = L.map(element).setView([center_latitude, center_longitude], settings.map.zoom);
+            let map = L.map(element).setView([centerLatitude, centerLongitude], settings["map.zoom"]);
 
             L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
                 attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a>',
@@ -101,8 +121,8 @@ export default class PinMap extends Component {
             let pruneCluster = new PruneClusterForLeaflet();
 
             let catColorMap;
-            if (catColIndex) {
-                catColorMap = genCatColorMap(_.union(_.pluck(data.rows, catColIndex)));
+            if (categoryIndex) {
+                catColorMap = genCatColorMap(_.union(_.pluck(data.rows, categoryIndex)));
 
                 pruneCluster.BuildLeafletClusterIcon = function(cluster) {
                     L.Icon.MarkerCluster = categoryClusterIcon(catColorMap);
@@ -114,11 +134,13 @@ export default class PinMap extends Component {
                 };
             }
 
-            for (let row of data.rows) {
-                let marker = new PruneCluster.Marker(row[latColIndex], row[lonColIndex]);
+            map.addLayer(pruneCluster);
 
-                if(catColIndex){
-                    let category = _.findWhere(catColorMap, {name: row[catColIndex]})
+            for (let row of data.rows) {
+                let marker = new PruneCluster.Marker(row[latitudeIndex], row[longitudeIndex]);
+
+                if (categoryIndex){
+                    let category = _.findWhere(catColorMap, {name: row[categoryIndex]})
                     marker.data.icon = this.genMarker(category.color);
                     marker.category = category.id;
                 } else {
@@ -128,8 +150,6 @@ export default class PinMap extends Component {
                 marker.data.popup = this.genPopup(row, data.cols);
                 pruneCluster.RegisterMarker(marker);
             }
-
-            map.addLayer(pruneCluster);
 
             map.on('moveend', () => {
                 let center = map.getCenter();

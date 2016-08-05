@@ -75,7 +75,7 @@
 .text-italic { font-style: italic; }
 
 /* larger text size used for descriptions  */
-.text-body {
+.text-body, :local(.text-body) {
   font-size: 1.286em;
   line-height: 1.457em;
   color: var(--body-text-color); /* TODO - is this bad? */
@@ -95,4 +95,14 @@
 
 .text-ellipsis {
     text-overflow: ellipsis;
+}
+
+.text-code {
+    font-family: monospace;
+    color: #8691AC;
+    background-color: #E9F2F5;
+    border-radius: 2px;
+    padding: 0.2em 0.4em;
+    line-height: 1.4em;
+    white-space: pre;
 }

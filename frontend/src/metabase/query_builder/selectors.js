@@ -2,15 +2,20 @@
 import { createSelector } from "reselect";
 import _ from "underscore";
 
+import { getTemplateTags } from "metabase/meta/Card";
+
 import { isCardDirty } from "metabase/lib/card";
 import * as DataGrid from "metabase/lib/data_grid";
 import Query from "metabase/lib/query";
+import { parseFieldTarget } from "metabase/lib/query_time";
 
 
-export const uiControls                = state => state.uiControls;
+export const uiControls                = state => state.qb.uiControls;
 
-export const card                      = state => state.card;
-export const originalCard              = state => state.originalCard;
+export const card                      = state => state.qb.card;
+export const originalCard              = state => state.qb.originalCard;
+export const parameterValues           = state => state.qb.parameterValues;
+
 export const isDirty = createSelector(
 	[card, originalCard],
 	(card, originalCard) => {
@@ -18,27 +23,46 @@ export const isDirty = createSelector(
 	}
 );
 
-export const databases                 = state => state.databases;
-export const tableMetadata             = state => state.tableMetadata;
-export const tableForeignKeys          = state => state.tableForeignKeys;
-export const tableForeignKeyReferences = state => state.tableForeignKeyReferences;
+export const isNew = (state) => state.qb.card && !state.qb.card.id;
+
+export const getDatabaseId = createSelector(
+	[card],
+	(card) => card && card.dataset_query && card.dataset_query.database
+);
+
+export const databases                 = state => state.qb.databases;
+export const tableMetadata             = state => state.qb.tableMetadata;
+export const tableForeignKeys          = state => state.qb.tableForeignKeys;
+export const tableForeignKeyReferences = state => state.qb.tableForeignKeyReferences;
 export const tables = createSelector(
-	[card, databases],
-    (card, databases) => {
-    	const databaseId = card && card.dataset_query && card.dataset_query.database;
-    	if (databaseId && databases && databases.length > 0) {
+	[getDatabaseId, databases],
+    (databaseId, databases) => {
+    	if (databaseId != null && databases && databases.length > 0) {
     		let db = _.findWhere(databases, { id: databaseId });
 	        if (db && db.tables) {
 	            return db.tables;
 	        }
     	}
-        
+
         return [];
     }
 );
 
+export const getSampleDatasetId = createSelector(
+	[databases],
+	(databases) => {
+		const sampleDataset = _.findWhere(databases, { is_sample: true });
+		return sampleDataset && sampleDataset.id;
+	}
+)
+
+export const getDatabaseFields = createSelector(
+	[getDatabaseId, state => state.qb.databaseFields],
+	(databaseId, databaseFields) => databaseFields[databaseId]
+);
+
 export const isObjectDetail = createSelector(
-	[state => state.queryResult],
+	[state => state.qb.queryResult],
 	(queryResult) => {
 		if (!queryResult || !queryResult.json_query) {
 			return false;
@@ -49,7 +73,7 @@ export const isObjectDetail = createSelector(
 
 		let response = false;
 
-	    // NOTE: we specifically use only the query result here because we don't want the state of the 
+	    // NOTE: we specifically use only the query result here because we don't want the state of the
 	    //       visualization being shown (Object Details) to change as the query/card changes.
 
 	    // "rows" type query w/ an '=' filter against the PK column
@@ -79,7 +103,7 @@ export const isObjectDetail = createSelector(
 	                if (Array.isArray(filter) &&
 	                        filter.length === 3 &&
 	                        filter[0] === "=" &&
-	                        filter[1] === pkField &&
+   	                        parseFieldTarget(filter[1]) === pkField &&
 	                        filter[2] !== null) {
 	                    // well, all of our conditions have passed so we have an object detail query here
 	                    response = true;
@@ -93,7 +117,7 @@ export const isObjectDetail = createSelector(
 );
 
 export const queryResult = createSelector(
-	[state => state.queryResult, isObjectDetail],
+	[state => state.qb.queryResult, isObjectDetail],
 	(queryResult, isObjectDetail) => {
 		// if we are display bare rows, filter out columns with visibility_type = details-only
         if (queryResult && queryResult.json_query && !isObjectDetail &&
@@ -105,4 +129,23 @@ export const queryResult = createSelector(
 
         return queryResult;
 	}
+);
+
+export const getImplicitParameters = createSelector(
+	[card, parameterValues],
+	(card, parameterValues) =>
+		getTemplateTags(card)
+			.filter(tag => tag.type != null && tag.type !== "dimension")
+			.map(tag => ({
+				id: tag.id,
+				type: tag.type === "date" ? "date/single" : "category",
+				name: tag.display_name,
+				value: parameterValues[tag.id] != null ? parameterValues[tag.id] : tag.default,
+				default: tag.default
+			}))
+);
+
+export const getParameters = createSelector(
+	[getImplicitParameters],
+	(implicitParameters) => implicitParameters
 );

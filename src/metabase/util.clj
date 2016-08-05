@@ -20,8 +20,8 @@
            javax.xml.bind.DatatypeConverter
            org.joda.time.format.DateTimeFormatter))
 
-;; Set the default width for pprinting to 240 instead of 72. The default width is too narrow and wastes a lot of space for pprinting huge things like expanded queries
-(intern 'clojure.pprint '*print-right-margin* 240)
+;; Set the default width for pprinting to 200 instead of 72. The default width is too narrow and wastes a lot of space for pprinting huge things like expanded queries
+(intern 'clojure.pprint '*print-right-margin* 200)
 
 (declare pprint-to-str)
 
@@ -114,7 +114,7 @@
   (^String [date-format]
    (format-date date-format (System/currentTimeMillis)))
   (^String [date-format date]
-   (time/unparse (->DateTimeFormatter date-format) (coerce/from-long (.getTime (->Timestamp date))))))
+   (time/unparse (->DateTimeFormatter date-format) (coerce/from-sql-time (->Timestamp date)))))
 
 (def ^{:arglists '([] [date])} date->iso-8601
   "Format DATE a an ISO-8601 string."
@@ -273,7 +273,7 @@
       (loop [acc []]
         (if-let [line (.readLine this)]
           (recur (conj acc line))
-          (apply str (interpose "\n" acc))))))
+          (s/join "\n" acc)))))
 
   ;; H2 -- See also http://h2database.com/javadoc/org/h2/jdbc/JdbcClob.html
   org.h2.jdbc.JdbcClob
@@ -307,23 +307,53 @@
       [default args]))
 
 
+(defmacro ignore-exceptions
+  "Simple macro which wraps the given expression in a try/catch block and ignores the exception if caught."
+  {:style/indent 0}
+  [& body]
+  `(try ~@body (catch Throwable ~'_)))
+
+
+;; TODO - rename to `email?`
 (defn is-email?
   "Is STRING a valid email address?"
-  [string]
-  (boolean (when string
+  ^Boolean [^String s]
+  (boolean (when s
              (re-matches #"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
-                         (s/lower-case string)))))
+                         (s/lower-case s)))))
 
+;; TODO - rename to `url?`
 (defn is-url?
-  "Is STRING a valid HTTP/HTTPS URL?"
-  [^String string]
-  (boolean (when string
-             (when-let [^java.net.URL url (try (java.net.URL. string)
-                                               (catch java.net.MalformedURLException _
-                                                 nil))]
-               (when (and (.getProtocol url) (.getAuthority url))
-                 (and (re-matches #"^https?$" (.getProtocol url))           ; these are both automatically downcased
-                      (re-matches #"^.+\..{2,}$" (.getAuthority url)))))))) ; this is the part like 'google.com'. Make sure it contains at least one period and 2+ letter TLD
+  "Is STRING a valid HTTP/HTTPS URL? (This only handles `localhost` and domains like `metabase.com`; URLs containing IP addresses will return `false`.)"
+  ^Boolean [^String s]
+  (boolean (when (seq s)
+             (when-let [^java.net.URL url (ignore-exceptions (java.net.URL. s))]
+               ;; these are both automatically downcased
+               (let [protocol (.getProtocol url)
+                     host     (.getHost url)]
+                 (and protocol
+                      host
+                      (re-matches #"^https?$" protocol)
+                      (or (re-matches #"^.+\..{2,}$" host) ; 2+ letter TLD
+                          (= host "localhost"))))))))
+
+(defn sequence-of-maps?
+  "Is COLL a sequence of maps?"
+  [coll]
+  (and (sequential? coll)
+       (every? map? coll)))
+
+(defn maybe?
+  "True if X is `nil`, or if it satisfies PRED. (PRED is only called if X is non-nil.)
+
+     (string? nil)        -> false
+     (string? \"A\")      -> true
+     (maybe? string? nil) -> true
+     (maybe? string? \"A\") -> true"
+  [pred x]
+  (or (nil? x)
+      (pred x)))
+
 
 (def ^:private ^:const host-up-timeout
   "Timeout (in ms) for checking if a host is available with `host-up?` and `host-port-up?`."
@@ -461,8 +491,8 @@
             filleds      (int (* percent-done meter-width))
             blanks       (- meter-width filleds)]
         (str "["
-             (apply str (repeat filleds "*"))
-             (apply str (repeat blanks "·"))
+             (s/join (repeat filleds "*"))
+             (s/join (repeat blanks "·"))
              (format "] %s  %3.0f%%" (percent-done->emoji percent-done) (* percent-done 100.0)))))))
 
 (defn filtered-stacktrace
@@ -514,12 +544,6 @@
                                                      (last args)
                                                      [(last args)]))))
 
-(defmacro ignore-exceptions
-  "Simple macro which wraps the given expression in a try/catch block and ignores the exception if caught."
-  {:style/indent 0}
-  [& body]
-  `(try ~@body (catch Throwable ~'_)))
-
 (defn deref-with-timeout
   "Call `deref` on a FUTURE and throw an exception if it takes more than TIMEOUT-MS."
   [futur timeout-ms]
@@ -532,26 +556,6 @@
   "Run BODY in a `future` and throw an exception if it fails to complete after TIMEOUT-MS."
   [timeout-ms & body]
   `(deref-with-timeout (future ~@body) ~timeout-ms))
-
-(defmacro cond-as->
-  "Anaphoric version of `cond->`. Binds EXPR to NAME through a series
-   of pairs of TEST and FORM. NAME is successively bound to the value
-   of each FORM whose TEST succeeds.
-
-     (defn maybe-wrap-fn [before after f]
-       (as-> f <>
-         (fn? before) (fn [] (before) (<>))
-         (fn? after)  (fn [] (try (<>)
-                                  (finally (after))))))"
-  {:arglists '([expr nm tst form & more])}
-  [expr nm & clauses]
-  {:pre [(even? (count clauses))]}
-  `(let [~nm ~expr
-         ~@(apply concat (for [[tst form] (partition 2 clauses)]
-                           [nm `(if ~tst
-                                  ~form
-                                  ~nm)]))]
-     ~nm))
 
 (defn round-to-decimals
   "Round (presumabily floating-point) NUMBER to DECIMAL-PLACE. Returns a `Double`.
@@ -602,10 +606,10 @@
    Downcase the name and replace non-alphanumeric characters with underscores."
   ^String [s]
   (when (seq s)
-    (apply str (for [c (s/lower-case (name s))]
-                 (if (contains? slugify-valid-chars c)
-                   c
-                   \_)))))
+    (s/join (for [c (s/lower-case (name s))]
+              (if (contains? slugify-valid-chars c)
+                c
+                \_)))))
 
 (defn do-with-auto-retries
   "Execute F, a function that takes no arguments, and return the results.

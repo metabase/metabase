@@ -1,4 +1,6 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
+import { Link } from "react-router";
 
 import Icon from "metabase/components/Icon.jsx";
 
@@ -30,7 +32,7 @@ export default class SetupMessage extends Component {
                     </div>
                     <div className="mt2">
                         {channels.map(c =>
-                            <a className="Button Button--primary mr1" href={"/admin/settings?section="+c} target={window.OSX ? null : "_blank"}>Configure {c}</a>
+                            <Link to={"/admin/settings/"+c.toLowerCase()} key={c.toLowerCase()} className="Button Button--primary mr1" target={window.OSX ? null : "_blank"}>Configure {c}</Link>
                         )}
                     </div>
                 </div>
@@ -40,7 +42,7 @@ export default class SetupMessage extends Component {
             let adminEmail = Settings.get("admin_email");
             heading = (
                 <span className="flex align-center relative" style={{top: "-10px"}}>
-                    <Icon name="mail" width={20} />
+                    <Icon name="mail" size={20} />
                     <span className="ml1 h5 text-uppercase text-bold">Admin Email</span>
                 </span>
             );

@@ -3,17 +3,24 @@
 import Base from "./Base";
 import Table from "./Table";
 
-import { isDate, isNumeric, isBoolean, isString, isSummable, isCategory, isDimension, isMetric } from "metabase/lib/schema_metadata";
+import { isDate, isNumeric, isBoolean, isString, isSummable, isCategory, isDimension, isMetric, getIconForField } from "metabase/lib/schema_metadata";
 
 export default class Field extends Base {
     static type = "field";
     static schema = {};
 
+    id: number;
+    display_name: string;
     table_id: number;
     fk_target_field_id: number;
+    special_type: string;
 
-    table() {
-        return this._entity(Table, this.table_id);
+    table(): Table {
+        const table = this._entity(Table, this.table_id);
+        if (table == null) {
+            throw new Error("Couldn't get the table for this field");
+        }
+        return table;
     }
 
     target() {
@@ -28,4 +35,13 @@ export default class Field extends Base {
     isCategory()  { return isCategory(this._object); }
     isMetric()    { return isMetric(this._object); }
     isDimension() { return isDimension(this._object); }
+    isID()        { return this.special_type === "id"; }
+
+    values() {
+        return (this._object.values && this._object.values.length > 0 && this._object.values[0].values) || []
+    }
+
+    icon() {
+        return getIconForField(this._object);
+    }
 }

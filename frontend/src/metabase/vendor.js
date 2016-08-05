@@ -2,11 +2,7 @@ import 'babel-polyfill';
 
 // angular:
 import 'angular';
-import 'angular-cookies';
 import 'angular-resource';
-import 'angular-route';
-
-// angular 3rd-party:
 import 'angular-cookie';
 import 'angular-http-auth';
 
@@ -25,3 +21,5 @@ import 'ace/snippets/mysql';
 import 'ace/snippets/pgsql';
 import 'ace/snippets/sqlserver';
 import 'ace/snippets/json';
+
+import 'number-to-locale-string';

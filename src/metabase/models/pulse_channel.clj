@@ -172,6 +172,7 @@
                                     ;; this is here specifically to allow for cases where day doesn't have to match
                                     [:= :schedule_day monthly-schedule-day-or-nil]]]]]})))
 
+
 (defn update-recipients!
   "Update the `PulseChannelRecipients` for PULSE-CHANNEL.
    USER-IDS should be a definitive collection of *all* IDs of users who should receive the pulse.
@@ -194,8 +195,8 @@
         :pulse_channel_id id
         :user_id          [:in recipients-]))))
 
-;; TODO - rename -> `update-pulse-channel!`
-(defn update-pulse-channel
+
+(defn update-pulse-channel!
   "Updates an existing `PulseChannel` along with all related data associated with the channel such as `PulseChannelRecipients`."
   [{:keys [id channel_type enabled details recipients schedule_type schedule_day schedule_hour schedule_frame]
     :or   {details          {}
@@ -222,8 +223,8 @@
     (when (supports-recipients? channel_type)
       (update-recipients! id (or (get recipients-by-type true) [])))))
 
-;; TODO - rename -> `create-pulse-channel!`
-(defn create-pulse-channel
+
+(defn create-pulse-channel!
   "Create a new `PulseChannel` along with all related data associated with the channel such as `PulseChannelRecipients`."
   [{:keys [channel_type details pulse_id recipients schedule_type schedule_day schedule_hour schedule_frame]
     :or   {details          {}

@@ -2,21 +2,23 @@
   "Tests for /api/session"
   (:require [cemerick.friend.credentials :as creds]
             [expectations :refer :all]
+            [metabase.api.session :refer :all]
             [metabase.db :as db]
             [metabase.http-client :refer :all]
             (metabase.models [session :refer [Session]]
                              [user :refer [User]])
+            [metabase.public-settings :as public-settings]
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
             [metabase.util :as u]
-            [metabase.test.util :refer [random-name expect-eval-actual-first]]))
+            [metabase.test.util :refer [random-name resolve-private-fns with-temporary-setting-values with-temp], :as tu]))
 
 ;; ## POST /api/session
 ;; Test that we can login
-(expect-eval-actual-first
-  (db/select-one [Session :id], :user_id (user->id :rasta))
-  (do (db/delete! Session, :user_id (user->id :rasta))             ; delete all other sessions for the bird first
-      (client :post 200 "session" (user->credentials :rasta))))
+(expect
+  ;; delete all other sessions for the bird first, otherwise test doesn't seem to work (TODO - why?)
+  (do (db/delete! Session, :user_id (user->id :rasta))
+      (tu/is-uuid-string? (:id (client :post 200 "session" (user->credentials :rasta))))))
 
 ;; Test for required params
 (expect {:errors {:email "field is a required param."}}
@@ -36,7 +38,7 @@
                                   (assoc :password "something else"))))
 
 ;; Test that people get blocked from attempting to login if they try too many times
-;; (Check that throttling works at the API level -- more tests in metabase.api.common.throttle-test)
+;; (Check that throttling works at the API level -- more tests in the throttle library itself: https://github.com/metabase/throttle)
 (expect
     [{:errors {:email "Too many attempts! You must wait 15 seconds before trying again."}}
      {:errors {:email "Too many attempts! You must wait 15 seconds before trying again."}}]
@@ -51,7 +53,8 @@
 
 ;; ## DELETE /api/session
 ;; Test that we can logout
-(expect-eval-actual-first nil
+(expect
+  nil
   (let [{session_id :id} ((user->client :rasta) :post 200 "session" (user->credentials :rasta))]
     (assert session_id)
     ((user->client :rasta) :delete 204 "session" :session_id session_id)
@@ -61,7 +64,6 @@
 ;; ## POST /api/session/forgot_password
 ;; Test that we can initiate password reset
 (expect
-    true
   (let [reset-fields-set? (fn []
                             (let [{:keys [reset_token reset_triggered]} (db/select-one [User :reset_token :reset_triggered], :id (user->id :rasta))]
                               (boolean (and reset_token reset_triggered))))]
@@ -90,7 +92,7 @@
   (let [user-last-name     (random-name)
         password           {:old "password"
                             :new "whateverUP12!!"}
-        {:keys [email id]} (create-user :password (:old password), :last_name user-last-name, :reset_triggered (System/currentTimeMillis))
+        {:keys [email id]} (create-user! :password (:old password), :last_name user-last-name, :reset_triggered (System/currentTimeMillis))
         token              (u/prog1 (str id "_" (java.util.UUID/randomUUID))
                              (db/update! User id, :reset_token <>))
         creds              {:old {:password (:old password)
@@ -112,18 +114,15 @@
     (db/select-one [User :reset_token :reset_triggered], :id id)))
 
 ;; Check that password reset returns a valid session token
-(let [user-last-name (random-name)]
-  (expect-eval-actual-first
-    (let [id         (db/select-one-id User, :last_name user-last-name)
-          session-id (db/select-one-id Session, :user_id id)]
-      {:success    true
-       :session_id session-id})
-    (let [{:keys [email id]} (create-user :password "password", :last_name user-last-name, :reset_triggered (System/currentTimeMillis))
-          token              (u/prog1 (str id "_" (java.util.UUID/randomUUID))
-                               (db/update! User id, :reset_token <>))]
-      ;; run the password reset
-      (client :post 200 "session/reset_password" {:token    token
-                                                  :password "whateverUP12!!"}))))
+(expect
+  {:success    true
+   :session_id true}
+  (with-temp User [{:keys [id]} {:reset_triggered (System/currentTimeMillis)}]
+    (let [token (u/prog1 (str id "_" (java.util.UUID/randomUUID))
+                  (db/update! User id, :reset_token <>))]
+      (-> (client :post 200 "session/reset_password" {:token    token
+                                                      :password "whateverUP12!!"})
+          (update :session_id tu/is-uuid-string?)))))
 
 ;; Test that token and password are required
 (expect {:errors {:token "field is a required param."}}
@@ -133,37 +132,43 @@
   (client :post 400 "session/reset_password" {:token "anything"}))
 
 ;; Test that malformed token returns 400
-(expect {:errors {:password "Invalid reset token"}}
-  (client :post 400 "session/reset_password" {:token "not-found"
+(expect
+  {:errors {:password "Invalid reset token"}}
+  (client :post 400 "session/reset_password" {:token    "not-found"
                                               :password "whateverUP12!!"}))
 
 ;; Test that invalid token returns 400
-(expect {:errors {:password "Invalid reset token"}}
-  (client :post 400 "session/reset_password" {:token "1_not-found"
+(expect
+  {:errors {:password "Invalid reset token"}}
+  (client :post 400 "session/reset_password" {:token    "1_not-found"
                                               :password "whateverUP12!!"}))
 
 ;; Test that an expired token doesn't work
-(expect {:errors {:password "Invalid reset token"}}
+(expect
+  {:errors {:password "Invalid reset token"}}
   (let [token (str (user->id :rasta) "_" (java.util.UUID/randomUUID))]
     (db/update! User (user->id :rasta), :reset_token token, :reset_triggered 0)
-    (client :post 400 "session/reset_password" {:token token
+    (client :post 400 "session/reset_password" {:token    token
                                                 :password "whateverUP12!!"})))
 
 
 ;;; GET /session/password_reset_token_valid
 
 ;; Check that a valid, unexpired token returns true
-(expect {:valid true}
+(expect
+  {:valid true}
   (let [token (str (user->id :rasta) "_" (java.util.UUID/randomUUID))]
     (db/update! User (user->id :rasta), :reset_token token, :reset_triggered (dec (System/currentTimeMillis)))
     (client :get 200 "session/password_reset_token_valid", :token token)))
 
 ;; Check than an made-up token returns false
-(expect {:valid false}
+(expect
+  {:valid false}
   (client :get 200 "session/password_reset_token_valid", :token "ABCDEFG"))
 
 ;; Check that an expired but valid token returns false
-(expect {:valid false}
+(expect
+  {:valid false}
   (let [token (str (user->id :rasta) "_" (java.util.UUID/randomUUID))]
     (db/update! User (user->id :rasta), :reset_token token, :reset_triggered 0)
     (client :get 200 "session/password_reset_token_valid", :token token)))
@@ -171,5 +176,75 @@
 
 ;; GET /session/properties
 (expect
-  (vec (keys (metabase.models.setting/public-settings)))
-  (vec (keys ((user->client :rasta) :get 200 "session/properties"))))
+  (keys (public-settings/public-settings))
+  (keys ((user->client :rasta) :get 200 "session/properties")))
+
+
+;;; ------------------------------------------------------------ TESTS FOR GOOGLE AUTH STUFF ------------------------------------------------------------
+
+(resolve-private-fns metabase.api.session email->domain email-in-domain? autocreate-user-allowed-for-email? google-auth-create-new-user! google-auth-fetch-or-create-user!)
+
+;;; tests for email->domain
+(expect "metabase.com"   (email->domain "cam@metabase.com"))
+(expect "metabase.co.uk" (email->domain "cam@metabase.co.uk"))
+(expect "metabase.com"   (email->domain "cam.saul+1@metabase.com"))
+
+;;; tests for email-in-domain?
+(expect true  (email-in-domain? "cam@metabase.com"          "metabase.com"))
+(expect false (email-in-domain? "cam.saul+1@metabase.co.uk" "metabase.com"))
+(expect true  (email-in-domain? "cam.saul+1@metabase.com"   "metabase.com"))
+
+;;; tests for autocreate-user-allowed-for-email?
+(expect
+  (with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com"]
+    (autocreate-user-allowed-for-email? "cam@metabase.com")))
+
+(expect
+  false
+  (with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com"]
+    (autocreate-user-allowed-for-email? "cam@expa.com")))
+
+
+;;; tests for google-auth-create-new-user!
+;; shouldn't be allowed to create a new user via Google Auth if their email doesn't match the auto-create accounts domain
+(expect
+  clojure.lang.ExceptionInfo
+  (with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"]
+    (google-auth-create-new-user! "Rasta" "Toucan" "rasta@metabase.com")))
+
+;; should totally work if the email domains match up
+(expect
+  {:first_name "Rasta", :last_name "Toucan", :email "rasta@sf-toucannery.com"}
+  (with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"
+                                  admin-email                             "rasta@toucans.com"]
+    (select-keys (u/prog1 (google-auth-create-new-user! "Rasta" "Toucan" "rasta@sf-toucannery.com")
+                   (db/cascade-delete! User :id (:id <>)))                                          ; make sure we clean up after ourselves !
+                 [:first_name :last_name :email])))
+
+
+;;; tests for google-auth-fetch-or-create-user!
+
+(defn- is-session? [session]
+  (u/ignore-exceptions
+    (tu/is-uuid-string? (:id session))))
+
+;; test that an existing user can log in with Google auth even if the auto-create accounts domain is different from their account
+;; should return a Session
+(expect
+  (with-temp User [user {:email "cam@sf-toucannery.com"}]
+    (with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com"]
+      (is-session? (google-auth-fetch-or-create-user! "Cam" "Saül" "cam@sf-toucannery.com")))))
+
+;; test that a user that doesn't exist with a *different* domain than the auto-create accounts domain gets an exception
+(expect
+  clojure.lang.ExceptionInfo
+  (with-temporary-setting-values [google-auth-auto-create-accounts-domain nil
+                                  admin-email                             "rasta@toucans.com"]
+    (google-auth-fetch-or-create-user! "Rasta" "Can" "rasta@sf-toucannery.com")))
+
+;; test that a user that doesn't exist with the *same* domain as the auto-create accounts domain means a new user gets created
+(expect
+  (with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"
+                                  admin-email                             "rasta@toucans.com"]
+    (u/prog1 (is-session? (google-auth-fetch-or-create-user! "Rasta" "Toucan" "rasta@sf-toucannery.com"))
+      (db/cascade-delete! User :email "rasta@sf-toucannery.com"))))                                       ; clean up after ourselves

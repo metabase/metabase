@@ -1,3 +1,4 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 import cx from "classnames";
 
@@ -28,7 +29,7 @@ export default class UserRoleSelect extends Component {
         const triggerElement = (
             <div className={"flex align-center"}>
                 <span className="mr1">{roleDef.name}</span>
-                <Icon className="text-grey-2" name="chevrondown"  width="10" height="10"/>
+                <Icon className="text-grey-2" name="chevrondown"  size={10}/>
             </div>
         );
 

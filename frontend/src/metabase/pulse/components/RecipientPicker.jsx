@@ -1,3 +1,4 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
@@ -31,8 +32,9 @@ export default class RecipientPicker extends Component {
     static propTypes = {
         recipients: PropTypes.array,
         recipientTypes: PropTypes.array.isRequired,
+        users: PropTypes.array,
+        isNewPulse: PropTypes.bool.isRequired,
         onRecipientsChange: PropTypes.func.isRequired,
-        users: PropTypes.array
     };
 
     static defaultProps = {
@@ -157,7 +159,7 @@ export default class RecipientPicker extends Component {
                     <li key={index} className="mr1 py1 pl1 mt1 rounded bg-grey-1">
                         <span className="h4 text-bold">{recipient.common_name || recipient.email}</span>
                         <a className="text-grey-2 text-grey-4-hover px1" onClick={this.removeRecipient.bind(this, recipient)}>
-                            <Icon name="close" className="" width={12} height={12} />
+                            <Icon name="close" className="" size={12} />
                         </a>
                     </li>
                 )}

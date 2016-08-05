@@ -41,7 +41,10 @@ export default class ActionButton extends Component {
     resetStateOnTimeout() {
         // clear any previously set timeouts then start a new one
         clearTimeout(this.timeout);
-        this.timeout = setTimeout(() => this.replaceState(this.getInitialState()), 5000);
+        this.timeout = setTimeout(() => this.setState({
+            active: false,
+            result: null
+        }), 5000);
     }
 
     onClick(event) {
@@ -62,6 +65,7 @@ export default class ActionButton extends Component {
             }, this.resetStateOnTimeout);
         }, (error) => {
             if (!error.isCanceled) {
+                console.error(error);
                 this.setState({
                     active: false,
                     result: "failed"
@@ -84,7 +88,7 @@ export default class ActionButton extends Component {
                     this.props.activeText
                 : this.state.result === "success" ?
                     <span>
-                        <Icon name='check' width="12px" height="12px" />
+                        <Icon name='check' size={12} />
                         <span className="ml1">{this.props.successText}</span>
                     </span>
                 : this.state.result === "failed" ?

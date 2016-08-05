@@ -1,8 +1,6 @@
 (ns metabase.sync-database.sync-test
   (:require [expectations :refer :all]
             [metabase.db :as db]
-            (metabase.mock [moviedb :as moviedb]
-                           [schema-per-customer :as schema-per-customer])
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [hydrate :as hydrate]
@@ -13,6 +11,8 @@
                                     [sync :refer :all])
             [metabase.test.data :as data]
             [metabase.test.data.interface :as i]
+            (metabase.test.mock [moviedb :as moviedb]
+                                [schema-per-customer :as schema-per-customer])
             [metabase.test.util :as tu]))
 
 (tu/resolve-private-fns metabase.sync-database.sync
@@ -108,6 +108,8 @@
      :name               "First"
      :display_name       "First"
      :description        nil
+     :caveats            nil
+     :points_of_interest nil
      :base_type          :IntegerField
      :visibility_type    :normal
      :special_type       :id
@@ -122,6 +124,8 @@
      :name               "Second"
      :display_name       "Second"
      :description        nil
+     :caveats            nil
+     :points_of_interest nil
      :base_type          :TextField
      :visibility_type    :normal
      :special_type       :category
@@ -136,6 +140,8 @@
      :name               "Third"
      :display_name       "Third"
      :description        nil
+     :caveats            nil
+     :points_of_interest nil
      :base_type          :BooleanField
      :visibility_type    :normal
      :special_type       nil
@@ -151,6 +157,8 @@
      :name               "First"
      :display_name       "First"
      :description        nil
+     :caveats            nil
+     :points_of_interest nil
      :base_type          :DecimalField
      :visibility_type    :normal
      :special_type       :id                  ; existing special types are NOT modified
@@ -165,6 +173,8 @@
      :name               "Second"
      :display_name       "Second"
      :description        nil
+     :caveats            nil
+     :points_of_interest nil
      :base_type          :TextField
      :visibility_type    :normal
      :special_type       :category
@@ -179,6 +189,8 @@
      :name               "Third"
      :display_name       "Third"
      :description        nil
+     :caveats            nil
+     :points_of_interest nil
      :base_type          :BooleanField
      :visibility_type    :normal
      :special_type       nil
@@ -193,6 +205,8 @@
      :name               "rating"
      :display_name       "Rating"
      :description        nil
+     :caveats            nil
+     :points_of_interest nil
      :base_type          :IntegerField
      :visibility_type    :normal
      :special_type       :category             ; should be infered from name
@@ -208,6 +222,8 @@
      :name               "First"
      :display_name       "First"
      :description        nil
+     :caveats            nil
+     :points_of_interest nil
      :base_type          :DecimalField
      :visibility_type    :retired             ; field retired when RawColumn disabled
      :special_type       :id
@@ -222,6 +238,8 @@
      :name               "Second"
      :display_name       "Second"
      :description        nil
+     :caveats            nil
+     :points_of_interest nil
      :base_type          :TextField
      :visibility_type    :normal
      :special_type       :category
@@ -236,6 +254,8 @@
      :name               "Third"
      :display_name       "Third"
      :description        nil
+     :caveats            nil
+     :points_of_interest nil
      :base_type          :BooleanField
      :visibility_type    :normal
      :special_type       :id,                  ; special type can be set if it was nil before
@@ -250,6 +270,8 @@
      :name               "rating"
      :display_name       "Rating"
      :description        nil
+     :caveats            nil
+     :points_of_interest nil
      :base_type          :IntegerField
      :visibility_type    :normal
      :special_type       :category             ; should be infered from name

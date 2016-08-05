@@ -2,7 +2,7 @@ import React, { Component, PropTypes } from "react";
 
 import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
-import AccordianList from "./AccordianList.jsx";
+import AccordianList from "metabase/components/AccordianList.jsx";
 
 import { isQueryable } from 'metabase/lib/table';
 import { titleize, humanize } from 'metabase/lib/formatting';
@@ -138,7 +138,7 @@ export default class DataSelector extends Component {
                 sections={sections}
                 onChange={this.onChangeTable}
                 itemIsSelected={(item) => this.getDatabaseId() === item.database.id}
-                renderItemIcon={() => <Icon className="Icon text-default" name="database" width="18" height="18" />}
+                renderItemIcon={() => <Icon className="Icon text-default" name="database" size={18} />}
                 showItemArrows={false}
             />
         );
@@ -167,8 +167,8 @@ export default class DataSelector extends Component {
                 onChange={this.onChangeSchema}
                 onChangeSection={this.onChangeDatabase}
                 itemIsSelected={(schema) => this.state.selectedSchema === schema}
-                renderSectionIcon={() => <Icon className="Icon text-default" name="database" width="18" height="18" />}
-                renderItemIcon={() => <Icon name="folder" width="16" height="16" />}
+                renderSectionIcon={() => <Icon className="Icon text-default" name="database" size={18} />}
+                renderItemIcon={() => <Icon name="folder" size={16} />}
                 initiallyOpenSection={openSection}
                 showItemArrows={true}
                 alwaysTogglable={true}
@@ -182,7 +182,7 @@ export default class DataSelector extends Component {
         let header = (
             <span className="flex align-center">
                 <span className={cx("flex align-center text-slate", { "cursor-pointer": hasMultipleDatabases })} onClick={hasMultipleDatabases && this.onBack}>
-                    { hasMultipleDatabases && <Icon name="chevronleft" width={18} height={18} /> }
+                    { hasMultipleDatabases && <Icon name="chevronleft" size={18} /> }
                     <span className="ml1">{schema.database.name}</span>
                 </span>
                 { schema.name &&
@@ -222,7 +222,7 @@ export default class DataSelector extends Component {
                     onChange={this.onChangeTable}
                     itemIsSelected={(item) => item.table ? item.table.id === this.getTableId() : false}
                     itemIsClickable={(item) => item.table}
-                    renderItemIcon={(item) => item.table ? <Icon name="table2" width="18" height="18" /> : null}
+                    renderItemIcon={(item) => item.table ? <Icon name="table2" size={18} /> : null}
                 />
             );
         }
@@ -254,7 +254,7 @@ export default class DataSelector extends Component {
         var triggerElement = (
             <span className="px2 py2 text-bold cursor-pointer text-default">
                 {content}
-                <Icon className="ml1" name="chevrondown" width="8px" height="8px"/>
+                <Icon className="ml1" name="chevrondown" size={8}/>
             </span>
         )
 

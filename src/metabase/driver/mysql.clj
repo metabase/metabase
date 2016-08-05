@@ -2,7 +2,7 @@
   (:require (clojure [set :as set]
                      [string :as s])
             [honeysql.core :as hsql]
-            [korma.db :as kdb]
+            [metabase.db.spec :as dbspec]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
             [metabase.util :as u]
@@ -58,7 +58,7 @@
 (defn- connection-details->spec [details]
   (-> details
       (set/rename-keys {:dbname :db})
-      kdb/mysql
+      dbspec/mysql
       (update :subname #(str % connection-args-string (when-not (:ssl details)
                                                         "&useSSL=false"))))) ; newer versions of MySQL will complain if you don't explicitly disable SSL
 

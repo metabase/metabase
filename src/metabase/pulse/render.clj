@@ -1,7 +1,7 @@
 (ns metabase.pulse.render
   (:require [clojure.java.io :as io]
             (clojure [pprint :refer [cl-format]]
-                     [string :refer [upper-case]])
+                     [string :as s])
             [clojure.tools.logging :as log]
             (clj-time [coerce :as c]
                       [core :as t]
@@ -80,9 +80,9 @@
 
      (style {:font-weight 400, :color \"white\"}) -> \"font-weight: 400; color: white;\""
   [& style-maps]
-  (apply str (interpose " " (for [[k v] (into {} style-maps)
-                                  :let  [v (if (keyword? v) (name v) v)]]
-                              (str (name k) ": " v ";")))))
+  (s/join " " (for [[k v] (into {} style-maps)
+                    :let  [v (if (keyword? v) (name v) v)]]
+                (str (name k) ": " v ";"))))
 
 
 (defn- datetime-field?
@@ -109,7 +109,11 @@
     :hour          (f/unparse (f/formatter "h a - MMM YYYY") (c/from-long timestamp))
     :week          (str "Week " (f/unparse (f/formatter "w - YYYY") (c/from-long timestamp)))
     :month         (f/unparse (f/formatter "MMMM YYYY") (c/from-long timestamp))
-    :quarter       (str "Q" (+ 1 (int (/ (t/month (c/from-long timestamp)) 3))) " - " (t/year (c/from-long timestamp)))
+    :quarter       (str "Q"
+                        (inc (int (/ (t/month (c/from-long timestamp))
+                                     3)))
+                        " - "
+                        (t/year (c/from-long timestamp)))
     :year          (str timestamp)
     :hour-of-day   (str timestamp) ; TODO: probably shouldn't even be showing sparkline for x-of-y groupings?
     :day-of-week   (str timestamp)
@@ -127,7 +131,8 @@
     (t/within? (t/interval (t/minus interval-start interval) interval-start)                   date) last-interval-name))
 
 (defn- start-of-this-week    [] (-> (org.joda.time.LocalDate.) .weekOfWeekyear .roundFloorCopy .toDateTimeAtStartOfDay))
-(defn- start-of-this-quarter [] (t/date-midnight (year) (+ 1 (* 3 (Math/floor (/ (dec (month)) 3))))))
+(defn- start-of-this-quarter [] (t/date-midnight (year) (inc (* 3 (Math/floor (/ (dec (month))
+                                                                                 3))))))
 
 (defn- format-timestamp-relative
   "Formats timestamps with relative names (today, yesterday, this *, last *) based on column :unit, if possible, otherwie returns nil"
@@ -223,15 +228,15 @@
     [:table {:style (style {:padding-bottom :8px, :border-bottom (str "4px solid " color-gray-1)})}
      [:thead
       [:tr
-       (for [col-idx col-indexes :let [col (-> cols (nth col-idx))]]
+       (for [col-idx col-indexes :let [col (nth cols col-idx)]]
          [:th {:style (style bar-td-style bar-th-style {:min-width :60px})}
-          (h (upper-case (name (or (:display_name col) (:name col)))))])
+          (h (s/upper-case (name (or (:display_name col) (:name col)))))])
        (when bar-column
          [:th {:style (style bar-td-style bar-th-style {:width "99%"})}])]]
      [:tbody
       (map-indexed (fn [row-idx row]
                      [:tr {:style (style {:color (if (odd? row-idx) color-gray-2 color-gray-3)})}
-                      (for [col-idx col-indexes :let [col (-> cols (nth col-idx))]]
+                      (for [col-idx col-indexes :let [col (nth cols col-idx)]]
                         [:td {:style (style bar-td-style (when (and bar-column (= col-idx 1)) {:font-weight 700}))}
                          (-> row (nth col-idx) (format-cell col) h)])
                       (when bar-column
@@ -319,7 +324,7 @@
   (let [ft-row (if (datetime-field? (first cols))
                  #(.getTime ^Date (u/->Timestamp %))
                  identity)
-        rows   (if (> (ft-row (first (first rows)))
+        rows   (if (> (ft-row (ffirst rows))
                       (ft-row (first (last rows))))
                  (reverse rows)
                  rows)
@@ -397,45 +402,47 @@
       :else                                                        :table)))
 
 (defn render-pulse-card
-  "Render a single CARD for a `Pulse`. DATA is the `:data` from QP results (I think)."
-  [card data]
+  "Render a single CARD for a `Pulse`. RESULT is the QP results."
+  [card {:keys [data error]}]
+  [:a {:href   (card-href card)
+       :target "_blank"
+       :style  (style section-style
+                      {:margin          :16px
+                       :margin-bottom   :16px
+                       :display         :block
+                       :text-decoration :none})}
+   (when *include-title*
+     [:table {:style (style {:margin-bottom :8px
+                             :width         :100%})}
+      [:tbody
+       [:tr
+        [:td [:span {:style header-style}
+              (-> card :name h)]]
+        [:td {:style (style {:text-align :right})}
+         (when *include-buttons*
+           [:img {:style (style {:width :16px})
+                  :width 16
+                  :src   (render-image-with-filename "frontend_client/app/img/external_link.png")}])]]]])
   (try
-    [:a {:href   (card-href card)
-         :target "_blank"
-         :style  (style section-style
-                        {:margin          :16px
-                         :margin-bottom   :16px
-                         :display         :block
-                         :text-decoration :none})}
-     (when *include-title*
-       [:table {:style (style {:margin-bottom :8px
-                               :width         :100%})}
-        [:tbody
-         [:tr
-          [:td [:span {:style header-style}
-                (-> card :name h)]]
-          [:td {:style (style {:text-align :right})}
-           (when *include-buttons*
-             [:img {:style (style {:width :16px})
-                    :width 16
-                    :src   (render-image-with-filename "frontend_client/app/img/external_link.png")}])]]]])
-     (case (detect-pulse-card-type card data)
-       :empty     (render:empty     card data)
-       :scalar    (render:scalar    card data)
-       :sparkline (render:sparkline card data)
-       :bar       (render:bar       card data)
-       :table     (render:table     card data)
-       [:div {:style (style font-style
-                            {:color       "#F9D45C"
-                             :font-weight 700})}
-        "We were unable to display this card." [:br] "Please view this card in Metabase."])]
+    (when error
+      (throw (Exception. (str "Card has errors: " error))))
+    (case (detect-pulse-card-type card data)
+      :empty     (render:empty     card data)
+      :scalar    (render:scalar    card data)
+      :sparkline (render:sparkline card data)
+      :bar       (render:bar       card data)
+      :table     (render:table     card data)
+      [:div {:style (style font-style
+                           {:color       "#F9D45C"
+                            :font-weight 700})}
+       "We were unable to display this card." [:br] "Please view this card in Metabase."])
     (catch Throwable e
       (log/warn "Pulse card render error:" e)
       [:div {:style (style font-style
                            {:color       "#EF8C8C"
                             :font-weight 700
                             :padding     :16px})}
-       "An error occurred while displaying this card."])))
+       "An error occurred while displaying this card."]))])
 
 
 (defn render-pulse-section
@@ -448,10 +455,10 @@
                         :background-color :white
                         :box-shadow       "0 1px 2px rgba(0, 0, 0, .08)"})}
    (binding [*include-title* true]
-     (render-pulse-card card (:data result)))])
+     (render-pulse-card card result))])
 
 (defn render-pulse-card-to-png
   "Render a PULSE-CARD as a PNG. DATA is the `:data` from a QP result (I think...)"
 
-  [pulse-card data]
-  (render-html-to-png (render-pulse-card pulse-card data) card-width))
+  [pulse-card result]
+  (render-html-to-png (render-pulse-card pulse-card result) card-width))

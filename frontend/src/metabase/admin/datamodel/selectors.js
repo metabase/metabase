@@ -1,17 +1,19 @@
 
 import { createSelector } from 'reselect';
+import { computeMetadataStrength } from "metabase/lib/schema_metadata";
 
-const segmentsSelector         = state => state.datamodel.segments;
-const metricsSelector          = state => state.datamodel.metrics;
 
-const tableMetadataSelector    = state => state.datamodel.tableMetadata;
-const previewSummarySelector   = state => state.datamodel.previewSummary;
-const revisionObjectSelector   = state => state.datamodel.revisionObject;
+const segmentsSelector         = (state, props) => state.datamodel.segments;
+const metricsSelector          = (state, props) => state.datamodel.metrics;
 
-const idSelector               = state => state.router.params.id == null ? null : parseInt(state.router.params.id);
-const tableIdSelector          = state => state.router.location.query.table == null ? null : parseInt(state.router.location.query.table);
+const tableMetadataSelector    = (state, props) => state.datamodel.tableMetadata;
+const previewSummarySelector   = (state, props) => state.datamodel.previewSummary;
+const revisionObjectSelector   = (state, props) => state.datamodel.revisionObject;
 
-const userSelector             = state => state.user;
+const idSelector               = (state, props) => props.params.id == null ? null : parseInt(props.params.id);
+const tableIdSelector          = (state, props) => props.location.query.table == null ? null : parseInt(props.location.query.table);
+
+const userSelector             = (state, props) => state.currentUser;
 
 export const segmentEditSelectors = createSelector(
     segmentsSelector,
@@ -68,4 +70,26 @@ export const revisionHistorySelectors = createSelector(
         tableMetadata,
         user
     })
+);
+
+
+export const getDatabases             = (state, props) => state.datamodel.databases;
+export const getDatabaseIdfields      = (state, props) => state.datamodel.idfields;
+export const getEditingTable          = (state, props) => state.datamodel.editingTable;
+
+
+export const getEditingDatabaseWithTableMetadataStrengths = createSelector(
+    state => state.datamodel.editingDatabase,
+    (database) => {
+        if (!database || !database.tables) {
+            return null;
+        }
+
+        database.tables =  database.tables.map((table) => {
+            table.metadataStrength = computeMetadataStrength(table);
+            return table;
+        });
+
+        return database;
+    }
 );

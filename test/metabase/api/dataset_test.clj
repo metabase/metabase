@@ -1,6 +1,7 @@
 (ns metabase.api.dataset-test
   "Unit tests for /api/dataset endpoints."
-  (:require [expectations :refer :all]
+  (:require [clojure.string :as s]
+            [expectations :refer :all]
             [metabase.api.dataset :refer [dataset-query-api-constraints]]
             [metabase.db :as db]
             (metabase.models [card :refer [Card]]
@@ -13,14 +14,14 @@
 
 (defn user-details [user]
   (tu/match-$ user
-              {:email $
-               :date_joined $
-               :first_name $
-               :last_name $
-               :last_login $
-               :is_superuser $
-               :is_qbnewb $
-               :common_name $}))
+    {:email        $
+     :date_joined  $
+     :first_name   $
+     :last_name    $
+     :last_login   $
+     :is_superuser $
+     :is_qbnewb    $
+     :common_name  $}))
 
 (defn remove-ids-and-boolean-timestamps [m]
   (let [f (fn [v]
@@ -53,7 +54,7 @@
   [{:data         {:rows    [[1000]]
                    :columns ["count"]
                    :cols    [{:base_type "IntegerField", :special_type "number", :name "count", :display_name "count", :id nil, :table_id nil,
-                              :description nil, :target nil, :extra_info {}}]
+                              :description nil, :target nil, :extra_info {}, :source "aggregation"}]
                    :native_form true}
     :row_count    1
     :status       "completed"
@@ -91,6 +92,7 @@
     [(format-response result)
      (format-response (QueryExecution :uuid (:uuid result)))]))
 
+
 ;; Even if a query fails we still expect a 200 response from the api
 (expect
   ;; the first result is directly from the api call
@@ -100,7 +102,7 @@
                                :cols    []}
                 :row_count    0
                 :status       "failed"
-                :error        "Syntax error in SQL statement \"FOOBAR[*] \"; expected \"FROM, {\""
+                :error        true
                 :id           true
                 :uuid         true
                 :json_query   {:database    (id)
@@ -117,11 +119,15 @@
                 :version     0
                 :raw_query   ""
                 :result_rows 0))])
-  (let [result ((user->client :rasta) :post 200 "dataset" {:database (id)
-                                                           :type     "native"
-                                                           :native   {:query "foobar"}})]
-    [(format-response result)
-     (format-response (QueryExecution :uuid (:uuid result)))]))
+  ;; Error message's format can differ a bit depending on DB version and the comment we prepend to it, so check that it exists and contains the substring "Syntax error in SQL statement"
+  (let [check-error-message (fn [output]
+                              (update output :error (fn [error-message]
+                                                      (boolean (re-find #"Syntax error in SQL statement" error-message)))))
+        result              ((user->client :rasta) :post 200 "dataset" {:database (id)
+                                                                        :type     "native"
+                                                                        :native   {:query "foobar"}})]
+    [(check-error-message (format-response result))
+     (check-error-message (format-response (QueryExecution :uuid (:uuid result))))]))
 
 
 ;; GET /api/dataset/card/:id
@@ -146,7 +152,7 @@
     :result {:data         {:rows    [[1000]]
                             :columns ["count"]
                             :cols    [{:base_type "IntegerField", :special_type "number", :name "count", :display_name "count", :id nil, :table_id nil,
-                                       :description nil, :target nil, :extra_info {}}]
+                                       :description nil, :target nil, :extra_info {}, :source "aggregation"}]
                             :native_form true}
              :row_count    1
              :status       "completed"

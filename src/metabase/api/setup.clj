@@ -1,5 +1,5 @@
 (ns metabase.api.setup
-  (:require [compojure.core :refer [defroutes GET POST]]
+  (:require [compojure.core :refer [GET POST]]
             (metabase.api [common :refer :all]
                           [database :refer [annotation:DBEngine]])
             (metabase [db :as db]
@@ -10,7 +10,7 @@
             (metabase.models [database :refer [Database]]
                              [session :refer [Session]]
                              [setting :as setting]
-                             [user :refer [User set-user-password]])
+                             [user :refer [User set-user-password!]])
             [metabase.setup :as setup]
             [metabase.util :as u]))
 
@@ -41,11 +41,11 @@
                      :password     (str (java.util.UUID/randomUUID))
                      :is_superuser true)]
     ;; this results in a second db call, but it avoids redundant password code so figure it's worth it
-    (set-user-password (:id new-user) password)
+    (set-user-password! (:id new-user) password)
     ;; set a couple preferences
-    (setting/set :site-name site_name)
-    (setting/set :admin-email email)
-    (setting/set :anon-tracking-enabled (or allow_tracking "true"))
+    (setting/set! :site-name site_name)
+    (setting/set! :admin-email email)
+    (setting/set! :anon-tracking-enabled (or allow_tracking true))
     ;; setup database (if needed)
     (when (driver/is-engine? engine)
       (->> (db/insert! Database
@@ -92,7 +92,7 @@
 ;;; Admin Checklist
 
 (defn- admin-checklist-values []
-  (let [has-dbs?           (db/exists? Database)
+  (let [has-dbs?           (db/exists? Database, :is_sample false)
         has-dashboards?    (db/exists? 'Dashboard)
         has-pulses?        (db/exists? 'Pulse)
         has-labels?        (db/exists? 'Label)
@@ -104,27 +104,27 @@
         num-users          (db/select-one-count 'User)]
     [{:title       "Add a database"
       :group       "Get connected"
-      :description "TODO - Write something good here"
+      :description "Connect to your data so your whole team can start to explore."
       :link        "/admin/databases/create"
       :completed   has-dbs?
       :triggered   :always}
      {:title       "Set up email"
       :group       "Get connected"
       :description "Add email credentials so you can more easily invite team members and get updates via Pulses."
-      :link        "/admin/settings/?section=Email"
+      :link        "/admin/settings/email"
       :completed   (email/email-configured?)
       :triggered   :always}
      {:title       "Set Slack credentials"
       :group       "Get connected"
       :description "Does your team use Slack?  If so, you can send automated updates via pulses and ask questions with Metabot."
-      :link        "/admin/settings/?section=Slack"
+      :link        "/admin/settings/slack"
       :completed   (slack/slack-configured?)
       :triggered   :always}
      {:title       "Invite team members"
       :group       "Get connected"
       :description "Share answers and data with the rest of your team."
       :link        "/admin/people/"
-      :completed   (>= num-users 1)
+      :completed   (> num-users 1)
       :triggered   (or has-dashboards?
                        has-pulses?
                        (>= num-cards 5))}
@@ -138,7 +138,7 @@
       :group       "Curate your data"
       :description "Have a lot of saved questions in Metabase? Create labels to help manage them and add context."
       :link        "/questions/all"
-      :completed   (not has-labels?)
+      :completed   has-labels?
       :triggered   (>= num-cards 30)}
      {:title       "Create metrics"
       :group       "Curate your data"
@@ -151,13 +151,7 @@
       :description "Keep everyone on the same page by creating canonnical sets of filters anyone can use while asking questions."
       :link        "/admin/datamodel/database"
       :completed   has-segments?
-      :triggered   (>= num-cards 30)}
-     {:title       "Create a getting started guide"
-      :group       "Curate your data"
-      :description "Have a lot of data in Metabase? A getting started guide can help your team find their way around."
-      :completed   false                               ; TODO - how do we determine this?
-      :triggered   (and (>= num-cards 10)
-                        (>= num-users 5))}]))
+      :triggered   (>= num-cards 30)}]))
 
 (defn- add-next-step-info
   "Add `is_next_step` key to all the STEPS from `admin-checklist`.

@@ -1,25 +1,18 @@
 import React, { Component, PropTypes } from "react";
 
-import AccordianList from "./AccordianList.jsx";
+import AccordianList from "metabase/components/AccordianList.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import TimeGroupingPopover from "./TimeGroupingPopover.jsx";
 import QueryDefinitionTooltip from "./QueryDefinitionTooltip.jsx";
 
-import { isDate, getFieldType, DATE_TIME, NUMBER, STRING, LOCATION, COORDINATE } from 'metabase/lib/schema_metadata';
+import { isDate, getIconForField } from 'metabase/lib/schema_metadata';
 import { parseFieldBucketing, parseFieldTarget } from "metabase/lib/query_time";
 import { stripId, singularize } from "metabase/lib/formatting";
 
 import _ from "underscore";
 
-const ICON_MAPPING = {
-    [DATE_TIME]:  'calendar',
-    [LOCATION]: 'location',
-    [COORDINATE]: 'location',
-    [STRING]: 'string',
-    [NUMBER]: 'int'
-};
 
 export default class FieldList extends Component {
     constructor(props, context) {
@@ -132,19 +125,19 @@ export default class FieldList extends Component {
         if (item.segment) {
             name = "star-outline";
         } else if (item.field) {
-            name = ICON_MAPPING[getFieldType(item.field)];
+            name = getIconForField(item.field);
         } else if (item.customField) {
             // TODO: need to make this better
             name = 'int';
         }
-        return <Icon name={name || 'unknown'} width={18} height={18} />;
+        return <Icon name={name || 'unknown'} size={18} />;
     }
 
     renderTimeGroupingTrigger(field) {
         return (
             <div className="FieldList-grouping-trigger flex align-center p1 cursor-pointer">
                 <h4 className="mr1">by {parseFieldBucketing(field, "day").split("-").join(" ")}</h4>
-                <Icon name="chevronright" width={16} height={16} />
+                <Icon name="chevronright" size={16} />
             </div>
         );
     }
@@ -170,9 +163,9 @@ export default class FieldList extends Component {
 
     renderSectionIcon(section, sectionIndex) {
         if (sectionIndex > 0) {
-            return <Icon name="connections" width={18} height={18} />
+            return <Icon name="connections" size={18} />
         } else {
-            return <Icon name="table2" width={18} height={18} />;
+            return <Icon name="table2" size={18} />;
         }
     }
 

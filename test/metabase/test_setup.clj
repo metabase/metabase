@@ -79,7 +79,7 @@
     (try
       (log/info "Setting up test DB and running migrations...")
       (db/setup-db :auto-migrate true)
-      (setting/set :site-name "Metabase Test")
+      (setting/set! :site-name "Metabase Test")
       (core/initialization-complete!)
 
       ;; make sure the driver test extensions are loaded before running the tests. :reload them because otherwise we get wacky 'method in protocol not implemented' errors

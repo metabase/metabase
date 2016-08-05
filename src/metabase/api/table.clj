@@ -39,15 +39,17 @@
 
 (defendpoint PUT "/:id"
   "Update `Table` with ID."
-  [id :as {{:keys [display_name entity_type visibility_type description]} :body}]
+  [id :as {{:keys [display_name entity_type visibility_type description caveats points_of_interest]} :body}]
   {display_name    NonEmptyString,
    entity_type     TableEntityType,
    visibility_type TableVisibilityType}
   (write-check Table id)
   (check-500 (db/update-non-nil-keys! Table id
-               :display_name display_name
-               :entity_type  entity_type
-               :description  description))
+               :display_name       display_name
+               :caveats            caveats
+               :points_of_interest points_of_interest
+               :entity_type        entity_type
+               :description        description))
   (check-500 (db/update! Table id, :visibility_type visibility_type))
   (Table id))
 
@@ -77,7 +79,7 @@
                                                   (not= (keyword visibility_type) :sensitive)))))))
 
 (defendpoint GET "/:id/fks"
-  "Get all `ForeignKeys` whose destination is a `Field` that belongs to this `Table`."
+  "Get all foreign keys whose destination is a `Field` that belongs to this `Table`."
   [id]
   (let-404 [table (Table id)]
     (read-check table)

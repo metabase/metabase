@@ -7,7 +7,7 @@
             [metabase.util :as u]
             [metabase.test.util :refer [random-name]]))
 
-(declare fetch-or-create-user)
+(declare fetch-or-create-user!)
 
 ;; ## User definitions
 
@@ -45,7 +45,7 @@
 
 ;; ## Public functions for working with Users
 
-(defn create-user
+(defn create-user!
   "Create a new `User` with random names + password."
   [& {:as kwargs}]
   (let [first-name (random-name)
@@ -61,7 +61,7 @@
     (fetch-user :rasta) -> {:id 100 :first_name \"Rasta\" ...}"
   [username]
   {:pre [(contains? usernames username)]}
-  (m/mapply fetch-or-create-user (user->info username)))
+  (m/mapply fetch-or-create-user! (user->info username)))
 
 (def user->id
   "Memoized fn that returns the ID of User associated with USERNAME.
@@ -96,6 +96,10 @@
         (swap! tokens assoc username <>))
       (throw (Exception. (format "Authentication failed for %s with credentials %s" username (user->credentials username))))))
 
+;; TODO - does it make sense just to make this a non-higher-order function? Or a group of functions, e.g.
+;; (GET :rasta 200 "field/10/values")
+;; vs.
+;; ((user->client :rasta) :get 200 "field/10/values")
 (defn user->client
   "Returns a `metabase.http-client/client` partially bound with the credentials for User with USERNAME.
    In addition, it forces lazy creation of the User if needed.
@@ -118,7 +122,7 @@
 
 ;; ## Implementation
 
-(defn- fetch-or-create-user
+(defn- fetch-or-create-user!
   "Create User if they don't already exist and return User."
   [& {:keys [email first last password superuser active]
       :or {superuser false

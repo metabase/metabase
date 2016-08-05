@@ -140,7 +140,7 @@ export default class QueryVisualizationObjectDetailTable extends Component {
             }
             var chevron = (
                 <IconBorder className="flex-align-right">
-                    <Icon name='chevronright' width="10px" height="10px" />
+                    <Icon name='chevronright' size={10} />
                 </IconBorder>
             );
 
@@ -215,9 +215,9 @@ export default class QueryVisualizationObjectDetailTable extends Component {
                     </div>
                     <div className="Grid-cell flex align-center Cell--1of3 bg-alt">
                         <div className="p4 flex align-center text-bold text-grey-3">
-                            <Icon name="connections" width="17px" height="20px" />
+                            <Icon name="connections" size={17} />
                             <div className="ml2">
-                                This <span className="text-dark">{tableName}</span> is connected to.
+                                This <span className="text-dark">{tableName}</span> is connected to:
                             </div>
                         </div>
                     </div>

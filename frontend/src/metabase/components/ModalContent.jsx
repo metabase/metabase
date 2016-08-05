@@ -4,7 +4,7 @@ import Icon from "metabase/components/Icon.jsx";
 
 export default class ModalContent extends Component {
     static propTypes = {
-        title: PropTypes.string.isRequired,
+        title: PropTypes.string,
         closeFn: PropTypes.func.isRequired
     };
 
@@ -18,7 +18,7 @@ export default class ModalContent extends Component {
                 <div className="Modal-header Form-header flex align-center">
                     <h2 className="flex-full">{this.props.title}</h2>
                     <a className="text-grey-3 p1" onClick={this.props.closeFn}>
-                        <Icon name='close' width="16px" height="16px"/>
+                        <Icon name='close' size={16}/>
                     </a>
                 </div>
                 <div className="Modal-body">

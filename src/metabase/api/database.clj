@@ -10,9 +10,9 @@
                       [sample-data :as sample-data]
                       [util :as u])
             (metabase.models common
-                             [hydrate :refer [hydrate]]
                              [database :refer [Database protected-password]]
                              [field :refer [Field]]
+                             [hydrate :refer [hydrate]]
                              [table :refer [Table]])))
 
 (defannotation DBEngine
@@ -63,9 +63,9 @@
 (defendpoint POST "/"
   "Add a new `Database`."
   [:as {{:keys [name engine details is_full_sync]} :body}]
-  {name         [Required NonEmptyString]
-   engine       [Required DBEngine]
-   details      [Required Dict]}
+  {name    [Required NonEmptyString]
+   engine  [Required DBEngine]
+   details [Required Dict]}
   (check-superuser)
   ;; this function tries connecting over ssl and non-ssl to establish a connection
   ;; if it succeeds it returns the `details` that worked, otherwise it returns an error
@@ -85,7 +85,8 @@
     (if-not (false? (:valid details-or-error))
       ;; no error, proceed with creation
       (let-500 [new-db (db/insert! Database, :name name, :engine engine, :details details-or-error, :is_full_sync is_full_sync)]
-        (events/publish-event :database-create new-db))
+        (events/publish-event :database-create new-db)
+        new-db)
       ;; failed to connect, return error
       {:status 400
        :body   details-or-error})))
@@ -104,7 +105,7 @@
 
 (defendpoint PUT "/:id"
   "Update a `Database`."
-  [id :as {{:keys [name engine details is_full_sync]} :body}]
+  [id :as {{:keys [name engine details is_full_sync description caveats points_of_interest]} :body}]
   {name    [Required NonEmptyString]
    engine  [Required DBEngine]
    details [Required Dict]}
@@ -114,8 +115,7 @@
                          details
                          (assoc details :password (get-in database [:details :password])))
           conn-error   (test-database-connection engine details)
-          is_full_sync (if (nil? is_full_sync)
-                         nil
+          is_full_sync (when-not (nil? is_full_sync)
                          (boolean is_full_sync))]
       (if-not conn-error
         ;; no error, proceed with update
@@ -123,10 +123,13 @@
           ;; TODO: is there really a reason to let someone change the engine on an existing database?
           ;;       that seems like the kind of thing that will almost never work in any practical way
           (check-500 (db/update-non-nil-keys! Database id
-                       :name         name
-                       :engine       engine
-                       :details      details
-                       :is_full_sync is_full_sync))
+                       :name               name
+                       :engine             engine
+                       :details            details
+                       :is_full_sync       is_full_sync
+                       :description        description
+                       :caveats            caveats
+                       :points_of_interest points_of_interest)) ; TODO - this means one cannot unset the description. Does that matter?
           (events/publish-event :database-update (Database id)))
         ;; failed to connect, return error
         {:status 400
@@ -180,6 +183,19 @@
   [id]
   (read-check Database id)
   (db/select Table, :db_id id, :active true, {:order-by [:name]})) ; TODO - should this be case-insensitive -- {:order-by [:%lower.name]} -- instead?
+
+(defendpoint GET "/:id/fields"
+  "Get a list of all `Fields` in `Database`."
+  [id]
+  (read-check Database id)
+  (for [{:keys [id display_name table]} (-> (db/select [Field :id :display_name :table_id]
+                                              :table_id        [:in (db/select-field :id Table, :db_id id)]
+                                              :visibility_type [:not-in ["sensitive" "retired"]])
+                                            (hydrate :table))]
+    {:id         id
+     :name       display_name
+     :table_name (:display_name table)
+     :schema     (:schema table)}))
 
 (defendpoint GET "/:id/idfields"
   "Get a list of all primary key `Fields` for `Database`."

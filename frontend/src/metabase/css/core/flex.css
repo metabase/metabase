@@ -8,7 +8,7 @@
     flex: 1;
 }
 
-.flex-half {
+.flex-half, :local(.flex-half) {
     flex: 0.5;
 }
 
@@ -20,7 +20,7 @@
     align-items: center;
 }
 
-.align-baseline {
+.align-baseline, :local(.align-baseline) {
     align-items: baseline;
 }
 
@@ -34,6 +34,10 @@
 
 .align-start {
     align-items: flex-start;
+}
+
+.align-end {
+    align-items: flex-end;
 }
 
 .align-self-end {

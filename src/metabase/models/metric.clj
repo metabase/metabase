@@ -12,13 +12,17 @@
 
 (i/defentity Metric :metric)
 
+(defn- pre-cascade-delete [{:keys [id]}]
+  (db/cascade-delete! 'MetricImportantField :metric_id id))
+
 (u/strict-extend (class Metric)
   i/IEntity
   (merge i/IEntityDefaults
-         {:types         (constantly {:definition :json, :description :clob})
-          :timestamped?  (constantly true)
-          :can-read?     (constantly true)
-          :can-write?    i/superuser?}))
+         {:types              (constantly {:definition :json, :description :clob})
+          :timestamped?       (constantly true)
+          :can-read?          (constantly true)
+          :can-write?         i/superuser?
+          :pre-cascade-delete pre-cascade-delete}))
 
 
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------
@@ -84,15 +88,14 @@
     (-> (events/publish-event :metric-create metric)
         (hydrate :creator))))
 
-(defn exists-metric?
-  "Predicate function which checks for a given `Metric` with ID.
-   Returns true if `Metric` exists and is active, false otherwise."
-  [id]
+(defn exists?
+  "Does an *active* `Metric` with ID exist?"
+  ^Boolean [id]
   {:pre [(integer? id)]}
   (db/exists? Metric :id id, :is_active true))
 
 (defn retrieve-metric
-  "Fetch a single `Metric` by its ID value."
+  "Fetch a single `Metric` by its ID value. Hydrates its `:creator`."
   [id]
   {:pre [(integer? id)]}
   (-> (Metric id)
@@ -115,7 +118,7 @@
   "Update an existing `Metric`.
 
    Returns the updated `Metric` or throws an Exception."
-  [{:keys [id name description definition revision_message]} user-id]
+  [{:keys [id name description caveats points_of_interest how_is_this_calculated definition revision_message]} user-id]
   {:pre [(integer? id)
          (string? name)
          (map? definition)
@@ -123,9 +126,12 @@
          (string? revision_message)]}
   ;; update the metric itself
   (db/update! Metric id
-    :name        name
-    :description description
-    :definition  definition)
+    :name                   name
+    :description            description
+    :caveats                caveats
+    :points_of_interest     points_of_interest
+    :how_is_this_calculated how_is_this_calculated
+    :definition             definition)
   (u/prog1 (retrieve-metric id)
     (events/publish-event :metric-update (assoc <> :actor_id user-id, :revision_message revision_message))))
 

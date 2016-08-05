@@ -20,24 +20,35 @@ export type DashCardObject = {
 
 export type ParameterId = string;
 
-export type ParameterType =
-    "date-range" |
-    "category" |
-    "id";
+export type ParameterType = string;
 
 export type ParameterObject = {
     id: ParameterId,
     name: string,
     type: ParameterType,
-    default: any
+    default?: string
 };
 
+export type VariableTarget = ["template-tag", string];
+export type DimensionTarget = ["template-tag", string] | ConcreteField
+
 export type ParameterMappingTarget =
-    ["parameter", string] |
-    ["dimension", ConcreteField];
+    ["variable", VariableTarget] |
+    ["dimension", DimensionTarget];
+
+export type ParameterMappingOption = {
+    name: string,
+    target: ParameterMappingTarget
+};
 
 export type ParameterMappingObject = {
     card_id: CardId,
     parameter_id: ParameterId,
     target: ParameterMappingTarget
+};
+
+export type ParameterOption = {
+    name: string,
+    description?: string,
+    type: ParameterType
 };

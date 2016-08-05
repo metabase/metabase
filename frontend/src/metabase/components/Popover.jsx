@@ -11,7 +11,12 @@ export default class Popover extends Component {
     constructor(props, context) {
         super(props, context);
 
-        this.handleClickOutside = this.handleClickOutside.bind(this);
+        this.state = {
+            width: null,
+            height: null
+        };
+
+        this.handleDismissal = this.handleDismissal.bind(this);
     }
 
     static propTypes = {
@@ -34,9 +39,26 @@ export default class Popover extends Component {
         if (!this._popoverElement) {
             this._popoverElement = document.createElement('span');
             this._popoverElement.className = 'PopoverContainer';
-            document.querySelector('body').appendChild(this._popoverElement);
+            document.body.appendChild(this._popoverElement);
+            this._timer = setInterval(() => {
+                const { width, height } = this._popoverElement.getBoundingClientRect();
+                if (this.state.width !== width || this.state.height !== height) {
+                    this.setState({ width, height });
+                }
+            }, 100);
         }
         return this._popoverElement;
+    }
+
+    _cleanupPopoverElement() {
+        if (this._popoverElement) {
+            ReactDOM.unmountComponentAtNode(this._popoverElement);
+            if (this._popoverElement.parentNode) {
+                this._popoverElement.parentNode.removeChild(this._popoverElement);
+            }
+            clearInterval(this._timer);
+            delete this._popoverElement, this._timer;
+        }
     }
 
     componentDidMount() {
@@ -52,15 +74,10 @@ export default class Popover extends Component {
             this._tether.destroy();
             delete this._tether;
         }
-        if (this._popoverElement) {
-            ReactDOM.unmountComponentAtNode(this._popoverElement);
-            if (this._popoverElement.parentNode) {
-                this._popoverElement.parentNode.removeChild(this._popoverElement);
-            }
-        }
+        this._cleanupPopoverElement();
     }
 
-    handleClickOutside(...args) {
+    handleDismissal(...args) {
         if (this.props.onClose) {
             this.props.onClose(...args)
         }
@@ -68,7 +85,7 @@ export default class Popover extends Component {
 
     _popoverComponent() {
         return (
-            <OnClickOutsideWrapper handleClickOutside={this.handleClickOutside}>
+            <OnClickOutsideWrapper handleDismissal={this.handleDismissal}>
                 <div className={cx("PopoverBody", { "PopoverBody--withArrow": this.props.hasArrow }, this.props.className)}>
                     { typeof this.props.children === "function" ?
                         this.props.children()
@@ -135,18 +152,17 @@ export default class Popover extends Component {
         if (this.props.isOpen) {
             // popover is open, lets do this!
             const popoverElement = this._getPopoverElement();
-            ReactDOM.render(
-              <ReactCSSTransitionGroup
-                transitionName="Popover"
-                transitionAppear={true}
-                transitionAppearTimeout={250}
-                transitionEnterTimeout={250}
-                transitionLeaveTimeout={250}
-              >
-                {this._popoverComponent()}
-              </ReactCSSTransitionGroup>
-              , popoverElement
-            );
+            ReactDOM.unstable_renderSubtreeIntoContainer(this,
+                <ReactCSSTransitionGroup
+                    transitionName="Popover"
+                    transitionAppear={true}
+                    transitionAppearTimeout={250}
+                    transitionEnterTimeout={250}
+                    transitionLeaveTimeout={250}
+                >
+                    {this._popoverComponent()}
+                </ReactCSSTransitionGroup>
+            , popoverElement);
 
             var tetherOptions = {};
 
@@ -216,10 +232,7 @@ export default class Popover extends Component {
             }
         } else {
             // if the popover isn't open then actively unmount our popover
-            if (this._popoverElement) {
-                ReactDOM.unmountComponentAtNode(this._popoverElement);
-                delete this._popoverElement;
-            }
+            this._cleanupPopoverElement();
         }
     }
 

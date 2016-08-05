@@ -7,7 +7,7 @@ import cx from "classnames";
 
    usage:
    <IconBorder {...props} >
-   <Icon name={chevrondown} width={12} height={12} />
+   <Icon name={chevrondown} size={12} />
    </IconBorder>
  */
 
@@ -32,7 +32,7 @@ export default class IconBorder extends Component {
 
     render() {
         const { borderWidth, borderStyle, borderColor, borderRadius, className, style, children } = this.props;
-        const size = parseInt(children.props.width, 10) * 2
+        const size = parseInt(children.props.size || children.props.width, 10) * 2
         const styles = {
             width: size,
             height: size,

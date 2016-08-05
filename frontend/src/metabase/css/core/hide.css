@@ -1,6 +1,8 @@
 .hide { display: none !important; }
 .show { display: inheirt; }
 
+.hidden { visibility: hidden; }
+
 .sm-show,
 .md-show,
 .lg-show,

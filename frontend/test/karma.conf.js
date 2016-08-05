@@ -8,14 +8,13 @@ module.exports = function(config) {
         basePath: '../',
         files: [
             'test/metabase-bootstrap.js',
-            '../resources/frontend_client/app/dist/vendor.bundle.js',
-            '../resources/frontend_client/app/dist/app.bundle.js',
             '../node_modules/angular-mocks/angular-mocks.js',
             'test/unit/**/*.spec.js'
         ],
         exclude: [
         ],
         preprocessors: {
+            'test/metabase-bootstrap.js': ['webpack'],
             'test/unit/**/*.spec.js': ['webpack']
         },
         frameworks: [

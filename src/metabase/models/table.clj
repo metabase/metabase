@@ -1,9 +1,9 @@
 (ns metabase.models.table
   (:require [metabase.db :as db]
-            (metabase.models [common :as common]
-                             [database :refer [Database]]
+            (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [field-values :refer [FieldValues]]
+                             [humanization :as humanization]
                              [interface :as i]
                              [metric :refer [Metric retrieve-metrics]]
                              [segment :refer [Segment retrieve-segments]])
@@ -20,13 +20,14 @@
 (i/defentity Table :metabase_table)
 
 (defn- pre-insert [table]
-  (let [defaults {:display_name (common/name->human-readable-name (:name table))}]
+  (let [defaults {:display_name (humanization/name->human-readable-name (:name table))}]
     (merge defaults table)))
 
 (defn- pre-cascade-delete [{:keys [id]}]
   (db/cascade-delete! Segment :table_id id)
   (db/cascade-delete! Metric :table_id id)
-  (db/cascade-delete! Field :table_id id))
+  (db/cascade-delete! Field :table_id id)
+  (db/cascade-delete! 'Card :table_id id))
 
 (defn ^:hydrate fields
   "Return the `FIELDS` belonging to TABLE."
@@ -51,7 +52,8 @@
                     :table_id        id
                     :visibility_type "normal"
                     {:order-by [[:position :asc] [:name :asc]]})]
-    (db/select-field->field :field_id :values FieldValues, :field_id [:in field-ids])))
+    (when (seq field-ids)
+      (db/select-field->field :field_id :values FieldValues, :field_id [:in field-ids]))))
 
 (defn pk-field-id
   "Return the ID of the primary key `Field` for TABLE."
@@ -59,9 +61,17 @@
   [{:keys [id]}]
   (db/select-one-id Field, :table_id id, :special_type "id", :visibility_type [:not-in ["sensitive" "retired"]]))
 
-(def ^{:arglists '([table])} database
+(defn qualified-identifier
+  "Return a keyword identifier for TABLE in the form `:schema.table-name` (if the Table has a non-empty `:schema` field) or `:table-name` (if the Table has no `:schema`)."
+  ^clojure.lang.Keyword [{schema :schema, table-name :name}]
+  (keyword (str (when (seq schema)
+                  (str schema \.))
+                table-name)))
+
+(defn database
   "Return the `Database` associated with this `Table`."
-  (comp Database :db_id))
+  [table]
+  (Database (:db_id table)))
 
 (u/strict-extend (class Table)
   i/IEntity (merge i/IEntityDefaults
@@ -100,14 +110,13 @@
   [{:keys [id display_name], :as existing-table} {table-name :name}]
   {:pre [(integer? id)]}
   (let [updated-table (assoc existing-table
-                        :display_name (or display_name (common/name->human-readable-name table-name)))]
+                        :display_name (or display_name (humanization/name->human-readable-name table-name)))]
     ;; the only thing we need to update on a table is the :display_name, if it never got set
     (when (nil? display_name)
       (db/update! Table id
         :display_name (:display_name updated-table)))
     ;; always return the table when we are done
     updated-table))
-
 
 (defn create-table!
   "Create `Table` with the data from TABLE-DEF."
@@ -118,5 +127,5 @@
     :schema          schema-name
     :name            table-name
     :visibility_type visibility-type
-    :display_name    (common/name->human-readable-name table-name)
+    :display_name    (humanization/name->human-readable-name table-name)
     :active          true))

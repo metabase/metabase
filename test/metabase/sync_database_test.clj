@@ -1,8 +1,7 @@
 (ns metabase.sync-database-test
   (:require [expectations :refer :all]
-            [metabase.db :as db]
-            [metabase.driver :as driver]
-            [metabase.driver.generic-sql :refer [korma-entity]]
+            (metabase [db :as db]
+                      [driver :as driver])
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [field-values :refer [FieldValues]]
@@ -37,28 +36,25 @@
 (extend SyncTestDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:analyze-table       (constantly nil)
-          :describe-database   (constantly {:tables (set (for [table (vals sync-test-tables)]
-                                                           (dissoc table :fields)))})
-          :describe-table      (fn [_ _ table]
-                                 (get sync-test-tables (:name table)))
-          :describe-table-fks  (fn [_ _ table]
-                                 (if (= "movie" (:name table))
-                                   #{{:fk-column-name   "studio"
-                                      :dest-table       {:name "studio"
-                                                         :schema nil}
-                                      :dest-column-name "studio"}}
-                                   #{}))
-          :features            (constantly #{:foreign-keys})
-          :details-fields      (constantly [])}))
+         {:analyze-table      (constantly nil)
+          :describe-database  (constantly {:tables (set (for [table (vals sync-test-tables)]
+                                                          (dissoc table :fields)))})
+          :describe-table     (fn [_ _ table]
+                                (get sync-test-tables (:name table)))
+          :describe-table-fks (fn [_ _ table]
+                                (if (= "movie" (:name table))
+                                  #{{:fk-column-name   "studio"
+                                     :dest-table       {:name "studio"
+                                                        :schema nil}
+                                     :dest-column-name "studio"}}
+                                  #{}))
+          :features           (constantly #{:foreign-keys})
+          :details-fields     (constantly [])}))
 
 (driver/register-driver! :sync-test (SyncTestDriver.))
 
-(def ^:private users-table       (delay (Table, :name "USERS")))
-(def ^:private venues-table      (delay (Table (id :venues))))
-(def ^:private korma-users-table (delay (korma-entity @users-table)))
-(def ^:private users-name-field  (delay (Field (id :users :name))))
 
+(def ^:private venues-table (delay (Table (id :venues))))
 
 (defn- table-details [table]
   (into {} (-> (dissoc table :db :pk_field :field_values)
@@ -68,124 +64,140 @@
 
 ;; ## SYNC DATABASE
 (expect
-  [{:id              true
-    :db_id           true
-    :raw_table_id    true
-    :schema          "default"
-    :name            "movie"
-    :display_name    "Movie"
-    :description     nil
-    :entity_type     nil
-    :entity_name     nil
-    :visibility_type nil
-    :rows            nil
-    :active          true
-    :created_at      true
-    :updated_at      true
-    :fields          [{:id                 true
-                       :table_id           true
-                       :raw_column_id      true
-                       :description        nil
-                       :special_type       :id
-                       :name               "id"
-                       :active             true
-                       :parent_id          false
-                       :field_type         :info
-                       :position           0
-                       :preview_display    true
-                       :display_name       "ID"
-                       :base_type          :IntegerField
-                       :visibility_type    :normal
-                       :fk_target_field_id false
-                       :created_at         true
-                       :updated_at         true
-                       :last_analyzed      true}
-                      {:id                 true
-                       :table_id           true
-                       :raw_column_id      true
-                       :description        nil
-                       :special_type       :fk
-                       :name               "studio"
-                       :active             true
-                       :parent_id          false
-                       :field_type         :info
-                       :position           0
-                       :preview_display    true
-                       :display_name       "Studio"
-                       :base_type          :TextField
-                       :visibility_type    :normal
-                       :fk_target_field_id true
-                       :created_at         true
-                       :updated_at         true
-                       :last_analyzed      true}
-                      {:id                 true
-                       :table_id           true
-                       :raw_column_id      true
-                       :description        nil
-                       :special_type       nil
-                       :name               "title"
-                       :active             true
-                       :parent_id          false
-                       :field_type         :info
-                       :position           0
-                       :preview_display    true
-                       :display_name       "Title"
-                       :base_type          :TextField
-                       :visibility_type    :normal
-                       :fk_target_field_id false
-                       :created_at         true
-                       :updated_at         true
-                       :last_analyzed      true}]}
-   {:id              true
-    :db_id           true
-    :raw_table_id    true
-    :schema          nil
-    :name            "studio"
-    :display_name    "Studio"
-    :description     nil
-    :entity_type     nil
-    :entity_name     nil
-    :visibility_type nil
-    :rows            nil
-    :active          true
-    :created_at      true
-    :updated_at      true
-    :fields          [{:id                 true
-                       :table_id           true
-                       :raw_column_id      true
-                       :description        nil
-                       :special_type       :name
-                       :name               "name"
-                       :active             true
-                       :parent_id          false
-                       :field_type         :info
-                       :position           0
-                       :preview_display    true
-                       :display_name       "Name"
-                       :base_type          :TextField
-                       :visibility_type    :normal
-                       :fk_target_field_id false
-                       :created_at         true
-                       :updated_at         true
-                       :last_analyzed      true}
-                      {:id                 true
-                       :table_id           true
-                       :raw_column_id      true
-                       :description        nil
-                       :special_type       :id
-                       :name               "studio"
-                       :active             true
-                       :parent_id          false
-                       :field_type         :info
-                       :position           0
-                       :preview_display    true
-                       :display_name       "Studio"
-                       :base_type          :TextField
-                       :visibility_type    :normal
-                       :fk_target_field_id false
-                       :created_at         true
-                       :updated_at         true
-                       :last_analyzed      true}]}]
+  [{:id                      true
+    :db_id                   true
+    :raw_table_id            true
+    :schema                  "default"
+    :name                    "movie"
+    :display_name            "Movie"
+    :description             nil
+    :caveats                 nil
+    :points_of_interest      nil
+    :show_in_getting_started false
+    :entity_type             nil
+    :entity_name             nil
+    :visibility_type         nil
+    :rows                    nil
+    :active                  true
+    :created_at              true
+    :updated_at              true
+    :fields                  [{:id                 true
+                               :table_id           true
+                               :raw_column_id      true
+                               :description        nil
+                               :caveats            nil
+                               :points_of_interest nil
+                               :special_type       :id
+                               :name               "id"
+                               :active             true
+                               :parent_id          false
+                               :field_type         :info
+                               :position           0
+                               :preview_display    true
+                               :display_name       "ID"
+                               :base_type          :IntegerField
+                               :visibility_type    :normal
+                               :fk_target_field_id false
+                               :created_at         true
+                               :updated_at         true
+                               :last_analyzed      true}
+                              {:id                 true
+                               :table_id           true
+                               :raw_column_id      true
+                               :description        nil
+                               :caveats            nil
+                               :points_of_interest nil
+                               :special_type       :fk
+                               :name               "studio"
+                               :active             true
+                               :parent_id          false
+                               :field_type         :info
+                               :position           0
+                               :preview_display    true
+                               :display_name       "Studio"
+                               :base_type          :TextField
+                               :visibility_type    :normal
+                               :fk_target_field_id true
+                               :created_at         true
+                               :updated_at         true
+                               :last_analyzed      true}
+                              {:id                 true
+                               :table_id           true
+                               :raw_column_id      true
+                               :description        nil
+                               :caveats            nil
+                               :points_of_interest nil
+                               :special_type       nil
+                               :name               "title"
+                               :active             true
+                               :parent_id          false
+                               :field_type         :info
+                               :position           0
+                               :preview_display    true
+                               :display_name       "Title"
+                               :base_type          :TextField
+                               :visibility_type    :normal
+                               :fk_target_field_id false
+                               :created_at         true
+                               :updated_at         true
+                               :last_analyzed      true}]}
+   {:id                      true
+    :db_id                   true
+    :raw_table_id            true
+    :schema                  nil
+    :name                    "studio"
+    :display_name            "Studio"
+    :description             nil
+    :caveats                 nil
+    :points_of_interest      nil
+    :show_in_getting_started false
+    :entity_type             nil
+    :entity_name             nil
+    :visibility_type         nil
+    :rows                    nil
+    :active                  true
+    :created_at              true
+    :updated_at              true
+    :fields                  [{:id                 true
+                               :table_id           true
+                               :raw_column_id      true
+                               :description        nil
+                               :caveats            nil
+                               :points_of_interest nil
+                               :special_type       :name
+                               :name               "name"
+                               :active             true
+                               :parent_id          false
+                               :field_type         :info
+                               :position           0
+                               :preview_display    true
+                               :display_name       "Name"
+                               :base_type          :TextField
+                               :visibility_type    :normal
+                               :fk_target_field_id false
+                               :created_at         true
+                               :updated_at         true
+                               :last_analyzed      true}
+                              {:id                 true
+                               :table_id           true
+                               :raw_column_id      true
+                               :description        nil
+                               :caveats            nil
+                               :points_of_interest nil
+                               :special_type       :id
+                               :name               "studio"
+                               :active             true
+                               :parent_id          false
+                               :field_type         :info
+                               :position           0
+                               :preview_display    true
+                               :display_name       "Studio"
+                               :base_type          :TextField
+                               :visibility_type    :normal
+                               :fk_target_field_id false
+                               :created_at         true
+                               :updated_at         true
+                               :last_analyzed      true}]}]
   (tu/with-temp Database [fake-db {:engine :sync-test}]
     (sync-database! fake-db)
     ;; we are purposely running the sync twice to test for possible logic issues which only manifest
@@ -197,74 +209,83 @@
 ;; ## SYNC TABLE
 
 (expect
-  {:id              true
-   :db_id           true
-   :raw_table_id    true
-   :schema          "default"
-   :name            "movie"
-   :display_name    "Movie"
-   :description     nil
-   :entity_type     nil
-   :entity_name     nil
-   :visibility_type nil
-   :rows            nil
-   :active          true
-   :created_at      true
-   :updated_at      true
-   :fields          [{:id                 true
-                      :table_id           true
-                      :raw_column_id      true
-                      :description        nil
-                      :special_type       :id
-                      :name               "id"
-                      :active             true
-                      :parent_id          false
-                      :field_type         :info
-                      :position           0
-                      :preview_display    true
-                      :display_name       "ID"
-                      :base_type          :IntegerField
-                      :visibility_type    :normal
-                      :fk_target_field_id false
-                      :created_at         true
-                      :updated_at         true
-                      :last_analyzed      true}
-                     {:id                 true
-                      :table_id           true
-                      :raw_column_id      true
-                      :description        nil
-                      :special_type       nil
-                      :name               "studio"
-                      :active             true
-                      :parent_id          false
-                      :field_type         :info
-                      :position           0
-                      :preview_display    true
-                      :display_name       "Studio"
-                      :base_type          :TextField
-                      :visibility_type    :normal
-                      :fk_target_field_id false
-                      :created_at         true
-                      :updated_at         true
-                      :last_analyzed      true}
-                     {:id                 true
-                      :table_id           true
-                      :raw_column_id      true
-                      :description        nil
-                      :special_type       nil
-                      :name               "title"
-                      :active             true
-                      :parent_id          false
-                      :field_type         :info
-                      :position           0
-                      :preview_display    true
-                      :display_name       "Title"
-                      :base_type          :TextField
-                      :visibility_type    :normal
-                      :fk_target_field_id false
-                      :created_at         true
-                      :updated_at         true
-                      :last_analyzed      true}]}
+  {:id                      true
+   :db_id                   true
+   :raw_table_id            true
+   :schema                  "default"
+   :name                    "movie"
+   :display_name            "Movie"
+   :description             nil
+   :caveats                 nil
+   :points_of_interest      nil
+   :show_in_getting_started false
+   :entity_type             nil
+   :entity_name             nil
+   :visibility_type         nil
+   :rows                    nil
+   :active                  true
+   :created_at              true
+   :updated_at              true
+   :fields                  [{:id                 true
+                              :table_id           true
+                              :raw_column_id      true
+                              :description        nil
+                              :caveats            nil
+                              :points_of_interest nil
+                              :special_type       :id
+                              :name               "id"
+                              :active             true
+                              :parent_id          false
+                              :field_type         :info
+                              :position           0
+                              :preview_display    true
+                              :display_name       "ID"
+                              :base_type          :IntegerField
+                              :visibility_type    :normal
+                              :fk_target_field_id false
+                              :created_at         true
+                              :updated_at         true
+                              :last_analyzed      true}
+                             {:id                 true
+                              :table_id           true
+                              :raw_column_id      true
+                              :description        nil
+                              :caveats            nil
+                              :points_of_interest nil
+                              :special_type       nil
+                              :name               "studio"
+                              :active             true
+                              :parent_id          false
+                              :field_type         :info
+                              :position           0
+                              :preview_display    true
+                              :display_name       "Studio"
+                              :base_type          :TextField
+                              :visibility_type    :normal
+                              :fk_target_field_id false
+                              :created_at         true
+                              :updated_at         true
+                              :last_analyzed      true}
+                             {:id                 true
+                              :table_id           true
+                              :raw_column_id      true
+                              :description        nil
+                              :caveats            nil
+                              :points_of_interest nil
+                              :special_type       nil
+                              :name               "title"
+                              :active             true
+                              :parent_id          false
+                              :field_type         :info
+                              :position           0
+                              :preview_display    true
+                              :display_name       "Title"
+                              :base_type          :TextField
+                              :visibility_type    :normal
+                              :fk_target_field_id false
+                              :created_at         true
+                              :updated_at         true
+                              :last_analyzed      true}]}
   (tu/with-temp* [Database [fake-db {:engine :sync-test}]
                   RawTable [{raw-table-id :id} {:database_id (:id fake-db), :name "movie", :schema "default"}]
                   Table    [fake-table {:raw_table_id raw-table-id
@@ -286,13 +307,13 @@
 (extend ConcurrentSyncTestDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-         {:analyze-table       (constantly nil)
-          :describe-database   (fn [_ _]
-                                 (swap! sync-count inc)
-                                 (Thread/sleep 500)
-                                 {:tables []})
-          :describe-table      (constantly nil)
-          :details-fields      (constantly [])}))
+         {:analyze-table     (constantly nil)
+          :describe-database (fn [_ _]
+                               (swap! sync-count inc)
+                               (Thread/sleep 500)
+                               {:tables []})
+          :describe-table    (constantly nil)
+          :details-fields    (constantly [])}))
 
 (driver/register-driver! :concurrent-sync-test (ConcurrentSyncTestDriver.))
 
@@ -316,7 +337,7 @@
 (expect
   [[1 2 3]
    [1 2 3]]
-  (tu/with-temp* [Database [fake-db {:engine :sync-test}]
+  (tu/with-temp* [Database [fake-db    {:engine :sync-test}]
                   RawTable [fake-table {:database_id (:id fake-db), :name "movie", :schema "default"}]]
     (sync-database! fake-db)
     (let [table-id (db/select-one-id Table, :raw_table_id (:id fake-table))

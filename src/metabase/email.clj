@@ -1,23 +1,30 @@
 (ns metabase.email
   (:require [clojure.string :as s]
             [clojure.tools.logging :as log]
-            [postal.core :as postal]
-            [postal.support :refer [make-props]]
-            [metabase.models.setting :refer [defsetting] :as setting]
+            (postal [core :as postal]
+                    [support :refer [make-props]])
+            [metabase.models.setting :refer [defsetting], :as setting]
             [metabase.util :as u])
-  (:import [javax.mail Session]))
+  (:import javax.mail.Session))
 
 ;; ## CONFIG
 
-(defsetting email-from-address  "Email address you want to use as the sender of Metabase." "notifications@metabase.com")
+(defsetting email-from-address  "Email address you want to use as the sender of Metabase." :default "notifications@metabase.com")
 (defsetting email-smtp-host     "The address of the SMTP server that handles your emails.")
 (defsetting email-smtp-username "SMTP username.")
 (defsetting email-smtp-password "SMTP password.")
 (defsetting email-smtp-port     "The port your SMTP server uses for outgoing emails.")
-(defsetting email-smtp-security "SMTP secure connection protocol. (tls, ssl, or none)" "none")
+(defsetting email-smtp-security
+  "SMTP secure connection protocol. (tls, ssl, or none)"
+  :default "none"
+  :setter  (fn [new-value]
+             (when-not (nil? new-value)
+               (assert (contains? #{"tls" "ssl" "none"} new-value)))
+             (setting/set-string! :email-smtp-security new-value)))
 
 ;; ## PUBLIC INTERFACE
 
+;; TODO - just use `with-redefs` for tests ?
 (def ^:dynamic *send-email-fn*
   "Internal function used to send messages. Should take 2 args - a map of SMTP credentials, and a map of email details.
    Provided so you can swap this out with an \"inbox\" for test purposes."
@@ -26,21 +33,25 @@
 (defn email-configured?
   "Predicate function which returns `true` if we have a viable email configuration for the app, `false` otherwise."
   []
-  (not (s/blank? (setting/get* :email-smtp-host))))
+  (not (s/blank? (setting/get :email-smtp-host))))
 
 (defn send-message
   "Send an email to one or more RECIPIENTS.
    RECIPIENTS is a sequence of email addresses; MESSAGE-TYPE must be either `:text` or `:html`.
+
      (email/send-message
-      :subject      \"[Metabase] Password Reset Request\"
-      :recipients   [\"cam@metabase.com\"]
-      :message-type :text
-      :message      \"How are you today?\")
+       :subject      \"[Metabase] Password Reset Request\"
+       :recipients   [\"cam@metabase.com\"]
+       :message-type :text
+       :message      \"How are you today?\")
+
    Upon success, this returns the MESSAGE that was just sent."
+  {:style/indent 0}
   [& {:keys [subject recipients message-type message]}]
   {:pre [(string? subject)
          (sequential? recipients)
-         (every? u/is-email? recipients)
+         (or (every? u/is-email? recipients)
+             (log/error "recipients contains an invalid email:" recipients))
          (contains? #{:text :html :attachments} message-type)
          (if (= message-type :attachments) (sequential? message) (string? message))]}
   (try

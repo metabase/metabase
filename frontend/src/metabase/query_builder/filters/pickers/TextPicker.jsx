@@ -53,7 +53,7 @@ export default class TextPicker extends Component {
                             />
                             { index > 0 ?
                                 <span className="FilterRemove-field absolute top right">
-                                    <Icon name="close" className="cursor-pointer text-white" width="12" height="12" onClick={() => this.removeValue(index)}/>
+                                    <Icon name="close" className="cursor-pointer text-white" size={12} onClick={() => this.removeValue(index)}/>
                                 </span>
                             : null }
                         </li>

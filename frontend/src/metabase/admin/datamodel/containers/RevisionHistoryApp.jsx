@@ -1,22 +1,33 @@
 import React, { Component, PropTypes } from "react";
+import { connect } from "react-redux";
 
 import RevisionHistory from "../components/revisions/RevisionHistory.jsx";
 
 import { revisionHistorySelectors } from "../selectors";
-import * as actions from "../actions";
+import * as actions from "../metadata";
 
-import { connect } from "react-redux";
+const mapStateToProps = (state, props) => {
+    return {
+        ...revisionHistorySelectors(state, props),
+        entity: props.params.entity,
+        id:     props.params.id
+    }
+}
 
-@connect(revisionHistorySelectors, actions)
+const mapDispatchToProps = {
+    ...actions,
+};
+
+@connect(mapStateToProps, mapDispatchToProps)
 export default class RevisionHistoryApp extends Component {
     componentWillMount() {
-        let { entity, id } = this.props.params;
+        let { entity, id } = this.props;
 
         this.props.fetchRevisions({ entity, id })
     }
     render() {
         return (
-            <RevisionHistory {...this.props} objectType={this.props.params.entity} />
+            <RevisionHistory {...this.props} objectType={this.props.entity} />
         );
     }
 }

@@ -61,9 +61,9 @@
   (date-interval [this, ^Keyword unit, ^Number amount]
     "*OPTIONAL* Return an driver-appropriate representation of a moment relative to the current moment in time. By default, this returns an `Timestamp` by calling
      `metabase.util/relative-date`; but when possible drivers should return a native form so we can be sure the correct timezone is applied. For example, SQL drivers should
-     return a Korma form to call the appropriate SQL fns:
+     return a HoneySQL form to call the appropriate SQL fns:
 
-       (date-interval (PostgresDriver.) :month 1) -> (k/raw* \"(NOW() + INTERVAL '1 month')\")")
+       (date-interval (PostgresDriver.) :month 1) -> (hsql/call :+ :%now (hsql/raw \"INTERVAL '1 month'\"))")
 
   (describe-database ^java.util.Map [this, ^DatabaseInstance database]
     "Return a map containing information that describes all of the schema settings in DATABASE, most notably a set of tables.
@@ -85,31 +85,31 @@
      a `Database` `details` map, and for validating it on the Backend. It should include things like `host`,
      `port`, and other driver-specific parameters. Each field information map should have the following properties:
 
-       *  `:name`
+   *  `:name`
 
-           The key that should be used to store this property in the `details` map.
+      The key that should be used to store this property in the `details` map.
 
-       *  `:display-name`
+   *  `:display-name`
 
-           Human-readable name that should be displayed to the User in UI for editing this field.
+      Human-readable name that should be displayed to the User in UI for editing this field.
 
-       *  `:type` *(OPTIONAL)*
+   *  `:type` *(OPTIONAL)*
 
-          `:string`, `:integer`, `:boolean`, or `:password`. Defaults to `:string`.
+      `:string`, `:integer`, `:boolean`, or `:password`. Defaults to `:string`.
 
-       *  `:default` *(OPTIONAL)*
+   *  `:default` *(OPTIONAL)*
 
-           A default value for this field if the user hasn't set an explicit value. This is shown in the UI as a placeholder.
+       A default value for this field if the user hasn't set an explicit value. This is shown in the UI as a placeholder.
 
-       *  `:placeholder` *(OPTIONAL)*
+   *  `:placeholder` *(OPTIONAL)*
 
-          Placeholder value to show in the UI if user hasn't set an explicit value. Similar to `:default`, but this value is
-          *not* saved to `:details` if no explicit value is set. Since `:default` values are also shown as placeholders, you
-          cannot specify both `:default` and `:placeholder`.
+      Placeholder value to show in the UI if user hasn't set an explicit value. Similar to `:default`, but this value is
+      *not* saved to `:details` if no explicit value is set. Since `:default` values are also shown as placeholders, you
+      cannot specify both `:default` and `:placeholder`.
 
-       *  `:required` *(OPTIONAL)*
+   *  `:required` *(OPTIONAL)*
 
-          Is this property required? Defaults to `false`.")
+      Is this property required? Defaults to `false`.")
 
   (execute-query ^java.util.Map [this, ^java.util.Map query]
     "Execute a query against the database and return the results.
@@ -135,7 +135,8 @@
   *  `:set-timezone` - Does this driver support setting a timezone for the query?
   *  `:standard-deviation-aggregations` - Does this driver support [standard deviation aggregations](https://github.com/metabase/metabase/wiki/Query-Language-'98#stddev-aggregation)?
   *  `:expressions` - Does this driver support [expressions](https://github.com/metabase/metabase/wiki/Query-Language-'98#expressions) (e.g. adding the values of 2 columns together)?
-  *  `:dynamic-schema` -  Does this Database have no fixed definitions of schemas? (e.g. Mongo)")
+  *  `:dynamic-schema` -  Does this Database have no fixed definitions of schemas? (e.g. Mongo)
+  *  `:native-parameters` - Does the driver support parameter substitution on native queries?")
 
   (field-values-lazy-seq ^clojure.lang.Sequential [this, ^FieldInstance field]
     "Return a lazy sequence of all values of FIELD.
@@ -220,12 +221,13 @@
                                  (filter identity)
                                  (take max-sync-lazy-seq-results))
         field-values-count (count field-values)]
-    (if (= field-values-count 0) 0
-        (int (math/round (/ (->> field-values
-                                 (map str)
-                                 (map count)
-                                 (reduce +))
-                            field-values-count))))))
+    (if (zero? field-values-count)
+      0
+      (int (math/round (/ (->> field-values
+                               (map str)
+                               (map count)
+                               (reduce +))
+                          field-values-count))))))
 
 
 (def IDriverDefaultsMixin
@@ -285,7 +287,8 @@
   (contains? (features driver) feature))
 
 (defn class->base-type
-  "Return the `Field.base_type` that corresponds to a given class returned by the DB."
+  "Return the `Field.base_type` that corresponds to a given class returned by the DB.
+   This is used to infer the types of results that come back from native queries."
   [klass]
   (or ({Boolean                         :BooleanField
         Double                          :FloatField
@@ -336,6 +339,7 @@
    This loads the corresponding driver if needed."
   (let [db-id->engine (memoize (fn [db-id] (db/select-one-field :engine Database, :id db-id)))]
     (fn [db-id]
+      {:pre [db-id]}
       (engine->driver (db-id->engine db-id)))))
 
 

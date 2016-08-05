@@ -9,8 +9,9 @@ import Tooltip from "metabase/components/Tooltip.jsx";
 import { duration } from "metabase/lib/formatting";
 
 import visualizations from "metabase/visualizations";
+import { getSettings } from "metabase/lib/visualization_settings";
 
-import i from "icepick";
+import { assoc, getIn } from "icepick";
 import _ from "underscore";
 import cx from "classnames";
 
@@ -48,13 +49,18 @@ export default class Visualization extends Component {
         onUpdateVisualizationSetting: (...args) => console.warn("onUpdateVisualizationSetting", args)
     };
 
+    componentWillReceiveProps() {
+        // clear the error so we can try to render again
+        this.setState({ error: null });
+    }
+
     onHoverChange(hovered) {
         const { renderInfo } = this.state;
         if (hovered) {
             // if we have Y axis split info then find the Y axis index (0 = left, 1 = right)
             if (renderInfo && renderInfo.yAxisSplit) {
                 const axisIndex = _.findIndex(renderInfo.yAxisSplit, (indexes) => _.contains(indexes, hovered.index));
-                hovered = i.assoc(hovered, "axisIndex", axisIndex);
+                hovered = assoc(hovered, "axisIndex", axisIndex);
             }
         }
         this.setState({ hovered });
@@ -69,25 +75,37 @@ export default class Visualization extends Component {
     }
 
     render() {
-        const { series, actionButtons, className, isDashboard, width, isSlow, expectedDuration } = this.props;
+        const { series, actionButtons, className, isDashboard, width, isSlow, expectedDuration, replacementContent } = this.props;
         const CardVisualization = visualizations.get(series[0].card.display);
         const small = width < 330;
 
         let error = this.props.error || this.state.error;
         let loading = !(series.length > 0 && _.every(series, (s) => s.data));
+        let noResults = false;
+
+        // don't try to load settings unless data is loaded
+        let settings = this.props.settings || {};
 
         if (!loading && !error) {
+            settings = this.props.settings || getSettings(series);
             if (!CardVisualization) {
                 error = "Could not find visualization";
             } else {
                 try {
                     if (CardVisualization.checkRenderable) {
-                        CardVisualization.checkRenderable(series[0].data.cols, series[0].data.rows);
+                        CardVisualization.checkRenderable(series[0].data.cols, series[0].data.rows, settings);
                     }
                 } catch (e) {
+                    // MinRowsError
+                    if (e.actualRows === 0) {
+                        noResults = true;
+                    }
                     error = e.message || "Could not display this chart with this data.";
                 }
             }
+        }
+        if (!error) {
+            noResults = getIn(series, [0, "data", "rows", "length"]) === 0;
         }
 
         let extra;
@@ -99,19 +117,34 @@ export default class Visualization extends Component {
 
         return (
             <div className={cx(className, "flex flex-column")}>
-                { isDashboard && (loading || error || !CardVisualization.noHeader) ?
+                { isDashboard && (loading || error || !CardVisualization.noHeader) || replacementContent ?
                     <div className="p1 flex-no-shrink">
                         <LegendHeader
                             series={series}
                             actionButtons={extra}
+                            settings={settings}
                         />
                     </div>
                 : null
                 }
-                { error ?
+                { replacementContent ?
+                    replacementContent
+                // on dashboards we should show the "No results!" warning if there are no rows or there's a MinRowsError and actualRows === 0
+                : isDashboard && noResults ?
+                    <div className="flex-full px1 pb1 text-centered text-slate flex flex-column layout-centered">
+                        <Tooltip tooltip="No results!" isEnabled={small}>
+                            <img src="/app/img/no_results.svg" />
+                        </Tooltip>
+                        { !small &&
+                            <span className="h4 text-bold">
+                                No results!
+                            </span>
+                        }
+                    </div>
+                : error ?
                     <div className="flex-full px1 pb1 text-centered text-slate-light flex flex-column layout-centered">
                         <Tooltip tooltip={isDashboard ? ERROR_MESSAGE_GENERIC : error} isEnabled={small}>
-                            <Icon className="mb2" name="warning" width={50} height={50} />
+                            <Icon className="mb2" name="warning" size={50} />
                         </Tooltip>
                         { !small &&
                             <span className="h4 text-bold">
@@ -145,6 +178,7 @@ export default class Visualization extends Component {
                         {...this.props}
                         className="flex-full"
                         series={series}
+                        settings={settings}
                         card={series[0].card} // convienence for single-series visualizations
                         data={series[0].data} // convienence for single-series visualizations
                         hovered={this.state.hovered}

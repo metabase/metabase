@@ -44,16 +44,16 @@ export default class QueryHeader extends Component {
         originalCard: PropTypes.object,
         isEditing: PropTypes.bool.isRequired,
         tableMetadata: PropTypes.object, // can't be required, sometimes null
-        cardApi: PropTypes.func.isRequired,
-        dashboardApi: PropTypes.func.isRequired,
-        revisionApi: PropTypes.func.isRequired,
+        cardApi: PropTypes.object.isRequired,
+        dashboardApi: PropTypes.object.isRequired,
+        revisionApi: PropTypes.object.isRequired,
         onSetCardAttribute: PropTypes.func.isRequired,
         reloadCardFn: PropTypes.func.isRequired,
         setQueryModeFn: PropTypes.func.isRequired,
         isShowingDataReference: PropTypes.bool.isRequired,
         toggleDataReferenceFn: PropTypes.func.isRequired,
-        cardIsNewFn: PropTypes.func.isRequired,
-        cardIsDirtyFn: PropTypes.func.isRequired
+        isNew: PropTypes.bool.isRequired,
+        isDirty: PropTypes.bool.isRequired
     }
 
     componentWillUnmount() {
@@ -172,7 +172,7 @@ export default class QueryHeader extends Component {
         var buttonSections = [];
 
         // NEW card
-        if (this.props.cardIsNewFn() && this.props.cardIsDirtyFn()) {
+        if (this.props.isNew && this.props.isDirty) {
             buttonSections.push([
                 <ModalWithTrigger
                     key="save"
@@ -194,14 +194,14 @@ export default class QueryHeader extends Component {
         }
 
         // persistence buttons on saved cards
-        if (!this.props.cardIsNewFn()) {
+        if (!this.props.isNew) {
             if (!this.props.isEditing) {
                 if (this.state.recentlySaved) {
                     // existing card + not editing + recently saved = save confirmation
                     buttonSections.push([
                         <button key="recentlySaved" className="cursor-pointer bg-white text-success text-strong text-uppercase">
                             <span>
-                                <Icon name='check' width="12px" height="12px" />
+                                <Icon name='check' size={12} />
                                 <span className="ml1">Saved</span>
                             </span>
                         </button>
@@ -212,7 +212,7 @@ export default class QueryHeader extends Component {
                     buttonSections.push([
                         <Tooltip key="edit" tooltip="Edit question">
                             <a className="cursor-pointer text-brand-hover" onClick={this.onBeginEditing}>
-                                <Icon name="pencil" width="16px" height="16px" />
+                                <Icon name="pencil" size={16} />
                             </a>
                         </Tooltip>
                     ]);
@@ -244,7 +244,7 @@ export default class QueryHeader extends Component {
                     <Tooltip key="delete" tooltip="Delete">
                         <ModalWithTrigger
                             ref="deleteModal"
-                            triggerElement={<span className="text-brand-hover"><Icon name="trash" width="16px" height="16px" /></span>}
+                            triggerElement={<span className="text-brand-hover"><Icon name="trash" size={16} /></span>}
                         >
                             <DeleteQuestionModal
                                 card={this.props.card}
@@ -257,24 +257,39 @@ export default class QueryHeader extends Component {
             }
         }
 
+        // parameters
+        if (Query.isNative(this.props.query)) {
+            const parametersButtonClasses = cx('transition-color', {
+                'text-brand': this.props.uiControls.isShowingTemplateTagsEditor,
+                'text-brand-hover': !this.props.uiControls.isShowingTemplateTagsEditor
+            });
+            buttonSections.push([
+                <Tooltip key="parameterEdititor" tooltip="Variables">
+                    <a className={parametersButtonClasses}>
+                        <Icon name="variable" size={16} onClick={this.props.toggleTemplateTagsEditor}></Icon>
+                    </a>
+                </Tooltip>
+            ]);
+        }
+
         // add to dashboard
-        if (!this.props.cardIsNewFn() && !this.props.isEditing) {
+        if (!this.props.isNew && !this.props.isEditing) {
             // simply adding an existing saved card to a dashboard, so show the modal to do so
             buttonSections.push([
                 <Tooltip key="addtodash" tooltip="Add to dashboard">
                     <span data-metabase-event={"QueryBuilder;AddToDash Modal;normal"} className="cursor-pointer text-brand-hover" onClick={() => this.setState({ modal: "add-to-dashboard" })}>
-                        <Icon name="addtodash" width="16px" height="16px" />
+                        <Icon name="addtodash" size={16} />
                     </span>
                 </Tooltip>
             ]);
-        } else if (this.props.cardIsNewFn() && this.props.cardIsDirtyFn()) {
+        } else if (this.props.isNew && this.props.isDirty) {
             // this is a new card, so we need the user to save first then they can add to dash
             buttonSections.push([
                 <Tooltip key="addtodashsave" tooltip="Add to dashboard">
                     <ModalWithTrigger
                         ref="addToDashSaveModal"
                         triggerClasses="h4 text-brand-hover text-uppercase"
-                        triggerElement={<span data-metabase-event={"QueryBuilder;AddToDash Modal;pre-save"} className="text-brand-hover"><Icon name="addtodash" width="16px" height="16px" /></span>}
+                        triggerElement={<span data-metabase-event={"QueryBuilder;AddToDash Modal;pre-save"} className="text-brand-hover"><Icon name="addtodash" size={16} /></span>}
                     >
                         <SaveQuestionModal
                             card={this.props.card}
@@ -291,12 +306,12 @@ export default class QueryHeader extends Component {
         }
 
         // history icon on saved cards
-        if (!this.props.cardIsNewFn()) {
+        if (!this.props.isNew) {
             buttonSections.push([
                 <Tooltip key="history" tooltip="Revision history">
                     <ModalWithTrigger
                         ref="cardHistory"
-                        triggerElement={<span className="text-brand-hover"><Icon name="history" width="18px" height="17px" /></span>}
+                        triggerElement={<span className="text-brand-hover"><Icon name="history" size={18} /></span>}
                     >
                         <HistoryModal
                             revisions={this.state.revisions}
@@ -317,7 +332,7 @@ export default class QueryHeader extends Component {
             <QueryModeButton
                 key="queryModeToggle"
                 mode={this.props.card.dataset_query.type}
-                allowNativeToQuery={this.props.cardIsNewFn() && !this.props.cardIsDirtyFn()}
+                allowNativeToQuery={this.props.isNew && !this.props.isDirty}
                 nativeForm={this.props.result && this.props.result.data && this.props.result.data.native_form}
                 onSetMode={this.props.setQueryModeFn}
                 tableMetadata={this.props.tableMetadata}
@@ -332,7 +347,7 @@ export default class QueryHeader extends Component {
         buttonSections.push([
             <Tooltip key="dataReference" tooltip="Learn about your data">
                 <a className={dataReferenceButtonClasses}>
-                    <Icon name='reference' width="16px" height="16px" onClick={this.onToggleDataReference}></Icon>
+                    <Icon name='reference' size={16} onClick={this.onToggleDataReference}></Icon>
                 </a>
             </Tooltip>
         ]);
@@ -342,30 +357,34 @@ export default class QueryHeader extends Component {
         );
     }
 
+    onCloseModal = () => {
+        this.setState({ modal: null });
+    }
+
     render() {
         return (
             <div>
                 <HeaderBar
                     isEditing={this.props.isEditing}
-                    name={this.props.cardIsNewFn() ? "New question" : this.props.card.name}
+                    name={this.props.isNew ? "New question" : this.props.card.name}
                     description={this.props.card ? this.props.card.description : null}
                     breadcrumb={(!this.props.card.id && this.props.originalCard) ? (<span className="pl2">started from <a className="link" onClick={this.onFollowBreadcrumb}>{this.props.originalCard.name}</a></span>) : null }
                     buttons={this.getHeaderButtons()}
                     setItemAttributeFn={this.props.onSetCardAttribute}
                 />
 
-                <Modal className="Modal Modal--small" isOpen={this.state.modal === "saved"}>
+                <Modal className="Modal Modal--small" isOpen={this.state.modal === "saved"} onClose={this.onCloseModal}>
                     <QuestionSavedModal
                         addToDashboardFn={() => this.setState({ modal: "add-to-dashboard" })}
-                        closeFn={() => this.setState({ modal: null })}
+                        closeFn={this.onCloseModal}
                     />
                 </Modal>
 
-                <Modal isOpen={this.state.modal === "add-to-dashboard"}>
+                <Modal isOpen={this.state.modal === "add-to-dashboard"} onClose={this.onCloseModal}>
                     <AddToDashSelectDashModal
                         card={this.props.card}
                         dashboardApi={this.props.dashboardApi}
-                        closeFn={() => this.setState({ modal: null })}
+                        closeFn={this.onCloseModal}
                         onChangeLocation={this.props.onChangeLocation}
                     />
                 </Modal>

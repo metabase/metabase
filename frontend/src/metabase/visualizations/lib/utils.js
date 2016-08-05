@@ -83,6 +83,36 @@ const FRIENDLY_NAME_MAP = {
     "stddev": "Standard Deviation"
 };
 
+export function getXValues(datas, chartType) {
+    let xValues = _.chain(datas)
+        .map((data) => _.pluck(data, 0))
+        .flatten(true)
+        .uniq()
+        .value();
+
+    // detect if every series' dimension is strictly ascending or descending and use that to sort xValues
+    let isAscending = true;
+    let isDescending = true;
+    outer: for (const rows of datas) {
+        for (let i = 1; i < rows.length; i++) {
+            isAscending = isAscending && rows[i - 1][0] <= rows[i][0];
+            isDescending = isDescending && rows[i - 1][0] >= rows[i][0];
+            if (!isAscending && !isDescending) {
+                break outer;
+            }
+        }
+    }
+    if (isDescending) {
+        // JavaScript's .sort() sorts lexicographically by default (e.x. 1, 10, 2)
+        // We could implement a comparator but _.sortBy handles strings, numbers, and dates correctly
+        xValues = _.sortBy(xValues, x => x).reverse();
+    } else if (isAscending) {
+        // default line/area charts to ascending since otherwise lines could be wonky
+        xValues = _.sortBy(xValues, x => x);
+    }
+    return xValues;
+}
+
 export function getFriendlyName(col) {
     let name = col.display_name || col.name;
     let friendlyName = FRIENDLY_NAME_MAP[name.toLowerCase().trim()];
@@ -127,6 +157,57 @@ export function colorShade(hex, shade = 0) {
     return "#" + components.map(c =>
         Math.round(min + (max - min) * shade * (c / 255)).toString(16)
     ).join("");
+}
+
+import { isDimension, isMetric } from "metabase/lib/schema_metadata";
+import crossfilter from "crossfilter";
+
+export const DIMENSION_METRIC = "DIMENSION_METRIC";
+export const DIMENSION_METRIC_METRIC = "DIMENSION_METRIC_METRIC";
+export const DIMENSION_DIMENSION_METRIC = "DIMENSION_DIMENSION_METRIC";
+
+const MAX_SERIES = 10;
+
+export const isDimensionMetric = (cols, strict = true) =>
+    (!strict || cols.length === 2) &&
+    isDimension(cols[0]) &&
+    isMetric(cols[1])
+
+export const isDimensionDimensionMetric = (cols, strict = true) =>
+    (!strict || cols.length === 3) &&
+    isDimension(cols[0]) &&
+    isDimension(cols[1]) &&
+    isMetric(cols[2])
+
+export const isDimensionMetricMetric = (cols, strict = true) =>
+    cols.length >= 3 &&
+    isDimension(cols[0]) &&
+    cols.slice(1).reduce((acc, col) => acc && isMetric(col), true)
+
+
+function computeColumnCardinality(cols, rows) {
+    let dataset = crossfilter(rows);
+    for (const [index, col] of Object.entries(cols)) {
+        if (col.cardinality == null) {
+            col.cardinality = dataset.dimension(d => d[index]).group().size();
+        }
+    }
+}
+
+export function getChartTypeFromData(cols, rows, strict = true) {
+    computeColumnCardinality(cols, rows);
+
+    // this should take precendence for backwards compatibilty
+    if (isDimensionMetricMetric(cols, strict)) {
+        return DIMENSION_METRIC_METRIC;
+    } else if (isDimensionDimensionMetric(cols, strict)) {
+        if (cols[0].cardinality < MAX_SERIES || cols[1].cardinality < MAX_SERIES) {
+            return DIMENSION_DIMENSION_METRIC;
+        }
+    } else if (isDimensionMetric(cols, strict)) {
+        return DIMENSION_METRIC;
+    }
+    return null;
 }
 
 export function enableVisualizationEasterEgg(code, OriginalVisualization, EasterEggVisualization) {

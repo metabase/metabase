@@ -4,7 +4,7 @@ import { Link } from "react-router";
 import S from "./Labels.css";
 import color from 'color'
 
-import EmojiIcon from "./EmojiIcon.jsx"
+import EmojiIcon from "metabase/components/EmojiIcon.jsx"
 
 import cx from "classnames";
 

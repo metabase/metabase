@@ -2,13 +2,18 @@ import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
 import visualizations from "metabase/visualizations";
-
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
+
+import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
+import ChartSettings from "metabase/visualizations/components/ChartSettings.jsx";
 
 import Icon from "metabase/components/Icon.jsx";
 
+import DashCardParameterMapper from "../components/parameters/DashCardParameterMapper.jsx";
+
 import cx from "classnames";
 import _ from "underscore";
+import { getIn } from "icepick";
 
 export default class DashCard extends Component {
     constructor(props, context) {
@@ -23,14 +28,14 @@ export default class DashCard extends Component {
 
     static propTypes = {
         dashcard: PropTypes.object.isRequired,
-        cardData: PropTypes.object.isRequired,
+        dashcardData: PropTypes.object.isRequired,
 
         markNewCardSeen: PropTypes.func.isRequired,
         fetchCardData: PropTypes.func.isRequired,
     };
 
     async componentDidMount() {
-        const { dashcard, markNewCardSeen, fetchCardData } = this.props;
+        const { dashcard, markNewCardSeen } = this.props;
 
         this.visibilityTimer = window.setInterval(this.updateVisibility, 2000);
         window.addEventListener("scroll", this.updateVisibility, false);
@@ -39,14 +44,6 @@ export default class DashCard extends Component {
         if (dashcard.justAdded) {
             ReactDOM.findDOMNode(this).scrollIntoView();
             markNewCardSeen(dashcard.id);
-        }
-
-        let cards = [dashcard.card].concat(...(dashcard.series || []));
-        try {
-            await Promise.all(cards.map(fetchCardData));
-        } catch (error) {
-            console.error("DashCard error", error)
-            this.setState({ error });
         }
     }
 
@@ -70,14 +67,13 @@ export default class DashCard extends Component {
     }
 
     render() {
-        const { dashcard, cardData, cardDurations, isEditing, onAddSeries, onRemove } = this.props;
+        const { dashcard, dashcardData, cardDurations, isEditing, isEditingParameter, onAddSeries, onRemove } = this.props;
 
         const cards = [dashcard.card].concat(dashcard.series || []);
         const series = cards
             .map(card => ({
+                ...getIn(dashcardData, [dashcard.id, card.id]),
                 card: card,
-                data: cardData[card.id] && cardData[card.id].data,
-                error: cardData[card.id] && cardData[card.id].error,
                 duration: cardDurations[card.id]
             }));
 
@@ -85,6 +81,8 @@ export default class DashCard extends Component {
         const expectedDuration = Math.max(...series.map((s) => s.duration ? s.duration.average : 0));
         const usuallyFast = _.every(series, (s) => s.duration && s.duration.average < s.duration.fast_threshold);
         const isSlow = loading && _.some(series, (s) => s.duration) && (usuallyFast ? "usually-fast" : "usually-slow");
+
+        const hasUnmappedParameters = _.any(series, (s) => s.json_query && _.any(s.json_query.parameters, (p) => p.target == null));
 
         const errors = series.map(s => s.error).filter(e => e);
         const error = errors[0] || this.state.error;
@@ -104,7 +102,13 @@ export default class DashCard extends Component {
 
         const CardVisualization = visualizations.get(series[0].card.display);
         return (
-            <div className={"Card bordered rounded flex flex-column " + cx({ "Card--recent": dashcard.isAdded, "Card--slow": isSlow === "usually-slow" })}>
+            <div
+                className={"Card bordered rounded flex flex-column " + cx({
+                    "Card--recent": dashcard.isAdded,
+                    "Card--unmapped": hasUnmappedParameters && !isEditing,
+                    "Card--slow": isSlow === "usually-slow"
+                })}
+            >
                 <Visualization
                     className="flex-full"
                     error={errorMessage}
@@ -114,31 +118,58 @@ export default class DashCard extends Component {
                     isDashboard={true}
                     isEditing={isEditing}
                     gridSize={this.props.isMobile ? undefined : { width: dashcard.sizeX, height: dashcard.sizeY }}
-                    actionButtons={isEditing ? <DashCardActionButtons series={series} visualization={CardVisualization} onRemove={onRemove} onAddSeries={onAddSeries} /> : undefined}
+                    actionButtons={isEditing && !isEditingParameter ?
+                        <DashCardActionButtons
+                            series={series}
+                            visualization={CardVisualization}
+                            onRemove={onRemove}
+                            onAddSeries={onAddSeries}
+                        /> : undefined
+                    }
                     onUpdateVisualizationSetting={this.props.onUpdateVisualizationSetting}
+                    replacementContent={isEditingParameter && <DashCardParameterMapper dashcard={dashcard} />}
                 />
             </div>
         );
     }
 }
 
-const DashCardActionButtons = ({ series, visualization, onRemove, onAddSeries }) =>
+const DashCardActionButtons = ({ series, visualization, onRemove, onAddSeries, onUpdateVisualizationSettings }) =>
     <span className="DashCard-actions flex align-center">
         { visualization.supportsSeries &&
             <AddSeriesButton series={series} onAddSeries={onAddSeries} />
         }
+        { onUpdateVisualizationSettings &&
+            <ChartSettingsButton series={series} onChange={onUpdateVisualizationSettings} />
+        }
         <RemoveButton onRemove={onRemove} />
     </span>
 
+const ChartSettingsButton = ({ series, onUpdateVisualizationSettings }) =>
+    <ModalWithTrigger
+        className="Modal Modal--wide Modal--tall"
+        triggerElement={<Icon name="gear" />}
+        triggerClasses="text-grey-2 text-grey-4-hover cursor-pointer mr1 flex align-center flex-no-shrink"
+    >
+        <ChartSettings
+            series={series}
+            onChange={onUpdateVisualizationSettings}
+        />
+    </ModalWithTrigger>
+
 const RemoveButton = ({ onRemove }) =>
     <a className="text-grey-2 text-grey-4-hover expand-clickable" data-metabase-event="Dashboard;Remove Card Modal" href="#" onClick={onRemove}>
-        <Icon name="close" width="14" height="14" />
+        <Icon name="close" size={14} />
     </a>
 
 const AddSeriesButton = ({ series, onAddSeries }) =>
-    <a data-metabase-event={"Dashboard;Edit Series Modal;open"} className="text-grey-2 text-grey-4-hover cursor-pointer h3 ml1 mr2 flex align-center flex-no-shrink relative" onClick={onAddSeries}>
-        <Icon className="absolute" style={{ top: 2, left: 2 }} name="add" width={8} height={8} />
-        <Icon name={getSeriesIconName(series)} width={24} height={24} />
+    <a
+        data-metabase-event={"Dashboard;Edit Series Modal;open"}
+        className="text-grey-2 text-grey-4-hover cursor-pointer h3 ml1 mr2 flex align-center flex-no-shrink relative"
+        onClick={onAddSeries}
+    >
+        <Icon className="absolute" style={{ top: 2, left: 2 }} name="add" size={8} />
+        <Icon name={getSeriesIconName(series)} size={12} />
         <span className="flex-no-shrink">{ series.length > 1 ? "Edit" : "Add" }</span>
     </a>
 

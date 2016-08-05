@@ -3,8 +3,8 @@
             [expectations :refer :all]
             [ring.mock.request :as mock]
             [metabase.api.common :refer [*current-user-id* *current-user*]]
-            [metabase.db :as db]
-            [metabase.middleware :refer :all]
+            (metabase [db :as db]
+                      [middleware :refer :all])
             [metabase.models.session :refer [Session]]
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
@@ -60,8 +60,7 @@
   (auth-enforced-handler (mock/request :get "/anyurl")))
 
 (defn- random-session-id []
-  {:post [(string? %)]}
-  (.toString (java.util.UUID/randomUUID)))
+  (str (java.util.UUID/randomUUID)))
 
 ;; valid session ID
 (expect

@@ -1,7 +1,6 @@
 (ns metabase.models.interface
   (:require [clojure.tools.logging :as log]
             [cheshire.core :as json]
-            [korma.core :as k]
             (metabase [config :as config]
                       [util :as u])
             [metabase.models.common :as common]))
@@ -237,7 +236,7 @@
 
      (Database)                       ; return a seq of *all* Databases (as instances of `DatabaseInstance`)
      (Database 1)                     ; return Database 1"
-  {:arglist      '([entity table-name] [entity docstr? table-name])
+  {:arglists     '([entity table-name] [entity docstr? table-name])
    :style/indent 2}
   [entity & args]
   (let [[docstr [table-name]] (u/optional string? args)
@@ -245,6 +244,10 @@
         map->instance         (symbol (str "map->" instance))]
     `(do
        (defrecord ~instance []
+         clojure.lang.Named
+         (~'getName [~'_]
+          ~(name entity))
+
          clojure.lang.IFn
          (~'invoke [this#]
           (invoke-entity-or-instance this#))
@@ -295,8 +298,7 @@
                         :tag      (symbol (str (namespace-munge *ns*) \. instance))
                         :arglists ''([] [id] [& kvs])
                         :doc      (or docstr
-                                      (format "Korma entity for '%s' table; instance of %s." (name table-name) instance)))
-         (-> (k/create-entity ~(name entity))
-             (k/table ~table-name)
-             (assoc ::entity true)
-             ~map->instance)))))
+                                      (format "Entity for '%s' table; instance of %s." (name table-name) instance)))
+         (~map->instance {:table   ~table-name
+                          :name    ~(name entity)
+                          ::entity true})))))

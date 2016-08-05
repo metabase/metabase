@@ -105,8 +105,14 @@ export const isBoolean = isFieldType.bind(null, BOOLEAN);
 export const isString = isFieldType.bind(null, STRING);
 export const isSummable = isFieldType.bind(null, SUMMABLE);
 export const isCategory = isFieldType.bind(null, CATEGORY);
-export const isDimension = () => true;
-export const isMetric = (col) => isNumeric(col)
+
+export const isDimension = (col) => (col && col.source !== "aggregation");
+export const isMetric    = (col) => (col && col.source !== "breakout") && isSummable(col);
+
+export const isNumericBaseType = (field) => TYPES[NUMBER].base
+    .some(type => type === field.base_type);
+
+export const isLatLon = (col) => col.special_type === "latitude" || col.special_type === "longitude";
 
 // operator argument constructors:
 
@@ -496,4 +502,39 @@ export function foreignKeyCountsByOriginTable(fks) {
 
         return prev;
     }, {});
+}
+
+export const ICON_MAPPING = {
+    [DATE_TIME]:  'calendar',
+    [LOCATION]: 'location',
+    [COORDINATE]: 'location',
+    [STRING]: 'string',
+    [NUMBER]: 'int',
+    [BOOLEAN]: 'io'
+};
+
+export function getIconForField(field) {
+    return ICON_MAPPING[getFieldType(field)];
+}
+
+export function computeMetadataStrength(table) {
+    var total = 0;
+    var completed = 0;
+    function score(value) {
+        total++;
+        if (value) { completed++; }
+    }
+
+    score(table.description);
+    if (table.fields) {
+        table.fields.forEach(function(field) {
+            score(field.description);
+            score(field.special_type);
+            if (field.special_type === "fk") {
+                score(field.target);
+            }
+        });
+    }
+
+    return (completed / total);
 }
