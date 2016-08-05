@@ -52,6 +52,7 @@
 `./bin/osx-setup` will build run commands to build the uberjar for you if needed.
 Run `./bin/osx-setup` again at any time in the future to copy the latest version of the uberjar into the project.
 
+(If the script fails near the end, you can just copy the JARs in question to `OSX/Resources/metabase.jar` and `OSX/Resources/reset-password.jar`.)
 
 ## Releasing
 
