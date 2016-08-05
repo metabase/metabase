@@ -11,6 +11,7 @@ const GuideHeader = ({
 }) =>
     <div className={S.guideHeader}>
         <div className={cx("wrapper wrapper--trim", S.guideHeaderBody)}>
+            <span className={S.guideHeaderTitlePadding}></span>
             <span className={S.guideHeaderTitle}>Understanding our data</span>
             <div className={S.guideHeaderButtons}>
                 <EditButton className={S.guideHeaderEditButton} startEditing={startEditing}/>

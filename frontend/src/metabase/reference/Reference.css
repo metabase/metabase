@@ -23,3 +23,37 @@
 :local(.tableActualName) {
     color: #AAB7C3;
 }
+
+:local(.guideLeftPadded) {
+    composes: flex full justify-center from "style";
+}
+
+:local(.guideLeftPaddedBody) {
+    composes: block from "style";
+    padding-left: 200px;
+    max-width: 750px;
+}
+
+:local(.guideTitle) {
+    composes: guideLeftPadded;
+    font-size: 24px;
+}
+
+:local(.guideTitleBody) {
+    composes: full text-dark text-bold my4 from "style";
+    composes: guideLeftPaddedBody;
+}
+
+:local(.guideSeeAll) {
+    composes: guideLeftPadded;
+    font-size: 20px;
+}
+
+:local(.guideSeeAllBody) {
+    composes: full text-dark text-bold my4 from "style";
+    composes: guideLeftPaddedBody;
+}
+
+:local(.guideSeeAllLink) {
+    composes: full block no-decoration py1 border-top from "style";
+}

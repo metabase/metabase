@@ -1,7 +1,9 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
+import { Link } from "react-router";
 import { connect } from 'react-redux';
 import { reduxForm } from "redux-form";
+import cx from "classnames";
 
 import S from "metabase/reference/Reference.css";
 
@@ -79,7 +81,40 @@ export default class ReferenceGettingStartedGuide extends Component {
                     /> :
                     <div className="full">
                         <GuideHeader startEditing={startEditing} />
-                        <GuideDetail title={'test'} description={'test'} value={'test'} link={'test'} linkClass={'test'} />
+                        <div className="wrapper wrapper--trim">
+                            <div className={S.guideTitle}>
+                                <span className={S.guideTitleBody}>
+                                    Dashboard
+                                </span>
+                            </div>
+                            <GuideDetail 
+                                title={'Marketing KPIs'} 
+                                description={'This dashboard contains metrics about ad buys, impressions, etc.'} 
+                                link={'test'} 
+                                linkClass={'text-green'} 
+                            />
+                            <div className={S.guideSeeAll}>
+                                <span className={S.guideSeeAllBody}>
+                                    <Link className={cx('text-green', S.guideSeeAllLink)} to={'test'}>
+                                        See all dashboards
+                                    </Link>
+                                </span>
+                            </div>
+                            
+                            <div className={S.guideTitle}>
+                                <span className={S.guideTitleBody}>
+                                    Useful metrics
+                                </span>
+                            </div>
+                            <GuideDetail 
+                                title={'Cost per click'} 
+                                description={'How much we pay for each click that we receive, not counting some esoteric exceptions.'} 
+                                value={'$0.91'} 
+                                hasLearnMore={true}
+                                link={'test'} 
+                                linkClass={'text-brand'} 
+                            />
+                        </div>
                     </div>
                 }
             </form>

@@ -9,10 +9,15 @@
 }
 
 :local(.guideHeaderTitle) {
-    composes: flex-full text-dark text-bold from "style";
-    max-width: 750px;
-    padding-left: 200px;
+    composes: flex-full flex-no-shrink text-dark text-bold from "style";
+    max-width: 550px;
+    min-width: 400px;
     font-size: 30px;
+}
+
+:local(.guideHeaderTitlePadding) {
+    composes: flex-full from "style";
+    max-width: 200px;
 }
 
 :local(.guideHeaderButtons) {
@@ -23,4 +28,5 @@
 }
 
 :local(.guideHeaderEditButton) {
+    composes: mr4 from "style";
 }

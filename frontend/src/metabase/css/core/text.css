@@ -23,7 +23,7 @@
 
 /* left */
 
-.text-left { text-align: left; }
+.text-left, :local(.text-left) { text-align: left; }
 
 @media screen and (--breakpoint-min-sm) {
     .sm-text-left { text-align: left; }
@@ -43,7 +43,7 @@
 
 /* right */
 
-.text-right { text-align: right; }
+.text-right, :local(.text-right) { text-align: right; }
 
 @media screen and (--breakpoint-min-sm) {
     .sm-text-right { text-align: right; }

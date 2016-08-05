@@ -1,15 +1,32 @@
 :local(.guideDetail) {
-    composes: flex full justify-center from "style";
+    composes: flex full justify-center mt4 from "style";
 }
 
 :local(.guideDetailTitle) {
-    composes: flex-full text-bold from "style";
-    font-size: 18px;
-    max-width: 200px;
+    composes: flex-full text-bold text-right from "style";
+    font-size: 20px;
+    max-width: 150px;
+    margin-right: 50px;
+}
+
+:local(.guideDetailLink) {
+    composes: no-decoration from "style";
 }
 
 :local(.guideDetailBody) {
-    composes: flex-full text-bold from "style";
+    composes: flex-full text-body from "style";
     max-width: 550px;
+    color: var(--dark-color);
+    font-size: 18px;
 }
+
+:local(.guideDetailValue) {
+    composes: text-bold pb4 from "style";
+}
+
+:local(.guideDetailLearnMore) {
+    composes: full text-bold block py1 no-decoration from "style";
+    font-size: 16px;
+}
+
 
