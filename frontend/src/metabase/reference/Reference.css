@@ -29,7 +29,6 @@
 }
 
 :local(.guideLeftPaddedBody) {
-    composes: block from "style";
     padding-left: 200px;
     max-width: 750px;
 }
@@ -50,10 +49,21 @@
 }
 
 :local(.guideSeeAllBody) {
-    composes: full text-dark text-bold my4 from "style";
+    composes: flex full text-dark text-bold my4 from "style";
     composes: guideLeftPaddedBody;
 }
 
 :local(.guideSeeAllLink) {
-    composes: full block no-decoration py1 border-top from "style";
+    composes: flex-full block no-decoration py1 border-top from "style";
+}
+
+:local(.guideContact) {
+    composes: guideLeftPadded;
+    margin-bottom: 100px;
+}
+
+:local(.guideContactBody) {
+    composes: full from "style";
+    composes: guideLeftPaddedBody;
+    font-size: 18px;
 }

@@ -16,7 +16,14 @@ const GuideDetail = ({
 }) =>
     <div className={S.guideDetail}>
         <div className={S.guideDetailTitle}>
-            <Link className={cx(S.guideDetailLink, linkClass)} to={link}>{title}</Link>
+            { title && link &&
+                <Link 
+                    className={cx(S.guideDetailLink, linkClass)} 
+                    to={link}
+                >
+                    {title}
+                </Link>
+            }
         </div>
         <div className={S.guideDetailBody}>
             { value &&
@@ -52,13 +59,13 @@ const GuideDetail = ({
         </div>
     </div>;
 GuideDetail.propTypes = {
-    title: PropTypes.string.isRequired,
+    title: PropTypes.string,
     description: PropTypes.string.isRequired,
     value: PropTypes.string,
     hasLearnMore: PropTypes.bool,
     exploreLinks: PropTypes.array,
-    link: PropTypes.string.isRequired,
-    linkClass: PropTypes.string.isRequired
+    link: PropTypes.string,
+    linkClass: PropTypes.string
 };
 
 export default pure(GuideDetail);

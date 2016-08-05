@@ -30,12 +30,12 @@
 }
 
 :local(.guideDetailExploreTitle) {
-    composes: text-bold mt4 mb1 from "style";
+    composes: text-bold mt2 mb1 from "style";
     font-size: 16px;
 }
 
 :local(.guideDetailExploreLinks) {
-    composes: text-bold mb4 from "style";
+    composes: text-bold from "style";
     font-size: 16px;
 }
 
