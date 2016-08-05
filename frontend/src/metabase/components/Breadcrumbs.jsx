@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import { Link } from "react-router";
 
 import S from "./Breadcrumbs.css";
 
@@ -51,7 +52,7 @@ export default class Breadcrumbs extends Component {
                                 )}
                             >
                                 { breadcrumb.length > 1 ?
-                                    <a href={breadcrumb[1]}>{breadcrumb[0]}</a> :
+                                    <Link to={breadcrumb[1]}>{breadcrumb[0]}</Link> :
                                     <span>{breadcrumb[0]}</span>
                                 }
                             </Ellipsified>

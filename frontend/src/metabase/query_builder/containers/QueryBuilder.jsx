@@ -33,11 +33,12 @@ import {
     uiControls,
     getParameters,
     getDatabaseFields,
-    getSampleDatasetId
+    getSampleDatasetId,
+    getFullDatasetQuery,
 } from "../selectors";
 
 import * as actions from "../actions";
-
+import { push } from "react-router-redux";
 
 const cardApi = new AngularResourceProxy("Card", ["create", "update", "delete"]);
 const dashboardApi = new AngularResourceProxy("Dashboard", ["list", "create"]);
@@ -70,10 +71,9 @@ function autocompleteResults(card, prefix) {
 
 const mapStateToProps = (state, props) => {
     return {
-        updateUrl:                 props.updateUrl,
         user:                      state.currentUser,
-        fromUrl:                   state.router && state.router.location && state.router.location.query.from,
-        location:                  state.router && state.router.location,
+        fromUrl:                   props.location.query.from,
+        location:                  props.location,
 
         card:                      card(state),
         originalCard:              originalCard(state),
@@ -92,6 +92,7 @@ const mapStateToProps = (state, props) => {
         parameters:                getParameters(state),
         databaseFields:            getDatabaseFields(state),
         sampleDatasetId:           getSampleDatasetId(state),
+        fullDatasetQuery:          getFullDatasetQuery(state),
 
         isShowingDataReference:    state.qb.uiControls.isShowingDataReference,
         isShowingTutorial:         state.qb.uiControls.isShowingTutorial,
@@ -106,9 +107,13 @@ const mapStateToProps = (state, props) => {
     }
 }
 
+const getURL = (location) =>
+    location.pathname + location.search + location.hash;
+
 
 const mapDispatchToProps = {
     ...actions,
+    onChangeLocation: push
 };
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -117,18 +122,17 @@ export default class QueryBuilder extends Component {
     constructor(props, context) {
         super(props, context);
 
-        _.bindAll(this, "popStateListener", "handleResize");
+        _.bindAll(this, "handleResize");
 
         // TODO: React tells us that forceUpdate() is not the best thing to use, so ideally we can find a different way to trigger this
         this.forceUpdateDebounced = _.debounce(this.forceUpdate.bind(this), 400);
     }
 
     componentWillMount() {
-        this.props.initializeQB(this.props.updateUrl);
+        this.props.initializeQB(this.props.location, this.props.params);
     }
 
     componentDidMount() {
-        window.addEventListener('popstate', this.popStateListener);
         window.addEventListener('resize', this.handleResize);
     }
 
@@ -139,14 +143,17 @@ export default class QueryBuilder extends Component {
             // ensure that some components are updated after the animation completes (e.g. card visualization)
             window.setTimeout(this.forceUpdateDebounced, 300);
         }
-        // HACK: if we switch to the tutorial from within the QB we need to manually re-initialize
-        if (!this.props.location.query.tutorial && nextProps.location.query.tutorial) {
-            this.props.initializeQB(nextProps.updateUrl);
+
+        if (nextProps.location.action === "POP" && getURL(nextProps.location) !== getURL(this.props.location)) {
+            this.props.popState(nextProps.location);
+        } else if (this.props.location.query.tutorial === undefined && nextProps.location.query.tutorial !== undefined) {
+            this.props.initializeQB(nextProps.location, nextProps.params);
+        } else if (getURL(nextProps.location) === "/q" && getURL(this.props.location) !== "/q") {
+            this.props.initializeQB(nextProps.location, nextProps.params);
         }
     }
 
     componentWillUnmount() {
-        window.removeEventListener('popstate', this.popStateListener);
         window.removeEventListener('resize', this.handleResize);
     }
 
@@ -154,13 +161,6 @@ export default class QueryBuilder extends Component {
     // Debounce the function to improve resizing performance.
     handleResize(e) {
         this.forceUpdateDebounced();
-    }
-
-    popStateListener(e) {
-        if (e.state && e.state.card) {
-            e.preventDefault();
-            this.props.setCardAndRun(e.state.card);
-        }
     }
 
     render() {
@@ -185,7 +185,7 @@ export default class QueryBuilder extends Component {
 
         const showDrawer = uiControls.isShowingDataReference || uiControls.isShowingTemplateTagsEditor;
         return (
-            <div>
+            <div className="flex-full relative">
                 <div className={cx("QueryBuilder flex flex-column bg-white spread", {"QueryBuilder--showSideDrawer": showDrawer})}>
                     <div id="react_qb_header">
                         <QueryHeader {...this.props}/>

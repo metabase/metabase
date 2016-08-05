@@ -9,7 +9,7 @@ import { isCardDirty } from "metabase/lib/card";
 import * as DataGrid from "metabase/lib/data_grid";
 import Query from "metabase/lib/query";
 import { parseFieldTarget } from "metabase/lib/query_time";
-
+import { applyParameters } from "metabase/meta/Card";
 
 export const uiControls                = state => state.qb.uiControls;
 
@@ -156,3 +156,9 @@ export const getParameters = createSelector(
 	[getImplicitParameters],
 	(implicitParameters) => implicitParameters
 );
+
+export const getFullDatasetQuery = createSelector(
+	[card, getParameters, parameterValues],
+	(card, parameters, parameterValues) =>
+		card && applyParameters(card, parameters, parameterValues)
+)

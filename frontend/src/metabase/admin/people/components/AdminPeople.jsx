@@ -1,4 +1,6 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
+import { Link } from "react-router";
 import _ from "underscore";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
@@ -14,16 +16,6 @@ import Tooltip from "metabase/components/Tooltip.jsx";
 import EditUserForm from "./EditUserForm.jsx";
 import UserActionsSelect from "./UserActionsSelect.jsx";
 import UserRoleSelect from "./UserRoleSelect.jsx";
-import { createUser,
-         deleteUser,
-         fetchUsers,
-         grantAdmin,
-         resetPasswordManually,
-         resetPasswordViaEmail,
-         revokeAdmin,
-         showModal,
-         updateUser } from "../actions";
-
 
 export const MODAL_ADD_PERSON = 'MODAL_ADD_PERSON';
 export const MODAL_EDIT_DETAILS = 'MODAL_EDIT_DETAILS';
@@ -45,13 +37,24 @@ export default class AdminPeople extends Component {
     }
 
     static propTypes = {
-        dispatch: PropTypes.func.isRequired,
-        users: PropTypes.object
+        user: PropTypes.object.isRequired,
+        users: PropTypes.object,
+        modal: PropTypes.object,
+        createUser: PropTypes.func.isRequired,
+        deleteUser: PropTypes.func.isRequired,
+        fetchUsers: PropTypes.func.isRequired,
+        grantAdmin: PropTypes.func.isRequired,
+        resetPasswordManually: PropTypes.func.isRequired,
+        resetPasswordViaEmail: PropTypes.func.isRequired,
+        revokeAdmin: PropTypes.func.isRequired,
+        showModal: PropTypes.func.isRequired,
+        updateUser: PropTypes.func.isRequired,
+        resendInvite: PropTypes.func.isRequired,
     };
 
     async componentDidMount() {
         try {
-            await this.props.dispatch(fetchUsers());
+            await this.props.fetchUsers();
         } catch (error) {
             this.setState({ error });
         }
@@ -65,17 +68,17 @@ export default class AdminPeople extends Component {
             });
 
             if (admins && _.keys(admins).length > 1) {
-                this.props.dispatch(revokeAdmin(user));
+                this.props.revokeAdmin(user);
             }
 
         } else if (roleDef.id === "admin" && !user.is_superuser) {
-            this.props.dispatch(grantAdmin(user));
+            this.props.grantAdmin(user);
         }
     }
 
     async onAddPerson(user) {
         // close the modal no matter what
-        this.props.dispatch(showModal(null));
+        this.props.showModal(null);
 
         if (user) {
             let modal = MODAL_USER_ADDED_WITH_INVITE;
@@ -87,60 +90,60 @@ export default class AdminPeople extends Component {
             }
 
             // create the user
-            this.props.dispatch(createUser(user));
+            this.props.createUser(user);
 
             // carry on
-            this.props.dispatch(showModal({
+            this.props.showModal({
                 type: modal,
                 details: {
                     user: user
                 }
-            }));
+            });
         }
     }
 
     onEditDetails(user) {
         // close the modal no matter what
-        this.props.dispatch(showModal(null));
+        this.props.showModal(null);
 
         if (user) {
-            this.props.dispatch(updateUser(user));
+            this.props.updateUser(user);
         }
     }
 
     onPasswordResetConfirm(user) {
         if (MetabaseSettings.isEmailConfigured()) {
             // trigger password reset email
-            this.props.dispatch(resetPasswordViaEmail(user));
+            this.props.resetPasswordViaEmail(user);
 
             // show confirmation modal
-            this.props.dispatch(showModal({
+            this.props.showModal({
                 type: MODAL_RESET_PASSWORD_EMAIL,
                 details: {user: user}
-            }));
+            });
 
         } else {
             // generate a password
             const password = MetabaseUtils.generatePassword(14, MetabaseSettings.get('password_complexity'));
 
             // trigger the reset
-            this.props.dispatch(resetPasswordManually(user, password));
+            this.props.resetPasswordManually(user, password);
 
             // show confirmation modal
-            this.props.dispatch(showModal({
+            this.props.showModal({
                 type: MODAL_RESET_PASSWORD_MANUAL,
                 details: {password: password, user: user}
-            }));
+            });
         }
     }
 
     onRemoveUserConfirm(user) {
-        this.props.dispatch(showModal(null));
-        this.props.dispatch(deleteUser(user));
+        this.props.showModal(null);
+        this.props.deleteUser(user);
     }
 
     onCloseModal = () => {
-        this.props.dispatch(showModal(null));
+        this.props.showModal(null);
     }
 
     renderAddPersonModal(modalDetails) {
@@ -187,12 +190,12 @@ export default class AdminPeople extends Component {
 
                             <PasswordReveal password={user.password} />
 
-                            <div style={{paddingLeft: "5em", paddingRight: "5em"}} className="pt4 text-centered">If you want to be able to send email invites, just go to the <a className="link text-bold" href="/admin/settings/?section=Email">Email Settings</a> page.</div>
+                            <div style={{paddingLeft: "5em", paddingRight: "5em"}} className="pt4 text-centered">If you want to be able to send email invites, just go to the <Link to="/admin/settings/email" className="link text-bold">Email Settings</Link> page.</div>
                         </div>
 
                         <div className="Form-actions">
                             <button className="Button Button--primary" onClick={this.onCloseModal}>Done</button>
-                            <span className="pl1">or<a className="link ml1 text-bold" href="" onClick={() => this.props.dispatch(showModal({type: MODAL_ADD_PERSON}))}>Add another person</a></span>
+                            <span className="pl1">or<a className="link ml1 text-bold" href="" onClick={() => this.props.showModal({type: MODAL_ADD_PERSON})}>Add another person</a></span>
                         </div>
                     </div>
                 </ModalContent>
@@ -213,7 +216,7 @@ export default class AdminPeople extends Component {
 
                         <div className="Form-actions">
                             <button className="Button Button--primary" onClick={this.onCloseModal}>Done</button>
-                            <span className="pl1">or<a className="link ml1 text-bold" href="" onClick={() => this.props.dispatch(showModal({type: MODAL_ADD_PERSON}))}>Add another person</a></span>
+                            <span className="pl1">or<a className="link ml1 text-bold" href="" onClick={() => this.props.showModal({type: MODAL_ADD_PERSON})}>Add another person</a></span>
                         </div>
                     </div>
                 </ModalContent>
@@ -361,7 +364,7 @@ export default class AdminPeople extends Component {
                     { modal ? this.renderModal(modal.type, modal.details) : null }
 
                     <section className="PageHeader clearfix px2">
-                        <a data-metabase-event="People Admin;Add Person Modal" className="Button Button--primary float-right" href="#" onClick={() => this.props.dispatch(showModal({type: MODAL_ADD_PERSON}))}>Add person</a>
+                        <a data-metabase-event="People Admin;Add Person Modal" className="Button Button--primary float-right" href="#" onClick={() => this.props.showModal({type: MODAL_ADD_PERSON})}>Add person</a>
                         <h2 className="PageTitle">People</h2>
                     </section>
 
@@ -395,7 +398,7 @@ export default class AdminPeople extends Component {
                                     </td>
                                     <td>{ user.last_login ? user.last_login.fromNow() : "Never" }</td>
                                     <td className="text-right">
-                                        <UserActionsSelect user={user} dispatch={this.props.dispatch} isActiveUser={this.props.user.id === user.id} />
+                                        <UserActionsSelect user={user} showModal={this.props.showModal} resendInvite={this.props.resendInvite} isActiveUser={this.props.user.id === user.id} />
                                     </td>
                                 </tr>
                                 )}

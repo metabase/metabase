@@ -33,12 +33,12 @@ import {
 import * as metadataActions from "metabase/redux/metadata";
 
 const mapStateToProps = (state, props) => ({
-    section: getSection(state),
-    entities: getData(state),
-    user: getUser(state),
-    hasSingleSchema: getHasSingleSchema(state),
-    loading: getLoading(state),
-    loadingError: getError(state)
+    section: getSection(state, props),
+    entities: getData(state, props),
+    user: getUser(state, props),
+    hasSingleSchema: getHasSingleSchema(state, props),
+    loading: getLoading(state, props),
+    loadingError: getError(state, props)
 });
 
 const mapDispatchToProps = {

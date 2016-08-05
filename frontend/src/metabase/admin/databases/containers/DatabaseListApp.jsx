@@ -1,5 +1,7 @@
 import React, { Component, PropTypes } from "react";
 import { connect } from "react-redux";
+import { Link } from "react-router";
+
 import cx from "classnames";
 import MetabaseSettings from "metabase/lib/settings";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
@@ -17,7 +19,7 @@ import * as databaseActions from "../database";
 
 const mapStateToProps = (state, props) => {
     return {
-        created:              state.router && state.router.params && state.router.params.created,
+        created:              props.location.query.created,
         databases:            getDatabasesSorted(state),
         hasSampleDataset:     hasSampleDataset(state),
         engines:              MetabaseSettings.get('engines')
@@ -46,7 +48,7 @@ export default class DatabaseList extends Component {
         return (
             <div className="wrapper">
                 <section className="PageHeader px2 clearfix">
-                    <a className="Button Button--primary float-right" href="/admin/databases/create">Add database</a>
+                    <Link to="/admin/databases/create" className="Button Button--primary float-right">Add database</Link>
                     <h2 className="PageTitle">Databases</h2>
                 </section>
                 <section>
@@ -63,7 +65,7 @@ export default class DatabaseList extends Component {
                                 databases.map(database =>
                                     <tr key={database.id}>
                                         <td>
-                                            <a className="text-bold link" href={"/admin/databases/"+database.id}>{database.name}</a>
+                                            <Link to={"/admin/databases/"+database.id} className="text-bold link">{database.name}</Link>
                                         </td>
                                         <td>
                                             {engines && engines[database.engine] ? engines[database.engine]['driver-name'] : database.engine}
@@ -106,6 +108,7 @@ export default class DatabaseList extends Component {
                     isInitiallyOpen={created}
                 >
                     <CreatedDatabaseModal
+                        databaseId={parseInt(created)}
                         onDone={() => this.refs.createdDatabaseModal.toggle() }
                         onClose={() => this.refs.createdDatabaseModal.toggle() }
                     />
