@@ -34,7 +34,7 @@ import * as setup from "metabase/setup/reducers";
 
 /* user */
 import * as user from "metabase/user/reducers";
-import { currentUser } from "metabase/user";
+import currentUser from "metabase/redux/user";
 
 const reducers = {
     // global reducers

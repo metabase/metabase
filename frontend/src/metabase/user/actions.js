@@ -3,10 +3,9 @@ import { createAction } from "redux-actions";
 import { AngularResourceProxy, createThunkAction } from "metabase/lib/redux";
 
 // resource wrappers
-// const AppState = new AngularResourceProxy("AppState", ["refreshCurrentUser"]);
 const UserApi = new AngularResourceProxy("User", ["update", "update_password"]);
 
-import { refreshCurrentUser } from "metabase/user";
+import { refreshCurrentUser } from "metabase/redux/user";
 
 // action constants
 export const CHANGE_TAB = 'CHANGE_TAB';
@@ -45,7 +44,6 @@ export const updateUser = createThunkAction(UPDATE_USER, function(user) {
         try {
             await UserApi.update(user);
 
-            // AppState.refreshCurrentUser();
             dispatch(refreshCurrentUser());
 
             return {
