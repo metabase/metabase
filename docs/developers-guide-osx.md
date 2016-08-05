@@ -42,9 +42,6 @@
    # You may have to run this as sudo if you didn't upgrade perl as described in step above
    cpan install File::Copy::Recursive JSON Readonly String::Util Text::Caml WWW::Curl::Simple
    
-   # Fix script not using updated version of Perl (this is fixed in master as of August 4th 2016)
-   sed -i '' -e 's!usr/bin/perl!usr/bin/env perl!' ./bin/osx-setup
-   
    # Copy JRE and uberjar
    ./bin/osx-setup
    ```
@@ -74,9 +71,6 @@ emacs bin/config.json
 # Obtain a copy of the private key used for signing the app (ask Cam)
 # and put a copy of it at ./dsa_priv.pem
 cp /path/to/private/key.pem OSX/dsa_priv.pem
-
-# Fix script not using updated version of Perl (this is fixed in master as of August 4th 2016)
-sed -i '' -e 's!usr/bin/perl!usr/bin/env perl!' ./bin/osx-release
 ```
 
 You'll probably also want an Apple Developer ID Application Certificate in your computer's keychain. You'll need to generate a Certificate Signing Request from Keychain Access, and have Sameer go to [the Apple Developer Site](https://developer.apple.com/account/mac/certificate/) and generate one for you, then load the file on your computer. 
