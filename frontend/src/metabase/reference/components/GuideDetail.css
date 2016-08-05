@@ -3,7 +3,9 @@
 }
 
 :local(.guideDetailTitle) {
-    composes: flex-full text-bold text-right from "style";
+    composes: text-bold text-right from "style";
+    flex: 0.3;
+    margin-left: 0;
     font-size: 20px;
     max-width: 150px;
     margin-right: 50px;
@@ -14,7 +16,8 @@
 }
 
 :local(.guideDetailBody) {
-    composes: flex-full text-body from "style";
+    composes: text-body from "style";
+    flex: 0.7;
     max-width: 550px;
     color: var(--dark-color);
     font-size: 18px;

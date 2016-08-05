@@ -28,9 +28,19 @@
     composes: flex full justify-center from "style";
 }
 
+:local(.guideLeftPadded)::before {
+    /*FIXME: not sure how to share this with other components
+     because we can't use composes here apparently. any workarounds?*/
+    content: '';
+    display: block;
+    flex: 0.3;
+    max-width: 150px;
+    margin-right: 50px;
+}
+
 :local(.guideLeftPaddedBody) {
-    padding-left: 200px;
-    max-width: 750px;
+    flex: 0.7;
+    max-width: 550px;
 }
 
 :local(.guideTitle) {

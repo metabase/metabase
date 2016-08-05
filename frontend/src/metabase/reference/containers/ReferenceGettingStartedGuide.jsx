@@ -79,137 +79,140 @@ export default class ReferenceGettingStartedGuide extends Component {
                         isSuperuser={user && user.is_superuser}
                         startEditing={startEditing} 
                     /> :
-                    <div className="full">
-                        <GuideHeader startEditing={startEditing} />
-                        <div className="wrapper wrapper--trim">
-                            <div className={S.guideTitle}>
-                                <div className={S.guideTitleBody}>
-                                    Dashboard
+                    isEditing ?
+                        <div className="full">
+                        </div> :
+                        <div className="full">
+                            <GuideHeader startEditing={startEditing} />
+                            <div className="wrapper wrapper--trim">
+                                <div className={S.guideTitle}>
+                                    <div className={S.guideTitleBody}>
+                                        Dashboard
+                                    </div>
                                 </div>
-                            </div>
-                            <GuideDetail 
-                                title={'Marketing KPIs'} 
-                                description={'This dashboard contains metrics about ad buys, impressions, etc.'} 
-                                link={'test'} 
-                                linkClass={'text-green'} 
-                            />
-                            <div className={S.guideSeeAll}>
-                                <div className={S.guideSeeAllBody}>
-                                    <Link className={cx('text-green', S.guideSeeAllLink)} to={'test'}>
-                                        See all dashboards
-                                    </Link>
+                                <GuideDetail 
+                                    title={'Marketing KPIs'} 
+                                    description={'This dashboard contains metrics about ad buys, impressions, etc.'} 
+                                    link={'test'} 
+                                    linkClass={'text-green'} 
+                                />
+                                <div className={S.guideSeeAll}>
+                                    <div className={S.guideSeeAllBody}>
+                                        <Link className={cx('text-green', S.guideSeeAllLink)} to={'test'}>
+                                            See all dashboards
+                                        </Link>
+                                    </div>
                                 </div>
-                            </div>
-                            
-                            <div className={S.guideTitle}>
-                                <div className={S.guideTitleBody}>
-                                    Useful metrics
+                                
+                                <div className={S.guideTitle}>
+                                    <div className={S.guideTitleBody}>
+                                        Useful metrics
+                                    </div>
                                 </div>
-                            </div>
-                            <GuideDetail 
-                                title={'Cost per click'} 
-                                description={'How much we pay for each click that we receive, not counting some esoteric exceptions.'} 
-                                value={'$0.91'} 
-                                hasLearnMore={true}
-                                exploreLinks={[
-                                    {id: 'test1', name: 'Ad Campaign'},
-                                    {id: 'test2', name: 'Platform'},
-                                    {id: 'test3', name: 'Channel'}
-                                ]}
-                                link={'test'} 
-                                linkClass={'text-brand'} 
-                            />
-                            <GuideDetail 
-                                title={'Cost per click'} 
-                                description={'How much we pay for each click that we receive, not counting some esoteric exceptions.'} 
-                                value={'$0.91'} 
-                                hasLearnMore={true}
-                                exploreLinks={[
-                                    {id: 'test1', name: 'Ad Campaign'},
-                                    {id: 'test2', name: 'Platform'},
-                                    {id: 'test3', name: 'Channel'}
-                                ]}
-                                link={'test'} 
-                                linkClass={'text-brand'} 
-                            />
-                            <div className={S.guideSeeAll}>
-                                <div className={S.guideSeeAllBody}>
-                                    <Link className={cx('text-brand', S.guideSeeAllLink)} to={'test'}>
-                                        See all metrics
-                                    </Link>
+                                <GuideDetail 
+                                    title={'Cost per click'} 
+                                    description={'How much we pay for each click that we receive, not counting some esoteric exceptions.'} 
+                                    value={'$0.91'} 
+                                    hasLearnMore={true}
+                                    exploreLinks={[
+                                        {id: 'test1', name: 'Ad Campaign'},
+                                        {id: 'test2', name: 'Platform'},
+                                        {id: 'test3', name: 'Channel'}
+                                    ]}
+                                    link={'test'} 
+                                    linkClass={'text-brand'} 
+                                />
+                                <GuideDetail 
+                                    title={'Cost per click'} 
+                                    description={'How much we pay for each click that we receive, not counting some esoteric exceptions.'} 
+                                    value={'$0.91'} 
+                                    hasLearnMore={true}
+                                    exploreLinks={[
+                                        {id: 'test1', name: 'Ad Campaign'},
+                                        {id: 'test2', name: 'Platform'},
+                                        {id: 'test3', name: 'Channel'}
+                                    ]}
+                                    link={'test'} 
+                                    linkClass={'text-brand'} 
+                                />
+                                <div className={S.guideSeeAll}>
+                                    <div className={S.guideSeeAllBody}>
+                                        <Link className={cx('text-brand', S.guideSeeAllLink)} to={'test'}>
+                                            See all metrics
+                                        </Link>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div className={S.guideTitle}>
-                                <div className={S.guideTitleBody}>
-                                    Segments and tables
+                                <div className={S.guideTitle}>
+                                    <div className={S.guideTitleBody}>
+                                        Segments and tables
+                                    </div>
                                 </div>
-                            </div>
-                            <GuideDetail 
-                                title={'Impressions'} 
-                                description={'A table recording each ad impression with information about each impression.'} 
-                                hasLearnMore={true}
-                                link={'test'} 
-                                linkClass={'text-purple'} 
-                            />
-                            <GuideDetail 
-                                title={'Impressions'} 
-                                description={'A table recording each ad impression with information about each impression.'} 
-                                hasLearnMore={true}
-                                link={'test'} 
-                                linkClass={'text-purple'} 
-                            />
-                            <GuideDetail 
-                                title={'Impressions'} 
-                                description={'A table recording each ad impression with information about each impression.'} 
-                                hasLearnMore={true}
-                                link={'test'} 
-                                linkClass={'text-purple'} 
-                            />
-                            <div className={S.guideSeeAll}>
-                                <div className={S.guideSeeAllBody}>
-                                    <Link className={cx('text-purple', S.guideSeeAllLink)} to={'test'}>
-                                        See all segments
-                                    </Link>
-                                    <Link className={cx('text-purple', S.guideSeeAllLink)} to={'test'}>
-                                        See all tables
-                                    </Link>
+                                <GuideDetail 
+                                    title={'Impressions'} 
+                                    description={'A table recording each ad impression with information about each impression.'} 
+                                    hasLearnMore={true}
+                                    link={'test'} 
+                                    linkClass={'text-purple'} 
+                                />
+                                <GuideDetail 
+                                    title={'Impressions'} 
+                                    description={'A table recording each ad impression with information about each impression.'} 
+                                    hasLearnMore={true}
+                                    link={'test'} 
+                                    linkClass={'text-purple'} 
+                                />
+                                <GuideDetail 
+                                    title={'Impressions'} 
+                                    description={'A table recording each ad impression with information about each impression.'} 
+                                    hasLearnMore={true}
+                                    link={'test'} 
+                                    linkClass={'text-purple'} 
+                                />
+                                <div className={S.guideSeeAll}>
+                                    <div className={S.guideSeeAllBody}>
+                                        <Link className={cx('text-purple', S.guideSeeAllLink)} to={'test'}>
+                                            See all segments
+                                        </Link>
+                                        <Link className={cx('text-purple', S.guideSeeAllLink)} to={'test'}>
+                                            See all tables
+                                        </Link>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div className={S.guideTitle}>
-                                <div className={S.guideTitleBody}>
-                                    Some things to know
+                                <div className={S.guideTitle}>
+                                    <div className={S.guideTitleBody}>
+                                        Some things to know
+                                    </div>
                                 </div>
-                            </div>
-                            <GuideDetail 
-                                description={'Gaper losses league forkball pennant cubs balk no-hitter. Breaking ball national pastime series cy young left field walk off sacrifice fly cycle.'} 
-                            />
-                            <div className={S.guideSeeAll}>
-                                <div className={S.guideSeeAllBody}>
-                                    <Link className={cx('text-brand', S.guideSeeAllLink)} to={'test'}>
-                                        Explore our data
-                                    </Link>
+                                <GuideDetail 
+                                    description={'Gaper losses league forkball pennant cubs balk no-hitter. Breaking ball national pastime series cy young left field walk off sacrifice fly cycle.'} 
+                                />
+                                <div className={S.guideSeeAll}>
+                                    <div className={S.guideSeeAllBody}>
+                                        <Link className={cx('text-brand', S.guideSeeAllLink)} to={'test'}>
+                                            Explore our data
+                                        </Link>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div className={S.guideTitle}>
-                                <div className={S.guideTitleBody}>
-                                    Have questions?
+                                <div className={S.guideTitle}>
+                                    <div className={S.guideTitleBody}>
+                                        Have questions?
+                                    </div>
                                 </div>
-                            </div>
-                            <div className={S.guideContact}>
-                                <div className={S.guideContactBody}>
-                                    <span className="text-dark mr3">
-                                        Contact Sameer Al-Sakran
-                                    </span>
-                                    <Link className="text-brand text-bold no-decoration" to="test">
-                                        s-dog@metabase.com
-                                    </Link>
+                                <div className={S.guideContact}>
+                                    <div className={S.guideContactBody}>
+                                        <span className="text-dark mr3">
+                                            Contact Sameer Al-Sakran
+                                        </span>
+                                        <Link className="text-brand text-bold no-decoration" to="test">
+                                            s-dog@metabase.com
+                                        </Link>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
                 }
             </form>
         );
