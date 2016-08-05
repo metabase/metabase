@@ -27,9 +27,8 @@ export const getParameterValues   = state => state.dashboard.parameterValues;
 export const getDatabases         = state => state.metadata.databases;
 
 export const getMetadata = createSelector(
-    [getDatabases],
-    (databases) =>
-        new Metadata(Object.entries(databases).map(([k,v]) => v)) // not sure why flow doesn't like Object.values() here
+    [state => state.metadata],
+    (metadata) => Metadata.fromEntities(metadata)
 )
 
 export const getDashboard = createSelector(

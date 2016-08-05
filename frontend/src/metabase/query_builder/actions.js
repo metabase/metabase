@@ -15,6 +15,7 @@ import Query from "metabase/lib/query";
 import { createQuery } from "metabase/lib/query";
 import { loadTableAndForeignKeys } from "metabase/lib/table";
 import Utils from "metabase/lib/utils";
+import { applyParameters } from "metabase/meta/Card";
 
 import { getParameters } from "./selectors";
 
@@ -377,12 +378,9 @@ export const updateTemplateTag = createThunkAction(UPDATE_TEMPLATE_TAG, (templat
 });
 
 export const SET_PARAMETER_VALUE = "SET_PARAMETER_VALUE";
-export const setParameterValue = createThunkAction(SET_PARAMETER_VALUE, (parameterId, value) => {
-    return (dispatch, getState) => {
-        return { id: parameterId, value };
-    };
+export const setParameterValue = createAction(SET_PARAMETER_VALUE, (parameterId, value) => {
+    return { id: parameterId, value };
 });
-
 
 export const NOTIFY_CARD_CREATED = "NOTIFY_CARD_CREATED";
 export const notifyCardCreatedFn = createThunkAction(NOTIFY_CARD_CREATED, (card) => {
@@ -742,40 +740,24 @@ export const setQuerySort = createThunkAction(SET_QUERY_SORT, (column) => {
     };
 });
 
+
 // runQuery
 export const RUN_QUERY = "RUN_QUERY";
-export const runQuery = createThunkAction(RUN_QUERY, (card, shouldUpdateUrl=true, paramValues) => {
+export const runQuery = createThunkAction(RUN_QUERY, (card, shouldUpdateUrl = true, parameterValues) => {
     return async (dispatch, getState) => {
         const state = getState();
         const parameters = getParameters(state);
 
         // if we got a query directly on the action call then use it, otherwise take whatever is in our current state
         card = card || state.qb.card;
-        card = JSON.parse(JSON.stringify(card));
-        let dataset_query = card.dataset_query,
-            cardIsDirty = isCardDirty(card, state.qb.originalCard);
+        parameterValues = parameterValues || state.qb.parameterValues || {};
 
-        if (dataset_query.query) {
-            // TODO: this needs to be immutable
-            dataset_query.query = Query.cleanQuery(dataset_query.query);
-        }
+        const cardIsDirty = isCardDirty(card, state.qb.originalCard);
 
-        // apply any pseudo-parameters, if specified
-        if (parameters && parameters.length > 0) {
-            let templateTags = card.dataset_query.native.template_tags || {};
-            let parameterValues = paramValues || state.qb.parameterValues || {};
-            dataset_query.parameters = parameters.map(parameter => {
-                let tag = _.findWhere(templateTags, { id: parameter.id });
-                let value = parameterValues[parameter.id];
-                if (value != null && tag) {
-                    return {
-                        type: parameter.type,
-                        target: [tag.type === "dimension" ? "dimension" : "variable", ["template-tag", tag.name]],
-                        value: value
-                    };
-                }
-            }).filter(p => p);
-        }
+        card = {
+            ...card,
+            dataset_query: applyParameters(card, parameters, parameterValues)
+        };
 
         if (shouldUpdateUrl) {
             dispatch(updateUrl(card, cardIsDirty));
@@ -785,14 +767,14 @@ export const runQuery = createThunkAction(RUN_QUERY, (card, shouldUpdateUrl=true
         let startTime = new Date();
 
         // make our api call
-        Metabase.dataset({ timeout: cancelQueryDeferred.promise }, dataset_query, function (queryResult) {
+        Metabase.dataset({ timeout: cancelQueryDeferred.promise }, card.dataset_query, function (queryResult) {
             dispatch(queryCompleted(card, queryResult));
 
         }, function (error) {
             dispatch(queryErrored(startTime, error));
         });
 
-        MetabaseAnalytics.trackEvent("QueryBuilder", "Run Query", dataset_query.type);
+        MetabaseAnalytics.trackEvent("QueryBuilder", "Run Query", card.dataset_query.type);
 
         // HACK: prevent SQL editor from losing focus
         try { ace.edit("id_sql").focus() } catch (e) {}
