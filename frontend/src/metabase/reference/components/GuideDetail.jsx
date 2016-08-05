@@ -10,6 +10,7 @@ const GuideDetail = ({
     description,
     value,
     hasLearnMore,
+    exploreLinks,
     link,
     linkClass
 }) =>
@@ -30,6 +31,24 @@ const GuideDetail = ({
                     Learn more
                 </Link>
             }
+            { exploreLinks && exploreLinks.length > 0 &&
+                <div>
+                    <div className={S.guideDetailExploreTitle}>
+                        Explore this metric
+                    </div>
+                    <div className={S.guideDetailExploreLinks}>
+                        { exploreLinks.map(link => 
+                            <Link
+                                className={cx(linkClass, S.guideDetailExploreLink)} 
+                                key={link.id} 
+                                to={link.id}
+                            >
+                                {`By ${link.name}`}
+                            </Link>
+                        )}
+                    </div>
+                </div>
+            }
         </div>
     </div>;
 GuideDetail.propTypes = {
@@ -37,6 +56,7 @@ GuideDetail.propTypes = {
     description: PropTypes.string.isRequired,
     value: PropTypes.string,
     hasLearnMore: PropTypes.bool,
+    exploreLinks: PropTypes.array,
     link: PropTypes.string.isRequired,
     linkClass: PropTypes.string.isRequired
 };

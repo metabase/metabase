@@ -111,6 +111,11 @@ export default class ReferenceGettingStartedGuide extends Component {
                                 description={'How much we pay for each click that we receive, not counting some esoteric exceptions.'} 
                                 value={'$0.91'} 
                                 hasLearnMore={true}
+                                exploreLinks={[
+                                    {id: 'test1', name: 'Ad Campaign'},
+                                    {id: 'test2', name: 'Platform'},
+                                    {id: 'test3', name: 'Channel'}
+                                ]}
                                 link={'test'} 
                                 linkClass={'text-brand'} 
                             />

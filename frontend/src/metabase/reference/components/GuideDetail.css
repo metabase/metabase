@@ -29,4 +29,16 @@
     font-size: 16px;
 }
 
+:local(.guideDetailExploreTitle) {
+    composes: text-bold mt4 mb1 from "style";
+    font-size: 16px;
+}
 
+:local(.guideDetailExploreLinks) {
+    composes: text-bold mb4 from "style";
+    font-size: 16px;
+}
+
+:local(.guideDetailExploreLink) {
+    composes: no-decoration mr4 from "style";
+}
