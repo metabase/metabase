@@ -1,0 +1,37 @@
+:local .FunnelStep {
+    display: inline-block;
+    border-right: 1px solid #e6e6e6;
+    min-width: 50px;
+    height: 100%;
+}
+
+:local .Head {
+    height: 10%;
+    font-weight: bold;
+    text-align: right;
+    padding-right: 0.5em;
+}
+
+:local .Graph {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    font-size: 2em;
+    font-weight: bold;
+    color: #FFF;
+
+    height: 70%;
+    min-height: 200px;
+    background: #509EE3;
+    margin-right: -1px;
+}
+
+:local .Infos {
+    height: 20%;
+    text-align: right;
+    padding: 0.5em;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
