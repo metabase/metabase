@@ -8,11 +8,11 @@ import { push } from "react-router-redux";
 import S from "metabase/reference/Reference.css";
 
 import List from "metabase/components/List.jsx";
-import Detail from "metabase/components/Detail.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
 import EditHeader from "metabase/reference/components/EditHeader.jsx";
 import ReferenceHeader from "metabase/reference/components/ReferenceHeader.jsx";
+import Detail from "metabase/reference/components/Detail.jsx";
 import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail.jsx";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions.jsx";
 import FieldsToGroupBy from "metabase/reference/components/FieldsToGroupBy.jsx";

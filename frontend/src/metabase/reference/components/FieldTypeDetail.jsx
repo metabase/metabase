@@ -8,7 +8,7 @@ import { isNumericBaseType } from "metabase/lib/schema_metadata";
 
 import Select from "metabase/components/Select.jsx";
 
-import D from "metabase/components/Detail.css";
+import D from "metabase/reference/components/Detail.css";
 
 const FieldTypeDetail = ({
     field,

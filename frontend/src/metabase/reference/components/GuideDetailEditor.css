@@ -1,0 +1,28 @@
+:local(.guideDetailEditor) {
+    composes: flex full mt4 from "style";
+}
+
+:local(.guideDetailEditorPicker) {
+    flex: 250;
+    max-width: 250px;
+    margin-right: 50px;
+}
+
+:local(.guideDetailEditorSelect) {
+    composes: input text-dark p1 block from "style";
+    font-size: 16px;
+}
+
+:local(.guideDetailEditorBody) {
+    flex: 550;
+    max-width: 550px;
+    color: var(--dark-color);
+}
+
+:local(.guideDetailEditorTextarea) {
+    composes: text-dark input p2 mb2 from "style";
+    resize: none;
+    font-size: 16px;
+    width: 100%;
+    min-height: 100px;
+}

@@ -36,7 +36,7 @@
     font-size: 16px;
 }
 
-:local(.detailTextArea) {
+:local(.detailTextarea) {
     composes: text-dark input p2 from "style";
     resize: none;
     font-size: 16px;

@@ -1,4 +1,6 @@
 :root {
+    --title-color: #606E7B;
+    --subtitle-color: #AAB7C3;
     --icon-width: calc(48px + 1rem);
 }
 
@@ -21,7 +23,7 @@
 }
 
 :local(.tableActualName) {
-    color: #AAB7C3;
+    color: var(--subtitle-color);
 }
 
 :local(.guideLeftPadded) {
@@ -76,4 +78,81 @@
     composes: full from "style";
     composes: guideLeftPaddedBody;
     font-size: 18px;
+}
+
+:local(.guideEditHeader) {
+    composes: full text-body my4 from "style";
+    max-width: 550px;
+    color: var(--dark-color);
+}
+
+:local(.guideEditHeaderTitle) {
+    composes: text-bold mb2 from "style";
+    font-size: 24px;
+}
+
+:local(.guideEditHeaderDescription) {
+    font-size: 16px;
+}
+
+:local(.guideEditTitle) {
+    composes: block text-body text-bold from "style";
+    color: var(--title-color);
+    font-size: 16px;
+    margin-top: 50px;
+}
+
+:local(.guideEditSubtitle) {
+    composes: text-body from "style";
+    color: var(--grey-2);
+    font-size: 16px;
+    max-width: 700px;
+}
+
+:local(.guideEditAddButton) {
+    composes: flex full my2 from "style";
+}
+
+:local(.guideEditAddButton)::before {
+    content: '';
+    display: block;
+    flex: 250;
+    max-width: 250px;
+    margin-right: 50px;
+}
+
+:local(.guideEditAddButtonBody) {
+    flex: 550;
+    max-width: 550px;    
+}
+
+:local(.guideEditTextarea) {
+    composes: text-dark input p2 mt4 from "style";
+    resize: none;
+    font-size: 16px;
+    width: 100%;
+    max-width: 850px;
+    min-height: 100px;
+}
+
+:local(.guideEditContact) {
+    composes: flex mt4 from "style";
+    margin-bottom: 50px;
+}
+
+:local(.guideEditContactName) {
+    composes: text-dark input p2 from "style";
+    display: block;
+    font-size: 16px;
+    flex: 250;
+    max-width: 250px;
+    margin-right: 50px;
+}
+
+:local(.guideEditContactEmail) {
+    composes: text-dark input p2 from "style";
+    display: block;
+    font-size: 16px;
+    flex: 550;
+    max-width: 550px;
 }

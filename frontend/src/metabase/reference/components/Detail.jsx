@@ -18,7 +18,7 @@ const Detail = ({ name, description, placeholder, subtitleClass, url, icon, isEd
             <div className={cx(description ? S.detailSubtitle : S.detailSubtitleLight, { "mt1" : true })}>
                 { isEditing ?
                     <textarea
-                        className={S.detailTextArea}
+                        className={S.detailTextarea}
                         placeholder={placeholder}
                         {...field}
                         defaultValue={description}
