@@ -431,6 +431,44 @@ function lineAndBarOnRender(chart, settings) {
     chart.render();
 }
 
+function reduceGroup(group, key) {
+    return group.reduce(
+        (acc, d) => (acc == null && d[key] == null) ? null : (acc || 0) + (d[key] || 0),
+        (acc, d) => (acc == null && d[key] == null) ? null : (acc || 0) - (d[key] || 0),
+        () => null
+    );
+}
+
+function fillMissingValues(datas, xValues, fillValue, getKey = (v) => v) {
+    try {
+        return datas.map(rows => {
+            const fillValues = rows[0].slice(1).map(d => fillValue);
+
+            let map = new Map();
+            for (const row of rows) {
+                map.set(getKey(row[0]), row);
+            }
+            let newRows = xValues.map(value => {
+                const key = getKey(value);
+                const row = map.get(key);
+                if (row) {
+                    map.delete(key);
+                    return [value, ...row.slice(1)];
+                } else {
+                    return [value, ...fillValues];
+                }
+            });
+            if (map.size > 0) {
+                throw { message: "xValues missing!", map };
+            }
+            return newRows;
+        });
+    } catch (e) {
+        console.warn(e);
+        return datas;
+    }
+}
+
 export default function lineAreaBar(element, { series, onHoverChange, onRender, chartType, isScalarSeries, settings }) {
     const colors = settings["graph.colors"];
 
@@ -464,6 +502,27 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
         xInterval = computeTimeseriesDataInverval(xValues, unit);
     }
 
+    if (settings["graph.missing"] === "zero" || settings["graph.missing"] === "skip") {
+        if (isTimeseries) {
+            // replace xValues with
+            xValues = d3.time[xInterval.interval]
+                .range(xDomain[0], xDomain[1].add(1, "ms"), xInterval.count)
+                .map(d => moment(d));
+            datas = fillMissingValues(
+                datas,
+                xValues,
+                settings["graph.missing"] === "zero" ? 0 : null,
+                (m) => d3.round(m.toDate().getTime(), -1) // moment sometimes rounds up 1ms?
+            );
+        } else {
+            datas = fillMissingValues(
+                datas,
+                xValues,
+                settings["graph.missing"] === "zero" ? 0 : null
+            );
+        }
+    }
+
     if (isScalarSeries) {
         xValues = datas.map(data => data[0][0]);
     }
@@ -482,7 +541,7 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
         dimension = dataset.dimension(d => d[0]);
         groups = [
             datas.map((data, i) =>
-                dimension.group().reduceSum(d => (d[i + 1] || 0))
+                reduceGroup(dimension.group(), i + 1)
             )
         ];
 
@@ -495,8 +554,8 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
         groups = datas.map(data => {
             let dim = crossfilter(data).dimension(d => d[0]);
             return data[0].slice(1).map((_, i) =>
-                dim.group().reduceSum(d => (d[i + 1] || 0))
-            )
+                reduceGroup(dim.group(), i + 1)
+            );
         });
 
         let yExtents = groups.map(group => d3.extent(group[0].all(), d => d.value));
@@ -539,7 +598,15 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
             .dimension(dimension)
             .group(group[0])
             .transitionDuration(0)
-            .useRightYAxis(yAxisSplit.length > 1 && yAxisSplit[1].includes(index))
+            .useRightYAxis(yAxisSplit.length > 1 && yAxisSplit[1].includes(index));
+
+        if (chart.defined) {
+            chart.defined(
+                settings["graph.missing"] === "skip" ?
+                    (d) => d.y != null :
+                    (d) => true
+            );
+        }
 
         // multiple series
         if (groups.length > 1) {

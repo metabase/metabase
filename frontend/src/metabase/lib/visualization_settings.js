@@ -177,6 +177,19 @@ const SETTINGS = {
             (card.display === "area" && vizSettings["graph.metrics"].length > 1)
         )
     },
+    "graph.missing": {
+        section: "Display",
+        title: "Missing Data Points",
+        widget: ChartSettingSelect,
+        default: "bridge",
+        getProps: (series, vizSettings) => ({
+            options: [
+                { name: "Bridge", value: "bridge" },
+                { name: "Zero", value: "zero" },
+                { name: "Skip", value: "skip" }
+            ]
+        })
+    },
     "graph.colors": {
         section: "Display",
         widget: ChartSettingColorsPicker,
