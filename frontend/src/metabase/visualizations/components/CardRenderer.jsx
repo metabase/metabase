@@ -14,8 +14,8 @@ import cx from "classnames";
 export default class CardRenderer extends Component {
     static propTypes = {
         series: PropTypes.array.isRequired,
-        width: PropTypes.number.isRequired,
-        height: PropTypes.number.isRequired,
+        width: PropTypes.number,
+        height: PropTypes.number,
         renderer: PropTypes.func.isRequired,
         onRenderError: PropTypes.func.isRequired,
         className: PropTypes.string
