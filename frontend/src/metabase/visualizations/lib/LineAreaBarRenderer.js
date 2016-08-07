@@ -75,18 +75,13 @@ function applyChartBoundary(chart, element) {
         .height(getAvailableCanvasHeight(element));
 }
 
-function applyChartTimeseriesXAxis(chart, settings, series, xValues) {
+function applyChartTimeseriesXAxis(chart, settings, series, xValues, xInterval, xDomain) {
     // setup an x-axis where the dimension is a timeseries
     let dimensionColumn = series[0].data.cols[0];
 
-    let unit = minTimeseriesUnit(series.map(s => s.data.cols[0].unit));
-
     // compute the data interval
-    let dataInterval = computeTimeseriesDataInverval(xValues, unit);
+    let dataInterval = xInterval;
     let tickInterval = dataInterval;
-
-    // compute the domain
-    let xDomain = d3.extent(xValues);
 
     if (settings["graph.x_axis.labels_enabled"]) {
         chart.xAxisLabel(settings["graph.x_axis.title_text"] || getFriendlyName(dimensionColumn));
@@ -105,7 +100,7 @@ function applyChartTimeseriesXAxis(chart, settings, series, xValues) {
         });
 
         // Compute a sane interval to display based on the data granularity, domain, and chart width
-        tickInterval = computeTimeseriesTicksInterval(xValues, unit, chart.width(), MIN_PIXELS_PER_TICK.x);
+        tickInterval = computeTimeseriesTicksInterval(xDomain, dataInterval, chart.width(), MIN_PIXELS_PER_TICK.x, );
         chart.xAxis().ticks(d3.time[tickInterval.interval], tickInterval.count);
     } else {
         chart.xAxis().ticks(0);
@@ -454,7 +449,24 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
         ])
     );
 
+
+    // compute the x-values
     let xValues = getXValues(datas, chartType);
+
+    // compute the domain
+    let xDomain = d3.extent(xValues);
+
+    let xInterval;
+
+    if (isTimeseries) {
+        // compute the interval
+        let unit = minTimeseriesUnit(series.map(s => s.data.cols[0].unit));
+        xInterval = computeTimeseriesDataInverval(xValues, unit);
+    }
+
+    if (isScalarSeries) {
+        xValues = datas.map(data => data[0][0]);
+    }
 
     let dimension, groups, yAxisSplit;
 
@@ -494,10 +506,6 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
         } else {
             yAxisSplit = [series.map((s,i) => i)];
         }
-    }
-
-    if (isScalarSeries) {
-        xValues = datas.map(data => data[0][0]);
     }
 
     // HACK: This ensures each group is sorted by the same order as xValues,
@@ -596,7 +604,7 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
     // x-axis settings
     // TODO: we should support a linear (numeric) x-axis option
     if (isTimeseries) {
-        applyChartTimeseriesXAxis(chart, settings, series, xValues);
+        applyChartTimeseriesXAxis(chart, settings, series, xValues, xInterval, xDomain);
     } else {
         applyChartOrdinalXAxis(chart, settings, series, xValues);
     }

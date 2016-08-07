@@ -96,12 +96,11 @@ export function computeTimeseriesDataInverval(xValues, unit) {
     return TIMESERIES_INTERVALS[computeTimeseriesDataInvervalIndex(xValues, unit)];
 }
 
-export function computeTimeseriesTicksInterval(xValues, unit, chartWidth, minPixels) {
+export function computeTimeseriesTicksInterval(xDomain, xInterval, chartWidth, minPixels) {
     // If the interval that matches the data granularity results in too many ticks reduce the granularity until it doesn't.
     // TODO: compute this directly instead of iteratively
     let maxTickCount = Math.round(chartWidth / minPixels);
-    let xDomain = d3.extent(xValues);
-    let index = computeTimeseriesDataInvervalIndex(xValues, unit);
+    let index = TIMESERIES_INTERVALS.indexOf(xInterval);
     while (index < TIMESERIES_INTERVALS.length - 1) {
         let interval = TIMESERIES_INTERVALS[index];
         let intervalMs = moment(0).add(interval.count, interval.interval).valueOf();
