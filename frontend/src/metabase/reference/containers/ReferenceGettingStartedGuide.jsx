@@ -305,7 +305,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                 />
                                 <div className={S.guideSeeAll}>
                                     <div className={S.guideSeeAllBody}>
-                                        <Link className={cx('text-brand', S.guideSeeAllLink)} to={'test'}>
+                                        <Link className={cx('text-brand', S.guideSeeAllLink)} to={'/reference/metrics'}>
                                             See all metrics
                                         </Link>
                                     </div>
@@ -339,10 +339,10 @@ export default class ReferenceGettingStartedGuide extends Component {
                                 />
                                 <div className={S.guideSeeAll}>
                                     <div className={S.guideSeeAllBody}>
-                                        <Link className={cx('text-purple', S.guideSeeAllLink)} to={'test'}>
+                                        <Link className={cx('text-purple', S.guideSeeAllLink)} to={'/reference/segments'}>
                                             See all segments
                                         </Link>
-                                        <Link className={cx('text-purple', S.guideSeeAllLink)} to={'test'}>
+                                        <Link className={cx('text-purple', S.guideSeeAllLink)} to={'/reference/databases'}>
                                             See all tables
                                         </Link>
                                     </div>
@@ -358,7 +358,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                 />
                                 <div className={S.guideSeeAll}>
                                     <div className={S.guideSeeAllBody}>
-                                        <Link className={cx('text-brand', S.guideSeeAllLink)} to={'test'}>
+                                        <Link className={cx('text-brand', S.guideSeeAllLink)} to={'/reference/databases'}>
                                             Explore our data
                                         </Link>
                                     </div>
@@ -374,9 +374,9 @@ export default class ReferenceGettingStartedGuide extends Component {
                                         <span className="text-dark mr3">
                                             Contact Sameer Al-Sakran
                                         </span>
-                                        <Link className="text-brand text-bold no-decoration" to="test">
+                                        <a className="text-brand text-bold no-decoration" href="mailto:s-dog@metabase.com">
                                             s-dog@metabase.com
-                                        </Link>
+                                        </a>
                                     </div>
                                 </div>
                             </div>
