@@ -4,7 +4,9 @@ import {
     AngularResourceProxy,
     createThunkAction,
     resourceListToMap,
-    cleanResource
+    cleanResource,
+    fetchData,
+    updateData,
 } from "metabase/lib/redux";
 
 import { normalize, Schema, arrayOf } from 'normalizr';
@@ -12,7 +14,7 @@ import i from "icepick";
 import _ from "underscore";
 
 import { augmentDatabase, augmentTable } from "metabase/lib/table";
-import { setRequestState, clearRequestState } from "./requests";
+import { clearRequestState } from "./requests";
 
 const MetabaseApi = new AngularResourceProxy("Metabase", ["db_list", "db_update", "db_metadata", "table_list", "table_update", "table_query_metadata", "field_update"]);
 const MetricApi = new AngularResourceProxy("Metric", ["list", "update"]);
@@ -28,45 +30,6 @@ database.define({
 table.define({
     fields: arrayOf(field)
 });
-
-export const fetchData = async ({dispatch, getState, requestStatePath, existingStatePath, getData, reload}) => {
-    const existingData = i.getIn(getState(), existingStatePath);
-    const statePath = requestStatePath.concat(['fetch']);
-    try {
-        const requestState = i.getIn(getState(), ["requests", ...statePath]);
-        if (!requestState || requestState.error || reload) {
-            dispatch(setRequestState({ statePath, state: "LOADING" }));
-            const data = await getData();
-            dispatch(setRequestState({ statePath, state: "LOADED" }));
-
-            return data;
-        }
-
-        return existingData;
-    }
-    catch(error) {
-        dispatch(setRequestState({ statePath, error }));
-        console.error(error);
-        return existingData;
-    }
-}
-
-export const updateData = async ({dispatch, getState, requestStatePath, existingStatePath, putData}) => {
-    const existingData = i.getIn(getState(), existingStatePath);
-    const statePath = requestStatePath.concat(['update']);
-    try {
-        dispatch(setRequestState({ statePath, state: "LOADING" }));
-        const data = await putData();
-        dispatch(setRequestState({ statePath, state: "LOADED" }));
-
-        return data;
-    }
-    catch(error) {
-        dispatch(setRequestState({ statePath, error }));
-        console.error(error);
-        return existingData;
-    }
-}
 
 const FETCH_METRICS = "metabase/metadata/FETCH_METRICS";
 export const fetchMetrics = createThunkAction(FETCH_METRICS, (reload = false) => {

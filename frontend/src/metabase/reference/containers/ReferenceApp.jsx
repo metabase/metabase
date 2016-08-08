@@ -26,6 +26,10 @@ import {
     selectSection as fetchQuestions
 } from 'metabase/questions/questions';
 
+import {
+    fetchDashboards
+} from 'metabase/dashboard/dashboard';
+
 const mapStateToProps = (state, props) => ({
     sectionId: getSectionId(state, props),
     databaseId: getDatabaseId(state, props),
@@ -37,6 +41,7 @@ const mapStateToProps = (state, props) => ({
 
 const mapDispatchToProps = {
     fetchQuestions,
+    fetchDashboards,
     ...metadataActions,
     ...actions
 };

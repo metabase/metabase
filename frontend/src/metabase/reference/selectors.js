@@ -20,6 +20,13 @@ const referenceSections = {
         id: `/reference/guide`,
         name: "Understanding our data",
         breadcrumb: "Guide",
+        fetch: { 
+            fetchGuide: [],
+            fetchDashboards: [],
+            fetchMetricFields: [],
+            fetchSegments: [], 
+            fetchTables: [] 
+        },
         icon: "reference"
     },
     [`/reference/metrics`]: {
