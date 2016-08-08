@@ -48,10 +48,11 @@
 :local(.guideTitle) {
     composes: guideLeftPadded;
     font-size: 24px;
+    margin-top: 50px;
 }
 
 :local(.guideTitleBody) {
-    composes: full text-dark text-bold mt4 from "style";
+    composes: full text-dark text-bold from "style";
     composes: guideLeftPaddedBody;
 }
 
@@ -61,7 +62,7 @@
 }
 
 :local(.guideSeeAllBody) {
-    composes: flex full text-dark text-bold my4 from "style";
+    composes: flex full text-dark text-bold mt4 from "style";
     composes: guideLeftPaddedBody;
 }
 

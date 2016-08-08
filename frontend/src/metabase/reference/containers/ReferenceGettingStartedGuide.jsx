@@ -273,13 +273,6 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     link={'test'} 
                                     linkClass={'text-green'} 
                                 />
-                                <div className={S.guideSeeAll}>
-                                    <div className={S.guideSeeAllBody}>
-                                        <Link className={cx('text-green', S.guideSeeAllLink)} to={'test'}>
-                                            See all dashboards
-                                        </Link>
-                                    </div>
-                                </div>
                                 
                                 <div className={S.guideTitle}>
                                     <div className={S.guideTitleBody}>
