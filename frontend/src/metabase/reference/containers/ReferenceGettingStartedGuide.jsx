@@ -289,7 +289,6 @@ export default class ReferenceGettingStartedGuide extends Component {
                                 <GuideDetail 
                                     title={'Cost per click'} 
                                     description={'How much we pay for each click that we receive, not counting some esoteric exceptions.'} 
-                                    value={'$0.91'} 
                                     hasLearnMore={true}
                                     exploreLinks={[
                                         {id: 'test1', name: 'Ad Campaign'},
@@ -302,7 +301,6 @@ export default class ReferenceGettingStartedGuide extends Component {
                                 <GuideDetail 
                                     title={'Cost per click'} 
                                     description={'How much we pay for each click that we receive, not counting some esoteric exceptions.'} 
-                                    value={'$0.91'} 
                                     hasLearnMore={true}
                                     exploreLinks={[
                                         {id: 'test1', name: 'Ad Campaign'},

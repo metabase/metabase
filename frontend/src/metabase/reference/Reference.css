@@ -51,13 +51,13 @@
 }
 
 :local(.guideTitleBody) {
-    composes: full text-dark text-bold my4 from "style";
+    composes: full text-dark text-bold mt4 from "style";
     composes: guideLeftPaddedBody;
 }
 
 :local(.guideSeeAll) {
     composes: guideLeftPadded;
-    font-size: 20px;
+    font-size: 18px;
 }
 
 :local(.guideSeeAllBody) {
@@ -70,6 +70,7 @@
 }
 
 :local(.guideContact) {
+    composes: mt4 from "style";
     composes: guideLeftPadded;
     margin-bottom: 100px;
 }
@@ -77,7 +78,7 @@
 :local(.guideContactBody) {
     composes: full from "style";
     composes: guideLeftPaddedBody;
-    font-size: 18px;
+    font-size: 16px;
 }
 
 :local(.guideEditHeader) {

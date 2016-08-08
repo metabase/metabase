@@ -5,7 +5,7 @@
 :local(.guideDetailTitle) {
     composes: text-bold text-right from "style";
     flex: 0.3;
-    font-size: 20px;
+    font-size: 18px;
     max-width: 150px;
     margin-right: 50px;
 }
@@ -19,7 +19,7 @@
     flex: 0.7;
     max-width: 550px;
     color: var(--dark-color);
-    font-size: 18px;
+    font-size: 16px;
 }
 
 :local(.guideDetailValue) {

@@ -8,7 +8,6 @@ import S from "./GuideDetail.css";
 const GuideDetail = ({
     title,
     description,
-    value,
     hasLearnMore,
     exploreLinks,
     link,
@@ -26,9 +25,6 @@ const GuideDetail = ({
             }
         </div>
         <div className={S.guideDetailBody}>
-            { value &&
-                <div className={S.guideDetailValue}>{value}</div>
-            }
             <div className={S.guideDetailDescription}>{description}</div>
             { hasLearnMore &&
                 <Link 
@@ -61,7 +57,6 @@ const GuideDetail = ({
 GuideDetail.propTypes = {
     title: PropTypes.string,
     description: PropTypes.string.isRequired,
-    value: PropTypes.string,
     hasLearnMore: PropTypes.bool,
     exploreLinks: PropTypes.array,
     link: PropTypes.string,
