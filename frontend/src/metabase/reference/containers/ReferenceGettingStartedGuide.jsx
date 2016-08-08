@@ -171,7 +171,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                         startEditing={startEditing} 
                     /> :
                     isEditing ?
-                        <div className="full wrapper wrapper--trim">
+                        <div className="wrapper wrapper--trim">
                             <div className={S.guideEditHeader}>
                                 <div className={S.guideEditHeaderTitle}>
                                     Help new Metabase users find their way around
@@ -259,7 +259,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                             <div className={S.guideEditFooter}>
                             </div>
                         </div> :
-                        <div className="full">
+                        <div>
                             <GuideHeader startEditing={startEditing} />
                             <div className="wrapper wrapper--trim">
                                 <div className={S.guideTitle}>
