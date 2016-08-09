@@ -48,9 +48,9 @@ class ChartSettings extends Component {
         this.setState({ currentTab: tab });
     }
 
-    onUpdateVisualizationSetting = (path, value) => {
+    onUpdateVisualizationSetting = (key, value) => {
         this.onChangeSettings({
-            [path.join(".")]: value
+            [key]: value
         });
     }
 
