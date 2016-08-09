@@ -67,11 +67,12 @@ const mapStateToProps = (state, props) => {
             important_metrics: guide.important_metrics && guide.important_metrics.length > 0 ? 
                 guide.important_metrics.map(metricId => metrics[metricId]) :
                 [{}],
-            important_segments_and_tables: (guide.important_segments && guide.important_segments.length > 0) ||
+            important_segments_and_tables: 
+                (guide.important_segments && guide.important_segments.length > 0) ||
                 (guide.important_tables && guide.important_tables.length > 0) ? 
-                guide.important_segments.map(segmentId => segments[segmentId])
-                    .concat(guide.important_tables.map(tableId => tables[tableId])) :
-                [{}]
+                    guide.important_segments.map(segmentId => segments[segmentId])
+                        .concat(guide.important_tables.map(tableId => tables[tableId])) :
+                    [{}]
         }
     };
 };
@@ -157,17 +158,19 @@ export default class ReferenceGettingStartedGuide extends Component {
                                 formField={metricField}
                             />
                         )}
-
-                        <div className={S.guideEditAddButton}>
-                            <div className={S.guideEditAddButtonBody}>
-                                <button
-                                    className="Button Button--primary Button--large" 
-                                    type="button"
-                                >
-                                    Add another metric
-                                </button>
+                        { important_metrics.length < 5 &&
+                            <div className={S.guideEditAddButton}>
+                                <div className={S.guideEditAddButtonBody}>
+                                    <button
+                                        className="Button Button--primary Button--large" 
+                                        type="button"
+                                        onClick={() => important_metrics.addField()}
+                                    >
+                                        Add another metric
+                                    </button>
+                                </div>
                             </div>
-                        </div>
+                        }
 
                         <div className={S.guideEditTitle}>
                             What are 3-5 commonly referenced segments or tables 
@@ -183,16 +186,19 @@ export default class ReferenceGettingStartedGuide extends Component {
                                 formField={segmentOrTableField}
                             />
                         )}
-                        <div className={S.guideEditAddButton}>
-                            <div className={S.guideEditAddButtonBody}>
-                                <button
-                                    className="Button Button--primary Button--large" 
-                                    type="button"
-                                >
-                                    Add another segment or table
-                                </button>
+                        { important_segments_and_tables.length < 5 &&
+                            <div className={S.guideEditAddButton}>
+                                <div className={S.guideEditAddButtonBody}>
+                                    <button
+                                        className="Button Button--primary Button--large" 
+                                        type="button"
+                                        onClick={() => important_segments_and_tables.addField()}
+                                    >
+                                        Add another segment or table
+                                    </button>
+                                </div>
                             </div>
-                        </div>
+                        }
 
                         <div className={S.guideEditTitle}>
                             What should a user of this data know before they start 
