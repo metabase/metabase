@@ -31,27 +31,51 @@ import {
 
 const mapStateToProps = (state, props) => {
     const guide = getGuide(state, props); 
+    const dashboards = getDashboards(state, props);
+    const metrics = getMetrics(state, props);
+    const segments = getSegments(state, props);
+    const tables = getTables(state, props);
     return {
         guide,
         user: getUser(state, props),
-        dashboards: getDashboards(state, props),
-        metrics: getMetrics(state, props),
-        segments: getSegments(state, props),
-        tables: getTables(state, props),
+        dashboards,
+        metrics,
+        segments,
+        tables,
         isEditing: getIsEditing(state, props),
         fields: [
             'things_to_know',
             'contact.name',
             'contact.email',
+            'most_important_dashboard.id',
             'most_important_dashboard.caveats',
             'most_important_dashboard.points_of_interest',
+            'important_metrics[].id',
             'important_metrics[].caveats',
             'important_metrics[].points_of_interest',
+            'important_segments[].id',
             'important_segments[].caveats',
             'important_segments[].points_of_interest',
+            'important_tables[].id',
             'important_tables[].caveats',
             'important_tables[].points_of_interest'
-        ]
+        ],
+        initialValues: guide && {
+            things_to_know: guide.things_to_know,
+            contact: guide.contact,
+            most_important_dashboard: guide.most_important_dashboard !== null ?
+                dashboards[guide.most_important_dashboard] :
+                {},
+            important_metrics: guide.important_metrics && guide.important_metrics.length > 0 ? 
+                guide.important_metrics.map(metricId => metrics[metricId]) :
+                [{}],
+            important_segments: guide.important_segments && guide.important_segments.length > 0 ? 
+                guide.important_segments.map(segmentId => segments[segmentId]) :
+                [{}],
+            important_tables: guide.important_tables && guide.important_tables.length > 0 ? 
+                guide.important_tables.map(tableId => tables[tableId]) :
+                [{}]
+        }
     };
 };
 
@@ -92,8 +116,6 @@ export default class ReferenceGettingStartedGuide extends Component {
             submitting
         } = this.props;
 
-        console.log(guide);
-
         const onSubmit = handleSubmit(async (fields) => 
             console.log(fields)
         );
@@ -125,17 +147,21 @@ export default class ReferenceGettingStartedGuide extends Component {
                         <GuideDetailEditor 
                             type="dashboard" 
                             entities={dashboards}
-                            formFields={[most_important_dashboard]}
+                            formField={most_important_dashboard}
                         />
 
                         <div className={S.guideEditTitle}>
                             What are your 3-5 most commonly referenced metrics?
                         </div>
-                        <GuideDetailEditor 
-                            type="metric" 
-                            entities={metrics}
-                            formFields={important_metrics}
-                        />
+                        { important_metrics.map((metricField, index) =>
+                            <GuideDetailEditor 
+                                key={index}
+                                type="metric" 
+                                entities={metrics}
+                                formField={metricField}
+                            />
+                        )}
+
                         <div className={S.guideEditAddButton}>
                             <div className={S.guideEditAddButtonBody}>
                                 <button
@@ -151,15 +177,17 @@ export default class ReferenceGettingStartedGuide extends Component {
                             What are 3-5 commonly referenced segments or tables 
                             that would be useful for this audience?
                         </div>
-                        <GuideDetailEditor 
-                            type="segment"
-                            entities={segments}
-                            secondaryType="table"
-                            secondaryEntities={tables}
+{                        
+    // <GuideDetailEditor 
+    //                         type="segment"
+    //                         entities={segments}
+    //                         secondaryType="table"
+    //                         secondaryEntities={tables}
 
-                            formFields={important_segments}
-                            secondaryFormFields={important_tables}
-                        />
+    //                         formField={important_segments}
+    //                         secondaryFormField={important_tables}
+    //                     />
+                    }
                         <div className={S.guideEditAddButton}>
                             <div className={S.guideEditAddButtonBody}>
                                 <button
