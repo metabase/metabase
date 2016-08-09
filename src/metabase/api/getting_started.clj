@@ -20,12 +20,13 @@
   {:things_to_know           (getting-started-things-to-know)
    :contact                  {:name  (getting-started-contact-name)
                               :email (getting-started-contact-email)}
-   :most_important_dashboard (db/select-one 'Dashboard :show_in_getting_started true)
+   ;; only need :id here because guide needs to load all entities to populate select options anyways
+   :most_important_dashboard (:id (db/select-one 'Dashboard :show_in_getting_started true))
    ;; TODO - Need to hydrate the `MetricImportantFields` for this
-   :important_metrics        (db/select 'Metric :show_in_getting_started true, {:order-by [:name]})
+   :important_metrics        (map :id (db/select 'Metric :show_in_getting_started true, {:order-by [:name]}))
    ;; TODO - should these come back combined or separate?
-   :important_tables         (db/select 'Table :show_in_getting_started true, {:order-by [:name]})
-   :important_segments       (db/select 'Segment :show_in_getting_started true, {:order-by [:name]})})
+   :important_tables         (map :id (db/select 'Table :show_in_getting_started true, {:order-by [:name]}))
+   :important_segments       (map :id (db/select 'Segment :show_in_getting_started true, {:order-by [:name]}))})
 
 
 ;; TODO - Endpoint for editing the settings above? Or just edit them the normal way via PUT /api/setting/:key ?

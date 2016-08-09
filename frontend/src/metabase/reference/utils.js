@@ -132,6 +132,15 @@ export const tryUpdateGuide = async (formFields, props) => {
     try {
         const editedDashboard = filterUntouchedFields(formFields.most_important_dashboard);
         if (!isEmptyObject(editedDashboard)) {
+            const newDashboard = dashboards[editedDashboard.id];
+            const updatedNewDashboard = {
+                ...newDashboard, 
+                ...editedDashboard, 
+                show_in_getting_started: true 
+            };
+
+            await updateDashboard(updatedNewDashboard);
+
             const oldDashboard = dashboards[guide.most_important_dashboard];
             if (oldDashboard) {
                 const updatedOldDashboard = i.assoc(
@@ -143,15 +152,7 @@ export const tryUpdateGuide = async (formFields, props) => {
                 await updateDashboard(updatedOldDashboard);
             }
 
-            const newDashboard = dashboards[editedDashboard.id];
-            const updatedNewDashboard = {
-                ...newDashboard, 
-                ...editedDashboard, 
-                show_in_getting_started: true 
-            };
 
-            console.log(updatedNewDashboard);
-            console.log(await updateDashboard(updatedNewDashboard));
         }        
     }
     catch(error) {

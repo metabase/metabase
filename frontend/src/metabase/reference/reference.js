@@ -14,11 +14,10 @@ import MetabaseAnalytics from 'metabase/lib/analytics';
 
 const GettingStartedApi = new AngularResourceProxy("GettingStarted", ["get"]);
 
-
 const FETCH_GUIDE = "metabase/metadata/FETCH_GUIDE";
 export const fetchGuide = createThunkAction(FETCH_GUIDE, (reload = false) => {
     return async (dispatch, getState) => {
-        const requestStatePath = ["metadata", "reference", 'guide'];
+        const requestStatePath = ["reference", 'guide'];
         const existingStatePath = requestStatePath;
         const getData = async () => {
             const guide = await GettingStartedApi.get();

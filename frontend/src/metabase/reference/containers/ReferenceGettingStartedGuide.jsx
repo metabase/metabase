@@ -44,6 +44,7 @@ const mapStateToProps = (state, props) => {
     const metrics = getMetrics(state, props);
     const segments = getSegments(state, props);
     const tables = getTables(state, props);
+    console.log(guide);
     return {
         guide,
         user: getUser(state, props),
