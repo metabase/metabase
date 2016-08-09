@@ -5,10 +5,16 @@ import { startNewCard, serializeCardForUrl } from "metabase/lib/card";
 
 export const idsToObjectMap = (ids, objects) => ids
     .map(id => objects[id])
-    .reduce((map, object) => Object.assign({}, map, {[object.id]: object}), {});
+    .reduce((map, object) => ({ ...map, [object.id]: object }), {});
     // recursive freezing done by i.assoc here is too expensive
     // hangs browser for large databases
     // .reduce((map, object) => i.assoc(map, object.id, object), {});
+
+const filterUntouchedFields = (fields) => Object.keys(fields)
+    .filter(key => fields[key] !== undefined)
+    .reduce((map, key) => ({ ...map, [key]: fields[key] }), {});
+
+const isEmptyObject = (object) => Object.keys(object).length === 0;
 
 export const tryFetchData = async (props) => {
     const {
@@ -52,18 +58,19 @@ export const tryUpdateData = async (fields, props) => {
         endEditing
     } = props;
 
-    const editedFields = Object.keys(fields)
-        .filter(key => fields[key] !== undefined)
-        .reduce((map, key) => i.assoc(map, key, fields[key]), {});
-    const newEntity = {...entity, ...editedFields};
     startLoading();
     try {
-        await props[section.update](newEntity);
+        const editedFields = filterUntouchedFields(fields);
+        if (!isEmptyObject(editedFields)) {
+            const newEntity = {...entity, ...editedFields};
+            await props[section.update](newEntity);
+        }
     }
     catch(error) {
         setError(error);
         console.error(error);
     }
+
     resetForm();
     endLoading();
     endEditing();
@@ -76,34 +83,85 @@ export const tryUpdateFields = async (formFields, props) => {
         startLoading,
         endLoading,
         endEditing,
+        resetForm,
         setError
     } = props;
 
-    const updatedFields = Object.keys(formFields)
-        .map(fieldId => ({
-            field: entities[fieldId],
-            formField: Object.keys(formFields[fieldId])
-                .filter(key => formFields[fieldId][key] !== undefined)
-                .reduce((map, key) => i
-                    .assoc(map, key, formFields[fieldId][key]), {}
-                )
-        }))
-        .filter(({field, formField}) => Object
-            .keys(formField).length !== 0
-        )
-        .map(({field, formField}) => ({...field, ...formField}));
-
     startLoading();
     try {
+        const updatedFields = Object.keys(formFields)
+            .map(fieldId => ({
+                field: entities[fieldId],
+                formField: filterUntouchedFields(formFields[fieldId])
+            }))
+            .filter(({field, formField}) => !isEmptyObject(formField))
+            .map(({field, formField}) => ({...field, ...formField}));
+
         await Promise.all(updatedFields.map(updateField));
     }
     catch(error) {
         setError(error);
         console.error(error);
     }
+
+    resetForm();
     endLoading();
     endEditing();
 }
+
+export const tryUpdateGuide = async (formFields, props) => {
+    const {
+        guide,
+        dashboards,
+        metrics,
+        segments,
+        tables,
+        startLoading,
+        endLoading,
+        endEditing,
+        setError,
+        resetForm,
+        updateDashboard,
+        updateMetric,
+        updateSegment,
+        updateTable,
+        updateSetting
+    } = props;
+
+    startLoading();
+    try {
+        const editedDashboard = filterUntouchedFields(formFields.most_important_dashboard);
+        if (!isEmptyObject(editedDashboard)) {
+            const oldDashboard = dashboards[guide.most_important_dashboard];
+            if (oldDashboard) {
+                const updatedOldDashboard = i.assoc(
+                    oldDashboard, 
+                    'show_in_getting_started',
+                    false
+                );
+                
+                await updateDashboard(updatedOldDashboard);
+            }
+
+            const newDashboard = dashboards[editedDashboard.id];
+            const updatedNewDashboard = {
+                ...newDashboard, 
+                ...editedDashboard, 
+                show_in_getting_started: true 
+            };
+            
+            await updateDashboard(updatedNewDashboard);
+        }        
+    }
+    catch(error) {
+        setError(error);
+        console.error(error);
+    }
+
+    resetForm();
+    endLoading();
+    endEditing();
+};
 
 const getBreadcrumb = (section, index, sections) => index !== sections.length - 1 ?
     [section.breadcrumb, section.id] : [section.breadcrumb];

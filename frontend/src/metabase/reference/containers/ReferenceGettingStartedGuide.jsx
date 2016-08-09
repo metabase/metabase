@@ -13,7 +13,15 @@ import GuideHeader from "metabase/reference/components/GuideHeader.jsx"
 import GuideDetail from "metabase/reference/components/GuideDetail.jsx"
 import GuideDetailEditor from "metabase/reference/components/GuideDetailEditor.jsx"
 
+import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';
+import {
+    updateDashboard
+} from 'metabase/dashboard/dashboard';
+
+import {
+    updateSetting
+} from 'metabase/admin/settings/settings';
 
 import {
     getGuide,
@@ -26,7 +34,8 @@ import {
 } from '../selectors';
 
 import {
-    isGuideEmpty
+    isGuideEmpty,
+    tryUpdateGuide
 } from '../utils';
 
 const mapStateToProps = (state, props) => {
@@ -35,6 +44,7 @@ const mapStateToProps = (state, props) => {
     const metrics = getMetrics(state, props);
     const segments = getSegments(state, props);
     const tables = getTables(state, props);
+    console.log(dashboards);
     return {
         guide,
         user: getUser(state, props),
@@ -59,8 +69,8 @@ const mapStateToProps = (state, props) => {
             'important_segments_and_tables[].points_of_interest'
         ],
         initialValues: guide && {
-            things_to_know: guide.things_to_know,
-            contact: guide.contact,
+            things_to_know: guide.things_to_know || undefined,
+            contact: guide.contact || undefined,
             most_important_dashboard: guide.most_important_dashboard !== null ?
                 dashboards[guide.most_important_dashboard] :
                 {},
@@ -78,6 +88,9 @@ const mapStateToProps = (state, props) => {
 };
 
 const mapDispatchToProps = {
+    updateDashboard,
+    updateSetting,
+    ...metadataActions,
     ...actions
 };
 
@@ -114,7 +127,7 @@ export default class ReferenceGettingStartedGuide extends Component {
         } = this.props;
 
         const onSubmit = handleSubmit(async (fields) => 
-            console.log(fields)
+            await tryUpdateGuide(fields, this.props)
         );
 
         return (
