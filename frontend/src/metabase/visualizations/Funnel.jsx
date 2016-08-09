@@ -6,6 +6,9 @@ import styles from "./Funnel.css";
 
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import { formatValue } from "metabase/lib/formatting";
+import { ChartSettingsError } from "metabase/visualizations/lib/errors";
+
+import _ from "underscore";
 
 export default class Funnel extends Component {
     static displayName = "Funnel";
@@ -36,7 +39,9 @@ export default class Funnel extends Component {
     }
 
     static checkRenderable(cols, rows, settings) {
-        return true;
+        if (!settings["funnel.metric"] || !settings["funnel.step"]) {
+            throw new ChartSettingsError("Please select columns in the chart settings.", "Data");
+        }
     }
 
     componentDidUpdate() {
@@ -50,10 +55,10 @@ export default class Funnel extends Component {
     }
 
     render() {
-        const { data } = this.props;
+        const { data, settings } = this.props;
         let { rows, cols } = data;
 
-        var infos = calculateStepsInfos(rows);
+        var infos = calculateStepsInfos(cols, rows, settings);
         var containerStyle = {
             width: `${100 / infos.length}%`,
         }
@@ -81,10 +86,13 @@ export default class Funnel extends Component {
     }
 }
 
-function calculateStepsInfos(rows) {
+function calculateStepsInfos(cols, rows, settings) {
+    const stepIndex = _.findIndex(cols, (col) => col.name === settings["funnel.step"]);
+    const metricIndex = _.findIndex(cols, (col) => col.name === settings["funnel.metric"]);
+
     // Initial infos (required for step calculation)
     var infos = [{
-        value: rows[0][1],
+        value: rows[0][metricIndex],
         graph: {
             startBottom: 0.0,
             startTop: 1.0,
@@ -96,12 +104,12 @@ function calculateStepsInfos(rows) {
     var remaning = rows[0][1];
 
     rows.map((row, rowIndex) => {
-        remaning -= (infos[rowIndex].value - row[1]);
+        remaning -= (infos[rowIndex].value - row[metricIndex]);
 
         infos[rowIndex + 1] = {
-            label: row[0],
-            value: row[1],
-            partialLost: (infos[rowIndex].value - row[1]) / infos[rowIndex].value * 100,
+            label: row[stepIndex],
+            value: row[metricIndex],
+            partialLost: (infos[rowIndex].value - row[metricIndex]) / infos[rowIndex].value * 100,
             totalLost: (infos[0].value - remaning) / infos[0].value * 100,
             graph: {
                 startBottom: infos[rowIndex].graph.endBottom,
