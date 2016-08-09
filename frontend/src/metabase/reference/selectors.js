@@ -2,6 +2,10 @@ import { createSelector } from 'reselect';
 import i from "icepick";
 
 import Query, { AggregationClause } from 'metabase/lib/query';
+import { 
+    resourceListToMap
+} from 'metabase/lib/redux';
+
 import {
     idsToObjectMap,
     buildBreadcrumbs,
@@ -421,14 +425,14 @@ export const getUser = (state, props) => state.currentUser;
 export const getSectionId = (state, props) => props.location.pathname;
 
 export const getMetricId = (state, props) => Number.parseInt(props.params.metricId);
-const getMetrics = (state, props) => state.metadata.metrics;
+export const getMetrics = (state, props) => state.metadata.metrics;
 export const getMetric = createSelector(
     [getMetricId, getMetrics],
     (metricId, metrics) => metrics[metricId] || { id: metricId }
 );
 
 export const getSegmentId = (state, props) => Number.parseInt(props.params.segmentId);
-const getSegments = (state, props) => state.metadata.segments;
+export const getSegments = (state, props) => state.metadata.segments;
 export const getSegment = createSelector(
     [getSegmentId, getSegments],
     (segmentId, segments) => segments[segmentId] || { id: segmentId }
@@ -669,3 +673,6 @@ export const getIsEditing = (state, props) => state.reference.isEditing;
 export const getIsFormulaExpanded = (state, props) => state.reference.isFormulaExpanded;
 
 export const getGuide = (state, props) => state.reference.guide;
+
+export const getDashboards = (state, props) => state.dashboard.dashboardListing && 
+    resourceListToMap(state.dashboard.dashboardListing);

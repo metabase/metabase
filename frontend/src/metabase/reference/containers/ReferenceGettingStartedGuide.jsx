@@ -18,6 +18,10 @@ import * as actions from 'metabase/reference/reference';
 import {
     getGuide,
     getUser,
+    getDashboards,
+    getMetrics,
+    getSegments,
+    getTables,
     getIsEditing
 } from '../selectors';
 
@@ -25,11 +29,31 @@ import {
     isGuideEmpty
 } from '../utils';
 
-const mapStateToProps = (state, props) => ({
-    guide: getGuide(state, props),
-    user: getUser(state, props),
-    isEditing: getIsEditing(state, props)
-});
+const mapStateToProps = (state, props) => {
+    const guide = getGuide(state, props); 
+    return {
+        guide,
+        user: getUser(state, props),
+        dashboards: getDashboards(state, props),
+        metrics: getMetrics(state, props),
+        segments: getSegments(state, props),
+        tables: getTables(state, props),
+        isEditing: getIsEditing(state, props),
+        fields: [
+            'things_to_know',
+            'contact.name',
+            'contact.email',
+            'most_important_dashboard.caveats',
+            'most_important_dashboard.points_of_interest',
+            'important_metrics[].caveats',
+            'important_metrics[].points_of_interest',
+            'important_segments[].caveats',
+            'important_segments[].points_of_interest',
+            'important_tables[].caveats',
+            'important_tables[].points_of_interest'
+        ]
+    };
+};
 
 const mapDispatchToProps = {
     ...actions
@@ -37,8 +61,7 @@ const mapDispatchToProps = {
 
 @connect(mapStateToProps, mapDispatchToProps)
 @reduxForm({
-    form: 'guide',
-    fields: []
+    form: 'guide'
 })
 export default class ReferenceGettingStartedGuide extends Component {
     static propTypes = {
@@ -47,9 +70,21 @@ export default class ReferenceGettingStartedGuide extends Component {
 
     render() {
         const {
+            fields: {
+                things_to_know,
+                contact,
+                most_important_dashboard,
+                important_metrics,
+                important_segments,
+                important_tables
+            },
             style,
             guide,
             user,
+            dashboards,
+            metrics,
+            segments,
+            tables,
             isEditing,
             startEditing,
             endEditing,
@@ -62,96 +97,6 @@ export default class ReferenceGettingStartedGuide extends Component {
         const onSubmit = handleSubmit(async (fields) => 
             console.log(fields)
         );
-
-        const dashboards = {
-            1: {
-                id: 1,
-                name: "Dashboard1",
-                description: "description here description here description here description here",
-                points_of_interest: null,
-                caveats: null
-            },
-            2: {
-                id: 2,
-                name: "Dashboard2",
-                description: "description here description here description here description here",
-                points_of_interest: null,
-                caveats: null
-            },
-            3: {
-                id: 3,
-                name: "Dashboard3",
-                description: "description here description here description here description here",
-                points_of_interest: null,
-                caveats: null
-            },
-            4: {
-                id: 4,
-                name: "Dashboard4",
-                description: "description here description here description here description here",
-                points_of_interest: null,
-                caveats: null
-            },
-            5: {
-                id: 5,
-                name: "Dashboard5",
-                description: "description here description here description here description here",
-                points_of_interest: null,
-                caveats: null
-            },
-        };
-
-        const metrics = {
-            1: {
-                id: 1,
-                name: "Metric1",
-                description: "description here description here description here description here",
-                points_of_interest: null,
-                caveats: null
-            },
-            2: {
-                id: 2,
-                name: "Metric2",
-                description: "description here description here description here description here",
-                points_of_interest: null,
-                caveats: null
-            }
-        };
-
-        const segments = {
-            1: {
-                id: 1,
-                name: "Segment1",
-                description: "description here description here description here description here",
-                points_of_interest: null,
-                caveats: null
-            },
-            2: {
-                id: 2,
-                name: "Segment2",
-                description: "description here description here description here description here",
-                points_of_interest: null,
-                caveats: null
-            }
-        };
-
-        const tables = {
-            1: {
-                id: 1,
-                name: "Table1",
-                description: "description here description here description here description here",
-                points_of_interest: null,
-                caveats: null
-            },
-            2: {
-                id: 2,
-                name: "Table2",
-                description: "description here description here description here description here",
-                points_of_interest: null,
-                caveats: null
-            }
-        };
-
 
         return (
             <form className="full" style={style} onSubmit={onSubmit}>
@@ -180,7 +125,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                         <GuideDetailEditor 
                             type="dashboard" 
                             entities={dashboards}
-                            formFields={{}}
+                            formFields={[most_important_dashboard]}
                         />
 
                         <div className={S.guideEditTitle}>
@@ -189,7 +134,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                         <GuideDetailEditor 
                             type="metric" 
                             entities={metrics}
-                            formFields={{}}
+                            formFields={important_metrics}
                         />
                         <div className={S.guideEditAddButton}>
                             <div className={S.guideEditAddButtonBody}>
@@ -212,7 +157,8 @@ export default class ReferenceGettingStartedGuide extends Component {
                             secondaryType="table"
                             secondaryEntities={tables}
 
-                            formFields={{}}
+                            formFields={important_segments}
+                            secondaryFormFields={important_tables}
                         />
                         <div className={S.guideEditAddButton}>
                             <div className={S.guideEditAddButtonBody}>
@@ -237,14 +183,25 @@ export default class ReferenceGettingStartedGuide extends Component {
                         <textarea 
                             className={S.guideEditTextarea} 
                             placeholder="Things to know..."
+                            {...things_to_know}
                         />
 
                         <div className={S.guideEditTitle}>
                             Who should users contact for help if they're confused about this data?
                         </div>
                         <div className={S.guideEditContact}>
-                            <input className={S.guideEditContactName} placeholder="Name" type="text"/>
-                            <input className={S.guideEditContactEmail} placeholder="Email address" type="text"/>
+                            <input 
+                                className={S.guideEditContactName} 
+                                placeholder="Name" 
+                                type="text"
+                                {...contact.name}
+                            />
+                            <input 
+                                className={S.guideEditContactEmail} 
+                                placeholder="Email address" 
+                                type="text"
+                                {...contact.email}
+                            />
                         </div>
 
                         <div className={S.guideEditFooter}>
@@ -254,129 +211,129 @@ export default class ReferenceGettingStartedGuide extends Component {
                         <GuideEmptyState 
                             isSuperuser={user && user.is_superuser}
                             startEditing={startEditing} 
-                        /> :
-                        <div>
-                            <GuideHeader startEditing={startEditing} />
-                            <div className="wrapper wrapper--trim">
-                                <div className={S.guideTitle}>
-                                    <div className={S.guideTitleBody}>
-                                        Dashboard
-                                    </div>
-                                </div>
-                                <GuideDetail 
-                                    title={'Marketing KPIs'} 
-                                    description={'This dashboard contains metrics about ad buys, impressions, etc.'} 
-                                    link={'test'} 
-                                    linkClass={'text-green'} 
-                                />
+                        /> : <div></div>
+                        // <div>
+                        //     <GuideHeader startEditing={startEditing} />
+                        //     <div className="wrapper wrapper--trim">
+                        //         <div className={S.guideTitle}>
+                        //             <div className={S.guideTitleBody}>
+                        //                 Dashboard
+                        //             </div>
+                        //         </div>
+                        //         <GuideDetail 
+                        //             title={'Marketing KPIs'} 
+                        //             description={'This dashboard contains metrics about ad buys, impressions, etc.'} 
+                        //             link={'test'} 
+                        //             linkClass={'text-green'} 
+                        //         />
                                 
-                                <div className={S.guideTitle}>
-                                    <div className={S.guideTitleBody}>
-                                        Useful metrics
-                                    </div>
-                                </div>
-                                <GuideDetail 
-                                    title={'Cost per click'} 
-                                    description={'How much we pay for each click that we receive, not counting some esoteric exceptions.'} 
-                                    hasLearnMore={true}
-                                    exploreLinks={[
-                                        {id: 'test1', name: 'Ad Campaign'},
-                                        {id: 'test2', name: 'Platform'},
-                                        {id: 'test3', name: 'Channel'}
-                                    ]}
-                                    link={'test'} 
-                                    linkClass={'text-brand'} 
-                                />
-                                <GuideDetail 
-                                    title={'Cost per click'} 
-                                    description={'How much we pay for each click that we receive, not counting some esoteric exceptions.'} 
-                                    hasLearnMore={true}
-                                    exploreLinks={[
-                                        {id: 'test1', name: 'Ad Campaign'},
-                                        {id: 'test2', name: 'Platform'},
-                                        {id: 'test3', name: 'Channel'}
-                                    ]}
-                                    link={'test'} 
-                                    linkClass={'text-brand'} 
-                                />
-                                <div className={S.guideSeeAll}>
-                                    <div className={S.guideSeeAllBody}>
-                                        <Link className={cx('text-brand', S.guideSeeAllLink)} to={'/reference/metrics'}>
-                                            See all metrics
-                                        </Link>
-                                    </div>
-                                </div>
+                        //         <div className={S.guideTitle}>
+                        //             <div className={S.guideTitleBody}>
+                        //                 Useful metrics
+                        //             </div>
+                        //         </div>
+                        //         <GuideDetail 
+                        //             title={'Cost per click'} 
+                        //             description={'How much we pay for each click that we receive, not counting some esoteric exceptions.'} 
+                        //             hasLearnMore={true}
+                        //             exploreLinks={[
+                        //                 {id: 'test1', name: 'Ad Campaign'},
+                        //                 {id: 'test2', name: 'Platform'},
+                        //                 {id: 'test3', name: 'Channel'}
+                        //             ]}
+                        //             link={'test'} 
+                        //             linkClass={'text-brand'} 
+                        //         />
+                        //         <GuideDetail 
+                        //             title={'Cost per click'} 
+                        //             description={'How much we pay for each click that we receive, not counting some esoteric exceptions.'} 
+                        //             hasLearnMore={true}
+                        //             exploreLinks={[
+                        //                 {id: 'test1', name: 'Ad Campaign'},
+                        //                 {id: 'test2', name: 'Platform'},
+                        //                 {id: 'test3', name: 'Channel'}
+                        //             ]}
+                        //             link={'test'} 
+                        //             linkClass={'text-brand'} 
+                        //         />
+                        //         <div className={S.guideSeeAll}>
+                        //             <div className={S.guideSeeAllBody}>
+                        //                 <Link className={cx('text-brand', S.guideSeeAllLink)} to={'/reference/metrics'}>
+                        //                     See all metrics
+                        //                 </Link>
+                        //             </div>
+                        //         </div>
 
-                                <div className={S.guideTitle}>
-                                    <div className={S.guideTitleBody}>
-                                        Segments and tables
-                                    </div>
-                                </div>
-                                <GuideDetail 
-                                    title={'Impressions'} 
-                                    description={'A table recording each ad impression with information about each impression.'} 
-                                    hasLearnMore={true}
-                                    link={'test'} 
-                                    linkClass={'text-purple'} 
-                                />
-                                <GuideDetail 
-                                    title={'Impressions'} 
-                                    description={'A table recording each ad impression with information about each impression.'} 
-                                    hasLearnMore={true}
-                                    link={'test'} 
-                                    linkClass={'text-purple'} 
-                                />
-                                <GuideDetail 
-                                    title={'Impressions'} 
-                                    description={'A table recording each ad impression with information about each impression.'} 
-                                    hasLearnMore={true}
-                                    link={'test'} 
-                                    linkClass={'text-purple'} 
-                                />
-                                <div className={S.guideSeeAll}>
-                                    <div className={S.guideSeeAllBody}>
-                                        <Link className={cx('text-purple', S.guideSeeAllLink)} to={'/reference/segments'}>
-                                            See all segments
-                                        </Link>
-                                        <Link className={cx('text-purple', S.guideSeeAllLink)} to={'/reference/databases'}>
-                                            See all tables
-                                        </Link>
-                                    </div>
-                                </div>
+                        //         <div className={S.guideTitle}>
+                        //             <div className={S.guideTitleBody}>
+                        //                 Segments and tables
+                        //             </div>
+                        //         </div>
+                        //         <GuideDetail 
+                        //             title={'Impressions'} 
+                        //             description={'A table recording each ad impression with information about each impression.'} 
+                        //             hasLearnMore={true}
+                        //             link={'test'} 
+                        //             linkClass={'text-purple'} 
+                        //         />
+                        //         <GuideDetail 
+                        //             title={'Impressions'} 
+                        //             description={'A table recording each ad impression with information about each impression.'} 
+                        //             hasLearnMore={true}
+                        //             link={'test'} 
+                        //             linkClass={'text-purple'} 
+                        //         />
+                        //         <GuideDetail 
+                        //             title={'Impressions'} 
+                        //             description={'A table recording each ad impression with information about each impression.'} 
+                        //             hasLearnMore={true}
+                        //             link={'test'} 
+                        //             linkClass={'text-purple'} 
+                        //         />
+                        //         <div className={S.guideSeeAll}>
+                        //             <div className={S.guideSeeAllBody}>
+                        //                 <Link className={cx('text-purple', S.guideSeeAllLink)} to={'/reference/segments'}>
+                        //                     See all segments
+                        //                 </Link>
+                        //                 <Link className={cx('text-purple', S.guideSeeAllLink)} to={'/reference/databases'}>
+                        //                     See all tables
+                        //                 </Link>
+                        //             </div>
+                        //         </div>
 
-                                <div className={S.guideTitle}>
-                                    <div className={S.guideTitleBody}>
-                                        Some things to know
-                                    </div>
-                                </div>
-                                <GuideDetail 
-                                    description={'Gaper losses league forkball pennant cubs balk no-hitter. Breaking ball national pastime series cy young left field walk off sacrifice fly cycle.'} 
-                                />
-                                <div className={S.guideSeeAll}>
-                                    <div className={S.guideSeeAllBody}>
-                                        <Link className={cx('text-brand', S.guideSeeAllLink)} to={'/reference/databases'}>
-                                            Explore our data
-                                        </Link>
-                                    </div>
-                                </div>
+                        //         <div className={S.guideTitle}>
+                        //             <div className={S.guideTitleBody}>
+                        //                 Some things to know
+                        //             </div>
+                        //         </div>
+                        //         <GuideDetail 
+                        //             description={'Gaper losses league forkball pennant cubs balk no-hitter. Breaking ball national pastime series cy young left field walk off sacrifice fly cycle.'} 
+                        //         />
+                        //         <div className={S.guideSeeAll}>
+                        //             <div className={S.guideSeeAllBody}>
+                        //                 <Link className={cx('text-brand', S.guideSeeAllLink)} to={'/reference/databases'}>
+                        //                     Explore our data
+                        //                 </Link>
+                        //             </div>
+                        //         </div>
 
-                                <div className={S.guideTitle}>
-                                    <div className={S.guideTitleBody}>
-                                        Have questions?
-                                    </div>
-                                </div>
-                                <div className={S.guideContact}>
-                                    <div className={S.guideContactBody}>
-                                        <span className="text-dark mr3">
-                                            Contact Sameer Al-Sakran
-                                        </span>
-                                        <a className="text-brand text-bold no-decoration" href="mailto:s-dog@metabase.com">
-                                            s-dog@metabase.com
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        //         <div className={S.guideTitle}>
+                        //             <div className={S.guideTitleBody}>
+                        //                 Have questions?
+                        //             </div>
+                        //         </div>
+                        //         <div className={S.guideContact}>
+                        //             <div className={S.guideContactBody}>
+                        //                 <span className="text-dark mr3">
+                        //                     Contact Sameer Al-Sakran
+                        //                 </span>
+                        //                 <a className="text-brand text-bold no-decoration" href="mailto:s-dog@metabase.com">
+                        //                     s-dog@metabase.com
+                        //                 </a>
+                        //             </div>
+                        //         </div>
+                        //     </div>
+                        // </div>
                 )}
             </form>
         );
