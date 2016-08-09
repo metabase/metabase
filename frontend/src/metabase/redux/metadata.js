@@ -42,7 +42,14 @@ export const fetchMetrics = createThunkAction(FETCH_METRICS, (reload = false) =>
             return metricMap;
         };
 
-        return await fetchData({dispatch, getState, requestStatePath, existingStatePath, getData, reload});
+        return await fetchData({
+            dispatch, 
+            getState, 
+            requestStatePath, 
+            existingStatePath, 
+            getData, 
+            reload
+        });
     };
 });
 
@@ -64,7 +71,13 @@ export const updateMetric = createThunkAction(UPDATE_METRIC, function(metric) {
             return i.assoc(existingMetrics, mergedMetric.id, mergedMetric);
         };
 
-        return await updateData({dispatch, getState, requestStatePath, existingStatePath, putData});
+        return await updateData({
+            dispatch, 
+            getState, 
+            requestStatePath, 
+            existingStatePath, 
+            putData
+        });
     };
 });
 
@@ -84,7 +97,14 @@ export const fetchSegments = createThunkAction(FETCH_SEGMENTS, (reload = false) 
             return segmentMap;
         };
 
-        return await fetchData({dispatch, getState, requestStatePath, existingStatePath, getData, reload});
+        return await fetchData({
+            dispatch, 
+            getState, 
+            requestStatePath, 
+            existingStatePath, 
+            getData, 
+            reload
+        });
     };
 });
 
@@ -105,7 +125,13 @@ export const updateSegment = createThunkAction(UPDATE_SEGMENT, function(segment)
             return i.assoc(existingSegments, mergedSegment.id, mergedSegment);
         };
 
-        return await updateData({dispatch, getState, requestStatePath, existingStatePath, putData});
+        return await updateData({
+            dispatch, 
+            getState, 
+            requestStatePath, 
+            existingStatePath, 
+            putData
+        });
     };
 });
 
@@ -129,7 +155,14 @@ export const fetchDatabases = createThunkAction(FETCH_DATABASES, (reload = false
             return {...databaseMap, ...existingDatabases};
         };
 
-        return await fetchData({dispatch, getState, requestStatePath, existingStatePath, getData, reload});
+        return await fetchData({
+            dispatch, 
+            getState, 
+            requestStatePath, 
+            existingStatePath, 
+            getData, 
+            reload
+        });
     };
 });
 
@@ -145,7 +178,14 @@ export const fetchDatabaseMetadata = createThunkAction(FETCH_DATABASE_METADATA, 
             return normalize(databaseMetadata, database).entities;
         };
 
-        return await fetchData({dispatch, getState, requestStatePath, existingStatePath, getData, reload});
+        return await fetchData({
+            dispatch, 
+            getState, 
+            requestStatePath, 
+            existingStatePath, 
+            getData, 
+            reload
+        });
     };
 });
 
@@ -169,7 +209,13 @@ export const updateDatabase = createThunkAction(UPDATE_DATABASE, function(databa
             return i.assoc(existingDatabases, mergedDatabase.id, mergedDatabase);
         };
 
-        return await updateData({dispatch, getState, requestStatePath, existingStatePath, putData});
+        return await updateData({
+            dispatch, 
+            getState, 
+            requestStatePath, 
+            existingStatePath, 
+            putData
+        });
     };
 });
 
@@ -199,7 +245,13 @@ export const updateTable = createThunkAction(UPDATE_TABLE, function(table) {
             return i.assoc(existingTables, mergedTable.id, mergedTable);
         };
 
-        return await updateData({dispatch, getState, requestStatePath, existingStatePath, putData});
+        return await updateData({
+            dispatch, 
+            getState, 
+            requestStatePath, 
+            existingStatePath, 
+            putData
+        });
     };
 });
 
@@ -217,7 +269,14 @@ export const fetchTables = createThunkAction(FETCH_TABLES, (reload = false) => {
             return {...tableMap, ...existingTables};
         };
 
-        return await fetchData({dispatch, getState, requestStatePath, existingStatePath, getData, reload});
+        return await fetchData({
+            dispatch, 
+            getState, 
+            requestStatePath, 
+            existingStatePath, 
+            getData, 
+            reload
+        });
     };
 });
 
@@ -233,7 +292,14 @@ export const fetchTableMetadata = createThunkAction(FETCH_TABLE_METADATA, functi
             return normalize(tableMetadata, table).entities;
         };
 
-        return await fetchData({dispatch, getState, requestStatePath, existingStatePath, getData, reload});
+        return await fetchData({
+            dispatch, 
+            getState, 
+            requestStatePath, 
+            existingStatePath, 
+            getData, 
+            reload
+        });
     };
 });
 
@@ -264,7 +330,13 @@ export const updateField = createThunkAction(UPDATE_FIELD, function(field) {
             return i.assoc(existingFields, mergedField.id, mergedField);
         };
 
-        return await updateData({dispatch, getState, requestStatePath, existingStatePath, putData});
+        return await updateData({
+            dispatch, 
+            getState, 
+            requestStatePath, 
+            existingStatePath, 
+            putData
+        });
     };
 });
 
@@ -287,7 +359,14 @@ export const fetchRevisions = createThunkAction(FETCH_REVISIONS, (type, id, relo
             return i.assocIn(existingRevisions, [type, id], revisionMap);
         };
 
-        return await fetchData({dispatch, getState, requestStatePath, existingStatePath, getData, reload});
+        return await fetchData({
+            dispatch, 
+            getState, 
+            requestStatePath, 
+            existingStatePath, 
+            getData, 
+            reload
+        });
     };
 });
 

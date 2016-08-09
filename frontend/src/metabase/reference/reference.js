@@ -1,7 +1,40 @@
-import { handleActions, createAction } from 'metabase/lib/redux';
+import i from 'icepick';
+
+import { 
+    handleActions, 
+    createAction,
+    createThunkAction,
+    AngularResourceProxy,
+    cleanResource,
+    fetchData,
+    updateData
+} from 'metabase/lib/redux';
+
 import MetabaseAnalytics from 'metabase/lib/analytics';
 
-import i from 'icepick';
+const GettingStartedApi = new AngularResourceProxy("GettingStarted", ["get"]);
+
+
+const FETCH_GUIDE = "metabase/metadata/FETCH_GUIDE";
+export const fetchGuide = createThunkAction(FETCH_GUIDE, (reload = false) => {
+    return async (dispatch, getState) => {
+        const requestStatePath = ["metadata", "reference", 'guide'];
+        const existingStatePath = requestStatePath;
+        const getData = async () => {
+            const guide = await GettingStartedApi.get();
+            return cleanResource(guide);
+        };
+
+        return await fetchData({
+            dispatch, 
+            getState, 
+            requestStatePath, 
+            existingStatePath, 
+            getData, 
+            reload
+        });
+    };
+});
 
 const SET_ERROR = "metabase/reference/SET_ERROR";
 export const setError = createAction(SET_ERROR);
@@ -38,6 +71,9 @@ const initialState = {
     isFormulaExpanded: false,
 };
 export default handleActions({
+    [FETCH_GUIDE]: {
+        next: (state, { payload }) => i.assoc(state, 'guide', payload) 
+    },
     [SET_ERROR]: {
         throw: (state, { payload }) => i.assoc(state, 'error', payload)
     },

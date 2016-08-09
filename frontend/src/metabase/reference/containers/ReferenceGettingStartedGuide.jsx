@@ -16,6 +16,7 @@ import GuideDetailEditor from "metabase/reference/components/GuideDetailEditor.j
 import * as actions from 'metabase/reference/reference';
 
 import {
+    getGuide,
     getUser,
     getIsEditing
 } from '../selectors';
@@ -25,16 +26,9 @@ import {
 } from '../utils';
 
 const mapStateToProps = (state, props) => ({
-    guide: {
-        things_to_know: "test",
-        contact: { name: null, email: null },
-        most_important_dashboard: null,
-        important_metrics: [],
-        important_tables: [],
-        important_segments: []
-    },
-    user: getUser(state),
-    isEditing: getIsEditing(state)
+    guide: getGuide(state, props),
+    user: getUser(state, props),
+    isEditing: getIsEditing(state, props)
 });
 
 const mapDispatchToProps = {
@@ -62,6 +56,8 @@ export default class ReferenceGettingStartedGuide extends Component {
             handleSubmit,
             submitting
         } = this.props;
+
+        console.log(guide);
 
         const onSubmit = handleSubmit(async (fields) => 
             console.log(fields)
@@ -165,100 +161,100 @@ export default class ReferenceGettingStartedGuide extends Component {
                         submitting={submitting}
                     />
                 }
-                { isGuideEmpty(guide) ? 
-                    <GuideEmptyState 
-                        isSuperuser={user && user.is_superuser}
-                        startEditing={startEditing} 
-                    /> :
-                    isEditing ?
-                        <div className="wrapper wrapper--trim">
-                            <div className={S.guideEditHeader}>
-                                <div className={S.guideEditHeaderTitle}>
-                                    Help new Metabase users find their way around
-                                </div>
-                                <div className={S.guideEditHeaderDescription}>
-                                    The Getting Started guide highlights the dashboard, 
-                                    metrics, segments, and tables that matter most, 
-                                    and informs your users of important things they 
-                                    should know before digging into the data.
-                                </div>
+                { isEditing ? 
+                    <div className="wrapper wrapper--trim">
+                        <div className={S.guideEditHeader}>
+                            <div className={S.guideEditHeaderTitle}>
+                                Help new Metabase users find their way around
                             </div>
-                            <div className={S.guideEditTitle}>
-                                What is your most important dashboard?
+                            <div className={S.guideEditHeaderDescription}>
+                                The Getting Started guide highlights the dashboard, 
+                                metrics, segments, and tables that matter most, 
+                                and informs your users of important things they 
+                                should know before digging into the data.
                             </div>
-                            <GuideDetailEditor 
-                                type="dashboard" 
-                                entities={dashboards}
-                                formFields={{}}
-                            />
+                        </div>
+                        <div className={S.guideEditTitle}>
+                            What is your most important dashboard?
+                        </div>
+                        <GuideDetailEditor 
+                            type="dashboard" 
+                            entities={dashboards}
+                            formFields={{}}
+                        />
 
-                            <div className={S.guideEditTitle}>
-                                What are your 3-5 most commonly referenced metrics?
+                        <div className={S.guideEditTitle}>
+                            What are your 3-5 most commonly referenced metrics?
+                        </div>
+                        <GuideDetailEditor 
+                            type="metric" 
+                            entities={metrics}
+                            formFields={{}}
+                        />
+                        <div className={S.guideEditAddButton}>
+                            <div className={S.guideEditAddButtonBody}>
+                                <button
+                                    className="Button Button--primary Button--large" 
+                                    type="button"
+                                >
+                                    Add another metric
+                                </button>
                             </div>
-                            <GuideDetailEditor 
-                                type="metric" 
-                                entities={metrics}
-                                formFields={{}}
-                            />
-                            <div className={S.guideEditAddButton}>
-                                <div className={S.guideEditAddButtonBody}>
-                                    <button
-                                        className="Button Button--primary Button--large" 
-                                        type="button"
-                                    >
-                                        Add another metric
-                                    </button>
-                                </div>
-                            </div>
+                        </div>
 
-                            <div className={S.guideEditTitle}>
-                                What are 3-5 commonly referenced segments or tables 
-                                that would be useful for this audience?
-                            </div>
-                            <GuideDetailEditor 
-                                type="segment"
-                                entities={segments}
-                                secondaryType="table"
-                                secondaryEntities={tables}
+                        <div className={S.guideEditTitle}>
+                            What are 3-5 commonly referenced segments or tables 
+                            that would be useful for this audience?
+                        </div>
+                        <GuideDetailEditor 
+                            type="segment"
+                            entities={segments}
+                            secondaryType="table"
+                            secondaryEntities={tables}
 
-                                formFields={{}}
-                            />
-                            <div className={S.guideEditAddButton}>
-                                <div className={S.guideEditAddButtonBody}>
-                                    <button
-                                        className="Button Button--primary Button--large" 
-                                        type="button"
-                                    >
-                                        Add another segment or table
-                                    </button>
-                                </div>
+                            formFields={{}}
+                        />
+                        <div className={S.guideEditAddButton}>
+                            <div className={S.guideEditAddButtonBody}>
+                                <button
+                                    className="Button Button--primary Button--large" 
+                                    type="button"
+                                >
+                                    Add another segment or table
+                                </button>
                             </div>
+                        </div>
 
-                            <div className={S.guideEditTitle}>
-                                What should a user of this data know before they start 
-                                accessing it?
-                            </div>
-                            <div className={S.guideEditSubtitle}>
-                                E.g., expectations around data privacy and use, common
-                                pitfalls or misunderstandings, information about data 
-                                warehouse performance, legal notices, etc.
-                            </div>
-                            <textarea 
-                                className={S.guideEditTextarea} 
-                                placeholder="Things to know..."
-                            />
+                        <div className={S.guideEditTitle}>
+                            What should a user of this data know before they start 
+                            accessing it?
+                        </div>
+                        <div className={S.guideEditSubtitle}>
+                            E.g., expectations around data privacy and use, common
+                            pitfalls or misunderstandings, information about data 
+                            warehouse performance, legal notices, etc.
+                        </div>
+                        <textarea 
+                            className={S.guideEditTextarea} 
+                            placeholder="Things to know..."
+                        />
 
-                            <div className={S.guideEditTitle}>
-                                Who should users contact for help if they're confused about this data?
-                            </div>
-                            <div className={S.guideEditContact}>
-                                <input className={S.guideEditContactName} placeholder="Name" type="text"/>
-                                <input className={S.guideEditContactEmail} placeholder="Email address" type="text"/>
-                            </div>
+                        <div className={S.guideEditTitle}>
+                            Who should users contact for help if they're confused about this data?
+                        </div>
+                        <div className={S.guideEditContact}>
+                            <input className={S.guideEditContactName} placeholder="Name" type="text"/>
+                            <input className={S.guideEditContactEmail} placeholder="Email address" type="text"/>
+                        </div>
 
-                            <div className={S.guideEditFooter}>
-                            </div>
-                        </div> :
+                        <div className={S.guideEditFooter}>
+                        </div>
+                    </div> :
+                    guide && (isGuideEmpty(guide) ? 
+                        <GuideEmptyState 
+                            isSuperuser={user && user.is_superuser}
+                            startEditing={startEditing} 
+                        /> :
                         <div>
                             <GuideHeader startEditing={startEditing} />
                             <div className="wrapper wrapper--trim">
@@ -381,7 +377,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                 </div>
                             </div>
                         </div>
-                }
+                )}
             </form>
         );
     }

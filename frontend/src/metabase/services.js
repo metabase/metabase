@@ -570,6 +570,15 @@ CoreServices.factory('Settings', ['$resource', function($resource) {
     });
 }]);
 
+CoreServices.factory('GettingStarted', ['$resource', function($resource) {
+    return $resource('/api/getting_started', {}, {
+        get: {
+            url: '/api/getting_started',
+            method: 'GET',
+        }
+    });
+}]);
+
 CoreServices.factory('Setup', ['$resource', function($resource) {
     return $resource('/api/setup/', {}, {
         create: {

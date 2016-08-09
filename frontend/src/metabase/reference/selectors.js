@@ -23,7 +23,7 @@ const referenceSections = {
         fetch: { 
             fetchGuide: [],
             fetchDashboards: [],
-            fetchMetricFields: [],
+            fetchMetrics: [],
             fetchSegments: [], 
             fetchTables: [] 
         },
@@ -667,3 +667,5 @@ export const getHasQuestions = createSelector(
 export const getIsEditing = (state, props) => state.reference.isEditing;
 
 export const getIsFormulaExpanded = (state, props) => state.reference.isFormulaExpanded;
+
+export const getGuide = (state, props) => state.reference.guide;
