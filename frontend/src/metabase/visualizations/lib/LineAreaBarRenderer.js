@@ -398,6 +398,16 @@ function lineAndBarOnRender(chart, settings) {
             });
     }
 
+    function fixStackZIndex() {
+        // reverse the order of .stack-list and .dc-tooltip-list children so 0 points in stacked
+        // charts don't appear on top of non-zero points
+        for (const list of chart.selectAll(".stack-list, .dc-tooltip-list")[0]) {
+            for (const child of list.childNodes) {
+                list.insertBefore(list.firstChild, child);
+            }
+        }
+    }
+
     // run these first so the rest of the margin computations take it into account
     hideDisabledLabels();
     hideDisabledAxis();
@@ -426,6 +436,7 @@ function lineAndBarOnRender(chart, settings) {
         hideDisabledAxis();
         hideBadAxis();
         disableClickFiltering();
+        fixStackZIndex();
     });
 
     chart.render();
