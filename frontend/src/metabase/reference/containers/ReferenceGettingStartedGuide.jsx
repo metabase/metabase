@@ -233,7 +233,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                             />
                         </div>
                     </div> :
-                    guide && (isGuideEmpty(guide) ? 
+                    !guide || isGuideEmpty(guide) ? 
                         <GuideEmptyState 
                             isSuperuser={user && user.is_superuser}
                             startEditing={startEditing} 
@@ -360,7 +360,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                         //         </div>
                         //     </div>
                         // </div>
-                )}
+                }
             </form>
         );
     }
