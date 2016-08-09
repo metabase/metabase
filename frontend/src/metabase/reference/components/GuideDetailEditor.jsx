@@ -13,14 +13,16 @@ const GuideDetailEditor = ({
     secondaryType,
     entities,
     secondaryEntities,
-    formField,
-    secondaryFormField
-}) =>
+    formField
+}) => 
     <div className={S.guideDetailEditor}>
         <div className={S.guideDetailEditorPicker}>
             <Select 
                 triggerClasses={S.guideDetailEditorSelect}
-                value={entities[formField.id.value]}
+                value={formField.type && secondaryType === formField.type.value ?
+                    secondaryEntities[formField.id.value] : 
+                    entities[formField.id.value]
+                }
                 options={secondaryType ?
                     Object.values(entities)
                         .map(entity => i.assoc(entity, 'section', type))
@@ -30,8 +32,12 @@ const GuideDetailEditor = ({
                         ) :
                     Object.values(entities)
                 }
+                optionNameFn={option => option.display_name || option.name}
                 onChange={(entity) => {
                     formField.id.onChange(entity.id);
+                    if (secondaryType) {
+                        formField.type.onChange(entity.section);
+                    }
                     formField.points_of_interest.onChange(entity.points_of_interest || '');
                     formField.caveats.onChange(entity.caveats || '');
                 }}
@@ -66,8 +72,7 @@ GuideDetailEditor.propTypes = {
     secondaryType: PropTypes.string,
     entities: PropTypes.object.isRequired,
     secondaryEntities: PropTypes.object,
-    formField: PropTypes.object.isRequired,
-    secondaryFormField: PropTypes.object
+    formField: PropTypes.object.isRequired
 };
 
 export default GuideDetailEditor;

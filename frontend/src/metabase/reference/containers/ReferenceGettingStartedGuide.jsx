@@ -53,12 +53,10 @@ const mapStateToProps = (state, props) => {
             'important_metrics[].id',
             'important_metrics[].caveats',
             'important_metrics[].points_of_interest',
-            'important_segments[].id',
-            'important_segments[].caveats',
-            'important_segments[].points_of_interest',
-            'important_tables[].id',
-            'important_tables[].caveats',
-            'important_tables[].points_of_interest'
+            'important_segments_and_tables[].id',
+            'important_segments_and_tables[].type',
+            'important_segments_and_tables[].caveats',
+            'important_segments_and_tables[].points_of_interest'
         ],
         initialValues: guide && {
             things_to_know: guide.things_to_know,
@@ -69,11 +67,10 @@ const mapStateToProps = (state, props) => {
             important_metrics: guide.important_metrics && guide.important_metrics.length > 0 ? 
                 guide.important_metrics.map(metricId => metrics[metricId]) :
                 [{}],
-            important_segments: guide.important_segments && guide.important_segments.length > 0 ? 
-                guide.important_segments.map(segmentId => segments[segmentId]) :
-                [{}],
-            important_tables: guide.important_tables && guide.important_tables.length > 0 ? 
-                guide.important_tables.map(tableId => tables[tableId]) :
+            important_segments_and_tables: (guide.important_segments && guide.important_segments.length > 0) ||
+                (guide.important_tables && guide.important_tables.length > 0) ? 
+                guide.important_segments.map(segmentId => segments[segmentId])
+                    .concat(guide.important_tables.map(tableId => tables[tableId])) :
                 [{}]
         }
     };
@@ -99,8 +96,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                 contact,
                 most_important_dashboard,
                 important_metrics,
-                important_segments,
-                important_tables
+                important_segments_and_tables
             },
             style,
             guide,
@@ -177,17 +173,16 @@ export default class ReferenceGettingStartedGuide extends Component {
                             What are 3-5 commonly referenced segments or tables 
                             that would be useful for this audience?
                         </div>
-{                        
-    // <GuideDetailEditor 
-    //                         type="segment"
-    //                         entities={segments}
-    //                         secondaryType="table"
-    //                         secondaryEntities={tables}
-
-    //                         formField={important_segments}
-    //                         secondaryFormField={important_tables}
-    //                     />
-                    }
+                        { important_segments_and_tables.map((segmentOrTableField, index) =>
+                            <GuideDetailEditor
+                                key={index} 
+                                type="segment"
+                                entities={segments}
+                                secondaryType="table"
+                                secondaryEntities={tables}
+                                formField={segmentOrTableField}
+                            />
+                        )}
                         <div className={S.guideEditAddButton}>
                             <div className={S.guideEditAddButtonBody}>
                                 <button
@@ -230,9 +225,6 @@ export default class ReferenceGettingStartedGuide extends Component {
                                 type="text"
                                 {...contact.email}
                             />
-                        </div>
-
-                        <div className={S.guideEditFooter}>
                         </div>
                     </div> :
                     guide && (isGuideEmpty(guide) ? 
