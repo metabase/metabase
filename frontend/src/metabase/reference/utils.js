@@ -149,8 +149,9 @@ export const tryUpdateGuide = async (formFields, props) => {
                 ...editedDashboard, 
                 show_in_getting_started: true 
             };
-            
-            await updateDashboard(updatedNewDashboard);
+
+            console.log(updatedNewDashboard);
+            console.log(await updateDashboard(updatedNewDashboard));
         }        
     }
     catch(error) {
