@@ -8,7 +8,7 @@ import { normalize, Schema, arrayOf } from "normalizr";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
-
+import { applyParameters } from "metabase/meta/Card";
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 
 const DATASET_SLOW_TIMEOUT   = 15 * 1000;
@@ -143,24 +143,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, d
 
         let dashboard = dashboards[dashboardId];
 
-        let parameters = [];
-        if (dashboard && dashboard.parameters) {
-            for (const parameter of dashboard.parameters) {
-                let mapping = _.findWhere(dashcard && dashcard.parameter_mappings, { card_id: card.id, parameter_id: parameter.id });
-                if (parameterValues[parameter.id] != null) {
-                    parameters.push({
-                        type: parameter.type,
-                        target: mapping && mapping.target,
-                        value: parameterValues[parameter.id]
-                    });
-                }
-            }
-        }
-
-        let datasetQuery = {
-            ...card.dataset_query,
-            parameters
-        };
+        const datasetQuery = applyParameters(card, dashboard.parameters, parameterValues, dashcard && dashcard.parameter_mappings);
 
         let slowCardTimer = setTimeout(() => {
             if (result === null) {

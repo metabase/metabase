@@ -36,6 +36,7 @@ We're constantly trying to walk the line between putting more functionality into
 ### Does Metabase support database X?
 
 Metabase currently supports:
+
 * Amazon Redshift
 * BigQuery
 * Crate (version 0.55 or higher)

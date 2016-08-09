@@ -4,7 +4,7 @@ import Base from "./Base";
 import Table from "./Table";
 
 export default class Database extends Base {
-    static type = "database";
+    static type = "databases";
     static schema = {
         tables: [Table]
     };

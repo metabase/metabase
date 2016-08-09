@@ -6,7 +6,7 @@ import Table from "./Table";
 import { isDate, isNumeric, isBoolean, isString, isSummable, isCategory, isDimension, isMetric, getIconForField } from "metabase/lib/schema_metadata";
 
 export default class Field extends Base {
-    static type = "field";
+    static type = "fields";
     static schema = {};
 
     id: number;

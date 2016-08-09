@@ -33,7 +33,8 @@ import {
     uiControls,
     getParameters,
     getDatabaseFields,
-    getSampleDatasetId
+    getSampleDatasetId,
+    getFullDatasetQuery,
 } from "../selectors";
 
 import * as actions from "../actions";
@@ -91,6 +92,7 @@ const mapStateToProps = (state, props) => {
         parameters:                getParameters(state),
         databaseFields:            getDatabaseFields(state),
         sampleDatasetId:           getSampleDatasetId(state),
+        fullDatasetQuery:          getFullDatasetQuery(state),
 
         isShowingDataReference:    state.qb.uiControls.isShowingDataReference,
         isShowingTutorial:         state.qb.uiControls.isShowingTutorial,
