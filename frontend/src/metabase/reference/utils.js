@@ -33,8 +33,6 @@ export const tryFetchData = async (props) => {
     clearError();
     startLoading();
     try {
-        console.log(fetch);
-        console.log(props);
         await Promise.all(Object.keys(fetch).map((fetchPropName) => {
             const fetchData = props[fetchPropName];
             const fetchArgs = fetch[fetchPropName] || [];
@@ -132,6 +130,8 @@ export const tryUpdateGuide = async (formFields, props) => {
 
     startLoading();
     try {
+        //TODO: refactor to take in formFields to facilitate sending removals?
+        // or handle removals in separate function?
         const updateEntity = ({oldEntityId, oldEntityIds, entities, formField, updateEntity}) => {
             if (!formField.id) {
                 return [];
@@ -187,9 +187,19 @@ export const tryUpdateGuide = async (formFields, props) => {
                 updateEntity: updateMetric
             }));
 
+        const updatingThingsToKnow = guide.things_to_know !== formFields.things_to_know ?
+            [updateSetting({key: 'getting-started-things-to-know', value: formFields.things_to_know })] :
+            [];
+
+        // const updatingContactName = guide.contact && formFields.contact &&
+        //     guide.contact.name !== formFields.contact.name ?
+        //         [updateSetting({key: 'things_to_know', value: formFields.things_to_know })] :
+        //         [];
+
         await Promise.all([]
             .concat(updatingDashboards)
             .concat(updatingMetrics)
+            .concat(updatingThingsToKnow)
         );
     }
     catch(error) {

@@ -48,6 +48,8 @@ const mapStateToProps = (state, props) => {
     const metrics = getMetrics(state, props);
     const segments = getSegments(state, props);
     const tables = getTables(state, props);
+
+    console.log(guide);
     return {
         guide,
         user: getUser(state, props),
@@ -194,33 +196,34 @@ export default class ReferenceGettingStartedGuide extends Component {
                             </div>
                             // TODO: add multi-select for important fields, try SelectPicker.jsx
                         }
-
-                        <div className={S.guideEditTitle}>
-                            What are 3-5 commonly referenced segments or tables 
-                            that would be useful for this audience?
-                        </div>
-                        { important_segments_and_tables.map((segmentOrTableField, index) => null
-                            // <GuideDetailEditor
-                            //     key={index} 
-                            //     type="segment"
-                            //     entities={segments}
-                            //     secondaryType="table"
-                            //     secondaryEntities={tables}
-                            //     formField={segmentOrTableField}
-                            // />
-                        )}
-                        { important_segments_and_tables.length < 5 &&
-                            <div className={S.guideEditAddButton}>
-                                <div className={S.guideEditAddButtonBody}>
-                                    <button
-                                        className="Button Button--primary Button--large" 
-                                        type="button"
-                                        onClick={() => important_segments_and_tables.addField()}
-                                    >
-                                        Add another segment or table
-                                    </button>
-                                </div>
-                            </div>
+                        {
+                        // <div className={S.guideEditTitle}>
+                        //     What are 3-5 commonly referenced segments or tables 
+                        //     that would be useful for this audience?
+                        // </div>
+                        // { important_segments_and_tables.map((segmentOrTableField, index) => null
+                        //     // <GuideDetailEditor
+                        //     //     key={index} 
+                        //     //     type="segment"
+                        //     //     entities={segments}
+                        //     //     secondaryType="table"
+                        //     //     secondaryEntities={tables}
+                        //     //     formField={segmentOrTableField}
+                        //     // />
+                        // )}
+                        // { important_segments_and_tables.length < 5 &&
+                        //     <div className={S.guideEditAddButton}>
+                        //         <div className={S.guideEditAddButtonBody}>
+                        //             <button
+                        //                 className="Button Button--primary Button--large" 
+                        //                 type="button"
+                        //                 onClick={() => important_segments_and_tables.addField()}
+                        //             >
+                        //                 Add another segment or table
+                        //             </button>
+                        //         </div>
+                        //     </div>
+                        // }
                         }
 
                         <div className={S.guideEditTitle}>
