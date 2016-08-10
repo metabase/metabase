@@ -292,11 +292,11 @@ export const updateDashboard = createThunkAction(UPDATE_DASHBOARD, (dashboard) =
             points_of_interest, 
             show_in_getting_started 
         };
-        console.log(cleanDashboard);
+
         const updatedDashboard = await DashboardApi.update(cleanDashboard);
-        console.log(updatedDashboard);
         
         MetabaseAnalytics.trackEvent("Dashboard", "Update");
+        
         return updatedDashboard;
     }
 );

@@ -10,8 +10,8 @@ export const idsToObjectMap = (ids, objects) => ids
     // hangs browser for large databases
     // .reduce((map, object) => i.assoc(map, object.id, object), {});
 
-const filterUntouchedFields = (fields) => Object.keys(fields)
-    .filter(key => fields[key] !== undefined)
+const filterUntouchedFields = (fields, entity = {}) => Object.keys(fields)
+    .filter(key => fields[key] !== undefined || entity[key] === fields[key])
     .reduce((map, key) => ({ ...map, [key]: fields[key] }), {});
 
 const isEmptyObject = (object) => Object.keys(object).length === 0;
@@ -33,6 +33,8 @@ export const tryFetchData = async (props) => {
     clearError();
     startLoading();
     try {
+        console.log(fetch);
+        console.log(props);
         await Promise.all(Object.keys(fetch).map((fetchPropName) => {
             const fetchData = props[fetchPropName];
             const fetchArgs = fetch[fetchPropName] || [];
@@ -60,7 +62,7 @@ export const tryUpdateData = async (fields, props) => {
 
     startLoading();
     try {
-        const editedFields = filterUntouchedFields(fields);
+        const editedFields = filterUntouchedFields(fields, entity);
         if (!isEmptyObject(editedFields)) {
             const newEntity = {...entity, ...editedFields};
             await props[section.update](newEntity);
@@ -92,7 +94,7 @@ export const tryUpdateFields = async (formFields, props) => {
         const updatedFields = Object.keys(formFields)
             .map(fieldId => ({
                 field: entities[fieldId],
-                formField: filterUntouchedFields(formFields[fieldId])
+                formField: filterUntouchedFields(formFields[fieldId], entities[fieldId])
             }))
             .filter(({field, formField}) => !isEmptyObject(formField))
             .map(({field, formField}) => ({...field, ...formField}));
@@ -130,12 +132,15 @@ export const tryUpdateGuide = async (formFields, props) => {
 
     startLoading();
     try {
-        const updateEntity = ({oldEntityId, entities, formField, updateEntity}) => {
+        const updateEntity = ({oldEntityId, oldEntityIds, entities, formField, updateEntity}) => {
             if (!formField.id) {
                 return [];
             }
 
-            const editedEntity = filterUntouchedFields(formField);
+            const editedEntity = filterUntouchedFields(
+                i.assoc(formField, 'show_in_getting_started', true), 
+                entities[formField.id]
+            );
 
             if (isEmptyObject(editedEntity)) {
                 return [];
@@ -144,14 +149,13 @@ export const tryUpdateGuide = async (formFields, props) => {
             const newEntity = entities[editedEntity.id];
             const updatedNewEntity = {
                 ...newEntity, 
-                ...editedEntity, 
-                show_in_getting_started: true 
+                ...editedEntity
             };
 
             const updatingNewEntity = updateEntity(updatedNewEntity);
 
             const oldEntity = entities[oldEntityId];
-            if (oldEntityId === editedEntity.id || !oldEntity) {
+            if (oldEntityIds.includes(editedEntity.id) || !oldEntity) {
                 return [updatingNewEntity];
             }
 
@@ -168,13 +172,28 @@ export const tryUpdateGuide = async (formFields, props) => {
 
         const updatingDashboards = updateEntity({
             oldEntityId: guide.most_important_dashboard,
+            oldEntityIds: [guide.most_important_dashboard],
             entities: dashboards,
             formField: formFields.most_important_dashboard,
             updateEntity: updateDashboard
         });
+
+        const updatingMetrics = formFields.important_metrics
+            .map(formField => updateEntity({
+                oldEntityId: guide.important_metrics,
+                oldEntityIds: guide.important_metrics || [],
+                entities: metrics,
+                formField: i.assoc(formField, 'revision_message', 'Updated from Getting Started guide.'),
+                updateEntity: updateMetric
+            }));
+
+        await Promise.all([]
+            .concat(updatingDashboards)
+            .concat(updatingMetrics)
+        );
     }
     catch(error) {
-        setError(error);
+        // setError(error);
         console.error(error);
     }
 

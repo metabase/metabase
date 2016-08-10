@@ -59,7 +59,6 @@ export const updateMetric = createThunkAction(UPDATE_METRIC, function(metric) {
         const requestStatePath = ["metadata", "metrics", metric.id];
         const existingStatePath = ["metadata", "metrics"];
         const putData = async () => {
-            //FIXME: need to clear requestState for revisions for it to reload
             const updatedMetric = await MetricApi.update(metric);
             const cleanMetric = cleanResource(updatedMetric);
             const existingMetrics = i.getIn(getState(), existingStatePath);

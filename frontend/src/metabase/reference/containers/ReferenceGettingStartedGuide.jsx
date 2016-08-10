@@ -7,6 +7,8 @@ import cx from "classnames";
 
 import S from "metabase/reference/Reference.css";
 
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+
 import EditHeader from "metabase/reference/components/EditHeader.jsx";
 import GuideEmptyState from "metabase/reference/components/GuideEmptyState.jsx"
 import GuideHeader from "metabase/reference/components/GuideHeader.jsx"
@@ -30,6 +32,8 @@ import {
     getMetrics,
     getSegments,
     getTables,
+    getLoading,
+    getError,
     getIsEditing
 } from '../selectors';
 
@@ -44,7 +48,6 @@ const mapStateToProps = (state, props) => {
     const metrics = getMetrics(state, props);
     const segments = getSegments(state, props);
     const tables = getTables(state, props);
-    console.log(guide);
     return {
         guide,
         user: getUser(state, props),
@@ -52,6 +55,9 @@ const mapStateToProps = (state, props) => {
         metrics,
         segments,
         tables,
+        loading: getLoading(state, props),
+        // naming this 'error' will conflict with redux form
+        loadingError: getError(state, props),
         isEditing: getIsEditing(state, props),
         fields: [
             'things_to_know',
@@ -119,6 +125,8 @@ export default class ReferenceGettingStartedGuide extends Component {
             metrics,
             segments,
             tables,
+            loadingError,
+            loading,
             isEditing,
             startEditing,
             endEditing,
@@ -138,7 +146,8 @@ export default class ReferenceGettingStartedGuide extends Component {
                         submitting={submitting}
                     />
                 }
-                { isEditing ? 
+                <LoadingAndErrorWrapper className="full" style={style} loading={!loadingError && loading} error={loadingError}>
+                { () => isEditing ? 
                     <div className="wrapper wrapper--trim">
                         <div className={S.guideEditHeader}>
                             <div className={S.guideEditHeaderTitle}>
@@ -183,6 +192,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     </button>
                                 </div>
                             </div>
+                            // TODO: add multi-select for important fields, try SelectPicker.jsx
                         }
 
                         <div className={S.guideEditTitle}>
@@ -254,44 +264,39 @@ export default class ReferenceGettingStartedGuide extends Component {
                         <div>
                             <GuideHeader startEditing={startEditing} />
                             <div className="wrapper wrapper--trim">
-                                <div className={S.guideTitle}>
-                                    <div className={S.guideTitleBody}>
-                                        Dashboard
-                                    </div>
-                                </div>
-                                { guide && guide.most_important_dashboard !== null && 
+                                { guide.most_important_dashboard !== null && [
+                                    <div key={'dashboardTitle'} className={S.guideTitle}>
+                                        <div className={S.guideTitleBody}>
+                                            Dashboard
+                                        </div>
+                                    </div>,
                                     <GuideDetail 
+                                        key={'dashboardDetail'}
                                         type="dashboard"
                                         entity={dashboards[guide.most_important_dashboard]}
                                     />
-                                }
-                                
-                                <div className={S.guideTitle}>
-                                    <div className={S.guideTitleBody}>
-                                        Useful metrics
+                                ]}
+                                { guide.important_metrics && guide.important_metrics.length > 0 && [
+                                    <div key={'metricsTitle'} className={S.guideTitle}>
+                                        <div className={S.guideTitleBody}>
+                                            Useful metrics
+                                        </div>
+                                    </div>,
+                                    guide.important_metrics.map((metricId) =>
+                                        <GuideDetail 
+                                            key={metricId}
+                                            type="metric"
+                                            entity={metrics[metricId]}
+                                        />
+                                    ),
+                                    <div key={'metricsSeeAll'} className={S.guideSeeAll}>
+                                        <div className={S.guideSeeAllBody}>
+                                            <Link className={cx('text-brand', S.guideSeeAllLink)} to={'/reference/metrics'}>
+                                                See all metrics
+                                            </Link>
+                                        </div>
                                     </div>
-                                </div>
-                                {
-                                // <GuideDetail 
-                                //     title={'Cost per click'} 
-                                //     description={'How much we pay for each click that we receive, not counting some esoteric exceptions.'} 
-                                //     hasLearnMore={true}
-                                //     exploreLinks={[
-                                //         {id: 'test1', name: 'Ad Campaign'},
-                                //         {id: 'test2', name: 'Platform'},
-                                //         {id: 'test3', name: 'Channel'}
-                                //     ]}
-                                //     link={'test'} 
-                                //     linkClass={'text-brand'} 
-                                // />
-                                }
-                                <div className={S.guideSeeAll}>
-                                    <div className={S.guideSeeAllBody}>
-                                        <Link className={cx('text-brand', S.guideSeeAllLink)} to={'/reference/metrics'}>
-                                            See all metrics
-                                        </Link>
-                                    </div>
-                                </div>
+                                ]}
 
                                 <div className={S.guideTitle}>
                                     <div className={S.guideTitleBody}>
@@ -352,6 +357,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                             </div>
                         </div>
                 }
+                </LoadingAndErrorWrapper>
             </form>
         );
     }

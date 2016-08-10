@@ -27,7 +27,7 @@
     white-space: pre-wrap;
 }
 
-:local(.guideDetailDescription):last-child {
+:local(.guideDetailDescription):last-of-type {
     margin-bottom: 0;
 }
 
@@ -38,6 +38,10 @@
 :local(.guideDetailLearnMore) {
     composes: full text-bold block py1 no-decoration from "style";
     font-size: 16px;
+}
+
+:local(.guideDetailLearnMore):first-child {
+    padding-top: 0;
 }
 
 :local(.guideDetailExploreTitle) {

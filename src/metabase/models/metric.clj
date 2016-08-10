@@ -118,7 +118,7 @@
   "Update an existing `Metric`.
 
    Returns the updated `Metric` or throws an Exception."
-  [{:keys [id name description caveats points_of_interest how_is_this_calculated definition revision_message]} user-id]
+  [{:keys [id name description caveats points_of_interest how_is_this_calculated show_in_getting_started definition revision_message]} user-id]
   {:pre [(integer? id)
          (string? name)
          (map? definition)
@@ -126,12 +126,13 @@
          (string? revision_message)]}
   ;; update the metric itself
   (db/update! Metric id
-    :name                   name
-    :description            description
-    :caveats                caveats
-    :points_of_interest     points_of_interest
-    :how_is_this_calculated how_is_this_calculated
-    :definition             definition)
+    :name                    name
+    :description             description
+    :caveats                 caveats
+    :points_of_interest      points_of_interest
+    :how_is_this_calculated  how_is_this_calculated
+    :show_in_getting_started show_in_getting_started
+    :definition              definition)
   (u/prog1 (retrieve-metric id)
     (events/publish-event :metric-update (assoc <> :actor_id user-id, :revision_message revision_message))))
 
