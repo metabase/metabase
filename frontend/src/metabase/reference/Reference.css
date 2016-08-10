@@ -97,6 +97,14 @@
     font-size: 24px;
 }
 
+:local(.guideEditCards) {
+    composes: mt2 mb4 from "style";
+}
+
+:local(.guideEditCard) {
+    composes: input p4 from "style";
+}
+
 :local(.guideEditHeaderDescription) {
     font-size: 16px;
 }
@@ -116,7 +124,8 @@
 }
 
 :local(.guideEditAddButton) {
-    composes: flex full my2 from "style";
+    composes: flex full my2 pl4 from "style";
+    padding-right: 3.5rem;
 }
 
 :local(.guideEditAddButton)::before {
@@ -142,7 +151,7 @@
 }
 
 :local(.guideEditContact) {
-    composes: flex mt4 from "style";
+    composes: flex from "style";
 }
 
 :local(.guideEditContactName) {

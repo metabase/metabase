@@ -168,23 +168,28 @@ export default class ReferenceGettingStartedGuide extends Component {
                         <div className={S.guideEditTitle}>
                             What is your most important dashboard?
                         </div>
-                        <GuideDetailEditor 
-                            type="dashboard" 
-                            entities={dashboards}
-                            formField={most_important_dashboard}
-                        />
-
+                        <div className={S.guideEditCards}>
+                            <GuideDetailEditor 
+                                className={S.guideEditCard}
+                                type="dashboard" 
+                                entities={dashboards}
+                                formField={most_important_dashboard}
+                            />
+                        </div>
                         <div className={S.guideEditTitle}>
                             What are your 3-5 most commonly referenced metrics?
                         </div>
-                        { important_metrics.map((metricField, index) =>
-                            <GuideDetailEditor 
-                                key={index}
-                                type="metric"
-                                entities={metrics}
-                                formField={metricField}
-                            />
-                        )}
+                        <div className={S.guideEditCards}>
+                            { important_metrics.map((metricField, index) =>
+                                <GuideDetailEditor 
+                                    key={index}
+                                    className={S.guideEditCard}
+                                    type="metric"
+                                    entities={metrics}
+                                    formField={metricField}
+                                />
+                            )}
+                        </div>
                         { important_metrics.length < 5 &&
                             <div className={S.guideEditAddButton}>
                                 <div className={S.guideEditAddButtonBody}>
@@ -233,33 +238,41 @@ export default class ReferenceGettingStartedGuide extends Component {
                             What should a user of this data know before they start 
                             accessing it?
                         </div>
-                        <div className={S.guideEditSubtitle}>
-                            E.g., expectations around data privacy and use, common
-                            pitfalls or misunderstandings, information about data 
-                            warehouse performance, legal notices, etc.
+                        <div className={S.guideEditCards}>
+                            <div className={S.guideEditCard}>
+                                <div className={S.guideEditSubtitle}>
+                                    E.g., expectations around data privacy and use, common
+                                    pitfalls or misunderstandings, information about data 
+                                    warehouse performance, legal notices, etc.
+                                </div>
+                                <textarea 
+                                    className={S.guideEditTextarea} 
+                                    placeholder="Things to know..."
+                                    {...things_to_know}
+                                />
+                            </div>
                         </div>
-                        <textarea 
-                            className={S.guideEditTextarea} 
-                            placeholder="Things to know..."
-                            {...things_to_know}
-                        />
 
                         <div className={S.guideEditTitle}>
                             Who should users contact for help if they're confused about this data?
                         </div>
-                        <div className={S.guideEditContact}>
-                            <input 
-                                className={S.guideEditContactName} 
-                                placeholder="Name" 
-                                type="text"
-                                {...contact.name}
-                            />
-                            <input 
-                                className={S.guideEditContactEmail} 
-                                placeholder="Email address" 
-                                type="text"
-                                {...contact.email}
-                            />
+                        <div className={S.guideEditCards}>
+                            <div className={S.guideEditCard}>
+                                <div className={S.guideEditContact}>
+                                    <input 
+                                        className={S.guideEditContactName} 
+                                        placeholder="Name" 
+                                        type="text"
+                                        {...contact.name}
+                                    />
+                                    <input 
+                                        className={S.guideEditContactEmail} 
+                                        placeholder="Email address" 
+                                        type="text"
+                                        {...contact.email}
+                                    />
+                                </div>
+                            </div>
                         </div>
                     </div> :
                     !guide || isGuideEmpty(guide) ? 

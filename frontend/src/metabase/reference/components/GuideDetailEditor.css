@@ -1,5 +1,18 @@
 :local(.guideDetailEditor) {
-    composes: flex full mt4 from "style";
+    composes: relative flex full mb4 from "style";
+    /* to maintain flex proportions and align textarea with with add button */
+    padding-right: calc(3.5rem + 2px);
+    padding-top: calc(3.5rem + 2px);    
+}
+:local(.guideDetailEditor):last-child {
+    margin-bottom: 0;
+}
+
+:local(.guideDetailEditorClose) {
+    position: absolute;
+    color: var(--input-border-color);
+    top: 1rem;
+    right: 1rem;
 }
 
 :local(.guideDetailEditorPicker) {
@@ -26,4 +39,8 @@
     width: 100%;
     min-height: 100px;
     background-color: unset;
+}
+
+:local(.guideDetailEditorTextarea):last-child {
+    margin-bottom: 0;
 }

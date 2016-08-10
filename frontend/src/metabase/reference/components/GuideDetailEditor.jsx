@@ -7,13 +7,22 @@ import i from "icepick";
 import S from "./GuideDetailEditor.css";
 
 import Select from "metabase/components/Select.jsx";
+import Icon from "metabase/components/Icon.jsx";
 
 const GuideDetailEditor = ({
+    className,
     type,
     entities,
     formField
 }) => 
-    <div className={S.guideDetailEditor}>
+    <div className={cx(S.guideDetailEditor, className)}>
+        <div className={S.guideDetailEditorClose}>
+            <Icon
+                name="close"
+                width={24}
+                height={24}
+            />
+        </div>
         <div className={S.guideDetailEditorPicker}>
             <Select 
                 triggerClasses={S.guideDetailEditorSelect}
@@ -52,6 +61,7 @@ const GuideDetailEditor = ({
         </div>
     </div>;
 GuideDetailEditor.propTypes = {
+    className: PropTypes.string,
     type: PropTypes.string.isRequired,
     entities: PropTypes.object.isRequired,
     formField: PropTypes.object.isRequired
