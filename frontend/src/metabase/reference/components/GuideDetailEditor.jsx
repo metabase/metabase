@@ -13,6 +13,7 @@ const GuideDetailEditor = ({
     className,
     type,
     entities,
+    selectedIds = [],
     formField,
     removeField
 }) => 
@@ -29,7 +30,12 @@ const GuideDetailEditor = ({
             <Select 
                 triggerClasses={S.guideDetailEditorSelect}
                 value={entities[formField.id.value]}
-                options={Object.values(entities)}
+                options={Object.values(entities)
+                    .filter(entity =>
+                        entity.id === formField.id.value ||
+                        !selectedIds.includes(entity.id)
+                    )
+                }
                 optionNameFn={option => option.display_name || option.name}
                 onChange={(entity) => {
                     formField.id.onChange(entity.id);
@@ -66,6 +72,7 @@ GuideDetailEditor.propTypes = {
     className: PropTypes.string,
     type: PropTypes.string.isRequired,
     entities: PropTypes.object.isRequired,
+    selectedIds: PropTypes.array.isRequired,
     formField: PropTypes.object.isRequired,
     removeField: PropTypes.func.isRequired
 };

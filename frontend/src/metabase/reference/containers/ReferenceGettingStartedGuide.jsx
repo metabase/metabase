@@ -151,6 +151,10 @@ export default class ReferenceGettingStartedGuide extends Component {
             await tryUpdateGuide(fields, this.props)
         );
 
+        const getSelectedIds = fields => fields
+            .map(field => field.id.value)
+            .filter(id => id !== null);
+
         return (
             <form className="full" style={style} onSubmit={onSubmit}>
                 { isEditing &&
@@ -202,6 +206,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     type="metric"
                                     entities={metrics}
                                     formField={metricField}
+                                    selectedIds={getSelectedIds(metricFields)}
                                     removeField={() => {
                                         if (metricFields.length > 1) {
                                             return metricFields.removeField(index);
@@ -213,7 +218,8 @@ export default class ReferenceGettingStartedGuide extends Component {
                                 />
                             )}
                         </div>
-                        { important_metrics.length < 5 &&
+                        { important_metrics.length < 5 && 
+                            important_metrics.length < Object.keys(metrics).length && 
                             <div className={S.guideEditAddButton}>
                                 <div className={S.guideEditAddButtonBody}>
                                     <button
