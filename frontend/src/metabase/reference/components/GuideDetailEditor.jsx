@@ -37,6 +37,7 @@ const GuideDetailEditor = ({
                         `What is useful or interesting about this ${type}?` 
                 }
                 {...formField.points_of_interest}
+                disabled={formField.id.value === null || formField.id.value === undefined}
             />
             <textarea 
                 className={S.guideDetailEditorTextarea} 
@@ -46,6 +47,7 @@ const GuideDetailEditor = ({
                         `Anything users should be aware of about this ${type}?` 
                 }
                 {...formField.caveats}
+                disabled={formField.id.value === null || formField.id.value === undefined}                
             />
         </div>
     </div>;
