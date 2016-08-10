@@ -28,6 +28,7 @@
 :local(.detailSubtitle) {
     composes: text-dark mt2 from "style";
     font-size: 16px;
+    white-space: pre-wrap;
 }
 
 :local(.detailSubtitleLight) {
