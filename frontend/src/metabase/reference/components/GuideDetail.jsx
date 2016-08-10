@@ -6,14 +6,28 @@ import cx from "classnames";
 import S from "./GuideDetail.css";
 
 const GuideDetail = ({
-    title,
-    description,
-    hasLearnMore,
-    exploreLinks,
-    link,
-    linkClass
-}) =>
-    <div className={S.guideDetail}>
+    entity,
+    type
+}) => {
+    const title = entity.display_name || entity.name;
+    const { caveats, points_of_interest } = entity;
+    const typeToLink = {
+        dashboard: `/dash/${entity.id}`,
+        metric: `/reference/metrics/${entity.id}`,
+        segment: `/reference/segments/${entity.id}`,
+        table: `/reference/databases/${entity.db_id}/tables/${entity.id}`
+    };
+    const link = typeToLink[type];
+    const typeToLinkClass = {
+        dashboard: 'text-green',
+        metric: 'text-brand',
+        segment: 'text-purple',
+        table: 'text-purple'
+    };
+    const linkClass = typeToLinkClass[type];
+    const hasLearnMore = type === 'metric' || type === 'segment';
+    const exploreLinks = [];
+    return <div className={S.guideDetail}>
         <div className={S.guideDetailTitle}>
             { title && link &&
                 <Link 
@@ -25,7 +39,16 @@ const GuideDetail = ({
             }
         </div>
         <div className={S.guideDetailBody}>
-            <div className={S.guideDetailDescription}>{description}</div>
+            { points_of_interest && 
+                <div className={S.guideDetailDescription}>
+                    {points_of_interest}
+                </div> 
+            }
+            { caveats &&
+                <div className={S.guideDetailDescription}>
+                    {caveats}
+                </div>
+            }
             { hasLearnMore &&
                 <Link 
                     className={cx(linkClass, S.guideDetailLearnMore)}
@@ -54,13 +77,10 @@ const GuideDetail = ({
             }
         </div>
     </div>;
+};
 GuideDetail.propTypes = {
-    title: PropTypes.string,
-    description: PropTypes.string.isRequired,
-    hasLearnMore: PropTypes.bool,
-    exploreLinks: PropTypes.array,
-    link: PropTypes.string,
-    linkClass: PropTypes.string
+    entity: PropTypes.object,
+    type: PropTypes.string
 };
 
 export default pure(GuideDetail);

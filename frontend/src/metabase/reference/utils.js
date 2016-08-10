@@ -130,30 +130,48 @@ export const tryUpdateGuide = async (formFields, props) => {
 
     startLoading();
     try {
-        const editedDashboard = filterUntouchedFields(formFields.most_important_dashboard);
-        if (!isEmptyObject(editedDashboard)) {
-            const newDashboard = dashboards[editedDashboard.id];
-            const updatedNewDashboard = {
-                ...newDashboard, 
-                ...editedDashboard, 
+        const updateEntity = ({oldEntityId, entities, formField, updateEntity}) => {
+            if (!formField.id) {
+                return [];
+            }
+
+            const editedEntity = filterUntouchedFields(formField);
+
+            if (isEmptyObject(editedEntity)) {
+                return [];
+            }
+
+            const newEntity = entities[editedEntity.id];
+            const updatedNewEntity = {
+                ...newEntity, 
+                ...editedEntity, 
                 show_in_getting_started: true 
             };
 
-            await updateDashboard(updatedNewDashboard);
+            const updatingNewEntity = updateEntity(updatedNewEntity);
 
-            const oldDashboard = dashboards[guide.most_important_dashboard];
-            if (oldDashboard) {
-                const updatedOldDashboard = i.assoc(
-                    oldDashboard, 
-                    'show_in_getting_started',
-                    false
-                );
-                
-                await updateDashboard(updatedOldDashboard);
+            const oldEntity = entities[oldEntityId];
+            if (oldEntityId === editedEntity.id || !oldEntity) {
+                return [updatingNewEntity];
             }
 
+            const updatedOldEntity = i.assoc(
+                oldEntity,
+                'show_in_getting_started',
+                false
+            );
 
-        }        
+            const updatingOldEntity = updateEntity(updatedOldEntity);
+
+            return [updatingNewEntity, updatingOldEntity];
+        };
+
+        const updatingDashboards = updateEntity({
+            oldEntityId: guide.most_important_dashboard,
+            entities: dashboards,
+            formField: formFields.most_important_dashboard,
+            updateEntity: updateDashboard
+        });
     }
     catch(error) {
         setError(error);
