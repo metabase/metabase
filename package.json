@@ -87,6 +87,7 @@
     "file-loader": "^0.8.5",
     "flow-bin": "^0.24.2",
     "flow-status-webpack-plugin": "^0.1.4",
+    "fs-promise": "^0.5.0",
     "glob": "^5.0.15",
     "html-webpack-plugin": "^2.14.0",
     "istanbul-instrumenter-loader": "^0.2.0",

@@ -1,43 +1,82 @@
+import fs from "fs-promise";
+import os from "os";
+import path from "path";
 import { spawn } from "child_process";
+
 import fetch from 'isomorphic-fetch';
 import { delay } from '../../../src/metabase/lib/promise';
+
+let testDbId = 0;
+const getDbFile = () => path.join(os.tmpdir(), `metabase-test-${process.pid}-${testDbId++}.db`);
 
 let port = 4000;
 const getPort = () => port++;
 
 const servers = new Map();
 
-export async function startServer(dbFile) {
-    if (!servers.has(dbFile)) {
-        const port = getPort();
-        let server = {
-            dbFile: dbFile,
-            port: port,
-            host: `http://localhost:${port}`,
-            process: spawn("java", ["-jar", "target/uberjar/metabase.jar"], {
-                env: {
-                    MB_DB_FILE: dbFile,
-                    MB_JETTY_PORT: port
-                },
-            }),
-            count: 0
-        }
-        server.process.on("close", () => {
-            killServer(server);
-        })
-        servers.set(dbFile, server);
+class Server {
+    constructor(dbKey, dbFile) {
+        this.dbKey = dbKey;
+        this.dbFile = dbFile;
+
+        this.port = getPort();
+        this.host = `http://localhost:${this.port}`;
     }
-    const server = servers.get(dbFile);
-    server.count++;
-    await wait(server);
-    return server.host;
+
+    async start() {
+        if (!this.process) {
+            if (this.dbKey !== this.dbFile) {
+                await fs.copy(`${this.dbKey}.h2.db`, `${this.dbFile}.h2.db`);
+            }
+            this.count = 0;
+            this.process = spawn("java", ["-jar", "target/uberjar/metabase.jar"], {
+                env: {
+                    MB_DB_FILE: this.dbFile,
+                    MB_JETTY_PORT: this.port
+                },
+            })
+            this.process.on("close", () => {
+                this.kill();
+            })
+        }
+        this.count++;
+        return this.wait();
+    }
+
+    async stop() {
+        if (--this.count === 0) {
+            await this.kill();
+        }
+    }
+
+    async wait() {
+        while (!(await isReady(this.host))) {
+            await delay(500);
+        }
+    }
+
+    async kill() {
+        if (servers.has(this.dbKey)) {
+            servers.delete(this.dbKey);
+            this.process.kill('SIGKILL');
+            await fs.unlink(`${this.dbFile}.h2.db`);
+        }
+    }
 }
 
-export async function stopServer(dbFile) {
-    const server = servers.get(dbFile);
-    if (--server.count === 0) {
-        killServer(server);
+export async function startServer(dbKey) {
+    let dbFile = getDbFile();
+    if (!dbKey) {
+        dbKey = dbFile;
     }
+
+    if (!servers.has(dbKey)) {
+        servers.set(dbKey, new Server(dbKey, dbFile));
+    }
+    let server = servers.get(dbKey);
+
+    await server.start();
+    return server;
 }
 
 export async function isReady(host) {
@@ -51,20 +90,8 @@ export async function isReady(host) {
     return false;
 }
 
-async function wait(server) {
-    while (!(await isReady(server.host))) {
-        await delay(500);
-    }
-}
-
-function killServer(server) {
-    console.log("shutting down " + server.dbFile);
-    servers.delete(server.dbFile);
-    server.process.kill();
-}
-
 process.once("exit", () => {
     for (const server of servers) {
-        killServer(server);
+        server.kill();
     }
 });
