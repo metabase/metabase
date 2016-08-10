@@ -49,7 +49,7 @@ function formatMajorMinor(major, minor, options = {}) {
 }
 
 function formatTimeWithUnit(value, unit, options = {}) {
-    let m = parseTimestamp(value);
+    let m = parseTimestamp(value, unit);
     if (!m.isValid()) {
         return String(value);
     }
@@ -67,7 +67,7 @@ function formatTimeWithUnit(value, unit, options = {}) {
                 <div><span className="text-bold">{m.format("MMMM")}</span> {m.format("YYYY")}</div> :
                 m.format("MMMM") + " " + m.format("YYYY");
         case "year": // 2015
-            return String(value);
+            return m.format("YYYY");
         case "quarter": // Q1 - 2015
             return formatMajorMinor(m.format("[Q]Q"), m.format("YYYY"), { ...options, majorWidth: 0 });
         case "hour-of-day": // 12 AM
@@ -97,7 +97,7 @@ export function formatValue(value, options = {}) {
     } else if (column && column.unit != null) {
         return formatTimeWithUnit(value, column.unit, options);
     } else if (isDate(column) || moment.isDate(value) || moment.isMoment(value) || moment(value, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()) {
-        return parseTimestamp(value).format("LLLL");
+        return parseTimestamp(value, column && column.unit).format("LLLL");
     } else if (typeof value === "string") {
         return value;
     } else if (typeof value === "number") {

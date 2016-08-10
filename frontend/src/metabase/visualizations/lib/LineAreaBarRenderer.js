@@ -2,6 +2,7 @@ import crossfilter from "crossfilter";
 import d3 from "d3";
 import dc from "dc";
 import moment from "moment";
+import _ from "underscore";
 
 import {
     getAvailableCanvasWidth,
@@ -17,6 +18,11 @@ import {
     computeTimeseriesDataInverval,
     computeTimeseriesTicksInterval
 } from "./timeseries";
+
+import {
+    dimensionIsNumeric,
+    computeNumericDataInverval
+} from "./numeric";
 
 import { determineSeriesIndexFromElement } from "./tooltip";
 
@@ -75,7 +81,7 @@ function applyChartBoundary(chart, element) {
         .height(getAvailableCanvasHeight(element));
 }
 
-function applyChartTimeseriesXAxis(chart, settings, series, xValues, xInterval, xDomain) {
+function applyChartTimeseriesXAxis(chart, settings, series, xValues, xDomain, xInterval) {
     // setup an x-axis where the dimension is a timeseries
     let dimensionColumn = series[0].data.cols[0];
 
@@ -117,6 +123,44 @@ function applyChartTimeseriesXAxis(chart, settings, series, xValues, xInterval, 
     chart.xUnits((start, stop) => Math.ceil(1 + moment(stop).diff(start, dataInterval.interval) / dataInterval.count));
 }
 
+function applyChartQuantitativeXAxis(chart, settings, series, xValues, xDomain, xInterval) {
+    const dimensionColumn = series[0].data.cols[0];
+
+    if (settings["graph.x_axis.labels_enabled"]) {
+        chart.xAxisLabel(settings["graph.x_axis.title_text"] || getFriendlyName(dimensionColumn));
+    }
+    if (settings["graph.x_axis.axis_enabled"]) {
+        chart.renderVerticalGridLines(settings["graph.x_axis.gridLine_enabled"]);
+        adjustTicksIfNeeded(chart.xAxis(), chart.width(), MIN_PIXELS_PER_TICK.x);
+
+        chart.xAxis().tickFormat(d => formatValue(d, { column: dimensionColumn }));
+    } else {
+        chart.xAxis().ticks(0);
+        chart.xAxis().tickFormat('');
+    }
+
+    let scale;
+    if (settings["graph.x_axis.scale"] === "pow") {
+        scale = d3.scale.pow().exponent(0.5);
+    } else if (settings["graph.x_axis.scale"] === "log") {
+        scale = d3.scale.log().base(Math.E);
+        if (!((xDomain[0] < 0 && xDomain[1] < 0) || (xDomain[0] > 0 && xDomain[1] > 0))) {
+            throw "X-axis must not cross 0 when using log scale.";
+        }
+    } else {
+        scale = d3.scale.linear();
+    }
+
+    // pad the domain slightly to prevent clipping
+    xDomain = [
+        xDomain[0] - xInterval * 0.75,
+        xDomain[1] + xInterval * 0.75
+    ];
+
+    chart.x(scale.domain(xDomain))
+        .xUnits(dc.units.fp.precision(xInterval));
+}
+
 function applyChartOrdinalXAxis(chart, settings, series, xValues) {
     const dimensionColumn = series[0].data.cols[0];
 
@@ -149,39 +193,74 @@ function applyChartOrdinalXAxis(chart, settings, series, xValues) {
         .xUnits(dc.units.ordinal);
 }
 
-function applyChartYAxis(chart, settings, series, yAxisSplit) {
+function applyChartYAxis(chart, settings, series, yExtent, axisName) {
+    let axis;
+    if (axisName === "left") {
+        axis = {
+            scale:   (...args) => chart.y(...args),
+            axis:    (...args) => chart.yAxis(...args),
+            label:   (...args) => chart.yAxisLabel(...args),
+            setting: (name) => settings["graph.y_axis." + name]
+        };
+    } else if (axisName === "right") {
+        axis = {
+            scale:   (...args) => chart.rightY(...args),
+            axis:    (...args) => chart.rightYAxis(...args),
+            label:   (...args) => chart.rightYAxisLabel(...args),
+            setting: (name) => settings["graph.y_axis." + name] // TODO: right axis settings
+        };
+    }
 
-    if (settings["graph.y_axis.labels_enabled"]) {
+    if (axis.setting("labels_enabled")) {
         // left
-        if (settings["graph.y_axis.title_text"]) {
-            chart.yAxisLabel(settings["graph.y_axis.title_text"]);
-        } else if (yAxisSplit[0].length === 1) {
-            chart.yAxisLabel(getFriendlyName(series[yAxisSplit[0][0]].data.cols[1]));
-        }
-        // right
-        if (yAxisSplit.length > 1 && yAxisSplit[1].length === 1) {
-            chart.rightYAxisLabel(getFriendlyName(series[yAxisSplit[1][0]].data.cols[1]));
+        if (axis.setting("title_text")) {
+            axis.label(axis.setting("title_text"));
+        } else {
+            // only use the column name if all in the series are the same
+            const labels = _.uniq(series.map(s => getFriendlyName(s.data.cols[1])));
+            if (labels.length === 1) {
+                axis.label(labels[0]);
+            }
         }
     }
 
-    if (settings["graph.y_axis.axis_enabled"]) {
+    if (axis.setting("axis_enabled")) {
         chart.renderHorizontalGridLines(true);
-
-        adjustTicksIfNeeded(chart.yAxis(), chart.height(), MIN_PIXELS_PER_TICK.y);
-        if (yAxisSplit.length > 1 && chart.rightYAxis) {
-            adjustTicksIfNeeded(chart.rightYAxis(), chart.height(), MIN_PIXELS_PER_TICK.y);
-        }
+        adjustTicksIfNeeded(axis.axis(), chart.height(), MIN_PIXELS_PER_TICK.y);
     } else {
-        chart.yAxis().ticks(0);
-        if (chart.rightYAxis) {
-            chart.rightYAxis().ticks(0);
-        }
+        axis.axis().ticks(0);
     }
 
-    if (settings["graph.y_axis.auto_range"]) {
-        chart.elasticY(true);
+    let scale;
+    if (axis.setting("scale") === "pow") {
+        scale = d3.scale.pow().exponent(0.5);
+    } else if (axis.setting("scale") === "log") {
+        scale = d3.scale.log().base(Math.E);
+        // axis.axis().tickFormat((d) => scale.tickFormat(4,d3.format(",d"))(d));
     } else {
-        chart.y(d3.scale.linear().domain([settings["graph.y_axis.min"], settings["graph.y_axis.max"]]))
+        scale = d3.scale.linear();
+    }
+
+    if (axis.setting("auto_range")) {
+        // elasticY not compatible with log scale
+        if (axis.setting("scale") !== "log") {
+            // TODO: right axis?
+            chart.elasticY(true);
+        } else {
+            if (!((yExtent[0] < 0 && yExtent[1] < 0) || (yExtent[0] > 0 && yExtent[1] > 0))) {
+                throw "Y-axis must not cross 0 when using log scale.";
+            }
+            scale.domain(yExtent);
+        }
+        axis.scale(scale);
+    } else {
+        if (axis.setting("scale") === "log" && !(
+            (axis.setting("min") < 0 && axis.setting("max") < 0) ||
+            (axis.setting("min") > 0 && axis.setting("max") > 0)
+        )) {
+            throw "Y-axis must not cross 0 when using log scale.";
+        }
+        axis.scale(scale.domain([axis.setting("min"), axis.setting("max")]))
     }
 }
 
@@ -204,7 +283,7 @@ function applyChartTooltips(chart, onHoverChange) {
     });
 }
 
-function applyChartLineBarSettings(chart, settings, chartType, isLinear, isTimeseries) {
+function applyChartLineBarSettings(chart, settings, chartType) {
     // if the chart supports 'brushing' (brush-based range filter), disable this since it intercepts mouse hovers which means we can't see tooltips
     if (chart.brushOn) {
         chart.brushOn(false);
@@ -229,7 +308,7 @@ function applyChartLineBarSettings(chart, settings, chartType, isLinear, isTimes
     if (chart.barPadding) {
         chart
             .barPadding(BAR_PADDING_RATIO)
-            .centerBar(isLinear || isTimeseries);
+            .centerBar(settings["graph.x_axis.scale"] !== "ordinal");
     }
 }
 
@@ -470,7 +549,7 @@ function fillMissingValues(datas, xValues, fillValue, getKey = (v) => v) {
                 }
             });
             if (map.size > 0) {
-                throw { message: "xValues missing!", map };
+                console.warn("xValues missing!", map, newRows)
             }
             return newRows;
         });
@@ -483,21 +562,25 @@ function fillMissingValues(datas, xValues, fillValue, getKey = (v) => v) {
 export default function lineAreaBar(element, { series, onHoverChange, onRender, chartType, isScalarSeries, settings }) {
     const colors = settings["graph.colors"];
 
-    const isTimeseries = dimensionIsTimeseries(series[0].data);
-    const isLinear = false;
+    const isTimeseries = settings["graph.x_axis.scale"] === "timeseries";
+    const isQuantitative = ["linear", "log", "pow"].indexOf(settings["graph.x_axis.scale"]) >= 0;
 
-    // validation.  we require at least 2 rows for line charting
     if (series[0].data.cols.length < 2) {
-        return;
+        throw "This chart type requires at least 2 columns";
     }
 
     let datas = series.map((s, index) =>
         s.data.rows.map(row => [
-            (isTimeseries) ? parseTimestamp(row[0]) : String(row[0]),
-            ...row.slice(1)
+            // don't parse as timestamp if we're going to display as a quantitative scale, e.x. years and Unix timestamps
+            (settings["graph.x_axis._is_timeseries"] && !isQuantitative) ?
+                parseTimestamp(row[0], s.data.cols[0].unit)
+            : settings["graph.x_axis._is_numeric"] ?
+                row[0]
+            :
+                String(row[0])
+            , ...row.slice(1)
         ])
     );
-
 
     // compute the x-values
     let xValues = getXValues(datas, chartType);
@@ -506,14 +589,15 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
     let xDomain = d3.extent(xValues);
 
     let xInterval;
-
     if (isTimeseries) {
         // compute the interval
         let unit = minTimeseriesUnit(series.map(s => s.data.cols[0].unit));
         xInterval = computeTimeseriesDataInverval(xValues, unit);
+    } else if (isQuantitative) {
+        xInterval = computeNumericDataInverval(xValues);
     }
 
-    if (settings["graph.missing"] === "zero" || settings["graph.missing"] === "skip") {
+    if (settings["line.missing"] === "zero" || settings["line.missing"] === "none") {
         if (isTimeseries) {
             // replace xValues with
             xValues = d3.time[xInterval.interval]
@@ -522,14 +606,21 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
             datas = fillMissingValues(
                 datas,
                 xValues,
-                settings["graph.missing"] === "zero" ? 0 : null,
+                settings["line.missing"] === "zero" ? 0 : null,
                 (m) => d3.round(m.toDate().getTime(), -1) // moment sometimes rounds up 1ms?
+            );
+        } if (isQuantitative) {
+            xValues = d3.range(xDomain[0], xDomain[1] + xInterval, xInterval);
+            datas = fillMissingValues(
+                datas,
+                xValues,
+                settings["line.missing"] === "zero" ? 0 : null,
             );
         } else {
             datas = fillMissingValues(
                 datas,
                 xValues,
-                settings["graph.missing"] === "zero" ? 0 : null
+                settings["line.missing"] === "zero" ? 0 : null
             );
         }
     }
@@ -555,8 +646,6 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
                 reduceGroup(dimension.group(), i + 1)
             )
         ];
-
-        yAxisSplit = [series.map((s,i) => i)];
     } else {
         let dataset = crossfilter();
         datas.map(data => dataset.add(data));
@@ -568,21 +657,21 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
                 reduceGroup(dim.group(), i + 1)
             );
         });
+    }
 
-        let yExtents = groups.map(group => d3.extent(group[0].all(), d => d.value));
+    let yExtents = groups.map(group => d3.extent(group[0].all(), d => d.value));
 
-        if (!isScalarSeries && settings["graph.y_axis.auto_split"] !== false) {
-            yAxisSplit = computeSplit(yExtents);
-        } else {
-            yAxisSplit = [series.map((s,i) => i)];
-        }
+    if (!isScalarSeries && settings["graph.y_axis.auto_split"] !== false) {
+        yAxisSplit = computeSplit(yExtents);
+    } else {
+        yAxisSplit = [series.map((s,i) => i)];
     }
 
     // HACK: This ensures each group is sorted by the same order as xValues,
     // otherwise we can end up with line charts with x-axis labels in the correct order
     // but the points in the wrong order. There may be a more efficient way to do this.
     // Don't apply to linear or timeseries X-axis since the points are always plotted in order
-    if (!isTimeseries && !isLinear) {
+    if (!isTimeseries && !isQuantitative) {
         let sortMap = new Map()
         for (const [index, key] of xValues.entries()) {
             sortMap.set(key, index);
@@ -613,7 +702,7 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
 
         if (chart.defined) {
             chart.defined(
-                settings["graph.missing"] === "skip" ?
+                settings["line.missing"] === "none" ?
                     (d) => d.y != null :
                     (d) => true
             );
@@ -636,7 +725,7 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
             chart.stack(group[i])
         }
 
-        applyChartLineBarSettings(chart, settings, chartType, isLinear, isTimeseries);
+        applyChartLineBarSettings(chart, settings, chartType);
 
         return chart;
     });
@@ -680,16 +769,25 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
     }
 
     // x-axis settings
-    // TODO: we should support a linear (numeric) x-axis option
     if (isTimeseries) {
-        applyChartTimeseriesXAxis(chart, settings, series, xValues, xInterval, xDomain);
+        applyChartTimeseriesXAxis(chart, settings, series, xValues, xDomain, xInterval);
+    } else if (isQuantitative) {
+        applyChartQuantitativeXAxis(chart, settings, series, xValues, xDomain, xInterval);
     } else {
         applyChartOrdinalXAxis(chart, settings, series, xValues);
     }
 
     // y-axis settings
-    // TODO: if we are multi-series this could be split axis
-    applyChartYAxis(chart, settings, series, yAxisSplit);
+    let [left, right] = yAxisSplit.map(indexes => ({
+        series: indexes.map(index => series[index]),
+        extent: d3.extent([].concat(...indexes.map(index => yExtents[index])))
+    }));
+    if (left && left.series.length > 0) {
+        applyChartYAxis(chart, settings, left.series, left.extent, "left");
+    }
+    if (right && right.series.length > 0) {
+        applyChartYAxis(chart, settings, right.series, right.extent, "right");
+    }
 
     applyChartTooltips(chart, (hovered) => {
         if (onHoverChange) {

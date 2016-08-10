@@ -13,6 +13,9 @@ import Query from "metabase/lib/query";
 
 import { getCardColors, getFriendlyName } from "metabase/visualizations/lib/utils";
 
+import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
+import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
+
 import ChartSettingInput from "metabase/visualizations/components/settings/ChartSettingInput.jsx";
 import ChartSettingInputNumeric from "metabase/visualizations/components/settings/ChartSettingInputNumeric.jsx";
 import ChartSettingSelect from "metabase/visualizations/components/settings/ChartSettingSelect.jsx";
@@ -175,18 +178,64 @@ const SETTINGS = {
             card.display === "area" ||
             // legacy default for D-M-M+ charts
             (card.display === "area" && vizSettings["graph.metrics"].length > 1)
-        )
+        ),
+        getHidden: (series) => series.length < 2
     },
-    "graph.missing": {
+    "line.missing": {
         section: "Display",
-        title: "Missing Data Points",
+        title: "Replace missing values with",
         widget: ChartSettingSelect,
-        default: "bridge",
+        default: "interpolate",
         getProps: (series, vizSettings) => ({
             options: [
-                { name: "Bridge", value: "bridge" },
                 { name: "Zero", value: "zero" },
-                { name: "Skip", value: "skip" }
+                { name: "Nothing", value: "none" },
+                { name: "Linear Interpolated", value: "interpolate" },
+            ]
+        })
+    },
+    "graph.x_axis._is_timeseries": {
+        readDependencies: ["graph.dimensions"],
+        getDefault: ([{ data }], vizSettings) => dimensionIsTimeseries(data, _.findIndex(data.cols, (c) => c.name === vizSettings["graph.dimensions"][0]))
+    },
+    "graph.x_axis._is_numeric": {
+        readDependencies: ["graph.dimensions"],
+        getDefault: ([{ data }], vizSettings) => dimensionIsNumeric(data, _.findIndex(data.cols, (c) => c.name === vizSettings["graph.dimensions"][0]))
+    },
+    "graph.x_axis.scale": {
+        section: "Axes",
+        title: "X-axis scale",
+        widget: ChartSettingSelect,
+        default: "ordinal",
+        readDependencies: ["graph.x_axis._is_timeseries", "graph.x_axis._is_numeric"],
+        getDefault: (series, vizSettings) =>
+            vizSettings["graph.x_axis._is_timeseries"] ? "timeseries" :
+            vizSettings["graph.x_axis._is_numeric"] ? "linear" :
+            "ordinal",
+        getProps: (series, vizSettings) => {
+            const options = [];
+            if (vizSettings["graph.x_axis._is_timeseries"]) {
+                options.push({ name: "Timeseries", value: "timeseries" });
+            }
+            if (vizSettings["graph.x_axis._is_numeric"]) {
+                options.push({ name: "Linear", value: "linear" });
+                options.push({ name: "Power", value: "pow" });
+                options.push({ name: "Log", value: "log" });
+            }
+            options.push({ name: "Ordinal", value: "ordinal" });
+            return { options };
+        }
+    },
+    "graph.y_axis.scale": {
+        section: "Axes",
+        title: "Y-axis scale",
+        widget: ChartSettingSelect,
+        default: "linear",
+        getProps: (series, vizSettings) => ({
+            options: [
+                { name: "Linear", value: "linear" },
+                { name: "Power", value: "pow" },
+                { name: "Log", value: "log" }
             ]
         })
     },
@@ -582,5 +631,5 @@ export function getSettingsWidgets(series, onChangeSettings) {
     const vizSettings = getSettings(series);
     return getSettingIdsForSeries(series).map(id =>
         getSettingWidget(id, vizSettings, series, onChangeSettings)
-    );
+    ).filter(widget => widget.widget && !widget.hidden);
 }
