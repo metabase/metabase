@@ -148,7 +148,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                 }
                 <LoadingAndErrorWrapper className="full" style={style} loading={!loadingError && loading} error={loadingError}>
                 { () => isEditing ? 
-                    <div className="wrapper wrapper--trim">
+                    <div className={cx("wrapper wrapper--trim", S.guideWrapper)}>
                         <div className={S.guideEditHeader}>
                             <div className={S.guideEditHeaderTitle}>
                                 Help new Metabase users find their way around
@@ -263,11 +263,11 @@ export default class ReferenceGettingStartedGuide extends Component {
                         /> : 
                         <div>
                             <GuideHeader startEditing={startEditing} />
-                            <div className="wrapper wrapper--trim">
+                            <div className={cx("wrapper wrapper--trim", S.guideWrapper)}>
                                 { guide.most_important_dashboard !== null && [
                                     <div key={'dashboardTitle'} className={S.guideTitle}>
                                         <div className={S.guideTitleBody}>
-                                            Dashboard
+                                            Our most important dashboard
                                         </div>
                                     </div>,
                                     <GuideDetail 
@@ -298,62 +298,72 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     </div>
                                 ]}
 
-                                <div className={S.guideTitle}>
-                                    <div className={S.guideTitleBody}>
-                                        Segments and tables
+                                { ((guide.important_segments && guide.important_segments.length > 0) || 
+                                    (guide.important_tables && guide.important_tables.length > 0)) && [
+                                    <div key={'segmentTitle'} className={S.guideTitle}>
+                                        <div className={S.guideTitleBody}>
+                                            Segments and tables
+                                        </div>
+                                    </div>,
+                                    // <GuideDetail 
+                                    //     title={'Impressions'} 
+                                    //     description={'A table recording each ad impression with information about each impression.'} 
+                                    //     hasLearnMore={true}
+                                    //     link={'test'} 
+                                    //     linkClass={'text-purple'} 
+                                    // />
+                                    <div key={'segmentSeeAll'} className={S.guideSeeAll}>
+                                        <div className={S.guideSeeAllBody}>
+                                            <Link className={cx('text-purple', S.guideSeeAllLink)} to={'/reference/segments'}>
+                                                See all segments
+                                            </Link>
+                                            <Link className={cx('text-purple', S.guideSeeAllLink)} to={'/reference/databases'}>
+                                                See all tables
+                                            </Link>
+                                        </div>
                                     </div>
-                                </div>
-                                {
-                                // <GuideDetail 
-                                //     title={'Impressions'} 
-                                //     description={'A table recording each ad impression with information about each impression.'} 
-                                //     hasLearnMore={true}
-                                //     link={'test'} 
-                                //     linkClass={'text-purple'} 
-                                // />
-                                }
-                                <div className={S.guideSeeAll}>
-                                    <div className={S.guideSeeAllBody}>
-                                        <Link className={cx('text-purple', S.guideSeeAllLink)} to={'/reference/segments'}>
-                                            See all segments
-                                        </Link>
-                                        <Link className={cx('text-purple', S.guideSeeAllLink)} to={'/reference/databases'}>
-                                            See all tables
-                                        </Link>
-                                    </div>
-                                </div>
+                                ]}
 
-                                <div className={S.guideTitle}>
-                                    <div className={S.guideTitleBody}>
-                                        Some things to know
+                                { guide.things_to_know && [
+                                    <div key={'thingsToKnowTitle'} className={S.guideTitle}>
+                                        <div className={S.guideTitleBody}>
+                                            Some things to know
+                                        </div>
+                                    </div>,
+                                    <GuideDetail 
+                                        key={'thingsToKnowDetails'}
+                                        entity={{ points_of_interest: guide.things_to_know }} 
+                                    />,
+                                    <div key={'thingsToKnowSeeAll'} className={S.guideSeeAll}>
+                                        <div className={S.guideSeeAllBody}>
+                                            <Link className={cx('text-brand', S.guideSeeAllLink)} to={'/reference/databases'}>
+                                                Explore our data
+                                            </Link>
+                                        </div>
                                     </div>
-                                </div>
-                                <GuideDetail 
-                                    entity={{points_of_interest: 'Gaper losses league forkball pennant cubs balk no-hitter. Breaking ball national pastime series cy young left field walk off sacrifice fly cycle.'}} 
-                                />
-                                <div className={S.guideSeeAll}>
-                                    <div className={S.guideSeeAllBody}>
-                                        <Link className={cx('text-brand', S.guideSeeAllLink)} to={'/reference/databases'}>
-                                            Explore our data
-                                        </Link>
-                                    </div>
-                                </div>
+                                ]}
 
-                                <div className={S.guideTitle}>
-                                    <div className={S.guideTitleBody}>
-                                        Have questions?
+                                { guide.contact && (guide.contact.name || guide.contact.email) && [
+                                    <div key={'contactTitle'} className={S.guideTitle}>
+                                        <div className={S.guideTitleBody}>
+                                            Have questions?
+                                        </div>
+                                    </div>,
+                                    <div key={'contactDetails'} className={S.guideContact}>
+                                        <div className={S.guideContactBody}>
+                                            { guide.contact.name && 
+                                                <span className="text-dark mr3">
+                                                    {`Contact ${guide.contact.name}`}
+                                                </span>
+                                            }
+                                            { guide.contact.email && 
+                                                <a className="text-brand text-bold no-decoration" href={`mailto:${guide.contact.email}`}>
+                                                    {guide.contact.email}
+                                                </a>
+                                            }
+                                        </div>
                                     </div>
-                                </div>
-                                <div className={S.guideContact}>
-                                    <div className={S.guideContactBody}>
-                                        <span className="text-dark mr3">
-                                            Contact Sameer Al-Sakran
-                                        </span>
-                                        <a className="text-brand text-bold no-decoration" href="mailto:s-dog@metabase.com">
-                                            s-dog@metabase.com
-                                        </a>
-                                    </div>
-                                </div>
+                                ]}
                             </div>
                         </div>
                 }

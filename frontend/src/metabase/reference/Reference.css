@@ -45,6 +45,10 @@
     max-width: 550px;
 }
 
+:local(.guideWrapper) {
+    margin-bottom: 50px;
+}
+
 :local(.guideTitle) {
     composes: guideLeftPadded;
     font-size: 24px;
@@ -139,7 +143,6 @@
 
 :local(.guideEditContact) {
     composes: flex mt4 from "style";
-    margin-bottom: 50px;
 }
 
 :local(.guideEditContactName) {
