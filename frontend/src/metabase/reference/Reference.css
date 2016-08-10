@@ -1,6 +1,5 @@
 :root {
-    --title-color: #606E7B;
-    --subheader-color: #6CAFED;
+    --icon-width: calc(48px + 1rem);
 }
 
 :local(.guideEmpty) {
@@ -19,80 +18,24 @@
     line-height: 1.457em;
 }
 
-:local(.headerBody) {
-    composes: flex flex-full border-bottom from "style";
-    overflow: hidden;
-    align-items: center;
-    border-color: #EDF5FB;
-}
-
-:local(.headerTextInput) {
-    composes: input p1 from "style";
-    font-size: 18px;
-    color: var(--title-color);
-    width: 100%;
-    max-width: 550px;
-}
-
-:local(.subheader) {
-    composes: text-white flex align-center from "style";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 43px;
-    background-color: var(--subheader-color);
-}
-
-:local(.subheaderButtons) {
-    composes: flex-align-right from "style";
-}
-
-:local(.subheaderButton) {
-    border: none;
-    color: var(--subheader-color);
-}
-
 :local(.columnHeader) {
-    composes: flex flex-full pl2 from "style";
-    margin-left: 48px;
+    composes: flex flex-full from "style";
+    margin-left: var(--icon-width);
     padding-top: 20px;
     padding-bottom: 20px;
 }
 
-:local(.saveButton) {
-    composes: subheaderButton;
-}
-
-:local(.cancelButton) {
-    composes: subheaderButton;
-    opacity: 0.5;
-}
-
-:local(.editButton) {
-    composes: p0 mx1 from "style";
-    color: var(--primary-button-bg-color);
-}
-
-:local(.editButton):hover {
-    color: color(var(--primary-button-border-color) shade(10%));
-    transition: color .3s linear;
-}
-
 :local(.revisionsWrapper) {
     padding-top: 20px;
-    padding-left: 70px;
+    padding-left: var(--icon-width);
 }
 
 :local(.schemaSeparator) {
     composes: text-grey-2 mt2 from "style";
-    margin-left: 70px;
+    margin-left: var(--icon-width);
     font-size: 18px;
 }
 
-:local(.headerSchema) {
-    composes: text-grey-2 absolute from "style";
-    left: 70px;
-    top: -10px;
-    font-size: 12px;
+:local(.tableActualName) {
+    color: #AAB7C3;
 }
