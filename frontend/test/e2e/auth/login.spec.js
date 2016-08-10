@@ -47,7 +47,7 @@ describe("auth/login", () => {
             await waitForUrl(driver, `${server.host}/`);
         });
 
-        it ("should redirect you after logging in", async () => {
+        xit ("should redirect you after logging in", async () => {
             await driver.get(`${server.host}/questions`);
             await waitForUrl(driver, `${server.host}/auth/login?redirect=%2Fquestions`);
             await loginMetabase(driver, "bob@metabase.com", "12341234");
