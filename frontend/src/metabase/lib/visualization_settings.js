@@ -487,17 +487,21 @@ const SETTINGS = {
             options: cols.filter(isDimension).map(getOptionFromColumn)
         }),
     },
-    "funnel.metric": {
+    "funnel.metrics": {
         section: "Data",
-        title: "Metric",
-        widget: ChartSettingSelect,
+        title: "Metrics",
+        widget: ChartSettingFieldsPicker,
         isValid: ([{ card, data }], vizSettings) =>
-            columnsAreValid(card.visualization_settings["funnel.metric"], data, isMetric),
+            columnsAreValid(card.visualization_settings["funnel.metrics"], data, isMetric),
         getDefault: (series, vizSettings) =>
-            getDefaultDimensionAndMetric(series).metric,
-        getProps: ([{ card, data: { cols }}]) => ({
-            options: cols.filter(isDimension).map(getOptionFromColumn)
-        }),
+            getDefaultDimensionsAndMetrics(series).metrics,
+        getProps: ([{ card, data }], vizSettings) => {
+            const options = data.cols.filter(isMetric).map(getOptionFromColumn);
+            return {
+                options,
+                addAnother: options.length > 1 ? "Add another series..." : null
+            };
+        }
     }
 };
 

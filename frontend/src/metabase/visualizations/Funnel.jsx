@@ -39,7 +39,7 @@ export default class Funnel extends Component {
     }
 
     static checkRenderable(cols, rows, settings) {
-        if (!settings["funnel.metric"] || !settings["funnel.step"]) {
+        if (!settings["funnel.metrics"] || !settings["funnel.step"]) {
             throw new ChartSettingsError("Please select columns in the chart settings.", "Data");
         }
     }
@@ -88,7 +88,10 @@ export default class Funnel extends Component {
 
 function calculateStepsInfos(cols, rows, settings) {
     const stepIndex = _.findIndex(cols, (col) => col.name === settings["funnel.step"]);
-    const metricIndex = _.findIndex(cols, (col) => col.name === settings["funnel.metric"]);
+
+    const metricIndex = settings["funnel.metrics"].map((metric, i) => {
+        return _.findIndex(cols, (col) => col.name === metric);
+    });
 
     // Initial infos (required for step calculation)
     var infos = [{
