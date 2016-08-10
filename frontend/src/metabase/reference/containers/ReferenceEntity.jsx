@@ -128,6 +128,7 @@ export default class ReferenceEntity extends Component {
             isFormulaExpanded,
             hasRevisionHistory,
             handleSubmit,
+            resetForm,
             submitting,
             onChangeLocation
         } = this.props;
@@ -145,6 +146,7 @@ export default class ReferenceEntity extends Component {
                         hasRevisionHistory={hasRevisionHistory}
                         onSubmit={onSubmit}
                         endEditing={endEditing}
+                        reinitializeForm={resetForm}
                         submitting={submitting}
                         revisionMessageFormField={revision_message}
                     />

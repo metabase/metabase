@@ -21,6 +21,8 @@ const Detail = ({ name, description, placeholder, subtitleClass, url, icon, isEd
                         className={S.detailTextarea}
                         placeholder={placeholder}
                         {...field}
+                        //FIXME: use initialValues from redux forms instead of default value
+                        // to allow for reinitializing on cancel (see ReferenceGettingStartedGuide.jsx)
                         defaultValue={description}
                     /> :
                     <span className={subtitleClass}>{description || placeholder || 'No description yet'}</span>

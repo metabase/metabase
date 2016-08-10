@@ -51,6 +51,23 @@ const mapStateToProps = (state, props) => {
     const segments = getSegments(state, props);
     const tables = getTables(state, props);
 
+    const initialValues = guide && {
+        things_to_know: guide.things_to_know || null,
+        contact: guide.contact || {name: null, email: null},
+        most_important_dashboard: guide.most_important_dashboard !== null ?
+            dashboards[guide.most_important_dashboard] :
+            {id: null, caveats: null, points_of_interest: null},
+        important_metrics: guide.important_metrics && guide.important_metrics.length > 0 ? 
+            guide.important_metrics.map(metricId => metrics[metricId]) :
+            [{id: null, caveats: null, points_of_interest: null}],
+        important_segments_and_tables: 
+            (guide.important_segments && guide.important_segments.length > 0) ||
+            (guide.important_tables && guide.important_tables.length > 0) ? 
+                guide.important_segments.map(segmentId => segments[segmentId])
+                    .concat(guide.important_tables.map(tableId => tables[tableId])) :
+                [{id: null, type: null, caveats: null, points_of_interest: null}]
+    };
+
     console.log(guide);
     return {
         guide,
@@ -78,22 +95,10 @@ const mapStateToProps = (state, props) => {
             'important_segments_and_tables[].caveats',
             'important_segments_and_tables[].points_of_interest'
         ],
-        initialValues: guide && {
-            things_to_know: guide.things_to_know || null,
-            contact: guide.contact || {name: null, email: null},
-            most_important_dashboard: guide.most_important_dashboard !== null ?
-                dashboards[guide.most_important_dashboard] :
-                {id: null, caveats: null, points_of_interest: null},
-            important_metrics: guide.important_metrics && guide.important_metrics.length > 0 ? 
-                guide.important_metrics.map(metricId => metrics[metricId]) :
-                [{id: null, caveats: null, points_of_interest: null}],
-            important_segments_and_tables: 
-                (guide.important_segments && guide.important_segments.length > 0) ||
-                (guide.important_tables && guide.important_tables.length > 0) ? 
-                    guide.important_segments.map(segmentId => segments[segmentId])
-                        .concat(guide.important_tables.map(tableId => tables[tableId])) :
-                    [{id: null, type: null, caveats: null, points_of_interest: null}]
-        }
+        // redux form doesn't pass this through to component
+        // need to use to reset form field arrays
+        initialValues: initialValues,
+        initialFormValues: initialValues
     };
 };
 
@@ -137,12 +142,13 @@ export default class ReferenceGettingStartedGuide extends Component {
             endEditing,
             handleSubmit,
             submitting,
+            initialFormValues,
+            initializeForm,
             resetForm
         } = this.props;
 
         const onSubmit = handleSubmit(async (fields) => 
-            await tryUpdateGuide(fields, this.props) || 
-            resetForm()
+            await tryUpdateGuide(fields, this.props)
         );
 
         return (
@@ -150,6 +156,8 @@ export default class ReferenceGettingStartedGuide extends Component {
                 { isEditing &&
                     <EditHeader
                         endEditing={endEditing}
+                        // resetForm doesn't reset field arrays
+                        reinitializeForm={() => initializeForm(initialFormValues)}
                         submitting={submitting}
                     />
                 }
@@ -177,9 +185,9 @@ export default class ReferenceGettingStartedGuide extends Component {
                                 entities={dashboards}
                                 formField={most_important_dashboard}
                                 removeField={() => {
-                                    most_important_dashboard.id.onChange(null)
-                                    most_important_dashboard.points_of_interest.onChange('')
-                                    most_important_dashboard.caveats.onChange('')
+                                    most_important_dashboard.id.onChange(null);
+                                    most_important_dashboard.points_of_interest.onChange('');
+                                    most_important_dashboard.caveats.onChange('');
                                 }}
                             />
                         </div>
@@ -187,13 +195,21 @@ export default class ReferenceGettingStartedGuide extends Component {
                             What are your 3-5 most commonly referenced metrics?
                         </div>
                         <div className={S.guideEditCards}>
-                            { important_metrics.map((metricField, index) =>
+                            { important_metrics.map((metricField, index, metricFields) =>
                                 <GuideDetailEditor 
                                     key={index}
                                     className={S.guideEditCard}
                                     type="metric"
                                     entities={metrics}
                                     formField={metricField}
+                                    removeField={() => {
+                                        if (metricFields.length > 1) {
+                                            return metricFields.removeField(index);
+                                        }
+                                        metricField.id.onChange(null);
+                                        metricField.points_of_interest.onChange('');
+                                        metricField.caveats.onChange('');
+                                    }}
                                 />
                             )}
                         </div>
@@ -203,7 +219,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     <button
                                         className="Button Button--primary Button--large" 
                                         type="button"
-                                        onClick={() => important_metrics.addField()}
+                                        onClick={() => important_metrics.addField({id: null, caveats: null, points_of_interest: null})}
                                     >
                                         Add another metric
                                     </button>

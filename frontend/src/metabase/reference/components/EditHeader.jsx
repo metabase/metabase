@@ -9,6 +9,7 @@ import RevisionMessageModal from "metabase/reference/components/RevisionMessageM
 const EditHeader = ({
     hasRevisionHistory,
     endEditing,
+    reinitializeForm = () => undefined,
     submitting,
     onSubmit,
     revisionMessageFormField
@@ -44,7 +45,10 @@ const EditHeader = ({
             <button
                 type="button"
                 className={cx("Button", "Button--white", "Button--small", S.cancelButton)}
-                onClick={endEditing}
+                onClick={() => {
+                    endEditing();
+                    reinitializeForm();
+                }}
             >
                 CANCEL
             </button>
@@ -53,6 +57,7 @@ const EditHeader = ({
 EditHeader.propTypes = {
     hasRevisionHistory: PropTypes.bool,
     endEditing: PropTypes.func.isRequired,
+    reinitializeForm: PropTypes.func,
     submitting: PropTypes.bool.isRequired,
     onSubmit: PropTypes.func,
     revisionMessageFormField: PropTypes.object

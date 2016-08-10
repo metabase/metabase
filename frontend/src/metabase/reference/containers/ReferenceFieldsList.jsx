@@ -104,6 +104,7 @@ export default class ReferenceEntityList extends Component {
             hasRevisionHistory,
             startEditing,
             endEditing,
+            resetForm,
             handleSubmit,
             submitting
         } = this.props;
@@ -117,6 +118,7 @@ export default class ReferenceEntityList extends Component {
                 { isEditing &&
                     <EditHeader
                         hasRevisionHistory={hasRevisionHistory}
+                        reinitializeForm={resetForm}
                         endEditing={endEditing}
                         submitting={submitting}
                     />
