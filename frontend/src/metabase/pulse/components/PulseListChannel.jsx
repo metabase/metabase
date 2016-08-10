@@ -1,8 +1,7 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 
 import Icon from "metabase/components/Icon.jsx";
-
-import { savePulse } from "../actions";
 
 import { inflect } from "inflection";
 import _ from "underscore";
@@ -18,27 +17,28 @@ export default class PulseListChannel extends Component {
         pulse: PropTypes.object.isRequired,
         channel: PropTypes.object.isRequired,
         channelSpec: PropTypes.object,
-        user: PropTypes.object.isRequired
+        user: PropTypes.object.isRequired,
+        savePulse: PropTypes.func.isRequired,
     };
 
     subscribe() {
         let { pulse, channel, user } = this.props;
-        this.props.dispatch(savePulse({
+        this.props.savePulse({
             ...pulse,
             channels: pulse.channels.map(c => c !== channel ? c :
                 { ...c, recipients: [...c.recipients, user]}
             )
-        }));
+        });
     }
 
     unsubscribe() {
         let { pulse, channel, user } = this.props;
-        this.props.dispatch(savePulse({
+        this.props.savePulse({
             ...pulse,
             channels: pulse.channels.map(c => c !== channel ? c :
                 { ...c, recipients: c.recipients.filter(r => r.id !== user.id)}
             )
-        }));
+        });
     }
 
     renderChannelSchedule() {

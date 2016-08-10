@@ -1,4 +1,4 @@
-#User Guide
+# User Guide
 
 **This guide will teach you:**
 

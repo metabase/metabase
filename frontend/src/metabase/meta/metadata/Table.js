@@ -6,7 +6,7 @@ import Database from "./Database";
 
 
 export default class Table extends Base {
-    static type = "table";
+    static type = "tables";
     static schema = {
         fields: [Field]
     };

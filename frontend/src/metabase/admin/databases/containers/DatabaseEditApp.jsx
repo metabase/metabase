@@ -1,5 +1,6 @@
 import React, { Component, PropTypes } from "react";
 import { connect } from "react-redux";
+
 import MetabaseSettings from "metabase/lib/settings";
 import DeleteDatabaseModal from "../components/DeleteDatabaseModal.jsx";
 import DatabaseEditForms from "../components/DatabaseEditForms.jsx";
@@ -17,15 +18,14 @@ import * as databaseActions from "../database";
 
 const mapStateToProps = (state, props) => {
     return {
-        databaseId:       state.router && state.router.params && state.router.params.databaseId,
+        databaseId:       props.params.databaseId,
         database:         getEditingDatabase(state),
-        formState:        getFormState(state),
-        onChangeLocation: props.onChangeLocation
+        formState:        getFormState(state)
     }
 }
 
 const mapDispatchToProps = {
-    ...databaseActions
+    ...databaseActions,
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -38,7 +38,7 @@ export default class DatabaseEditApp extends Component {
     };
 
     componentWillMount() {
-        this.props.initializeDatabase(this.props.databaseId, this.props.onChangeLocation);
+        this.props.initializeDatabase(this.props.databaseId);
     }
 
     render() {
@@ -47,7 +47,7 @@ export default class DatabaseEditApp extends Component {
         return (
             <div className="wrapper">
                 <Breadcrumbs crumbs={[
-                    ["Databases", "/admin/databases/"],
+                    ["Databases", "/admin/databases"],
                     [database && database.id != null ? database.name : "Add Database"]
                 ]} />
                 <section className="Grid Grid--gutters Grid--2-of-3">

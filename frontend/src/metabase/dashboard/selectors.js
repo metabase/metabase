@@ -13,7 +13,7 @@ import Query from "metabase/lib/query";
 import type { CardObject } from "metabase/meta/types/Card";
 import type { ParameterMappingOption, ParameterObject } from "metabase/meta/types/Dashboard";
 
-export const getSelectedDashboard = state => state.router.params.dashboardId;
+export const getDashboardId       = state => state.dashboard.dashboardId;
 export const getIsEditing         = state => state.dashboard.isEditing;
 export const getCards             = state => state.dashboard.cards;
 export const getDashboards        = state => state.dashboard.dashboards;
@@ -27,14 +27,13 @@ export const getParameterValues   = state => state.dashboard.parameterValues;
 export const getDatabases         = state => state.metadata.databases;
 
 export const getMetadata = createSelector(
-    [getDatabases],
-    (databases) =>
-        new Metadata(Object.entries(databases).map(([k,v]) => v)) // not sure why flow doesn't like Object.values() here
+    [state => state.metadata],
+    (metadata) => Metadata.fromEntities(metadata)
 )
 
 export const getDashboard = createSelector(
-    [getSelectedDashboard, getDashboards],
-    (selectedDashboard, dashboards) => dashboards[selectedDashboard]
+    [getDashboardId, getDashboards],
+    (dashboardId, dashboards) => dashboards[dashboardId]
 );
 
 export const getDashboardComplete = createSelector(

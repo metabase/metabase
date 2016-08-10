@@ -1,5 +1,6 @@
 import React, { Component, PropTypes } from "react";
 import { findDOMNode } from "react-dom";
+import { Link } from "react-router";
 import { connect } from "react-redux";
 
 import cx from "classnames";
@@ -19,8 +20,7 @@ import * as authActions from "../auth";
 const mapStateToProps = (state, props) => {
     return {
         loginError:       state.auth && state.auth.loginError,
-        user:             state.currentUser,
-        onChangeLocation: props.onChangeLocation
+        user:             state.currentUser
     }
 }
 
@@ -57,7 +57,7 @@ export default class LoginApp extends Component {
 
         this.validateForm();
 
-        const { loginGoogle, onChangeLocation } = this.props;
+        const { loginGoogle } = this.props;
 
         let ssoLoginButton = findDOMNode(this.refs.ssoLoginButton);
 
@@ -74,7 +74,7 @@ export default class LoginApp extends Component {
                       cookiepolicy: 'single_host_origin',
                   });
                   auth2.attachClickHandler(ssoLoginButton, {},
-                      (googleUser) => loginGoogle(googleUser, onChangeLocation),
+                      (googleUser) => loginGoogle(googleUser),
                       (error) => console.error('There was an error logging in', error)
                   );
                 })
@@ -89,14 +89,6 @@ export default class LoginApp extends Component {
         this.validateForm();
     }
 
-    componentWillReceiveProps(newProps) {
-        const { user, onChangeLocation } = newProps;
-            // if we already have a user then we shouldn't be logging in
-        if (user) {
-            onChangeLocation("/");
-        }
-    }
-
     onChange(fieldName, fieldValue) {
         this.setState({ credentials: { ...this.state.credentials, [fieldName]: fieldValue }});
     }
@@ -104,10 +96,10 @@ export default class LoginApp extends Component {
     formSubmitted(e) {
         e.preventDefault();
 
-        let { login, onChangeLocation } = this.props;
+        let { login } = this.props;
         let { credentials } = this.state;
 
-        login(credentials, onChangeLocation);
+        login(credentials);
     }
 
     render() {
@@ -158,7 +150,7 @@ export default class LoginApp extends Component {
                                 <button className={cx("Button Grid-cell", {'Button--primary': this.state.valid})} disabled={!this.state.valid}>
                                     Sign in
                                 </button>
-                                <a className="Grid-cell py2 sm-py0 text-grey-3 md-text-right text-centered flex-full link" href="/auth/forgot_password" onClick={(e) => { window.OSX ? window.OSX.resetPassword() : null }}>I seem to have forgotten my password</a>
+                                <Link to="/auth/forgot_password" className="Grid-cell py2 sm-py0 text-grey-3 md-text-right text-centered flex-full link" onClick={(e) => { window.OSX ? window.OSX.resetPassword() : null }}>I seem to have forgotten my password</Link>
                             </div>
                         </form>
                     </div>

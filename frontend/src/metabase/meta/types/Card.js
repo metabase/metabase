@@ -2,6 +2,7 @@
 
 import type { DatabaseId } from "./base";
 import type { StructuredQueryObject, NativeQueryObject } from "./Query";
+import type { ParameterInstance } from "./Dashboard";
 
 export type CardId = number;
 
@@ -17,13 +18,15 @@ export type CardObject = {
 export type StructuredDatasetQueryObject = {
     type: "query",
     database: ?DatabaseId,
-    query: StructuredQueryObject
+    query: StructuredQueryObject,
+    parameters?: Array<ParameterInstance>
 };
 
 export type NativeDatasetQueryObject = {
     type: "native",
     database: ?DatabaseId,
     native: NativeQueryObject,
+    parameters?: Array<ParameterInstance>
 };
 
 export type DatasetQueryObject = StructuredDatasetQueryObject | NativeDatasetQueryObject;
