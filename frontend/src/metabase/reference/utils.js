@@ -1,4 +1,5 @@
 import i from "icepick";
+import _ from "underscore";
 
 import { titleize, humanize } from "metabase/lib/formatting";
 import { startNewCard, serializeCardForUrl } from "metabase/lib/card";
@@ -11,7 +12,10 @@ export const idsToObjectMap = (ids, objects) => ids
     // .reduce((map, object) => i.assoc(map, object.id, object), {});
 
 const filterUntouchedFields = (fields, entity = {}) => Object.keys(fields)
-    .filter(key => fields[key] !== undefined || entity[key] === fields[key])
+    .filter(key => 
+        fields[key] !== undefined && 
+        entity[key] !== fields[key]
+    )
     .reduce((map, key) => ({ ...map, [key]: fields[key] }), {});
 
 const isEmptyObject = (object) => Object.keys(object).length === 0;
@@ -144,11 +148,11 @@ export const tryUpdateGuide = async (formFields, props) => {
                 entities[formField.id]
             );
 
-            if (isEmptyObject(editedEntity)) {
+            if (isEmptyObject(i.dissoc(editedEntity, 'revision_message'))) {
                 return [];
             }
 
-            const newEntity = entities[editedEntity.id];
+            const newEntity = entities[formField.id];
             const updatedNewEntity = {
                 ...newEntity, 
                 ...editedEntity
@@ -157,7 +161,7 @@ export const tryUpdateGuide = async (formFields, props) => {
             const updatingNewEntity = updateEntity(updatedNewEntity);
 
             const oldEntity = entities[oldEntityId];
-            if (oldEntityIds.includes(editedEntity.id) || !oldEntity) {
+            if (oldEntityIds.includes(formField.id) || !oldEntity) {
                 return [updatingNewEntity];
             }
 
@@ -168,7 +172,7 @@ export const tryUpdateGuide = async (formFields, props) => {
             );
 
             const updatingOldEntity = updateEntity(updatedOldEntity);
-
+            
             return [updatingNewEntity, updatingOldEntity];
         };
 
@@ -203,16 +207,21 @@ export const tryUpdateGuide = async (formFields, props) => {
                 [updateSetting({key: 'getting-started-contact-email', value: formFields.contact.email })] :
                 [];
 
-        await Promise.all([]
-            .concat(updatingDashboards)
-            .concat(updatingMetrics)
-            .concat(updatingThingsToKnow)
-            .concat(updatingContactName)
-            .concat(updatingContactEmail)
-        );
-        
-        clearRequestState({statePath: ['reference', 'guide']});
-        await fetchGuide();
+        const updatingData = _.flatten([
+            updatingDashboards,
+            updatingMetrics,
+            updatingThingsToKnow,
+            updatingContactName,
+            updatingContactEmail
+        ]);
+
+        if (updatingData.length > 0) {
+            await Promise.all(updatingData);
+            
+            clearRequestState({statePath: ['reference', 'guide']});
+
+            await fetchGuide();
+        }
     }
     catch(error) {
         setError(error);
