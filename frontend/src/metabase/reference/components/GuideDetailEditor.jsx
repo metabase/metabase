@@ -13,7 +13,8 @@ const GuideDetailEditor = ({
     className,
     type,
     entities,
-    formField
+    formField,
+    removeField
 }) => 
     <div className={cx(S.guideDetailEditor, className)}>
         <div className={S.guideDetailEditorClose}>
@@ -21,6 +22,7 @@ const GuideDetailEditor = ({
                 name="close"
                 width={24}
                 height={24}
+                onClick={removeField}
             />
         </div>
         <div className={S.guideDetailEditorPicker}>
@@ -64,7 +66,8 @@ GuideDetailEditor.propTypes = {
     className: PropTypes.string,
     type: PropTypes.string.isRequired,
     entities: PropTypes.object.isRequired,
-    formField: PropTypes.object.isRequired
+    formField: PropTypes.object.isRequired,
+    removeField: PropTypes.func.isRequired
 };
 
 export default GuideDetailEditor;

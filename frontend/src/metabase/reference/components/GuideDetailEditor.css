@@ -13,6 +13,7 @@
     color: var(--input-border-color);
     top: 1rem;
     right: 1rem;
+    cursor: pointer;
 }
 
 :local(.guideDetailEditorPicker) {

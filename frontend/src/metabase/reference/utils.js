@@ -136,9 +136,11 @@ export const tryUpdateGuide = async (formFields, props) => {
 
     startLoading();
     try {
-        //TODO: refactor to take in formFields to facilitate sending removals?
-        // or handle removals in separate function?
-        const updateEntity = ({oldEntityId, oldEntityIds, entities, formField, updateEntity}) => {
+        const updateNewEntities = ({
+            entities, 
+            formFields, 
+            updateEntity
+        }) => formFields.map(formField => {
             if (!formField.id) {
                 return [];
             }
@@ -148,7 +150,7 @@ export const tryUpdateGuide = async (formFields, props) => {
                 entities[formField.id]
             );
 
-            if (isEmptyObject(i.dissoc(editedEntity, 'revision_message'))) {
+            if (isEmptyObject(editedEntity)) {
                 return [];
             }
 
@@ -160,37 +162,62 @@ export const tryUpdateGuide = async (formFields, props) => {
 
             const updatingNewEntity = updateEntity(updatedNewEntity);
 
-            const oldEntity = entities[oldEntityId];
-            if (oldEntityIds.includes(formField.id) || !oldEntity) {
-                return [updatingNewEntity];
-            }
-
-            const updatedOldEntity = i.assoc(
-                oldEntity,
-                'show_in_getting_started',
-                false
-            );
-
-            const updatingOldEntity = updateEntity(updatedOldEntity);
-            
-            return [updatingNewEntity, updatingOldEntity];
-        };
-
-        const updatingDashboards = updateEntity({
-            oldEntityId: guide.most_important_dashboard,
-            oldEntityIds: [guide.most_important_dashboard],
-            entities: dashboards,
-            formField: formFields.most_important_dashboard,
-            updateEntity: updateDashboard
+            return [updatingNewEntity];
         });
 
-        const updatingMetrics = formFields.important_metrics
-            .map(formField => updateEntity({
-                oldEntityId: guide.important_metrics,
-                oldEntityIds: guide.important_metrics || [],
+        const updateOldEntities = ({
+            newEntityIds, 
+            oldEntityIds, 
+            entities, 
+            updateEntity
+        }) => oldEntityIds
+            .filter(oldEntityId => !newEntityIds.includes(oldEntityId))
+            .map(oldEntityId => {
+                const oldEntity = entities[oldEntityId];
+
+                const updatedOldEntity = i.assoc(
+                    oldEntity,
+                    'show_in_getting_started',
+                    false
+                );
+
+                const updatingOldEntity = updateEntity(updatedOldEntity);
+                
+                return [updatingOldEntity];
+            });
+
+        const updateWithRevisionMessage = updateEntity => entity => updateEntity(i.assoc(
+            entity,
+            'revision_message', 
+            'Updated in Getting Started guide.'
+        ));
+
+        const updatingDashboards = updateNewEntities({
+                entities: dashboards,
+                formFields: [formFields.most_important_dashboard],
+                updateEntity: updateDashboard
+            })
+            .concat(updateOldEntities({
+                newEntityIds: formFields.most_important_dashboard ? 
+                    [formFields.most_important_dashboard.id] : [],
+                oldEntityIds: guide.most_important_dashboard ? 
+                    [guide.most_important_dashboard] :
+                    [],
+                entities: dashboards,
+                updateEntity: updateDashboard
+            }));
+
+        const updatingMetrics = updateNewEntities({
                 entities: metrics,
-                formField: i.assoc(formField, 'revision_message', 'Updated from Getting Started guide.'),
-                updateEntity: updateMetric
+                formFields: formFields.important_metrics,
+                updateEntity: updateWithRevisionMessage(updateMetric)
+            })
+            .concat(updateOldEntities({
+                newEntityIds: formFields.important_metrics
+                    .map(formField => formField.id),
+                oldEntityIds: guide.important_metrics,
+                entities: metrics,
+                updateEntity: updateWithRevisionMessage(updateMetric)
             }));
 
         const updatingThingsToKnow = guide.things_to_know !== formFields.things_to_know ?

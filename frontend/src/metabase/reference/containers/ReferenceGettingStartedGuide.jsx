@@ -83,16 +83,16 @@ const mapStateToProps = (state, props) => {
             contact: guide.contact || undefined,
             most_important_dashboard: guide.most_important_dashboard !== null ?
                 dashboards[guide.most_important_dashboard] :
-                {},
+                {id: null, caveats: null, points_of_interest: null},
             important_metrics: guide.important_metrics && guide.important_metrics.length > 0 ? 
                 guide.important_metrics.map(metricId => metrics[metricId]) :
-                [{}],
+                [{id: null, caveats: null, points_of_interest: null}],
             important_segments_and_tables: 
                 (guide.important_segments && guide.important_segments.length > 0) ||
                 (guide.important_tables && guide.important_tables.length > 0) ? 
                     guide.important_segments.map(segmentId => segments[segmentId])
                         .concat(guide.important_tables.map(tableId => tables[tableId])) :
-                    [{}]
+                    [{id: null, type: null, caveats: null, points_of_interest: null}]
         }
     };
 };
@@ -136,11 +136,13 @@ export default class ReferenceGettingStartedGuide extends Component {
             startEditing,
             endEditing,
             handleSubmit,
-            submitting
+            submitting,
+            resetForm
         } = this.props;
 
         const onSubmit = handleSubmit(async (fields) => 
-            await tryUpdateGuide(fields, this.props)
+            await tryUpdateGuide(fields, this.props) || 
+            resetForm()
         );
 
         return (
@@ -174,6 +176,11 @@ export default class ReferenceGettingStartedGuide extends Component {
                                 type="dashboard" 
                                 entities={dashboards}
                                 formField={most_important_dashboard}
+                                removeField={() => {
+                                    most_important_dashboard.id.onChange(null)
+                                    most_important_dashboard.points_of_interest.onChange('')
+                                    most_important_dashboard.caveats.onChange('')
+                                }}
                             />
                         </div>
                         <div className={S.guideEditTitle}>
