@@ -7,13 +7,13 @@
             [metabase.sync-database :as sync-database]
             [metabase.util :as u]))
 
-
 (def ^:private ^:const ^String sample-dataset-name     "Sample Dataset")
 (def ^:private ^:const ^String sample-dataset-filename "sample-dataset.db.mv.db")
 
 (defn- db-details []
-  (let [resource (or (io/resource sample-dataset-filename)
-                     (throw (Exception. (format "Can't load sample dataset: the DB file '%s' can't be found." sample-dataset-filename))))]
+  (let [resource (io/resource sample-dataset-filename)]
+    (when-not resource
+      (throw (Exception. (format "Can't load sample dataset: the DB file '%s' can't be found." sample-dataset-filename))))
     {:db (-> (.getPath resource)
              (s/replace #"^file:" "zip:")           ; to connect to an H2 DB inside a JAR just replace file: with zip:
              (s/replace #"\.mv\.db$" "")            ; strip the .mv.db suffix from the path
