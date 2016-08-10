@@ -18,11 +18,15 @@ version() {
 }
 
 frontend() {
+    if [ -z ${WEBPACK_OPTS+x} ]; then
+        WEBPACK_OPTS="-p"
+    fi
+
     echo "Running 'npm install' to download javascript dependencies..." &&
     npm install &&
 
-    echo "Running 'webpack -p' to assemble and minify frontend assets..." &&
-    ./node_modules/webpack/bin/webpack.js -p
+    echo "Running 'webpack $WEBPACK_OPTS' to assemble and minify frontend assets..." &&
+    ./node_modules/.bin/webpack $WEBPACK_OPTS
 }
 
 sample-dataset() {
