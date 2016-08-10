@@ -125,7 +125,9 @@ export const tryUpdateGuide = async (formFields, props) => {
         updateMetric,
         updateSegment,
         updateTable,
-        updateSetting
+        updateSetting,
+        fetchGuide,
+        clearRequestState
     } = props;
 
     startLoading();
@@ -191,19 +193,29 @@ export const tryUpdateGuide = async (formFields, props) => {
             [updateSetting({key: 'getting-started-things-to-know', value: formFields.things_to_know })] :
             [];
 
-        // const updatingContactName = guide.contact && formFields.contact &&
-        //     guide.contact.name !== formFields.contact.name ?
-        //         [updateSetting({key: 'things_to_know', value: formFields.things_to_know })] :
-        //         [];
+        const updatingContactName = guide.contact && formFields.contact &&
+            guide.contact.name !== formFields.contact.name ?
+                [updateSetting({key: 'getting-started-contact-name', value: formFields.contact.name })] :
+                [];
+        
+        const updatingContactEmail = guide.contact && formFields.contact &&
+            guide.contact.email !== formFields.contact.email ?
+                [updateSetting({key: 'getting-started-contact-email', value: formFields.contact.email })] :
+                [];
 
         await Promise.all([]
             .concat(updatingDashboards)
             .concat(updatingMetrics)
             .concat(updatingThingsToKnow)
+            .concat(updatingContactName)
+            .concat(updatingContactEmail)
         );
+        
+        clearRequestState({statePath: ['reference', 'guide']});
+        await fetchGuide();
     }
     catch(error) {
-        // setError(error);
+        setError(error);
         console.error(error);
     }
 

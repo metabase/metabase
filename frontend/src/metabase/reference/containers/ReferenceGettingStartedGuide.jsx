@@ -15,8 +15,10 @@ import GuideHeader from "metabase/reference/components/GuideHeader.jsx"
 import GuideDetail from "metabase/reference/components/GuideDetail.jsx"
 import GuideDetailEditor from "metabase/reference/components/GuideDetailEditor.jsx"
 
+
 import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';
+import { clearRequestState } from "metabase/redux/requests";
 import {
     updateDashboard
 } from 'metabase/dashboard/dashboard';
@@ -98,6 +100,7 @@ const mapStateToProps = (state, props) => {
 const mapDispatchToProps = {
     updateDashboard,
     updateSetting,
+    clearRequestState,
     ...metadataActions,
     ...actions
 };
