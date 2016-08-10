@@ -79,8 +79,8 @@ const mapStateToProps = (state, props) => {
             'important_segments_and_tables[].points_of_interest'
         ],
         initialValues: guide && {
-            things_to_know: guide.things_to_know || undefined,
-            contact: guide.contact || undefined,
+            things_to_know: guide.things_to_know || null,
+            contact: guide.contact || {name: null, email: null},
             most_important_dashboard: guide.most_important_dashboard !== null ?
                 dashboards[guide.most_important_dashboard] :
                 {id: null, caveats: null, points_of_interest: null},
