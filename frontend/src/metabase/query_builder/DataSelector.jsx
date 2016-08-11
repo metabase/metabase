@@ -240,10 +240,11 @@ export default class DataSelector extends Component {
     renderTablePicker() {
         const schema = this.state.selectedSchema;
         const hasMultipleDatabases = this.props.databases.length > 1;
+        const hasSegments = !!this.props.segments;
         let header = (
             <span className="flex align-center">
-                <span className={cx("flex align-center text-slate", { "cursor-pointer": hasMultipleDatabases })} onClick={hasMultipleDatabases && this.onBack}>
-                    { hasMultipleDatabases && <Icon name="chevronleft" size={18} /> }
+                <span className={cx("flex align-center text-slate", { "cursor-pointer": hasMultipleDatabases || hasSegments })} onClick={(hasMultipleDatabases || hasSegments) && this.onBack}>
+                    { (hasMultipleDatabases || hasSegments) && <Icon name="chevronleft" size={18} /> }
                     <span className="ml1">{schema.database.name}</span>
                 </span>
                 { schema.name &&
