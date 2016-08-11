@@ -53,6 +53,9 @@ const GuideDetailEditor = ({
                     placeholder={`Pick a ${type}`}
                 /> :
                 <DataSelector
+                    className={S.guideDetailEditorSelect}
+                    style={{display: 'flex'}}
+                    triggerIconSize={12}
                     includeTables={true}
                     query={{
                         query: {

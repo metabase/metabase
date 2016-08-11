@@ -351,7 +351,7 @@ export default class DataSelector extends Component {
         if (this.props.includeTables && this.props.segments) {
             const segmentId = this.getSegmentId();
             const segment = _.find(this.props.segments, (segment) => segment.id === segmentId);
-            
+
             if (table) {
                 content = <span className="text-grey no-decoration">{table.display_name || table.name}</span>;
             } else if (segment) {
@@ -374,9 +374,9 @@ export default class DataSelector extends Component {
         }
 
         var triggerElement = (
-            <span className="px2 py2 text-bold cursor-pointer text-default">
+            <span className={this.props.className || "px2 py2 text-bold cursor-pointer text-default"} style={this.props.style}>
                 {content}
-                <Icon className="ml1" name="chevrondown" size={8}/>
+                <Icon className="ml1" name="chevrondown" size={this.props.triggerIconSize || 8}/>
             </span>
         )
 

@@ -23,7 +23,8 @@
 }
 
 :local(.guideDetailEditorSelect) {
-    composes: input text-dark p1 block from "style";
+    composes: flex-full align-center input text-dark p1 block from "style";
+    justify-content: space-between;
     font-size: 16px;
 }
 
