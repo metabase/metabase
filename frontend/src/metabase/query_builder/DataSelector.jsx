@@ -345,14 +345,21 @@ export default class DataSelector extends Component {
         let dbId = this.getDatabaseId();
         let tableId = this.getTableId();
         var database = _.find(databases, (db) => db.id === dbId);
-        console.log(typeof dbId)
-        console.log(typeof databases[0].id)
-        console.log(databases)
-        console.log(database)
         var table = _.find(database.tables, (table) => table.id === tableId);
 
         var content;
-        if (this.props.includeTables) {
+        if (this.props.includeTables && this.props.segments) {
+            const segmentId = this.getSegmentId();
+            const segment = _.find(this.props.segments, (segment) => segment.id === segmentId);
+            
+            if (table) {
+                content = <span className="text-grey no-decoration">{table.display_name || table.name}</span>;
+            } else if (segment) {
+                content = <span className="text-grey no-decoration">{segment.name}</span>;
+            } else {
+                content = <span className="text-grey-4 no-decoration">Pick a segment or table</span>;
+            }
+        } else if (this.props.includeTables) {
             if (table) {
                 content = <span className="text-grey no-decoration">{table.display_name || table.name}</span>;
             } else {
