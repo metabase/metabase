@@ -5,6 +5,7 @@ import {
     createThunkAction,
     resourceListToMap,
     cleanResource,
+    cleanResources,
     fetchData,
     updateData,
 } from "metabase/lib/redux";
@@ -16,14 +17,18 @@ import _ from "underscore";
 import { augmentDatabase, augmentTable } from "metabase/lib/table";
 import { clearRequestState } from "./requests";
 
-const MetabaseApi = new AngularResourceProxy("Metabase", ["db_list", "db_update", "db_metadata", "table_list", "table_update", "table_query_metadata", "field_update"]);
+const MetabaseApi = new AngularResourceProxy("Metabase", ["db_list", "db_list_with_tables", "db_update", "db_metadata", "table_list", "table_update", "table_query_metadata", "field_update"]);
 const MetricApi = new AngularResourceProxy("Metric", ["list", "update"]);
 const SegmentApi = new AngularResourceProxy("Segment", ["list", "update"]);
 const RevisionApi = new AngularResourceProxy("Revisions", ["get"]);
 
+const database_list = new Schema('database_list');
 const database = new Schema('databases');
 const table = new Schema('tables');
 const field = new Schema('fields');
+database_list.define({
+    databases: arrayOf(database)
+});
 database.define({
     tables: arrayOf(table)
 });
@@ -165,6 +170,28 @@ export const fetchDatabases = createThunkAction(FETCH_DATABASES, (reload = false
     };
 });
 
+const FETCH_DATABASES_WITH_TABLES = "metabase/metadata/FETCH_DATABASES_WITH_TABLES";
+export const fetchDatabasesWithTables = createThunkAction(FETCH_DATABASES_WITH_TABLES, (reload = false) => {
+    return async (dispatch, getState) => {
+        const requestStatePath = ["metadata", "databases_with_tables"];
+        const existingStatePath = ["metadata"];
+        const getData = async () => {
+            const databases = await MetabaseApi.db_list_with_tables();
+            
+            return normalize({ databases }, database_list).entities;
+        };
+
+        return await fetchData({
+            dispatch, 
+            getState, 
+            requestStatePath, 
+            existingStatePath, 
+            getData, 
+            reload
+        });
+    };
+});
+
 const FETCH_DATABASE_METADATA = "metabase/metadata/FETCH_DATABASE_METADATA";
 export const fetchDatabaseMetadata = createThunkAction(FETCH_DATABASE_METADATA, function(dbId, reload = false) {
     return async function(dispatch, getState) {
@@ -220,6 +247,7 @@ export const updateDatabase = createThunkAction(UPDATE_DATABASE, function(databa
 
 const databases = handleActions({
     [FETCH_DATABASES]: { next: (state, { payload }) => payload },
+    [FETCH_DATABASES_WITH_TABLES]: { next: (state, { payload }) => ({ ...state, ...payload.databases }) },
     [FETCH_DATABASE_METADATA]: { next: (state, { payload }) => ({ ...state, ...payload.databases }) },
     [UPDATE_DATABASE]: { next: (state, { payload }) => payload }
 }, {});
@@ -306,7 +334,8 @@ const tables = handleActions({
     [UPDATE_TABLE]: { next: (state, { payload }) => payload },
     [FETCH_TABLES]: { next: (state, { payload }) => payload },
     [FETCH_TABLE_METADATA]: { next: (state, { payload }) => ({ ...state, ...payload.tables }) },
-    [FETCH_DATABASE_METADATA]: { next: (state, { payload }) => ({ ...state, ...payload.tables }) }
+    [FETCH_DATABASE_METADATA]: { next: (state, { payload }) => ({ ...state, ...payload.tables }) },
+    [FETCH_DATABASES_WITH_TABLES]: { next: (state, { payload }) => ({ ...state, ...payload.tables }) }
 }, {});
 
 const UPDATE_FIELD = "metabase/metadata/UPDATE_FIELD";

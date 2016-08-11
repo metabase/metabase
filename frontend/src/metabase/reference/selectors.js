@@ -29,7 +29,7 @@ const referenceSections = {
             fetchDashboards: [],
             fetchMetrics: [],
             fetchSegments: [], 
-            fetchTables: [] 
+            fetchDatabasesWithTables: []
         },
         icon: "reference"
     },
@@ -439,7 +439,7 @@ export const getSegment = createSelector(
 );
 
 export const getDatabaseId = (state, props) => Number.parseInt(props.params.databaseId);
-const getDatabases = (state, props) => state.metadata.databases;
+export const getDatabases = (state, props) => state.metadata.databases;
 const getDatabase = createSelector(
     [getDatabaseId, getDatabases],
     (databaseId, databases) => databases[databaseId] || { id: databaseId }

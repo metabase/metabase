@@ -3,6 +3,7 @@ import React, { Component, PropTypes } from "react";
 import { Link } from "react-router";
 import { connect } from 'react-redux';
 import { reduxForm } from "redux-form";
+import i from "icepick";
 import cx from "classnames";
 
 import S from "metabase/reference/Reference.css";
@@ -10,10 +11,11 @@ import S from "metabase/reference/Reference.css";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
 import EditHeader from "metabase/reference/components/EditHeader.jsx";
-import GuideEmptyState from "metabase/reference/components/GuideEmptyState.jsx"
-import GuideHeader from "metabase/reference/components/GuideHeader.jsx"
-import GuideDetail from "metabase/reference/components/GuideDetail.jsx"
-import GuideDetailEditor from "metabase/reference/components/GuideDetailEditor.jsx"
+import GuideEmptyState from "metabase/reference/components/GuideEmptyState.jsx";
+import GuideHeader from "metabase/reference/components/GuideHeader.jsx";
+import GuideDetail from "metabase/reference/components/GuideDetail.jsx";
+import GuideDetailEditor from "metabase/reference/components/GuideDetailEditor.jsx";
+import DataSelector from "metabase/query_builder/DataSelector.jsx";
 
 
 import * as metadataActions from 'metabase/redux/metadata';
@@ -34,6 +36,7 @@ import {
     getMetrics,
     getSegments,
     getTables,
+    getDatabases,
     getLoading,
     getError,
     getIsEditing
@@ -50,7 +53,10 @@ const mapStateToProps = (state, props) => {
     const metrics = getMetrics(state, props);
     const segments = getSegments(state, props);
     const tables = getTables(state, props);
+    const databases = getDatabases(state, props);
 
+    // redux-form populates fields with stale values after update 
+    // if we dont specify nulls here 
     const initialValues = guide && {
         things_to_know: guide.things_to_know || null,
         contact: guide.contact || {name: null, email: null},
@@ -68,7 +74,6 @@ const mapStateToProps = (state, props) => {
                 [{id: null, type: null, caveats: null, points_of_interest: null}]
     };
 
-    console.log(guide);
     return {
         guide,
         user: getUser(state, props),
@@ -76,6 +81,7 @@ const mapStateToProps = (state, props) => {
         metrics,
         segments,
         tables,
+        databases,
         loading: getLoading(state, props),
         // naming this 'error' will conflict with redux form
         loadingError: getError(state, props),
@@ -135,6 +141,7 @@ export default class ReferenceGettingStartedGuide extends Component {
             metrics,
             segments,
             tables,
+            databases,
             loadingError,
             loading,
             isEditing,
@@ -195,6 +202,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                 }}
                             />
                         </div>
+
                         <div className={S.guideEditTitle}>
                             What are your 3-5 most commonly referenced metrics?
                         </div>
@@ -233,7 +241,44 @@ export default class ReferenceGettingStartedGuide extends Component {
                             </div>
                             // TODO: add multi-select for important fields, try SelectPicker.jsx
                         }
-                        {
+                        
+                        <div className={S.guideEditTitle}>
+                            What are 3-5 commonly referenced segments or tables 
+                            that would be useful for this audience?
+                        </div>
+                        <div className={S.guideEditCards}>
+                            { important_segments_and_tables.map((tableField, index, tableFields) =>
+                                <DataSelector
+                                    includeTables={true}
+                                    query={{
+                                        query: {source_table: tableField.id.value},
+                                        database: (tables[tableField.id.value] && tables[tableField.id.value].db_id) || Number.parseInt(Object.keys(databases)[0]) 
+                                    }}
+                                    databases={
+                                        Object.values(databases)
+                                            .map(database => i.assoc(
+                                                database, 
+                                                'tables', 
+                                                database.tables.map(tableId => tables[tableId])
+                                            ))
+                                    }
+                                    tables={Object.values(tables)}
+                                />
+                            )}
+                        </div>
+                        { important_segments_and_tables.length < 5 && 
+                            important_segments_and_tables.length < Object.keys(tables).length && 
+                            <div className={S.guideEditAddButton}>
+                                <div className={S.guideEditAddButtonBody}>
+                                    <button
+                                        className="Button Button--primary Button--large" 
+                                        type="button"
+                                        onClick={() => important_segments_and_tables.addField({id: null, type: null, caveats: null, points_of_interest: null})}
+                                    >
+                                        Add another segment or table
+                                    </button>
+                                </div>
+                            </div>
                         // <div className={S.guideEditTitle}>
                         //     What are 3-5 commonly referenced segments or tables 
                         //     that would be useful for this audience?
