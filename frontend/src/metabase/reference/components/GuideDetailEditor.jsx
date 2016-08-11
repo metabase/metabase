@@ -78,8 +78,23 @@ const GuideDetailEditor = ({
                                 database.tables.map(tableId => tables[tableId])
                             ))
                     }
+                    setDatabaseFn={() => null}
                     tables={Object.values(tables)}
+                    setSourceTableFn={(tableId) => {
+                        const table = tables[tableId]; 
+                        formField.id.onChange(table.id);
+                        formField.type.onChange('table');
+                        formField.points_of_interest.onChange(table.points_of_interest || '');
+                        formField.caveats.onChange(table.caveats || '');
+                    }}
                     segments={Object.values(segments)}
+                    setSourceSegmentFn={(segmentId) => {
+                        const segment = segments[segmentId]; 
+                        formField.id.onChange(segment.id);
+                        formField.type.onChange('segment');
+                        formField.points_of_interest.onChange(segment.points_of_interest || '');
+                        formField.caveats.onChange(segment.caveats || '');
+                    }}
                 />
             }
         </div>

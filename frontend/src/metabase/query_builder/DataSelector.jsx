@@ -21,7 +21,7 @@ export default class DataSelector extends Component {
             showSegmentPicker: false
         }
 
-        _.bindAll(this, "onChangeDatabase", "onChangeSchema", "onChangeTable", "onBack");
+        _.bindAll(this, "onChangeDatabase", "onChangeSchema", "onChangeTable", "onChangeSegment", "onBack");
     }
 
     static propTypes = {
@@ -31,6 +31,7 @@ export default class DataSelector extends Component {
         segments: PropTypes.array,
         setDatabaseFn: PropTypes.func.isRequired,
         setSourceTableFn: PropTypes.func,
+        setSourceSegmentFn: PropTypes.func,
         isInitiallyOpen: PropTypes.bool
     };
 
@@ -81,6 +82,7 @@ export default class DataSelector extends Component {
     }
 
     onChangeTable(item) {
+        console.log(this);
         if (item.table != null) {
             this.props.setSourceTableFn(item.table.id);
         } else if (item.database != null) {
@@ -90,6 +92,7 @@ export default class DataSelector extends Component {
     }
 
     onChangeSegment(item) {
+        console.log(this);
         if (item.segment != null) {
             this.props.setSourceSegmentFn(item.segment.id);
         }
@@ -118,10 +121,7 @@ export default class DataSelector extends Component {
     }
 
     onChangeDatabase(index) {
-        console.log(this.state.databases)
-        console.log(index)
         let database = this.state.databases[index];
-        console.log(database)
         let schema = database && (database.schemas.length > 1 ? null : database.schemas[0]);
         if (database && database.tables.length === 0) {
             schema = {
@@ -130,7 +130,6 @@ export default class DataSelector extends Component {
                 tables: []
             };
         }
-        console.log(schema)
         this.setState({
             selectedSchema: schema,
             showTablePicker: !!schema
