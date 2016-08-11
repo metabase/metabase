@@ -17,16 +17,19 @@ version() {
     fi
 }
 
-frontend() {
-    if [ -z ${WEBPACK_OPTS+x} ]; then
-        WEBPACK_OPTS="-p"
-    fi
-
+npm-install() {
     echo "Running 'npm install' to download javascript dependencies..." &&
-    npm install &&
+    npm install
+}
 
-    echo "Running 'webpack $WEBPACK_OPTS' to assemble and minify frontend assets..." &&
-    ./node_modules/.bin/webpack $WEBPACK_OPTS
+frontend() {
+    echo "Running 'webpack -p' to assemble and minify frontend assets..." &&
+    ./node_modules/.bin/webpack -p
+}
+
+frontend-fast() {
+    echo "Running 'webpack' to assemble and minify frontend assets..." &&
+    ./node_modules/.bin/webpack --devtool eval
 }
 
 sample-dataset() {
@@ -44,7 +47,7 @@ uberjar() {
 }
 
 all() {
-    version && frontend && sample-dataset && uberjar
+    version && npm-install && frontend && sample-dataset && uberjar
 }
 
 # Default to running all but let someone specify one or more sub-tasks to run instead if desired

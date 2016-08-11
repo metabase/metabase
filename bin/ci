@@ -6,6 +6,6 @@ case $CIRCLE_NODE_INDEX in
     2) ENGINES=h2,postgres,sqlite,crate MB_DB_TYPE=mysql MB_DB_DBNAME=circle_test MB_DB_PORT=3306 MB_DB_USER=ubuntu MB_DB_HOST=localhost lein test ;;
     3) ENGINES=h2,redshift,druid lein test ;;
     4) lein eastwood && lein bikeshed && lein docstring-checker && ./bin/reflection-linter ;;
-    5) npm install && npm run lint && npm run test ;;
-    6) WEBPACK_OPTS="" ./bin/build && npm run test-e2e ;;
+    5) npm run lint && npm run test ;;
+    6) ./bin/build version frontend-fast sample-dataset uberjar && npm run test-e2e ;;
 esac
