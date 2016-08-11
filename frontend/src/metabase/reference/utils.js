@@ -220,6 +220,38 @@ export const tryUpdateGuide = async (formFields, props) => {
                 updateEntity: updateWithRevisionMessage(updateMetric)
             }));
 
+        const segmentFields = formFields.important_segments_and_tables
+            .filter(field => field.type === 'segment');
+
+        const updatingSegments = updateNewEntities({
+                entities: segments,
+                formFields: segmentFields,
+                updateEntity: updateWithRevisionMessage(updateSegment)
+            })
+            .concat(updateOldEntities({
+                newEntityIds: segmentFields
+                    .map(formField => formField.id),
+                oldEntityIds: guide.important_segments,
+                entities: segments,
+                updateEntity: updateWithRevisionMessage(updateMetric)
+            }));
+
+        const tableFields = formFields.important_segments_and_tables
+            .filter(field => field.type === 'table');
+
+        const updatingTables = updateNewEntities({
+                entities: tables,
+                formFields: tableFields,
+                updateEntity: updateWithRevisionMessage(updateTable)
+            })
+            .concat(updateOldEntities({
+                newEntityIds: tableFields
+                    .map(formField => formField.id),
+                oldEntityIds: guide.important_tables,
+                entities: tables,
+                updateEntity: updateMetric
+            }));
+
         const updatingThingsToKnow = guide.things_to_know !== formFields.things_to_know ?
             [updateSetting({key: 'getting-started-things-to-know', value: formFields.things_to_know })] :
             [];
@@ -237,6 +269,8 @@ export const tryUpdateGuide = async (formFields, props) => {
         const updatingData = _.flatten([
             updatingDashboards,
             updatingMetrics,
+            updatingSegments,
+            updatingTables,
             updatingThingsToKnow,
             updatingContactName,
             updatingContactEmail

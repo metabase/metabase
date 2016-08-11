@@ -62,7 +62,7 @@ const GuideDetailEditor = ({
                     query={{
                         query: {
                             source_table: formField.type.value === 'table' &&
-                                formField.id.value
+                                Number.parseInt(formField.id.value)
                         },
                         database: (
                             formField.type.value === 'table' &&
@@ -70,7 +70,7 @@ const GuideDetailEditor = ({
                             tables[formField.id.value].db_id
                         ) || Number.parseInt(Object.keys(databases)[0]),
                         segment: formField.type.value === 'segment' &&
-                            formField.id.value
+                            Number.parseInt(formField.id.value)
                     }}
                     databases={
                         Object.values(databases)

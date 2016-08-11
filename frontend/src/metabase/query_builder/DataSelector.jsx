@@ -82,7 +82,6 @@ export default class DataSelector extends Component {
     }
 
     onChangeTable(item) {
-        console.log(this);
         if (item.table != null) {
             this.props.setSourceTableFn(item.table.id);
         } else if (item.database != null) {
@@ -92,7 +91,6 @@ export default class DataSelector extends Component {
     }
 
     onChangeSegment(item) {
-        console.log(this);
         if (item.segment != null) {
             this.props.setSourceSegmentFn(item.segment.id);
         }
@@ -268,7 +266,6 @@ export default class DataSelector extends Component {
             );
 
         } else {
-            console.log(this.props.hiddenTableIds);
             let sections = [{
                 name: header,
                 items: schema.tables
@@ -350,12 +347,15 @@ export default class DataSelector extends Component {
         let tableId = this.getTableId();
         var database = _.find(databases, (db) => db.id === dbId);
         var table = _.find(database.tables, (table) => table.id === tableId);
+        console.log(tableId);
+        console.log(table);
 
         var content;
         if (this.props.includeTables && this.props.segments) {
             const segmentId = this.getSegmentId();
             const segment = _.find(this.props.segments, (segment) => segment.id === segmentId);
-
+            console.log(segmentId);
+            console.log(segment);
             if (table) {
                 content = <span className="text-grey no-decoration">{table.display_name || table.name}</span>;
             } else if (segment) {

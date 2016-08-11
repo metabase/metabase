@@ -67,8 +67,11 @@ const mapStateToProps = (state, props) => {
         important_segments_and_tables: 
             (guide.important_segments && guide.important_segments.length > 0) ||
             (guide.important_tables && guide.important_tables.length > 0) ? 
-                guide.important_segments.map(segmentId => segments[segmentId])
-                    .concat(guide.important_tables.map(tableId => tables[tableId])) :
+                guide.important_segments
+                    .map(segmentId => i.assoc(segments[segmentId], 'type', 'segment'))
+                    .concat(guide.important_tables
+                        .map(tableId => i.assoc(tables[tableId], 'type', 'table'))
+                    ) :
                 [{id: null, type: null, caveats: null, points_of_interest: null}]
     };
 
@@ -286,33 +289,6 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     </button>
                                 </div>
                             </div>
-                        // <div className={S.guideEditTitle}>
-                        //     What are 3-5 commonly referenced segments or tables 
-                        //     that would be useful for this audience?
-                        // </div>
-                        // { important_segments_and_tables.map((segmentOrTableField, index) => null
-                        //     // <GuideDetailEditor
-                        //     //     key={index} 
-                        //     //     type="segment"
-                        //     //     entities={segments}
-                        //     //     secondaryType="table"
-                        //     //     secondaryEntities={tables}
-                        //     //     formField={segmentOrTableField}
-                        //     // />
-                        // )}
-                        // { important_segments_and_tables.length < 5 &&
-                        //     <div className={S.guideEditAddButton}>
-                        //         <div className={S.guideEditAddButtonBody}>
-                        //             <button
-                        //                 className="Button Button--primary Button--large" 
-                        //                 type="button"
-                        //                 onClick={() => important_segments_and_tables.addField()}
-                        //             >
-                        //                 Add another segment or table
-                        //             </button>
-                        //         </div>
-                        //     </div>
-                        // }
                         }
 
                         <div className={S.guideEditTitle}>
