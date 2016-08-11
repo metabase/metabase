@@ -1,5 +1,7 @@
 import { startServer, isReady } from "../support/start-server";
 import webdriver, { By, until } from "selenium-webdriver";
+import fs from "fs-promise";
+import path from "path";
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
 
@@ -13,6 +15,16 @@ async function loginMetabase(driver, username, password) {
 
 function waitForUrl(driver, url, timeout = 5000) {
     return driver.wait(async () => await driver.getCurrentUrl() === url, timeout);
+}
+
+async function screenshot(driver, filename) {
+    let dir = path.dirname(filename);
+    if (dir && !(await fs.exists(dir))){
+        await fs.mkdir(dir);
+    }
+
+    let image = await driver.takeScreenshot();
+    await fs.writeFile(filename, image, 'base64');
 }
 
 describe("auth/login", () => {
@@ -39,6 +51,7 @@ describe("auth/login", () => {
             await driver.get(`${server.host}/`);
             await waitForUrl(driver, `${server.host}/auth/login?redirect=%2F`);
             expect(await driver.isElementPresent(By.css("[name=email]"))).toEqual(true);
+            await screenshot(driver, "screenshots/auth-login.png");
         });
 
         it ("should log you in", async () => {
@@ -64,6 +77,11 @@ describe("auth/login", () => {
         it ("is logged in", async () => {
             await driver.get(`${server.host}/`);
             await waitForUrl(driver, `${server.host}/`);
+        });
+
+        it ("loads the qb", async () => {
+            await driver.get(`${server.host}/q#eyJuYW1lIjpudWxsLCJkYXRhc2V0X3F1ZXJ5Ijp7ImRhdGFiYXNlIjoxLCJ0eXBlIjoibmF0aXZlIiwibmF0aXZlIjp7InF1ZXJ5Ijoic2VsZWN0ICdvaCBoYWkgZ3Vpc2Ug8J-QsScifSwicGFyYW1ldGVycyI6W119LCJkaXNwbGF5Ijoic2NhbGFyIiwidmlzdWFsaXphdGlvbl9zZXR0aW5ncyI6e319`);
+            await screenshot(driver, "screenshots/qb.png");
         });
     });
 

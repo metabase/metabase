@@ -48,4 +48,5 @@ deployment:
       - ./bin/deploy-webhook $DEPLOY_WEBHOOK
 general:
   artifacts:
-    - "target/uberjar/metabase.jar"
+    - target/uberjar/metabase.jar
+    - screenshots
