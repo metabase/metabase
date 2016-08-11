@@ -144,7 +144,7 @@ export default class AccordianList extends Component {
     }
 
     render() {
-        const { searchable, sections, showItemArrows, alwaysTogglable, alwaysExpanded, hideSingleSectionTitle, style } = this.props;
+        const { searchable, searchPlaceholder, sections, showItemArrows, alwaysTogglable, alwaysExpanded, hideSingleSectionTitle, style } = this.props;
         const { searchText } = this.state;
 
         const openSection = this.getOpenSection();
@@ -188,6 +188,7 @@ export default class AccordianList extends Component {
                                     <ListSearchField
                                         onChange={(val) => this.setState({searchText: val})}
                                         searchText={this.state.searchText}
+                                        placeholder={searchPlaceholder}
                                     />
                                 </div>
                             </div>

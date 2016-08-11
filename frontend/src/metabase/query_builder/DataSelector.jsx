@@ -17,7 +17,8 @@ export default class DataSelector extends Component {
         this.state = {
             databases: null,
             selectedSchema: null,
-            showTablePicker: true
+            showTablePicker: true,
+            showSegmentPicker: false
         }
 
         _.bindAll(this, "onChangeDatabase", "onChangeSchema", "onChangeTable", "onBack");
@@ -26,6 +27,8 @@ export default class DataSelector extends Component {
     static propTypes = {
         query: PropTypes.object.isRequired,
         databases: PropTypes.array.isRequired,
+        tables: PropTypes.array,
+        segments: PropTypes.array,
         setDatabaseFn: PropTypes.func.isRequired,
         setSourceTableFn: PropTypes.func,
         isInitiallyOpen: PropTypes.bool
@@ -86,6 +89,14 @@ export default class DataSelector extends Component {
         this.refs.popover.toggle();
     }
 
+    onChangeSegment(item) {
+        if (item.segment != null) {
+            this.props.setSourceSegmentFn(item.segment.id);
+        }
+
+        this.refs.popover.toggle();
+    }
+
     onChangeSchema(schema) {
         this.setState({
             selectedSchema: schema,
@@ -93,14 +104,24 @@ export default class DataSelector extends Component {
         });
     }
 
+    onChangeSegmentSection() {
+        this.setState({
+            showSegmentPicker: true
+        });
+    }
+
     onBack() {
         this.setState({
-            showTablePicker: false
+            showTablePicker: false,
+            showSegmentPicker: false
         });
     }
 
     onChangeDatabase(index) {
+        console.log(this.state.databases)
+        console.log(index)
         let database = this.state.databases[index];
+        console.log(database)
         let schema = database && (database.schemas.length > 1 ? null : database.schemas[0]);
         if (database && database.tables.length === 0) {
             schema = {
@@ -109,10 +130,15 @@ export default class DataSelector extends Component {
                 tables: []
             };
         }
+        console.log(schema)
         this.setState({
             selectedSchema: schema,
             showTablePicker: !!schema
         });
+    }
+
+    getSegmentId() {
+        return this.props.query.segment;
     }
 
     getDatabaseId() {
@@ -176,6 +202,44 @@ export default class DataSelector extends Component {
         );
     }
 
+    renderSegmentAndDatabasePicker() {
+        const { selectedSchema } = this.state;
+        
+        const segmentItem = this.props.segments && this.props.segments.length > 0 ?
+            [{ name: 'Segments', items: []}] : [];
+        
+        const sections = segmentItem.concat(this.state.databases.map(database => {
+            return {
+                name: database.name,
+                items: database.schemas.length > 1 ? database.schemas : []
+            };
+        }));
+
+        let openSection = selectedSchema && (_.findIndex(this.state.databases, (db) => _.find(db.schemas, selectedSchema)) + segmentItem.length);
+        if (openSection >= 0 && this.state.databases[openSection - segmentItem.length] && this.state.databases[openSection - segmentItem.length].schemas.length === 1) {
+            openSection = -1;
+        }
+
+        return (
+            <AccordianList
+                key="schemaPicker"
+                className="text-brand"
+                sections={sections}
+                onChange={this.onChangeSchema}
+                onChangeSection={(index) => index === 0 ?
+                    this.onChangeSegmentSection() :
+                    this.onChangeDatabase(index - segmentItem.length)
+                }
+                itemIsSelected={(schema) => this.state.selectedSchema === schema}
+                renderSectionIcon={(section, sectionIndex) => <Icon className="Icon text-default" name={sectionIndex === 0 ? "segment" : "database"} size={18} />}
+                renderItemIcon={() => <Icon name="folder" size={16} />}
+                initiallyOpenSection={openSection}
+                showItemArrows={true}
+                alwaysTogglable={true}
+            />
+        );
+    }
+
     renderTablePicker() {
         const schema = this.state.selectedSchema;
         const hasMultipleDatabases = this.props.databases.length > 1;
@@ -228,6 +292,53 @@ export default class DataSelector extends Component {
         }
     }
 
+    renderSegmentPicker() {
+        const { segments } = this.props;
+        const header = (
+            <span className="flex align-center">
+                <span className="flex align-center text-slate cursor-pointer" onClick={this.onBack}>
+                    <Icon name="chevronleft" size={18} />
+                    <span className="ml1">Segments</span>
+                </span>
+            </span>
+        );
+
+        if (!segments || segments.length === 0) {
+            return (
+                <section className="List-section List-section--open" style={{width: '300px'}}>
+                    <div className="p1 border-bottom">
+                        <div className="px1 py1 flex align-center">
+                            <h3 className="text-default">{header}</h3>
+                        </div>
+                    </div>
+                    <div className="p4 text-centered">No segments were found.</div>
+                </section>
+            );
+        }
+
+        const sections = [{
+            name: header,
+            items: segments.map(segment => ({
+                name: segment.name,
+                segment: segment
+            }))
+        }];
+
+        return (
+            <AccordianList
+                key="segmentPicker"
+                className="text-brand"
+                sections={sections}
+                searchable={true}
+                searchPlaceholder="Find a segment"
+                onChange={this.onChangeSegment}
+                itemIsSelected={(item) => item.segment ? item.segment.id === this.getSegmentId() : false}
+                itemIsClickable={(item) => item.segment}
+                renderItemIcon={(item) => item.segment ? <Icon name="segment" size={18} /> : null}
+            />
+        );
+    }
+
     render() {
         const { databases } = this.props;
 
@@ -271,11 +382,14 @@ export default class DataSelector extends Component {
                 horizontalAttachments={["left"]}
             >
                 { !this.props.includeTables ?
-                    this.renderDatabasePicker()
-                : this.state.selectedSchema && this.state.showTablePicker ?
-                    this.renderTablePicker()
-                :
-                    this.renderDatabaseSchemaPicker()
+                    this.renderDatabasePicker() : 
+                    this.state.selectedSchema && this.state.showTablePicker ?
+                        this.renderTablePicker() :
+                        this.state.showSegmentPicker ?  
+                            this.renderSegmentPicker() :
+                            this.props.segments && this.props.segments.length > 0 ?
+                                this.renderSegmentAndDatabasePicker() :
+                                this.renderDatabaseSchemaPicker()
                 }
             </PopoverWithTrigger>
         );

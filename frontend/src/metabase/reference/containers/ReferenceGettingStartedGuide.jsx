@@ -247,12 +247,21 @@ export default class ReferenceGettingStartedGuide extends Component {
                             that would be useful for this audience?
                         </div>
                         <div className={S.guideEditCards}>
-                            { important_segments_and_tables.map((tableField, index, tableFields) =>
+                            { important_segments_and_tables.map((segmentOrTableField, index, segmentOrTableFields) =>
                                 <DataSelector
                                     includeTables={true}
                                     query={{
-                                        query: {source_table: tableField.id.value},
-                                        database: (tables[tableField.id.value] && tables[tableField.id.value].db_id) || Number.parseInt(Object.keys(databases)[0]) 
+                                        query: {
+                                            source_table: segmentOrTableField.type.value === 'table' &&
+                                                segmentOrTableField.id.value
+                                        },
+                                        database: (
+                                            segmentOrTableField.type.value === 'table' &&
+                                            tables[segmentOrTableField.id.value] &&
+                                            tables[segmentOrTableField.id.value].db_id
+                                        ) || Number.parseInt(Object.keys(databases)[0]),
+                                        segment: segmentOrTableField.type.value === 'segment' &&
+                                            segmentOrTableField.id.value
                                     }}
                                     databases={
                                         Object.values(databases)
@@ -263,6 +272,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                             ))
                                     }
                                     tables={Object.values(tables)}
+                                    segments={Object.values(segments)}
                                 />
                             )}
                         </div>
