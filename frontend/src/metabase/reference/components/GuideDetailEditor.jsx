@@ -82,7 +82,7 @@ const GuideDetailEditor = ({
                     }
                     setDatabaseFn={() => null}
                     tables={Object.values(tables)}
-                    hiddenTableIds={selectedIdTypePairs
+                    disabledTableIds={selectedIdTypePairs
                         .filter(idTypePair => idTypePair[1] === 'table')
                         .map(idTypePair => idTypePair[0])
                     }
@@ -94,7 +94,7 @@ const GuideDetailEditor = ({
                         formField.caveats.onChange(table.caveats || '');
                     }}
                     segments={Object.values(segments)}
-                    hiddenSegmentIds={selectedIdTypePairs
+                    disabledSegmentIds={selectedIdTypePairs
                         .filter(idTypePair => idTypePair[1] === 'segment')
                         .map(idTypePair => idTypePair[0])
                     }

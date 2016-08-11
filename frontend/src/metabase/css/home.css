@@ -172,6 +172,10 @@
     cursor: pointer;
 }
 
+.cursor-default {
+    cursor: default;
+}
+
 .tooltip {
     position: absolute;
     background-color: #fff;

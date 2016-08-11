@@ -29,6 +29,8 @@ export default class DataSelector extends Component {
         databases: PropTypes.array.isRequired,
         tables: PropTypes.array,
         segments: PropTypes.array,
+        disabledTableIds: PropTypes.array,
+        disabledSegmentIds: PropTypes.array,
         setDatabaseFn: PropTypes.func.isRequired,
         setSourceTableFn: PropTypes.func,
         setSourceSegmentFn: PropTypes.func,
@@ -203,7 +205,7 @@ export default class DataSelector extends Component {
         const { selectedSchema } = this.state;
         
         const segmentItem = this.props.segments && this.props.segments.length > 0 ?
-            [{ name: 'Segments', items: []}] : [];
+            [{ name: 'Segments', items: [], icon: 'segment'}] : [];
         
         const sections = segmentItem.concat(this.state.databases.map(database => {
             return {
@@ -212,6 +214,7 @@ export default class DataSelector extends Component {
             };
         }));
 
+        // FIXME: this seems a bit brittle and hard to follow
         let openSection = selectedSchema && (_.findIndex(this.state.databases, (db) => _.find(db.schemas, selectedSchema)) + segmentItem.length);
         if (openSection >= 0 && this.state.databases[openSection - segmentItem.length] && this.state.databases[openSection - segmentItem.length].schemas.length === 1) {
             openSection = -1;
@@ -228,7 +231,7 @@ export default class DataSelector extends Component {
                     this.onChangeDatabase(index - segmentItem.length)
                 }
                 itemIsSelected={(schema) => this.state.selectedSchema === schema}
-                renderSectionIcon={(section, sectionIndex) => <Icon className="Icon text-default" name={sectionIndex === 0 ? "segment" : "database"} size={18} />}
+                renderSectionIcon={(section, sectionIndex) => <Icon className="Icon text-default" name={section.icon || "database"} size={18} />}
                 renderItemIcon={() => <Icon name="folder" size={16} />}
                 initiallyOpenSection={openSection}
                 showItemArrows={true}
@@ -270,9 +273,9 @@ export default class DataSelector extends Component {
             let sections = [{
                 name: header,
                 items: schema.tables
-                    .filter(table => !this.props.hiddenTableIds || !this.props.hiddenTableIds.includes(table.id))
                     .map(table => ({
                         name: table.display_name,
+                        disabled: this.props.disabledTableIds && this.props.disabledTableIds.includes(table.id),
                         table: table,
                         database: schema.database
                     }))
@@ -285,7 +288,7 @@ export default class DataSelector extends Component {
                     searchable={true}
                     onChange={this.onChangeTable}
                     itemIsSelected={(item) => item.table ? item.table.id === this.getTableId() : false}
-                    itemIsClickable={(item) => item.table}
+                    itemIsClickable={(item) => item.table && !item.disabled}
                     renderItemIcon={(item) => item.table ? <Icon name="table2" size={18} /> : null}
                 />
             );
@@ -319,10 +322,10 @@ export default class DataSelector extends Component {
         const sections = [{
             name: header,
             items: segments
-                .filter(segment => !this.props.hiddenSegmentIds || !this.props.hiddenSegmentIds.includes(segment.id))
                 .map(segment => ({
                     name: segment.name,
-                    segment: segment
+                    segment: segment,
+                    disabled: this.props.disabledSegmentIds && this.props.disabledSegmentIds.includes(segment.id)
                 }))
         }];
 
@@ -335,7 +338,7 @@ export default class DataSelector extends Component {
                 searchPlaceholder="Find a segment"
                 onChange={this.onChangeSegment}
                 itemIsSelected={(item) => item.segment ? item.segment.id === this.getSegmentId() : false}
-                itemIsClickable={(item) => item.segment}
+                itemIsClickable={(item) => item.segment && !item.disabled}
                 renderItemIcon={(item) => item.segment ? <Icon name="segment" size={18} /> : null}
             />
         );
@@ -348,15 +351,11 @@ export default class DataSelector extends Component {
         let tableId = this.getTableId();
         var database = _.find(databases, (db) => db.id === dbId);
         var table = _.find(database.tables, (table) => table.id === tableId);
-        console.log(tableId);
-        console.log(table);
 
         var content;
         if (this.props.includeTables && this.props.segments) {
             const segmentId = this.getSegmentId();
             const segment = _.find(this.props.segments, (segment) => segment.id === segmentId);
-            console.log(segmentId);
-            console.log(segment);
             if (table) {
                 content = <span className="text-grey no-decoration">{table.display_name || table.name}</span>;
             } else if (segment) {
