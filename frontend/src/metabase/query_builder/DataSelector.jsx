@@ -42,7 +42,7 @@ export default class DataSelector extends Component {
 
     componentWillMount() {
         this.componentWillReceiveProps(this.props);
-        if (this.props.databases.length === 1) {
+        if (this.props.databases.length === 1 && !this.props.segments) {
             setTimeout(() => this.onChangeDatabase(0));
         }
     }
