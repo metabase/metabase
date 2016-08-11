@@ -160,9 +160,9 @@ export default class ReferenceGettingStartedGuide extends Component {
             .map(field => field.id.value)
             .filter(id => id !== null);
 
-        const getSelectedMetadataPaths = fields => fields
-            .map(field => [`${field.type.value}s`, field.id.value])
-            .filter(metadataPath => metadataPath[1] !== null);
+        const getSelectedIdTypePairs = fields => fields
+            .map(field => [field.id.value, field.type.value])
+            .filter(idTypePair => idTypePair[0] !== null);
 
         return (
             <form className="full" style={style} onSubmit={onSubmit}>
@@ -260,7 +260,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                         segments
                                     }}
                                     formField={segmentOrTableField}
-                                    selectedMetadataPaths={getSelectedMetadataPaths(segmentOrTableFields)}
+                                    selectedIdTypePairs={getSelectedIdTypePairs(segmentOrTableFields)}
                                     removeField={() => {
                                         if (segmentOrTableFields.length > 1) {
                                             return segmentOrTableFields.removeField(index);
@@ -274,7 +274,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                             )}
                         </div>
                         { important_segments_and_tables.length < 5 && 
-                            important_segments_and_tables.length < Object.keys(tables).length && 
+                            important_segments_and_tables.length < Object.keys(tables).concat(Object.keys.segments).length && 
                             <div className={S.guideEditAddButton}>
                                 <div className={S.guideEditAddButtonBody}>
                                     <button

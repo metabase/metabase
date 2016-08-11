@@ -14,17 +14,19 @@ const GuideDetailEditor = ({
     className,
     type,
     entities,
-    metadata: {
+    metadata = {},
+    selectedIds = [],
+    selectedIdTypePairs = [],
+    formField,
+    removeField
+}) => {
+    const {
         databases,
         tables,
         segments
-    } = {},
-    selectedIds = [],
-    selectedMetadataPaths = [],
-    formField,
-    removeField
-}) => 
-    <div className={cx(S.guideDetailEditor, className)}>
+    } = metadata;
+
+    return <div className={cx(S.guideDetailEditor, className)}>
         <div className={S.guideDetailEditorClose}>
             <Icon
                 name="close"
@@ -80,6 +82,10 @@ const GuideDetailEditor = ({
                     }
                     setDatabaseFn={() => null}
                     tables={Object.values(tables)}
+                    hiddenTableIds={selectedIdTypePairs
+                        .filter(idTypePair => idTypePair[1] === 'table')
+                        .map(idTypePair => idTypePair[0])
+                    }
                     setSourceTableFn={(tableId) => {
                         const table = tables[tableId]; 
                         formField.id.onChange(table.id);
@@ -88,6 +94,10 @@ const GuideDetailEditor = ({
                         formField.caveats.onChange(table.caveats || '');
                     }}
                     segments={Object.values(segments)}
+                    hiddenSegmentIds={selectedIdTypePairs
+                        .filter(idTypePair => idTypePair[1] === 'segment')
+                        .map(idTypePair => idTypePair[0])
+                    }
                     setSourceSegmentFn={(segmentId) => {
                         const segment = segments[segmentId]; 
                         formField.id.onChange(segment.id);
@@ -121,13 +131,14 @@ const GuideDetailEditor = ({
             />
         </div>
     </div>;
+};
 GuideDetailEditor.propTypes = {
     className: PropTypes.string,
     type: PropTypes.string.isRequired,
     entities: PropTypes.object,
     metadata: PropTypes.object,
     selectedIds: PropTypes.array,
-    selectedMetadataPaths: PropTypes.array,
+    selectedIdTypePairs: PropTypes.array,
     formField: PropTypes.object.isRequired,
     removeField: PropTypes.func.isRequired
 };

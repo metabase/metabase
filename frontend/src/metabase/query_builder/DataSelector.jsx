@@ -268,13 +268,16 @@ export default class DataSelector extends Component {
             );
 
         } else {
+            console.log(this.props.hiddenTableIds);
             let sections = [{
                 name: header,
-                items: schema.tables.map(table => ({
-                    name: table.display_name,
-                    table: table,
-                    database: schema.database
-                }))
+                items: schema.tables
+                    .filter(table => !this.props.hiddenTableIds || !this.props.hiddenTableIds.includes(table.id))
+                    .map(table => ({
+                        name: table.display_name,
+                        table: table,
+                        database: schema.database
+                    }))
             }];
             return (
                 <AccordianList
@@ -317,10 +320,12 @@ export default class DataSelector extends Component {
 
         const sections = [{
             name: header,
-            items: segments.map(segment => ({
-                name: segment.name,
-                segment: segment
-            }))
+            items: segments
+                .filter(segment => !this.props.hiddenSegmentIds || !this.props.hiddenSegmentIds.includes(segment.id))
+                .map(segment => ({
+                    name: segment.name,
+                    segment: segment
+                }))
         }];
 
         return (
