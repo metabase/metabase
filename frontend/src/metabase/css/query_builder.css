@@ -664,7 +664,7 @@
 }
 
 .List-item--disabled .List-item-title {
-    color: var(--grey-2);
+    color: var(--grey-3);
 }
 
 .List-item--segment .Icon,

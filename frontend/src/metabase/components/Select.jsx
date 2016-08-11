@@ -146,6 +146,7 @@ class LegacySelect extends Component {
     static propTypes = {
         value: PropTypes.any,
         options: PropTypes.array.isRequired,
+        disabledOptionIds: PropTypes.array, 
         placeholder: PropTypes.string,
         onChange: PropTypes.func,
         optionNameFn: PropTypes.func,
@@ -158,6 +159,7 @@ class LegacySelect extends Component {
 
     static defaultProps = {
         placeholder: "",
+        disabledOptionIds: [],
         optionNameFn: (option) => option.name,
         optionValueFn: (option) => option,
         isInitiallyOpen: false,
@@ -168,7 +170,7 @@ class LegacySelect extends Component {
     }
 
     render() {
-        const { className, value, onChange, options, optionNameFn, optionValueFn, placeholder, isInitiallyOpen } = this.props;
+        const { className, value, onChange, options, disabledOptionIds, optionNameFn, optionValueFn, placeholder, isInitiallyOpen } = this.props;
 
         var selectedName = value ? optionNameFn(value) : placeholder;
 
@@ -191,6 +193,7 @@ class LegacySelect extends Component {
             {
                 selectedItem: value,
                 sections: sections,
+                disabledOptionIds: disabledOptionIds,
                 itemTitleFn: optionNameFn,
                 itemDescriptionFn: (item) => item.description,
                 itemSelectFn: (item) => {

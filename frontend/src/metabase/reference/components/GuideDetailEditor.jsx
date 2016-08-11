@@ -40,12 +40,8 @@ const GuideDetailEditor = ({
                 <Select 
                     triggerClasses={S.guideDetailEditorSelect}
                     value={entities[formField.id.value]}
-                    options={Object.values(entities)
-                        .filter(entity =>
-                            entity.id === formField.id.value ||
-                            !selectedIds.includes(entity.id)
-                        )
-                    }
+                    options={Object.values(entities)}
+                    disabledOptionIds={selectedIds}
                     optionNameFn={option => option.display_name || option.name}
                     onChange={(entity) => {
                         //TODO: refactor into function

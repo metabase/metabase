@@ -23,6 +23,7 @@ export default class ColumnarSelector extends Component {
                         var itemClasses = cx({
                             'ColumnarSelector-row': true,
                             'ColumnarSelector-row--selected': item === column.selectedItem,
+                            'ColumnarSelector-row--disabled': item !== column.selectedItem && column.disabledOptionIds.includes(item.id),
                             'flex': true,
                             'no-decoration': true
                         });
