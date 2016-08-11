@@ -48,6 +48,7 @@ const GuideDetailEditor = ({
                     }
                     optionNameFn={option => option.display_name || option.name}
                     onChange={(entity) => {
+                        //TODO: refactor into function
                         formField.id.onChange(entity.id);
                         formField.points_of_interest.onChange(entity.points_of_interest || '');
                         formField.caveats.onChange(entity.caveats || '');

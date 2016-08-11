@@ -18,7 +18,7 @@ export default class DataSelector extends Component {
             databases: null,
             selectedSchema: null,
             showTablePicker: true,
-            showSegmentPicker: false
+            showSegmentPicker: true
         }
 
         _.bindAll(this, "onChangeDatabase", "onChangeSchema", "onChangeTable", "onChangeSegment", "onBack");
@@ -396,7 +396,7 @@ export default class DataSelector extends Component {
                     this.renderDatabasePicker() : 
                     this.state.selectedSchema && this.state.showTablePicker ?
                         this.renderTablePicker() :
-                        this.state.showSegmentPicker ?  
+                        this.props.segments && this.state.showSegmentPicker ?  
                             this.renderSegmentPicker() :
                             this.props.segments && this.props.segments.length > 0 ?
                                 this.renderSegmentAndDatabasePicker() :
