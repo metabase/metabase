@@ -390,7 +390,7 @@ export default class DataSelector extends Component {
                 isInitiallyOpen={this.props.isInitiallyOpen}
                 triggerElement={triggerElement}
                 triggerClasses="flex align-center"
-                horizontalAttachments={["left"]}
+                horizontalAttachments={this.props.segments ? ["center", "left", "right"] : ["left"]}
             >
                 { !this.props.includeTables ?
                     this.renderDatabasePicker() : 
