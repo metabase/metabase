@@ -233,7 +233,7 @@ export const tryUpdateGuide = async (formFields, props) => {
                     .map(formField => formField.id),
                 oldEntityIds: guide.important_segments,
                 entities: segments,
-                updateEntity: updateWithRevisionMessage(updateMetric)
+                updateEntity: updateWithRevisionMessage(updateSegment)
             }));
 
         const tableFields = formFields.important_segments_and_tables
@@ -242,14 +242,14 @@ export const tryUpdateGuide = async (formFields, props) => {
         const updatingTables = updateNewEntities({
                 entities: tables,
                 formFields: tableFields,
-                updateEntity: updateWithRevisionMessage(updateTable)
+                updateEntity: updateTable
             })
             .concat(updateOldEntities({
                 newEntityIds: tableFields
                     .map(formField => formField.id),
                 oldEntityIds: guide.important_tables,
                 entities: tables,
-                updateEntity: updateMetric
+                updateEntity: updateTable
             }));
 
         const updatingThingsToKnow = guide.things_to_know !== formFields.things_to_know ?

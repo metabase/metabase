@@ -68,9 +68,9 @@ const mapStateToProps = (state, props) => {
             (guide.important_segments && guide.important_segments.length > 0) ||
             (guide.important_tables && guide.important_tables.length > 0) ? 
                 guide.important_segments
-                    .map(segmentId => i.assoc(segments[segmentId], 'type', 'segment'))
+                    .map(segmentId => segments[segmentId] && i.assoc(segments[segmentId], 'type', 'segment'))
                     .concat(guide.important_tables
-                        .map(tableId => i.assoc(tables[tableId], 'type', 'table'))
+                        .map(tableId => tables[tableId] && i.assoc(tables[tableId], 'type', 'table'))
                     ) :
                 [{id: null, type: null, caveats: null, points_of_interest: null}]
     };
