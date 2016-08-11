@@ -8,12 +8,19 @@ import S from "./GuideDetailEditor.css";
 
 import Select from "metabase/components/Select.jsx";
 import Icon from "metabase/components/Icon.jsx";
+import DataSelector from "metabase/query_builder/DataSelector.jsx";
 
 const GuideDetailEditor = ({
     className,
     type,
     entities,
+    metadata: {
+        databases,
+        tables,
+        segments
+    } = {},
     selectedIds = [],
+    selectedMetadataPaths = [],
     formField,
     removeField
 }) => 
@@ -27,23 +34,51 @@ const GuideDetailEditor = ({
             />
         </div>
         <div className={S.guideDetailEditorPicker}>
-            <Select 
-                triggerClasses={S.guideDetailEditorSelect}
-                value={entities[formField.id.value]}
-                options={Object.values(entities)
-                    .filter(entity =>
-                        entity.id === formField.id.value ||
-                        !selectedIds.includes(entity.id)
-                    )
-                }
-                optionNameFn={option => option.display_name || option.name}
-                onChange={(entity) => {
-                    formField.id.onChange(entity.id);
-                    formField.points_of_interest.onChange(entity.points_of_interest || '');
-                    formField.caveats.onChange(entity.caveats || '');
-                }}
-                placeholder={`Pick a ${type}`}
-            />
+            { entities ?
+                <Select 
+                    triggerClasses={S.guideDetailEditorSelect}
+                    value={entities[formField.id.value]}
+                    options={Object.values(entities)
+                        .filter(entity =>
+                            entity.id === formField.id.value ||
+                            !selectedIds.includes(entity.id)
+                        )
+                    }
+                    optionNameFn={option => option.display_name || option.name}
+                    onChange={(entity) => {
+                        formField.id.onChange(entity.id);
+                        formField.points_of_interest.onChange(entity.points_of_interest || '');
+                        formField.caveats.onChange(entity.caveats || '');
+                    }}
+                    placeholder={`Pick a ${type}`}
+                /> :
+                <DataSelector
+                    includeTables={true}
+                    query={{
+                        query: {
+                            source_table: formField.type.value === 'table' &&
+                                formField.id.value
+                        },
+                        database: (
+                            formField.type.value === 'table' &&
+                            tables[formField.id.value] &&
+                            tables[formField.id.value].db_id
+                        ) || Number.parseInt(Object.keys(databases)[0]),
+                        segment: formField.type.value === 'segment' &&
+                            formField.id.value
+                    }}
+                    databases={
+                        Object.values(databases)
+                            .map(database => i.assoc(
+                                database, 
+                                'tables', 
+                                database.tables.map(tableId => tables[tableId])
+                            ))
+                    }
+                    tables={Object.values(tables)}
+                    segments={Object.values(segments)}
+                />
+            }
         </div>
         <div className={S.guideDetailEditorBody}>
             <textarea 
@@ -71,8 +106,10 @@ const GuideDetailEditor = ({
 GuideDetailEditor.propTypes = {
     className: PropTypes.string,
     type: PropTypes.string.isRequired,
-    entities: PropTypes.object.isRequired,
-    selectedIds: PropTypes.array.isRequired,
+    entities: PropTypes.object,
+    metadata: PropTypes.object,
+    selectedIds: PropTypes.array,
+    selectedMetadataPaths: PropTypes.array,
     formField: PropTypes.object.isRequired,
     removeField: PropTypes.func.isRequired
 };

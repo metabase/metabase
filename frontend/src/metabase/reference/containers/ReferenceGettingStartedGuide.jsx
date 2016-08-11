@@ -15,8 +15,6 @@ import GuideEmptyState from "metabase/reference/components/GuideEmptyState.jsx";
 import GuideHeader from "metabase/reference/components/GuideHeader.jsx";
 import GuideDetail from "metabase/reference/components/GuideDetail.jsx";
 import GuideDetailEditor from "metabase/reference/components/GuideDetailEditor.jsx";
-import DataSelector from "metabase/query_builder/DataSelector.jsx";
-
 
 import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';
@@ -162,6 +160,10 @@ export default class ReferenceGettingStartedGuide extends Component {
             .map(field => field.id.value)
             .filter(id => id !== null);
 
+        const getSelectedMetadataPaths = fields => fields
+            .map(field => [`${field.type.value}s`, field.id.value])
+            .filter(metadataPath => metadataPath[1] !== null);
+
         return (
             <form className="full" style={style} onSubmit={onSubmit}>
                 { isEditing &&
@@ -248,31 +250,26 @@ export default class ReferenceGettingStartedGuide extends Component {
                         </div>
                         <div className={S.guideEditCards}>
                             { important_segments_and_tables.map((segmentOrTableField, index, segmentOrTableFields) =>
-                                <DataSelector
-                                    includeTables={true}
-                                    query={{
-                                        query: {
-                                            source_table: segmentOrTableField.type.value === 'table' &&
-                                                segmentOrTableField.id.value
-                                        },
-                                        database: (
-                                            segmentOrTableField.type.value === 'table' &&
-                                            tables[segmentOrTableField.id.value] &&
-                                            tables[segmentOrTableField.id.value].db_id
-                                        ) || Number.parseInt(Object.keys(databases)[0]),
-                                        segment: segmentOrTableField.type.value === 'segment' &&
-                                            segmentOrTableField.id.value
+                                <GuideDetailEditor 
+                                    key={index}
+                                    className={S.guideEditCard}
+                                    type="segment or table"
+                                    metadata={{
+                                        databases,
+                                        tables,
+                                        segments
                                     }}
-                                    databases={
-                                        Object.values(databases)
-                                            .map(database => i.assoc(
-                                                database, 
-                                                'tables', 
-                                                database.tables.map(tableId => tables[tableId])
-                                            ))
-                                    }
-                                    tables={Object.values(tables)}
-                                    segments={Object.values(segments)}
+                                    formField={segmentOrTableField}
+                                    selectedMetadataPaths={getSelectedMetadataPaths(segmentOrTableFields)}
+                                    removeField={() => {
+                                        if (segmentOrTableFields.length > 1) {
+                                            return segmentOrTableFields.removeField(index);
+                                        }
+                                        segmentOrTableField.id.onChange(null);
+                                        segmentOrTableField.type.onChange(null);
+                                        segmentOrTableField.points_of_interest.onChange('');
+                                        segmentOrTableField.caveats.onChange('');
+                                    }}
                                 />
                             )}
                         </div>
