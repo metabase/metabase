@@ -7,5 +7,5 @@ case $CIRCLE_NODE_INDEX in
     3) ENGINES=h2,redshift,druid lein test ;;
     4) lein eastwood && lein bikeshed && lein docstring-checker && ./bin/reflection-linter ;;
     5) npm install && npm run lint && npm run test ;;
-    6) ./bin/build && npm run test-e2e ;;
+    6) WEBPACK_OPTS="" ./bin/build && npm run test-e2e ;;
 esac
