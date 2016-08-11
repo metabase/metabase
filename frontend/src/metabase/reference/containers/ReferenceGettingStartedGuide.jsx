@@ -381,13 +381,20 @@ export default class ReferenceGettingStartedGuide extends Component {
                                             Segments and tables
                                         </div>
                                     </div>,
-                                    // <GuideDetail 
-                                    //     title={'Impressions'} 
-                                    //     description={'A table recording each ad impression with information about each impression.'} 
-                                    //     hasLearnMore={true}
-                                    //     link={'test'} 
-                                    //     linkClass={'text-purple'} 
-                                    // />
+                                    guide.important_segments.map((segmentId) =>
+                                        <GuideDetail 
+                                            key={segmentId}
+                                            type="segment"
+                                            entity={segments[segmentId]}
+                                        />
+                                    ),
+                                    guide.important_tables.map((tableId) =>
+                                        <GuideDetail 
+                                            key={tableId}
+                                            type="table"
+                                            entity={tables[tableId]}
+                                        />
+                                    ),
                                     <div key={'segmentSeeAll'} className={S.guideSeeAll}>
                                         <div className={S.guideSeeAllBody}>
                                             <Link className={cx('text-purple', S.guideSeeAllLink)} to={'/reference/segments'}>

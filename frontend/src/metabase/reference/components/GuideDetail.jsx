@@ -25,7 +25,7 @@ const GuideDetail = ({
         table: 'text-purple'
     };
     const linkClass = typeToLinkClass[type];
-    const hasLearnMore = type === 'metric' || type === 'segment';
+    const hasLearnMore = type === 'metric' || type === 'segment' || type === 'table';
     const exploreLinks = [];
     return <div className={S.guideDetail}>
         <div className={S.guideDetailTitle}>
