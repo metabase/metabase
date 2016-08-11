@@ -99,9 +99,9 @@ export default ComposedComponent => class extends Component {
             triggerElement = React.cloneElement(triggerElement, { isEnabled: triggerElement.props.isEnabled && !isOpen });
         }
 
-        // if we have a single child which doesn't have an onClose prop go ahead and inject it directly
+        // if we have a single child which isn't an HTML element and doesn't have an onClose prop go ahead and inject it directly
         let { children } = this.props;
-        if (React.Children.count(children) === 1 && React.Children.only(children).props.onClose === undefined) {
+        if (React.Children.count(children) === 1 && React.Children.only(children).props.onClose === undefined && typeof React.Children.only(children).type !== "string") {
             children = React.cloneElement(children, { onClose: this.onClose });
         }
 

@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import { Link } from "react-router";
 
 import Icon from "metabase/components/Icon.jsx";
 import SidebarSection from "./SidebarSection.jsx";
@@ -54,14 +55,13 @@ export default class RecentViews extends Component {
                         {recentViews.map((item, index) =>
                             <li key={index} className="py1 ml1 flex align-center clearfix">
                                 {this.renderIllustration(item)}
-                                <a data-metabase-event={"Recent Views;"+item.model+";"+item.cnt} className="ml1 flex-full link" href={Urls.modelToUrl(item.model, item.model_id)}>{item.model_object.name}</a>
+                                <Link to={Urls.modelToUrl(item.model, item.model_id)} data-metabase-event={"Recent Views;"+item.model+";"+item.cnt} className="ml1 flex-full link">{item.model_object.name}</Link>
                             </li>
                         )}
                     </ul>
                 :
                     <div className="flex flex-column layout-centered text-normal text-grey-2">
-                        <span className="QuestionCircle mt4">!</span>
-                        <p className="p3 text-centered text-grey-4" style={{ "maxWidth": "100%" }}>You haven't looked at any Dashboards or Questions recently</p>
+                        <p className="p3 text-centered text-grey-2" style={{ "maxWidth": "100%" }}>You haven't looked at any dashboards or questions recently</p>
                     </div>
                 }
             </SidebarSection>

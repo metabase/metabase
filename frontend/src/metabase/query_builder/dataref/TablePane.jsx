@@ -1,7 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 
-import QueryButton from './QueryButton.jsx';
+import QueryButton from "metabase/components/QueryButton.jsx";
 import { createCard } from "metabase/lib/card";
 import { createQuery } from "metabase/lib/query";
 import { foreignKeyCountsByOriginTable } from 'metabase/lib/schema_metadata';

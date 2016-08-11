@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import { Link } from "react-router";
 import { connect } from "react-redux";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
@@ -24,11 +25,10 @@ import * as settingsActions from "../settings";
 
 const mapStateToProps = (state, props) => {
     return {
-        refreshSiteSettings: props.refreshSiteSettings,
-        settings:            getSettings(state),
-        sections:            getSections(state),
-        activeSection:       getActiveSection(state),
-        newVersionAvailable: getNewVersionAvailable(state)
+        settings:            getSettings(state, props),
+        sections:            getSections(state, props),
+        activeSection:       getActiveSection(state, props),
+        newVersionAvailable: getNewVersionAvailable(state, props)
     }
 }
 
@@ -54,7 +54,7 @@ export default class SettingsEditorApp extends Component {
     };
 
     componentWillMount() {
-        this.props.initializeSettings(this.props.refreshSiteSettings);
+        this.props.initializeSettings();
     }
 
     updateSetting(setting, value) {
@@ -120,7 +120,7 @@ export default class SettingsEditorApp extends Component {
                     />
                 </div>
             );
-        } else if (section.name === "Single Sign On") {
+        } else if (section.name === "Single Sign-On") {
             return (
                 <div className="px2">
                     <SettingsSingleSignOnForm
@@ -160,10 +160,10 @@ export default class SettingsEditorApp extends Component {
 
             return (
                 <li key={section.name}>
-                    <a href={"/admin/settings/?section=" + section.name} className={classes}>
+                    <Link to={"/admin/settings/" + section.slug}  className={classes}>
                         <span>{section.name}</span>
                         {newVersionIndicator}
-                    </a>
+                    </Link>
                 </li>
             );
         });

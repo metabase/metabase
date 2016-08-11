@@ -38,7 +38,7 @@ export default class PulseEditName extends Component {
                         ref="name"
                         className={cx("input h4 text-bold text-default", { "border-error": !this.state.valid })}
                         style={{"width":"400px"}}
-                        value={pulse.name}
+                        value={pulse.name || ""}
                         onChange={this.setName}
                         onBlur={this.validate}
                         placeholder="Important metrics"

@@ -1,5 +1,8 @@
 import React, { Component, PropTypes } from 'react';
-import OnClickOut from 'react-onclickout';
+import { Link } from "react-router";
+
+import OnClickOutsideWrapper from 'metabase/components/OnClickOutsideWrapper';
+
 import cx from 'classnames';
 import _ from "underscore";
 import { capitalize } from "metabase/lib/formatting";
@@ -8,10 +11,9 @@ import MetabaseSettings from "metabase/lib/settings";
 import Modal from "metabase/components/Modal.jsx";
 import Logs from "metabase/components/Logs.jsx";
 
-import UserAvatar from './UserAvatar.jsx';
-import Icon from './Icon.jsx';
-import LogoIcon from './LogoIcon.jsx';
-
+import UserAvatar from 'metabase/components/UserAvatar.jsx';
+import Icon from 'metabase/components/Icon.jsx';
+import LogoIcon from 'metabase/components/LogoIcon.jsx';
 
 export default class ProfileLink extends Component {
 
@@ -60,7 +62,7 @@ export default class ProfileLink extends Component {
         });
 
         return (
-            <OnClickOut onClickOut={this.closeDropdown}>
+            <OnClickOutsideWrapper handleDismissal={this.closeDropdown}>
                 <div className={dropDownClasses}>
                     <a data-metabase-event={"Navbar;Profile Dropdown;Toggle"} className="NavDropdown-button NavItem flex align-center p2 transition-background" onClick={this.toggleDropdown}>
                         <div className="NavDropdown-button-layer">
@@ -75,24 +77,24 @@ export default class ProfileLink extends Component {
                         <div className="NavDropdown-content right">
                             <ul className="NavDropdown-content-layer">
                                 <li>
-                                    <a data-metabase-event={"Navbar;Profile Dropdown;Edit Profile"} onClick={this.closeDropdown} className="Dropdown-item block text-white no-decoration" href="/user/edit_current">
+                                    <Link to="/user/edit_current" data-metabase-event={"Navbar;Profile Dropdown;Edit Profile"} onClick={this.closeDropdown} className="Dropdown-item block text-white no-decoration">
                                         Account Settings
-                                    </a>
+                                    </Link>
                                 </li>
 
                                 { user.is_superuser && context !== 'admin' ?
                                     <li>
-                                        <a data-metabase-event={"Navbar;Profile Dropdown;Enter Admin"} onClick={this.closeDropdown} className="Dropdown-item block text-white no-decoration" href="/admin/">
+                                        <Link to="/admin" data-metabase-event={"Navbar;Profile Dropdown;Enter Admin"} onClick={this.closeDropdown} className="Dropdown-item block text-white no-decoration">
                                             Admin Panel
-                                        </a>
+                                        </Link>
                                     </li>
                                 : null }
 
                                 { user.is_superuser && context === 'admin' ?
                                     <li>
-                                        <a data-metabase-event={"Navbar;Profile Dropdown;Exit Admin"} onClick={this.closeDropdown} className="Dropdown-item block text-white no-decoration" href="/">
+                                        <Link to="/" data-metabase-event={"Navbar;Profile Dropdown;Exit Admin"} onClick={this.closeDropdown} className="Dropdown-item block text-white no-decoration">
                                             Exit Admin
-                                        </a>
+                                        </Link>
                                     </li>
                                 : null }
 
@@ -117,14 +119,20 @@ export default class ProfileLink extends Component {
                                 </li>
 
                                 <li className="border-top border-light">
-                                    <a data-metabase-event={"Navbar;Profile Dropdown;Logout"} className="Dropdown-item block text-white no-decoration" href="/auth/logout">Logout</a>
+                                    <Link
+                                        to="/auth/logout"
+                                        data-metabase-event={"Navbar;Profile Dropdown;Logout"}
+                                        className="Dropdown-item block text-white no-decoration"
+                                    >
+                                        Logout
+                                    </Link>
                                 </li>
                             </ul>
                         </div>
                     : null }
 
                     { modalOpen === "about" ?
-                        <Modal className="Modal Modal--small">
+                        <Modal className="Modal Modal--small" onClose={this.closeModal}>
                             <div className="px4 pt4 pb2 text-centered relative">
                                 <span className="absolute top right p4 text-normal text-grey-3 cursor-pointer" onClick={this.closeModal}>
                                     <Icon name={'close'} size={16} />
@@ -156,7 +164,7 @@ export default class ProfileLink extends Component {
                         </Modal>
                     : null }
                 </div>
-            </OnClickOut>
+            </OnClickOutsideWrapper>
         );
     }
 }

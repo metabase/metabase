@@ -2,18 +2,25 @@ import { createSelector } from 'reselect';
 import i from "icepick";
 
 import Query, { AggregationClause } from 'metabase/lib/query';
-import { titleize, humanize } from "metabase/lib/formatting";
+import {
+    idsToObjectMap,
+    buildBreadcrumbs,
+    databaseToForeignKeys,
+    getQuestionUrl
+} from "./utils";
 
 // there might be a better way to organize sections
 // it feels like I'm duplicating a lot of routing logic here
 //TODO: refactor to use different container components for each section
 // initialize section metadata in there
+// may not be worthwhile due to the extra boilerplate required
+// ideal solution is to pass metadata to each section through router
 const referenceSections = {
     [`/reference/guide`]: {
         id: `/reference/guide`,
         name: "Understanding our data",
         breadcrumb: "Guide",
-        icon: "all"
+        icon: "reference"
     },
     [`/reference/metrics`]: {
         id: `/reference/metrics`,
@@ -67,7 +74,7 @@ const referenceSections = {
     }
 };
 
-const getReferenceSections = (state) => referenceSections;
+const getReferenceSections = (state, props) => referenceSections;
 
 const getMetricSections = (metric, table, user) => metric ? {
     [`/reference/metrics/${metric.id}`]: {
@@ -76,11 +83,15 @@ const getMetricSections = (metric, table, user) => metric ? {
         update: 'updateMetric',
         type: 'metric',
         breadcrumb: `${metric.name}`,
-        fetch: {fetchMetrics: [], fetchTables: []},
+        fetch: {fetchMetricTable: [metric.id]},
         get: 'getMetric',
         icon: "document",
         headerIcon: "ruler",
-        headerLink: `/q?db=${table && table.db_id}&table=${metric.table_id}&metric=${metric.id}`,
+        headerLink: getQuestionUrl({
+            dbId: table && table.db_id,
+            tableId: metric.table_id,
+            metricId: metric.id
+        }),
         parent: referenceSections[`/reference/metrics`]
     },
     [`/reference/metrics/${metric.id}/questions`]: {
@@ -90,12 +101,16 @@ const getMetricSections = (metric, table, user) => metric ? {
             message: `Questions about this metric will appear here as they're added`,
             icon: "all",
             action: "Ask a question",
-            link: `/q?db=${table && table.db_id}&table=${metric.table_id}&metric=${metric.id}`
+            link: getQuestionUrl({
+                dbId: table && table.db_id,
+                tableId: metric.table_id,
+                metricId: metric.id
+            })
         },
         type: 'questions',
         sidebar: 'Questions about this metric',
         breadcrumb: `${metric.name}`,
-        fetch: {fetchMetrics: [], fetchTables: [], fetchQuestions: []},
+        fetch: {fetchMetricTable: [metric.id], fetchQuestions: []},
         get: 'getMetricQuestions',
         icon: "all",
         headerIcon: "ruler",
@@ -121,12 +136,37 @@ const getSegmentSections = (segment, table, user) => segment ? {
         name: 'Details',
         update: 'updateSegment',
         type: 'segment',
+        questions: [
+            {
+                text: `Number of ${segment.name}`,
+                icon: { name: "number", scale: 1, viewBox: "8 8 16 16" },
+                link: getQuestionUrl({
+                    dbId: table && table.db_id,
+                    tableId: segment.table_id,
+                    segmentId: segment.id,
+                    getCount: true
+                })
+            },
+            {
+                text: `See all ${segment.name}`,
+                icon: "table2",
+                link: getQuestionUrl({
+                    dbId: table && table.db_id,
+                    tableId: segment.table_id,
+                    segmentId: segment.id
+                })
+            }
+        ],
         breadcrumb: `${segment.name}`,
-        fetch: {fetchSegments: [], fetchTables: []},
+        fetch: {fetchSegmentTable: [segment.id]},
         get: 'getSegment',
         icon: "document",
         headerIcon: "segment",
-        headerLink: `/q?db=${table && table.db_id}&table=${segment.table_id}&segment=${segment.id}`,
+        headerLink: getQuestionUrl({
+            dbId: table && table.db_id,
+            tableId: segment.table_id,
+            segmentId: segment.id
+        }),
         parent: referenceSections[`/reference/segments`]
     },
     [`/reference/segments/${segment.id}/fields`]: {
@@ -151,12 +191,16 @@ const getSegmentSections = (segment, table, user) => segment ? {
             message: `Questions about this segment will appear here as they're added`,
             icon: "all",
             action: "Ask a question",
-            link: `/q?db=${table && table.db_id}&table=${segment.table_id}&segment=${segment.id}`
+            link: getQuestionUrl({
+                dbId: table && table.db_id,
+                tableId: segment.table_id,
+                segmentId: segment.id
+            })
         },
         type: 'questions',
         sidebar: 'Questions about this segment',
         breadcrumb: `${segment.name}`,
-        fetch: {fetchSegments: [], fetchTables: [], fetchQuestions: []},
+        fetch: {fetchSegmentTable: [segment.id], fetchQuestions: []},
         get: 'getSegmentQuestions',
         icon: "all",
         headerIcon: "segment",
@@ -176,12 +220,33 @@ const getSegmentSections = (segment, table, user) => segment ? {
     }
 } : {};
 
-const getSegmentFieldSections = (segment, field, user) => segment && field ? {
+const getSegmentFieldSections = (segment, table, field, user) => segment && field ? {
     [`/reference/segments/${segment.id}/fields/${field.id}`]: {
         id: `/reference/segments/${segment.id}/fields/${field.id}`,
         name: 'Details',
         update: 'updateField',
         type: 'field',
+        questions: [
+            {
+                text: `Number of ${table && table.display_name} grouped by ${field.display_name}`,
+                icon: { name: "number", scale: 1, viewBox: "8 8 16 16" },
+                link: getQuestionUrl({
+                    dbId: table && table.db_id,
+                    tableId: field.table_id,
+                    fieldId: field.id,
+                    getCount: true
+                })
+            },
+            {
+                text: `All distinct values of ${field.display_name}`,
+                icon: "table2",
+                link: getQuestionUrl({
+                    dbId: table && table.db_id,
+                    tableId: field.table_id,
+                    fieldId: field.id
+                })
+            }
+        ],
         breadcrumb: `${field.display_name}`,
         fetch: {fetchSegmentFields: [segment.id]},
         get: "getFieldBySegment",
@@ -228,12 +293,34 @@ const getTableSections = (database, table) => database && table ? {
         name: 'Details',
         update: 'updateTable',
         type: 'table',
+        questions: [
+            {
+                text: `Count of ${table.display_name}`,
+                icon: { name: "number", scale: 1, viewBox: "8 8 16 16" },
+                link: getQuestionUrl({
+                    dbId: table.db_id,
+                    tableId: table.id,
+                    getCount: true
+                })
+            },
+            {
+                text: `See raw data for ${table.display_name}`,
+                icon: "table2",
+                link: getQuestionUrl({
+                    dbId: table.db_id,
+                    tableId: table.id,
+                })
+            }
+        ],
         breadcrumb: `${table.display_name}`,
         fetch: {fetchDatabaseMetadata: [database.id]},
         get: 'getTable',
         icon: "document",
         headerIcon: "table2",
-        headerLink: `/q?db=${table.db_id}&table=${table.id}`,
+        headerLink: getQuestionUrl({
+            dbId: table.db_id,
+            tableId: table.id,
+        }),
         parent: getDatabaseSections(database)[`/reference/databases/${database.id}/tables`]
     },
     [`/reference/databases/${database.id}/tables/${table.id}/fields`]: {
@@ -258,7 +345,10 @@ const getTableSections = (database, table) => database && table ? {
             message: `Questions about this table will appear here as they're added`,
             icon: "all",
             action: "Ask a question",
-            link: `/q?db=${table.db_id}&table=${table.id}`
+            link: getQuestionUrl({
+                dbId: table.db_id,
+                tableId: table.id,
+            })
         },
         type: 'questions',
         sidebar: 'Questions about this table',
@@ -277,6 +367,39 @@ const getTableFieldSections = (database, table, field) => database && table && f
         name: 'Details',
         update: 'updateField',
         type: 'field',
+        questions: [
+            {
+                text: `Number of ${table.display_name} grouped by ${field.display_name}`,
+                icon: { name: "bar", scale: 1, viewBox: "8 8 16 16" },
+                link: getQuestionUrl({
+                    dbId: database.id,
+                    tableId: table.id,
+                    fieldId: field.id,
+                    getCount: true,
+                    visualization: 'bar'
+                })
+            },
+            {
+                text: `Number of ${table.display_name} grouped by ${field.display_name}`,
+                icon: { name: "pie", scale: 1, viewBox: "8 8 16 16" },
+                link: getQuestionUrl({
+                    dbId: database.id,
+                    tableId: table.id,
+                    fieldId: field.id,
+                    getCount: true,
+                    visualization: 'pie'
+                })
+            },
+            {
+                text: `All distinct values of ${field.display_name}`,
+                icon: "table2",
+                link: getQuestionUrl({
+                    dbId: database.id,
+                    tableId: table.id,
+                    fieldId: field.id
+                })
+            }
+        ],
         breadcrumb: `${field.display_name}`,
         fetch: {fetchDatabaseMetadata: [database.id]},
         get: "getField",
@@ -286,61 +409,57 @@ const getTableFieldSections = (database, table, field) => database && table && f
     }
 } : {};
 
-const idsToObjectMap = (ids, objects) => ids
-    .map(id => objects[id])
-    .reduce((map, object) => Object.assign({}, map, {[object.id]: object}), {});
-    // recursive freezing done by i.assoc here is too expensive
-    // hangs browser for large databases
-    // .reduce((map, object) => i.assoc(map, object.id, object), {});
+export const getUser = (state, props) => state.currentUser;
 
-export const getUser = (state) => state.currentUser;
+export const getSectionId = (state, props) => props.location.pathname;
 
-export const getSectionId = (state) => state.router.location.pathname;
-
-export const getMetricId = (state) => Number.parseInt(state.router.params.metricId);
-const getMetrics = (state) => state.metadata.metrics;
+export const getMetricId = (state, props) => Number.parseInt(props.params.metricId);
+const getMetrics = (state, props) => state.metadata.metrics;
 export const getMetric = createSelector(
     [getMetricId, getMetrics],
     (metricId, metrics) => metrics[metricId] || { id: metricId }
 );
 
-export const getSegmentId = (state) => Number.parseInt(state.router.params.segmentId);
-const getSegments = (state) => state.metadata.segments;
+export const getSegmentId = (state, props) => Number.parseInt(props.params.segmentId);
+const getSegments = (state, props) => state.metadata.segments;
 export const getSegment = createSelector(
     [getSegmentId, getSegments],
     (segmentId, segments) => segments[segmentId] || { id: segmentId }
 );
 
-export const getDatabaseId = (state) => Number.parseInt(state.router.params.databaseId);
-const getDatabases = (state) => state.metadata.databases;
+export const getDatabaseId = (state, props) => Number.parseInt(props.params.databaseId);
+const getDatabases = (state, props) => state.metadata.databases;
 const getDatabase = createSelector(
     [getDatabaseId, getDatabases],
     (databaseId, databases) => databases[databaseId] || { id: databaseId }
 );
 
-export const getTableId = (state) => Number.parseInt(state.router.params.tableId);
-// export const getTableId = (state) => Number.parseInt(state.router.params.tableId);
-export const getTables = (state) => state.metadata.tables;
+export const getTableId = (state, props) => Number.parseInt(props.params.tableId);
+// export const getTableId = (state, props) => Number.parseInt(props.params.tableId);
+export const getTables = (state, props) => state.metadata.tables;
 const getTablesByDatabase = createSelector(
     [getTables, getDatabase],
     (tables, database) => tables && database && database.tables ?
         idsToObjectMap(database.tables, tables) : {}
 );
-const getTable = createSelector(
-    [getTableId, getTables],
-    (tableId, tables) => tables[tableId] || { id: tableId }
-);
 const getTableBySegment = createSelector(
     [getSegment, getTables],
-    (segment, tables) => segment ? tables[segment.table_id] : {}
+    (segment, tables) => segment && segment.table_id ? tables[segment.table_id] : {}
 );
 const getTableByMetric = createSelector(
     [getMetric, getTables],
-    (metric, tables) => metric ? tables[metric.table_id] : {}
+    (metric, tables) => metric && metric.table_id ? tables[metric.table_id] : {}
+);
+export const getTable = createSelector(
+    [getTableId, getTables, getMetricId, getTableByMetric, getSegmentId, getTableBySegment],
+    (tableId, tables, metricId, tableByMetric, segmentId, tableBySegment) => tableId ?
+        tables[tableId] || { id: tableId } :
+        metricId ? tableByMetric :
+            segmentId ? tableBySegment : {}
 );
 
-export const getFieldId = (state) => Number.parseInt(state.router.params.fieldId);
-const getFields = (state) => state.metadata.fields;
+export const getFieldId = (state, props) => Number.parseInt(props.params.fieldId);
+const getFields = (state, props) => state.metadata.fields;
 const getFieldsByTable = createSelector(
     [getTable, getFields],
     (table, fields) => table && table.fields ? idsToObjectMap(table.fields, fields) : {}
@@ -358,7 +477,7 @@ const getFieldBySegment = createSelector(
     (fieldId, fields) => fields[fieldId] || { id: fieldId }
 );
 
-const getQuestions = (state) => i.getIn(state, ['questions', 'entities', 'cards']) || {};
+const getQuestions = (state, props) => i.getIn(state, ['questions', 'entities', 'cards']) || {};
 
 const getMetricQuestions = createSelector(
     [getMetricId, getQuestions],
@@ -370,7 +489,7 @@ const getMetricQuestions = createSelector(
         .reduce((map, question) => i.assoc(map, question.id, question), {})
 );
 
-const getRevisions = (state) => state.metadata.revisions;
+const getRevisions = (state, props) => state.metadata.revisions;
 
 const getMetricRevisions = createSelector(
     [getMetricId, getRevisions],
@@ -404,28 +523,6 @@ const getDatabaseBySegment = createSelector(
     (segment, tables, databases) => segment && segment.table_id && tables[segment.table_id] &&
         databases[tables[segment.table_id].db_id] || {}
 );
-
-export const databaseToForeignKeys = (database) => database && database.tables_lookup ?
-    Object.values(database.tables_lookup)
-        // ignore tables without primary key
-        .filter(table => table && table.fields_lookup &&
-            Object.values(table.fields_lookup)
-                .find(field => field.special_type === 'id')
-        )
-        .map(table => ({
-            table: table,
-            field: table && table.fields_lookup && Object.values(table.fields_lookup)
-                .find(field => field.special_type === 'id')
-        }))
-        .map(({ table, field }) => ({
-            id: field.id,
-            name: table.schema && table.schema !== "public" ?
-                `${titleize(humanize(table.schema))}.${table.display_name} → ${field.display_name}` :
-                `${table.display_name} → ${field.display_name}`,
-            description: field.description
-        }))
-        .reduce((map, foreignKey) => i.assoc(map, foreignKey.id, foreignKey), {}) :
-    {};
 
 const getForeignKeysBySegment = createSelector(
     [getDatabaseBySegment],
@@ -461,7 +558,7 @@ export const getSections = createSelector(
             return segmentSections;
         }
 
-        const segmentFieldSections = getSegmentFieldSections(segment, fieldBySegment);
+        const segmentFieldSections = getSegmentFieldSections(segment, tableBySegment, fieldBySegment);
         if (segmentFieldSections[sectionId]) {
             return segmentFieldSections;
         }
@@ -512,8 +609,8 @@ const dataSelectors = {
     getFieldsBySegment
 };
 
-export const getData = (state) => {
-    const section = getSection(state);
+export const getData = (state, props) => {
+    const section = getSection(state, props);
     if (!section) {
         return {};
     }
@@ -522,30 +619,12 @@ export const getData = (state) => {
         return {};
     }
 
-    return selector(state);
+    return selector(state, props);
 };
 
-export const getLoading = (state) => state.reference.isLoading;
+export const getLoading = (state, props) => state.reference.isLoading;
 
-export const getError = (state) => state.reference.error;
-
-const getBreadcrumb = (section, index, sections) => index !== sections.length - 1 ?
-    [section.breadcrumb, section.id] : [section.breadcrumb];
-
-const getParentSections = (section) => {
-    if (!section.parent) {
-        return [section];
-    }
-
-    const parentSections = []
-        .concat(getParentSections(section.parent), section);
-
-    return parentSections;
-};
-
-export const buildBreadcrumbs = (section) => getParentSections(section)
-    .map(getBreadcrumb)
-    .slice(-3);
+export const getError = (state, props) => state.reference.error;
 
 export const getBreadcrumbs = createSelector(
     [getSection],
@@ -573,4 +652,11 @@ export const getHasRevisionHistory = createSelector(
         section.type === 'segment'
 )
 
-export const getIsEditing = (state) => state.reference.isEditing;
+export const getHasQuestions = createSelector(
+    [getSection],
+    (section) => section.questions && section.questions.length > 0
+)
+
+export const getIsEditing = (state, props) => state.reference.isEditing;
+
+export const getIsFormulaExpanded = (state, props) => state.reference.isFormulaExpanded;

@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import { Link } from "react-router";
 import fetch from 'isomorphic-fetch';
 
 import SidebarSection from "./SidebarSection.jsx";
@@ -30,11 +31,11 @@ export default class NextStep extends Component {
         const { next } = this.state;
         if (next) {
             return (
-                <SidebarSection title="Setup Tip" icon="info" extra={<a className="text-brand no-decoration" href="/admin/settings">View all</a>}>
-                    <a className="block p3 no-decoration" href={next.link}>
+                <SidebarSection title="Setup Tip" icon="info" extra={<Link to="/admin/settings" className="text-brand no-decoration">View all</Link>}>
+                    <Link to={next.link} className="block p3 no-decoration">
                         <h4 className="text-brand text-bold">{next.title}</h4>
                         <p className="m0 mt1">{next.description}</p>
-                    </a>
+                    </Link>
                 </SidebarSection>
             )
         } else {

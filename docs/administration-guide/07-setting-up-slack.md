@@ -23,5 +23,5 @@ Now just click the `Create token` button next to the team you want to integrate 
 
 Paste the value into the text box for `Slack API Token` and click the button to save your changes.  That's it!  Metabase will automatically run a quick test to check that the API token is working properly and if not you'll get an error message.
 
-## Next: Single Sign On
-Learn how to [configure Single Sign On](08-single-sign-on.md) to let users sign in or sign up with just a click.
+## Next: Single Sign-On
+Learn how to [configure Single Sign-On](08-single-sign-on.md) to let users sign in or sign up with just a click.

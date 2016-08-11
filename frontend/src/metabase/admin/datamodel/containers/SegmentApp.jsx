@@ -1,4 +1,6 @@
 import React, { Component, PropTypes } from "react";
+import { connect } from "react-redux";
+import { push } from "react-router-redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
@@ -7,9 +9,12 @@ import SegmentForm from "./SegmentForm.jsx";
 import { segmentEditSelectors } from "../selectors";
 import * as actions from "../metadata";
 
-import { connect } from "react-redux";
+const mapDispatchToProps = {
+    ...actions,
+    onChangeLocation: push
+};
 
-@connect(segmentEditSelectors, actions)
+@connect(segmentEditSelectors, mapDispatchToProps)
 export default class SegmentApp extends Component {
     async componentWillMount() {
         const { params, location } = this.props;

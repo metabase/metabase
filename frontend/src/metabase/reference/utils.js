@@ -1,5 +1,15 @@
 import i from "icepick";
 
+import { titleize, humanize } from "metabase/lib/formatting";
+import { startNewCard, serializeCardForUrl } from "metabase/lib/card";
+
+export const idsToObjectMap = (ids, objects) => ids
+    .map(id => objects[id])
+    .reduce((map, object) => Object.assign({}, map, {[object.id]: object}), {});
+    // recursive freezing done by i.assoc here is too expensive
+    // hangs browser for large databases
+    // .reduce((map, object) => i.assoc(map, object.id, object), {});
+
 export const tryFetchData = async (props) => {
     const {
         section,
@@ -95,6 +105,46 @@ export const tryUpdateFields = async (formFields, props) => {
     endEditing();
 }
 
+const getBreadcrumb = (section, index, sections) => index !== sections.length - 1 ?
+    [section.breadcrumb, section.id] : [section.breadcrumb];
+
+const getParentSections = (section) => {
+    if (!section.parent) {
+        return [section];
+    }
+
+    const parentSections = []
+        .concat(getParentSections(section.parent), section);
+
+    return parentSections;
+};
+
+export const buildBreadcrumbs = (section) => getParentSections(section)
+    .map(getBreadcrumb)
+    .slice(-3);
+
+export const databaseToForeignKeys = (database) => database && database.tables_lookup ?
+    Object.values(database.tables_lookup)
+        // ignore tables without primary key
+        .filter(table => table && table.fields_lookup &&
+            Object.values(table.fields_lookup)
+                .find(field => field.special_type === 'id')
+        )
+        .map(table => ({
+            table: table,
+            field: table && table.fields_lookup && Object.values(table.fields_lookup)
+                .find(field => field.special_type === 'id')
+        }))
+        .map(({ table, field }) => ({
+            id: field.id,
+            name: table.schema && table.schema !== "public" ?
+                `${titleize(humanize(table.schema))}.${table.display_name} → ${field.display_name}` :
+                `${table.display_name} → ${field.display_name}`,
+            description: field.description
+        }))
+        .reduce((map, foreignKey) => i.assoc(map, foreignKey.id, foreignKey), {}) :
+    {};
+
 export const fieldsToFormFields = (fields) => Object.keys(fields)
     .map(key => [
         `${key}.display_name`,
@@ -126,3 +176,33 @@ export const separateTablesBySchema = (
                 ] :
                 createListItem(table, index, section);
     });
+
+export const getQuestion = ({dbId, tableId, fieldId, metricId, segmentId, getCount, visualization}) => {
+    const newQuestion = startNewCard('query', dbId, tableId);
+
+    // consider taking a look at Ramda as a possible underscore alternative?
+    // http://ramdajs.com/0.21.0/index.html
+    const question = i.chain(newQuestion)
+        .updateIn(
+            ['dataset_query', 'query', 'aggregation'],
+            aggregation => getCount ? ['count'] : aggregation
+        )
+        .updateIn(['display'], display => visualization || display)
+        .updateIn(
+            ['dataset_query', 'query', 'breakout'],
+            breakout => fieldId ? [fieldId] : breakout
+        )
+        .value();
+
+    if (metricId) {
+        return i.assocIn(question, ['dataset_query', 'query', 'aggregation'], ['METRIC', metricId]);
+    }
+
+    if (segmentId) {
+        return i.assocIn(question, ['dataset_query', 'query', 'filter'], ['AND', ['SEGMENT', segmentId]]);
+    }
+
+    return question;
+};
+
+export const getQuestionUrl = getQuestionArgs => `/q#${serializeCardForUrl(getQuestion(getQuestionArgs))}`;

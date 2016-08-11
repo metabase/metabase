@@ -32,14 +32,11 @@ import {
     CANCEL_QUERY,
     QUERY_COMPLETED,
     QUERY_ERRORED,
-    LOAD_OBJECT_DETAIL_FK_REFERENCES
+    LOAD_OBJECT_DETAIL_FK_REFERENCES,
+
+    SET_CURRENT_STATE
 } from "./actions";
 
-
-// TODO: these are here as work arounds until we are transitioned over to ReduxRouter and using their history approach
-export const updateUrl = handleActions({
-    [INITIALIZE_QB]: { next: (state, { payload }) => payload ? payload.updateUrl : state }
-}, () => console.log("default"));
 
 // TODO: once we are using the global redux store we can get this from there
 export const user = handleActions({
@@ -160,3 +157,7 @@ export const queryExecutionPromise = handleActions({
 export const parameterValues = handleActions({
     [SET_PARAMETER_VALUE]: { next: (state, { payload: { id, value }}) => i.assoc(state, id, value) }
 }, {});
+
+export const currentState = handleActions({
+    [SET_CURRENT_STATE]: { next: (state, { payload }) => payload }
+}, null);

@@ -23,8 +23,8 @@ const Field = ({
     icon,
     isEditing,
     formField
-}) => {
-    return <div className={cx(S.item)}>
+}) => 
+    <div className={cx(S.item)}>
         <div className={S.leftIcons}>
             { icon && <Icon className={S.chartIcon} name={icon} size={20} /> }
         </div>
@@ -108,8 +108,7 @@ const Field = ({
                 </div>
             </div>
         </div>
-    </div>
-}
+    </div>;
 Field.propTypes = {
     field: PropTypes.object.isRequired,
     foreignKeys: PropTypes.object.isRequired,
