@@ -145,6 +145,7 @@ export class Option extends Component {
 class LegacySelect extends Component {
     static propTypes = {
         value: PropTypes.any,
+        values: PropTypes.array,
         options: PropTypes.array.isRequired,
         disabledOptionIds: PropTypes.array, 
         placeholder: PropTypes.string,
@@ -170,9 +171,13 @@ class LegacySelect extends Component {
     }
 
     render() {
-        const { className, value, onChange, options, disabledOptionIds, optionNameFn, optionValueFn, placeholder, isInitiallyOpen } = this.props;
+        const { className, value, values, onChange, options, disabledOptionIds, optionNameFn, optionValueFn, placeholder, isInitiallyOpen } = this.props;
 
-        var selectedName = value ? optionNameFn(value) : placeholder;
+        var selectedName = values && values.length > 0 ? 
+            values
+                .map((value, index) => `${optionNameFn(value)}${index !== (values.length - 1) ? ', ' : ''}`)
+                .reduce((selectTitle, name) => selectTitle.concat(name), '') :
+            value ? optionNameFn(value) : placeholder;
 
         var triggerElement = (
             <div className={"flex align-center " + (!value ? " text-grey-3" : "")}>
@@ -192,13 +197,16 @@ class LegacySelect extends Component {
         var columns = [
             {
                 selectedItem: value,
+                selectedItems: values,
                 sections: sections,
                 disabledOptionIds: disabledOptionIds,
                 itemTitleFn: optionNameFn,
                 itemDescriptionFn: (item) => item.description,
                 itemSelectFn: (item) => {
-                    onChange(optionValueFn(item))
-                    this.toggle();
+                    onChange(optionValueFn(item));
+                    if (!values) {
+                        this.toggle();
+                    }
                 }
             }
         ];

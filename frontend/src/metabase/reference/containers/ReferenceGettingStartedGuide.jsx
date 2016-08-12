@@ -55,6 +55,7 @@ const mapStateToProps = (state, props) => {
 
     // redux-form populates fields with stale values after update 
     // if we dont specify nulls here 
+    // could use some refactoring
     const initialValues = guide && {
         things_to_know: guide.things_to_know || null,
         contact: guide.contact || {name: null, email: null},

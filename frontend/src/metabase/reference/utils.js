@@ -185,7 +185,8 @@ export const tryUpdateGuide = async (formFields, props) => {
                 
                 return [updatingOldEntity];
             });
-
+        //FIXME: necessary because revision_message is a mandatory field
+        // even though we don't actually keep track of changes to caveats/points_of_interest yet
         const updateWithRevisionMessage = updateEntity => entity => updateEntity(i.assoc(
             entity,
             'revision_message', 

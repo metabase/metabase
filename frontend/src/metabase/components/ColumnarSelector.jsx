@@ -12,6 +12,9 @@ export default class ColumnarSelector extends Component {
     };
 
     render() {
+        const isItemSelected = (item, column) => column.selectedItems ?
+            column.selectedItems.includes(item) :
+            column.selectedItem === item; 
         var columns = this.props.columns.map((column, columnIndex) => {
             var sectionElements;
             if (column) {
@@ -22,8 +25,8 @@ export default class ColumnarSelector extends Component {
                     var items = section.items.map((item, rowIndex) => {
                         var itemClasses = cx({
                             'ColumnarSelector-row': true,
-                            'ColumnarSelector-row--selected': item === column.selectedItem,
-                            'ColumnarSelector-row--disabled': item !== column.selectedItem && column.disabledOptionIds.includes(item.id),
+                            'ColumnarSelector-row--selected': isItemSelected(item, column),
+                            'ColumnarSelector-row--disabled': !isItemSelected(item, column) && column.disabledOptionIds.includes(item.id),
                             'flex': true,
                             'no-decoration': true
                         });

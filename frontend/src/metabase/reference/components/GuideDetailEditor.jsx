@@ -126,6 +126,10 @@ const GuideDetailEditor = ({
                 {...formField.caveats}
                 disabled={formField.id.value === null || formField.id.value === undefined}                
             />
+            <Select
+                options={[1, 2]} 
+                values={[1, 2]}
+            />
         </div>
     </div>;
 };
