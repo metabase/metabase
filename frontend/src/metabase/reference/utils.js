@@ -129,6 +129,7 @@ export const tryUpdateGuide = async (formFields, props) => {
         updateMetric,
         updateSegment,
         updateTable,
+        updateMetricImportantFields,
         updateSetting,
         fetchGuide,
         clearRequestState
@@ -220,7 +221,26 @@ export const tryUpdateGuide = async (formFields, props) => {
                 entities: metrics,
                 updateEntity: updateWithRevisionMessage(updateMetric)
             }));
-
+        
+        const updatingMetricImportantFields = formFields.important_metrics
+            .map(metricFormField => {
+                if (!metricFormField.id || !metricFormField.important_fields) {
+                    return [];
+                }
+                console.log(metricFormField);
+                const importantFieldIds = metricFormField.important_fields
+                    .map(field => field.id);
+                const existingImportantFieldIds = guide.metric_important_fields[metricFormField.id];
+                
+                if (existingImportantFieldIds && 
+                    existingImportantFieldIds.length === importantFieldIds.length &&
+                    existingImportantFieldIds.every(id => importantFieldIds.includes(id))) {
+                    return [];
+                }
+                
+                return [updateMetricImportantFields(metricFormField.id, importantFieldIds)];
+            });
+        
         const segmentFields = formFields.important_segments_and_tables
             .filter(field => field.type === 'segment');
 
@@ -270,6 +290,7 @@ export const tryUpdateGuide = async (formFields, props) => {
         const updatingData = _.flatten([
             updatingDashboards,
             updatingMetrics,
+            updatingMetricImportantFields,
             updatingSegments,
             updatingTables,
             updatingThingsToKnow,

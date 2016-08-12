@@ -17,7 +17,7 @@ import { augmentDatabase, augmentTable } from "metabase/lib/table";
 import { clearRequestState } from "./requests";
 
 const MetabaseApi = new AngularResourceProxy("Metabase", ["db_list", "db_update", "db_metadata", "table_list", "table_update", "table_query_metadata", "field_update"]);
-const MetricApi = new AngularResourceProxy("Metric", ["list", "update"]);
+const MetricApi = new AngularResourceProxy("Metric", ["list", "update", "update_important_fields"]);
 const SegmentApi = new AngularResourceProxy("Segment", ["list", "update"]);
 const RevisionApi = new AngularResourceProxy("Revisions", ["get"]);
 
@@ -72,6 +72,27 @@ export const updateMetric = createThunkAction(UPDATE_METRIC, function(metric) {
 
             dispatch(clearRequestState({statePath: ['metadata', 'revisions', 'metric', metric.id]}));
             return i.assoc(existingMetrics, mergedMetric.id, mergedMetric);
+        };
+
+        return await updateData({
+            dispatch, 
+            getState, 
+            requestStatePath, 
+            existingStatePath, 
+            putData
+        });
+    };
+});
+
+const UPDATE_METRIC_IMPORTANT_FIELDS = "metabase/guide/UPDATE_METRIC_IMPORTANT_FIELDS";
+export const updateMetricImportantFields = createThunkAction(UPDATE_METRIC_IMPORTANT_FIELDS, function(metricId, importantFieldIds) {
+    return async (dispatch, getState) => {
+        const requestStatePath = ["reference", "guide", "metric_important_fields", metricId];
+        const existingStatePath = requestStatePath;
+        const putData = async () => {
+            await MetricApi.update_important_fields({ metricId, important_field_ids: importantFieldIds });
+
+            dispatch(clearRequestState({statePath: ['reference', 'guide']}));
         };
 
         return await updateData({

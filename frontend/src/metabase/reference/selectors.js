@@ -470,7 +470,7 @@ export const getTable = createSelector(
 );
 
 export const getFieldId = (state, props) => Number.parseInt(props.params.fieldId);
-const getFields = (state, props) => state.metadata.fields;
+export const getFields = (state, props) => state.metadata.fields;
 const getFieldsByTable = createSelector(
     [getTable, getFields],
     (table, fields) => table && table.fields ? idsToObjectMap(table.fields, fields) : {}

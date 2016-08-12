@@ -34,6 +34,7 @@ import {
     getMetrics,
     getSegments,
     getTables,
+    getFields,
     getDatabases,
     getLoading,
     getError,
@@ -47,15 +48,17 @@ import {
 
 const mapStateToProps = (state, props) => {
     const guide = getGuide(state, props); 
+    console.log(guide);
     const dashboards = getDashboards(state, props);
     const metrics = getMetrics(state, props);
     const segments = getSegments(state, props);
     const tables = getTables(state, props);
+    const fields = getFields(state, props);
     const databases = getDatabases(state, props);
 
     // redux-form populates fields with stale values after update 
     // if we dont specify nulls here 
-    // could use some refactoring
+    // could use a lot of refactoring
     const initialValues = guide && {
         things_to_know: guide.things_to_know || null,
         contact: guide.contact || {name: null, email: null},
@@ -64,7 +67,7 @@ const mapStateToProps = (state, props) => {
             {id: null, caveats: null, points_of_interest: null},
         important_metrics: guide.important_metrics && guide.important_metrics.length > 0 ? 
             guide.important_metrics
-                .map(metricId => metrics[metricId] && i.assoc(metrics[metricId], 'important_fields', [])) :
+                .map(metricId => metrics[metricId] && i.assoc(metrics[metricId], 'important_fields', guide.metric_important_fields[metricId] && guide.metric_important_fields[metricId].map(fieldId => fields[fieldId]))) :
             [{id: null, caveats: null, points_of_interest: null, important_fields: null}],
         important_segments_and_tables: 
             (guide.important_segments && guide.important_segments.length > 0) ||
