@@ -28,6 +28,10 @@ const GuideDetailEditor = ({
         metrics
     } = metadata;
 
+    const fieldsByMetric = type === 'metric' && Object.values(
+        tables[metrics[formField.id.value].table_id].fields_lookup
+    );
+
     return <div className={cx(S.guideDetailEditor, className)}>
         <div className={S.guideDetailEditorClose}>
             <Icon
@@ -130,15 +134,21 @@ const GuideDetailEditor = ({
             { type === 'metric' &&
                 <Select
                     triggerClasses={cx('px2', S.guideDetailEditorSelect)}
-                    options={Object.values(tables[metrics[formField.id.value].table_id].fields_lookup)} 
+                    options={fieldsByMetric} 
                     optionNameFn={option => option.display_name || option.name}
                     placeholder={`Which 2-3 fields do you usually group this metric by?`}
                     values={formField.important_fields.value}
+                    disabledOptionIds={formField.important_fields.value.length === 3 ?
+                        fieldsByMetric
+                            .filter(field => !formField.important_fields.value.includes(field))
+                            .map(field => field.id) :
+                        []
+                    }
                     onChange={(field) => {
                         const importantFields = formField.important_fields.value;
                         return importantFields.includes(field) ?
                             formField.important_fields.onChange(importantFields.filter(importantField => importantField !== field)) :
-                            formField.important_fields.onChange(importantFields.concat(field));
+                            importantFields.length < 3 && formField.important_fields.onChange(importantFields.concat(field));
                     }}
                 />
             }

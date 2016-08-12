@@ -15,6 +15,7 @@ export default class ColumnarSelector extends Component {
         const isItemSelected = (item, column) => column.selectedItems ?
             column.selectedItems.includes(item) :
             column.selectedItem === item; 
+
         var columns = this.props.columns.map((column, columnIndex) => {
             var sectionElements;
             if (column) {
@@ -26,9 +27,10 @@ export default class ColumnarSelector extends Component {
                         var itemClasses = cx({
                             'ColumnarSelector-row': true,
                             'ColumnarSelector-row--selected': isItemSelected(item, column),
-                            'ColumnarSelector-row--disabled': !isItemSelected(item, column) && column.disabledOptionIds.includes(item.id),
+                            'ColumnarSelector-row--disabled': column.disabledOptionIds.includes(item.id),
                             'flex': true,
-                            'no-decoration': true
+                            'no-decoration': true,
+                            'cursor-default': column.disabledOptionIds.includes(item.id)
                         });
                         var checkIcon = lastColumn ? <Icon name="check" size={14}/> : null;
                         var descriptionElement;
@@ -38,7 +40,7 @@ export default class ColumnarSelector extends Component {
                         }
                         return (
                             <li key={rowIndex}>
-                                <a className={itemClasses} onClick={column.itemSelectFn.bind(null, item)}>
+                                <a className={itemClasses} onClick={!column.disabledOptionIds.includes(item.id) && column.itemSelectFn.bind(null, item)}>
                                     {checkIcon}
                                     <div className="flex flex-column">
                                         {column.itemTitleFn(item)}

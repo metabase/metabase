@@ -173,15 +173,17 @@ class LegacySelect extends Component {
     render() {
         const { className, value, values, onChange, options, disabledOptionIds, optionNameFn, optionValueFn, placeholder, isInitiallyOpen } = this.props;
 
-        var selectedName = values && values.length > 0 ? 
-            values
-                .map((value, index) => `${optionNameFn(value)}${index !== (values.length - 1) ? ', ' : ''}`)
-                .reduce((selectTitle, name) => selectTitle.concat(name), '') :
-            value ? optionNameFn(value) : placeholder;
+        var selectedName = value ? optionNameFn(value) : placeholder;
 
         var triggerElement = (
             <div className={"flex align-center " + (!value ? " text-grey-3" : "")}>
-                <span className="mr1">{selectedName}</span>
+                { values && values.length !== 0 ?
+                    values
+                        .map(value => optionNameFn(value))
+                        .sort()
+                        .map((name, index) => <span key={index} className="mr1">{`${name}${index !== (values.length - 1) ? ',   ' : ''}`}</span>) :
+                    <span className="mr1">{selectedName}</span>
+                }
                 <Icon className="flex-align-right" name="chevrondown" size={12}/>
             </div>
         );

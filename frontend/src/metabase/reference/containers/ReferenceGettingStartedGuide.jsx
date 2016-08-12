@@ -202,6 +202,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                 className={S.guideEditCard}
                                 type="dashboard" 
                                 entities={dashboards}
+                                selectedIds={[most_important_dashboard.id.value]}
                                 formField={most_important_dashboard}
                                 removeField={() => {
                                     most_important_dashboard.id.onChange(null);
