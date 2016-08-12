@@ -10,22 +10,11 @@ machine:
     version: 4.4.7
 dependencies:
   override:
-    - sudo apt-get purge mongodb-org*
-    - sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
-    - echo "deb http://repo.mongodb.org/apt/ubuntu precise/mongodb-org/3.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.0.list
-    - sudo apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
-    - echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google.list
-    - sudo add-apt-repository ppa:crate/stable -y
-    - sudo apt-get update
-    - sudo apt-get install -y mongodb-org crate google-chrome-stable
-    # ulimit setting refused Crate service to start on CircleCI container - so comment it
-    - sudo sed -i '/MAX_LOCKED_MEMORY/s/^/#/' /etc/init/crate.conf
-    - sudo service mongod restart
-    - sudo service crate restart
     - lein deps
     - pip install awscli==1.7.3
     - npm install -g npm@2.15.9
-    - npm install
+    # Forces the Sauce Connect binary to be downloaded during dependencies phase so it's cached
+    - SAUCE_CONNECT_DOWNLOAD_ON_INSTALL=true npm install
 database:
   post:
     # MySQL doesn't load named timezone information automatically, you have to run this command to load it

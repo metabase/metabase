@@ -3,7 +3,12 @@ import webdriver, { By, until } from "selenium-webdriver";
 import fs from "fs-promise";
 import path from "path";
 
+import { delay } from '../../../src/metabase/lib/promise';
+
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
+
+const SAUCE_USERNAME = process.env["SAUCE_USERNAME"];
+const SAUCE_ACCESS_KEY = process.env["SAUCE_ACCESS_KEY"];
 
 async function loginMetabase(driver, username, password) {
     await driver.wait(until.elementLocated(By.css("[name=email]")));
@@ -27,15 +32,51 @@ async function screenshot(driver, filename) {
     await fs.writeFile(filename, image, 'base64');
 }
 
+import sauceConnectLauncher from "sauce-connect-launcher";
+
+function startSauceConnect(config) {
+    return new Promise((resolve, reject) => {
+        sauceConnectLauncher(config, function (err, sauceConnectProcess) {
+            if (err) {
+                reject(err);
+            } else {
+                resolve({
+                    close: () =>
+                        new Promise((resolve, reject) =>
+                            sauceConnectProcess.close(resolve)
+                        )
+                });
+            }
+        });
+    });
+}
+
 describe("auth/login", () => {
-    let server, driver;
+    let server, sauceConnect, driver;
 
     beforeAll(async () => {
-        server = await startServer("frontend/test/e2e/support/fixtures/setup.db");
+        [server, sauceConnect] = await Promise.all([
+            startServer("frontend/test/e2e/support/fixtures/setup.db"),
+            startSauceConnect({
+                username: SAUCE_USERNAME,
+                accessKey: SAUCE_ACCESS_KEY
+            })
+        ]);
+
+        // driver = new webdriver.Builder()
+        //     .forBrowser('chrome')
+        //     .build();
         driver = new webdriver.Builder()
-            .forBrowser('chrome')
+            .withCapabilities({
+                'browserName': 'chrome',
+                'platform': 'Mac',
+                'version': '48.0',
+                'username': SAUCE_USERNAME,
+                'accessKey': SAUCE_ACCESS_KEY
+            })
+            .usingServer("http://" + SAUCE_USERNAME + ":" + SAUCE_ACCESS_KEY + "@localhost:4445/wd/hub")
             .build();
-    });
+        });
 
     it ("should start", async () => {
         expect(await isReady(server.host)).toEqual(true);
@@ -77,6 +118,7 @@ describe("auth/login", () => {
         it ("is logged in", async () => {
             await driver.get(`${server.host}/`);
             await waitForUrl(driver, `${server.host}/`);
+            await screenshot(driver, "screenshots/loggedin.png");
         });
 
         it ("loads the qb", async () => {
@@ -86,7 +128,10 @@ describe("auth/login", () => {
     });
 
     afterAll(async () => {
-        await server.stop();
-        await driver.quit();
+        await Promise.all([
+            server.stop(),
+            driver.quit(),
+            sauceConnect.close()
+        ]);
     });
 });

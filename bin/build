@@ -2,19 +2,16 @@
 
 # Generate the resources/version.properties file
 version() {
-    # Skip on CircleCI since this is interactive
-    if [ ! $CI ]; then
-        VERSION_INFO=$(./bin/version)
-        IFS=', ' read -a info <<< ${VERSION_INFO}
+    VERSION_INFO=$(./bin/version)
+    IFS=', ' read -a info <<< ${VERSION_INFO}
 
-        echo "Tagging uberjar with version '$VERSION_INFO'..."
+    echo "Tagging uberjar with version '$VERSION_INFO'..."
 
-        # Ok, now generate the appropriate version.properties file.
-        echo "tag=${info[0]}" > resources/version.properties
-        echo "hash=${info[1]}" >> resources/version.properties
-        echo "branch=${info[2]}" >> resources/version.properties
-        echo "date=${info[3]}" >> resources/version.properties
-    fi
+    # Ok, now generate the appropriate version.properties file.
+    echo "tag=${info[0]}" > resources/version.properties
+    echo "hash=${info[1]}" >> resources/version.properties
+    echo "branch=${info[2]}" >> resources/version.properties
+    echo "date=${info[3]}" >> resources/version.properties
 }
 
 npm-install() {
