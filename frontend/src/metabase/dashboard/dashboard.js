@@ -357,9 +357,9 @@ const dashcards = handleActions({
         })
     },
     [SET_DASHCARD_VISUALIZATION_SETTING]: {
-        next: (state, { payload: { id, setting, value } }) =>
+        next: (state, { payload: { id, key, value } }) =>
             i.chain(state)
-                .assocIn([id, "card", "visualization_settings"].concat(setting), value)
+                .assocIn([id, "card", "visualization_settings", key], value)
                 .assocIn([id, "card", "isDirty"], true)
                 .value()
     },

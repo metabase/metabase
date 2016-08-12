@@ -59,7 +59,6 @@ export default class LineAreaBarChart extends Component {
         super(props, context);
         this.state = {
             series: null,
-            isMultiseries: null
         };
     }
 
@@ -88,7 +87,6 @@ export default class LineAreaBarChart extends Component {
         let { series, settings } = newProps;
         let nextState = {
             series: series,
-            isMultiseries: false
         };
         let s = series && series.length === 1 && series[0];
         if (s && s.data) {
@@ -109,7 +107,6 @@ export default class LineAreaBarChart extends Component {
                 const rowIndexes = [dimensionIndex].concat(metricIndexes);
                 const seriesGroup = dataset.dimension(d => d[seriesIndex]).group()
 
-                nextState.isMultiseries = true;
                 nextState.series = seriesGroup.reduce(
                     (p, v) => p.concat([rowIndexes.map(i => v[i])]),
                     (p, v) => null, () => []
@@ -127,7 +124,6 @@ export default class LineAreaBarChart extends Component {
             } else {
                 const dimensionIndex = dimensionIndexes[0];
 
-                nextState.isMultiseries = metrics.length > 1;
                 nextState.series = metricIndexes.map(metricIndex => {
                     const col = cols[metricIndex];
                     return {
@@ -213,22 +209,26 @@ export default class LineAreaBarChart extends Component {
 
     render() {
         const { hovered, isDashboard, onAddSeries, onRemoveSeries, actionButtons } = this.props;
-        const { series, isMultiseries } = this.state;
+        const { series } = this.state;
 
         const card = this.props.series[0].card;
 
         let settings = this.getSettings();
 
+        let isMultiseries = this.state.series.length > 1;
+        let isDashboardMultiseries = this.props.series.length > 1;
+        let isCardMultiseries = isMultiseries && !isDashboardMultiseries;
+
         return (
             <div className={cx("flex flex-column p1", this.getHoverClasses(), this.props.className)}>
-                { (isDashboard && isMultiseries) &&
+                { (isDashboard && !isDashboardMultiseries) &&
                     <a href={card.id && Urls.card(card.id)} className="Card-title pt1 px1 flex-no-shrink no-decoration h3 text-bold fullscreen-night-text fullscreen-normal-text" style={{fontSize: '1em'}}>{card.name}</a>
                 }
-                { (isDashboard || isMultiseries) &&
+                { isMultiseries &&
                     <LegendHeader
                         className="flex-no-shrink"
                         series={series}
-                        onAddSeries={isMultiseries ? undefined : onAddSeries}
+                        onAddSeries={isCardMultiseries ? undefined : onAddSeries}
                         onRemoveSeries={onRemoveSeries}
                         actionButtons={actionButtons}
                         hovered={hovered}

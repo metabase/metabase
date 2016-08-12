@@ -340,10 +340,10 @@ export const setCardVisualization = createThunkAction(SET_CARD_VISUALIZATION, (d
 });
 
 export const SET_CARD_VISUALIZATION_SETTING = "SET_CARD_VISUALIZATION_SETTING";
-export const setCardVisualizationSetting = createThunkAction(SET_CARD_VISUALIZATION_SETTING, (path, value) => {
+export const setCardVisualizationSetting = createThunkAction(SET_CARD_VISUALIZATION_SETTING, (key, value) => {
     return (dispatch, getState) => {
         const { qb: { card, uiControls } } = getState();
-        let updatedCard = updateVisualizationSettings(card, uiControls.isEditing, card.display, i.assocIn(card.visualization_settings, path, value));
+        let updatedCard = updateVisualizationSettings(card, uiControls.isEditing, card.display, i.assocIn(card.visualization_settings, key, value));
         dispatch(updateUrl(updatedCard, true));
         return updatedCard;
     };
