@@ -56,5 +56,6 @@ case $CIRCLE_NODE_INDEX in
         ;;
     6)  ./bin/build version frontend sample-dataset uberjar
         npm run test-e2e
+        node_modules/.bin/babel-node ./bin/compare-screenshots
         ;;
 esac
