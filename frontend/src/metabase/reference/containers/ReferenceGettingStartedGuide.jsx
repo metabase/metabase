@@ -220,150 +220,167 @@ export default class ReferenceGettingStartedGuide extends Component {
                                 should know before digging into the data.
                             </div>
                         </div>
-                        <div className={S.guideEditTitle}>
-                            What is your most important dashboard?
-                        </div>
-                        <div className={S.guideEditCards}>
-                            <GuideDetailEditor 
-                                className={S.guideEditCard}
-                                type="dashboard" 
-                                entities={dashboards}
-                                selectedIds={[most_important_dashboard.id.value]}
-                                formField={most_important_dashboard}
-                                removeField={() => {
-                                    most_important_dashboard.id.onChange(null);
-                                    most_important_dashboard.points_of_interest.onChange('');
-                                    most_important_dashboard.caveats.onChange('');
-                                }}
-                            />
-                        </div>
 
-                        <div className={S.guideEditTitle}>
-                            What are your 3-5 most commonly referenced metrics?
-                        </div>
-                        <div className={S.guideEditCards}>
-                            { important_metrics.map((metricField, index, metricFields) =>
-                                <GuideDetailEditor 
-                                    key={index}
-                                    className={S.guideEditCard}
-                                    type="metric"
-                                    metadata={{
-                                        tables,
-                                        metrics,
-                                        fields: metadataFields,
-                                        metricImportantFields: guide.metric_important_fields
-                                    }}
-                                    entities={metrics}
-                                    formField={metricField}
-                                    selectedIds={getSelectedIds(metricFields)}
-                                    removeField={() => {
-                                        if (metricFields.length > 1) {
-                                            return metricFields.removeField(index);
-                                        }
-                                        metricField.id.onChange(null);
-                                        metricField.points_of_interest.onChange('');
-                                        metricField.caveats.onChange('');
-                                        metricField.important_fields.onChange(null);
-                                    }}
-                                />
-                            )}
-                        </div>
-                        { important_metrics.length < 5 && 
-                            important_metrics.length < Object.keys(metrics).length && 
-                            <div className={S.guideEditAddButton}>
-                                <div className={S.guideEditAddButtonBody}>
-                                    <button
-                                        className="Button Button--primary Button--large" 
-                                        type="button"
-                                        onClick={() => important_metrics.addField({id: null, caveats: null, points_of_interest: null})}
-                                    >
-                                        Add another metric
-                                    </button>
+                        { Object.keys(dashboards).length > 0 && 
+                            <div className={S.guideEditSection}>
+                                <div className={S.guideEditTitle}>
+                                    What is your most important dashboard?
                                 </div>
+                                <div className={S.guideEditCards}>
+                                    <GuideDetailEditor 
+                                        className={S.guideEditCard}
+                                        type="dashboard" 
+                                        entities={dashboards}
+                                        selectedIds={[most_important_dashboard.id.value]}
+                                        formField={most_important_dashboard}
+                                        removeField={() => {
+                                            most_important_dashboard.id.onChange(null);
+                                            most_important_dashboard.points_of_interest.onChange('');
+                                            most_important_dashboard.caveats.onChange('');
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        }
+
+                        { Object.keys(metrics).length > 0 && 
+                            <div className={S.guideEditSection}>
+                                <div className={S.guideEditTitle}>
+                                    What are your 3-5 most commonly referenced metrics?
+                                </div>
+                                <div className={S.guideEditCards}>
+                                    { important_metrics.map((metricField, index, metricFields) =>
+                                        <GuideDetailEditor 
+                                            key={index}
+                                            className={S.guideEditCard}
+                                            type="metric"
+                                            metadata={{
+                                                tables,
+                                                metrics,
+                                                fields: metadataFields,
+                                                metricImportantFields: guide.metric_important_fields
+                                            }}
+                                            entities={metrics}
+                                            formField={metricField}
+                                            selectedIds={getSelectedIds(metricFields)}
+                                            removeField={() => {
+                                                if (metricFields.length > 1) {
+                                                    return metricFields.removeField(index);
+                                                }
+                                                metricField.id.onChange(null);
+                                                metricField.points_of_interest.onChange('');
+                                                metricField.caveats.onChange('');
+                                                metricField.important_fields.onChange(null);
+                                            }}
+                                        />
+                                    )}
+                                </div>
+                                { important_metrics.length < 5 && 
+                                    important_metrics.length < Object.keys(metrics).length && 
+                                    <div className={S.guideEditAddButton}>
+                                        <div className={S.guideEditAddButtonBody}>
+                                            <button
+                                                className="Button Button--primary Button--large" 
+                                                type="button"
+                                                onClick={() => important_metrics.addField({id: null, caveats: null, points_of_interest: null})}
+                                            >
+                                                Add another metric
+                                            </button>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                        { Object.keys(segments).length > 0 && 
+                            <div className={S.guideEditSection}>
+                                <div className={S.guideEditTitle}>
+                                    What are 3-5 commonly referenced segments or tables 
+                                    that would be useful for this audience?
+                                </div>
+                                <div className={S.guideEditCards}>
+                                    { important_segments_and_tables.map((segmentOrTableField, index, segmentOrTableFields) =>
+                                        <GuideDetailEditor 
+                                            key={index}
+                                            className={S.guideEditCard}
+                                            type="segment or table"
+                                            metadata={{
+                                                databases,
+                                                tables,
+                                                segments
+                                            }}
+                                            formField={segmentOrTableField}
+                                            selectedIdTypePairs={getSelectedIdTypePairs(segmentOrTableFields)}
+                                            removeField={() => {
+                                                if (segmentOrTableFields.length > 1) {
+                                                    return segmentOrTableFields.removeField(index);
+                                                }
+                                                segmentOrTableField.id.onChange(null);
+                                                segmentOrTableField.type.onChange(null);
+                                                segmentOrTableField.points_of_interest.onChange('');
+                                                segmentOrTableField.caveats.onChange('');
+                                            }}
+                                        />
+                                    )}
+                                </div>
+                                { important_segments_and_tables.length < 5 && 
+                                    important_segments_and_tables.length < Object.keys(tables).concat(Object.keys.segments).length && 
+                                    <div className={S.guideEditAddButton}>
+                                        <div className={S.guideEditAddButtonBody}>
+                                            <button
+                                                className="Button Button--primary Button--large" 
+                                                type="button"
+                                                onClick={() => important_segments_and_tables.addField({id: null, type: null, caveats: null, points_of_interest: null})}
+                                            >
+                                                Add another segment or table
+                                            </button>
+                                        </div>
+                                    </div>
+                                }
                             </div>
                         }
                         
-                        <div className={S.guideEditTitle}>
-                            What are 3-5 commonly referenced segments or tables 
-                            that would be useful for this audience?
-                        </div>
-                        <div className={S.guideEditCards}>
-                            { important_segments_and_tables.map((segmentOrTableField, index, segmentOrTableFields) =>
-                                <GuideDetailEditor 
-                                    key={index}
-                                    className={S.guideEditCard}
-                                    type="segment or table"
-                                    metadata={{
-                                        databases,
-                                        tables,
-                                        segments
-                                    }}
-                                    formField={segmentOrTableField}
-                                    selectedIdTypePairs={getSelectedIdTypePairs(segmentOrTableFields)}
-                                    removeField={() => {
-                                        if (segmentOrTableFields.length > 1) {
-                                            return segmentOrTableFields.removeField(index);
-                                        }
-                                        segmentOrTableField.id.onChange(null);
-                                        segmentOrTableField.type.onChange(null);
-                                        segmentOrTableField.points_of_interest.onChange('');
-                                        segmentOrTableField.caveats.onChange('');
-                                    }}
-                                />
-                            )}
-                        </div>
-                        { important_segments_and_tables.length < 5 && 
-                            important_segments_and_tables.length < Object.keys(tables).concat(Object.keys.segments).length && 
-                            <div className={S.guideEditAddButton}>
-                                <div className={S.guideEditAddButtonBody}>
-                                    <button
-                                        className="Button Button--primary Button--large" 
-                                        type="button"
-                                        onClick={() => important_segments_and_tables.addField({id: null, type: null, caveats: null, points_of_interest: null})}
-                                    >
-                                        Add another segment or table
-                                    </button>
-                                </div>
+                        <div className={S.guideEditSection}>
+                            <div className={S.guideEditTitle}>
+                                What should a user of this data know before they start 
+                                accessing it?
                             </div>
-                        }
-
-                        <div className={S.guideEditTitle}>
-                            What should a user of this data know before they start 
-                            accessing it?
-                        </div>
-                        <div className={S.guideEditCards}>
-                            <div className={S.guideEditCard}>
-                                <div className={S.guideEditSubtitle}>
-                                    E.g., expectations around data privacy and use, common
-                                    pitfalls or misunderstandings, information about data 
-                                    warehouse performance, legal notices, etc.
+                            <div className={S.guideEditCards}>
+                                <div className={S.guideEditCard}>
+                                    <div className={S.guideEditSubtitle}>
+                                        E.g., expectations around data privacy and use, common
+                                        pitfalls or misunderstandings, information about data 
+                                        warehouse performance, legal notices, etc.
+                                    </div>
+                                    <textarea 
+                                        className={S.guideEditTextarea} 
+                                        placeholder="Things to know..."
+                                        {...things_to_know}
+                                    />
                                 </div>
-                                <textarea 
-                                    className={S.guideEditTextarea} 
-                                    placeholder="Things to know..."
-                                    {...things_to_know}
-                                />
                             </div>
                         </div>
 
-                        <div className={S.guideEditTitle}>
-                            Who should users contact for help if they're confused about this data?
-                        </div>
-                        <div className={S.guideEditCards}>
-                            <div className={S.guideEditCard}>
-                                <div className={S.guideEditContact}>
-                                    <input 
-                                        className={S.guideEditContactName} 
-                                        placeholder="Name" 
-                                        type="text"
-                                        {...contact.name}
-                                    />
-                                    <input 
-                                        className={S.guideEditContactEmail} 
-                                        placeholder="Email address" 
-                                        type="text"
-                                        {...contact.email}
-                                    />
+                        <div className={S.guideEditSection}>
+                            <div className={S.guideEditTitle}>
+                                Who should users contact for help if they're confused about this data?
+                            </div>
+                            <div className={S.guideEditCards}>
+                                <div className={S.guideEditCard}>
+                                    <div className={S.guideEditContact}>
+                                        <input 
+                                            className={S.guideEditContactName} 
+                                            placeholder="Name" 
+                                            type="text"
+                                            {...contact.name}
+                                        />
+                                        <input 
+                                            className={S.guideEditContactEmail} 
+                                            placeholder="Email address" 
+                                            type="text"
+                                            {...contact.email}
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </div>
