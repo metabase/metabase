@@ -146,11 +146,12 @@ const GuideDetailEditor = ({
                         []
                     }
                     onChange={(field) => {
-                        const importantFields = formField.important_fields.value;
-                        return importantFields && importantFields.includes(field) ?
+                        const importantFields = formField.important_fields.value || [];
+                        return importantFields.includes(field) ?
                             formField.important_fields.onChange(importantFields.filter(importantField => importantField !== field)) :
                             importantFields.length < 3 && formField.important_fields.onChange(importantFields.concat(field));
                     }}
+                    disabled={formField.id.value === null || formField.id.value === undefined}
                 />
             }
         </div>

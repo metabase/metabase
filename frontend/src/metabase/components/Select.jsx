@@ -154,6 +154,7 @@ class LegacySelect extends Component {
         optionValueFn: PropTypes.func,
         className: PropTypes.string,
         isInitiallyOpen: PropTypes.bool,
+        disabled: PropTypes.bool,
         //TODO: clean up hardcoded "AdminSelect" class on trigger to avoid this workaround
         triggerClasses: PropTypes.string
     };
@@ -171,12 +172,12 @@ class LegacySelect extends Component {
     }
 
     render() {
-        const { className, value, values, onChange, options, disabledOptionIds, optionNameFn, optionValueFn, placeholder, isInitiallyOpen } = this.props;
+        const { className, value, values, onChange, options, disabledOptionIds, optionNameFn, optionValueFn, placeholder, isInitiallyOpen, disabled } = this.props;
 
         var selectedName = value ? optionNameFn(value) : placeholder;
 
         var triggerElement = (
-            <div className={cx("flex align-center", !value && (!values || values.length === 0) ? " text-grey-3" : "")}>
+            <div className={cx("flex align-center", !value && (!values || values.length === 0) ? " text-grey-2" : "")}>
                 { values && values.length !== 0 ?
                     values
                         .map(value => optionNameFn(value))
@@ -220,6 +221,7 @@ class LegacySelect extends Component {
                 triggerElement={triggerElement}
                 triggerClasses={this.props.triggerClasses || cx("AdminSelect", this.props.className)}
                 isInitiallyOpen={isInitiallyOpen}
+                disabled={disabled}
             >
                 <div onClick={(e) => e.stopPropagation()}>
                     <ColumnarSelector
