@@ -5,7 +5,6 @@ import {
     createThunkAction,
     resourceListToMap,
     cleanResource,
-    cleanResources,
     fetchData,
     updateData,
 } from "metabase/lib/redux";

@@ -126,7 +126,24 @@ const mapDispatchToProps = {
 })
 export default class ReferenceGettingStartedGuide extends Component {
     static propTypes = {
-        isEditing: PropTypes.bool
+        fields: PropTypes.object,
+        style: PropTypes.object,
+        guide: PropTypes.object,
+        user: PropTypes.object,
+        dashboards: PropTypes.object,
+        metrics: PropTypes.object,
+        segments: PropTypes.object,
+        tables: PropTypes.object,
+        databases: PropTypes.object,
+        loadingError: PropTypes.any,
+        loading: PropTypes.bool,
+        isEditing: PropTypes.bool,
+        startEditing: PropTypes.func,
+        endEditing: PropTypes.func,
+        handleSubmit: PropTypes.func,
+        submitting: PropTypes.bool,
+        initialFormValues: PropTypes.object,
+        initializeForm: PropTypes.func
     };
 
     render() {
@@ -154,8 +171,7 @@ export default class ReferenceGettingStartedGuide extends Component {
             handleSubmit,
             submitting,
             initialFormValues,
-            initializeForm,
-            resetForm
+            initializeForm
         } = this.props;
 
         const onSubmit = handleSubmit(async (fields) => 

@@ -2,7 +2,6 @@ import React, { Component, PropTypes } from "react";
 // FIXME: using pure seems to mess with redux form updates
 // import pure from "recompose/pure";
 import cx from "classnames";
-import i from "icepick";
 
 import S from "./GuideDetailEditor.css";
 
@@ -23,7 +22,6 @@ const GuideDetailEditor = ({
     const {
         databases,
         tables,
-        fields,
         segments,
         metrics
     } = metadata;

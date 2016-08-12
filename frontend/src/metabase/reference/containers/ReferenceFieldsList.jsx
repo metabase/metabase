@@ -87,7 +87,8 @@ export default class ReferenceEntityList extends Component {
         section: PropTypes.object.isRequired,
         loading: PropTypes.bool,
         loadingError: PropTypes.object,
-        submitting: PropTypes.bool
+        submitting: PropTypes.bool,
+        resetForm: PropTypes.func
     };
 
     render() {

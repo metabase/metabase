@@ -6,8 +6,7 @@ import {
     createThunkAction,
     AngularResourceProxy,
     cleanResource,
-    fetchData,
-    updateData
+    fetchData
 } from 'metabase/lib/redux';
 
 import MetabaseAnalytics from 'metabase/lib/analytics';
