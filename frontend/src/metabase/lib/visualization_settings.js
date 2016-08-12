@@ -178,8 +178,13 @@ const SETTINGS = {
             card.display === "area" ||
             // legacy default for D-M-M+ charts
             (card.display === "area" && vizSettings["graph.metrics"].length > 1)
-        ),
-        getHidden: (series) => series.length < 2
+        )
+    },
+    "graph.goal": {
+        section: "Display",
+        title: "Goal",
+        widget: ChartSettingInputNumeric,
+        default: null
     },
     "line.missing": {
         section: "Display",

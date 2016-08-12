@@ -366,7 +366,7 @@ function lineAndBarOnRender(chart, settings) {
 
     function voronoiHover() {
         const parent = chart.svg().select("svg > g");
-        const dots = chart.svg().selectAll(".dc-tooltip .dot")[0];
+        const dots = chart.svg().selectAll(".sub .dc-tooltip .dot")[0];
 
         if (dots.length === 0 || dots.length > VORONOI_MAX_POINTS) {
             return;
@@ -485,6 +485,18 @@ function lineAndBarOnRender(chart, settings) {
         }
     }
 
+    function cleanupGoal() {
+        // remove dots
+        chart.selectAll(".goal .dot").remove();
+        // move to end so it's on top
+        chart.selectAll(".goal").each(function() { this.parentNode.appendChild(this); });
+        chart.selectAll(".goal .line").attr({
+            "stroke": "rgba(157,160,164, 0.7)",
+            "stroke-dasharray": "5,5"
+        });
+        // TODO: label
+    }
+
     // run these first so the rest of the margin computations take it into account
     hideDisabledLabels();
     hideDisabledAxis();
@@ -514,6 +526,7 @@ function lineAndBarOnRender(chart, settings) {
         hideBadAxis();
         disableClickFiltering();
         fixStackZIndex();
+        cleanupGoal();
     });
 
     chart.render();
@@ -682,12 +695,7 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
         }
     }
 
-    let parent;
-    if (groups.length > 1) {
-        parent = initializeChart(series[0].card, element, "compositeChart")
-    } else {
-        parent = element;
-    }
+    let parent = initializeChart(series[0].card, element, "compositeChart")
 
     let charts = groups.map((group, index) => {
         let chart = dc[getDcjsChartType(chartType)](parent);
@@ -728,42 +736,52 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
         return chart;
     });
 
-    let chart;
-    if (charts.length > 1) {
-        chart = parent.compose(charts);
+    if (settings["graph.goal"]) {
+        const goalData = [[xDomain[0], settings["graph.goal"]], [xDomain[1], settings["graph.goal"]]];
+        const goalDimension = crossfilter(goalData).dimension(d => d[0]);
+        const goalGroup = goalDimension.group().reduceSum(d => d[1]);
+        const goalIndex = charts.length;
+        let goalChart = dc.lineChart(parent)
+            .dimension(goalDimension)
+            .group(goalGroup)
+            .on('renderlet', function (chart) {
+                // remove "sub" class so the goal is not used in voronoi computation
+                chart.select(".sub._"+goalIndex)
+                    .classed("sub", false)
+                    .classed("goal", true);
+            });
+        charts.push(goalChart);
+    }
 
-        if (!isScalarSeries) {
-            chart.on("renderlet.grouped-bar", function (chart) {
-                // HACK: dc.js doesn't support grouped bar charts so we need to manually resize/reposition them
-                // https://github.com/dc-js/dc.js/issues/558
-                let barCharts = chart.selectAll(".sub rect:first-child")[0].map(node => node.parentNode.parentNode.parentNode);
-                if (barCharts.length > 0) {
-                    let oldBarWidth = parseFloat(barCharts[0].querySelector("rect").getAttribute("width"));
-                    let newBarWidthTotal = oldBarWidth / barCharts.length;
-                    let seriesPadding =
-                        newBarWidthTotal < 4 ? 0 :
-                        newBarWidthTotal < 8 ? 1 :
-                                               2;
-                    let newBarWidth = Math.max(1, newBarWidthTotal - seriesPadding);
+    let chart = parent.compose(charts);
 
-                    chart.selectAll("g.sub rect").attr("width", newBarWidth);
-                    barCharts.forEach((barChart, index) => {
-                        barChart.setAttribute("transform", "translate(" + ((newBarWidth + seriesPadding) * index) + ", 0)");
-                    });
-                }
-            })
-        }
+    if (groups.length > 1 && !isScalarSeries) {
+        chart.on("renderlet.grouped-bar", function (chart) {
+            // HACK: dc.js doesn't support grouped bar charts so we need to manually resize/reposition them
+            // https://github.com/dc-js/dc.js/issues/558
+            let barCharts = chart.selectAll(".sub rect:first-child")[0].map(node => node.parentNode.parentNode.parentNode);
+            if (barCharts.length > 0) {
+                let oldBarWidth = parseFloat(barCharts[0].querySelector("rect").getAttribute("width"));
+                let newBarWidthTotal = oldBarWidth / barCharts.length;
+                let seriesPadding =
+                    newBarWidthTotal < 4 ? 0 :
+                    newBarWidthTotal < 8 ? 1 :
+                                           2;
+                let newBarWidth = Math.max(1, newBarWidthTotal - seriesPadding);
 
-        // HACK: compositeChart + ordinal X axis shenanigans
-        if (chartType === "bar") {
-            chart._rangeBandPadding(BAR_PADDING_RATIO) // https://github.com/dc-js/dc.js/issues/678
-        } else {
-            chart._rangeBandPadding(1) // https://github.com/dc-js/dc.js/issues/662
-        }
+                chart.selectAll("g.sub rect").attr("width", newBarWidth);
+                barCharts.forEach((barChart, index) => {
+                    barChart.setAttribute("transform", "translate(" + ((newBarWidth + seriesPadding) * index) + ", 0)");
+                });
+            }
+        })
+    }
+
+    // HACK: compositeChart + ordinal X axis shenanigans
+    if (chartType === "bar") {
+        chart._rangeBandPadding(BAR_PADDING_RATIO) // https://github.com/dc-js/dc.js/issues/678
     } else {
-        chart = charts[0];
-        chart.transitionDuration(0)
-        applyChartBoundary(chart, element);
+        chart._rangeBandPadding(1) // https://github.com/dc-js/dc.js/issues/662
     }
 
     // x-axis settings
