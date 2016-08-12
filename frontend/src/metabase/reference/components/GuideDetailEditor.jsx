@@ -23,13 +23,13 @@ const GuideDetailEditor = ({
         databases,
         tables,
         segments,
-        metrics
+        metrics,
+        fields
     } = metadata;
 
     const fieldsByMetric = type === 'metric' && formField.id.value ?
-        Object.values(
-            tables[metrics[formField.id.value].table_id].fields_lookup
-        ) :
+        tables[metrics[formField.id.value].table_id].fields
+            .map(fieldId => fields[fieldId]) :
         [];
 
     return <div className={cx(S.guideDetailEditor, className)}>

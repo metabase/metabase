@@ -88,6 +88,7 @@ const mapStateToProps = (state, props) => {
         segments,
         tables,
         databases,
+        metadataFields: fields,
         loading: getLoading(state, props),
         // naming this 'error' will conflict with redux form
         loadingError: getError(state, props),
@@ -166,6 +167,7 @@ export default class ReferenceGettingStartedGuide extends Component {
             segments,
             tables,
             databases,
+            metadataFields,
             loadingError,
             loading,
             isEditing,
@@ -242,7 +244,8 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     type="metric"
                                     metadata={{
                                         tables,
-                                        metrics
+                                        metrics,
+                                        fields: metadataFields
                                     }}
                                     entities={metrics}
                                     formField={metricField}
