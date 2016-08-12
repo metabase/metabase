@@ -23,7 +23,9 @@ const GuideDetailEditor = ({
     const {
         databases,
         tables,
-        segments
+        fields,
+        segments,
+        metrics
     } = metadata;
 
     return <div className={cx(S.guideDetailEditor, className)}>
@@ -71,11 +73,10 @@ const GuideDetailEditor = ({
                     }}
                     databases={
                         Object.values(databases)
-                            .map(database => i.assoc(
-                                database, 
-                                'tables', 
-                                database.tables.map(tableId => tables[tableId])
-                            ))
+                            .map(database => ({
+                                ...database, 
+                                tables: database.tables.map(tableId => tables[tableId])
+                            }))
                     }
                     setDatabaseFn={() => null}
                     tables={Object.values(tables)}
@@ -126,10 +127,21 @@ const GuideDetailEditor = ({
                 {...formField.caveats}
                 disabled={formField.id.value === null || formField.id.value === undefined}                
             />
-            <Select
-                options={[1, 2]} 
-                values={[1, 2]}
-            />
+            { type === 'metric' &&
+                <Select
+                    triggerClasses={cx('px2', S.guideDetailEditorSelect)}
+                    options={Object.values(tables[metrics[formField.id.value].table_id].fields_lookup)} 
+                    optionNameFn={option => option.display_name || option.name}
+                    placeholder={`Which 2-3 fields do you usually group this metric by?`}
+                    values={formField.important_fields.value}
+                    onChange={(field) => {
+                        const importantFields = formField.important_fields.value;
+                        return importantFields.includes(field) ?
+                            formField.important_fields.onChange(importantFields.filter(importantField => importantField !== field)) :
+                            formField.important_fields.onChange(importantFields.concat(field));
+                    }}
+                />
+            }
         </div>
     </div>;
 };

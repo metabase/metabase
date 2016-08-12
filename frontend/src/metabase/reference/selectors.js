@@ -29,7 +29,7 @@ const referenceSections = {
             fetchDashboards: [],
             fetchMetrics: [],
             fetchSegments: [], 
-            fetchDatabasesWithTables: []
+            fetchDatabasesWithMetadata: []
         },
         icon: "reference"
     },

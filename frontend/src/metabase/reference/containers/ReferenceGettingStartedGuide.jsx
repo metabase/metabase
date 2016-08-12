@@ -63,8 +63,9 @@ const mapStateToProps = (state, props) => {
             dashboards[guide.most_important_dashboard] :
             {id: null, caveats: null, points_of_interest: null},
         important_metrics: guide.important_metrics && guide.important_metrics.length > 0 ? 
-            guide.important_metrics.map(metricId => metrics[metricId]) :
-            [{id: null, caveats: null, points_of_interest: null}],
+            guide.important_metrics
+                .map(metricId => metrics[metricId] && i.assoc(metrics[metricId], 'important_fields', [])) :
+            [{id: null, caveats: null, points_of_interest: null, important_fields: []}],
         important_segments_and_tables: 
             (guide.important_segments && guide.important_segments.length > 0) ||
             (guide.important_tables && guide.important_tables.length > 0) ? 
@@ -98,6 +99,7 @@ const mapStateToProps = (state, props) => {
             'important_metrics[].id',
             'important_metrics[].caveats',
             'important_metrics[].points_of_interest',
+            'important_metrics[].important_fields',
             'important_segments_and_tables[].id',
             'important_segments_and_tables[].type',
             'important_segments_and_tables[].caveats',
@@ -218,6 +220,10 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     key={index}
                                     className={S.guideEditCard}
                                     type="metric"
+                                    metadata={{
+                                        tables,
+                                        metrics
+                                    }}
                                     entities={metrics}
                                     formField={metricField}
                                     selectedIds={getSelectedIds(metricFields)}
@@ -228,6 +234,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                         metricField.id.onChange(null);
                                         metricField.points_of_interest.onChange('');
                                         metricField.caveats.onChange('');
+                                        metricField.important_fields.onChange([]);
                                     }}
                                 />
                             )}
@@ -245,7 +252,6 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     </button>
                                 </div>
                             </div>
-                            // TODO: add multi-select for important fields, try SelectPicker.jsx
                         }
                         
                         <div className={S.guideEditTitle}>
