@@ -2,7 +2,7 @@
 import React, { Component, PropTypes } from "react";
 
 import DetailPane from "./DetailPane.jsx";
-import QueryButton from "./QueryButton.jsx";
+import QueryButton from "metabase/components/QueryButton.jsx";
 import QueryDefinition from "./QueryDefinition.jsx";
 
 import { createCard } from "metabase/lib/card";
@@ -74,7 +74,12 @@ export default class MetricPane extends Component {
                 useForCurrentQuestion={useForCurrentQuestion}
                 usefulQuestions={usefulQuestions}
                 error={error}
-                extra={table && <QueryDefinition objectType="Metric" object={metric} tableMetadata={table} />}
+                extra={table &&
+                    <div>
+                        <p className="text-bold">Metric Definition</p>
+                        <QueryDefinition object={metric} tableMetadata={table} />
+                    </div>
+                }
             />
         );
     }

@@ -1,3 +1,4 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
@@ -11,8 +12,6 @@ import MetabaseUtils from "metabase/lib/utils";
 import StepTitle from './StepTitle.jsx'
 import CollapsedStep from "./CollapsedStep.jsx";
 
-import { setUserDetails, validatePassword } from "../actions";
-
 import _ from "underscore";
 import cx from "classnames";
 
@@ -23,8 +22,13 @@ export default class UserStep extends Component {
     }
 
     static propTypes = {
-        dispatch: PropTypes.func.isRequired,
-        stepNumber: PropTypes.number.isRequired
+        stepNumber: PropTypes.number.isRequired,
+        activeStep: PropTypes.number.isRequired,
+        setActiveStep: PropTypes.func.isRequired,
+
+        userDetails: PropTypes.object,
+        setUserDetails: PropTypes.func.isRequired,
+        validatePassword: PropTypes.func.isRequired,
     }
 
     validateForm() {
@@ -50,7 +54,7 @@ export default class UserStep extends Component {
 
     async onPasswordBlur() {
         try {
-            await this.props.dispatch(validatePassword(ReactDOM.findDOMNode(this.refs.password).value));
+            await this.props.validatePassword(ReactDOM.findDOMNode(this.refs.password).value);
 
             this.setState({
                 passwordError: null,
@@ -98,7 +102,7 @@ export default class UserStep extends Component {
             return;
         }
 
-        this.props.dispatch(setUserDetails({
+        this.props.setUserDetails({
             'nextStep': this.props.stepNumber + 1,
             'details': {
                 'first_name': ReactDOM.findDOMNode(this.refs.firstName).value,
@@ -107,20 +111,20 @@ export default class UserStep extends Component {
                 'password': ReactDOM.findDOMNode(this.refs.password).value,
                 'site_name': ReactDOM.findDOMNode(this.refs.siteName).value
             }
-        }));
+        });
 
         MetabaseAnalytics.trackEvent('Setup', 'User Details Step');
     }
 
     render() {
-        let { activeStep, dispatch, stepNumber, userDetails } = this.props;
+        let { activeStep, setActiveStep, stepNumber, userDetails } = this.props;
         let { formError, passwordError, valid } = this.state;
 
         const passwordComplexityDesc = MetabaseSettings.passwordComplexity();
         const stepText = (activeStep <= stepNumber) ? 'What should we call you?' : 'Hi, ' + userDetails.first_name + '. nice to meet you!';
 
         if (activeStep !== stepNumber) {
-            return (<CollapsedStep dispatch={dispatch} stepNumber={stepNumber} stepText={stepText} isCompleted={activeStep > stepNumber}></CollapsedStep>)
+            return (<CollapsedStep stepNumber={stepNumber} stepText={stepText} isCompleted={activeStep > stepNumber} setActiveStep={setActiveStep}></CollapsedStep>)
         } else {
             return (
                 <section className="SetupStep SetupStep--active rounded full relative">

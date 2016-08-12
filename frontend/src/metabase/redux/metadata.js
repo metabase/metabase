@@ -333,11 +333,23 @@ const revisions = handleActions({
 }, {});
 
 // for fetches with data dependencies in /reference
+const FETCH_METRIC_TABLE = "metabase/metadata/FETCH_METRIC_TABLE";
+export const fetchMetricTable = createThunkAction(FETCH_METRIC_TABLE, (metricId, reload = false) => {
+    return async (dispatch, getState) => {
+        await dispatch(fetchMetrics());
+        const metric = i.getIn(getState(), ['metadata', 'metrics', metricId]);
+        const tableId = metric.table_id;
+        await dispatch(fetchTableMetadata(tableId));
+    };
+});
+
 const FETCH_METRIC_REVISIONS = "metabase/metadata/FETCH_METRIC_REVISIONS";
 export const fetchMetricRevisions = createThunkAction(FETCH_METRIC_REVISIONS, (metricId, reload = false) => {
     return async (dispatch, getState) => {
-        dispatch(fetchRevisions('metric', metricId));
-        await dispatch(fetchMetrics());
+        await Promise.all([
+            dispatch(fetchRevisions('metric', metricId)),
+            dispatch(fetchMetrics())
+        ]);
         const metric = i.getIn(getState(), ['metadata', 'metrics', metricId]);
         const tableId = metric.table_id;
         await dispatch(fetchTableMetadata(tableId));
@@ -357,11 +369,23 @@ export const fetchSegmentFields = createThunkAction(FETCH_SEGMENT_FIELDS, (segme
     };
 });
 
+const FETCH_SEGMENT_TABLE = "metabase/metadata/FETCH_SEGMENT_TABLE";
+export const fetchSegmentTable = createThunkAction(FETCH_SEGMENT_TABLE, (segmentId, reload = false) => {
+    return async (dispatch, getState) => {
+        await dispatch(fetchSegments());
+        const segment = i.getIn(getState(), ['metadata', 'segments', segmentId]);
+        const tableId = segment.table_id;
+        await dispatch(fetchTableMetadata(tableId));
+    };
+});
+
 const FETCH_SEGMENT_REVISIONS = "metabase/metadata/FETCH_SEGMENT_REVISIONS";
 export const fetchSegmentRevisions = createThunkAction(FETCH_SEGMENT_REVISIONS, (segmentId, reload = false) => {
     return async (dispatch, getState) => {
-        dispatch(fetchRevisions('segment', segmentId));
-        await dispatch(fetchSegments());
+        await Promise.all([
+            dispatch(fetchRevisions('segment', segmentId)),
+            dispatch(fetchSegments())
+        ]);
         const segment = i.getIn(getState(), ['metadata', 'segments', segmentId]);
         const tableId = segment.table_id;
         await dispatch(fetchTableMetadata(tableId));

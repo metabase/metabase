@@ -1,6 +1,8 @@
 import React, { Component, PropTypes } from 'react';
+import { connect } from "react-redux";
+import { Link } from "react-router";
 
-import OnClickOut from 'react-onclickout';
+import OnClickOutsideWrapper from 'metabase/components/OnClickOutsideWrapper.jsx';
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import CreateDashboardModal from "metabase/components/CreateDashboardModal.jsx";
@@ -9,6 +11,19 @@ import Modal from "metabase/components/Modal.jsx";
 import _ from "underscore";
 import cx from "classnames";
 
+import { createDashboard, fetchDashboards } from "metabase/dashboard/dashboard";
+import { getDashboards } from "../selectors";
+
+const mapStateToProps = (state, props) => ({
+    dashboards: getDashboards(state)
+});
+
+const mapDispatchToProps = {
+    createDashboard,
+    fetchDashboards
+};
+
+@connect(mapStateToProps, mapDispatchToProps)
 export default class DashboardsDropdown extends Component {
     constructor(props, context) {
         super(props, context);
@@ -31,14 +46,25 @@ export default class DashboardsDropdown extends Component {
     }
 
     static propTypes = {
-        createDashboardFn: PropTypes.func.isRequired,
-        dashboards: PropTypes.array.isRequired
+        dashboards: PropTypes.array.isRequired,
+        createDashboard: PropTypes.func.isRequired,
+        fetchDashboards: PropTypes.func.isRequired,
     };
 
-    async onCreateDashboard(newDashboard) {
-        let { createDashboardFn } = this.props;
+    componentWillMount() {
+        this.props.fetchDashboards();
+    }
 
-        await createDashboardFn(newDashboard);
+    async onCreateDashboard(newDashboard) {
+        let { createDashboard } = this.props;
+
+        try {
+            let action = await createDashboard(newDashboard, true);
+            // FIXME: this doesn't feel right...
+            this.props.onChangeLocation(`/dash/${action.payload.id}`);
+        } catch (e) {
+            console.log("createDashboard failed", e);
+        }
 
         // close modal and add new dash to our dashboards list
         this.setState({
@@ -89,7 +115,7 @@ export default class DashboardsDropdown extends Component {
             <div>
                 { modalOpen ? this.renderCreateDashboardModal() : null }
 
-                <OnClickOut onClickOut={this.closeDropdown}>
+                <OnClickOutsideWrapper handleDismissal={this.closeDropdown}>
                     <div className={cx('NavDropdown inline-block cursor-pointer', { 'open': dropdownOpen })}>
                         <span onClick={this.toggleDropdown}>
                             {children}
@@ -110,7 +136,7 @@ export default class DashboardsDropdown extends Component {
                                     <ul className="NavDropdown-content-layer">
                                         { dashboards.map(dash =>
                                             <li key={dash.id} className="block">
-                                                <a data-metabase-event={"Navbar;Dashboard Dropdown;Open Dashboard;"+dash.id} className="Dropdown-item block text-white no-decoration" href={"/dash/"+dash.id} onClick={this.closeDropdown}>
+                                                <Link to={"/dash/"+dash.id} data-metabase-event={"Navbar;Dashboard Dropdown;Open Dashboard;"+dash.id} className="Dropdown-item block text-white no-decoration" onClick={this.closeDropdown}>
                                                     <div className="flex text-bold">
                                                         {dash.name}
                                                     </div>
@@ -119,7 +145,7 @@ export default class DashboardsDropdown extends Component {
                                                             {dash.description}
                                                         </div>
                                                     : null }
-                                                </a>
+                                                </Link>
                                             </li>
                                         )}
                                         <li className="block border-top border-light">
@@ -130,7 +156,7 @@ export default class DashboardsDropdown extends Component {
                             </div>
                         : null }
                     </div>
-                </OnClickOut>
+                </OnClickOutsideWrapper>
             </div>
         );
     }

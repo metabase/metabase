@@ -27,12 +27,12 @@ import {
 } from 'metabase/questions/questions';
 
 const mapStateToProps = (state, props) => ({
-    sectionId: getSectionId(state),
-    databaseId: getDatabaseId(state),
-    sections: getSections(state),
-    section: getSection(state),
-    breadcrumbs: getBreadcrumbs(state),
-    isEditing: getIsEditing(state)
+    sectionId: getSectionId(state, props),
+    databaseId: getDatabaseId(state, props),
+    sections: getSections(state, props),
+    section: getSection(state, props),
+    breadcrumbs: getBreadcrumbs(state, props),
+    isEditing: getIsEditing(state, props)
 });
 
 const mapDispatchToProps = {
@@ -65,6 +65,7 @@ export default class ReferenceApp extends Component {
         newProps.endEditing();
         newProps.endLoading();
         newProps.clearError();
+        newProps.collapseFormula();
 
         await tryFetchData(newProps);
     }
@@ -77,14 +78,13 @@ export default class ReferenceApp extends Component {
             isEditing
         } = this.props;
         return (
-            <div>
-                <SidebarLayout
-                    style={ isEditing ? { paddingTop: '43px' } : {}}
-                    sidebar={<Sidebar sections={sections} breadcrumbs={breadcrumbs} />}
-                >
-                    {children}
-                </SidebarLayout>
-            </div>
+            <SidebarLayout
+                className="flex-full relative"
+                style={ isEditing ? { paddingTop: '43px' } : {}}
+                sidebar={<Sidebar sections={sections} breadcrumbs={breadcrumbs} />}
+            >
+                {children}
+            </SidebarLayout>
         )
     }
 }

@@ -1,12 +1,20 @@
 
 import { handleActions, combineReducers, AngularResourceProxy, createThunkAction } from "metabase/lib/redux";
 
+import MetabaseSettings from 'metabase/lib/settings';
+
+import _ from "underscore";
 
 // resource wrappers
 const SettingsApi = new AngularResourceProxy("Settings", ["list", "put"]);
 const EmailApi = new AngularResourceProxy("Email", ["updateSettings", "sendTest"]);
 const SlackApi = new AngularResourceProxy("Slack", ["updateSettings"]);
+const SessionApi = new AngularResourceProxy("Session", ["properties"]);
 
+async function refreshSiteSettings() {
+    const settings = await SessionApi.properties();
+    MetabaseSettings.setAll(_.omit(settings, (value, key) => key.indexOf('$') === 0));
+}
 
 async function loadSettings() {
     try {
@@ -22,14 +30,10 @@ async function loadSettings() {
 }
 
 // initializeSettings
-export const initializeSettings = createThunkAction("INITIALIZE_SETTINGS", function(refreshSiteSettings) {
+export const initializeSettings = createThunkAction("INITIALIZE_SETTINGS", function() {
     return async function(dispatch, getState) {
         try {
-            let settings = await loadSettings();
-            return {
-                settings,
-                refreshSiteSettings
-            }
+            return await loadSettings();
         } catch(error) {
             console.log("error fetching settings", error);
             throw error;
@@ -40,8 +44,6 @@ export const initializeSettings = createThunkAction("INITIALIZE_SETTINGS", funct
 // updateSetting
 export const updateSetting = createThunkAction("UPDATE_SETTING", function(setting) {
     return async function(dispatch, getState) {
-        const { settings: { refreshSiteSettings } } = getState();
-
         try {
             await SettingsApi.put({ key: setting.key }, setting);
             refreshSiteSettings();
@@ -56,8 +58,6 @@ export const updateSetting = createThunkAction("UPDATE_SETTING", function(settin
 // updateEmailSettings
 export const updateEmailSettings = createThunkAction("UPDATE_EMAIL_SETTINGS", function(settings) {
     return async function(dispatch, getState) {
-        const { settings: { refreshSiteSettings } } = getState();
-
         try {
             await EmailApi.updateSettings(settings);
             refreshSiteSettings();
@@ -84,8 +84,6 @@ export const sendTestEmail = createThunkAction("SEND_TEST_EMAIL", function() {
 // updateSlackSettings
 export const updateSlackSettings = createThunkAction("UPDATE_SLACK_SETTINGS", function(settings) {
     return async function(dispatch, getState) {
-        const { settings: { refreshSiteSettings } } = getState();
-
         try {
             await SlackApi.updateSettings(settings);
             refreshSiteSettings();
@@ -97,22 +95,15 @@ export const updateSlackSettings = createThunkAction("UPDATE_SLACK_SETTINGS", fu
     };
 });
 
-
 // reducers
 
-// this is a backwards compatibility thing with angular to allow programmatic route changes.  remove/change this when going to ReduxRouter
-const refreshSiteSettings = handleActions({
-    ["INITIALIZE_SETTINGS"]: { next: (state, { payload }) => payload ? payload.refreshSiteSettings : state }
-}, () => null);
-
 const settings = handleActions({
-    ["INITIALIZE_SETTINGS"]: { next: (state, { payload }) => payload ? payload.settings : state },
+    ["INITIALIZE_SETTINGS"]: { next: (state, { payload }) => payload },
     ["UPDATE_SETTING"]: { next: (state, { payload }) => payload },
     ["UPDATE_EMAIL_SETTINGS"]: { next: (state, { payload }) => payload },
     ["UPDATE_SLACK_SETTINGS"]: { next: (state, { payload }) => payload }
 }, []);
 
 export default combineReducers({
-    settings,
-    refreshSiteSettings
+    settings
 });
