@@ -1,6 +1,7 @@
 (ns metabase.api.metric
   "/api/metric endpoints."
   (:require [clojure.data :as data]
+            [clojure.tools.logging :as log]
             [compojure.core :refer [defroutes GET PUT POST DELETE]]
             [metabase.api.common :refer :all]
             [metabase.db :as db]
@@ -63,8 +64,9 @@
   (check-404 (metric/exists? id))
   (check (<= (count important_field_ids) 3)
     [400 "A Metric can have a maximum of 3 important fields."])
-  (let [[fields-to-remove fields-to-add] (data/diff (set (db/select-field :field_id 'MetricImportantField :metric_id 1))
+  (let [[fields-to-remove fields-to-add] (data/diff (set (db/select-field :field_id 'MetricImportantField :metric_id id))
                                                     (set important_field_ids))]
+
     ;; delete old fields as needed
     (when (seq fields-to-remove)
       (db/delete! 'MetricImportantField {:metric_id id, :field_id [:in fields-to-remove]}))

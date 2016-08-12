@@ -227,7 +227,6 @@ export const tryUpdateGuide = async (formFields, props) => {
                 if (!metricFormField.id || !metricFormField.important_fields) {
                     return [];
                 }
-                console.log(metricFormField);
                 const importantFieldIds = metricFormField.important_fields
                     .map(field => field.id);
                 const existingImportantFieldIds = guide.metric_important_fields[metricFormField.id];
