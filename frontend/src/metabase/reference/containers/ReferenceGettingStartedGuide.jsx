@@ -65,7 +65,7 @@ const mapStateToProps = (state, props) => {
         important_metrics: guide.important_metrics && guide.important_metrics.length > 0 ? 
             guide.important_metrics
                 .map(metricId => metrics[metricId] && i.assoc(metrics[metricId], 'important_fields', [])) :
-            [{id: null, caveats: null, points_of_interest: null, important_fields: []}],
+            [{id: null, caveats: null, points_of_interest: null, important_fields: null}],
         important_segments_and_tables: 
             (guide.important_segments && guide.important_segments.length > 0) ||
             (guide.important_tables && guide.important_tables.length > 0) ? 
@@ -251,7 +251,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                         metricField.id.onChange(null);
                                         metricField.points_of_interest.onChange('');
                                         metricField.caveats.onChange('');
-                                        metricField.important_fields.onChange([]);
+                                        metricField.important_fields.onChange(null);
                                     }}
                                 />
                             )}

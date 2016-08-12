@@ -26,9 +26,11 @@ const GuideDetailEditor = ({
         metrics
     } = metadata;
 
-    const fieldsByMetric = type === 'metric' && Object.values(
-        tables[metrics[formField.id.value].table_id].fields_lookup
-    );
+    const fieldsByMetric = type === 'metric' && formField.id.value ?
+        Object.values(
+            tables[metrics[formField.id.value].table_id].fields_lookup
+        ) :
+        [];
 
     return <div className={cx(S.guideDetailEditor, className)}>
         <div className={S.guideDetailEditorClose}>
@@ -52,6 +54,7 @@ const GuideDetailEditor = ({
                         formField.id.onChange(entity.id);
                         formField.points_of_interest.onChange(entity.points_of_interest || '');
                         formField.caveats.onChange(entity.caveats || '');
+                        formField.important_fields.onChange(null);
                     }}
                     placeholder={`Pick a ${type}`}
                 /> :
@@ -135,8 +138,8 @@ const GuideDetailEditor = ({
                     options={fieldsByMetric} 
                     optionNameFn={option => option.display_name || option.name}
                     placeholder={`Which 2-3 fields do you usually group this metric by?`}
-                    values={formField.important_fields.value}
-                    disabledOptionIds={formField.important_fields.value.length === 3 ?
+                    values={formField.important_fields.value || []}
+                    disabledOptionIds={formField.important_fields.value && formField.important_fields.value.length === 3 ?
                         fieldsByMetric
                             .filter(field => !formField.important_fields.value.includes(field))
                             .map(field => field.id) :
@@ -144,7 +147,7 @@ const GuideDetailEditor = ({
                     }
                     onChange={(field) => {
                         const importantFields = formField.important_fields.value;
-                        return importantFields.includes(field) ?
+                        return importantFields && importantFields.includes(field) ?
                             formField.important_fields.onChange(importantFields.filter(importantField => importantField !== field)) :
                             importantFields.length < 3 && formField.important_fields.onChange(importantFields.concat(field));
                     }}

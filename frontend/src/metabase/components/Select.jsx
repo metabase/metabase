@@ -176,7 +176,7 @@ class LegacySelect extends Component {
         var selectedName = value ? optionNameFn(value) : placeholder;
 
         var triggerElement = (
-            <div className={"flex align-center " + (!value ? " text-grey-3" : "")}>
+            <div className={cx("flex align-center", !value && (!values || values.length === 0) ? " text-grey-3" : "")}>
                 { values && values.length !== 0 ?
                     values
                         .map(value => optionNameFn(value))
