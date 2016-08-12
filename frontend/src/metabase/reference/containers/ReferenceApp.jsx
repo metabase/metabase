@@ -65,6 +65,7 @@ export default class ReferenceApp extends Component {
         newProps.endEditing();
         newProps.endLoading();
         newProps.clearError();
+        newProps.collapseFormula();
 
         await tryFetchData(newProps);
     }
@@ -78,7 +79,7 @@ export default class ReferenceApp extends Component {
         } = this.props;
         return (
             <SidebarLayout
-                className="flex-full"
+                className="flex-full relative"
                 style={ isEditing ? { paddingTop: '43px' } : {}}
                 sidebar={<Sidebar sections={sections} breadcrumbs={breadcrumbs} />}
             >

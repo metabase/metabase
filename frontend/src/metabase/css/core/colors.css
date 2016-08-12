@@ -27,7 +27,7 @@
   --slate-light-color: #DFE8EA;
 }
 
-.text-default {
+.text-default, :local(.text-default) {
     color: var(--default-font-color);
 }
 

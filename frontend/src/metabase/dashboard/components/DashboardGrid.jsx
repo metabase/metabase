@@ -190,10 +190,10 @@ export default class DashboardGrid extends Component {
         this.setState({ addSeriesModalDashCard: dc });
     }
 
-    onUpdateVisualizationSetting(dc, setting, value) {
+    onUpdateVisualizationSetting(dc, key, value) {
         this.props.setDashCardVisualizationSetting({
             id: dc.id,
-            setting: setting,
+            key: key,
             value: value
         });
     }
