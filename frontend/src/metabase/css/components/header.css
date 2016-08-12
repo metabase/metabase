@@ -40,6 +40,7 @@
 
 .EditHeader-title {
     color: white;
+    font-weight: bold;
 }
 
 .EditHeader-subtitle {
@@ -47,17 +48,18 @@
 }
 
 .EditHeader .Button {
-    color: var(--brand-color);
+    color: white;
     border: none;
-    text-transform: uppercase;
-    font-size: 0.75rem;
-    background-color: rgba(255,255,255,0.5);
-    font-weight: normal;
-    margin-left: 0.75em;
+    font-size: 0.875rem;
+    text-transform: capitalize;
+    background-color: rgba(255,255,255,0.1);
+    font-weight: bold;
+    margin-left: 0.75em
 }
 
 .EditHeader .Button--primary {
     background-color: white;
+    color: var(--brand-color);
 }
 
 .EditHeader .Button:hover {
