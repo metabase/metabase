@@ -8,6 +8,10 @@ import cx from "classnames";
 
 import S from "metabase/reference/Reference.css";
 
+import {
+    getQuestionUrl
+} from '../utils';
+
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
 import EditHeader from "metabase/reference/components/EditHeader.jsx";
@@ -139,6 +143,7 @@ export default class ReferenceGettingStartedGuide extends Component {
         segments: PropTypes.object,
         tables: PropTypes.object,
         databases: PropTypes.object,
+        metadataFields: PropTypes.object,
         loadingError: PropTypes.any,
         loading: PropTypes.bool,
         isEditing: PropTypes.bool,
@@ -393,6 +398,19 @@ export default class ReferenceGettingStartedGuide extends Component {
                                             key={metricId}
                                             type="metric"
                                             entity={metrics[metricId]}
+                                            exploreLinks={guide.metric_important_fields[metricId] && 
+                                                guide.metric_important_fields[metricId]
+                                                    .map(fieldId => metadataFields[fieldId])
+                                                    .map(field => ({ 
+                                                        name: field.display_name || field.name,
+                                                        url: getQuestionUrl({
+                                                            dbId: tables[field.table_id].db_id,
+                                                            tableId: field.table_id,
+                                                            fieldId: field.id,
+                                                            metricId
+                                                        })
+                                                    })) 
+                                            }
                                         />
                                     ),
                                     <div key={'metricsSeeAll'} className={S.guideSeeAll}>

@@ -7,7 +7,8 @@ import S from "./GuideDetail.css";
 
 const GuideDetail = ({
     entity,
-    type
+    type,
+    exploreLinks
 }) => {
     const title = entity.display_name || entity.name;
     const { caveats, points_of_interest } = entity;
@@ -26,7 +27,7 @@ const GuideDetail = ({
     };
     const linkClass = typeToLinkClass[type];
     const hasLearnMore = type === 'metric' || type === 'segment' || type === 'table';
-    const exploreLinks = [];
+
     return <div className={S.guideDetail}>
         <div className={S.guideDetailTitle}>
             { title && link &&
@@ -66,8 +67,8 @@ const GuideDetail = ({
                         { exploreLinks.map(link => 
                             <Link
                                 className={cx(linkClass, S.guideDetailExploreLink)} 
-                                key={link.id} 
-                                to={link.id}
+                                key={link.url} 
+                                to={link.url}
                             >
                                 {`By ${link.name}`}
                             </Link>
@@ -80,7 +81,8 @@ const GuideDetail = ({
 };
 GuideDetail.propTypes = {
     entity: PropTypes.object,
-    type: PropTypes.string
+    type: PropTypes.string,
+    exploreLinks: PropTypes.array
 };
 
 export default pure(GuideDetail);

@@ -37,7 +37,7 @@
 
 :local(.guideDetailLearnMore) {
     composes: full text-bold block py1 no-decoration from "style";
-    font-size: 16px;
+    font-size: 14px;
 }
 
 :local(.guideDetailLearnMore):first-child {
@@ -51,7 +51,7 @@
 
 :local(.guideDetailExploreLinks) {
     composes: text-bold from "style";
-    font-size: 16px;
+    font-size: 14px;
 }
 
 :local(.guideDetailExploreLink) {
