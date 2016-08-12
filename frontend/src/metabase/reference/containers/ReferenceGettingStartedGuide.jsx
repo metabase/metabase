@@ -250,7 +250,8 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     metadata={{
                                         tables,
                                         metrics,
-                                        fields: metadataFields
+                                        fields: metadataFields,
+                                        metricImportantFields: guide.metric_important_fields
                                     }}
                                     entities={metrics}
                                     formField={metricField}

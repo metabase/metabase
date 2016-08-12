@@ -24,7 +24,8 @@ const GuideDetailEditor = ({
         tables,
         segments,
         metrics,
-        fields
+        fields,
+        metricImportantFields
     } = metadata;
 
     const fieldsByMetric = type === 'metric' && formField.id.value ?
@@ -54,7 +55,12 @@ const GuideDetailEditor = ({
                         formField.id.onChange(entity.id);
                         formField.points_of_interest.onChange(entity.points_of_interest || '');
                         formField.caveats.onChange(entity.caveats || '');
-                        formField.important_fields.onChange(null);
+                        if (type === 'metric') {
+                            formField.important_fields.onChange(metricImportantFields[entity.id] &&
+                                metricImportantFields[entity.id]
+                                    .map(fieldId => fields[fieldId])
+                            );
+                        }
                     }}
                     placeholder={`Pick a ${type}`}
                 /> :
