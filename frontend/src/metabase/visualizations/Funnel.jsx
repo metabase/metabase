@@ -3,8 +3,11 @@ import ReactDOM from "react-dom";
 
 import styles from "./Funnel.css";
 
-import * as colors from "metabase/lib/colors";
+import cx from "classnames";
+import { normal } from "metabase/lib/colors";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
+
+const DEFAULT_COLORS = Object.values(normal);
 
 import _ from "underscore";
 
@@ -127,7 +130,7 @@ function extractStepsInfos(cols, rows, settings) {
     var dataset = metricIndex.map((index) => {
         return {
             name: cols[index].name,
-            color: colors.harmony[index - 1],
+            color: DEFAULT_COLORS[index - 1],
             data: rows.map((r) => r[index])
         };
     });
