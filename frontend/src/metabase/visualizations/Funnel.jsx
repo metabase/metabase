@@ -8,9 +8,6 @@ import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 
 import _ from "underscore";
 
-const STEP_SIZE = 100;
-const FUNNEL_SHIFT = 150;
-
 export default class Funnel extends Component {
     static displayName = "Funnel";
     static identifier = "funnel";
@@ -48,8 +45,37 @@ export default class Funnel extends Component {
     render() {
         const { data, settings } = this.props;
         let { rows, cols } = data;
-
         let { dataset, total, steps } = extractStepsInfos(cols, rows, settings);
+
+        const STEP_SIZE = 570 / steps.length;
+        const FUNNEL_SHIFT = 150;
+        const Y_RESIZE = 1; // 100 / total.data[0];
+
+        function calculatePoints(k, i, serie, total) {
+            if (i == 0) {
+                return;
+            }
+
+            let startCenterY = FUNNEL_SHIFT - total.data[i - 1] / 2 + serie.shifted[i - 1] + serie.data[i - 1] / 2,
+                endCenterY = FUNNEL_SHIFT - total.data[i] / 2 + serie.shifted[i] + k / 2,
+                startX = (i) * STEP_SIZE;
+
+            let startTopX = startX,
+                startTopY = startCenterY - serie.data[i - 1] / 2,
+                endTopX = startX,
+                endTopY = startCenterY + serie.data[i - 1] / 2,
+                endBottomX = startX + STEP_SIZE,
+                endBottomY = endCenterY + k / 2,
+                startBottomX = startX + STEP_SIZE,
+                startBottomY = endCenterY - k / 2;
+
+            return [
+                `${startTopX},${startTopY * Y_RESIZE}`,
+                `${endTopX},${endTopY * Y_RESIZE}`,
+                `${endBottomX},${endBottomY * Y_RESIZE}`,
+                `${startBottomX},${startBottomY * Y_RESIZE}`
+            ].join(' ');
+        }
 
         return (
             <div className={styles.Funnel}>
@@ -58,7 +84,7 @@ export default class Funnel extends Component {
                     {dataset.map((serie) =>
                         <g key={serie.name} ref={serie.name}>
                             {serie.data.map((point, i) =>
-                                <polygon key={serie.name + '-' + i} points={calculatePoints(point, i, serie, total)} fill={serie.color} fillOpacity="0.9"></polygon>
+                                <polygon key={serie.name + '-' + i} points={calculatePoints(point, i, serie, total)} fill={serie.color} fillOpacity={1.0 - i * (0.7 / steps.length )}></polygon>
                             )}
                         </g>
                     )}
@@ -113,30 +139,4 @@ function extractStepsInfos(cols, rows, settings) {
             s.shifted = s.data.map((v) => 0);
     });
     return {dataset: dataset, total: total, steps: steps};
-}
-
-function calculatePoints(k, i, serie, total) {
-    if (i == 0) {
-        return;
-    }
-
-    let startCenterY = FUNNEL_SHIFT - total.data[i - 1] / 2 + serie.shifted[i - 1] + serie.data[i - 1] / 2,
-        endCenterY = FUNNEL_SHIFT - total.data[i] / 2 + serie.shifted[i] + k / 2,
-        startX = (i) * STEP_SIZE;
-
-    let startTopX = startX,
-        startTopY = startCenterY - serie.data[i - 1] / 2,
-        endTopX = startX,
-        endTopY = startCenterY + serie.data[i - 1] / 2,
-        endBottomX = startX + STEP_SIZE,
-        endBottomY = endCenterY + k / 2,
-        startBottomX = startX + STEP_SIZE,
-        startBottomY = endCenterY - k / 2;
-
-    return [
-        `${startTopX},${startTopY}`,
-        `${endTopX},${endTopY}`,
-        `${endBottomX},${endBottomY}`,
-        `${startBottomX},${startBottomY}`
-    ].join(' ');
 }
