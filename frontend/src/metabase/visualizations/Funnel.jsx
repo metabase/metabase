@@ -1,14 +1,15 @@
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
-import cx from "classnames";
 import styles from "./Funnel.css";
 
-import { getFriendlyName } from "metabase/visualizations/lib/utils";
-import { formatValue } from "metabase/lib/formatting";
+import * as colors from "metabase/lib/colors";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 
 import _ from "underscore";
+
+const STEP_SIZE = 100;
+const FUNNEL_SHIFT = 150;
 
 export default class Funnel extends Component {
     static displayName = "Funnel";
@@ -44,109 +45,98 @@ export default class Funnel extends Component {
         }
     }
 
-    componentDidUpdate() {
-    //     // let headerHeight = ReactDOM.findDOMNode(this.refs.header).getBoundingClientRect().height;
-    //     // let footerHeight = this.refs.footer ? ReactDOM.findDOMNode(this.refs.footer).getBoundingClientRect().height : 0;
-    //     // let rowHeight = ReactDOM.findDOMNode(this.refs.firstRow).getBoundingClientRect().height + 1;
-    //     // let pageSize = Math.max(1, Math.floor((this.props.height - headerHeight - footerHeight) / rowHeight));
-    //     // if (this.state.pageSize !== pageSize) {
-    //     //     this.setState({ pageSize });
-    //     // }
-    }
-
     render() {
         const { data, settings } = this.props;
         let { rows, cols } = data;
 
-        var infos = calculateStepsInfos(cols, rows, settings);
-        var containerStyle = {
-            width: `${100 / infos.length}%`,
-        }
+        let { dataset, total, steps } = extractStepsInfos(cols, rows, settings);
 
         return (
-            <div className="p1 flex-full">
-                {infos.map((info, infoIndex) =>
-                    <div key={infoIndex}
-                        className={styles.FunnelStep}
-                        style={containerStyle}>
-                        <div className={styles.Head}>
-                            {info.label}
-                        </div>
-                        <div className={styles.Graph} style={calculateGraphStyle(info, infoIndex, infos.length)}>
-                            {formatValue(info.value)}
-                        </div>
-                        <div className={styles.Infos}>&nbsp;
-                            <em>{ info.partialLost > 0 ? `${formatValue(-info.partialLost)}% step` : null}</em>&nbsp;<br/>
-                            <strong>{ info.totalLost > 0 ? `${formatValue(-info.totalLost)}% total` : null}</strong>&nbsp;<br/>
-                        </div>
-                    </div>
-                )}
+            <div className={styles.Funnel}>
+                <svg width="100%" height="100%" viewBox="0 0 600 300">
+                {/* Funnel steps */}
+                    {dataset.map((serie) =>
+                        <g key={serie.name} ref={serie.name}>
+                            {serie.data.map((point, i) =>
+                                <polygon key={serie.name + '-' + i} points={calculatePoints(point, i, serie, total)} fill={serie.color} fillOpacity="0.9"></polygon>
+                            )}
+                        </g>
+                    )}
+
+                {/* Vertical line separator */}
+                    {total.data.map((data, i) =>
+                        <line key={'line-' + i} x1={i * STEP_SIZE} y1="0" x2={i * STEP_SIZE} y2="300" style={{stroke: '#DDD', strokeWidth:1}} ></line>
+                    )}
+
+                {/* Steps title */}
+                    {steps.map((name, i) =>
+                        <text key={'title-' + i} x={(i + 1) * STEP_SIZE - 10} y="20" textAnchor="end">{name}</text>
+                    )}
+                {/* Series title */}
+                    {dataset.map((serie, i) =>
+                        <text key={serie.name + '-title'} x={STEP_SIZE - 10} y={FUNNEL_SHIFT - total.data[0] / 2 + serie.shifted[0] + serie.data[0] / 2} textAnchor="end">{serie.name}</text>
+                    )}
+                </svg>
             </div>
         );
     }
 }
 
-function calculateStepsInfos(cols, rows, settings) {
+function extractStepsInfos(cols, rows, settings) {
     const stepIndex = _.findIndex(cols, (col) => col.name === settings["funnel.step"]);
 
     const metricIndex = settings["funnel.metrics"].map((metric, i) => {
         return _.findIndex(cols, (col) => col.name === metric);
     });
 
-    // Initial infos (required for step calculation)
-    var infos = [{
-        value: rows[0][metricIndex],
-        graph: {
-            startBottom: 0.0,
-            startTop: 1.0,
-            endBottom: 0.0,
-            endTop: 1.0,
-        }
-    }];
+    var dataset = metricIndex.map((index) => {
+        return {
+            name: cols[index].name,
+            color: colors.harmony[index - 1],
+            data: rows.map((r) => r[index])
+        };
+    });
 
-    var remaning = rows[0][1];
-
-    rows.map((row, rowIndex) => {
-        remaning -= (infos[rowIndex].value - row[metricIndex]);
-
-        infos[rowIndex + 1] = {
-            label: row[stepIndex],
-            value: row[metricIndex],
-            partialLost: (infos[rowIndex].value - row[metricIndex]) / infos[rowIndex].value * 100,
-            totalLost: (infos[0].value - remaning) / infos[0].value * 100,
-            graph: {
-                startBottom: infos[rowIndex].graph.endBottom,
-                startTop: infos[rowIndex].graph.endTop,
-                endTop: 0.5 + ((remaning / infos[0].value) / 2),
-                endBottom: 0.5 - ((remaning / infos[0].value) / 2),
-            }
+    // Calculate total values
+    var total = dataset.reduce((pre, curr) => {
+        return {
+            data: pre.data.map((i, m) =>  i + curr.data[m])
         }
     });
 
-    // Remove initial setup
-    infos.shift();
+    var steps = rows.map((r) => r[stepIndex]);
 
-    return infos;
+    // Calculate shifted value
+    dataset.forEach((s, i) => {
+        s.shifted = (i > 0) ?
+            dataset[i - 1].shifted.map((v, o) => v + dataset[i - 1].data[o]) :
+            s.shifted = s.data.map((v) => 0);
+    });
+    return {dataset: dataset, total: total, steps: steps};
 }
 
-function calculateGraphStyle(info, currentStep, stepsNumber) {
-    var sizeConverter = 100;
-    var opacityStep = 0.6 / stepsNumber;
-
-    var style = {
-        WebkitClipPath: `polygon(0 ${info.graph.startBottom * sizeConverter}%, 0 ${info.graph.startTop * sizeConverter}%, 100% ${info.graph.endTop * sizeConverter}%, 100% ${info.graph.endBottom * sizeConverter}%)`,
-        MozClipPath: `polygon(0 ${info.graph.startBottom * sizeConverter}%, 0 ${info.graph.startTop * sizeConverter}%, 100% ${info.graph.endTop * sizeConverter}%, 100% ${info.graph.endBottom * sizeConverter}%)`,
-        msClipPath: `polygon(0 ${info.graph.startBottom * sizeConverter}%, 0 ${info.graph.startTop * sizeConverter}%, 100% ${info.graph.endTop * sizeConverter}%, 100% ${info.graph.endBottom * sizeConverter}%)`,
-        ClipPath: `polygon(0 ${info.graph.startBottom * sizeConverter}%, 0 ${info.graph.startTop * sizeConverter}%, 100% ${info.graph.endTop * sizeConverter}%, 100% ${info.graph.endBottom * sizeConverter}%)`,
-        backgroundColor: `rgba(80, 158, 227, ${1 - ((currentStep - 1) * opacityStep)})`,
-    };
-
-    if (currentStep == 0) {
-        style.color = '#727479';
-        style.backgroundColor = 'transparent';
-        style.textAlign = 'right';
-        style.padding = '0.5em';
+function calculatePoints(k, i, serie, total) {
+    if (i == 0) {
+        return;
     }
 
-    return style;
+    let startCenterY = FUNNEL_SHIFT - total.data[i - 1] / 2 + serie.shifted[i - 1] + serie.data[i - 1] / 2,
+        endCenterY = FUNNEL_SHIFT - total.data[i] / 2 + serie.shifted[i] + k / 2,
+        startX = (i) * STEP_SIZE;
+
+    let startTopX = startX,
+        startTopY = startCenterY - serie.data[i - 1] / 2,
+        endTopX = startX,
+        endTopY = startCenterY + serie.data[i - 1] / 2,
+        endBottomX = startX + STEP_SIZE,
+        endBottomY = endCenterY + k / 2,
+        startBottomX = startX + STEP_SIZE,
+        startBottomY = endCenterY - k / 2;
+
+    return [
+        `${startTopX},${startTopY}`,
+        `${endTopX},${endTopY}`,
+        `${endBottomX},${endBottomY}`,
+        `${startBottomX},${startBottomY}`
+    ].join(' ');
 }
