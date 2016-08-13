@@ -77,6 +77,14 @@ export default class Funnel extends Component {
             ].join(' ');
         }
 
+        let series = dataset.map((serie, i) => {
+            return {
+                name: serie.name,
+                x: STEP_SIZE - 10,
+                y: FUNNEL_SHIFT - total.data[0] / 2 + serie.shifted[0] + serie.data[0] / 2
+            }
+        })
+
         return (
             <div className={styles.Funnel}>
                 <svg width="100%" height="100%" viewBox="0 0 600 300">
@@ -98,9 +106,10 @@ export default class Funnel extends Component {
                     {steps.map((name, i) =>
                         <text key={'title-' + i} x={(i + 1) * STEP_SIZE - 10} y="20" textAnchor="end">{name}</text>
                     )}
+
                 {/* Series title */}
-                    {dataset.map((serie, i) =>
-                        <text key={serie.name + '-title'} x={STEP_SIZE - 10} y={FUNNEL_SHIFT - total.data[0] / 2 + serie.shifted[0] + serie.data[0] / 2} textAnchor="end">{serie.name}</text>
+                    {series.map((serie) =>
+                        <text key={serie.name + '-title'} x={serie.x} y={serie.y} textAnchor="end">{serie.name}</text>
                     )}
                 </svg>
             </div>
