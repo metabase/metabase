@@ -52,44 +52,72 @@ export default class Funnel extends Component {
 
         const STEP_SIZE = 570 / steps.length;
         const FUNNEL_SHIFT = 150;
-        const Y_RESIZE = 1; // 100 / total.data[0];
+
+        var normalize = (x) => x / total.data[0] * 250;
 
         function calculatePoints(k, i, serie, total) {
             if (i == 0) {
                 return;
             }
 
-            let startCenterY = FUNNEL_SHIFT - total.data[i - 1] / 2 + serie.shifted[i - 1] + serie.data[i - 1] / 2,
-                endCenterY = FUNNEL_SHIFT - total.data[i] / 2 + serie.shifted[i] + k / 2,
-                startX = (i) * STEP_SIZE;
+            let startCenterY = FUNNEL_SHIFT - normalize(total.data[i - 1]) / 2 + normalize(serie.shifted[i - 1]) + normalize(serie.data[i - 1]) / 2,
+                endCenterY = FUNNEL_SHIFT - normalize(total.data[i]) / 2 + normalize(serie.shifted[i]) + normalize(k) / 2,
+                startX = i * STEP_SIZE;
 
             let startTopX = startX,
-                startTopY = startCenterY - serie.data[i - 1] / 2,
+                startTopY = startCenterY - normalize(serie.data[i - 1]) / 2,
                 endTopX = startX,
-                endTopY = startCenterY + serie.data[i - 1] / 2,
+                endTopY = startCenterY + normalize(serie.data[i - 1]) / 2,
                 endBottomX = startX + STEP_SIZE,
-                endBottomY = endCenterY + k / 2,
+                endBottomY = endCenterY + normalize(k) / 2,
                 startBottomX = startX + STEP_SIZE,
-                startBottomY = endCenterY - k / 2;
+                startBottomY = endCenterY - normalize(k) / 2;
 
             return [
-                `${startTopX},${startTopY * Y_RESIZE}`,
-                `${endTopX},${endTopY * Y_RESIZE}`,
-                `${endBottomX},${endBottomY * Y_RESIZE}`,
-                `${startBottomX},${startBottomY * Y_RESIZE}`
+                `${startTopX},${startTopY}`,
+                `${endTopX},${endTopY}`,
+                `${endBottomX},${endBottomY}`,
+                `${startBottomX},${startBottomY}`
             ].join(' ');
         }
 
-        let series = dataset.map((serie, i) => {
+
+        let lines = total.data.map((data, i) => {
             return {
+                key: `line-${i}`,
+                x1: (i + 1) * STEP_SIZE,
+                x2: (i + 1) * STEP_SIZE,
+                y1: 0,
+                y2: 300,
+                textAnchor: 'end',
+                fill: '#727479',
+            }
+        });
+
+        let stepsLabel = steps.map((name, i) => {
+            return {
+                name: name,
+                key: `step-${i}`,
+                x: (i + 1) * STEP_SIZE - 10,
+                y: 20,
+                textAnchor: 'end',
+                fill: '#727479',
+            }
+        });
+
+        let seriesLabel = dataset.map((serie, i) => {
+            return {
+                key: `serie-${i}`,
                 name: serie.name,
                 x: STEP_SIZE - 10,
-                y: FUNNEL_SHIFT - total.data[0] / 2 + serie.shifted[0] + serie.data[0] / 2
+                y: FUNNEL_SHIFT - normalize(total.data[0]) / 2 + normalize(serie.shifted[0]) + normalize(serie.data[0]) / 2,
+                textAnchor: 'end',
+                fill: '#727479',
             }
-        })
+        });
 
         return (
-            <div className={styles.Funnel}>
+            <div className={cx(styles.Funnel, ' full flex flex-column')}>
                 <svg width="100%" height="100%" viewBox="0 0 600 300">
                 {/* Funnel steps */}
                     {dataset.map((serie) =>
@@ -101,18 +129,18 @@ export default class Funnel extends Component {
                     )}
 
                 {/* Vertical line separator */}
-                    {total.data.map((data, i) =>
-                        <line key={'line-' + i} x1={i * STEP_SIZE} y1="0" x2={i * STEP_SIZE} y2="300" style={{stroke: '#DDD', strokeWidth:1}} ></line>
+                    {lines.map((line, i) =>
+                        <line {...line} style={{stroke: '#DDD', strokeWidth:1}} ></line>
                     )}
 
                 {/* Steps title */}
-                    {steps.map((name, i) =>
-                        <text key={'title-' + i} x={(i + 1) * STEP_SIZE - 10} y="20" textAnchor="end">{name}</text>
+                    {stepsLabel.map((step, i) =>
+                        <text {...step}>{step.name}</text>
                     )}
 
                 {/* Series title */}
-                    {series.map((serie) =>
-                        <text key={serie.name + '-title'} x={serie.x} y={serie.y} textAnchor="end">{serie.name}</text>
+                    {seriesLabel.map((serie) =>
+                        <text {...serie}>{serie.name}</text>
                     )}
                 </svg>
             </div>
