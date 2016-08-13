@@ -14,8 +14,8 @@ export default class Funnel extends Component {
     static iconName = "funnel";
 
     static minSize = {
-        width: 4,
-        height: 5
+        width: 5,
+        height: 4
     };
 
     static propTypes = {
