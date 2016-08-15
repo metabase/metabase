@@ -75,7 +75,7 @@ const mapStateToProps = (state, props) => {
         contact: guide.contact || {name: null, email: null},
         most_important_dashboard: guide.most_important_dashboard !== null ?
             dashboards[guide.most_important_dashboard] :
-            {id: null, caveats: null, points_of_interest: null},
+            {},
         important_metrics: guide.important_metrics && guide.important_metrics.length > 0 ? 
             guide.important_metrics
                 .map(metricId => metrics[metricId] && i.assoc(metrics[metricId], 'important_fields', guide.metric_important_fields[metricId] && guide.metric_important_fields[metricId].map(fieldId => fields[fieldId]))) :
@@ -258,13 +258,13 @@ export default class ReferenceGettingStartedGuide extends Component {
                         </div>
 
                         <GuideEditSection
-                            isCollapsed={true}
-                            isDisabled={false}
+                            isCollapsed={most_important_dashboard.id.value === undefined}
+                            isDisabled={!dashboards || Object.keys(dashboards).length === 0}
                             collapsedTitle="Is there an important dashboard for your team?"
                             collapsedIcon="ruler"
                             linkMessage="Create a dashboard now"
                             action={showDashboardModal}
-                            onClick={() => most_important_dashboard.onChange(undefined)}
+                            expand={() => most_important_dashboard.id.onChange(null)}
                         >
                             <div className={S.guideEditSection}>
                                 <div className={S.guideEditTitle}>
