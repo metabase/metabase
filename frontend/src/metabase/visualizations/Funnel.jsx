@@ -109,10 +109,10 @@ export default class Funnel extends Component {
             return {
                 key: `serie-${i}`,
                 name: serie.name,
+                initialValue: serie.data[0],
                 x: STEP_SIZE - 10,
                 y: FUNNEL_SHIFT - normalize(total.data[0]) / 2 + normalize(serie.shifted[0]) + normalize(serie.data[0]) / 2,
-                textAnchor: 'end',
-                fill: '#727479',
+                color: serie.color,
             }
         });
 
@@ -135,12 +135,15 @@ export default class Funnel extends Component {
 
                 {/* Steps title */}
                     {stepsLabel.map((step, i) =>
-                        <text {...step}>{step.name}</text>
+                        <text {...step} className={styles.StepLabel}>{step.name}</text>
                     )}
 
                 {/* Series title */}
                     {seriesLabel.map((serie) =>
-                        <text {...serie}>{serie.name}</text>
+                        <text x={serie.x} y={serie.y} fill={serie.color}>
+                            <tspan textAnchor="end" x={serie.x} className={styles.SeriesLabel}>{serie.name}</tspan>
+                            <tspan textAnchor="end" x={serie.x} className={styles.SeriesCounter} dy="1.4em">{serie.initialValue}</tspan>
+                        </text>
                     )}
                 </svg>
             </div>
