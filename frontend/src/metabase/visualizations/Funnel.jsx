@@ -115,6 +115,7 @@ export default class Funnel extends Component {
                 y: 20,
                 textAnchor: 'end',
                 fill: '#727479',
+                fillOpacity: 1.0 - i * (0.5 / steps.length ),
             }
         });
 
