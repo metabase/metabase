@@ -50,20 +50,31 @@ export default class Funnel extends Component {
         let { rows, cols } = data;
         let { dataset, total, steps } = extractStepsInfos(cols, rows, settings);
 
+        // Our SVG canvas is 600x300 so we can use absolute value here.
+        // Indicate the width of each step, we have some margin on left/right,
+        // so we use only 570 as our available area.
         const STEP_SIZE = 570 / steps.length;
+
+        // Shift the funnel "center" line in the middle of the SVN canvas.
         const FUNNEL_SHIFT = 150;
 
+        // Consider the funnel to be height 250 on the initial step, scal all
+        // number using this proportion.
         var normalize = (x) => x / total.data[0] * 250;
 
+        // Generate points used from SVG polygon for each step/mosaics.
         function calculatePoints(k, i, serie, total) {
+            // Initial step don't draw the polygon.
             if (i == 0) {
                 return;
             }
 
+            // Calculate the Y-center for each step at the begin and the end.
             let startCenterY = FUNNEL_SHIFT - normalize(total.data[i - 1]) / 2 + normalize(serie.shifted[i - 1]) + normalize(serie.data[i - 1]) / 2,
                 endCenterY = FUNNEL_SHIFT - normalize(total.data[i]) / 2 + normalize(serie.shifted[i]) + normalize(k) / 2,
                 startX = i * STEP_SIZE;
 
+            // Calculate all points coordinate.
             let startTopX = startX,
                 startTopY = startCenterY - normalize(serie.data[i - 1]) / 2,
                 endTopX = startX,
@@ -73,6 +84,7 @@ export default class Funnel extends Component {
                 startBottomX = startX + STEP_SIZE,
                 startBottomY = endCenterY - normalize(k) / 2;
 
+            // Return the string rewuired from SVG polygon tag.
             return [
                 `${startTopX},${startTopY}`,
                 `${endTopX},${endTopY}`,
@@ -81,7 +93,7 @@ export default class Funnel extends Component {
             ].join(' ');
         }
 
-
+        // Draw lines to separate steps.
         let lines = total.data.map((data, i) => {
             return {
                 key: `line-${i}`,
@@ -94,6 +106,7 @@ export default class Funnel extends Component {
             }
         });
 
+        // Step label informations.
         let stepsLabel = steps.map((name, i) => {
             return {
                 name: name,
@@ -105,6 +118,7 @@ export default class Funnel extends Component {
             }
         });
 
+        // Series label informations.
         let seriesLabel = dataset.map((serie, i) => {
             return {
                 key: `serie-${i}`,
