@@ -18,7 +18,7 @@ import {
 //TODO: refactor to use different container components for each section
 // initialize section metadata in there
 // may not be worthwhile due to the extra boilerplate required
-// ideal solution is to pass metadata to each section through router
+// try using a higher-order component to reduce boilerplate?
 const referenceSections = {
     [`/reference/guide`]: {
         id: `/reference/guide`,
@@ -676,3 +676,5 @@ export const getGuide = (state, props) => state.reference.guide;
 
 export const getDashboards = (state, props) => state.dashboard.dashboardListing && 
     resourceListToMap(state.dashboard.dashboardListing);
+
+export const getIsDashboardModalOpen = (state, props) => state.reference.isDashboardModalOpen;

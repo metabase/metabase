@@ -13,7 +13,7 @@ import MetabaseAnalytics from 'metabase/lib/analytics';
 
 const GettingStartedApi = new AngularResourceProxy("GettingStarted", ["get"]);
 
-const FETCH_GUIDE = "metabase/metadata/FETCH_GUIDE";
+const FETCH_GUIDE = "metabase/reference/FETCH_GUIDE";
 export const fetchGuide = createThunkAction(FETCH_GUIDE, (reload = false) => {
     return async (dispatch, getState) => {
         const requestStatePath = ["reference", 'guide'];
@@ -62,11 +62,20 @@ export const expandFormula = createAction(EXPAND_FORMULA);
 const COLLAPSE_FORMULA = "metabase/reference/COLLAPSE_FORMULA";
 export const collapseFormula = createAction(COLLAPSE_FORMULA);
 
+//TODO: consider making an app-wide modal state reducer and related actions
+const SHOW_DASHBOARD_MODAL = "metabase/reference/SHOW_DASHBOARD_MODAL";
+export const showDashboardModal = createAction(SHOW_DASHBOARD_MODAL);
+
+const HIDE_DASHBOARD_MODAL = "metabase/reference/HIDE_DASHBOARD_MODAL";
+export const hideDashboardModal = createAction(HIDE_DASHBOARD_MODAL);
+
+
 const initialState = {
     error: null,
     isLoading: false,
     isEditing: false,
     isFormulaExpanded: false,
+    isDashboardModalOpen: false
 };
 export default handleActions({
     [FETCH_GUIDE]: {
@@ -95,5 +104,11 @@ export default handleActions({
     },
     [COLLAPSE_FORMULA]: {
         next: (state) => i.assoc(state, 'isFormulaExpanded', false)
+    },
+    [SHOW_DASHBOARD_MODAL]: {
+        next: (state) => i.assoc(state, 'isDashboardModalOpen', true)
+    },
+    [HIDE_DASHBOARD_MODAL]: {
+        next: (state) => i.assoc(state, 'isDashboardModalOpen', false)
     }
 }, initialState);

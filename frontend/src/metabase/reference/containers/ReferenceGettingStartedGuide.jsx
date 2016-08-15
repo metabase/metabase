@@ -2,6 +2,7 @@
 import React, { Component, PropTypes } from "react";
 import { Link } from "react-router";
 import { connect } from 'react-redux';
+import { push } from 'react-router-redux';
 import { reduxForm } from "redux-form";
 import i from "icepick";
 import cx from "classnames";
@@ -12,11 +13,16 @@ import {
     getQuestionUrl
 } from '../utils';
 
+import MetabaseAnalytics from "metabase/lib/analytics";
+
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import CreateDashboardModal from 'metabase/components/CreateDashboardModal.jsx';
+import Modal from 'metabase/components/Modal.jsx';
 
 import EditHeader from "metabase/reference/components/EditHeader.jsx";
 import GuideEmptyState from "metabase/reference/components/GuideEmptyState.jsx";
 import GuideHeader from "metabase/reference/components/GuideHeader.jsx";
+import GuideEditSection from "metabase/reference/components/GuideEditSection.jsx";
 import GuideDetail from "metabase/reference/components/GuideDetail.jsx";
 import GuideDetailEditor from "metabase/reference/components/GuideDetailEditor.jsx";
 
@@ -24,7 +30,8 @@ import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';
 import { clearRequestState } from "metabase/redux/requests";
 import {
-    updateDashboard
+    updateDashboard,
+    createDashboard
 } from 'metabase/dashboard/dashboard';
 
 import {
@@ -42,7 +49,8 @@ import {
     getDatabases,
     getLoading,
     getError,
-    getIsEditing
+    getIsEditing,
+    getIsDashboardModalOpen
 } from '../selectors';
 
 import {
@@ -52,7 +60,6 @@ import {
 
 const mapStateToProps = (state, props) => {
     const guide = getGuide(state, props); 
-    console.log(guide);
     const dashboards = getDashboards(state, props);
     const metrics = getMetrics(state, props);
     const segments = getSegments(state, props);
@@ -92,27 +99,15 @@ const mapStateToProps = (state, props) => {
         segments,
         tables,
         databases,
+        // FIXME: avoids naming conflict, tried using the propNamespace option
+        // version but couldn't quite get it to work together with passing in 
+        // dynamic initialValues
         metadataFields: fields,
         loading: getLoading(state, props),
         // naming this 'error' will conflict with redux form
         loadingError: getError(state, props),
         isEditing: getIsEditing(state, props),
-        fields: [
-            'things_to_know',
-            'contact.name',
-            'contact.email',
-            'most_important_dashboard.id',
-            'most_important_dashboard.caveats',
-            'most_important_dashboard.points_of_interest',
-            'important_metrics[].id',
-            'important_metrics[].caveats',
-            'important_metrics[].points_of_interest',
-            'important_metrics[].important_fields',
-            'important_segments_and_tables[].id',
-            'important_segments_and_tables[].type',
-            'important_segments_and_tables[].caveats',
-            'important_segments_and_tables[].points_of_interest'
-        ],
+        isDashboardModalOpen: getIsDashboardModalOpen(state, props), 
         // redux form doesn't pass this through to component
         // need to use to reset form field arrays
         initialValues: initialValues,
@@ -121,7 +116,9 @@ const mapStateToProps = (state, props) => {
 };
 
 const mapDispatchToProps = {
+    push,
     updateDashboard,
+    createDashboard,
     updateSetting,
     clearRequestState,
     ...metadataActions,
@@ -130,7 +127,23 @@ const mapDispatchToProps = {
 
 @connect(mapStateToProps, mapDispatchToProps)
 @reduxForm({
-    form: 'guide'
+    form: 'guide',
+    fields: [
+        'things_to_know',
+        'contact.name',
+        'contact.email',
+        'most_important_dashboard.id',
+        'most_important_dashboard.caveats',
+        'most_important_dashboard.points_of_interest',
+        'important_metrics[].id',
+        'important_metrics[].caveats',
+        'important_metrics[].points_of_interest',
+        'important_metrics[].important_fields',
+        'important_segments_and_tables[].id',
+        'important_segments_and_tables[].type',
+        'important_segments_and_tables[].caveats',
+        'important_segments_and_tables[].points_of_interest'
+    ]
 })
 export default class ReferenceGettingStartedGuide extends Component {
     static propTypes = {
@@ -181,7 +194,12 @@ export default class ReferenceGettingStartedGuide extends Component {
             handleSubmit,
             submitting,
             initialFormValues,
-            initializeForm
+            initializeForm,
+            createDashboard,
+            isDashboardModalOpen,
+            showDashboardModal,
+            hideDashboardModal,
+            push
         } = this.props;
 
         const onSubmit = handleSubmit(async (fields) => 
@@ -198,6 +216,24 @@ export default class ReferenceGettingStartedGuide extends Component {
 
         return (
             <form className="full" style={style} onSubmit={onSubmit}>
+                { isDashboardModalOpen &&
+                    <Modal>
+                        <CreateDashboardModal
+                            createDashboardFn={async (newDashboard) => {
+                                try {
+                                    const action = await createDashboard(newDashboard, true);
+                                    push(`/dash/${action.payload.id}`);
+                                }
+                                catch(error) {
+                                    console.error(error);
+                                }
+
+                                MetabaseAnalytics.trackEvent("Dashboard", "Create");
+                            }}
+                            closeFn={hideDashboardModal} 
+                        />
+                    </Modal> 
+                }
                 { isEditing &&
                     <EditHeader
                         endEditing={endEditing}
@@ -221,7 +257,15 @@ export default class ReferenceGettingStartedGuide extends Component {
                             </div>
                         </div>
 
-                        { Object.keys(dashboards).length > 0 && 
+                        <GuideEditSection
+                            isCollapsed={true}
+                            isDisabled={false}
+                            collapsedTitle="Is there an important dashboard for your team?"
+                            collapsedIcon="ruler"
+                            linkMessage="Create a dashboard now"
+                            action={showDashboardModal}
+                            onClick={() => most_important_dashboard.onChange(undefined)}
+                        >
                             <div className={S.guideEditSection}>
                                 <div className={S.guideEditTitle}>
                                     What is your most important dashboard?
@@ -241,7 +285,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     />
                                 </div>
                             </div>
-                        }
+                        </GuideEditSection>
 
                         { Object.keys(metrics).length > 0 && 
                             <div className={S.guideEditSection}>
