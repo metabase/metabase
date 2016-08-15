@@ -205,7 +205,7 @@ export default class QueryVisualizationObjectDetailTable extends Component {
             idValue = this.getIdValue();
 
         return (
-            <div className="ObjectDetail rounded">
+            <div className="ObjectDetail rounded mt2">
                 <div className="Grid ObjectDetail-headingGroup">
                     <div className="Grid-cell ObjectDetail-infoMain px4 py3 ml2 arrow-right">
                         <div className="text-brand text-bold">
