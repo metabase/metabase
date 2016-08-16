@@ -400,50 +400,69 @@ export default class ReferenceGettingStartedGuide extends Component {
                             </div>
                         </GuideEditSection>
                         
-                        <div className={S.guideEditSection}>
-                            <div className={S.guideEditTitle}>
-                                What should a user of this data know before they start 
-                                accessing it?
-                            </div>
-                            <div className={S.guideEditCards}>
-                                <div className={S.guideEditCard}>
-                                    <div className={S.guideEditSubtitle}>
-                                        E.g., expectations around data privacy and use, common
-                                        pitfalls or misunderstandings, information about data 
-                                        warehouse performance, legal notices, etc.
+                        <GuideEditSection
+                            isCollapsed={things_to_know.value === null}
+                            isDisabled={false}
+                            collapsedTitle="Is there anything your users should understand or know before they start accessing the data?"
+                            collapsedIcon="lightbulb"
+                            expand={() => things_to_know.onChange('')}
+                        >
+                            <div className={S.guideEditSection}>
+                                <div className={S.guideEditTitle}>
+                                    What should a user of this data know before they start 
+                                    accessing it?
+                                </div>
+                                <div className={S.guideEditCards}>
+                                    <div className={S.guideEditCard}>
+                                        <div className={S.guideEditSubtitle}>
+                                            E.g., expectations around data privacy and use, common
+                                            pitfalls or misunderstandings, information about data 
+                                            warehouse performance, legal notices, etc.
+                                        </div>
+                                        <textarea 
+                                            className={S.guideEditTextarea} 
+                                            placeholder="Things to know..."
+                                            {...things_to_know}
+                                        />
                                     </div>
-                                    <textarea 
-                                        className={S.guideEditTextarea} 
-                                        placeholder="Things to know..."
-                                        {...things_to_know}
-                                    />
                                 </div>
                             </div>
-                        </div>
+                        </GuideEditSection>
 
-                        <div className={S.guideEditSection}>
-                            <div className={S.guideEditTitle}>
-                                Who should users contact for help if they're confused about this data?
-                            </div>
-                            <div className={S.guideEditCards}>
-                                <div className={S.guideEditCard}>
-                                    <div className={S.guideEditContact}>
-                                        <input 
-                                            className={S.guideEditContactName} 
-                                            placeholder="Name" 
-                                            type="text"
-                                            {...contact.name}
-                                        />
-                                        <input 
-                                            className={S.guideEditContactEmail} 
-                                            placeholder="Email address" 
-                                            type="text"
-                                            {...contact.email}
-                                        />
+                        <GuideEditSection
+                            isCollapsed={contact.name.value === null && contact.email.value === null}
+                            isDisabled={false}
+                            collapsedTitle="Is there someone your users could contact for help if they're confused about this guide?"
+                            collapsedIcon="mail"
+                            expand={() => {
+                                contact.name.onChange('');
+                                contact.email.onChange('');
+                            }}
+                        >
+                            <div className={S.guideEditSection}>
+                                <div className={S.guideEditTitle}>
+                                    Who should users contact for help if they're confused about this data?
+                                </div>
+                                <div className={S.guideEditCards}>
+                                    <div className={S.guideEditCard}>
+                                        <div className={S.guideEditContact}>
+                                            <input 
+                                                className={S.guideEditContactName} 
+                                                placeholder="Name" 
+                                                type="text"
+                                                {...contact.name}
+                                            />
+                                            <input 
+                                                className={S.guideEditContactEmail} 
+                                                placeholder="Email address" 
+                                                type="text"
+                                                {...contact.email}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </GuideEditSection>
                     </div> :
                     !guide || isGuideEmpty(guide) ? 
                         <GuideEmptyState 
