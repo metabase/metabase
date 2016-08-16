@@ -54,7 +54,9 @@ export const tryFetchData = async (props) => {
 export const tryUpdateData = async (fields, props) => {
     const {
         entity,
+        guide,
         section,
+        updateMetricImportantFields,
         startLoading,
         endLoading,
         resetForm,
@@ -68,6 +70,19 @@ export const tryUpdateData = async (fields, props) => {
         if (!isEmptyObject(editedFields)) {
             const newEntity = {...entity, ...editedFields};
             await props[section.update](newEntity);
+
+            if (section.type === 'metric' && fields.important_fields && fields.important_fields.length > 0) {
+                const importantFieldIds = fields.important_fields.map(field => field.id);
+                const existingImportantFieldIds = guide.metric_important_fields && guide.metric_important_fields[entity.id];
+
+                const areFieldIdsIdentitical = existingImportantFieldIds && 
+                    existingImportantFieldIds.length === importantFieldIds.length &&
+                    existingImportantFieldIds.every(id => importantFieldIds.includes(id));
+                if (!areFieldIdsIdentitical) {
+                    await updateMetricImportantFields(entity.id, importantFieldIds);
+                    tryFetchData(props);
+                }
+            }
         }
     }
     catch(error) {
@@ -231,9 +246,10 @@ export const tryUpdateGuide = async (formFields, props) => {
                     .map(field => field.id);
                 const existingImportantFieldIds = guide.metric_important_fields[metricFormField.id];
                 
-                if (existingImportantFieldIds && 
+                const areFieldIdsIdentitical = existingImportantFieldIds && 
                     existingImportantFieldIds.length === importantFieldIds.length &&
-                    existingImportantFieldIds.every(id => importantFieldIds.includes(id))) {
+                    existingImportantFieldIds.every(id => importantFieldIds.includes(id));
+                if (areFieldIdsIdentitical) {
                     return [];
                 }
                 
