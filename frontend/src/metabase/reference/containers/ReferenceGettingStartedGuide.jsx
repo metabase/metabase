@@ -355,6 +355,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                         <GuideEditSection
                             isCollapsed={important_segments_and_tables.length === 0}
                             isDisabled={(!segments || Object.keys(segments).length === 0) && (!tables || Object.keys(tables).length === 0)}
+                            showLink={!segments || Object.keys(segments).length === 0}
                             collapsedTitle="Do you have any commonly referenced segments or tables?"
                             collapsedIcon="table2"
                             linkMessage="Learn how to create a segment"
@@ -522,7 +523,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                                     .map(field => ({ 
                                                         name: field.display_name || field.name,
                                                         url: getQuestionUrl({
-                                                            dbId: tables[field.table_id].db_id,
+                                                            dbId: tables[field.table_id] && tables[field.table_id].db_id,
                                                             tableId: field.table_id,
                                                             fieldId: field.id,
                                                             metricId

@@ -29,9 +29,11 @@ const GuideDetailEditor = ({
         metricImportantFields
     } = metadata;
 
-    const fieldsByMetric = type === 'metric' && formField.id.value ?
-        tables[metrics[formField.id.value].table_id].fields
-            .map(fieldId => fields[fieldId]) :
+    const entityId = formField.id.value;
+    const tableId = metrics && metrics[entityId] && metrics[entityId].table_id;
+    const tableFields = tables && tables[tableId] && tables[tableId].fields || [];
+    const fieldsByMetric = type === 'metric' ?
+        tableFields.map(fieldId => fields[fieldId]) :
         [];
 
     return <div className={cx(S.guideDetailEditor, className)}>

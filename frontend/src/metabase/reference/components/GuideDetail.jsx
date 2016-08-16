@@ -10,7 +10,7 @@ import {
 } from "../utils";
 
 const GuideDetail = ({
-    entity,
+    entity = {},
     tables,
     type,
     exploreLinks,

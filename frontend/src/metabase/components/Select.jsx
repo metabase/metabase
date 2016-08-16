@@ -149,6 +149,7 @@ class LegacySelect extends Component {
         options: PropTypes.array.isRequired,
         disabledOptionIds: PropTypes.array, 
         placeholder: PropTypes.string,
+        emptyPlaceholder: PropTypes.string,
         onChange: PropTypes.func,
         optionNameFn: PropTypes.func,
         optionValueFn: PropTypes.func,
@@ -161,6 +162,7 @@ class LegacySelect extends Component {
 
     static defaultProps = {
         placeholder: "",
+        emptyPlaceholder: "Nothing to select",
         disabledOptionIds: [],
         optionNameFn: (option) => option.name,
         optionValueFn: (option) => option,
@@ -172,9 +174,13 @@ class LegacySelect extends Component {
     }
 
     render() {
-        const { className, value, values, onChange, options, disabledOptionIds, optionNameFn, optionValueFn, placeholder, isInitiallyOpen, disabled } = this.props;
+        const { className, value, values, onChange, options, disabledOptionIds, optionNameFn, optionValueFn, placeholder, emptyPlaceholder, isInitiallyOpen, disabled } = this.props;
 
-        var selectedName = value ? optionNameFn(value) : placeholder;
+        var selectedName = value ? 
+            optionNameFn(value) : 
+            options && options.length > 0 ? 
+                placeholder : 
+                emptyPlaceholder;
 
         var triggerElement = (
             <div className={cx("flex align-center", !value && (!values || values.length === 0) ? " text-grey-2" : "")}>
@@ -214,6 +220,8 @@ class LegacySelect extends Component {
             }
         ];
 
+        const disablePopover = disabled || !options || options.length === 0;
+
         return (
             <PopoverWithTrigger
                 ref="popover"
@@ -221,7 +229,7 @@ class LegacySelect extends Component {
                 triggerElement={triggerElement}
                 triggerClasses={this.props.triggerClasses || cx("AdminSelect", this.props.className)}
                 isInitiallyOpen={isInitiallyOpen}
-                disabled={disabled}
+                disabled={disablePopover}
             >
                 <div onClick={(e) => e.stopPropagation()}>
                     <ColumnarSelector

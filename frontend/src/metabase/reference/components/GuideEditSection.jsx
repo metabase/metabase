@@ -11,6 +11,7 @@ const GuideEditSection = ({
     children,
     isCollapsed,
     isDisabled,
+    showLink,
     collapsedIcon,
     collapsedTitle,
     linkMessage,
@@ -27,7 +28,7 @@ const GuideEditSection = ({
     >
         <Icon className={S.guideEditSectionCollapsedIcon} name={collapsedIcon} size={24} />
         <span className={S.guideEditSectionCollapsedTitle}>{collapsedTitle}</span>
-        {isDisabled && (link ? (link.startsWith('http') ? 
+        {(showLink || isDisabled) && (link ? (link.startsWith('http') ? 
                 <a 
                     className={S.guideEditSectionCollapsedLink} 
                     href={link} 
