@@ -105,6 +105,13 @@
     composes: input p4 from "style";
 }
 
+
+:local(.guideEditLabel) {
+    composes: block text-bold mb2 from "style";
+    font-size: 16px;
+    color: var(--title-color);
+}
+
 :local(.guideEditHeaderDescription) {
     font-size: 16px;
 }
@@ -142,7 +149,7 @@
 }
 
 :local(.guideEditTextarea) {
-    composes: text-dark input p2 mt4 from "style";
+    composes: text-dark input p2 from "style";
     resize: none;
     font-size: 16px;
     width: 100%;
@@ -155,18 +162,18 @@
 }
 
 :local(.guideEditContactName) {
-    composes: text-dark input p2 from "style";
-    display: block;
-    font-size: 16px;
     flex: 250;
     max-width: 250px;
     margin-right: 50px;
 }
 
 :local(.guideEditContactEmail) {
-    composes: text-dark input p2 from "style";
-    display: block;
-    font-size: 16px;
     flex: 550;
     max-width: 550px;
+}
+
+:local(.guideEditInput) {
+    composes: full text-dark input p2 from "style";
+    font-size: 16px;
+    display: block;
 }

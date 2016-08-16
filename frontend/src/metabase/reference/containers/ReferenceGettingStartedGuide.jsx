@@ -273,6 +273,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                 <div className={S.guideEditCards}>
                                     <GuideDetailEditor 
                                         className={S.guideEditCard}
+                                        editLabelClasses={S.guideEditLabel}
                                         type="dashboard" 
                                         entities={dashboards}
                                         selectedIds={[most_important_dashboard.id.value]}
@@ -304,6 +305,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     { important_metrics.map((metricField, index, metricFields) =>
                                         <GuideDetailEditor 
                                             key={index}
+                                            editLabelClasses={S.guideEditLabel}
                                             className={S.guideEditCard}
                                             type="metric"
                                             metadata={{
@@ -362,6 +364,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     { important_segments_and_tables.map((segmentOrTableField, index, segmentOrTableFields) =>
                                         <GuideDetailEditor 
                                             key={index}
+                                            editLabelClasses={S.guideEditLabel}
                                             className={S.guideEditCard}
                                             type="segment or table"
                                             metadata={{
@@ -404,7 +407,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                             isCollapsed={things_to_know.value === null}
                             isDisabled={false}
                             collapsedTitle="Is there anything your users should understand or know before they start accessing the data?"
-                            collapsedIcon="lightbulb"
+                            collapsedIcon="reference"
                             expand={() => things_to_know.onChange('')}
                         >
                             <div className={S.guideEditSection}>
@@ -414,14 +417,14 @@ export default class ReferenceGettingStartedGuide extends Component {
                                 </div>
                                 <div className={S.guideEditCards}>
                                     <div className={S.guideEditCard}>
-                                        <div className={S.guideEditSubtitle}>
-                                            E.g., expectations around data privacy and use, common
-                                            pitfalls or misunderstandings, information about data 
-                                            warehouse performance, legal notices, etc.
-                                        </div>
+                                        <span className={S.guideEditLabel}>
+                                            Things to know
+                                        </span>
                                         <textarea 
                                             className={S.guideEditTextarea} 
-                                            placeholder="Things to know..."
+                                            placeholder="E.g., expectations around data privacy and use, 
+                                                common pitfalls or misunderstandings, information about 
+                                                data warehouse performance, legal notices, etc."
                                             {...things_to_know}
                                         />
                                     </div>
@@ -446,18 +449,28 @@ export default class ReferenceGettingStartedGuide extends Component {
                                 <div className={S.guideEditCards}>
                                     <div className={S.guideEditCard}>
                                         <div className={S.guideEditContact}>
-                                            <input 
-                                                className={S.guideEditContactName} 
-                                                placeholder="Name" 
-                                                type="text"
-                                                {...contact.name}
-                                            />
-                                            <input 
-                                                className={S.guideEditContactEmail} 
-                                                placeholder="Email address" 
-                                                type="text"
-                                                {...contact.email}
-                                            />
+                                            <div className={S.guideEditContactName}>
+                                                <span className={S.guideEditLabel}>
+                                                    Name
+                                                </span>
+                                                <input 
+                                                    className={S.guideEditInput} 
+                                                    placeholder="Julie McHelpfulson" 
+                                                    type="text"
+                                                    {...contact.name}
+                                                />
+                                            </div>
+                                            <div className={S.guideEditContactEmail}>
+                                                <span className={S.guideEditLabel}>
+                                                    Email address
+                                                </span>
+                                                <input 
+                                                    className={S.guideEditInput} 
+                                                    placeholder="julie.mchelpfulson@acme.com" 
+                                                    type="text"
+                                                    {...contact.email}
+                                                />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

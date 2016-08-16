@@ -17,7 +17,8 @@ const GuideDetailEditor = ({
     selectedIds = [],
     selectedIdTypePairs = [],
     formField,
-    removeField
+    removeField,
+    editLabelClasses
 }) => {
     const {
         databases,
@@ -43,6 +44,7 @@ const GuideDetailEditor = ({
             />
         </div>
         <div className={S.guideDetailEditorPicker}>
+            <span className={cx(editLabelClasses, S.guideDetailEditorLabel)}>{`Pick a ${type}`}</span>
             { entities ?
                 <Select 
                     triggerClasses={S.guideDetailEditorSelect}
@@ -62,7 +64,7 @@ const GuideDetailEditor = ({
                             );
                         }
                     }}
-                    placeholder={`Pick a ${type}`}
+                    placeholder={'Select...'}
                 /> :
                 <DataSelector
                     className={S.guideDetailEditorSelect}
@@ -118,32 +120,40 @@ const GuideDetailEditor = ({
             }
         </div>
         <div className={S.guideDetailEditorBody}>
-            <textarea 
-                className={S.guideDetailEditorTextarea}
-                placeholder={
-                    type === 'dashboard' ?
+            <span className={cx(editLabelClasses, S.guideDetailEditorLabel)}>
+                { type === 'dashboard' ?
                         `Why is this dashboard the most important?` :
                         `What is useful or interesting about this ${type}?` 
                 }
+            </span>
+            <textarea 
+                className={S.guideDetailEditorTextarea}
+                placeholder="Write something helpful here"
                 {...formField.points_of_interest}
                 disabled={formField.id.value === null || formField.id.value === undefined}
             />
-            <textarea 
-                className={S.guideDetailEditorTextarea} 
-                placeholder={
-                    type === 'dashboard' ?
+
+            <span className={cx(editLabelClasses, S.guideDetailEditorLabel)}>
+                { type === 'dashboard' ?
                         `Is there anything users of this dashboard should be aware of?` :
                         `Anything users should be aware of about this ${type}?` 
                 }
+            </span>           
+            <textarea 
+                className={S.guideDetailEditorTextarea} 
+                placeholder="Write something helpful here"
                 {...formField.caveats}
                 disabled={formField.id.value === null || formField.id.value === undefined}                
             />
-            { type === 'metric' &&
+            { type === 'metric' && [
+                <span className={cx(editLabelClasses, S.guideDetailEditorLabel)}>
+                    Which 2-3 fields do you usually group this metric by?
+                </span>,
                 <Select
                     triggerClasses={cx('px2', S.guideDetailEditorSelect)}
                     options={fieldsByMetric} 
                     optionNameFn={option => option.display_name || option.name}
-                    placeholder={`Which 2-3 fields do you usually group this metric by?`}
+                    placeholder="Select..."
                     values={formField.important_fields.value || []}
                     disabledOptionIds={formField.important_fields.value && formField.important_fields.value.length === 3 ?
                         fieldsByMetric
@@ -159,7 +169,7 @@ const GuideDetailEditor = ({
                     }}
                     disabled={formField.id.value === null || formField.id.value === undefined}
                 />
-            }
+            ]}
         </div>
     </div>;
 };
