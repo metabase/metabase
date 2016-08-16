@@ -146,10 +146,11 @@ const GuideDetailEditor = ({
                 disabled={formField.id.value === null || formField.id.value === undefined}                
             />
             { type === 'metric' && [
-                <span className={cx(editLabelClasses, S.guideDetailEditorLabel)}>
+                <span key="metricFieldsLabel" className={cx(editLabelClasses, S.guideDetailEditorLabel)}>
                     Which 2-3 fields do you usually group this metric by?
                 </span>,
                 <Select
+                    key="metricFieldsSelect"
                     triggerClasses={cx('px2', S.guideDetailEditorSelect)}
                     options={fieldsByMetric} 
                     optionNameFn={option => option.display_name || option.name}

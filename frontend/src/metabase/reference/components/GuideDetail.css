@@ -1,3 +1,7 @@
+:root {
+    --title-color: #606E7B;
+}
+
 :local(.guideDetail) {
     composes: flex full justify-center mt4 from "style";
 }
@@ -36,17 +40,18 @@
 }
 
 :local(.guideDetailLearnMore) {
-    composes: full text-bold block py1 no-decoration from "style";
-    font-size: 14px;
+    composes: full text-bold block mb4 no-decoration from "style";
+    font-size: 16px;
 }
 
 :local(.guideDetailLearnMore):first-child {
     padding-top: 0;
 }
 
-:local(.guideDetailExploreTitle) {
-    composes: text-bold mt2 mb1 from "style";
-    font-size: 16px;
+:local(.guideDetailLabel) {
+    composes: text-body text-bold mb1 from "style";
+    font-size: 18px;
+    color: var(--title-color);
 }
 
 :local(.guideDetailExploreLinks) {

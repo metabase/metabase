@@ -8,6 +8,7 @@ import i from "icepick";
 import cx from "classnames";
 
 import S from "metabase/reference/Reference.css";
+import D from "metabase/reference/components/GuideDetail.css";
 
 import {
     getQuestionUrl
@@ -165,7 +166,12 @@ export default class ReferenceGettingStartedGuide extends Component {
         handleSubmit: PropTypes.func,
         submitting: PropTypes.bool,
         initialFormValues: PropTypes.object,
-        initializeForm: PropTypes.func
+        initializeForm: PropTypes.func,
+        createDashboard: PropTypes.func,
+        isDashboardModalOpen: PropTypes.bool,
+        showDashboardModal: PropTypes.func,
+        hideDashboardModal: PropTypes.func,
+        push: PropTypes.func
     };
 
     render() {
@@ -495,6 +501,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                         key={'dashboardDetail'}
                                         type="dashboard"
                                         entity={dashboards[guide.most_important_dashboard]}
+                                        tables={tables}
                                     />
                                 ]}
                                 { guide.important_metrics && guide.important_metrics.length > 0 && [
@@ -508,6 +515,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                             key={metricId}
                                             type="metric"
                                             entity={metrics[metricId]}
+                                            tables={tables}
                                             exploreLinks={guide.metric_important_fields[metricId] && 
                                                 guide.metric_important_fields[metricId]
                                                     .map(fieldId => metadataFields[fieldId])
@@ -544,6 +552,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                             key={segmentId}
                                             type="segment"
                                             entity={segments[segmentId]}
+                                            tables={tables}
                                         />
                                     ),
                                     guide.important_tables.map((tableId) =>
@@ -551,6 +560,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                             key={tableId}
                                             type="table"
                                             entity={tables[tableId]}
+                                            tables={tables}
                                         />
                                     ),
                                     <div key={'segmentSeeAll'} className={S.guideSeeAll}>
@@ -571,10 +581,15 @@ export default class ReferenceGettingStartedGuide extends Component {
                                             Some things to know
                                         </div>
                                     </div>,
-                                    <GuideDetail 
-                                        key={'thingsToKnowDetails'}
-                                        entity={{ points_of_interest: guide.things_to_know }} 
-                                    />,
+                                    <div key={'thingsToKnowDetails'} className={D.guideDetail}>
+                                        <div className={D.guideDetailTitle}>
+                                        </div>
+                                        <div className={D.guideDetailBody}>
+                                            <div className={cx(D.guideDetailDescription, !guide.things_to_know && 'text-grey-3')}>
+                                                {guide.things_to_know || `Nothing to know yet`}
+                                            </div> 
+                                        </div>
+                                    </div>,
                                     <div key={'thingsToKnowSeeAll'} className={S.guideSeeAll}>
                                         <div className={S.guideSeeAllBody}>
                                             <Link className={cx('text-brand', S.guideSeeAllLink)} to={'/reference/databases'}>
