@@ -134,6 +134,11 @@ export default class Funnel extends Component {
         return (
             <div className={cx(styles.Funnel, ' full flex flex-column')}>
                 <svg width="100%" height="100%" viewBox="0 0 600 300">
+                {/* Vertical line separator */}
+                    {lines.map((line, i) =>
+                        <line {...line} style={{stroke: '#DDD', strokeWidth:1}} ></line>
+                    )}
+
                 {/* Funnel steps */}
                     {dataset.map((serie) =>
                         <g key={serie.name} ref={serie.name}>
@@ -141,11 +146,6 @@ export default class Funnel extends Component {
                                 <polygon key={serie.name + '-' + i} points={calculatePoints(point, i, serie, total)} fill={serie.color} fillOpacity={1.0 - i * (0.7 / steps.length )}></polygon>
                             )}
                         </g>
-                    )}
-
-                {/* Vertical line separator */}
-                    {lines.map((line, i) =>
-                        <line {...line} style={{stroke: '#DDD', strokeWidth:1}} ></line>
                     )}
 
                 {/* Steps title */}
