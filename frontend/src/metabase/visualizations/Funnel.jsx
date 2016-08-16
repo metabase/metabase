@@ -155,7 +155,7 @@ export default class Funnel extends Component {
 
                 {/* Series title */}
                     {seriesLabel.map((serie) =>
-                        <text x={serie.x} y={serie.y} fill={serie.color}>
+                        <text key={serie.key} x={serie.x} y={serie.y} fill={serie.color}>
                             <tspan textAnchor="end" x={serie.x} className={styles.SeriesLabel}>{serie.name}</tspan>
                             <tspan textAnchor="end" x={serie.x} className={styles.SeriesCounter} dy="1.4em">{serie.initialValue}</tspan>
                         </text>
