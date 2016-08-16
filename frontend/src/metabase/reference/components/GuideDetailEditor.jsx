@@ -37,14 +37,16 @@ const GuideDetailEditor = ({
         [];
 
     return <div className={cx(S.guideDetailEditor, className)}>
-        <div className={S.guideDetailEditorClose}>
-            <Icon
-                name="close"
-                width={24}
-                height={24}
-                onClick={removeField}
-            />
-        </div>
+        { formField.id.value !== null && formField.id.value !== undefined && 
+            <div className={S.guideDetailEditorClose}>
+                <Icon
+                    name="close"
+                    width={24}
+                    height={24}
+                    onClick={removeField}
+                />
+            </div>
+        }
         <div className={S.guideDetailEditorPicker}>
             <span className={cx(editLabelClasses, S.guideDetailEditorLabel)}>{`Pick a ${type}`}</span>
             { entities ?
