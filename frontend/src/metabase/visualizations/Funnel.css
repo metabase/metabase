@@ -14,3 +14,11 @@
 :local .SeriesCounter {
     font-style: italic;
 }
+
+:local .StepLabel {
+    font-weight: bold;
+}
+
+:local .StepCounter {
+    font-style: italic;
+}

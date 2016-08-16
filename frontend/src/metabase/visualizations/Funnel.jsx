@@ -56,11 +56,11 @@ export default class Funnel extends Component {
         const STEP_SIZE = 570 / steps.length;
 
         // Shift the funnel "center" line in the middle of the SVN canvas.
-        const FUNNEL_SHIFT = 150;
+        const FUNNEL_SHIFT = 180;
 
         // Consider the funnel to be height 250 on the initial step, scal all
         // number using this proportion.
-        var normalize = (x) => x / total.data[0] * 250;
+        var normalize = (x) => x / total.data[0] * 210;
 
         // Generate points used from SVG polygon for each step/mosaics.
         function calculatePoints(k, i, serie, total) {
@@ -111,9 +111,11 @@ export default class Funnel extends Component {
             return {
                 name: name,
                 key: `step-${i}`,
+                total: total.data[i],
+                deltaPercent: Math.round(i === 0 ? 100 : (total.data[i] / total.data[i - 1]) * 100, 2),
+                deltaPercentBegin: Math.round(i === 0 ? 100 : (total.data[i] / total.data[0]) * 100, 2),
                 x: (i + 1) * STEP_SIZE - 10,
                 y: 20,
-                textAnchor: 'end',
                 fill: '#727479',
                 fillOpacity: 1.0 - i * (0.5 / steps.length ),
             }
@@ -178,7 +180,12 @@ export default class Funnel extends Component {
 
                 {/* Steps title */}
                     {stepsLabel.map((step, i) =>
-                        <text {...step} className={styles.StepLabel}>{step.name}</text>
+                        <text key={step.key} x={step.x} y={step.y} fill={step.fill} fillOpacity={step.fillOpacity}>
+                            <tspan textAnchor="end" x={step.x} className={styles.StepLabel}>{step.name}</tspan>
+                            <tspan className={styles.StepCounter}> ({step.total})</tspan>
+                            <tspan textAnchor="end" x={step.x} className={styles.StepPercent}  dy="1.4em">{i !== 0 ? `∆ step ${step.deltaPercent}%` : null}</tspan>
+                            <tspan textAnchor="end" x={step.x} className={styles.StepPercent}  dy="1.4em">{i !== 0 ? `∆ total ${step.deltaPercentBegin}%` : null}</tspan>
+                        </text>
                     )}
 
                 {/* Series title */}
