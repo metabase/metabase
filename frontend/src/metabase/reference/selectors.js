@@ -94,7 +94,11 @@ const getMetricSections = (metric, table, user) => metric ? {
         update: 'updateMetric',
         type: 'metric',
         breadcrumb: `${metric.name}`,
-        fetch: {fetchMetricTable: [metric.id]},
+        fetch: {
+            fetchMetricTable: [metric.id], 
+            // currently the only way to fetch metrics important fields
+            fetchGuide: []
+        },
         get: 'getMetric',
         icon: "document",
         headerIcon: "ruler",
