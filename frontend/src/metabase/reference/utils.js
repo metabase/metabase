@@ -71,13 +71,15 @@ export const tryUpdateData = async (fields, props) => {
             const newEntity = {...entity, ...editedFields};
             await props[section.update](newEntity);
 
-            if (section.type === 'metric' && fields.important_fields && fields.important_fields.length > 0) {
+            if (section.type === 'metric' && fields.important_fields) {
                 const importantFieldIds = fields.important_fields.map(field => field.id);
                 const existingImportantFieldIds = guide.metric_important_fields && guide.metric_important_fields[entity.id];
 
                 const areFieldIdsIdentitical = existingImportantFieldIds && 
                     existingImportantFieldIds.length === importantFieldIds.length &&
                     existingImportantFieldIds.every(id => importantFieldIds.includes(id));
+                
+                console.log(areFieldIdsIdentitical);
                 if (!areFieldIdsIdentitical) {
                     await updateMetricImportantFields(entity.id, importantFieldIds);
                     tryFetchData(props);
