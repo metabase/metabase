@@ -132,12 +132,12 @@ export default class SaveQuestionModal extends Component {
         if (!this.props.card.id && this.props.originalCard) {
             saveOrUpdate = (
                 <FormField
-                    displayName="Save or Replace?"
+                    displayName="Replace or save as new?"
                     fieldName="saveType"
                     errors={this.state.errors}>
                     <ul>
-                        <li onClick={(e) => this.onChange("saveType", "create")}><input type="radio" name="saveType" value="create" checked={this.state.details.saveType === "create"} /> Save as a new question?</li>
                         <li onClick={(e) => this.onChange("saveType", "overwrite")}><input type="radio" name="saveType" value="overwrite" checked={this.state.details.saveType === "overwrite"} /> Replace original question, "{this.props.originalCard.name}"</li>
+                        <li onClick={(e) => this.onChange("saveType", "create")}><input type="radio" name="saveType" value="create" checked={this.state.details.saveType === "create"} /> Save as new question</li>
                     </ul>
                 </FormField>
             );
@@ -164,7 +164,7 @@ export default class SaveQuestionModal extends Component {
                             </FormField>,
                             <FormField
                                 key="description"
-                                displayName="Description (optional)"
+                                displayName="Description"
                                 fieldName="description"
                                 errors={this.state.errors}>
                                 <textarea className="Form-input full" name="description" placeholder="It's optional but oh, so helpful" value={this.state.details.description} onChange={(e) => this.onChange("description", e.target.value)} />
