@@ -14,7 +14,6 @@ import i from "icepick";
 import _ from "underscore";
 
 import { augmentDatabase, augmentTable } from "metabase/lib/table";
-import { clearRequestState } from "./requests";
 
 const MetabaseApi = new AngularResourceProxy("Metabase", ["db_list", "db_update", "db_metadata", "table_list", "table_update", "table_query_metadata", "field_update"]);
 const MetricApi = new AngularResourceProxy("Metric", ["list", "update", "update_important_fields"]);
@@ -62,6 +61,7 @@ export const updateMetric = createThunkAction(UPDATE_METRIC, function(metric) {
     return async (dispatch, getState) => {
         const requestStatePath = ["metadata", "metrics", metric.id];
         const existingStatePath = ["metadata", "metrics"];
+        const dependentRequestStatePaths = [['metadata', 'revisions', 'metric', metric.id]];
         const putData = async () => {
             const updatedMetric = await MetricApi.update(metric);
             const cleanMetric = cleanResource(updatedMetric);
@@ -70,7 +70,6 @@ export const updateMetric = createThunkAction(UPDATE_METRIC, function(metric) {
 
             const mergedMetric = {...existingMetric, ...cleanMetric};
 
-            dispatch(clearRequestState({statePath: ['metadata', 'revisions', 'metric', metric.id]}));
             return i.assoc(existingMetrics, mergedMetric.id, mergedMetric);
         };
 
@@ -79,6 +78,7 @@ export const updateMetric = createThunkAction(UPDATE_METRIC, function(metric) {
             getState, 
             requestStatePath, 
             existingStatePath, 
+            dependentRequestStatePaths,
             putData
         });
     };
@@ -89,10 +89,9 @@ export const updateMetricImportantFields = createThunkAction(UPDATE_METRIC_IMPOR
     return async (dispatch, getState) => {
         const requestStatePath = ["reference", "guide", "metric_important_fields", metricId];
         const existingStatePath = requestStatePath;
+        const dependentRequestStatePaths = [['reference', 'guide']];
         const putData = async () => {
             await MetricApi.update_important_fields({ metricId, important_field_ids: importantFieldIds });
-
-            dispatch(clearRequestState({statePath: ['reference', 'guide']}));
         };
 
         return await updateData({
@@ -100,6 +99,7 @@ export const updateMetricImportantFields = createThunkAction(UPDATE_METRIC_IMPOR
             getState, 
             requestStatePath, 
             existingStatePath, 
+            dependentRequestStatePaths,
             putData
         });
     };
@@ -137,6 +137,7 @@ export const updateSegment = createThunkAction(UPDATE_SEGMENT, function(segment)
     return async (dispatch, getState) => {
         const requestStatePath = ["metadata", "segments", segment.id];
         const existingStatePath = ["metadata", "segments"];
+        const dependentRequestStatePaths = [['metadata', 'revisions', 'segment', segment.id]];
         const putData = async () => {
             const updatedSegment = await SegmentApi.update(segment);
             const cleanSegment = cleanResource(updatedSegment);
@@ -145,7 +146,6 @@ export const updateSegment = createThunkAction(UPDATE_SEGMENT, function(segment)
 
             const mergedSegment = {...existingSegment, ...cleanSegment};
 
-            dispatch(clearRequestState({statePath: ['metadata', 'revisions', 'segment', segment.id]}));
             return i.assoc(existingSegments, mergedSegment.id, mergedSegment);
         };
 
@@ -154,6 +154,7 @@ export const updateSegment = createThunkAction(UPDATE_SEGMENT, function(segment)
             getState, 
             requestStatePath, 
             existingStatePath, 
+            dependentRequestStatePaths,
             putData
         });
     };

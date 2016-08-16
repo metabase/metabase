@@ -12,7 +12,7 @@ import { createAngularHistory } from "./createAngularHistory";
 
 import { reduxReactRouter } from 'redux-router';
 
-import { setRequestState } from "metabase/redux/requests";
+import { setRequestState, clearRequestState } from "metabase/redux/requests";
 
 // convienence
 export { combineReducers } from "redux";
@@ -140,7 +140,9 @@ export const updateData = async ({
     dispatch, 
     getState, 
     requestStatePath, 
-    existingStatePath, 
+    existingStatePath,
+    // specify any request paths that need to be invalidated after this update 
+    dependentRequestStatePaths,
     putData
 }) => {
     const existingData = i.getIn(getState(), existingStatePath);
@@ -149,6 +151,9 @@ export const updateData = async ({
         dispatch(setRequestState({ statePath, state: "LOADING" }));
         const data = await putData();
         dispatch(setRequestState({ statePath, state: "LOADED" }));
+
+        (dependentRequestStatePaths || [])
+            .forEach(statePath => dispatch(clearRequestState({ statePath })));
 
         return data;
     }

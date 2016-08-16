@@ -31,7 +31,7 @@
     white-space: pre-wrap;
 }
 
-:local(.guideDetailDescription):last-of-type {
+:local(.guideDetailDescription):last-child {
     margin-bottom: 0;
 }
 
