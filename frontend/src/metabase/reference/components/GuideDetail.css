@@ -6,7 +6,7 @@
     composes: text-bold text-right from "style";
     flex: 0.3;
     font-size: 18px;
-    max-width: 150px;
+    max-width: 250px;
     margin-right: 50px;
 }
 
