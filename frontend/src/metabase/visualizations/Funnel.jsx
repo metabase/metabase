@@ -131,6 +131,24 @@ export default class Funnel extends Component {
             }
         });
 
+        // Hightlight serie on mouse-over
+        var serieMouseOver = (e) => {
+            // Get all nodes
+            var nodes = [].slice.call(e.currentTarget.parentNode.getElementsByTagName('g'));
+
+            // Remove current node
+            nodes.splice(nodes.indexOf(e.currentTarget), 1);
+
+            // Set opacity on other series
+            nodes.forEach((el) => el.setAttribute('opacity', 0.5));
+        }
+
+        var serieMouseOut = (e) => {
+            // Reset opacity on all series
+            [].slice.call(e.currentTarget.parentNode.getElementsByTagName('g'))
+                .forEach((el) => el.setAttribute('opacity', 1.0));
+        }
+
         return (
             <div className={cx(styles.Funnel, ' full flex flex-column')}>
                 <svg width="100%" height="100%" viewBox="0 0 600 300">
@@ -141,9 +159,19 @@ export default class Funnel extends Component {
 
                 {/* Funnel steps */}
                     {dataset.map((serie) =>
-                        <g key={serie.name} ref={serie.name}>
+                        <g
+                            key={serie.name}
+                            ref={serie.name}
+                            onMouseOver={serieMouseOver}
+                            onMouseOut={serieMouseOut}
+                        >
                             {serie.data.map((point, i) =>
-                                <polygon key={serie.name + '-' + i} points={calculatePoints(point, i, serie, total)} fill={serie.color} fillOpacity={1.0 - i * (0.7 / steps.length )}></polygon>
+                                <polygon
+                                    key={serie.name + '-' + i}
+                                    points={calculatePoints(point, i, serie, total)}
+                                    fill={serie.color}
+                                    fillOpacity={1.0 - i * (0.7 / steps.length )}
+                                />
                             )}
                         </g>
                     )}
