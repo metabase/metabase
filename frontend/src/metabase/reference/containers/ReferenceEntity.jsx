@@ -26,6 +26,8 @@ import {
     getSection,
     getData,
     getTable,
+    getFields,
+    getGuide,
     getError,
     getLoading,
     getUser,
@@ -45,6 +47,8 @@ const mapStateToProps = (state, props) => ({
     section: getSection(state, props),
     entity: getData(state, props) || {},
     table: getTable(state, props),
+    metadataFields: getFields(state, props),
+    guide: getGuide(state, props),
     loading: getLoading(state, props),
     // naming this 'error' will conflict with redux form
     loadingError: getError(state, props),
@@ -80,6 +84,8 @@ export default class ReferenceEntity extends Component {
         style: PropTypes.object.isRequired,
         entity: PropTypes.object.isRequired,
         table: PropTypes.object,
+        metadataFields: PropTypes.object,
+        guide: PropTypes.object,
         user: PropTypes.object.isRequired,
         foreignKeys: PropTypes.object,
         isEditing: PropTypes.bool,
@@ -113,6 +119,8 @@ export default class ReferenceEntity extends Component {
             section,
             entity,
             table,
+            metadataFields,
+            guide,
             loadingError,
             loading,
             user,
@@ -257,12 +265,31 @@ export default class ReferenceEntity extends Component {
                                     <UsefulQuestions questions={section.questions} />
                                 </li>
                             }
+                            { section.type === 'metric' && !isEditing && guide && guide.metric_important_fields[entity.id] &&
+                                <li className="relative">
+                                    <FieldsToGroupBy
+                                        fields={
+                                            Object.values(guide.metric_important_fields[entity.id])
+                                                .map(fieldId => metadataFields[fieldId])
+                                                .reduce((map, field) => ({ ...map, [field.id]: field }), {})
+                                        }
+                                        databaseId={table.db_id} 
+                                        metric={entity}
+                                        title={"Most useful fields to group this metric by"}
+                                        onChangeLocation={onChangeLocation}
+                                    />
+                                </li>
+                            }
                             { section.type === 'metric' && !isEditing &&
                                 <li className="relative">
                                     <FieldsToGroupBy
-                                        table={table}
+                                        fields={table.fields_lookup}
+                                        databaseId={table.db_id} 
                                         metric={entity}
-                                        title={"Fields you can group this metric by"}
+                                        title={ guide && guide.metric_important_fields[entity.id] ?
+                                            "Other fields you can group this metric by" :
+                                            "Fields you can group this metric by"
+                                        }
                                         onChangeLocation={onChangeLocation}
                                     />
                                 </li>
