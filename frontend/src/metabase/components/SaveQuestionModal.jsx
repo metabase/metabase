@@ -22,7 +22,7 @@ export default class SaveQuestionModal extends Component {
             details: {
                 name: props.card.name || isStructured ? Query.generateQueryDescription(props.tableMetadata, props.card.dataset_query.query) : "",
                 description: props.card.description || null,
-                saveType: "create"
+                saveType: props.originalCard ? "overwrite" : "create"
             }
         };
     }
@@ -66,18 +66,7 @@ export default class SaveQuestionModal extends Component {
     }
 
     onChange(fieldName, fieldValue) {
-        if (fieldName === "saveType" && fieldValue === "overwrite" && this.state.details.saveType !== "overwrite") {
-            // when someone chooses overwrite we want to populate the name/description from the original card
-            this.setState({
-                details: {
-                    name: this.props.originalCard.name,
-                    description: this.props.originalCard.description,
-                    saveType: "overwrite"
-                }
-            });
-        } else {
-            this.setState({ details: { ...this.state.details, [fieldName]: fieldValue ? fieldValue : null }});
-        }
+        this.setState({ details: { ...this.state.details, [fieldName]: fieldValue ? fieldValue : null }});
     }
 
     async formSubmitted(e) {
@@ -85,13 +74,17 @@ export default class SaveQuestionModal extends Component {
             e.preventDefault();
 
             let { details } = this.state;
-            let { card, addToDashboard, createFn, saveFn } = this.props;
+            let { card, originalCard, addToDashboard, createFn, saveFn } = this.props;
 
             card = {
                 ...card,
-                name: details.name.trim(),
+                name: details.saveType === "overwrite" ?
+                    originalCard.name :
+                    details.name.trim(),
                 // since description is optional, it can be null, so check for a description before trimming it
-                description: details.description ? details.description.trim() : null,
+                description: details.saveType === "overwrite" ?
+                    originalCard.description :
+                    details.description ? details.description.trim() : null,
                 public_perms: 2
             };
 
@@ -112,7 +105,7 @@ export default class SaveQuestionModal extends Component {
     }
 
     render() {
-        let { error } = this.state;
+        let { error, details } = this.state;
         var formError;
         if (error) {
             var errorMessage;
@@ -161,19 +154,22 @@ export default class SaveQuestionModal extends Component {
                     <div className="Form-inputs">
                         {saveOrUpdate}
 
-                        <FormField
-                            displayName="Name"
-                            fieldName="name"
-                            errors={this.state.errors}>
-                            <input className="Form-input full" name="name" placeholder="What is the name of your card?" value={this.state.details.name} onChange={(e) => this.onChange("name", e.target.value)} autoFocus/>
-                        </FormField>
-
-                        <FormField
-                            displayName="Description (optional)"
-                            fieldName="description"
-                            errors={this.state.errors}>
-                            <textarea className="Form-input full" name="description" placeholder="It's optional but oh, so helpful" value={this.state.details.description} onChange={(e) => this.onChange("description", e.target.value)} />
-                        </FormField>
+                        { details.saveType === "create" && [
+                            <FormField
+                                key="name"
+                                displayName="Name"
+                                fieldName="name"
+                                errors={this.state.errors}>
+                                <input className="Form-input full" name="name" placeholder="What is the name of your card?" value={this.state.details.name} onChange={(e) => this.onChange("name", e.target.value)} autoFocus/>
+                            </FormField>,
+                            <FormField
+                                key="description"
+                                displayName="Description (optional)"
+                                fieldName="description"
+                                errors={this.state.errors}>
+                                <textarea className="Form-input full" name="description" placeholder="It's optional but oh, so helpful" value={this.state.details.description} onChange={(e) => this.onChange("description", e.target.value)} />
+                            </FormField>
+                        ]}
                     </div>
 
                     <div className="Form-actions">
