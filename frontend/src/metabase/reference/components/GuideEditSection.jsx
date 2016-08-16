@@ -25,17 +25,31 @@ const GuideEditSection = ({
         )}
         onClick={!isDisabled && expand}
     >
-        <Icon className={S.guideEditSectionCollapsedIcon} name={collapsedIcon} size={28} />
+        <Icon className={S.guideEditSectionCollapsedIcon} name={collapsedIcon} size={24} />
         <span className={S.guideEditSectionCollapsedTitle}>{collapsedTitle}</span>
-        <span className={S.guideEditSectionCollapsedLink}>
-            {isDisabled && (link ? (link.startsWith('http') ? 
-                    <a href={link} target="_blank">{linkMessage}</a> :
-                    <Link to={link}>{linkMessage}</Link>
-                ) : 
-                action &&
-                    <a onClick={action}>{linkMessage}</a>
-            )}
-        </span>
+        {isDisabled && (link ? (link.startsWith('http') ? 
+                <a 
+                    className={S.guideEditSectionCollapsedLink} 
+                    href={link} 
+                    target="_blank"
+                >
+                    {linkMessage}
+                </a> :
+                <Link 
+                    className={S.guideEditSectionCollapsedLink} 
+                    to={link}
+                >
+                    {linkMessage}
+                </Link>
+            ) : 
+            action &&
+                <a 
+                    className={S.guideEditSectionCollapsedLink}
+                    onClick={action}
+                >
+                    {linkMessage}
+                </a>
+        )}
     </div> :
     <div className={S.guideEditSection}>
         {children}

@@ -18,7 +18,7 @@ export default class DataSelector extends Component {
             databases: null,
             selectedSchema: null,
             showTablePicker: true,
-            showSegmentPicker: true
+            showSegmentPicker: props.segments && props.segments.length > 0
         }
 
         _.bindAll(this, "onChangeDatabase", "onChangeSchema", "onChangeTable", "onChangeSegment", "onBack");
@@ -204,8 +204,7 @@ export default class DataSelector extends Component {
     renderSegmentAndDatabasePicker() {
         const { selectedSchema } = this.state;
         
-        const segmentItem = this.props.segments && this.props.segments.length > 0 ?
-            [{ name: 'Segments', items: [], icon: 'segment'}] : [];
+        const segmentItem = [{ name: 'Segments', items: [], icon: 'segment'}];
         
         const sections = segmentItem.concat(this.state.databases.map(database => {
             return {
@@ -396,11 +395,11 @@ export default class DataSelector extends Component {
                     this.renderDatabasePicker() : 
                     this.state.selectedSchema && this.state.showTablePicker ?
                         this.renderTablePicker() :
-                        this.props.segments && this.state.showSegmentPicker ?  
-                            this.renderSegmentPicker() :
-                            this.props.segments && this.props.segments.length > 0 ?
+                        this.props.segments ?
+                            this.state.showSegmentPicker ?  
+                                this.renderSegmentPicker() :
                                 this.renderSegmentAndDatabasePicker() :
-                                this.renderDatabaseSchemaPicker()
+                            this.renderDatabaseSchemaPicker()
                 }
             </PopoverWithTrigger>
         );

@@ -79,7 +79,7 @@ const mapStateToProps = (state, props) => {
         important_metrics: guide.important_metrics && guide.important_metrics.length > 0 ? 
             guide.important_metrics
                 .map(metricId => metrics[metricId] && i.assoc(metrics[metricId], 'important_fields', guide.metric_important_fields[metricId] && guide.metric_important_fields[metricId].map(fieldId => fields[fieldId]))) :
-            [{id: null, caveats: null, points_of_interest: null, important_fields: null}],
+            [],
         important_segments_and_tables: 
             (guide.important_segments && guide.important_segments.length > 0) ||
             (guide.important_tables && guide.important_tables.length > 0) ? 
@@ -88,7 +88,7 @@ const mapStateToProps = (state, props) => {
                     .concat(guide.important_tables
                         .map(tableId => tables[tableId] && i.assoc(tables[tableId], 'type', 'table'))
                     ) :
-                [{id: null, type: null, caveats: null, points_of_interest: null}]
+                []
     };
 
     return {
@@ -261,7 +261,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                             isCollapsed={most_important_dashboard.id.value === undefined}
                             isDisabled={!dashboards || Object.keys(dashboards).length === 0}
                             collapsedTitle="Is there an important dashboard for your team?"
-                            collapsedIcon="ruler"
+                            collapsedIcon="dashboard"
                             linkMessage="Create a dashboard now"
                             action={showDashboardModal}
                             expand={() => most_important_dashboard.id.onChange(null)}
@@ -287,7 +287,15 @@ export default class ReferenceGettingStartedGuide extends Component {
                             </div>
                         </GuideEditSection>
 
-                        { Object.keys(metrics).length > 0 && 
+                        <GuideEditSection
+                            isCollapsed={important_metrics.length === 0}
+                            isDisabled={!metrics || Object.keys(metrics).length === 0}
+                            collapsedTitle="Do you have any commonly referenced metrics?"
+                            collapsedIcon="ruler"
+                            linkMessage="Learn how to define a metric"
+                            link="http://www.metabase.com/docs/latest/administration-guide/05-segments-and-metrics#creating-a-metric"
+                            expand={() => important_metrics.addField({id: null, caveats: null, points_of_interest: null, important_fields: null})}
+                        >
                             <div className={S.guideEditSection}>
                                 <div className={S.guideEditTitle}>
                                     What are your 3-5 most commonly referenced metrics?
@@ -334,9 +342,17 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     </div>
                                 }
                             </div>
-                        }
+                        </GuideEditSection>
 
-                        { Object.keys(segments).length > 0 && 
+                        <GuideEditSection
+                            isCollapsed={important_segments_and_tables.length === 0}
+                            isDisabled={(!segments || Object.keys(segments).length === 0) && (!tables || Object.keys(tables).length === 0)}
+                            collapsedTitle="Do you have any commonly referenced segments or tables?"
+                            collapsedIcon="table2"
+                            linkMessage="Learn how to create a segment"
+                            link="http://www.metabase.com/docs/latest/administration-guide/05-segments-and-metrics#creating-a-segment"
+                            expand={() => important_segments_and_tables.addField({id: null, type: null, caveats: null, points_of_interest: null})}
+                        >
                             <div className={S.guideEditSection}>
                                 <div className={S.guideEditTitle}>
                                     What are 3-5 commonly referenced segments or tables 
@@ -382,7 +398,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     </div>
                                 }
                             </div>
-                        }
+                        </GuideEditSection>
                         
                         <div className={S.guideEditSection}>
                             <div className={S.guideEditTitle}>
