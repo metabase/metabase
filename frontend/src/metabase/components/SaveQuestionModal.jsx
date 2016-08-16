@@ -135,9 +135,17 @@ export default class SaveQuestionModal extends Component {
                     displayName="Replace or save as new?"
                     fieldName="saveType"
                     errors={this.state.errors}>
-                    <ul>
-                        <li onClick={(e) => this.onChange("saveType", "overwrite")}><input type="radio" name="saveType" value="overwrite" checked={this.state.details.saveType === "overwrite"} /> Replace original question, "{this.props.originalCard.name}"</li>
-                        <li onClick={(e) => this.onChange("saveType", "create")}><input type="radio" name="saveType" value="create" checked={this.state.details.saveType === "create"} /> Save as new question</li>
+                    <ul className="ml1">
+                        <li className="flex align-center cursor-pointer mt2 mb1" onClick={(e) => this.onChange("saveType", "overwrite")}>
+                            <input className="Form-radio" type="radio" name="saveType" id="saveType-overwrite" value="overwrite" checked={this.state.details.saveType === "overwrite"} /> 
+                            <label htmlFor="saveType-overwrite"></label>
+                            <span className={details.saveType === 'overwrite' ? 'text-brand' : 'text-default'}>Replace original question, "{this.props.originalCard.name}"</span>
+                        </li>
+                        <li className="flex align-center cursor-pointer" onClick={(e) => this.onChange("saveType", "create")}>
+                            <input className="Form-radio" type="radio" name="saveType" id="saveType-create" value="create" checked={this.state.details.saveType === "create"} />
+                            <label htmlFor="saveType-replace"></label>
+                            <span className={details.saveType === 'create' ? 'text-brand' : 'text-default'}>Save as new question</span>
+                        </li>
                     </ul>
                 </FormField>
             );

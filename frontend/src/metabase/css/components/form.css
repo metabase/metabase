@@ -126,6 +126,25 @@
     transition: background .3s linear;
 }
 
+.Form-field .Form-radio {
+    display: none;
+}
+
+.Form-field .Form-radio + label {
+    display: inline-block;
+    position: relative;
+    margin-right: var(--margin-1); 
+    width: 8px;
+    height: 8px;
+    border: 2px solid white;
+    box-shadow: 0 0 0 2px var(--default-font-color);
+    border-radius: 8px;
+}
+
+.Form-field .Form-radio:checked + label {
+    box-shadow: 0 0 0 2px var(--brand-color);
+    background-color: var(--brand-color);
+}
 
 /* TODO: replace instances of Form-group with Form-field */
 .Form-group {
