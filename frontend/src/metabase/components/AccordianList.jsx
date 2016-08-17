@@ -166,7 +166,7 @@ export default class AccordianList extends Component {
                                     <div className="List-section-header px1 py1 cursor-pointer full flex align-center" onClick={() => this.toggleSection(sectionIndex)}>
                                         { this.renderSectionIcon(section, sectionIndex) }
                                         <h3 className="List-section-title">{section.name}</h3>
-                                        { section.items.length > 0 && !alwaysExpanded &&
+                                        { section.items.length > 0 &&
                                             <span className="flex-align-right">
                                                 <Icon name={sectionIsOpen(sectionIndex) ? "chevronup" : "chevrondown"} size={12} />
                                             </span>
