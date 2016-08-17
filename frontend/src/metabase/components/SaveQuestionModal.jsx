@@ -1,5 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
+import ReactCSSTransitionGroup from "react-addons-css-transition-group";
+
 import FormField from "metabase/components/FormField.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
 
@@ -7,6 +9,8 @@ import Query from "metabase/lib/query";
 import { cancelable } from "metabase/lib/promise";
 
 import cx from "classnames";
+
+import S from "./SaveQuestionModal.css";
 
 
 export default class SaveQuestionModal extends Component {
@@ -161,23 +165,30 @@ export default class SaveQuestionModal extends Component {
                 <form className="flex flex-column flex-full" onSubmit={(e) => this.formSubmitted(e)}>
                     <div className="Form-inputs">
                         {saveOrUpdate}
-
-                        { details.saveType === "create" && [
-                            <FormField
-                                key="name"
-                                displayName="Name"
-                                fieldName="name"
-                                errors={this.state.errors}>
-                                <input className="Form-input full" name="name" placeholder="What is the name of your card?" value={this.state.details.name} onChange={(e) => this.onChange("name", e.target.value)} autoFocus/>
-                            </FormField>,
-                            <FormField
-                                key="description"
-                                displayName="Description"
-                                fieldName="description"
-                                errors={this.state.errors}>
-                                <textarea className="Form-input full" name="description" placeholder="It's optional but oh, so helpful" value={this.state.details.description} onChange={(e) => this.onChange("description", e.target.value)} />
-                            </FormField>
-                        ]}
+                        <ReactCSSTransitionGroup
+                            transitionName="saveQuestionModalFields"
+                            transitionEnterTimeout={500}
+                            transitionLeaveTimeout={500}
+                        >
+                            { details.saveType === "create" && 
+                                <div key="saveQuestionModalFields" className={S.saveQuestionModalFields}>
+                                    <FormField
+                                        key="name"
+                                        displayName="Name"
+                                        fieldName="name"
+                                        errors={this.state.errors}>
+                                        <input className="Form-input full" name="name" placeholder="What is the name of your card?" value={this.state.details.name} onChange={(e) => this.onChange("name", e.target.value)} autoFocus/>
+                                    </FormField>
+                                    <FormField
+                                        key="description"
+                                        displayName="Description"
+                                        fieldName="description"
+                                        errors={this.state.errors}>
+                                        <textarea className="Form-input full" name="description" placeholder="It's optional but oh, so helpful" value={this.state.details.description} onChange={(e) => this.onChange("description", e.target.value)} />
+                                    </FormField>
+                                </div>
+                            }
+                        </ReactCSSTransitionGroup>
                     </div>
 
                     <div className="Form-actions">
