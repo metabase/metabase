@@ -133,6 +133,7 @@
 .Form-field .Form-radio + label {
     cursor: pointer;
     display: inline-block;
+    flex: 0 0 auto;
     position: relative;
     margin-right: var(--margin-1); 
     width: 8px;
