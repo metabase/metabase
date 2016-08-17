@@ -1,6 +1,7 @@
 (ns metabase.util.password
   (:require [cemerick.friend.credentials :as creds]
-            [metabase.config :as config]))
+            (metabase [config :as config]
+                      [util :as u])))
 
 
 (defn- count-occurrences
@@ -58,10 +59,8 @@
 
 
 (defn verify-password
-  "Verify if a given unhashed password + salt matches the supplied hashed-password.  Returns true if matched, false otherwise."
-  [password salt hashed-password]
-  (try
-    (creds/bcrypt-verify (str salt password) hashed-password)
-    (catch Throwable e
-      ;; we wrap the friend/bcrypt-verify with this function specifically to avoid unintended exceptions getting out
-      false)))
+  "Verify if a given unhashed password + salt matches the supplied hashed-password. Returns `true` if matched, `false` otherwise."
+  ^Boolean [password salt hashed-password]
+  ;; we wrap the friend/bcrypt-verify with this function specifically to avoid unintended exceptions getting out
+  (boolean (u/ignore-exceptions
+             (creds/bcrypt-verify (str salt password) hashed-password))))

@@ -12,7 +12,8 @@
 (i/defentity User :core_user)
 
 (defn- pre-insert [{:keys [email password reset_token] :as user}]
-  (assert (u/is-email? email))
+  (assert (u/is-email? email)
+    (format "Not a valid email: '%s'" email))
   (assert (and (string? password)
                (not (s/blank? password))))
   (assert (not (:password_salt user))

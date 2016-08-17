@@ -24,5 +24,5 @@ export const users = handleActions({
     [DELETE_USER]: { next: (state, { payload: user }) => _.omit(state, user.id) },
     [GRANT_ADMIN]: { next: (state, { payload: user }) => ({ ...state, [user.id]: user }) },
     [REVOKE_ADMIN]: { next: (state, { payload: user }) => ({ ...state, [user.id]: user }) },
-    [UPDATE_USER]: { next: (state, { payload: user }) => ({ ...state, [user.id]: user }) },
+    [UPDATE_USER]: { next: (state, { payload: user }) => ({ ...state, [user.id]: user }) }
 }, null);

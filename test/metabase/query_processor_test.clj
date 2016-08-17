@@ -254,8 +254,8 @@
 (defn- breakout-col [column]
   (assoc column :source :breakout))
 
-(defn boolean-native-form
-  "Convert :native_form attribute to a boolean to make test results comparisons easier"
+(defn- booleanize-native-form
+  "Convert `:native_form` attribute to a boolean to make test results comparisons easier."
   [m]
   (update-in m [:data :native_form] boolean))
 
@@ -327,7 +327,7 @@
      :native_form true}
     (->> (run-query venues
            (ql/aggregation (ql/count)))
-         boolean-native-form
+         booleanize-native-form
          (format-rows-by [int])))
 
 
@@ -339,7 +339,7 @@
      :native_form true}
     (->> (run-query venues
            (ql/aggregation (ql/sum $price)))
-         boolean-native-form
+         booleanize-native-form
          (format-rows-by [int])))
 
 
@@ -351,7 +351,7 @@
      :native_form true}
     (->> (run-query venues
            (ql/aggregation (ql/avg $latitude)))
-         boolean-native-form
+         booleanize-native-form
          (format-rows-by [(partial u/round-to-decimals 4)])))
 
 
@@ -363,7 +363,7 @@
      :native_form true}
     (->> (run-query checkins
            (ql/aggregation (ql/distinct $user_id)))
-         boolean-native-form
+         booleanize-native-form
          (format-rows-by [int])))
 
 
@@ -386,7 +386,7 @@
     (->> (run-query venues
            (ql/limit 10)
            (ql/order-by (ql/asc $id)))
-         boolean-native-form
+         booleanize-native-form
          formatted-venues-rows))
 
 
@@ -532,7 +532,7 @@
   (->> (run-query checkins
                   (ql/aggregation (ql/count))
                   (ql/filter (ql/between $date "2015-04-01" "2015-05-01")))
-       boolean-native-form
+       booleanize-native-form
        (format-rows-by [int])))
 
 ;;; FILTER -- "OR", "<=", "="
@@ -592,7 +592,7 @@
                   (ql/fields $name $id)
                   (ql/limit 10)
                   (ql/order-by (ql/asc $id)))
-       boolean-native-form
+       booleanize-native-form
        (format-rows-by [str int])))
 
 
@@ -609,7 +609,7 @@
                   (ql/aggregation (ql/count))
                   (ql/breakout $user_id)
                   (ql/order-by (ql/asc $user_id)))
-       boolean-native-form
+       booleanize-native-form
        (format-rows-by [int int])))
 
 ;;; BREAKOUT w/o AGGREGATION
@@ -622,7 +622,7 @@
   (->> (run-query checkins
                   (ql/breakout $user_id)
                   (ql/limit 10))
-       boolean-native-form
+       booleanize-native-form
        (format-rows-by [int])))
 
 
@@ -641,7 +641,7 @@
                   (ql/aggregation (ql/count))
                   (ql/breakout $user_id $venue_id)
                   (ql/limit 10))
-       boolean-native-form
+       booleanize-native-form
        (format-rows-by [int int int])))
 
 ;;; "BREAKOUT" - MULTIPLE COLUMNS W/ EXPLICIT "ORDER_BY"
@@ -660,7 +660,7 @@
                   (ql/breakout $user_id $venue_id)
                   (ql/order-by (ql/desc $user_id))
                   (ql/limit 10))
-       boolean-native-form
+       booleanize-native-form
        (format-rows-by [int int int])))
 
 
@@ -699,7 +699,7 @@
      :native_form true}
   (->> (run-query users
          (ql/aggregation (ql/cum-sum $id)))
-       boolean-native-form
+       booleanize-native-form
        (format-rows-by [int])))
 
 
@@ -712,7 +712,7 @@
     (->> (run-query users
            (ql/aggregation (ql/cum-sum $id))
            (ql/breakout $id))
-         boolean-native-form
+         booleanize-native-form
          (format-rows-by [int])))
 
 
@@ -741,7 +741,7 @@
   (->> (run-query users
          (ql/aggregation (ql/cum-sum $id))
          (ql/breakout $name))
-       boolean-native-form
+       booleanize-native-form
        (format-rows-by [str int])))
 
 
@@ -759,7 +759,7 @@
   (->> (run-query venues
          (ql/aggregation (ql/cum-sum $id))
          (ql/breakout $price))
-       boolean-native-form
+       booleanize-native-form
        (format-rows-by [int int])))
 
 
@@ -778,7 +778,7 @@
      :native_form true}
   (->> (run-query users
                   (ql/aggregation (ql/cum-count)))
-       boolean-native-form
+       booleanize-native-form
        (format-rows-by [int])))
 
 ;;; Cumulative count w/ a different breakout field
@@ -806,7 +806,7 @@
   (->> (run-query users
          (ql/aggregation (ql/cum-count))
          (ql/breakout $name))
-       boolean-native-form
+       booleanize-native-form
        (format-rows-by [str int])))
 
 
@@ -824,7 +824,7 @@
   (->> (run-query venues
          (ql/aggregation (ql/cum-count))
          (ql/breakout $price))
-       boolean-native-form
+       booleanize-native-form
        (format-rows-by [int int])))
 
 
@@ -837,7 +837,7 @@
    :native_form true}
   (-> (run-query venues
         (ql/aggregation (ql/stddev $latitude)))
-      boolean-native-form
+      booleanize-native-form
       (update-in [:data :rows] (fn [[[v]]]
                                  [[(u/round-to-decimals 1 v)]]))))
 
@@ -867,7 +867,7 @@
          (ql/aggregation (ql/count))
          (ql/breakout $price)
          (ql/order-by (ql/asc (ql/aggregate-field 0))))
-       boolean-native-form
+       booleanize-native-form
        (format-rows-by [int int])))
 
 
@@ -886,7 +886,7 @@
          (ql/aggregation (ql/sum $id))
          (ql/breakout $price)
          (ql/order-by (ql/desc (ql/aggregate-field 0))))
-       boolean-native-form
+       booleanize-native-form
        (format-rows-by [int int])))
 
 
@@ -905,7 +905,7 @@
          (ql/aggregation (ql/distinct $id))
          (ql/breakout $price)
          (ql/order-by (ql/asc (ql/aggregate-field 0))))
-       boolean-native-form
+       booleanize-native-form
        (format-rows-by [int int])))
 
 
@@ -924,7 +924,7 @@
          (ql/aggregation (ql/avg $category_id))
          (ql/breakout $price)
          (ql/order-by (ql/asc (ql/aggregate-field 0))))
-       boolean-native-form
+       booleanize-native-form
        :data (format-rows-by [int int])))
 
 ;;; ### order_by aggregate ["stddev" field-id]
@@ -944,7 +944,7 @@
          (ql/aggregation (ql/stddev $category_id))
          (ql/breakout $price)
          (ql/order-by (ql/desc (ql/aggregate-field 0))))
-       boolean-native-form
+       booleanize-native-form
        :data (format-rows-by [int (comp int math/round)])))
 
 
@@ -996,7 +996,7 @@
   ;; Filter out the timestamps from the results since they're hard to test :/
   (-> (run-query users
         (ql/order-by (ql/asc $id)))
-      boolean-native-form
+      booleanize-native-form
       (update-in [:data :rows] (partial mapv (fn [[id name last-login]]
                                                [(int id) name])))))
 
@@ -1276,7 +1276,7 @@
          (run-query tips
            (ql/aggregation (ql/count))
            (ql/breakout $tips.source.service)))
-       boolean-native-form
+       booleanize-native-form
        :data (#(dissoc % :cols)) (format-rows-by [str int])))
 
 ;;; Nested Field in FIELDS

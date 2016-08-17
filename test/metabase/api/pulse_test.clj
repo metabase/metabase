@@ -7,7 +7,7 @@
             (metabase.models [card :refer [Card]]
                              [common :as common]
                              [database :refer [Database]]
-                             [pulse :refer [Pulse create-pulse], :as pulse])
+                             [pulse :refer [Pulse], :as pulse])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
             [metabase.test.util :as tu]

@@ -1,6 +1,7 @@
 (ns metabase.db
   "Database definition and helper functions for interacting with the database."
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require (clojure.java [io :as io]
+                          [jdbc :as jdbc])
             [clojure.tools.logging :as log]
             (clojure [set :as set]
                      [string :as s]
@@ -33,7 +34,7 @@
            "mem:metabase;DB_CLOSE_DELAY=-1"
            ;; File-based DB
            (let [db-file-name (config/config-str :mb-db-file)
-                 db-file      (clojure.java.io/file db-file-name)
+                 db-file      (io/file db-file-name)
                  options      ";AUTO_SERVER=TRUE;MV_STORE=FALSE;DB_CLOSE_DELAY=-1"]
              (apply str "file:" (if (.isAbsolute db-file)
                                   ;; when an absolute path is given for the db file then don't mess with it
@@ -368,6 +369,8 @@
   (jdbc/query (db-connection) (honeysql->sql honeysql-form) options))
 
 
+;; TODO - wouldn't it be *pretty cool* if we just made entities implement the honeysql.format/ToSql protocol so we didn't need this function?
+;;        That would however mean we would have to make sure the entities are resolved first
 (defn entity->table-name
   "Get the keyword table name associated with an ENTITY, which can be anything that can be passed to `resolve-entity`.
 
@@ -561,7 +564,7 @@
     :mysql    :generated_key
     :h2       (keyword "scope_identity()")))
 
-(defn simple-insert-many!
+(defn- simple-insert-many!
   "Do a simple JDBC `insert!` of multiple objects into the database.
    Normally you should use `insert-many!` instead, which calls the entity's `pre-insert` method on the ROW-MAPS;
    `simple-insert-many!` is offered for cases where you'd like to specifically avoid this behavior.
@@ -579,6 +582,7 @@
 (defn insert-many!
   "Insert several new rows into the Database. Resolves ENTITY, and calls `pre-insert` on each of the ROW-MAPS.
    Returns a sequence of the IDs of the newly created objects.
+   Note: this *does not* call `post-insert` on newly created objects. If you need `post-insert` behavior, use `insert!` instead.
 
      (db/insert-many! 'Label [{:name \"Toucan Friendly\"}
                               {:name \"Bird Approved\"}]) -> [38 39]"
@@ -588,11 +592,9 @@
     (simple-insert-many! entity (for [row-map row-maps]
                                   (models/do-pre-insert entity row-map)))))
 
-(defn simple-insert!
-  "Do a simple JDBC `insert!` of a single object.
-   Normally you should use `insert!` instead, which calls the entity's `pre-insert` method on ROW-MAP;
-   `simple-insert!` is offered for cases where you'd like to specifically avoid this behavior.
-   Returns the ID of the inserted object.
+(defn- simple-insert!
+  "Do a simple JDBC `insert` of a single object.
+   This is similar to `insert!` but returns the ID of the newly created object rather than the object itself, and does not call `post-insert`.
 
      (db/simple-insert! 'Label :name \"Toucan Friendly\") -> 1
 
@@ -605,8 +607,8 @@
    (simple-insert! entity (apply array-map k v more))))
 
 (defn insert!
-  "Insert a new object into the Database. Resolves ENTITY, and calls its `pre-insert` method on ROW-MAP to prepare it before insertion;
-   after insert, it fetches and returns the newly created object.
+  "Insert a new object into the Database. Resolves ENTITY, calls its `pre-insert` method on ROW-MAP to prepare it before insertion;
+   after insert, it fetches and the newly created object, passes it to `post-insert`, and returns the results.
    For flexibility, `insert!` can handle either a single map or individual kwargs:
 
      (db/insert! Label {:name \"Toucan Unfriendly\"})
@@ -616,7 +618,7 @@
    {:pre [(map? row-map) (every? keyword? (keys row-map))]}
    (let [entity (resolve-entity entity)]
      (when-let [id (simple-insert! entity (models/do-pre-insert entity row-map))]
-       (entity id))))
+       (models/post-insert (entity id)))))
   ([entity k v & more]
    (insert! entity (apply array-map k v more))))
 
@@ -723,6 +725,7 @@
   "Easy way to see if something exists in the DB.
     (db/exists? User :id 100)
    NOTE: This only works for objects that have an `:id` field."
+  {:style/indent 1}
   ^Boolean [entity & kvs]
   (boolean (select-one entity (apply where (h/select {} :id) kvs))))
 
