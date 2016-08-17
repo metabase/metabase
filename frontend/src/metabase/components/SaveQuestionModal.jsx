@@ -10,7 +10,7 @@ import { cancelable } from "metabase/lib/promise";
 
 import cx from "classnames";
 
-import S from "./SaveQuestionModal.css";
+import "./SaveQuestionModal.css";
 
 
 export default class SaveQuestionModal extends Component {
@@ -171,7 +171,7 @@ export default class SaveQuestionModal extends Component {
                             transitionLeaveTimeout={500}
                         >
                             { details.saveType === "create" && 
-                                <div key="saveQuestionModalFields" className={S.saveQuestionModalFields}>
+                                <div key="saveQuestionModalFields" className="saveQuestionModalFields">
                                     <FormField
                                         key="name"
                                         displayName="Name"

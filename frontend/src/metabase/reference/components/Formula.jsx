@@ -32,7 +32,7 @@ const Formula = ({
             transitionLeaveTimeout={300}
         >
             { isExpanded &&
-                <div key="formulaDefinition" className={S.formulaDefinition}>
+                <div key="formulaDefinition" className="formulaDefinition">
                     <QueryDefinition
                         className={S.formulaDefinitionInner}
                         object={entity}
