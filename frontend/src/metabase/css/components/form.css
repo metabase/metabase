@@ -138,7 +138,7 @@
     width: 8px;
     height: 8px;
     border: 2px solid white;
-    box-shadow: 0 0 0 2px var(--default-font-color);
+    box-shadow: 0 0 0 2px var(--grey-3);
     border-radius: 8px;
 }
 
