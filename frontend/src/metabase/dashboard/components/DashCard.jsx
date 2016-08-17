@@ -29,7 +29,7 @@ export default class DashCard extends Component {
     static propTypes = {
         dashcard: PropTypes.object.isRequired,
         dashcardData: PropTypes.object.isRequired,
-
+        parameterValues: PropTypes.object.isRequired,
         markNewCardSeen: PropTypes.func.isRequired,
         fetchCardData: PropTypes.func.isRequired,
     };
@@ -67,7 +67,7 @@ export default class DashCard extends Component {
     }
 
     render() {
-        const { dashcard, dashcardData, cardDurations, isEditing, isEditingParameter, onAddSeries, onRemove } = this.props;
+        const { dashcard, dashcardData, cardDurations, parameterValues, isEditing, isEditingParameter, onAddSeries, onRemove } = this.props;
 
         const cards = [dashcard.card].concat(dashcard.series || []);
         const series = cards
@@ -83,7 +83,9 @@ export default class DashCard extends Component {
         const isSlow = loading && _.some(series, (s) => s.duration) && (usuallyFast ? "usually-fast" : "usually-slow");
 
         const hasUnmappedParameters = _.any(series, (s) => s.json_query && _.any(s.json_query.parameters, (p) => p.target == null));
-        const hasParameterMappings = dashcard.parameter_mappings && dashcard.parameter_mappings.length > 0;
+        const hasParameterMappings = dashcard.parameter_mappings && dashcard.parameter_mappings
+            .some(mapping => parameterValues[mapping.parameter_id]);
+        const hasParameters = Object.values(parameterValues).length > 0;
 
         const errors = series.map(s => s.error).filter(e => e);
         const error = errors[0] || this.state.error;
@@ -106,7 +108,7 @@ export default class DashCard extends Component {
             <div
                 className={"Card bordered rounded flex flex-column " + cx({
                     "Card--recent": dashcard.isAdded,
-                    "Card--unmapped": (hasUnmappedParameters || !hasParameterMappings) && !isEditing,
+                    "Card--unmapped": (hasUnmappedParameters || (hasParameters && !hasParameterMappings)) && !isEditing,
                     "Card--slow": isSlow === "usually-slow"
                 })}
             >

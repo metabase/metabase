@@ -43,6 +43,7 @@ export default class DashboardGrid extends Component {
         isEditing: PropTypes.bool.isRequired,
         isEditingParameter: PropTypes.bool.isRequired,
         dashboard: PropTypes.object.isRequired,
+        parameterValues: PropTypes.object.isRequired,
         cards: PropTypes.array,
 
         setDashCardAttributes: PropTypes.func.isRequired,
@@ -203,6 +204,7 @@ export default class DashboardGrid extends Component {
             <DashCard
                 dashcard={dc}
                 dashcardData={this.props.dashcardData}
+                parameterValues={this.props.parameterValues}
                 cardDurations={this.props.cardDurations}
                 fetchCardData={this.props.fetchCardData}
                 markNewCardSeen={this.props.markNewCardSeen}
