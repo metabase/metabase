@@ -83,9 +83,11 @@ export default class DashCard extends Component {
         const isSlow = loading && _.some(series, (s) => s.duration) && (usuallyFast ? "usually-fast" : "usually-slow");
 
         const hasUnmappedParameters = _.any(series, (s) => s.json_query && _.any(s.json_query.parameters, (p) => p.target == null));
-        const hasParameterMappings = dashcard.parameter_mappings && dashcard.parameter_mappings
-            .some(mapping => parameterValues[mapping.parameter_id] !== undefined);
-        const hasParameters = Object.values(parameterValues).length > 0;
+        const hasParameterMappings = dashcard && dashcard.parameter_mappings && dashcard.parameter_mappings
+            .some(mapping => parameterValues[mapping.parameter_id]);
+        const hasParameters = parameterValues && Object.values(parameterValues)
+            .filter(parameterValue => parameterValue !== null)
+            .length > 0;
 
         const errors = series.map(s => s.error).filter(e => e);
         const error = errors[0] || this.state.error;
