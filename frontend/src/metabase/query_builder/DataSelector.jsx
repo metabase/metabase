@@ -294,6 +294,7 @@ export default class DataSelector extends Component {
         }
     }
 
+    //TODO: refactor this. lots of shared code with renderTablePicker()
     renderSegmentPicker() {
         const { segments } = this.props;
         const header = (
@@ -339,6 +340,7 @@ export default class DataSelector extends Component {
                 itemIsSelected={(item) => item.segment ? item.segment.id === this.getSegmentId() : false}
                 itemIsClickable={(item) => item.segment && !item.disabled}
                 renderItemIcon={(item) => item.segment ? <Icon name="segment" size={18} /> : null}
+                hideSingleSectionTitle={true}
             />
         );
     }
