@@ -105,6 +105,7 @@
     (db/update-where! Field {:table_id [:in table-ids]}
       :visibility_type "retired")))
 
+;; TODO - rename to `update-table-from-tabledef!`
 (defn update-table!
   "Update `Table` with the data from TABLE-DEF."
   [{:keys [id display_name], :as existing-table} {table-name :name}]
@@ -118,6 +119,7 @@
     ;; always return the table when we are done
     updated-table))
 
+;; TODO - rename to `create-table-from-tabledef!`
 (defn create-table!
   "Create `Table` with the data from TABLE-DEF."
   [database-id {schema-name :schema, table-name :name, raw-table-id :raw-table-id, visibility-type :visibility-type}]

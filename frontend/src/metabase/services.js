@@ -544,7 +544,7 @@ CoreServices.factory('Settings', ['$resource', function($resource) {
         list: {
             url: '/api/setting',
             method: 'GET',
-            isArray: true,
+            isArray: true
         },
         // POST endpoint handles create + update in this case
         put: {

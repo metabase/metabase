@@ -23,6 +23,17 @@ const mapDispatchToProps = {
     onChangeLocation: push
 };
 
+const AdminNavItem = ({ name, path, currentPath }) =>
+    <li>
+        <Link
+            to={path}
+            data-metabase-event={"Navbar;" + name}
+            className={cx("NavItem py1 px2 no-decoration", {"is--selected": currentPath.startsWith(path) })}
+        >
+            {name}
+        </Link>
+    </li>
+
 @connect(mapStateToProps, mapDispatchToProps)
 export default class Navbar extends Component {
     static propTypes = {
@@ -57,10 +68,6 @@ export default class Navbar extends Component {
     }
 
     renderAdminNav() {
-        const getClasses = (path) => cx("NavItem py1 px2 no-decoration", {
-            "is--selected": this.isActive(path)
-        });
-
         return (
             <nav className={cx("Nav AdminNav", this.props.className)}>
                 <div className="wrapper flex align-center">
@@ -70,29 +77,13 @@ export default class Navbar extends Component {
                     </div>
 
                     <ul className="sm-ml4 flex flex-full">
-                        <li>
-                            <Link to="/admin/settings" data-metabase-event={"Navbar;Settings"} className={getClasses("/admin/settings")}  >
-                                Settings
-                            </Link>
-                        </li>
-                        <li>
-                            <Link to="/admin/people" data-metabase-event={"Navbar;People"} className={getClasses("/admin/people")} >
-                                People
-                            </Link>
-                        </li>
-                        <li>
-                            <Link to="/admin/datamodel/database" data-metabase-event={"Navbar;Data Model"} className={getClasses("/admin/datamodel")} >
-                                Data Model
-                            </Link>
-                        </li>
-                        <li>
-                            <Link to="/admin/databases" data-metabase-event={"Navbar;Databases"} className={getClasses("/admin/databases")}>
-                                Databases
-                            </Link>
-                        </li>
+                        <AdminNavItem name="Settings"    path="/admin/settings"     currentPath={this.props.path} />
+                        <AdminNavItem name="People"      path="/admin/people"       currentPath={this.props.path} />
+                        <AdminNavItem name="Data Model"  path="/admin/datamodel"    currentPath={this.props.path} />
+                        <AdminNavItem name="Databases"   path="/admin/databases"    currentPath={this.props.path} />
                     </ul>
 
-                    <ProfileLink {...this.props}></ProfileLink>
+                    <ProfileLink {...this.props} />
                 </div>
             </nav>
         );

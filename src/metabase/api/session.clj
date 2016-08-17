@@ -112,7 +112,7 @@
         ;; after a successful password update go ahead and offer the client a new session that they can use
         {:success    true
          :session_id (create-session! user)})
-      (throw (invalid-param-exception :password "Invalid reset token"))))
+      (throw-invalid-param-exception :password "Invalid reset token")))
 
 
 (defendpoint GET "/password_reset_token_valid"
