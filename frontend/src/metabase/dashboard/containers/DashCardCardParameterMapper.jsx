@@ -101,14 +101,18 @@ export default class DashCardCardParameterMapper extends Component {
                     triggerClasses={cx({ "disabled": disabled })}
                     triggerElement={
                         <Tooltip tooltip={tooltipText} verticalAttachments={["bottom", "top"]}>
-                            <button
+                            {/* using div instead of button due to
+                                https://bugzilla.mozilla.org/show_bug.cgi?id=984869
+                                and click event on close button not propagating in FF
+                            */}
+                            <div
                                 className={cx(S.button, {
                                     [S.mapped]: !!selected,
                                     [S.warn]: noOverlap,
                                     [S.disabled]: disabled
                                 })}
                             >
-                                <span className="mr1">
+                                <span className="text-centered mr1">
                                 { disabled ?
                                     "No valid fields"
                                 : selected ?
@@ -118,11 +122,11 @@ export default class DashCardCardParameterMapper extends Component {
                                 }
                                 </span>
                                 { selected ?
-                                    <Icon className="flex-align-right" name="close" size={16} onClick={(e) => { this.onChange(null); e.stopPropagation(); }}/>
+                                    <Icon className="flex-align-right" name="close" size={16} onClick={(e) => { console.log('detected');this.onChange(null); e.stopPropagation(); }}/>
                                 : !disabled ?
                                     <Icon className="flex-align-right" name="chevrondown" size={16} />
                                 : null }
-                            </button>
+                            </div>
                         </Tooltip>
                     }
                 >
