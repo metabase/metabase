@@ -318,9 +318,7 @@ export const setParameterValue = createThunkAction(SET_PARAMETER_VALUE, (paramet
 )
 
 export const removeParameter = createThunkAction(REMOVE_PARAMETER, (parameterId) =>
-    (dispatch, getState) => {
-        return { id: parameterId };
-    }
+    (dispatch, getState) => ({ id: parameterId })
 );
 
 

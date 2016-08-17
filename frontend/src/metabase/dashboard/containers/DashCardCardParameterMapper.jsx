@@ -122,7 +122,7 @@ export default class DashCardCardParameterMapper extends Component {
                                 }
                                 </span>
                                 { selected ?
-                                    <Icon className="flex-align-right" name="close" size={16} onClick={(e) => { console.log('detected');this.onChange(null); e.stopPropagation(); }}/>
+                                    <Icon className="flex-align-right" name="close" size={16} onClick={(e) => { this.onChange(null); e.stopPropagation(); }}/>
                                 : !disabled ?
                                     <Icon className="flex-align-right" name="chevrondown" size={16} />
                                 : null }
