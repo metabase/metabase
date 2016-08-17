@@ -490,7 +490,10 @@ export default class ReferenceGettingStartedGuide extends Component {
                             startEditing={startEditing} 
                         /> : 
                         <div>
-                            <GuideHeader startEditing={startEditing} />
+                            <GuideHeader 
+                                startEditing={startEditing}
+                                isSuperuser={user && user.is_superuser}
+                            />
                             <div className={cx("wrapper wrapper--trim", S.guideWrapper)}>
                                 { guide.most_important_dashboard !== null && [
                                     <div key={'dashboardTitle'} className={S.guideTitle}>

@@ -7,18 +7,22 @@ import S from "./GuideHeader.css";
 import EditButton from "metabase/reference/components/EditButton.jsx";
 
 const GuideHeader = ({
-    startEditing
+    startEditing,
+    isSuperuser
 }) =>
     <div className={S.guideHeader}>
         <div className={cx("wrapper wrapper--trim", S.guideHeaderBody)}>
             <span className={S.guideHeaderTitle}>Understanding our data</span>
-            <div className={S.guideHeaderButtons}>
-                <EditButton className={S.guideHeaderEditButton} startEditing={startEditing}/>
-            </div>
+            { isSuperuser &&
+                <div className={S.guideHeaderButtons}>
+                    <EditButton className={S.guideHeaderEditButton} startEditing={startEditing}/>
+                </div>
+            }
         </div>
     </div>;
 GuideHeader.propTypes = {
-    startEditing: PropTypes.func.isRequired
+    startEditing: PropTypes.func.isRequired,
+    isSuperuser: PropTypes.bool
 };
 
 export default pure(GuideHeader);

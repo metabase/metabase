@@ -437,17 +437,14 @@ export const getQuestionUrl = getQuestionArgs => `/q#${serializeCardForUrl(getQu
 
 export const isGuideEmpty = ({
     things_to_know,
-    contact: {
-        name,
-        email
-    },
+    contact,
     most_important_dashboard,
     important_metrics,
     important_segments,
     important_tables
 } = {}) => things_to_know ? false :
-    name ? false :
-    email ? false :
+    contact && contact.name ? false :
+    contact && contact.email ? false :
     most_important_dashboard ? false :
     important_metrics && important_metrics.length !== 0 ? false :
     important_segments && important_segments.length !== 0 ? false :
