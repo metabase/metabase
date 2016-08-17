@@ -237,6 +237,7 @@ export default class Dashboard extends Component {
         let parameters = this.props.dashboard && this.props.dashboard.parameters || [];
         parameters = _.reject(parameters, (p) => p.id === parameter.id);
         this.setDashboardAttribute("parameters", parameters);
+        this.props.removeParameter(parameter.id);
     }
 
     // TODO: move to action

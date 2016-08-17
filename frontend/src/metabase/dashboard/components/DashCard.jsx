@@ -84,7 +84,7 @@ export default class DashCard extends Component {
 
         const hasUnmappedParameters = _.any(series, (s) => s.json_query && _.any(s.json_query.parameters, (p) => p.target == null));
         const hasParameterMappings = dashcard.parameter_mappings && dashcard.parameter_mappings
-            .some(mapping => parameterValues[mapping.parameter_id]);
+            .some(mapping => parameterValues[mapping.parameter_id] !== undefined);
         const hasParameters = Object.values(parameterValues).length > 0;
 
         const errors = series.map(s => s.error).filter(e => e);
