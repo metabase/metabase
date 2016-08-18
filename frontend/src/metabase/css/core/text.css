@@ -82,7 +82,7 @@
 }
 
 .text-reading, :local(.text-reading) {
-  font-size: 1em;
+  font-size: 1.143em;
   line-height: 1.5em;
 }
 
