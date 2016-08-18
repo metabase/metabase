@@ -575,14 +575,14 @@
 
   Possible caller-options include:
 
-    :executed_by [int]  (user_id of caller)"
+    :executed-by [int]  (user_id of caller)"
   {:arglists '([query options])}
-  [query {:keys [executed_by]}]
-  {:pre [(integer? executed_by)]}
+  [query {:keys [executed-by]}]
+  {:pre [(integer? executed-by)]}
   (let [query-uuid      (str (java.util.UUID/randomUUID))
         query-hash      (hash query)
         query-execution {:uuid              query-uuid
-                         :executor_id       executed_by
+                         :executor_id       executed-by
                          :json_query        query
                          :query_hash        query-hash
                          :query_id          nil
@@ -598,7 +598,7 @@
                          :raw_query         ""
                          :additional_info   ""
                          :start_time_millis (System/currentTimeMillis)}
-        query           (assoc query :info {:executed-by executed_by
+        query           (assoc query :info {:executed-by executed-by
                                             :uuid        query-uuid
                                             :query-hash  query-hash
                                             :query-type  (if (mbql-query? query) "MBQL" "native")})]
@@ -651,8 +651,7 @@
   [{:keys [id], :as query-execution}]
   (if id
     ;; execution has already been saved, so update it
-    (do
-      (db/update! QueryExecution id query-execution)
-      query-execution)
+    (u/prog1 query-execution
+      (db/update! QueryExecution id query-execution))
     ;; first time saving execution, so insert it
     (db/insert! QueryExecution query-execution)))

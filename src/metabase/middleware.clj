@@ -3,9 +3,9 @@
   (:require [clojure.tools.logging :as log]
             (cheshire factory
                       [generate :refer [add-encoder encode-str encode-nil]])
-            [metabase.api.common :refer [*current-user* *current-user-id*]]
-            [metabase.config :as config]
-            [metabase.db :as db]
+            [metabase.api.common :refer [*current-user* *current-user-id* *is-superuser?*]]
+            (metabase [config :as config]
+                      [db :as db])
             (metabase.models [interface :as models]
                              [session :refer [Session]]
                              [setting :refer [defsetting]]
@@ -60,14 +60,18 @@
   (fn [{:keys [metabase-session-id] :as request}]
     ;; TODO - what kind of validations can we do on the sessionid to make sure it's safe to handle?  str?  alphanumeric?
     (handler (or (when (and metabase-session-id ((resolve 'metabase.core/initialized?)))
-                   (when-let [session (db/select-one [Session :created_at :user_id]
+                   (when-let [session (db/select-one [Session :created_at :user_id (db/qualify User :is_superuser)]
                                         (db/join [Session :user_id] [User :id])
                                         (db/qualify User :is_active) true
                                         (db/qualify Session :id) metabase-session-id)]
-                     (let [session-age-ms (- (System/currentTimeMillis) (.getTime ^java.util.Date (get session :created_at (u/->Date 0))))]
+                     (let [session-age-ms (- (System/currentTimeMillis) (or (when-let [^java.util.Date created-at (:created_at session)]
+                                                                              (.getTime created-at))
+                                                                            0))]
                        ;; If the session exists and is not expired (max-session-age > session-age) then validation is good
                        (when (and session (> (config/config-int :max-session-age) (quot session-age-ms 60000)))
-                         (assoc request :metabase-user-id (:user_id session))))))
+                         (assoc request
+                           :metabase-user-id (:user_id session)
+                           :is-superuser?    (:is_superuser session))))))
                  request))))
 
 
@@ -79,6 +83,9 @@
       (handler request)
       response-unauthentic)))
 
+(def ^:private current-user-fields
+  (vec (concat [User :is_active :is_staff :google_auth] (models/default-fields User))))
+
 (defn bind-current-user
   "Middleware that binds `metabase.api.common/*current-user*` and `*current-user-id*`
 
@@ -88,9 +95,8 @@
   (fn [request]
     (if-let [current-user-id (:metabase-user-id request)]
       (binding [*current-user-id* current-user-id
-                *current-user*    (delay (db/select-one (vec (concat [User :is_active :is_staff :google_auth]
-                                                                     (models/default-fields User)))
-                                           :id current-user-id))]
+                *is-superuser?*   (:is-superuser? request)
+                *current-user*    (delay (db/select-one current-user-fields, :id current-user-id))]
         (handler request))
       (handler request))))
 
@@ -100,9 +106,9 @@
    We check the request headers for `X-METABASE-APIKEY` and if it's not found then then no keyword is bound to the request."
   [handler]
   (fn [{:keys [headers] :as request}]
-    (if-let [api-key (headers metabase-api-key-header)]
-      (handler (assoc request :metabase-api-key api-key))
-      (handler request))))
+    (handler (if-let [api-key (headers metabase-api-key-header)]
+               (assoc request :metabase-api-key api-key)
+               request))))
 
 
 (defn enforce-api-key
@@ -256,8 +262,10 @@
 (defn log-api-call
   "Middleware to log `:request` and/or `:response` by passing corresponding OPTIONS."
   [handler & options]
-  (fn [request]
-    (if-not (api-call? request)
+  (fn [{:keys [uri], :as request}]
+    (if (or (not (api-call? request))
+            (= uri "/api/health")     ; don't log calls to /health or /util/logs because they clutter up
+            (= uri "/api/util/logs")) ; the logs (especially the window in admin) with useless lines
       (handler request)
       (let [start-time (System/nanoTime)]
         (db/with-call-counting [call-count]

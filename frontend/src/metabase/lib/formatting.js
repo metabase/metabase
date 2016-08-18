@@ -13,7 +13,7 @@ const FIXED_NUMBER_FORMATTER_NO_COMMA = d3.format(".f");
 const DECIMAL_DEGREES_FORMATTER       = d3.format(".08f");
 
 export function formatNumber(number, options = {}) {
-    options = { comma: true, ...options}
+    options = { comma: true, ...options};
     if (options.compact) {
         return Humanize.compactInteger(number, 1);
     } else if (number > -1 && number < 1) {
@@ -102,7 +102,7 @@ export function formatValue(value, options = {}) {
         return value;
     } else if (typeof value === "number") {
         if (column && (column.special_type === "latitude" || column.special_type === "longitude")) {
-            return DECIMAL_DEGREES_FORMATTER(value)
+            return DECIMAL_DEGREES_FORMATTER(value);
         } else {
             return formatNumber(value, options);
         }

@@ -1,7 +1,6 @@
 (ns metabase.api.card
   (:require [clojure.data :as data]
             [compojure.core :refer [GET POST DELETE PUT]]
-            [honeysql.helpers :as h]
             [metabase.api.common :refer :all]
             (metabase [db :as db]
                       [events :as events])
@@ -78,9 +77,9 @@
   (cards-with-ids (map :model_id (db/select [ViewLog :model_id [:%max.timestamp :max]]
                                    :model   "card"
                                    :user_id *current-user-id*
-                                   (-> (h/group :model_id)
-                                       (h/order-by [:max :desc])
-                                       (h/limit 10))))))
+                                   {:group-by [:model_id]
+                                    :order-by [[:max :desc]]
+                                    :limit    10}))))
 
 (defn- cards:popular
   "All `Cards`, sorted by popularity (the total number of times they are viewed in `ViewLogs`).
@@ -88,8 +87,8 @@
   []
   (cards-with-ids (map :model_id (db/select [ViewLog :model_id [:%count.* :count]]
                                    :model "card"
-                                   (-> (h/group :model_id)
-                                       (h/order-by [:count :desc]))))))
+                                   {:group-by [:model_id]
+                                    :order-by [[:count :desc]]}))))
 
 (defn- cards:archived
   "`Cards` that have been archived."
@@ -169,6 +168,7 @@
          (->> (events/publish-event :card-read))
          (dissoc :actor_id)))
 
+
 (defendpoint PUT "/:id"
   "Update a `Card`."
   [id :as {{:keys [dataset_query description display name public_perms visualization_settings archived], :as body} :body}]
@@ -198,6 +198,7 @@
                   :else                        :card-update)]
       (events/publish-event event (assoc (Card id) :actor_id *current-user-id*)))))
 
+
 (defendpoint DELETE "/:id"
   "Delete a `Card`."
   [id]
@@ -206,6 +207,7 @@
     (write-check card)
     (u/prog1 (db/cascade-delete! Card,:id id)
       (events/publish-event :card-delete (assoc card :actor_id *current-user-id*)))))
+
 
 (defendpoint GET "/:id/favorite"
   "Has current user favorited this `Card`?"
@@ -218,11 +220,13 @@
   [card-id]
   (db/insert! CardFavorite :card_id card-id, :owner_id *current-user-id*))
 
+
 (defendpoint DELETE "/:card-id/favorite"
   "Unfavorite a Card."
   [card-id]
   (let-404 [id (db/select-one-id CardFavorite :card_id card-id, :owner_id *current-user-id*)]
     (db/cascade-delete! CardFavorite, :id id)))
+
 
 (defendpoint POST "/:card-id/labels"
   "Update the set of `Labels` that apply to a `Card`."
@@ -235,7 +239,6 @@
       (db/cascade-delete! CardLabel, :label_id [:in labels-to-remove], :card_id card-id))
     (doseq [label-id labels-to-add]
       (db/insert! CardLabel :label_id label-id, :card_id card-id)))
-  ;; TODO - Should this endpoint return something more useful instead ?
   {:status :ok})
 
 (define-routes)

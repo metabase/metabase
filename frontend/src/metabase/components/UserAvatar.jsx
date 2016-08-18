@@ -26,17 +26,13 @@ export default class UserAvatar extends Component {
     userInitials() {
         const { first_name, last_name } = this.props.user;
 
-        let initials = '??';
-
-        if (first_name !== 'undefined') {
-            initials = first_name.substring(0, 1).toUpperCase();
+        function initial(name) {
+            return typeof name !== 'undefined' && name.length ? name.substring(0, 1).toUpperCase() : '';
         }
 
-        if (last_name !== 'undefined') {
-            initials = initials + last_name.substring(0, 1).toUpperCase();
-        }
+        const initials = initial(first_name) + initial(last_name);
 
-        return initials;
+        return initials.length ? initials : '?';
     }
 
     render() {

@@ -19,9 +19,6 @@
     font-size: 16px;
 }
 
-:local(.formulaDefinition) {
-    overflow: hidden;
-}
 :local(.formulaDefinitionInner) {
     composes: p2 from "style";
 }
