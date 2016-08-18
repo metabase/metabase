@@ -66,7 +66,7 @@
   (check-404 (db/exists? entity, :id id)))
 
 (defn check-superuser
-  "Check that `*current-user*` is a superuser or throw a 403."
+  "Check that `*current-user*` is a superuser or throw a 403. This doesn't require a DB call."
   []
   (check-403 *is-superuser?*))
 
