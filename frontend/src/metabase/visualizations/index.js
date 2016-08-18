@@ -1,5 +1,6 @@
 
 import Scalar     from "./Scalar.jsx";
+import Progress   from "./Progress.jsx";
 import Table      from "./Table.jsx";
 import LineChart  from "./LineChart.jsx";
 import BarChart   from "./BarChart.jsx";
@@ -28,6 +29,7 @@ export function registerVisualization(visualization) {
 }
 
 registerVisualization(Scalar);
+registerVisualization(Progress);
 registerVisualization(Table);
 registerVisualization(LineChart);
 registerVisualization(BarChart);

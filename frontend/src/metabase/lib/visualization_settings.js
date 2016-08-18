@@ -21,6 +21,7 @@ import ChartSettingInputNumeric from "metabase/visualizations/components/setting
 import ChartSettingSelect from "metabase/visualizations/components/settings/ChartSettingSelect.jsx";
 import ChartSettingToggle from "metabase/visualizations/components/settings/ChartSettingToggle.jsx";
 import ChartSettingFieldsPicker from "metabase/visualizations/components/settings/ChartSettingFieldsPicker.jsx";
+import ChartSettingColorPicker from "metabase/visualizations/components/settings/ChartSettingColorPicker.jsx";
 import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker.jsx";
 import ChartSettingOrderedFields from "metabase/visualizations/components/settings/ChartSettingOrderedFields.jsx";
 
@@ -110,6 +111,8 @@ function getOptionFromColumn(col) {
 }
 
 // const CURRENCIES = ["afn", "ars", "awg", "aud", "azn", "bsd", "bbd", "byr", "bzd", "bmd", "bob", "bam", "bwp", "bgn", "brl", "bnd", "khr", "cad", "kyd", "clp", "cny", "cop", "crc", "hrk", "cup", "czk", "dkk", "dop", "xcd", "egp", "svc", "eek", "eur", "fkp", "fjd", "ghc", "gip", "gtq", "ggp", "gyd", "hnl", "hkd", "huf", "isk", "inr", "idr", "irr", "imp", "ils", "jmd", "jpy", "jep", "kes", "kzt", "kpw", "krw", "kgs", "lak", "lvl", "lbp", "lrd", "ltl", "mkd", "myr", "mur", "mxn", "mnt", "mzn", "nad", "npr", "ang", "nzd", "nio", "ngn", "nok", "omr", "pkr", "pab", "pyg", "pen", "php", "pln", "qar", "ron", "rub", "shp", "sar", "rsd", "scr", "sgd", "sbd", "sos", "zar", "lkr", "sek", "chf", "srd", "syp", "tzs", "twd", "thb", "ttd", "try", "trl", "tvd", "ugx", "uah", "gbp", "usd", "uyu", "uzs", "vef", "vnd", "yer", "zwd"];
+
+import { normal } from "metabase/lib/colors";
 
 const SETTINGS = {
     "graph.dimensions": {
@@ -414,6 +417,18 @@ const SETTINGS = {
         title: "Multiply by a number",
         widget: ChartSettingInputNumeric
     },
+    "progress.goal": {
+        section: "Display",
+        title: "Goal",
+        widget: ChartSettingInputNumeric,
+        default: 0
+    },
+    "progress.color": {
+        section: "Display",
+        title: "Color",
+        widget: ChartSettingColorPicker,
+        default: normal.green
+    },
     "table.pivot": {
         title: "Pivot the table",
         widget: ChartSettingToggle,
@@ -551,7 +566,8 @@ const SETTINGS_PREFIXES_BY_CHART_TYPE = {
     pie: ["pie."],
     scalar: ["scalar."],
     table: ["table."],
-    map: ["map."]
+    map: ["map."],
+    progress: ["progress."],
 }
 
 // alias legacy map types
