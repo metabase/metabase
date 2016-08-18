@@ -6,14 +6,14 @@
             (metabase [config :as config]
                       [db :as db]
                       [driver :as driver]
-                      [events :as events]
-                      [sample-data :as sample-data]
-                      [util :as u])
+                      [events :as events])
             (metabase.models common
                              [database :refer [Database protected-password]]
                              [field :refer [Field]]
                              [hydrate :refer [hydrate]]
-                             [table :refer [Table]])))
+                             [table :refer [Table]])
+            (metabase [sample-data :as sample-data]
+                      [util :as u])))
 
 (defannotation DBEngine
   "Param must be a valid database engine type, e.g. `h2` or `postgres`."

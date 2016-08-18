@@ -1,6 +1,6 @@
 import React, { Component, PropTypes } from "react";
 
-import { Route, IndexRedirect, Redirect } from 'react-router';
+import { Route, Redirect, IndexRedirect } from 'react-router';
 import { routerActions } from 'react-router-redux';
 import { UserAuthWrapper } from 'redux-auth-wrapper';
 
@@ -47,6 +47,8 @@ import ReferenceEntityList from "metabase/reference/containers/ReferenceEntityLi
 import ReferenceFieldsList from "metabase/reference/containers/ReferenceFieldsList.jsx";
 import ReferenceRevisionsList from "metabase/reference/containers/ReferenceRevisionsList.jsx";
 import ReferenceGettingStartedGuide from "metabase/reference/containers/ReferenceGettingStartedGuide.jsx";
+
+import adminPermissionsRoutes from "metabase/admin/permissions/routes.jsx";
 
 const MetabaseIsSetup = UserAuthWrapper({
     predicate: authData => !authData.hasSetupToken,
@@ -172,6 +174,7 @@ export const getRoutes = (store) =>
                 <Route path="databases/:databaseId" component={DatabaseEditApp} />
 
                 <Route path="datamodel">
+                    <IndexRedirect to="database" />
                     <Route path="database" component={MetadataEditorApp} />
                     <Route path="database/:databaseId" component={MetadataEditorApp} />
                     <Route path="database/:databaseId/:mode" component={MetadataEditorApp} />
@@ -187,6 +190,8 @@ export const getRoutes = (store) =>
 
                 <Route path="settings" component={SettingsEditorApp} />
                 <Route path="settings/:section" component={SettingsEditorApp} />
+
+                {adminPermissionsRoutes}
             </Route>
 
             {/* MISC */}

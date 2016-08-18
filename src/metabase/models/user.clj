@@ -4,8 +4,10 @@
             [metabase.db :as db]
             [metabase.email.messages :as email]
             (metabase.models [interface :as i]
+                             [permissions-group :as perm-group]
                              [setting :as setting])
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [metabase.models.permissions-group :as group]))
 
 ;; ## Enity + DB Multimethods
 
@@ -32,7 +34,32 @@
            (when reset_token
              {:reset_token (creds/hash-bcrypt reset_token)}))))
 
-(defn- pre-update [{:keys [email reset_token] :as user}]
+(defn- post-insert [{user-id :id, superuser? :is_superuser, :as user}]
+  (u/prog1 user
+    ;; add the newly created user to the magic perms groups
+    (db/insert! 'PermissionsGroupMembership
+      :user_id  user-id
+      :group_id (:id (perm-group/default)))
+    (when superuser?
+      (db/insert! 'PermissionsGroupMembership
+        :user_id  user-id
+        :group_id (:id (perm-group/admin))))))
+
+(defn- pre-update [{:keys [email reset_token is_superuser id] :as user}]
+  ;; when `:is_superuser` is toggled add or remove the user from the 'Admin' group as appropriate
+  (when-not (nil? is_superuser)
+    (let [membership-exists? (db/exists? 'PermissionsGroupMembership
+                               :group_id (:id (group/admin))
+                               :user_id  id)]
+      (cond
+        (and is_superuser
+             (not membership-exists?)) (db/insert! 'PermissionsGroupMembership
+                                         :group_id (:id (group/admin))
+                                         :user_id  id)
+        (and (not is_superuser)
+             membership-exists?)       (db/delete! 'PermissionsGroupMembership ; don't use cascade-delete! here because that does the opposite and tries to update this user
+                                         :group_id (:id (group/admin))         ; which leads to a stack overflow of calls between the two
+                                         :user_id  id))))                      ; TODO - we could fix this issue by having a `post-cascade-delete!` method
   (when email
     (assert (u/is-email? email)))
   (cond-> user
@@ -43,16 +70,17 @@
     (or first_name last_name) (assoc :common_name (str first_name " " last_name))))
 
 (defn- pre-cascade-delete [{:keys [id]}]
-  (doseq [[model k] [['Session        :user_id]
-                     ['Dashboard      :creator_id]
-                     ['Card           :creator_id]
-                     ['Pulse          :creator_id]
-                     ['Activity       :user_id]
-                     ['ViewLog        :user_id]
-                     ['Segment        :creator_id]
-                     ['Metric         :creator_id]
-                     ['Revision       :user_id]
-                     ['QueryExecution :executor_id]]]
+  (doseq [[model k] [['Activity                   :user_id]
+                     ['Card                       :creator_id]
+                     ['Dashboard                  :creator_id]
+                     ['Metric                     :creator_id]
+                     ['Pulse                      :creator_id]
+                     ['QueryExecution             :executor_id]
+                     ['Revision                   :user_id]
+                     ['Segment                    :creator_id]
+                     ['Session                    :user_id]
+                     ['PermissionsGroupMembership :user_id]
+                     ['ViewLog                    :user_id]]]
     (db/cascade-delete! model k id)))
 
 (u/strict-extend (class User)
@@ -61,6 +89,7 @@
          {:default-fields     (constantly [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb])
           :hydration-keys     (constantly [:author :creator :user])
           :pre-insert         pre-insert
+          :post-insert        post-insert
           :pre-update         pre-update
           :post-select        post-select
           :pre-cascade-delete pre-cascade-delete}))

@@ -10,10 +10,14 @@
                              [database :refer [Database]]
                              [field :refer [Field]]
                              [interface :refer [defentity]]
+                             [permissions :refer [Permissions], :as permissions]
+                             [permissions-group :as perm-group]
+                             [permissions-group-membership :refer [PermissionsGroupMembership]]
                              [raw-column :refer [RawColumn]]
                              [raw-table :refer [RawTable]]
                              [table :refer [Table] :as table]
-                             [setting :as setting])
+                             [setting :as setting]
+                             [user :refer [User]])
             [metabase.util :as u]))
 
 ;;; # Migration Helpers
@@ -236,3 +240,35 @@
                                  :last_analyzed (u/new-sql-timestamp))
                                ;; add this column to the set we've processed already
                                (swap! processed-fields conj column-name)))))))))))))))))
+
+
+;; Add users to default permissions groups. This will cause the groups to be created if needed as well.
+(defmigration add-users-to-default-permissions-groups
+  (let [{default-group-id :id} (perm-group/default)
+        {admin-group-id :id}   (perm-group/admin)]
+    (doseq [{user-id :id, superuser? :is_superuser} (db/select [User :id :is_superuser])]
+      (db/insert! PermissionsGroupMembership
+        :user_id  user-id
+        :group_id default-group-id)
+      (when superuser?
+        (db/insert! PermissionsGroupMembership
+          :user_id  user-id
+          :group_id admin-group-id)))))
+
+;; add existing databases to default permissions groups.
+(defmigration add-databases-to-default-permissions-groups
+  (let [{default-group-id :id} (perm-group/default)
+        {admin-group-id :id}   (perm-group/admin)]
+    ;; admin group has a single entry that lets it access to everything
+    (binding [permissions/*allow-admin-permissions-changes* true
+              permissions/*allow-root-entries* true]
+      (u/ignore-exceptions
+        (db/insert! Permissions
+          :group_id admin-group-id
+          :object   "/")))
+    ;; default group has entries for each individual DB
+    (doseq [database-id (db/select-ids Database)]
+      (u/ignore-exceptions
+        (db/insert! Permissions
+          :object   (str "/db/" database-id "/")
+          :group_id default-group-id)))))

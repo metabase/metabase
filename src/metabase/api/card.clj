@@ -1,7 +1,8 @@
 (ns metabase.api.card
   (:require [clojure.data :as data]
             [compojure.core :refer [GET POST DELETE PUT]]
-            [metabase.api.common :refer :all]
+            (metabase.api [common :refer :all]
+                          [dataset :as dataset-api])
             (metabase [db :as db]
                       [events :as events])
             (metabase.models [hydrate :refer [hydrate]]
@@ -13,7 +14,8 @@
                              [label :refer [Label]]
                              [table :refer [Table]]
                              [view-log :refer [ViewLog]])
-            [metabase.util :as u]))
+            (metabase [query-processor :as qp]
+                      [util :as u])))
 
 (defn- hydrate-labels
   "Efficiently hydrate the `Labels` for a large collection of `Cards`."
@@ -240,5 +242,19 @@
     (doseq [label-id labels-to-add]
       (db/insert! CardLabel :label_id label-id, :card_id card-id)))
   {:status :ok})
+
+
+(defendpoint POST "/:card-id/query"
+  "Run the query associated with a Card."
+  [card-id :as {{:keys [parameters timeout]} :body}]
+  (let-404 [card  (Card card-id)
+            query (assoc (:dataset_query card)
+                    :parameters  parameters
+                    :constraints dataset-api/query-constraints)]
+    ;; Now run the query!
+    (let [options {:executed-by *current-user-id*
+                   :card-id     card-id}]
+      (qp/dataset-query query options))))
+
 
 (define-routes)

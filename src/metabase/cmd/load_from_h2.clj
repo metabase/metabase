@@ -20,6 +20,9 @@
                              [label :refer [Label]]
                              [metric :refer [Metric]]
                              [metric-important-field :refer [MetricImportantField]]
+                             [permissions :refer [Permissions]]
+                             [permissions-group :refer [PermissionsGroup]]
+                             [permissions-group-membership :refer [PermissionsGroupMembership]]
                              [pulse :refer [Pulse]]
                              [pulse-card :refer [PulseCard]]
                              [pulse-channel :refer [PulseChannel]]
@@ -67,7 +70,10 @@
    PulseChannel
    PulseChannelRecipient
    Label
-   CardLabel])
+   CardLabel
+   PermissionsGroup
+   PermissionsGroupMembership
+   Permissions])
 
 (def ^:private self-referencing-entities
   "Entities that have a column with and FK that points back to the same table."

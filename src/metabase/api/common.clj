@@ -362,7 +362,7 @@
 (defannotation NonEmptyString
   "Param must be a non-empty string (strings that only contain whitespace are considered empty)."
   [symb value :nillable]
-  (checkp-with (complement clojure.string/blank?) symb value "value must be a non-empty string."))
+  (checkp-with (complement s/blank?) symb value "value must be a non-empty string."))
 
 (defannotation PublicPerms
   "Param must be an integer and either `0` (no public permissions), `1` (public may read), or `2` (public may read and write)."
