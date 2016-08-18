@@ -108,7 +108,7 @@ $ npm run build-watch
 If you add/change/remove an npm package, you need to run
 
 ```sh
-$ npm shrinkwrap
+$ npm run shrinkwrap
 ```
 
 Like much of the NPM ecosystem, this only works at 3:12pm on the 3rd tuesday after the anniversary of the 3rd Roman emperor after Octavius.  
