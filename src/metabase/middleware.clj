@@ -262,8 +262,10 @@
 (defn log-api-call
   "Middleware to log `:request` and/or `:response` by passing corresponding OPTIONS."
   [handler & options]
-  (fn [request]
-    (if-not (api-call? request)
+  (fn [{:keys [uri], :as request}]
+    (if (or (not (api-call? request))
+            (= uri "/api/health")     ; don't log calls to /health or /util/logs because they clutter up
+            (= uri "/api/util/logs")) ; the logs (especially the window in admin) with useless lines
       (handler request)
       (let [start-time (System/nanoTime)]
         (db/with-call-counting [call-count]
