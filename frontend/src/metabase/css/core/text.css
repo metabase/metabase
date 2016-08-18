@@ -81,6 +81,11 @@
   color: var(--body-text-color); /* TODO - is this bad? */
 }
 
+.text-reading, :local(.text-reading) {
+  font-size: 1em;
+  line-height: 1.5em;
+}
+
 .text-current {
     color: currentColor;
 }

@@ -26,9 +26,8 @@
 }
 
 :local(.detailSubtitle) {
-    composes: text-dark mt2 from "style";
+    composes: text-dark mt2 text-reading from "style";
     font-size: 16px;
-    line-height: 24px;
 }
 
 :local(.detailSubtitleLight) {
