@@ -84,58 +84,60 @@ export default class Progress extends Component {
         }
 
         return (
-            <div style={{ padding: 10 }}>
-                <div
-                    ref="container"
-                    className="relative text-bold text-grey-4"
-                    style={{ height: 20 }}
-                >
+            <div className="full-height flex layout-centered">
+                <div className="flex-full" style={{ padding: 10 }}>
                     <div
-                        ref="label"
-                        style={{ position: "absolute" }}
+                        ref="container"
+                        className="relative text-bold text-grey-4"
+                        style={{ height: 20 }}
                     >
-                        {formatValue(value, { comma: true })}
-                    </div>
-                </div>
-                <div className="mb1 relative" style={{ height: 10 }}>
-                    <div
-                        ref="pointer"
-                        style={{
-                            width: 0,
-                            height: 0,
-                            position: "absolute",
-                            left: (arrowPercent * 100) + "%",
-                            marginLeft: -10,
-                            borderLeft: "10px solid transparent",
-                            borderRight: "10px solid transparent",
-                            borderTop: "10px solid " + arrowColor
-                        }}
-                    />
-                </div>
-                <div className="relative" style={{
-                    backgroundColor: restColor,
-                    borderRadius: BORDER_RADIUS,
-                    height: 62,
-                    overflow: "hidden"
-                }}>
-                    <div style={{
-                            backgroundColor: progressColor,
-                            width: (barPercent * 100) + "%",
-                            height: "100%"
-                        }}
-                    />
-                    { barMessage &&
-                        <div className="flex align-center absolute spread text-white text-bold px2">
-                            <IconBorder borderWidth={2}>
-                                <Icon name="check" size={14} />
-                            </IconBorder>
-                            <div className="pl2">{barMessage}</div>
+                        <div
+                            ref="label"
+                            style={{ position: "absolute" }}
+                        >
+                            {formatValue(value, { comma: true })}
                         </div>
-                    }
-                </div>
-                <div className="mt1">
-                    <span className="float-left">0</span>
-                    <span className="float-right">Goal {formatValue(goal, { comma: true })}</span>
+                    </div>
+                    <div className="mb1 relative" style={{ height: 10 }}>
+                        <div
+                            ref="pointer"
+                            style={{
+                                width: 0,
+                                height: 0,
+                                position: "absolute",
+                                left: (arrowPercent * 100) + "%",
+                                marginLeft: -10,
+                                borderLeft: "10px solid transparent",
+                                borderRight: "10px solid transparent",
+                                borderTop: "10px solid " + arrowColor
+                            }}
+                        />
+                    </div>
+                    <div className="relative" style={{
+                        backgroundColor: restColor,
+                        borderRadius: BORDER_RADIUS,
+                        height: 62,
+                        overflow: "hidden"
+                    }}>
+                        <div style={{
+                                backgroundColor: progressColor,
+                                width: (barPercent * 100) + "%",
+                                height: "100%"
+                            }}
+                        />
+                        { barMessage &&
+                            <div className="flex align-center absolute spread text-white text-bold px2">
+                                <IconBorder borderWidth={2}>
+                                    <Icon name="check" size={14} />
+                                </IconBorder>
+                                <div className="pl2">{barMessage}</div>
+                            </div>
+                        }
+                    </div>
+                    <div className="mt1">
+                        <span className="float-left">0</span>
+                        <span className="float-right">Goal {formatValue(goal, { comma: true })}</span>
+                    </div>
                 </div>
             </div>
         );
