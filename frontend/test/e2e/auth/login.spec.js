@@ -1,8 +1,8 @@
 import { isReady } from "../support/start-server";
-import { waitForUrl, screenshot } from "../support/utils";
 import { setup, cleanup } from "../support/setup";
 import { By, until } from "selenium-webdriver";
 
+import { waitForUrl, screenshot } from "../support/utils";
 import { delay } from '../../../src/metabase/lib/promise';
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;

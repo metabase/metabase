@@ -3,7 +3,7 @@ import { startServer } from "./start-server";
 import { createDriver } from "./driver";
 
 export const setup = async ({
-    dbKey = "frontend/test/e2e/support/fixtures/setup.db"
+    dbKey = "frontend/test/e2e/support/fixtures/metabase.db"
 } = {}) => {
     const [server, sauceConnect] = await Promise.all([
         startServer(dbKey),

@@ -55,7 +55,8 @@ case $CIRCLE_NODE_INDEX in
         npm run test
         ;;
     6)  ./bin/build version frontend sample-dataset uberjar
-        npm run test-e2e
+        USE_SAUCE=true \
+            npm run test-e2e
         node_modules/.bin/babel-node ./bin/compare-screenshots
         ;;
 esac
