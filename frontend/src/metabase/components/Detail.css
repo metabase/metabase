@@ -26,11 +26,11 @@
 }
 
 :local(.detailSubtitle) {
-    composes: text-dark mt2 text-reading from "style";
+    composes: text-dark mt2 text-paragraph from "style";
 }
 
 :local(.detailSubtitleLight) {
-    composes: mt2 text-reading from "style";
+    composes: mt2 text-paragraph from "style";
     color: var(--subtitle-color);
 }
 

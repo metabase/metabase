@@ -81,7 +81,7 @@
   color: var(--body-text-color); /* TODO - is this bad? */
 }
 
-.text-reading, :local(.text-reading) {
+.text-paragraph, :local(.text-paragraph) {
   font-size: 1.143em;
   line-height: 1.5em;
 }

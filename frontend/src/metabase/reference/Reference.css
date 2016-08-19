@@ -13,7 +13,7 @@
 }
 
 :local(.guideEmptyMessage) {
-    composes: text-dark text-reading text-centered mt3 from "style";
+    composes: text-dark text-paragraph text-centered mt3 from "style";
 }
 
 :local(.columnHeader) {
