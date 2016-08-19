@@ -332,6 +332,12 @@
   stroke-opacity: 1 !important;
 }
 
+.dc-chart circle.bubble {
+    fill-opacity: 0.75;
+    stroke-width: 1;
+    stroke: white;
+}
+
 .enable-dots .dc-tooltip circle.dot:hover,
 .enable-dots .dc-tooltip circle.dot.hover {
   fill: currentColor;

@@ -20,6 +20,7 @@ import ChartSettingInput from "metabase/visualizations/components/settings/Chart
 import ChartSettingInputNumeric from "metabase/visualizations/components/settings/ChartSettingInputNumeric.jsx";
 import ChartSettingSelect from "metabase/visualizations/components/settings/ChartSettingSelect.jsx";
 import ChartSettingToggle from "metabase/visualizations/components/settings/ChartSettingToggle.jsx";
+import ChartSettingFieldPicker from "metabase/visualizations/components/settings/ChartSettingFieldPicker.jsx";
 import ChartSettingFieldsPicker from "metabase/visualizations/components/settings/ChartSettingFieldsPicker.jsx";
 import ChartSettingColorPicker from "metabase/visualizations/components/settings/ChartSettingColorPicker.jsx";
 import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker.jsx";
@@ -54,7 +55,24 @@ function getSeriesTitles([{ data: { rows, cols } }], vizSettings) {
     }
 }
 
-function getDefaultDimensionsAndMetrics([{ data: { cols, rows } }]) {
+function getDefaultColumns(series) {
+    if (series[0].card.display === "scatter") {
+        return getDefaultScatterColumns(series);
+    } else {
+        return getDefaultLineAreaBarColumns(series);
+    }
+}
+
+function getDefaultScatterColumns([{ data: { cols, rows } }]) {
+    // TODO
+    return {
+        dimensions: [null],
+        metrics: [null],
+        bubble: null
+    };
+}
+
+function getDefaultLineAreaBarColumns([{ data: { cols, rows } }]) {
     let type = getChartTypeFromData(cols, rows, false);
     switch (type) {
         case DIMENSION_DIMENSION_METRIC:
@@ -114,24 +132,34 @@ function getOptionFromColumn(col) {
 
 import { normal } from "metabase/lib/colors";
 
+const isAnyField = () => true;
+
 const SETTINGS = {
+    "graph._dimension_filter": {
+        getDefault: ([{ card }]) => card.display === "scatter" ? isAnyField : isDimension
+    },
+    "graph._metric_filter": {
+        getDefault: ([{ card }]) => card.display === "scatter" ? isNumeric : isMetric
+    },
     "graph.dimensions": {
         section: "Data",
         title: "X-axis",
         widget: ChartSettingFieldsPicker,
         isValid: ([{ card, data }], vizSettings) =>
-            columnsAreValid(card.visualization_settings["graph.dimensions"], data, isDimension) &&
-            columnsAreValid(card.visualization_settings["graph.metrics"], data, isMetric),
+            columnsAreValid(card.visualization_settings["graph.dimensions"], data, vizSettings["graph._dimension_filter"]) &&
+            columnsAreValid(card.visualization_settings["graph.metrics"], data, vizSettings["graph._metric_filter"]),
         getDefault: (series, vizSettings) =>
-            getDefaultDimensionsAndMetrics(series).dimensions,
+            getDefaultColumns(series).dimensions,
         getProps: ([{ card, data }], vizSettings) => {
             const value = vizSettings["graph.dimensions"];
-            const options = data.cols.filter(isDimension).map(getOptionFromColumn);
+            const options = data.cols.filter(vizSettings["graph._dimension_filter"]).map(getOptionFromColumn);
             return {
                 options,
-                addAnother: (options.length > value.length && value.length < 2) ? "Add a series breakout..." : null
+                addAnother: (options.length > value.length && value.length < 2 && vizSettings["graph.metrics"].length < 2) ?
+                    "Add a series breakout..." : null
             };
         },
+        readDependencies: ["graph._dimension_filter", "graph._metric_filter"],
         writeDependencies: ["graph.metrics"]
     },
     "graph.metrics": {
@@ -139,16 +167,35 @@ const SETTINGS = {
         title: "Y-axis",
         widget: ChartSettingFieldsPicker,
         isValid: ([{ card, data }], vizSettings) =>
-            columnsAreValid(card.visualization_settings["graph.dimensions"], data, isDimension) &&
-            columnsAreValid(card.visualization_settings["graph.metrics"], data, isMetric),
+            columnsAreValid(card.visualization_settings["graph.dimensions"], data, vizSettings["graph._dimension_filter"]) &&
+            columnsAreValid(card.visualization_settings["graph.metrics"], data, vizSettings["graph._metric_filter"]),
         getDefault: (series, vizSettings) =>
-            getDefaultDimensionsAndMetrics(series).metrics,
+            getDefaultColumns(series).metrics,
         getProps: ([{ card, data }], vizSettings) => {
             const value = vizSettings["graph.dimensions"];
-            const options = data.cols.filter(isMetric).map(getOptionFromColumn);
+            const options = data.cols.filter(vizSettings["graph._metric_filter"]).map(getOptionFromColumn);
             return {
                 options,
-                addAnother: options.length > value.length ? "Add another series..." : null
+                addAnother: options.length > value.length && vizSettings["graph.dimensions"].length < 2 ?
+                    "Add another series..." : null
+            };
+        },
+        readDependencies: ["graph._dimension_filter", "graph._metric_filter"],
+        writeDependencies: ["graph.dimensions"]
+    },
+    "scatter.bubble": {
+        section: "Data",
+        title: "Bubble size",
+        widget: ChartSettingFieldPicker,
+        isValid: ([{ card, data }], vizSettings) =>
+            columnsAreValid([card.visualization_settings["scatter.bubble"]], data, isNumeric),
+        getDefault: (series) =>
+            getDefaultColumns(series).bubble,
+        getProps: ([{ card, data }], vizSettings, onChange) => {
+            const options = data.cols.filter(isNumeric).map(getOptionFromColumn);
+            return {
+                options,
+                onRemove: vizSettings["scatter.bubble"] ? () => onChange(null) : null
             };
         },
         writeDependencies: ["graph.dimensions"]
@@ -204,11 +251,13 @@ const SETTINGS = {
     },
     "graph.x_axis._is_timeseries": {
         readDependencies: ["graph.dimensions"],
-        getDefault: ([{ data }], vizSettings) => dimensionIsTimeseries(data, _.findIndex(data.cols, (c) => c.name === vizSettings["graph.dimensions"][0]))
+        getDefault: ([{ data }], vizSettings) =>
+            dimensionIsTimeseries(data, _.findIndex(data.cols, (c) => c.name === vizSettings["graph.dimensions"].filter(d => d)[0]))
     },
     "graph.x_axis._is_numeric": {
         readDependencies: ["graph.dimensions"],
-        getDefault: ([{ data }], vizSettings) => dimensionIsNumeric(data, _.findIndex(data.cols, (c) => c.name === vizSettings["graph.dimensions"][0]))
+        getDefault: ([{ data }], vizSettings) =>
+            dimensionIsNumeric(data, _.findIndex(data.cols, (c) => c.name === vizSettings["graph.dimensions"].filter(d => d)[0]))
     },
     "graph.x_axis.scale": {
         section: "Axes",
@@ -563,6 +612,7 @@ const SETTINGS_PREFIXES_BY_CHART_TYPE = {
     line: ["graph.", "line."],
     area: ["graph.", "line.", "stackable."],
     bar: ["graph.", "stackable."],
+    scatter: ["graph.", "scatter."],
     pie: ["pie."],
     scalar: ["scalar."],
     table: ["table."],
@@ -628,6 +678,13 @@ export function getSettings(series) {
 function getSettingWidget(id, vizSettings, series, onChangeSettings) {
     const settingDef = SETTINGS[id];
     const value = vizSettings[id];
+    const onChange = (value) => {
+        const newSettings = { [id]: value };
+        for (const id of (settingDef.writeDependencies || [])) {
+            newSettings[id] = vizSettings[id];
+        }
+        onChangeSettings(newSettings)
+    }
     return {
         ...settingDef,
         id: id,
@@ -636,15 +693,9 @@ function getSettingWidget(id, vizSettings, series, onChangeSettings) {
         disabled: settingDef.getDisabled ? settingDef.getDisabled(series, vizSettings) : false,
         props: {
             ...(settingDef.props ? settingDef.props : {}),
-            ...(settingDef.getProps ? settingDef.getProps(series, vizSettings) : {})
+            ...(settingDef.getProps ? settingDef.getProps(series, vizSettings, onChange) : {})
         },
-        onChange: (value) => {
-            const newSettings = { [id]: value };
-            for (const id of (settingDef.writeDependencies || [])) {
-                newSettings[id] = vizSettings[id];
-            }
-            onChangeSettings(newSettings)
-        }
+        onChange
     };
 }
 

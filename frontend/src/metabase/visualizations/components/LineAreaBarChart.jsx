@@ -101,12 +101,14 @@ export default class LineAreaBarChart extends Component {
                 _.findIndex(cols, (col) => col.name === metricName)
             );
 
+            const bubbleIndex = settings["scatter.bubble"] && _.findIndex(cols, (col) => col.name === settings["scatter.bubble"]);
+            const extraIndexes = bubbleIndex && bubbleIndex >= 0 ? [bubbleIndex] : [];
+
             if (dimensions.length > 1) {
                 const dataset = crossfilter(rows);
                 const [dimensionIndex, seriesIndex] = dimensionIndexes;
-                const rowIndexes = [dimensionIndex].concat(metricIndexes);
+                const rowIndexes = [dimensionIndex].concat(metricIndexes, extraIndexes);
                 const seriesGroup = dataset.dimension(d => d[seriesIndex]).group()
-
                 nextState.series = seriesGroup.reduce(
                     (p, v) => p.concat([rowIndexes.map(i => v[i])]),
                     (p, v) => null, () => []
@@ -126,6 +128,7 @@ export default class LineAreaBarChart extends Component {
 
                 nextState.series = metricIndexes.map(metricIndex => {
                     const col = cols[metricIndex];
+                    const rowIndexes = [dimensionIndex].concat(metricIndex, extraIndexes);
                     return {
                         card: {
                             ...s.card,
@@ -133,7 +136,9 @@ export default class LineAreaBarChart extends Component {
                             name: getFriendlyName(col)
                         },
                         data: {
-                            rows: rows.map(row => [row[dimensionIndex], row[metricIndex]]),
+                            rows: rows.map(row =>
+                                rowIndexes.map(i => row[i])
+                            ),
                             cols: [cols[dimensionIndex], s.data.cols[metricIndex]]
                         }
                     };

@@ -55,22 +55,10 @@ function getDcjsChartType(cardType) {
     switch (cardType) {
         case "line": return "lineChart";
         case "area": return "lineChart";
-        case "bar":  return "barChart";
+        case "bar":     return "barChart";
+        case "scatter": return "bubbleChart";
         default:     return "barChart";
     }
-}
-
-function initializeChart(card, element, chartType = getDcjsChartType(card.display)) {
-    // create the chart
-    let chart = dc[chartType](element);
-
-    // set width and height
-    chart = applyChartBoundary(chart, element);
-
-    // disable animations
-    chart.transitionDuration(0);
-
-    return chart;
 }
 
 function applyChartBoundary(chart, element) {
@@ -580,6 +568,10 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
         throw "This chart type requires at least 2 columns";
     }
 
+    if (series.length > 20) {
+        throw "This chart type doesn't support more than 20 series";
+    }
+
     let datas = series.map((s, index) =>
         s.data.rows.map(row => [
             // don't parse as timestamp if we're going to display as a quantitative scale, e.x. years and Unix timestamps
@@ -642,7 +634,21 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
 
     let dimension, groups, yAxisSplit;
 
-    if (settings["stackable.stacked"] && datas.length > 1) {
+    const isScatter = chartType === "scatter";
+    const isStacked = settings["stackable.stacked"] && datas.length > 1
+
+    if (isScatter) {
+        let dataset = crossfilter();
+        datas.map(data => dataset.add(data));
+
+        dimension = dataset.dimension(d => [d[0], d[1]]);
+        groups = datas.map(data => {
+            let dim = crossfilter(data).dimension(d => d);
+            return [
+                dim.group().reduceSum((d) => d[2] || 1)
+            ]
+        });
+    } else if (isStacked) {
         let dataset = crossfilter();
         datas.map((data, i) =>
             dataset.add(data.map(d => ({
@@ -671,8 +677,9 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
     }
 
     let yExtents = groups.map(group => d3.extent(group[0].all(), d => d.value));
+    let yExtent = d3.extent([].concat(...yExtents));
 
-    if (!isScalarSeries && settings["graph.y_axis.auto_split"] !== false) {
+    if (!isScalarSeries && !isScatter && !isStacked && settings["graph.y_axis.auto_split"] !== false) {
         yAxisSplit = computeSplit(yExtents);
     } else {
         yAxisSplit = [series.map((s,i) => i)];
@@ -695,7 +702,9 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
         }
     }
 
-    let parent = initializeChart(series[0].card, element, "compositeChart")
+    let parent = dc.compositeChart(element);
+    applyChartBoundary(parent, element);
+    parent.transitionDuration(0);
 
     let charts = groups.map((group, index) => {
         let chart = dc[getDcjsChartType(chartType)](parent);
@@ -706,6 +715,25 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
             .transitionDuration(0)
             .useRightYAxis(yAxisSplit.length > 1 && yAxisSplit[1].includes(index));
 
+        if (isScatter) {
+            chart
+                .keyAccessor((d) => d.key[0])
+                .valueAccessor((d) => d.key[1])
+
+            if (chart.radiusValueAccessor) {
+                const isBubble = datas[index][0].length > 2;
+                if (isBubble) {
+                    chart
+                        .radiusValueAccessor((d) => d.value)
+                        .r().domain(yExtent)
+                } else {
+                    chart.radiusValueAccessor((d) => 1)
+                    chart.MIN_RADIUS = 3
+                }
+                chart.minRadiusWithLabel(Infinity);
+            }
+        }
+
         if (chart.defined) {
             chart.defined(
                 settings["line.missing"] === "none" ?
@@ -715,7 +743,7 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
         }
 
         // multiple series
-        if (groups.length > 1) {
+        if (groups.length > 1 || isScatter) {
             // multiple stacks
             if (group.length > 1) {
                 // compute shades of the assigned color

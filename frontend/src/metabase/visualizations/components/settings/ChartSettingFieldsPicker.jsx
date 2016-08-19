@@ -20,8 +20,9 @@ const ChartSettingFieldsPicker = ({ value = [], options, onChange, addAnother })
                     newValue.splice(index, 1, v);
                     onChange(newValue);
                 }}
-                onRemove={value.filter(v => v != null).length < 2 ? null :
-                    () => onChange([...value.slice(0, index), ...value.slice(index + 1)])
+                onRemove={value.filter(v => v != null).length > 1 || (value.length > 1 && v == null) ?
+                    () => onChange([...value.slice(0, index), ...value.slice(index + 1)]) :
+                    null
                 }
             />
         ) : <span className="text-error">error</span>}
