@@ -4,7 +4,13 @@ import { isReady } from "../support/start-server";
 import { setup, cleanup } from "../support/setup";
 import { By, until } from "selenium-webdriver";
 
-import { waitForUrl, screenshot } from "../support/utils";
+import {
+    waitForElement,
+    findElement,
+    waitForAndClickElement,
+    waitForUrl,
+    screenshot
+} from "../support/utils";
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
 
@@ -23,7 +29,7 @@ describe("setup/signup", () => {
         it("should take you to the welcome page", async () => {
             await driver.get(`${server.host}/`);
             await waitForUrl(driver, `${server.host}/setup`);
-            const welcomeText = await driver.findElement(By.css("h1.text-brand"))
+            const welcomeText = await findElement(driver, "h1.text-brand")
                 .getText();
 
             expect(welcomeText).toEqual('Welcome to Metabase');
@@ -33,43 +39,43 @@ describe("setup/signup", () => {
         it("should allow you to sign up and add db", async () => {
             await driver.get(`${server.host}/`);
             await waitForUrl(driver, `${server.host}/setup`);
-            await driver.findElement(By.css(".Button.Button--primary")).click();
+            await waitForAndClickElement(driver, ".Button.Button--primary");
 
             // fill in sign up form
-            await driver.wait(until.elementLocated(By.css("[name=firstName]")));
+            await waitForElement(driver, "[name=firstName]");
             await screenshot(driver, "screenshots/setup-signup-user.png");
 
-            const nextButton = driver.findElement(By.css(".Button[disabled]"));
-            await driver.findElement(By.css("[name=firstName]")).sendKeys('1234');
-            await driver.findElement(By.css("[name=lastName]")).sendKeys('1234');
-            await driver.findElement(By.css("[name=email]")).sendKeys('1234@1234.com');
-            await driver.findElement(By.css("[name=password]")).sendKeys('12341234');
-            await driver.findElement(By.css("[name=passwordConfirm]")).sendKeys('12341234');
-            await driver.findElement(By.css("[name=siteName]")).sendKeys('1234');
+            const nextButton = findElement(driver, ".Button[disabled]");
+            await findElement(driver, "[name=firstName]").sendKeys('1234');
+            await findElement(driver, "[name=lastName]").sendKeys('1234');
+            await findElement(driver, "[name=email]").sendKeys('1234@1234.com');
+            await findElement(driver, "[name=password]").sendKeys('12341234');
+            await findElement(driver, "[name=passwordConfirm]").sendKeys('12341234');
+            await findElement(driver, "[name=siteName]").sendKeys('1234');
             expect(await nextButton.isEnabled()).toBe(true);
             await nextButton.click();
 
             // add h2 database
-            await driver.wait(until.elementLocated(By.css("option[value=h2]")));
+            await waitForElement(driver, "option[value=h2]");
             await screenshot(driver, "screenshots/setup-signup-db.png");
 
-            const h2Option = driver.findElement(By.css("option[value=h2]"));
+            const h2Option = findElement(driver, "option[value=h2]");
             await h2Option.click();
-            await driver.findElement(By.css("[name=name]")).sendKeys('Metabase H2');
+            await findElement(driver, "[name=name]").sendKeys('Metabase H2');
             const dbPath = path.resolve(__dirname, '../support/fixtures/metabase.db');
-            await driver.findElement(By.css("[name=db]")).sendKeys(`file:${dbPath}`);
-            await driver.findElement(By.css(".Button.Button--primary")).click();
+            await findElement(driver, "[name=db]").sendKeys(`file:${dbPath}`);
+            await waitForAndClickElement(driver, ".Button.Button--primary");
 
-            await driver.wait(until.elementLocated(By.css(".SetupStep.rounded.full.relative.SetupStep--active:last-of-type")));
-            await driver.findElement(By.css(".Button.Button--primary")).click();
+            await waitForElement(driver, ".SetupStep.rounded.full.relative.SetupStep--active:last-of-type");
+            await waitForAndClickElement(driver, ".Button.Button--primary");
 
-            await driver.wait(until.elementLocated(By.css("a[href='/?new']")));
+            await waitForElement(driver, "a[href='/?new']");
             await screenshot(driver, "screenshots/setup-signup-complete.png");
-            await driver.findElement(By.css(".Button.Button--primary")).click();
+            await waitForAndClickElement(driver, ".Button.Button--primary");
 
             await waitForUrl(driver, `${server.host}/?new`);
-            await driver.wait(until.elementLocated(By.css(".Modal h2:first-child")));
-            const onboardingModalHeading = await driver.findElement(By.css(".Modal h2:first-child"));
+            await waitForElement(driver, ".Modal h2:first-child");
+            const onboardingModalHeading = await findElement(driver, ".Modal h2:first-child");
             expect(await onboardingModalHeading.getText()).toBe('1234, welcome to Metabase!');
             await screenshot(driver, "screenshots/setup-tutorial-main.png");
         });
@@ -77,68 +83,59 @@ describe("setup/signup", () => {
         it("should guide users through query builder tutorial", async () => {
             await driver.get(`${server.host}/?new`);
             await waitForUrl(driver, `${server.host}/?new`);
-            await driver.wait(until.elementLocated(By.css(".Modal .Button.Button--primary")));
 
-            await driver.findElement(By.css(".Modal .Button.Button--primary")).click();
-            await driver.findElement(By.css(".Modal .Button.Button--primary")).click();
-            await driver.findElement(By.css(".Modal .Button.Button--primary")).click();
+            await waitForAndClickElement(driver, ".Modal .Button.Button--primary");
+            await waitForAndClickElement(driver, ".Modal .Button.Button--primary");
+            await waitForAndClickElement(driver, ".Modal .Button.Button--primary");
 
             await waitForUrl(driver, `${server.host}/q`);
             await screenshot(driver, "screenshots/setup-tutorial-qb.png");
-            await driver.findElement(By.css(".Modal .Button.Button--primary")).click();
+            await waitForAndClickElement(driver, ".Modal .Button.Button--primary");
 
-            await driver.wait(until.elementLocated(By.css("img[src='/app/img/qb_tutorial/table.png']")));
+            await waitForElement(driver, "img[src='/app/img/qb_tutorial/table.png']");
             // a .Modal-backdrop element blocks clicks for a while during transition?
             await driver.wait(async () => (await driver.findElements(By.css('.Modal-backdrop'))).length === 0);
-            await driver.findElement(By.css(".GuiBuilder-data a")).click();
+            await waitForAndClickElement(driver, ".GuiBuilder-data a");
 
             // select sample dataset db
-            await driver.wait(until.elementLocated(By.css(".PopoverBody")));
-            await driver.findElement(By.css(".PopoverBody .List-section:last-child")).click();
+            await waitForAndClickElement(driver, ".PopoverBody .List-section:last-child");
 
             // select orders table
-            await driver.wait(until.elementLocated(By.css(".PopoverBody .List-item:first-child")));
-            await driver.findElement(By.css(".PopoverBody .List-item:first-child")).click();
+            await waitForAndClickElement(driver, ".PopoverBody .List-item:first-child");
 
             // select filters
-            await driver.wait(until.elementLocated(By.css("img[src='/app/img/qb_tutorial/funnel.png']")));
-            await driver.wait(until.elementLocated(By.css(".GuiBuilder-filtered-by .Query-section:not(.disabled)")));
-            await driver.findElement(By.css(".GuiBuilder-filtered-by a")).click();
+            await waitForElement(driver, "img[src='/app/img/qb_tutorial/funnel.png']");
+            await waitForAndClickElement(driver, ".GuiBuilder-filtered-by .Query-section:not(.disabled) a");
 
-            await driver.wait(until.elementLocated(By.css(".FilterPopover")));
-            await driver.findElement(By.css(".PopoverBody .List-item:first-child")).click();
+            await waitForAndClickElement(driver, ".FilterPopover .List-item:first-child");
 
-            await driver.wait(until.elementLocated(By.css(".Button[data-ui-tag='relative-date-shortcut-this-year']")));
-            await driver.findElement(By.css(".Button[data-ui-tag='relative-date-shortcut-this-year']")).click();
-            await driver.wait(until.elementLocated(By.css(".Button[data-ui-tag='add-filter']:not(.disabled)")));
-            await driver.findElement(By.css(".Button[data-ui-tag='add-filter']")).click();
+            await waitForAndClickElement(driver, ".Button[data-ui-tag='relative-date-shortcut-this-year']");
+            await waitForAndClickElement(driver, ".Button[data-ui-tag='add-filter']:not(.disabled)");
 
             // select aggregations
-            await driver.wait(until.elementLocated(By.css("img[src='/app/img/qb_tutorial/calculator.png']")));
-            await driver.findElement(By.css(".Query-section.Query-section-aggregation.cursor-pointer")).click();
-            await driver.findElement(By.css(".PopoverBody .List-item:nth-child(2)")).click();
+            await waitForElement(driver, "img[src='/app/img/qb_tutorial/calculator.png']");
+            await waitForAndClickElement(driver, ".Query-section.Query-section-aggregation.cursor-pointer");
+            await waitForAndClickElement(driver, ".PopoverBody .List-item:nth-child(2)");
 
             // select breakouts
-            await driver.wait(until.elementLocated(By.css("img[src='/app/img/qb_tutorial/banana.png']")));
-            await driver.findElement(By.css(".Query-section.Query-section-breakout>div")).click();
+            await waitForElement(driver, "img[src='/app/img/qb_tutorial/banana.png']");
+            await waitForAndClickElement(driver, ".Query-section.Query-section-breakout>div");
 
-            await driver.findElement(By.css(".PopoverBody .List-item:first-child>div>a")).click();
-            await driver.wait(until.elementLocated(By.css(".PopoverBody>div>ul>.List-item:nth-child(3)")));
-            await driver.findElement(By.css(".PopoverBody>div>ul>.List-item:nth-child(3)")).click();
+            await waitForAndClickElement(driver, ".PopoverBody .List-item:first-child>div>a");
+            await waitForAndClickElement(driver, ".PopoverBody>div>ul>.List-item:nth-child(3)");
 
             // run query
-            await driver.wait(until.elementLocated(By.css("img[src='/app/img/qb_tutorial/rocket.png']")));
-            await driver.findElement(By.css(".Button.RunButton")).click();
+            await waitForElement(driver, "img[src='/app/img/qb_tutorial/rocket.png']");
+            await waitForAndClickElement(driver, ".Button.RunButton");
 
-            await driver.wait(until.elementLocated(By.css("img[src='/app/img/qb_tutorial/chart.png']")));
-            await driver.findElement(By.css(".VisualizationSettings>div>a")).click();
-            await driver.wait(until.elementLocated(By.css(".PopoverBody li:nth-child(3)")));
-            await driver.findElement(By.css(".PopoverBody li:nth-child(3)")).click();
+            await waitForElement(driver, "img[src='/app/img/qb_tutorial/chart.png']");
+            await waitForAndClickElement(driver, ".VisualizationSettings>div>a");
+            await waitForAndClickElement(driver, ".PopoverBody li:nth-child(3)");
 
             // end tutorial
-            await driver.wait(until.elementLocated(By.css("img[src='/app/img/qb_tutorial/boat.png']")));
-            await driver.findElement(By.css(".Modal .Button.Button--primary")).click();
-            await driver.findElement(By.css(".PopoverBody .Button.Button--primary")).click();
+            await waitForElement(driver, "img[src='/app/img/qb_tutorial/boat.png']");
+            await waitForAndClickElement(driver, ".Modal .Button.Button--primary");
+            await waitForAndClickElement(driver, ".PopoverBody .Button.Button--primary");
 
             await screenshot(driver, "screenshots/setup-tutorial-qb-end.png");
         });
