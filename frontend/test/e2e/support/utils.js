@@ -3,20 +3,21 @@ import path from "path";
 
 import { By, until } from "selenium-webdriver";
 
-export const waitForElement = async (driver, selector) =>
-    await driver.wait(until.elementLocated(By.css(selector)));
-
 export const findElement = (driver, selector) =>
     driver.findElement(By.css(selector));
 
+export const waitForElement = async (driver, selector) =>
+    console.log('waiting ' + selector)||await driver.wait(until.elementLocated(By.css(selector)));
+
 export const clickElement = async (driver, selector) =>
-    await findElement(driver, selector).click();
+    console.log('clicking ' + selector)||await findElement(driver, selector).click();
 
 // waits for element to appear before clicking to avoid clicking too early
 // prefer this over calling click() on element directly
 export const waitForAndClickElement = async (driver, selector) => {
-    await waitForElement(driver, selector);
-    return await clickElement(driver, selector);
+    const element = await waitForElement(driver, selector);
+    console.log('clicking ' + selector);
+    return await element.click();
 };
 
 export const waitForUrl = (driver, url, timeout = 5000) => {

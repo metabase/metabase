@@ -98,31 +98,31 @@ describe("setup/signup", () => {
             await waitForAndClickElement(driver, ".GuiBuilder-data a");
 
             // select sample dataset db
-            await waitForAndClickElement(driver, ".PopoverBody .List-section:last-child");
+            await waitForAndClickElement(driver, "#DatabaseSchemaPicker .List-section:last-child .List-section-header");
 
             // select orders table
-            await waitForAndClickElement(driver, ".PopoverBody .List-item:first-child");
+            await waitForAndClickElement(driver, "#TablePicker .List-item:first-child>a");
 
             // select filters
             await waitForElement(driver, "img[src='/app/img/qb_tutorial/funnel.png']");
             await waitForAndClickElement(driver, ".GuiBuilder-filtered-by .Query-section:not(.disabled) a");
 
-            await waitForAndClickElement(driver, ".FilterPopover .List-item:first-child");
+            await waitForAndClickElement(driver, "#FilterPopover .List-item:first-child>a");
 
             await waitForAndClickElement(driver, ".Button[data-ui-tag='relative-date-shortcut-this-year']");
             await waitForAndClickElement(driver, ".Button[data-ui-tag='add-filter']:not(.disabled)");
 
             // select aggregations
             await waitForElement(driver, "img[src='/app/img/qb_tutorial/calculator.png']");
-            await waitForAndClickElement(driver, ".Query-section.Query-section-aggregation.cursor-pointer");
-            await waitForAndClickElement(driver, ".PopoverBody .List-item:nth-child(2)");
+            await waitForAndClickElement(driver, "#Query-section-aggregation");
+            await waitForAndClickElement(driver, "#AggregationPopover .List-item:nth-child(2)>a");
 
             // select breakouts
             await waitForElement(driver, "img[src='/app/img/qb_tutorial/banana.png']");
             await waitForAndClickElement(driver, ".Query-section.Query-section-breakout>div");
 
-            await waitForAndClickElement(driver, ".PopoverBody .List-item:first-child>div>a");
-            await waitForAndClickElement(driver, ".PopoverBody>div>ul>.List-item:nth-child(3)");
+            await waitForAndClickElement(driver, "#BreakoutPopover .List-item:first-child .Field-extra>a");
+            await waitForAndClickElement(driver, "#TimeGroupingPopover .List-item:nth-child(3)>a");
 
             // run query
             await waitForElement(driver, "img[src='/app/img/qb_tutorial/rocket.png']");
@@ -130,7 +130,7 @@ describe("setup/signup", () => {
 
             await waitForElement(driver, "img[src='/app/img/qb_tutorial/chart.png']");
             await waitForAndClickElement(driver, ".VisualizationSettings>div>a");
-            await waitForAndClickElement(driver, ".PopoverBody li:nth-child(3)");
+            await waitForAndClickElement(driver, "#VisualizationPopover li:nth-child(3)");
 
             // end tutorial
             await waitForElement(driver, "img[src='/app/img/qb_tutorial/boat.png']");

@@ -50,6 +50,7 @@ export default class BreakoutWidget extends Component {
         if (this.state.isOpen) {
             return (
                 <Popover
+                    id="BreakoutPopover"
                     ref="popover"
                     className="FieldPopover"
                     onClose={this.close}

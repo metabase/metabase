@@ -133,6 +133,7 @@ export default class DataSelector extends Component {
 
         return (
             <AccordianList
+                id="DatabasePicker"
                 key="schemaPicker"
                 className="text-brand"
                 sections={sections}
@@ -161,6 +162,7 @@ export default class DataSelector extends Component {
 
         return (
             <AccordianList
+                id="DatabaseSchemaPicker"
                 key="schemaPicker"
                 className="text-brand"
                 sections={sections}
@@ -215,6 +217,7 @@ export default class DataSelector extends Component {
             }];
             return (
                 <AccordianList
+                    id="TablePicker"
                     key="tablePicker"
                     className="text-brand"
                     sections={sections}
@@ -260,6 +263,7 @@ export default class DataSelector extends Component {
 
         return (
             <PopoverWithTrigger
+                id="DataPopover"
                 ref="popover"
                 isInitiallyOpen={this.props.isInitiallyOpen}
                 triggerElement={triggerElement}

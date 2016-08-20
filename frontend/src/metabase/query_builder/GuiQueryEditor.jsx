@@ -173,10 +173,12 @@ export default class GuiQueryEditor extends Component {
                     {filterList}
                 </div>
                 <div className="mx2">
-                    <PopoverWithTrigger ref="filterPopover"
-                                        triggerElement={addFilterButton}
-                                        triggerClasses="flex align-center"
-                                        getTarget={() => this.refs.addFilterTarget}
+                    <PopoverWithTrigger
+                        id="FilterPopover"
+                        ref="filterPopover"
+                        triggerElement={addFilterButton}
+                        triggerClasses="flex align-center"
+                        getTarget={() => this.refs.addFilterTarget}
                     >
                         <FilterPopover
                             isNew={true}
@@ -364,7 +366,7 @@ export default class GuiQueryEditor extends Component {
                     {this.renderViewSection()}
                     <div className="flex-full"></div>
                     {this.props.children}
-                    <ExtendedOptions 
+                    <ExtendedOptions
                         {...this.props}
                         setQuery={(query) => this.setQuery(query)}
                     />
