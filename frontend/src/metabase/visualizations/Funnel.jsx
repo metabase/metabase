@@ -100,7 +100,7 @@ export default class Funnel extends Component {
                 x1: (i + 1) * STEP_SIZE,
                 x2: (i + 1) * STEP_SIZE,
                 y1: 0,
-                y2: 300,
+                y2: FUNNEL_SHIFT + normalize(data) / 2,
                 textAnchor: 'end',
                 fill: '#727479',
             }
