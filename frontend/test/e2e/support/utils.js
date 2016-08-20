@@ -16,6 +16,13 @@ export const clickElement = async (driver, selector) =>
 // prefer this over calling click() on element directly
 export const waitForAndClickElement = async (driver, selector) => {
     const element = await waitForElement(driver, selector);
+    // webdriver complains about stale element this way
+    // await Promise.all(
+    //     driver.wait(until.elementIsVisible(element)),
+    //     driver.wait(until.elementIsEnabled(element))
+    // );
+    const element2 = await driver.wait(until.elementIsVisible(element))
+    const element3 = await driver.wait(until.elementIsEnabled(element2))
     console.log('clicking ' + selector);
     return await element.click();
 };

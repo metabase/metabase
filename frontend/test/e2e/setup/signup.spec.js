@@ -12,7 +12,7 @@ import {
     screenshot
 } from "../support/utils";
 
-jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
+jasmine.DEFAULT_TIMEOUT_INTERVAL = 120000;
 
 describe("setup/signup", () => {
     let server, sauceConnect, driver;
