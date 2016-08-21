@@ -98,13 +98,12 @@ export default class Funnel extends Component {
                 x2: (i + 1) * STEP_SIZE,
                 y1: 0,
                 y2: FUNNEL_SHIFT + normalize(data) / 2,
-                textAnchor: 'end',
                 fill: '#727479',
             }
         });
 
         // Step label informations.
-        let stepsLabel = steps.map((name, i) => {
+        let stepsTotalLabel = steps.map((name, i) => {
             return {
                 name: name,
                 key: `step-${i}`,
@@ -116,6 +115,24 @@ export default class Funnel extends Component {
                 fill: '#727479',
                 fillOpacity: 1.0 - i * (0.5 / steps.length ),
             }
+        });
+
+        // Step label informations.
+        let stepsLabel = dataset.map((serie, i) => {
+            return serie.data.map((value, j) => {
+                return {
+                    name: serie.name,
+                    key: `step-label-${i}-${j}`,
+                    total: total.data[i],
+                    value: value,
+                    percent: Math.round(value / total.data[j] * 100, 2),
+                    deltaPercent: Math.round(j === 0 ? 100 : (serie.data[j] / serie.data[j - 1]) * 100, 2),
+                    deltaPercentBegin: Math.round(j === 0 ? 100 : (serie.data[j] / serie.data[0]) * 100, 2),
+                    x: (j + 1) * STEP_SIZE - 10,
+                    y: FUNNEL_SHIFT - normalize(total.data[j]) / 2 + normalize(serie.shifted[j]),
+                    color: serie.color,
+                }
+            });
         });
 
         // Series label informations.
@@ -133,10 +150,14 @@ export default class Funnel extends Component {
         // Hightlight serie on mouse-over
         var serieMouseOver = (e) => {
             // Get all nodes
-            var nodes = [].slice.call(e.currentTarget.parentNode.getElementsByTagName('g'));
+            let nodes = [].slice.call(e.currentTarget.parentNode.getElementsByTagName('g'))
+                .filter((el) => el.classList.contains('serie'));
 
             // Remove current node
-            nodes.splice(nodes.indexOf(e.currentTarget), 1);
+            let current = nodes.splice(nodes.indexOf(e.currentTarget), 1);
+
+            // Current node children group are now visibile
+            current[0].getElementsByTagName('g')[0].classList.remove('hidden');
 
             // Set opacity on other series
             nodes.forEach((el) => el.setAttribute('opacity', 0.5));
@@ -145,22 +166,37 @@ export default class Funnel extends Component {
         var serieMouseOut = (e) => {
             // Reset opacity on all series
             [].slice.call(e.currentTarget.parentNode.getElementsByTagName('g'))
+                .filter((el) => el.classList.contains('serie'))
                 .forEach((el) => el.setAttribute('opacity', 1.0));
+
+            // Current node children group are now invisibile again
+            e.currentTarget.getElementsByTagName('g')[0].classList.add('hidden');
         }
 
         return (
             <div className={cx(styles.Funnel, ' full flex flex-column')}>
                 <svg width="100%" height="100%" viewBox="0 0 600 300">
+
+                {/* Steps title */}
+                    {stepsTotalLabel.map((step, i) =>
+                        <text key={step.key} x={step.x} y={step.y} fill={step.fill} fillOpacity={step.fillOpacity}>
+                            <tspan textAnchor="end" x={step.x} className={styles.StepLabel}>{step.name}</tspan>
+                            <tspan className={styles.StepCounter}> ({step.total})</tspan>
+                            <tspan textAnchor="end" x={step.x} className={styles.StepPercent}  dy="1.4em">{i !== 0 ? `∆ step ${step.deltaPercent}%` : null}</tspan>
+                            <tspan textAnchor="end" x={step.x} className={styles.StepPercent}  dy="1.4em">{i !== 0 ? `∆ total ${step.deltaPercentBegin}%` : null}</tspan>
+                        </text>
+                    )}
+
                 {/* Vertical line separator */}
                     {lines.map((line, i) =>
                         <line {...line} style={{stroke: '#DDD', strokeWidth:1}} ></line>
                     )}
 
                 {/* Funnel steps */}
-                    {dataset.map((serie) =>
+                    {dataset.map((serie, i) =>
                         <g
                             key={serie.name}
-                            ref={serie.name}
+                            className="serie"
                             onMouseOver={serieMouseOver}
                             onMouseOut={serieMouseOut}
                         >
@@ -172,25 +208,29 @@ export default class Funnel extends Component {
                                     fillOpacity={1.0 - i * (0.7 / steps.length )}
                                 />
                             )}
+
+                            {/* Series title */}
+                            <text key={seriesLabel[i].key} x={seriesLabel[i].x} y={seriesLabel[i].y} fill={seriesLabel[i].color}>
+                                <tspan textAnchor="end" x={seriesLabel[i].x} className={styles.SeriesLabel}>{seriesLabel[i].name}</tspan>
+                                <tspan textAnchor="end" x={seriesLabel[i].x} className={styles.SeriesCounter} dy="1.4em">{seriesLabel[i].initialValue}</tspan>
+                            </text>
+
+                            <g className="hidden">
+                                {/* Series step */}
+                                {stepsLabel[i].map((label, j) =>
+                                    <g key={label.key}>
+                                        <rect fill="#000" stroke={label.color} strokeWidth={2} fillOpacity={1} x={label.x - STEP_SIZE / 2 + 20} y={label.y - 80} width={STEP_SIZE - 20} height={70} rx={10} ry={10}>
+                                        </rect>
+                                        <polygon points={`${label.x + 10},${label.y} ${label.x + 10 + 10},${label.y - 10} ${label.x + 10 - 10},${label.y - 10}`} fill={label.color} />
+                                        <text x={label.x + 15} y={label.y} fill="white" textAnchor="middle" alignmentBaseline="middle" dy="-4.2em">
+                                            <tspan textAnchor="middle" x={label.x + 10}>{label.value} ({label.percent}%)</tspan>
+                                            <tspan textAnchor="middle" x={label.x + 10} dy="1.4em">∆ step {label.deltaPercent}%</tspan>
+                                            <tspan textAnchor="middle" x={label.x + 10} dy="1.4em">∆ total {label.deltaPercentBegin}%</tspan>
+                                        </text>
+                                    </g>
+                                )}
+                            </g>
                         </g>
-                    )}
-
-                {/* Steps title */}
-                    {stepsLabel.map((step, i) =>
-                        <text key={step.key} x={step.x} y={step.y} fill={step.fill} fillOpacity={step.fillOpacity}>
-                            <tspan textAnchor="end" x={step.x} className={styles.StepLabel}>{step.name}</tspan>
-                            <tspan className={styles.StepCounter}> ({step.total})</tspan>
-                            <tspan textAnchor="end" x={step.x} className={styles.StepPercent}  dy="1.4em">{i !== 0 ? `∆ step ${step.deltaPercent}%` : null}</tspan>
-                            <tspan textAnchor="end" x={step.x} className={styles.StepPercent}  dy="1.4em">{i !== 0 ? `∆ total ${step.deltaPercentBegin}%` : null}</tspan>
-                        </text>
-                    )}
-
-                {/* Series title */}
-                    {seriesLabel.map((serie) =>
-                        <text key={serie.key} x={serie.x} y={serie.y} fill={serie.color}>
-                            <tspan textAnchor="end" x={serie.x} className={styles.SeriesLabel}>{serie.name}</tspan>
-                            <tspan textAnchor="end" x={serie.x} className={styles.SeriesCounter} dy="1.4em">{serie.initialValue}</tspan>
-                        </text>
                     )}
                 </svg>
             </div>
