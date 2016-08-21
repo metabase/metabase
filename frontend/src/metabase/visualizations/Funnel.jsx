@@ -9,8 +9,6 @@ import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 
 const DEFAULT_COLORS = Object.values(normal);
 
-import _ from "underscore";
-
 export default class Funnel extends Component {
     static displayName = "Funnel";
     static identifier = "funnel";
@@ -202,10 +200,10 @@ export default class Funnel extends Component {
 }
 
 function extractStepsInfos(cols, rows, settings) {
-    const stepIndex = _.findIndex(cols, (col) => col.name === settings["funnel.step"]);
+    const stepIndex = cols.findIndex((col) => col.name === settings["funnel.step"]);
 
     const metricIndex = settings["funnel.metrics"].map((metric, i) => {
-        return _.findIndex(cols, (col) => col.name === metric);
+        return cols.findIndex((col) => col.name === metric);
     });
 
     var dataset = metricIndex.map((index) => {
