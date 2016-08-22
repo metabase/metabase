@@ -74,11 +74,11 @@
                                              :placeholder  "toucan_sightings"
                                              :required     true}
                                             {:name         "user"
-                                             :display-name "Master username"
+                                             :display-name "Database username"
                                              :placeholder  "cam"
                                              :required     true}
                                             {:name         "password"
-                                             :display-name "Master user password"
+                                             :display-name "Database user password"
                                              :type         :password
                                              :placeholder  "*******"
                                              :required     true}])})
