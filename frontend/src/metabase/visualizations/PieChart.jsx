@@ -66,6 +66,7 @@ export default class PieChart extends Component {
 
         // use standard colors for up to 5 values otherwise use color harmony to help differentiate slices
         let sliceColors = Object.values(rows.length > 5 ? colors.harmony : colors.normal);
+        let sliceThreshold = typeof settings["pie.slice_threshold"] === "number" ? settings["pie.slice_threshold"] / 100 : SLICE_THRESHOLD;
 
         let [slices, others] = _.chain(rows)
             .map((row, index) => ({
@@ -74,7 +75,7 @@ export default class PieChart extends Component {
                 percentage: row[metricIndex] / total,
                 color: sliceColors[index % sliceColors.length]
             }))
-            .partition((d) => d.percentage > SLICE_THRESHOLD)
+            .partition((d) => d.percentage > sliceThreshold)
             .value();
 
         let otherTotal = others.reduce((acc, o) => acc + o.value, 0);

@@ -416,15 +416,20 @@ const SETTINGS = {
         }),
     },
     "pie.show_legend": {
-        section: "Legend",
+        section: "Display",
         title: "Show legend",
         widget: ChartSettingToggle
     },
     "pie.show_legend_perecent": {
-        section: "Legend",
+        section: "Display",
         title: "Show percentages in legend",
         widget: ChartSettingToggle,
         default: true
+    },
+    "pie.slice_threshold": {
+        section: "Display",
+        title: "Minimum slice percentage",
+        widget: ChartSettingInputNumeric
     },
     "scalar.locale": {
         title: "Separator style",
