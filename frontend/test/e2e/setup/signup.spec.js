@@ -129,6 +129,7 @@ describe("setup/signup", () => {
             await waitForAndClickElement(driver, ".Button.RunButton");
 
             await driver.sleep(20000);
+            await screenshot(driver, "screenshots/setup-tutorial-qb-loaded.png");
             const logs = await driver.manage().logs().get("browser");
             console.log(logs);
 
