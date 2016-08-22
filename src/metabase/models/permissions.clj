@@ -22,7 +22,16 @@
              (some (u/rpartial re-matches object-path)
                    valid-object-path-patterns))))
 
-;; TOOD - we should *definitiely* consider caching these two functions to avoid TONS OF DB CALLS
+
+;; TOOD - we should *definitiely* consider caching these three functions to avoid TONS OF DB CALLS
+(defn for-object
+  "Return the first matching `Permissions` object that has permissions for OBJECT-PATH for a group that user with USER-ID belongs to."
+  [^Integer user-id, ^String object-path]
+  {:pre [(integer? user-id) (valid-object-path? object-path)]}
+  (db/select-one 'Permissions
+    {:where [:and [:in :group_id (db/select-field :group_id 'PermissionsGroupMembership :user_id user-id)]
+                  [:like object-path (hx/concat :object (hx/literal "%"))]]}))
+
 (defn group-has-full-access?
   "Does a group have permissions for OBJECT and *all* of its children?"
   ^Boolean [^Integer group-id, ^String object]

@@ -32,10 +32,7 @@
   (throw (Exception. ^String (apply format format-str format-args))))
 
 (defn- permissions-for-object [user-id object-path]
-  {:pre [(integer? user-id) (permissions/valid-object-path? object-path)]}
-  (u/prog1 (db/select-one 'Permissions
-             {:where [:and [:in :group_id (db/select-field :group_id 'PermissionsGroupMembership :user_id user-id)]
-                      [:like object-path (hx/concat :object (hx/literal "%"))]]})
+  (u/prog1 (permissions/for-object user-id object-path)
     (when <>
       (log-permissions-success user-id <>))))
 
