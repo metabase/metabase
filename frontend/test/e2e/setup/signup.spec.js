@@ -128,6 +128,10 @@ describe("setup/signup", () => {
             await waitForElement(driver, "img[src='/app/img/qb_tutorial/rocket.png']");
             await waitForAndClickElement(driver, ".Button.RunButton");
 
+            await driver.sleep(20000);
+            const logs = await driver.manage().logs().get("browser");
+            console.log(logs);
+
             await waitForElement(driver, "img[src='/app/img/qb_tutorial/chart.png']", 60000);
             await waitForAndClickElement(driver, ".VisualizationSettings>div>a");
             await driver.sleep(1000);
