@@ -1,5 +1,6 @@
 (ns metabase.http-client
   "HTTP client for making API calls against the Metabase API. For test/REPL purposes."
+  ;; TODO - this should be moved to something like `metabase.test.http-client` to clarify that it's only available in test
   (:require [clojure.tools.logging :as log]
             [cheshire.core :as json]
             [clj-http.client :as client]
