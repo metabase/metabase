@@ -4,6 +4,7 @@
                       [db :as db])
             (metabase.models [common :as common]
                              [setting :refer [defsetting], :as setting])
+            [metabase.util :as u]
             [metabase.util.password :as password])
   (:import java.util.TimeZone))
 
@@ -34,6 +35,16 @@
 
 (defsetting google-maps-api-key
   "A Google Maps API key is required to enable certain map visualizations.")
+
+(defsetting geojson-url
+  "A URL to a custom GeoJSON file that can be used in map visualizations instead of the default US State Map and World GeoJSON files."
+  ;; Custom setter below validates that the new value is a valid URL or refuses to set it
+  ;; TODO - if we have other URL settings we should consider moving this setter to `setting/` or even making `:url` an official Setting type
+  :setter (fn [url]
+            (when (seq url)
+              (assert (u/is-url? url)
+                (str "Invalid URL: " url)))
+            (setting/set-string! :geojson-url url)))
 
 (defn site-url
   "Fetch the site base URL that should be used for password reset emails, etc.
@@ -80,4 +91,5 @@
    :timezone_short        (short-timezone-name (setting/get :report-timezone))
    :has_sample_dataset    (db/exists? 'Database, :is_sample true)
    :google_auth_client_id (setting/get :google-auth-client-id)
-   :google_maps_api_key   (google-maps-api-key)})
+   :google_maps_api_key   (google-maps-api-key)
+   :geojson_url           (geojson-url)})
