@@ -128,8 +128,9 @@ describe("setup/signup", () => {
             await waitForElement(driver, "img[src='/app/img/qb_tutorial/rocket.png']");
             await waitForAndClickElement(driver, ".Button.RunButton");
 
-            await waitForElement(driver, "img[src='/app/img/qb_tutorial/chart.png']");
+            await waitForElement(driver, "img[src='/app/img/qb_tutorial/chart.png']", 20000);
             await waitForAndClickElement(driver, ".VisualizationSettings>div>a");
+            await driver.sleep(1000);
             await waitForAndClickElement(driver, "#VisualizationPopover li:nth-child(3)");
 
             // end tutorial
