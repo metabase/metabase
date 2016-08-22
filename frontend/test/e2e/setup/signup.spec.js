@@ -126,6 +126,7 @@ describe("setup/signup", () => {
 
             // run query
             await waitForElement(driver, "img[src='/app/img/qb_tutorial/rocket.png']");
+            await driver.sleep(2000);
             await waitForAndClickElement(driver, ".Button.RunButton");
 
             await driver.sleep(20000);
@@ -134,7 +135,8 @@ describe("setup/signup", () => {
             console.log(logs);
 
             await waitForElement(driver, "img[src='/app/img/qb_tutorial/chart.png']", 60000);
-            await waitForAndClickElement(driver, ".VisualizationSettings>div>a");
+            await waitForAndClickElement(driver, "#VisualizationTrigger");
+            //FIXME: click doens't consistently land without timeout here
             await driver.sleep(1000);
             await waitForAndClickElement(driver, "#VisualizationPopover li:nth-child(3)");
 

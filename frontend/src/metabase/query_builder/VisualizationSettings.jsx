@@ -48,6 +48,7 @@ export default class VisualizationSettings extends React.Component {
                     id="VisualizationPopover"
                     ref="displayPopover"
                     className="ChartType-popover"
+                    triggerId="VisualizationTrigger"
                     triggerElement={triggerElement}
                     triggerClasses="flex align-center"
                 >
