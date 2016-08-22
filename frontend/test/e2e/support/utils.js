@@ -7,10 +7,10 @@ export const findElement = (driver, selector) =>
     driver.findElement(By.css(selector));
 
 export const waitForElement = async (driver, selector, timeout = 5000) =>
-    console.log('waiting ' + selector)||await driver.wait(until.elementLocated(By.css(selector)), timeout);
+    await driver.wait(until.elementLocated(By.css(selector)), timeout);
 
 export const clickElement = async (driver, selector) =>
-    console.log('clicking ' + selector)||await findElement(driver, selector).click();
+    await findElement(driver, selector).click();
 
 // waits for element to appear before clicking to avoid clicking too early
 // prefer this over calling click() on element directly
@@ -21,9 +21,8 @@ export const waitForAndClickElement = async (driver, selector, timeout = 5000) =
     //     driver.wait(until.elementIsVisible(element)),
     //     driver.wait(until.elementIsEnabled(element))
     // );
-    const element2 = await driver.wait(until.elementIsVisible(element), timeout)
-    const element3 = await driver.wait(until.elementIsEnabled(element2), timeout)
-    console.log('clicking ' + selector);
+    const element2 = await driver.wait(until.elementIsVisible(element), timeout);
+    const element3 = await driver.wait(until.elementIsEnabled(element2), timeout);
     return await element.click();
 };
 
