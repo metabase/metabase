@@ -1,5 +1,6 @@
 (ns metabase.api.setup
   (:require [compojure.core :refer [GET POST]]
+            [medley.core :as m]
             (metabase.api [common :refer :all]
                           [database :refer [annotation:DBEngine]])
             (metabase [db :as db]
@@ -11,6 +12,7 @@
                              [session :refer [Session]]
                              [setting :as setting]
                              [user :refer [User set-user-password!]])
+            [metabase.public-settings :as public-settings]
             [metabase.setup :as setup]
             [metabase.util :as u]))
 
@@ -30,8 +32,8 @@
    last_name  [Required NonEmptyString]
    email      [Required Email]
    password   [Required ComplexPassword]}
-  ;; Call (metabase.core/site-url request) to set the Site URL setting if it's not already set
-  (@(ns-resolve 'metabase.core 'site-url) request)
+  ;; Call (public-settings/site-url request) to set the Site URL setting if it's not already set
+  (public-settings/site-url request)
   ;; Now create the user
   (let [session-id (str (java.util.UUID/randomUUID))
         new-user   (db/insert! User
@@ -43,9 +45,11 @@
     ;; this results in a second db call, but it avoids redundant password code so figure it's worth it
     (set-user-password! (:id new-user) password)
     ;; set a couple preferences
-    (setting/set! :site-name site_name)
-    (setting/set! :admin-email email)
-    (setting/set! :anon-tracking-enabled (or allow_tracking true))
+    (public-settings/site-name site_name)
+    (public-settings/admin-email email)
+    (public-settings/anon-tracking-enabled (if (m/boolean? allow_tracking)
+                                             allow_tracking
+                                             true)) ; default to `true` if allow_tracking isn't specified
     ;; setup database (if needed)
     (when (driver/is-engine? engine)
       (->> (db/insert! Database
@@ -57,7 +61,7 @@
                              true))
            (events/publish-event :database-create)))
     ;; clear the setup token now, it's no longer needed
-    (setup/token-clear)
+    (setup/clear-token!)
     ;; then we create a session right away because we want our new user logged in to continue the setup process
     (db/insert! Session
       :id      session-id

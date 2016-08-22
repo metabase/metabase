@@ -2,7 +2,7 @@
   "/api/setting endpoints"
   (:require [compojure.core :refer [GET PUT DELETE]]
             [metabase.api.common :refer :all]
-            (metabase.models [setting :as setting])))
+            [metabase.models.setting :as setting]))
 
 (defendpoint GET "/"
   "Get all `Settings` and their values. You must be a superuser to do this."
