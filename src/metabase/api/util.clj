@@ -26,7 +26,8 @@
         (when-let [url (public-settings/geojson-url)]
           {:status  200
            :headers {"Content-Type" "application/json"}
-           :body    (slurp (public-settings/geojson-url))}))
+           :body    (u/with-timeout 5000
+                      (slurp (public-settings/geojson-url)))}))
       ;; return a generic 204 "no content" if there's no GeoJSON to return
       {:status 204
        :body   nil}))
