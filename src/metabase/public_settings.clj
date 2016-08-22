@@ -1,5 +1,6 @@
 (ns metabase.public-settings
   (:require [clojure.string :as s]
+            [cheshire.core :as json]
             (metabase [config :as config]
                       [db :as db])
             (metabase.models [common :as common]
@@ -36,14 +37,23 @@
 (defsetting google-maps-api-key
   "A Google Maps API key is required to enable certain map visualizations.")
 
+(def ^:private assert-valid-json-url
+  "Check that remote URL points to a valid JSON file, or throw an exception.
+   Since the remote file isn't likely to change, this check isn't repeated for URLs that have already succeded;
+   if the check fails, an exception is thrown (thereby preventing memoization)."
+  (memoize (fn [url]
+             (assert (u/is-url? url)
+               (str "Invalid URL: " url))
+             (u/with-timeout 5000
+               (json/parse-string (slurp url)))
+             true)))
+
 (defsetting geojson-url
   "A URL to a custom GeoJSON file that can be used in map visualizations instead of the default US State Map and World GeoJSON files."
-  ;; Custom setter below validates that the new value is a valid URL or refuses to set it
-  ;; TODO - if we have other URL settings we should consider moving this setter to `setting/` or even making `:url` an official Setting type
   :setter (fn [url]
             (when (seq url)
-              (assert (u/is-url? url)
-                (str "Invalid URL: " url)))
+              ;; validate that the new value is a valid URL pointing to a valid JSON file or refuse to set it
+              (assert-valid-json-url url))
             (setting/set-string! :geojson-url url)))
 
 (defn site-url
@@ -91,5 +101,4 @@
    :timezone_short        (short-timezone-name (setting/get :report-timezone))
    :has_sample_dataset    (db/exists? 'Database, :is_sample true)
    :google_auth_client_id (setting/get :google-auth-client-id)
-   :google_maps_api_key   (google-maps-api-key)
-   :geojson_url           (geojson-url)})
+   :google_maps_api_key   (google-maps-api-key)})
