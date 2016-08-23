@@ -252,9 +252,11 @@
         0)))
 
 (defn- url-percentage [url-count total-count]
-  (if (and total-count (pos? total-count) url-count)
-    (float (/ url-count total-count))
-    0.0))
+  (double (if (and total-count (pos? total-count) url-count)
+            ;; make sure to coerce to Double before dividing because if it's a BigDecimal division can fail for non-terminating floating-point numbers
+            (/ (double url-count)
+               (double total-count))
+            0.0)))
 
 ;; TODO - Full table scan!?! Maybe just fetch first N non-nil values and do in Clojure-land instead
 (defn slow-field-percent-urls

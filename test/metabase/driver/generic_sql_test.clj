@@ -37,25 +37,25 @@
 (expect
   {:name   "VENUES"
    :schema "PUBLIC"
-   :fields #{{:name "NAME",
-              :custom {:column-type "VARCHAR"},
+   :fields #{{:name      "NAME",
+              :custom    {:column-type "VARCHAR"}
               :base-type :TextField}
-             {:name "LATITUDE",
-              :custom {:column-type "DOUBLE"},
+             {:name      "LATITUDE"
+              :custom    {:column-type "DOUBLE"}
               :base-type :FloatField}
-             {:name "LONGITUDE",
-              :custom {:column-type "DOUBLE"},
+             {:name      "LONGITUDE"
+              :custom    {:column-type "DOUBLE"}
               :base-type :FloatField}
-             {:name "PRICE",
-              :custom {:column-type "INTEGER"},
+             {:name      "PRICE"
+              :custom    {:column-type "INTEGER"}
               :base-type :IntegerField}
-             {:name "CATEGORY_ID",
-              :custom {:column-type "INTEGER"},
+             {:name      "CATEGORY_ID"
+              :custom    {:column-type "INTEGER"}
               :base-type :IntegerField}
-             {:name "ID",
-              :custom {:column-type "BIGINT"},
-              :base-type :BigIntegerField,
-              :pk? true}}}
+             {:name      "ID"
+              :custom    {:column-type "BIGINT"}
+              :base-type :BigIntegerField
+              :pk?       true}}}
   (driver/describe-table (H2Driver.) (db) @venues-table))
 
 ;; DESCRIBE-TABLE-FKS
@@ -109,7 +109,11 @@
   (for [row (take 5 (sort-by :id (table-rows-seq datasets/*driver*
                                                  (db/select-one 'Database :id (id))
                                                  (db/select-one 'RawTable :id (db/select-one-field :raw_table_id 'Table, :id (id :venues))))))]
-    (dissoc row :latitude :longitude))) ; different DBs use different precisions for these
+    ;; different DBs use different precisions for these
+    (-> (dissoc row :latitude :longitude)
+        (update :price int)
+        (update :category_id int)
+        (update :id int))))
 
 ;;; FIELD-PERCENT-URLS
 (datasets/expect-with-engines @generic-sql-engines

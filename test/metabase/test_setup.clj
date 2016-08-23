@@ -7,8 +7,7 @@
             [expectations :refer :all]
             (metabase [core :as core]
                       [db :as db]
-                      [driver :as driver]
-                      [util :as u])
+                      [driver :as driver])
             (metabase.models [setting :as setting]
                              [table :refer [Table]])
             [metabase.test.data :as data]

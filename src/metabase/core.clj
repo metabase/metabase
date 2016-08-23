@@ -28,8 +28,8 @@
 
 ;;; CONFIG
 
-(def app
-  "The primary entry point to the HTTP server"
+(def ^:private app
+  "The primary entry point to the Ring HTTP server."
   (-> routes/routes
       mb-middleware/log-api-call
       mb-middleware/add-security-headers ; Add HTTP headers to API responses to prevent them from being cached
@@ -80,7 +80,7 @@
     (log/info (u/format-color 'green "Please use the following url to setup your Metabase installation:\n\n%s\n\n"
                               setup-url))))
 
-(defn destroy
+(defn- destroy!
   "General application shutdown function which should be called once at application shuddown."
   []
   (log/info "Metabase Shutting Down ...")
@@ -95,7 +95,7 @@
   (reset! metabase-initialization-progress 0.1)
 
   ;; First of all, lets register a shutdown hook that will tidy things up for us on app exit
-  (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable destroy))
+  (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable destroy!))
   (reset! metabase-initialization-progress 0.3)
 
   ;; Load up all of our Database drivers, which are used for app db work
