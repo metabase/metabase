@@ -91,6 +91,7 @@ describe("setup/signup", () => {
             await waitForAndClickElement(driver, ".Modal .Button.Button--primary");
 
             await waitForUrl(driver, `${server.host}/q`);
+            await waitForElement(driver, ".Modal .Button.Button--primary");
             await screenshot(driver, "screenshots/setup-tutorial-qb.png");
             await waitForAndClickElement(driver, ".Modal .Button.Button--primary");
 
