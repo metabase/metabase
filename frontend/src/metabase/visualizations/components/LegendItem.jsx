@@ -6,6 +6,10 @@ import Ellipsified from "metabase/components/Ellipsified.jsx";
 
 import cx from "classnames";
 
+// Don't use a <a> tag if there's no href
+const LegendLink = (props) =>
+    props.href ? <a {...props} /> : <span {...props} />
+
 export default class LegendItem extends Component {
     constructor(props, context) {
         super(props, context);
@@ -24,7 +28,7 @@ export default class LegendItem extends Component {
     render() {
         const { title, href, color, showDot, showTitle, isMuted, showTooltip, showDotTooltip, onMouseEnter, onMouseLeave, className } = this.props;
         return (
-            <a
+            <LegendLink
                 href={href}
                 className={cx(className, "LegendItem", "no-decoration flex align-center fullscreen-normal-text fullscreen-night-text", { mr1: showTitle, muted: isMuted })}
                 style={{ overflowX: "hidden", flex: "0 1 auto" }}
@@ -42,7 +46,7 @@ export default class LegendItem extends Component {
                 { showTitle &&
                     <Ellipsified showTooltip={showTooltip}>{title}</Ellipsified>
                 }
-            </a>
+            </LegendLink>
         );
     }
 }
