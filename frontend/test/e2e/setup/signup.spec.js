@@ -6,13 +6,14 @@ import { By, until } from "selenium-webdriver";
 
 import {
     waitForElement,
+    waitForElementRemoved,
     findElement,
     waitForAndClickElement,
     waitForUrl,
     screenshot
 } from "../support/utils";
 
-jasmine.DEFAULT_TIMEOUT_INTERVAL = 120000;
+jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
 
 describe("setup/signup", () => {
     let server, sauceConnect, driver;
@@ -37,7 +38,6 @@ describe("setup/signup", () => {
         });
 
         it("should allow you to sign up and add db", async () => {
-            await driver.manage().window().setSize(1024, 768);
             await driver.get(`${server.host}/`);
             await waitForUrl(driver, `${server.host}/setup`);
             await waitForAndClickElement(driver, ".Button.Button--primary");
@@ -95,7 +95,7 @@ describe("setup/signup", () => {
 
             await waitForElement(driver, "img[src='/app/img/qb_tutorial/table.png']");
             // a .Modal-backdrop element blocks clicks for a while during transition?
-            await driver.wait(async () => (await driver.findElements(By.css('.Modal-backdrop'))).length === 0);
+            await waitForElementRemoved(driver, '.Modal-backdrop');
             await waitForAndClickElement(driver, ".GuiBuilder-data a");
 
             // select sample dataset db

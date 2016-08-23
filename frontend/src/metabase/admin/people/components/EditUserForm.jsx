@@ -88,12 +88,12 @@ export default class EditUserForm extends Component {
                 <div className="px4 pb2">
                     <FormField fieldName="first_name" formError={formError}>
                         <FormLabel title="First name" fieldName="first_name" formError={formError} offset={false}></FormLabel>
-                        <input ref="firstName" className="Form-input full" name="name" defaultValue={(user) ? user.first_name : null} placeholder="Johnny" onChange={this.onChange.bind(this)} />
+                        <input ref="firstName" className="Form-input full" name="firstName" defaultValue={(user) ? user.first_name : null} placeholder="Johnny" onChange={this.onChange.bind(this)} />
                     </FormField>
 
                     <FormField fieldName="last_name" formError={formError}>
                         <FormLabel title="Last name" fieldName="last_name" formError={formError} offset={false}></FormLabel>
-                        <input ref="lastName" className="Form-input full" name="name" defaultValue={(user) ? user.last_name : null} placeholder="Appleseed" required onChange={this.onChange.bind(this)} />
+                        <input ref="lastName" className="Form-input full" name="lastName" defaultValue={(user) ? user.last_name : null} placeholder="Appleseed" required onChange={this.onChange.bind(this)} />
                     </FormField>
 
                     <FormField fieldName="email" formError={formError}>

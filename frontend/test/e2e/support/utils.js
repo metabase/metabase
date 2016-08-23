@@ -9,6 +9,9 @@ export const findElement = (driver, selector) =>
 export const waitForElement = async (driver, selector, timeout = 5000) =>
     await driver.wait(until.elementLocated(By.css(selector)), timeout);
 
+export const waitForElementRemoved = async (driver, selector, timeout = 5000) =>
+    await driver.wait(until.stalenessOf(findElement(driver, selector)), timeout);
+
 export const clickElement = async (driver, selector) =>
     await findElement(driver, selector).click();
 
@@ -38,4 +41,12 @@ export const screenshot = async (driver, filename) => {
 
     const image = await driver.takeScreenshot();
     await fs.writeFile(filename, image, 'base64');
+};
+
+export const loginMetabase = async (driver, username, password) => {
+    await driver.wait(until.elementLocated(By.css("[name=email]")));
+    await driver.findElement(By.css("[name=email]")).sendKeys(username);
+    await driver.findElement(By.css("[name=password]")).sendKeys(password);
+    await driver.manage().timeouts().implicitlyWait(1000);
+    await driver.findElement(By.css(".Button.Button--primary")).click();
 };

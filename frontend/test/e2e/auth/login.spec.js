@@ -2,18 +2,15 @@ import { isReady } from "../support/start-server";
 import { setup, cleanup } from "../support/setup";
 import { By, until } from "selenium-webdriver";
 
-import { waitForUrl, screenshot } from "../support/utils";
+import {
+    waitForUrl,
+    screenshot,
+    loginMetabase
+} from "../support/utils";
+
 import { delay } from '../../../src/metabase/lib/promise';
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
-
-async function loginMetabase(driver, username, password) {
-    await driver.wait(until.elementLocated(By.css("[name=email]")));
-    await driver.findElement(By.css("[name=email]")).sendKeys(username);
-    await driver.findElement(By.css("[name=password]")).sendKeys(password);
-    await driver.manage().timeouts().implicitlyWait(1000);
-    await driver.findElement(By.css(".Button.Button--primary")).click();
-}
 
 describe("auth/login", () => {
     let server, sauceConnect, driver;
