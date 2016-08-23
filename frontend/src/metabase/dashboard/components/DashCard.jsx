@@ -82,12 +82,9 @@ export default class DashCard extends Component {
         const usuallyFast = _.every(series, (s) => s.duration && s.duration.average < s.duration.fast_threshold);
         const isSlow = loading && _.some(series, (s) => s.duration) && (usuallyFast ? "usually-fast" : "usually-slow");
 
-        const hasUnmappedParameters = _.any(series, (s) => s.json_query && _.any(s.json_query.parameters, (p) => p.target == null));
         const parameterMap = dashcard && dashcard.parameter_mappings && dashcard.parameter_mappings
             .reduce((map, mapping) => ({...map, [mapping.parameter_id]: mapping}), {});
-        // not quite sure if hasUnmappedParameters is still needed?
-        // seems like they have the same purpose judging from the naming, but the current 
-        // implementation of hasUnmappedParameters doesn't seem to work? 
+
         const isMappedToAllParameters = !parameterValues || Object.keys(parameterValues)
             .filter(parameterId => parameterValues[parameterId] !== null)
             .every(parameterId => parameterMap[parameterId]);
@@ -113,7 +110,7 @@ export default class DashCard extends Component {
             <div
                 className={"Card bordered rounded flex flex-column " + cx({
                     "Card--recent": dashcard.isAdded,
-                    "Card--unmapped": (hasUnmappedParameters || !isMappedToAllParameters) && !isEditing,
+                    "Card--unmapped": !isMappedToAllParameters && !isEditing,
                     "Card--slow": isSlow === "usually-slow"
                 })}
             >
