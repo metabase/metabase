@@ -140,8 +140,8 @@
   (str \" nm \"))
 
 (defn- quote+combine-names [driver names]
-  (apply str (interpose \. (for [n names]
-                             (name (hx/qualify-and-escape-dots (quote-name driver n)))))))
+  (s/join \. (for [n names]
+               (name (hx/qualify-and-escape-dots (quote-name driver n))))))
 
 (defn- default-qualify+quote-name
   ([driver db-name]
@@ -307,7 +307,7 @@
     ;; Add the SQL for creating each Table
     (doseq [tabledef table-definitions]
       (swap! statements conj (drop-table-if-exists-sql driver dbdef tabledef)
-                             (create-table-sql driver dbdef tabledef)))
+             (create-table-sql driver dbdef tabledef)))
 
     ;; Add the SQL for adding FK constraints
     (doseq [{:keys [field-definitions], :as tabledef} table-definitions]
@@ -316,7 +316,7 @@
           (swap! statements conj (add-fk-sql driver dbdef tabledef fielddef)))))
 
     ;; exec the combined statement
-    (execute-sql! driver :db dbdef (apply str (interpose ";\n" (map hx/unescape-dots @statements)))))
+    (execute-sql! driver :db dbdef (s/join ";\n" (map hx/unescape-dots @statements))))
 
   ;; Now load the data for each Table
   (doseq [tabledef table-definitions]
