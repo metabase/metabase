@@ -35,6 +35,8 @@ describe("admin/people", () => {
 
             await driver.get(`${server.host}/admin/people`);
 
+            await screenshot(driver, "screenshots/admin-people.png");
+
             // click add person button
             await waitForAndClickElement(driver, ".Button.Button--primary");
 

@@ -19,7 +19,9 @@ describe("setup/signup", () => {
     let server, sauceConnect, driver;
 
     beforeAll(async () => {
-        //TODO: think about aggregating every test suite into a bigger container suite and only do initialize/cleanup once?
+        //TODO: think about aggregating every test suite into a bigger container suite
+        // and only do initialize/cleanup once? plus we can also save on browser restart times.
+        // an alternative optimization would be to try to run multiple test suites in parallel
         ({ server, sauceConnect, driver } = await setup({ dbKey: "frontend/test/e2e/support/fixtures/init.db" }));
     });
 
