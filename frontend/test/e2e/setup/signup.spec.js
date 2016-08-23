@@ -19,6 +19,7 @@ describe("setup/signup", () => {
     let server, sauceConnect, driver;
 
     beforeAll(async () => {
+        //TODO: think about aggregating every test suite into a bigger container suite and only do initialize/cleanup once?
         ({ server, sauceConnect, driver } = await setup({ dbKey: "frontend/test/e2e/support/fixtures/init.db" }));
     });
 

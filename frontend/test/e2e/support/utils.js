@@ -9,8 +9,15 @@ export const findElement = (driver, selector) =>
 export const waitForElement = async (driver, selector, timeout = 5000) =>
     await driver.wait(until.elementLocated(By.css(selector)), timeout);
 
-export const waitForElementRemoved = async (driver, selector, timeout = 5000) =>
-    await driver.wait(until.stalenessOf(findElement(driver, selector)), timeout);
+export const waitForElementRemoved = async (driver, selector, timeout = 5000) => {
+    try {
+        const element = findElement(driver, selector);
+        await driver.wait(until.stalenessOf(element), timeout);
+    }
+    catch(error) {
+        // if element doesn't exist, consider it already removed and swallow error
+    }
+};
 
 export const clickElement = async (driver, selector) =>
     await findElement(driver, selector).click();
