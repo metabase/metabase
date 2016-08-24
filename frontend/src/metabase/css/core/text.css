@@ -81,6 +81,11 @@
   color: var(--body-text-color); /* TODO - is this bad? */
 }
 
+.text-paragraph, :local(.text-paragraph) {
+  font-size: 1.143em;
+  line-height: 1.5em;
+}
+
 .text-current {
     color: currentColor;
 }
