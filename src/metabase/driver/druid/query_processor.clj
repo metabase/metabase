@@ -225,20 +225,18 @@
                                  "}")
     :year            (extract:timeFormat "yyyy")))
 
-(defn- unit->granularity
-  [unit]
-  (let [iso-period (case unit
-                     :minute  "PT1M"
-                     :hour    "PT1H"
-                     :day     "P1D"
-                     :week    "P1W"
-                     :month   "P1M"
-                     :quarter "P3M"
-                     :year    "P1Y")]
-  {:type      "period"
-   :period    iso-period
-   :timeZone  (or (get-in *query* [:settings :report-timezone])
-                 "UTC")}))
+(defn- unit->granularity [unit]
+  {:type     "period"
+   :period   (case unit
+               :minute  "PT1M"
+               :hour    "PT1H"
+               :day     "P1D"
+               :week    "P1W"
+               :month   "P1M"
+               :quarter "P3M"
+               :year    "P1Y")
+   :timeZone (or (get-in *query* [:settings :report-timezone])
+                 "UTC")})
 
 (def ^:private ^:const units-that-need-post-processing-int-parsing
   "`extract:timeFormat` always returns a string; there are cases where we'd like to return an integer instead, such as `:day-of-month`.
@@ -445,7 +443,8 @@
   (let [field             (->rvalue field)
         breakout-field    (->rvalue breakout-field)
         sort-by-breakout? (= field breakout-field)]
-    (if (and sort-by-breakout? (= direction :descending))
+    (if (and sort-by-breakout?
+             (= direction :descending))
       (assoc druid-query :descending true)
       druid-query)))
 
@@ -507,20 +506,20 @@
 
 ;;; ## Build + Log + Process Query
 
+(def ^:private ^:const timeseries-units
+  #{:minute :hour :day :week :month :quarter :year})
+
 (defn- druid-query-type
   "What type of Druid query type should we perform?"
   [{breakout-fields :breakout, {ag-type :aggregation-type} :aggregation, limit :limit}]
-  (let [breakouts   (condp = (count breakout-fields)
-                      0 :none
-                      1 :one
-                        :many)
-        agg?        (boolean (and ag-type (not= ag-type :rows)))
-        period-set  #{:minute :hour :day :week :month :quarter :year}
-        ts?         (and
-                      (instance? DateTimeField (first breakout-fields))        ;; Checks whether the query is a timeseries
-                      (contains? period-set (:unit (first breakout-fields)))   ;; (excludes x-of-y type breakouts)
-                      (nil? limit))]                                           ;; (excludes queries with LIMIT)
-
+  (let [breakouts (condp = (count breakout-fields)
+                    0 :none
+                    1 :one
+                      :many)
+        agg?      (boolean (and ag-type (not= ag-type :rows)))
+        ts?       (and (instance? DateTimeField (first breakout-fields))            ; Checks whether the query is a timeseries
+                       (contains? timeseries-units (:unit (first breakout-fields))) ; (excludes x-of-y type breakouts)
+                       (nil? limit))]                                               ; (excludes queries with LIMIT)
     (match [breakouts agg? ts?]
       [:none  false    _] ::select
       [:none  true     _] ::total
