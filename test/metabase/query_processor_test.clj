@@ -1692,9 +1692,11 @@
 ;; HACK - Don't run these tests against BigQuery because the databases need to be loaded every time the tests are ran and loading data into BigQuery is mind-bogglingly slow.
 ;;        Don't worry, I promise these work though!
 
-(expect-with-non-timeseries-dbs-except #{:bigquery} 4 (count-of-grouping (checkins:4-per-minute) :minute "current"))
-(expect-with-non-timeseries-dbs-except #{:bigquery} 4 (count-of-grouping (checkins:4-per-minute) :minute -1 "minute"))
-(expect-with-non-timeseries-dbs-except #{:bigquery} 4 (count-of-grouping (checkins:4-per-minute) :minute  1 "minute"))
+;; Don't run the minute tests against Oracle because the Oracle tests are kind of slow and case CI to fail randomly when it takes so long to load the data that the times are
+;; no longer current (these tests pass locally if your machine isn't as slow as the CircleCI ones)
+(expect-with-non-timeseries-dbs-except #{:bigquery :oracle} 4 (count-of-grouping (checkins:4-per-minute) :minute "current"))
+(expect-with-non-timeseries-dbs-except #{:bigquery :oracle} 4 (count-of-grouping (checkins:4-per-minute) :minute -1 "minute"))
+(expect-with-non-timeseries-dbs-except #{:bigquery :oracle} 4 (count-of-grouping (checkins:4-per-minute) :minute  1 "minute"))
 
 (expect-with-non-timeseries-dbs-except #{:bigquery} 4 (count-of-grouping (checkins:4-per-hour) :hour "current"))
 (expect-with-non-timeseries-dbs-except #{:bigquery} 4 (count-of-grouping (checkins:4-per-hour) :hour -1 "hour"))

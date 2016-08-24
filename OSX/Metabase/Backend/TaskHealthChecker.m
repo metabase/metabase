@@ -15,7 +15,7 @@ static const CGFloat HealthCheckIntervalSeconds = 1.2f;
 static const CGFloat HealthCheckRequestTimeout = 0.25f;
 
 /// After this many seconds of being unhealthy, consider the task timed out so it can be killed
-static const CFTimeInterval TimeoutIntervalSeconds = 15.0f;
+static const CFTimeInterval TimeoutIntervalSeconds = 60.0f;
 
 @interface TaskHealthChecker ()
 @property (strong, nonatomic) NSOperationQueue *healthCheckOperationQueue;
