@@ -205,14 +205,14 @@ export default class SettingsSlackForm extends Component {
                     <h3 className="text-grey-1">Answers sent right to your Slack #channels</h3>
 
                     <div className="pt3">
-                        <a href="https://api.slack.com/docs/oauth-test-tokens" target="_blank" className="Button Button--primary" style={{padding:0}}>
-                            <div className="float-left py2 pl2">Get an API token from Slack</div>
+                        <a href="https://my.slack.com/services/new/bot" target="_blank" className="Button Button--primary" style={{padding:0}}>
+                            <div className="float-left py2 pl2">Create a Slack Bot User for Metabot</div>
                             <Icon className="float-right p2 text-white cursor-pointer" style={{opacity:0.6}} name="external" size={18}/>
                         </a>
                     </div>
                     <div className="py2">
-                        Once you're there, click <strong>"Create token"</strong> next to the team that you want to integrate with Metabase, then copy and paste the token into the field below.
-                        Slack test tokens work fine with Metabase.
+                        Once you're there, give it a name and click <strong>"Add bot integration"</strong>. Then copy and paste the Bot API Token into the field below.
+
                     </div>
                 </div>
                 <ul>
