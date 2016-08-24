@@ -7,6 +7,8 @@ import Visualization from "metabase/visualizations/components/Visualization.jsx"
 import { getSettingsWidgets } from "metabase/lib/visualization_settings";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
+
+
 const ChartSettingsTab = ({name, active, onClick}) =>
   <a
     className={cx('block text-brand py1 text-centered', { 'bg-brand text-white' : active})}
@@ -75,6 +77,18 @@ class ChartSettings extends Component {
         return assocIn(this.props.series, [0, "card", "visualization_settings"], this.state.settings);
     }
 
+    getChartTypeName(){
+      console.log(this.props.series[0].card)
+      if (this.props.series[0].card.display === "table") {
+        return "table";
+      } else if (this.props.series[0].card.display === "scalar"){
+        return "number";
+      } else {
+        return "chart";
+      } 
+    }
+
+
     render () {
         const { onClose } = this.props;
 
@@ -93,7 +107,7 @@ class ChartSettings extends Component {
 
         return (
           <div className="flex flex-column spread p4">
-              <h2 className="my2">Customize this chart</h2>
+              <h2 className="my2">Customize this {this.getChartTypeName()}</h2>
               { tabNames.length > 1 &&
                   <ChartSettingsTabs tabs={tabNames} selectTab={this.selectTab} activeTab={currentTab}/>
               }
