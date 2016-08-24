@@ -9,7 +9,8 @@ import {
     waitForElementText,
     waitForElementRemoved,
     findElement,
-    waitForAndClickElement,
+    waitForElementAndClick,
+    waitForElementAndSendKeys,
     waitForUrl,
     screenshot,
     loginMetabase
@@ -37,24 +38,24 @@ describe("admin/datamodel", () => {
             await driver.get(`${server.host}/admin/datamodel/database`);
 
             // hide orders table
-            await waitForAndClickElement(driver, ".AdminList-items li:nth-child(2)");
+            await waitForElementAndClick(driver, ".AdminList-items li:nth-child(2)");
             await screenshot(driver, "screenshots/admin-datamodel-orders.png");
 
-            await waitForAndClickElement(driver, "#VisibilityTypes span:nth-child(2)");
-            await waitForAndClickElement(driver, "#VisibilitySubTypes span:nth-child(3)");
+            await waitForElementAndClick(driver, "#VisibilityTypes span:nth-child(2)");
+            await waitForElementAndClick(driver, "#VisibilitySubTypes span:nth-child(3)");
 
             // hide fields from people table
-            await waitForAndClickElement(driver, ".AdminList-items li:nth-child(3)");
+            await waitForElementAndClick(driver, ".AdminList-items li:nth-child(3)");
 
-            await waitForAndClickElement(driver, "#ColumnsList li:first-child .TableEditor-field-visibility");
-            await waitForAndClickElement(driver, ".ColumnarSelector-rows li:nth-child(2) .ColumnarSelector-row");
+            await waitForElementAndClick(driver, "#ColumnsList li:first-child .TableEditor-field-visibility");
+            await waitForElementAndClick(driver, ".ColumnarSelector-rows li:nth-child(2) .ColumnarSelector-row");
 
-            await waitForAndClickElement(driver, "#ColumnsList li:nth-child(2) .TableEditor-field-visibility");
-            await waitForAndClickElement(driver, ".ColumnarSelector-rows li:nth-child(3) .ColumnarSelector-row");
+            await waitForElementAndClick(driver, "#ColumnsList li:nth-child(2) .TableEditor-field-visibility");
+            await waitForElementAndClick(driver, ".ColumnarSelector-rows li:nth-child(3) .ColumnarSelector-row");
 
             // modify special type for address field
-            await waitForAndClickElement(driver, "#ColumnsList li:first-child .TableEditor-field-special-type");
-            await waitForAndClickElement(driver, ".ColumnarSelector-rows li:nth-child(2) .ColumnarSelector-row");
+            await waitForElementAndClick(driver, "#ColumnsList li:first-child .TableEditor-field-special-type");
+            await waitForElementAndClick(driver, ".ColumnarSelector-rows li:nth-child(2) .ColumnarSelector-row");
 
             //TODO: verify tables and fields are hidden in query builder
         });
@@ -64,31 +65,31 @@ describe("admin/datamodel", () => {
             // might want to reinitialize every test if we ever start running tests in parallel
 
             // add a segment
-            await waitForAndClickElement(driver, "#SegmentsList a.text-brand");
+            await waitForElementAndClick(driver, "#SegmentsList a.text-brand");
 
-            await waitForAndClickElement(driver, ".GuiBuilder-filtered-by a");
-            await waitForAndClickElement(driver, "#FilterPopover .List-item:nth-child(4)>a");
+            await waitForElementAndClick(driver, ".GuiBuilder-filtered-by a");
+            await waitForElementAndClick(driver, "#FilterPopover .List-item:nth-child(4)>a");
             const addFilterButton = findElement(driver, "#FilterPopover .Button.disabled");
-            await waitForAndClickElement(driver, "#OperatorSelector .Button.Button-normal.Button--medium:nth-child(3)");
-            await findElement(driver, "#FilterPopover input.border-purple").sendKeys('gmail');
+            await waitForElementAndClick(driver, "#OperatorSelector .Button.Button-normal.Button--medium:nth-child(3)");
+            await waitForElementAndSendKeys(driver, "#FilterPopover input.border-purple", 'gmail');
             expect(await addFilterButton.isEnabled()).toBe(true);
             await addFilterButton.click();
 
-            await findElement(driver, "input[name='name']").sendKeys('Gmail users');
-            await findElement(driver, "textarea[name='description']").sendKeys('All people using Gmail for email');
+            await waitForElementAndSendKeys(driver, "input[name='name']", 'Gmail users');
+            await waitForElementAndSendKeys(driver, "textarea[name='description']", 'All people using Gmail for email');
 
             await findElement(driver, "button.Button.Button--primary").click();
 
             expect(await waitForElementText(driver, "#SegmentsList tr:first-child td:first-child")).toEqual("Gmail users");
 
             // add a metric
-            await waitForAndClickElement(driver, "#MetricsList a.text-brand");
+            await waitForElementAndClick(driver, "#MetricsList a.text-brand");
 
-            await waitForAndClickElement(driver, "#Query-section-aggregation");
-            await waitForAndClickElement(driver, "#AggregationPopover .List-item:nth-child(2)>a");
+            await waitForElementAndClick(driver, "#Query-section-aggregation");
+            await waitForElementAndClick(driver, "#AggregationPopover .List-item:nth-child(2)>a");
 
-            await findElement(driver, "input[name='name']").sendKeys('User count');
-            await findElement(driver, "textarea[name='description']").sendKeys('Total number of users');
+            await waitForElementAndSendKeys(driver, "input[name='name']", 'User count');
+            await waitForElementAndSendKeys(driver, "textarea[name='description']", 'Total number of users');
 
             await findElement(driver, "button.Button.Button--primary").click();
 

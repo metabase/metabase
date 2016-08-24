@@ -8,7 +8,8 @@ import {
     waitForElement,
     waitForElementRemoved,
     findElement,
-    waitForAndClickElement,
+    waitForElementAndClick,
+    waitForElementAndSendKeys,
     waitForUrl,
     screenshot,
     loginMetabase
@@ -27,92 +28,6 @@ describe("query_builder", () => {
         expect(await isReady(server.host)).toEqual(true);
     });
 
-    // describe("tutorial", () => {
-    //     it("should guide users through query builder tutorial", async () => {
-    //         await driver.get(`${server.host}/`);
-    //         await loginMetabase(driver, "bob@metabase.com", "12341234");
-    //         await waitForUrl(driver, `${server.host}/`);
-    //
-    //         await driver.get(`${server.host}/?new`);
-    //         await waitForUrl(driver, `${server.host}/?new`);
-    //
-    //         await waitForAndClickElement(driver, ".Modal .Button.Button--primary");
-    //         await waitForAndClickElement(driver, ".Modal .Button.Button--primary");
-    //         await waitForAndClickElement(driver, ".Modal .Button.Button--primary");
-    //
-    //         await waitForUrl(driver, `${server.host}/q`);
-    //         await waitForElement(driver, ".Modal .Button.Button--primary");
-    //         await screenshot(driver, "screenshots/setup-tutorial-qb.png");
-    //         await waitForAndClickElement(driver, ".Modal .Button.Button--primary");
-    //
-    //         await waitForElement(driver, "img[src='/app/img/qb_tutorial/table.png']");
-    //         // a .Modal-backdrop element blocks clicks for a while during transition?
-    //         await waitForElementRemoved(driver, '.Modal-backdrop');
-    //         await waitForAndClickElement(driver, ".GuiBuilder-data a");
-    //
-    //         // // select sample dataset db
-    //         // await waitForAndClickElement(driver, "#DatabaseSchemaPicker .List-section:last-child .List-section-header");
-    //
-    //         await waitForAndClickElement(driver, "#TablePicker .List-section-header");
-    //
-    //         // select orders table
-    //         await driver.sleep(1000);
-    //         await waitForAndClickElement(driver, "#TablePicker .List-item:first-child>a");
-    //
-    //         // select filters
-    //         await waitForElement(driver, "img[src='/app/img/qb_tutorial/funnel.png']");
-    //         await waitForAndClickElement(driver, ".GuiBuilder-filtered-by .Query-section:not(.disabled) a");
-    //
-    //         await waitForAndClickElement(driver, "#FilterPopover .List-item:first-child>a");
-    //
-    //         await waitForAndClickElement(driver, ".Button[data-ui-tag='relative-date-shortcut-this-year']");
-    //         await driver.sleep(1000);
-    //         await waitForAndClickElement(driver, ".Button[data-ui-tag='add-filter']:not(.disabled)");
-    //
-    //         // select aggregations
-    //         await waitForElement(driver, "img[src='/app/img/qb_tutorial/calculator.png']");
-    //         await waitForAndClickElement(driver, "#Query-section-aggregation");
-    //         await driver.sleep(1000);
-    //         await waitForAndClickElement(driver, "#AggregationPopover .List-item:nth-child(2)>a");
-    //
-    //         // select breakouts
-    //         await waitForElement(driver, "img[src='/app/img/qb_tutorial/banana.png']");
-    //         await waitForAndClickElement(driver, ".Query-section.Query-section-breakout>div");
-    //
-    //         await driver.sleep(1000);
-    //         await waitForAndClickElement(driver, "#BreakoutPopover .List-item:first-child .Field-extra>a");
-    //         await driver.sleep(1000);
-    //         await waitForAndClickElement(driver, "#TimeGroupingPopover .List-item:nth-child(3)>a");
-    //
-    //         // run query
-    //         await waitForElement(driver, "img[src='/app/img/qb_tutorial/rocket.png']");
-    //         await driver.sleep(1000);
-    //         await waitForAndClickElement(driver, ".Button.RunButton");
-    //
-    //         // await waitForAndClickElement(driver, ".TutorialModal .Button.Button--primary", 60000);
-    //         // await waitForAndClickElement(driver, ".QueryError2-details a", 60000);
-    //
-    //         // await driver.sleep(20000);
-    //         // await screenshot(driver, "screenshots/setup-tutorial-qb-loaded.png");
-    //         // const logs = await driver.manage().logs().get("browser");
-    //         // console.log(logs);
-    //
-    //         // FIXME: this part errors out on CI for some reason
-    //         await waitForElement(driver, "img[src='/app/img/qb_tutorial/chart.png']", 20000);
-    //         await waitForAndClickElement(driver, "#VisualizationTrigger");
-    //         //FIXME: click doens't consistently land without timeout here
-    //         await driver.sleep(1000);
-    //         await waitForAndClickElement(driver, "#VisualizationPopover li:nth-child(3)");
-    //
-    //         // end tutorial
-    //         await waitForElement(driver, "img[src='/app/img/qb_tutorial/boat.png']");
-    //         await waitForAndClickElement(driver, ".Modal .Button.Button--primary");
-    //         await waitForAndClickElement(driver, ".PopoverBody .Button.Button--primary");
-    //
-    //         await screenshot(driver, "screenshots/setup-tutorial-qb-end.png");
-    //     });
-    // });
-
     describe("tables", () => {
         it("should allow users to create pivot tables", async () => {
             await driver.get(`${server.host}/`);
@@ -123,23 +38,72 @@ describe("query_builder", () => {
 
             await screenshot(driver, "screenshots/qb-initial.png");
 
-            await waitForAndClickElement(driver, "#TablePicker .List-item:first-child>a");
+            await waitForElementAndClick(driver, "#TablePicker .List-item:first-child>a");
 
-            await waitForAndClickElement(driver, "#Query-section-aggregation");
-            await waitForAndClickElement(driver, "#AggregationPopover .List-item:nth-child(2)>a");
+            await waitForElementAndClick(driver, "#Query-section-aggregation");
+            await waitForElementAndClick(driver, "#AggregationPopover .List-item:nth-child(2)>a");
 
-            await waitForAndClickElement(driver, ".Query-section.Query-section-breakout #BreakoutWidget");
-            await waitForAndClickElement(driver, "#BreakoutPopover .List-section:nth-child(3) .List-section-header");
-            await waitForAndClickElement(driver, "#BreakoutPopover .List-item:nth-child(12)>a");
+            await waitForElementAndClick(driver, ".Query-section.Query-section-breakout #BreakoutWidget");
+            await waitForElementAndClick(driver, "#BreakoutPopover .List-section:nth-child(3) .List-section-header");
+            await waitForElementAndClick(driver, "#BreakoutPopover .List-item:nth-child(12)>a");
 
-            await waitForAndClickElement(driver, ".Query-section.Query-section-breakout #BreakoutWidget .AddButton");
-            await waitForAndClickElement(driver, "#BreakoutPopover .List-item:first-child .Field-extra>a");
-            await waitForAndClickElement(driver, "#TimeGroupingPopover .List-item:nth-child(4)>a");
+            await waitForElementAndClick(driver, ".Query-section.Query-section-breakout #BreakoutWidget .AddButton");
+            await waitForElementAndClick(driver, "#BreakoutPopover .List-item:first-child .Field-extra>a");
+            await waitForElementAndClick(driver, "#TimeGroupingPopover .List-item:nth-child(4)>a");
 
-            await waitForAndClickElement(driver, ".Button.RunButton");
+            await waitForElementAndClick(driver, ".Button.RunButton");
 
             await waitForElementRemoved(driver, ".Loading", 20000);
             await screenshot(driver, "screenshots/qb-pivot-table.png");
+
+            // save question
+            await waitForElementAndClick(driver, ".Header-buttonSection:first-child");
+            await waitForElementAndSendKeys(driver, "#SaveQuestionModal input[name='name']", 'Pivot Table');
+            await waitForElementAndClick(driver, "#SaveQuestionModal .Button.Button--primary");
+
+            // add to new dashboard
+            await waitForElementAndClick(driver, "#QuestionSavedModal .Button.Button--primary");
+            await waitForElementAndSendKeys(driver, "#CreateDashboardModal input[name='name']", 'Main Dashboard');
+            await waitForElementAndClick(driver, "#CreateDashboardModal .Button.Button--primary");
+
+            // save dashboard
+            await waitForElementAndClick(driver, ".EditHeader .Button.Button--primary");
+        });
+    });
+
+    describe("charts", () => {
+        it("should allow users to create line charts", async () => {
+            await driver.get(`${server.host}/q`);
+
+            // select orders table
+            await waitForElementAndClick(driver, "#TablePicker .List-item:first-child>a");
+
+            // select filters
+            await waitForElementAndClick(driver, ".GuiBuilder-filtered-by .Query-section:not(.disabled) a");
+
+            await waitForElementAndClick(driver, "#FilterPopover .List-item:first-child>a");
+
+            await waitForElementAndClick(driver, ".Button[data-ui-tag='relative-date-shortcut-this-year']");
+            await waitForElementAndClick(driver, ".Button[data-ui-tag='add-filter']:not(.disabled)");
+
+            // select aggregations
+            await waitForElementAndClick(driver, "#Query-section-aggregation");
+            await waitForElementAndClick(driver, "#AggregationPopover .List-item:nth-child(2)>a");
+
+            // select breakouts
+            await waitForElementAndClick(driver, ".Query-section.Query-section-breakout>div");
+
+            await waitForElementAndClick(driver, "#BreakoutPopover .List-item:first-child .Field-extra>a");
+            await waitForElementAndClick(driver, "#TimeGroupingPopover .List-item:nth-child(3)>a");
+
+            // run query
+            await waitForElementAndClick(driver, ".Button.RunButton");
+
+            await waitForElementAndClick(driver, "#VisualizationTrigger");
+            await driver.sleep(500);
+            await waitForElementAndClick(driver, "#VisualizationPopover li:nth-child(3)");
+
+            await screenshot(driver, "screenshots/qb-chart-line.png");
         });
     });
 

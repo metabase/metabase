@@ -9,7 +9,8 @@ import {
     waitForElementText,
     waitForElementRemoved,
     findElement,
-    waitForAndClickElement,
+    waitForElementAndClick,
+    waitForElementAndSendKeys,
     waitForUrl,
     screenshot,
     loginMetabase
@@ -39,38 +40,35 @@ describe("admin/people", () => {
             await screenshot(driver, "screenshots/admin-people.png");
 
             // click add person button
-            await waitForAndClickElement(driver, ".Button.Button--primary");
+            await waitForElementAndClick(driver, ".Button.Button--primary");
 
             // fill in user info form
             const addButton = findElement(driver, ".Modal .Button[disabled]");
-            await findElement(driver, "[name=firstName]").sendKeys('1234');
-            await findElement(driver, "[name=lastName]").sendKeys('1234');
-            await findElement(driver, "[name=email]").sendKeys('1234@1234.com');
+            await waitForElementAndSendKeys(driver, "[name=firstName]", '1234');
+            await waitForElementAndSendKeys(driver, "[name=lastName]", '1234');
+            await waitForElementAndSendKeys(driver, "[name=email]", '1234@1234.com');
             expect(await addButton.isEnabled()).toBe(true);
             await addButton.click();
 
             // get password
-            await waitForAndClickElement(driver, ".Modal a.link");
+            await waitForElementAndClick(driver, ".Modal a.link");
             const passwordInput = await waitForElement(driver, ".Modal input");
             const password = await passwordInput.getAttribute("value");
-            await waitForAndClickElement(driver, ".Modal .Button.Button--primary");
+            await waitForElementAndClick(driver, ".Modal .Button.Button--primary");
 
             // change user role
-            await waitForAndClickElement(driver, ".ContentTable tr:first-child .AdminSelectBorderless.text-brand");
-            await waitForAndClickElement(driver, ".UserRolePopover li:last-child>a");
+            await waitForElementAndClick(driver, ".ContentTable tr:first-child .AdminSelectBorderless.text-brand");
+            await waitForElementAndClick(driver, ".UserRolePopover li:last-child>a");
             expect(await driver.isElementPresent(By.css("tr:first-child .AdminSelectBorderless.text-purple"))).toEqual(true);
 
             // edit user details
-            await waitForAndClickElement(driver, ".ContentTable tr:first-child td:last-child a");
-            await waitForAndClickElement(driver, ".UserActionsSelect li:first-child");
+            await waitForElementAndClick(driver, ".ContentTable tr:first-child td:last-child a");
+            await waitForElementAndClick(driver, ".UserActionsSelect li:first-child");
 
             const saveButton = findElement(driver, ".Modal .Button[disabled]");
-            await findElement(driver, "[name=firstName]").clear();
-            await findElement(driver, "[name=firstName]").sendKeys('12345');
-            await findElement(driver, "[name=lastName]").clear();
-            await findElement(driver, "[name=lastName]").sendKeys('123456');
-            await findElement(driver, "[name=email]").clear();
-            await findElement(driver, "[name=email]").sendKeys('12345@1234.com');
+            await waitForElementAndSendKeys(driver, "[name=firstName]", '12345');
+            await waitForElementAndSendKeys(driver, "[name=lastName]", '123456');
+            await waitForElementAndSendKeys(driver, "[name=email]", '12345@1234.com');
             expect(await saveButton.isEnabled()).toBe(true);
             await saveButton.click();
 
@@ -78,11 +76,12 @@ describe("admin/people", () => {
             expect(await waitForElementText(driver, ".ContentTable tr:first-child td:nth-child(3)", "12345@1234.com")).toEqual("12345@1234.com");
 
             // reset user password
-            await waitForAndClickElement(driver, ".ContentTable tr:first-child td:last-child a");
-            await waitForAndClickElement(driver, ".UserActionsSelect li:nth-child(2)");
+            await waitForElementAndClick(driver, ".ContentTable tr:first-child td:last-child a");
+            await waitForElementAndClick(driver, ".UserActionsSelect li:nth-child(2)");
 
-            await waitForAndClickElement(driver, ".Modal .Button.Button--warning");
-            await waitForAndClickElement(driver, ".Modal a.link");
+            await waitForElementAndClick(driver, ".Modal .Button.Button--warning");
+            await waitForElementAndClick(driver, ".Modal a.link");
+
             const newPasswordInput = await waitForElement(driver, ".Modal input");
             const newPassword = await newPasswordInput.getAttribute("value");
 

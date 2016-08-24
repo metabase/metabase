@@ -154,6 +154,7 @@ export default class SaveQuestionModal extends Component {
 
         return (
             <ModalContent
+                id="SaveQuestionModal"
                 title={title}
                 closeFn={this.props.closeFn}
             >

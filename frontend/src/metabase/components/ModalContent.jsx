@@ -4,6 +4,7 @@ import Icon from "metabase/components/Icon.jsx";
 
 export default class ModalContent extends Component {
     static propTypes = {
+        id: PropTypes.string,
         title: PropTypes.string,
         closeFn: PropTypes.func.isRequired
     };

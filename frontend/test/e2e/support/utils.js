@@ -5,13 +5,20 @@ import { By, until } from "selenium-webdriver";
 
 const DEFAULT_TIMEOUT = 5000;
 
+const delay = (timeout = 0) => new Promise((resolve) => setTimeout(resolve, timeout));
+
 export const findElement = (driver, selector) =>
+    // consider looking into a better test reporter
+    // default jasmine reporter leaves much to be desired
+    console.log(`\nlooking for element: ${selector}`) ||
     driver.findElement(By.css(selector));
 
 export const waitForElement = async (driver, selector, timeout = DEFAULT_TIMEOUT) =>
+    console.log(`\nwaiting for element: ${selector}`) ||
     await driver.wait(until.elementLocated(By.css(selector)), timeout);
 
 export const waitForElementRemoved = async (driver, selector, timeout = DEFAULT_TIMEOUT) => {
+    console.log(`\nwaiting for element to be removed: ${selector}`);
     if (!(await driver.isElementPresent(By.css(selector)))) {
         return;
     }
@@ -20,6 +27,7 @@ export const waitForElementRemoved = async (driver, selector, timeout = DEFAULT_
 };
 
 export const waitForElementText = async (driver, selector, text, timeout = DEFAULT_TIMEOUT) => {
+    console.log(`\nwaiting for element text${text ? ` to equal ${text}` : ''}: ${selector}`);
     const element = await waitForElement(driver, selector, timeout);
     const elementText = await element.getText();
 
@@ -32,11 +40,13 @@ export const waitForElementText = async (driver, selector, text, timeout = DEFAU
 };
 
 export const clickElement = async (driver, selector) =>
+    console.log(`\nclicking on element: ${selector}`) ||
     await findElement(driver, selector).click();
 
 // waits for element to appear before clicking to avoid clicking too early
 // prefer this over calling click() on element directly
-export const waitForAndClickElement = async (driver, selector, timeout = DEFAULT_TIMEOUT) => {
+export const waitForElementAndClick = async (driver, selector, timeout = DEFAULT_TIMEOUT) => {
+    console.log(`\nwaiting for element to click: ${selector}`);
     const element = await waitForElement(driver, selector, timeout);
     // webdriver complains about stale element this way
     // await Promise.all(
@@ -45,10 +55,21 @@ export const waitForAndClickElement = async (driver, selector, timeout = DEFAULT
     // );
     const element2 = await driver.wait(until.elementIsVisible(element), timeout);
     const element3 = await driver.wait(until.elementIsEnabled(element2), timeout);
+
+    // queues click behind existing calls, might help with brittleness?
+    await delay();
     return await element.click();
 };
 
+export const waitForElementAndSendKeys = async (driver, selector, keys, timeout = DEFAULT_TIMEOUT) => {
+    console.log(`\nwaiting for element to send ${keys}: ${selector}`);
+    const element = await waitForElement(driver, selector, timeout);
+    await element.clear();
+    return await element.sendKeys(keys);
+};
+
 export const waitForUrl = (driver, url, timeout = DEFAULT_TIMEOUT) => {
+    console.log(`\nwaiting for url: ${url}`);
     return driver.wait(async () => await driver.getCurrentUrl() === url, timeout);
 };
 
@@ -65,6 +86,7 @@ const screenshotToHideSelectors = {
 };
 
 export const screenshot = async (driver, filename) => {
+    console.log(`\ntaking screenshot: ${filename}`);
     const dir = path.dirname(filename);
     if (dir && !(await fs.exists(dir))){
         await fs.mkdir(dir);
