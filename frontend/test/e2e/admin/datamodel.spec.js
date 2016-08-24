@@ -1,5 +1,9 @@
 import path from "path";
 
+// FIXME: there are probably better places to put this
+import specReporter from "jasmine-spec-reporter";
+jasmine.getEnv().addReporter(new specReporter);
+
 import { isReady } from "../support/start-server";
 import { setup, cleanup } from "../support/setup";
 import { By, until } from "selenium-webdriver";
