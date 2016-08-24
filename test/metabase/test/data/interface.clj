@@ -34,11 +34,20 @@
   ^String [^DatabaseDefinition database-definition]
   (s/replace (:database-name database-definition) #"\s+" "_"))
 
+(defn db-qualified-table-name
+  "Return a combined table name qualified with the name of its database, suitable for use as an identifier.
+   Provided for drivers where testing wackiness makes it hard to actually create separate Databases, such as Oracle, where this is disallowed on RDS.
+   (Since Oracle can't create seperate DBs, we just create various tables in the same DB; thus their names must be qualified to differentiate them effectively.)"
+  ^String [^String database-name, ^String table-name]
+  {:pre [(string? database-name) (string? table-name)]}
+  ;; take up to last 30 characters because databases like Oracle have limits on the lengths of identifiers
+  (apply str (take-last 30 (s/replace (s/lower-case (str database-name \_ table-name)) #"-" "_"))))
+
 
 (defprotocol IMetabaseInstance
   (metabase-instance [this context]
     "Return the Metabase object associated with this definition, if applicable. CONTEXT should be the parent
-     object of the Metabase object to return (e.g., a pass a `Table` to a `FieldDefintion`). For a `DatabaseDefinition`,
+     object (the actual instance, *not* the definition) of the Metabase object to return (e.g., a pass a `Table` to a `FieldDefintion`). For a `DatabaseDefinition`,
      pass the engine keyword."))
 
 (extend-protocol IMetabaseInstance
@@ -48,7 +57,9 @@
 
   TableDefinition
   (metabase-instance [this database]
-    (Table :db_id (:id database), :%lower.name (s/lower-case (:table-name this))))
+    ;; Look first for an exact table-name match; otherwise allow DB-qualified table names for drivers that need them like Oracle
+    (or (Table :db_id (:id database), :%lower.name (s/lower-case (:table-name this)))
+        (Table :db_id (:id database), :%lower.name (db-qualified-table-name (:name database) (:table-name this)))))
 
   DatabaseDefinition
   (metabase-instance [{:keys [database-name]} engine-kw]
