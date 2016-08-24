@@ -22,6 +22,8 @@ import MetabaseSettings from "metabase/lib/settings";
 import { getRoutes } from "./routes.jsx";
 import { getStore } from './store'
 
+import { refreshSiteSettings } from "metabase/redux/settings";
+
 import { Router, browserHistory } from "react-router";
 import { syncHistoryWithStore } from 'react-router-redux'
 
@@ -44,6 +46,8 @@ function init() {
     });
 
     registerAnalyticsClickListener();
+
+    store.dispatch(refreshSiteSettings());
 
     // enable / disable GA based on opt-out of anonymous tracking
     MetabaseSettings.on("anon_tracking_enabled", () => {

@@ -148,6 +148,14 @@ const SECTIONS = [
                 key: "google-auth-auto-create-accounts-domain"
             }
         ]
+    },
+    {
+        name: "Custom Maps",
+        settings: [
+            {
+                key: "custom-geojson"
+            }
+        ]
     }
 ];
 for (const section of SECTIONS) {

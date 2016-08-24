@@ -24,9 +24,15 @@
               :region_key  (s/maybe s/Str)
               :region_name (s/maybe s/Str)}})
 
+(def ^:private builtin-geojson
+  {:us_states {:name "United Statez" :url "/app/charts/us-states.json" :region_key "name" :region_name "name" :builtin true}
+   :world_countries {:name "World" :url "/app/charts/world.json" :region_key "ISO_A2" :region_name "NAME" :builtin true}})
+
 (defsetting custom-geojson
   "JSON containing information about custom GeoJSON files for use in map visualizations instead of the default US State or World GeoJSON."
   :type   :json
+  :default {}
+  :getter (fn [] (merge (setting/get-json :custom-geojson) builtin-geojson))
   :setter (fn [new-value]
             (when new-value
               (s/validate CustomGeoJSON new-value))
