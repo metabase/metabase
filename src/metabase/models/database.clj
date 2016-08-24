@@ -45,12 +45,9 @@
   "Return a *sorted set* of schema names (as strings) associated with this `Database`."
   [{:keys [id]}]
   (when id
-    (apply sorted-set (sort-by (fn [schema-name]
-                                 (when schema-name
-                                   (s/lower-case schema-name)))
-                               (db/select-field :schema 'Table
-                                 :db_id id
-                                 {:modifiers [:DISTINCT]})))))
+    (apply sorted-set (db/select-field :schema 'Table
+                        :db_id id
+                        {:modifiers [:DISTINCT]}))))
 
 (defn schema-exists?
   "Does DATABASE have any tables with SCHEMA?"
