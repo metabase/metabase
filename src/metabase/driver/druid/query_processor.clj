@@ -1,5 +1,6 @@
 (ns metabase.driver.druid.query-processor
   (:require [clojure.core.match :refer [match]]
+            [clojure.math.numeric-tower :as math]
             [clojure.string :as s]
             [clojure.tools.logging :as log]
             [cheshire.core :as json]
@@ -559,7 +560,7 @@
   [columns]
   (vec (for [k columns]
          (case k
-            :distinct___count (comp #(Math/round %) k)
+            :distinct___count (comp math/round k)
             :timestamp___int  (comp (fn [^String s]
                                       (when (seq s)
                                         (Integer/parseInt s)))
