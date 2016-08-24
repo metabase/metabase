@@ -26,7 +26,7 @@ fi
 
 
 # Setup Java Options
-JAVA_OPTS="-Dlogfile.path=target/log -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC"
+JAVA_OPTS="-Dlogfile.path=target/log -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC -server"
 
 if [ ! -z "$JAVA_TIMEZONE" ]; then
   JAVA_OPTS="${JAVA_OPTS} -Duser.timezone=${JAVA_TIMEZONE}"

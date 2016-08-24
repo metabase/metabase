@@ -16,4 +16,4 @@ export MB_DB_PORT=$RDS_PORT
 # TODO: dynamically determine type, probably using the port number
 export MB_DB_TYPE=postgres
 
-exec java -Dlogfile.path=target/log -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC -jar /app/metabase.jar
+exec java -Dlogfile.path=target/log -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC -server -jar /app/metabase.jar
