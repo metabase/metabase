@@ -66,7 +66,7 @@ export function isCardDirty(card, originalCard) {
 }
 
 export function serializeCardForUrl(card) {
-    console.log(JSON.stringify(card, null, '  '));
+    // console.log(JSON.stringify(card, null, '  '));
     var dataset_query = angular.copy(card.dataset_query);
     if (dataset_query.query) {
         dataset_query.query = Query.cleanQuery(dataset_query.query);

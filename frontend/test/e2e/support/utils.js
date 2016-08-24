@@ -19,9 +19,16 @@ export const waitForElementRemoved = async (driver, selector, timeout = DEFAULT_
     await driver.wait(until.stalenessOf(element), timeout);
 };
 
-export const waitForElementText = async (driver, selector, timeout = DEFAULT_TIMEOUT) => {
+export const waitForElementText = async (driver, selector, text, timeout = DEFAULT_TIMEOUT) => {
     const element = await waitForElement(driver, selector, timeout);
-    return await element.getText();
+    const elementText = await element.getText();
+
+    if (!text || text === elementText) {
+        return elementText;
+    }
+
+    await driver.wait(until.elementTextIs(element, text), timeout);
+    return text;
 };
 
 export const clickElement = async (driver, selector) =>
@@ -45,8 +52,16 @@ export const waitForUrl = (driver, url, timeout = DEFAULT_TIMEOUT) => {
     return driver.wait(async () => await driver.getCurrentUrl() === url, timeout);
 };
 
-const screenshotsToHideSelectors = {
-
+const screenshotToHideSelectors = {
+    "screenshots/setup-tutorial-main.png": [
+        "#Greeting"
+    ],
+    "screenshots/qb.png": [
+        ".LoadingSpinner"
+    ],
+    "screenshots/auth-login.png": [
+        ".brand-boat"
+    ]
 };
 
 export const screenshot = async (driver, filename) => {
@@ -54,6 +69,21 @@ export const screenshot = async (driver, filename) => {
     if (dir && !(await fs.exists(dir))){
         await fs.mkdir(dir);
     }
+
+    // hide elements that are always in motion or randomized
+    const hideSelectors = screenshotToHideSelectors[filename];
+    if (hideSelectors) {
+        await hideSelectors.map((selector) => driver.executeScript(`
+            const element = document.querySelector("${selector}");
+            if (!element) {
+                return;
+            }
+            element.classList.add('hide');
+        `));
+    }
+
+    // blur input focus to avoid capturing blinking cursor in diffs
+    await driver.executeScript(`document.activeElement.blur();`);
 
     const image = await driver.takeScreenshot();
     await fs.writeFile(filename, image, 'base64');
