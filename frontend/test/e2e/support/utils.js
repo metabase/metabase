@@ -3,13 +3,15 @@ import path from "path";
 
 import { By, until } from "selenium-webdriver";
 
+const DEFAULT_TIMEOUT = 5000;
+
 export const findElement = (driver, selector) =>
     driver.findElement(By.css(selector));
 
-export const waitForElement = async (driver, selector, timeout = 5000) =>
+export const waitForElement = async (driver, selector, timeout = DEFAULT_TIMEOUT) =>
     await driver.wait(until.elementLocated(By.css(selector)), timeout);
 
-export const waitForElementRemoved = async (driver, selector, timeout = 5000) => {
+export const waitForElementRemoved = async (driver, selector, timeout = DEFAULT_TIMEOUT) => {
     if (!(await driver.isElementPresent(By.css(selector)))) {
         return;
     }
@@ -17,12 +19,17 @@ export const waitForElementRemoved = async (driver, selector, timeout = 5000) =>
     await driver.wait(until.stalenessOf(element), timeout);
 };
 
+export const waitForElementText = async (driver, selector, timeout = DEFAULT_TIMEOUT) => {
+    const element = await waitForElement(driver, selector, timeout);
+    return await element.getText();
+};
+
 export const clickElement = async (driver, selector) =>
     await findElement(driver, selector).click();
 
 // waits for element to appear before clicking to avoid clicking too early
 // prefer this over calling click() on element directly
-export const waitForAndClickElement = async (driver, selector, timeout = 5000) => {
+export const waitForAndClickElement = async (driver, selector, timeout = DEFAULT_TIMEOUT) => {
     const element = await waitForElement(driver, selector, timeout);
     // webdriver complains about stale element this way
     // await Promise.all(
@@ -34,8 +41,12 @@ export const waitForAndClickElement = async (driver, selector, timeout = 5000) =
     return await element.click();
 };
 
-export const waitForUrl = (driver, url, timeout = 5000) => {
+export const waitForUrl = (driver, url, timeout = DEFAULT_TIMEOUT) => {
     return driver.wait(async () => await driver.getCurrentUrl() === url, timeout);
+};
+
+const screenshotsToHideSelectors = {
+
 };
 
 export const screenshot = async (driver, filename) => {

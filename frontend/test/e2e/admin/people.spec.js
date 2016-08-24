@@ -6,6 +6,7 @@ import { By, until } from "selenium-webdriver";
 
 import {
     waitForElement,
+    waitForElementText,
     waitForElementRemoved,
     findElement,
     waitForAndClickElement,
@@ -73,8 +74,8 @@ describe("admin/people", () => {
             expect(await saveButton.isEnabled()).toBe(true);
             await saveButton.click();
 
-            expect(await findElement(driver, ".ContentTable tr:first-child td:first-child span:last-child").getText()).toEqual("12345 123456");
-            expect(await findElement(driver, ".ContentTable tr:first-child td:nth-child(3)").getText()).toEqual("12345@1234.com");
+            expect(await waitForElementText(driver, ".ContentTable tr:first-child td:first-child span:last-child")).toEqual("12345 123456");
+            expect(await waitForElementText(driver, ".ContentTable tr:first-child td:nth-child(3)")).toEqual("12345@1234.com");
 
             // reset user password
             await waitForAndClickElement(driver, ".ContentTable tr:first-child td:last-child a");

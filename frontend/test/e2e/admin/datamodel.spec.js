@@ -6,6 +6,7 @@ import { By, until } from "selenium-webdriver";
 
 import {
     waitForElement,
+    waitForElementText,
     waitForElementRemoved,
     findElement,
     waitForAndClickElement,
@@ -78,7 +79,7 @@ describe("admin/datamodel", () => {
 
             await findElement(driver, "button.Button.Button--primary").click();
 
-            expect((await waitForElement(driver, "#SegmentsList tr:first-child td:first-child")).getText()).toEqual("Gmail users");
+            expect(await waitForElementText(driver, "#SegmentsList tr:first-child td:first-child")).toEqual("Gmail users");
 
             // add a metric
             await waitForAndClickElement(driver, "#MetricsList a.text-brand");
@@ -91,7 +92,7 @@ describe("admin/datamodel", () => {
 
             await findElement(driver, "button.Button.Button--primary").click();
 
-            expect((await waitForElement(driver, "#MetricsList tr:first-child td:first-child")).getText()).toEqual("User count");
+            expect(await waitForElementText(driver, "#MetricsList tr:first-child td:first-child")).toEqual("User count");
         });
     });
 
