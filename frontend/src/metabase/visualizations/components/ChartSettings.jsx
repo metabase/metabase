@@ -76,7 +76,6 @@ class ChartSettings extends Component {
     }
 
     getChartTypeName(){
-      console.log(this.props.series[0].card)
       if (this.props.series[0].card.display === "table") {
         return "table";
       } else if (this.props.series[0].card.display === "scalar"){
@@ -100,12 +99,12 @@ class ChartSettings extends Component {
         const tabNames = Object.keys(tabs);
         const currentTab = this.state.currentTab || tabNames[0];
         const widgets = tabs[currentTab];
-
+        const chartTypeName = this.getChartTypeName();
         const isDirty = !_.isEqual(this.props.series[0].card.visualization_settings, this.state.settings);
 
         return (
           <div className="flex flex-column spread p4">
-              <h2 className="my2">Customize this {this.getChartTypeName()}</h2>
+              <h2 className="my2">Customize this {chartTypeName}</h2>
               { tabNames.length > 1 &&
                   <ChartSettingsTabs tabs={tabNames} selectTab={this.selectTab} activeTab={currentTab}/>
               }
