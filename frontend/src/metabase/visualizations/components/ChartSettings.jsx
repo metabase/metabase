@@ -7,8 +7,6 @@ import Visualization from "metabase/visualizations/components/Visualization.jsx"
 import { getSettingsWidgets } from "metabase/lib/visualization_settings";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
-
-
 const ChartSettingsTab = ({name, active, onClick}) =>
   <a
     className={cx('block text-brand py1 text-centered', { 'bg-brand text-white' : active})}
