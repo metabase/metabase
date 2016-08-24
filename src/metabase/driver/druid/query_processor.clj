@@ -15,17 +15,21 @@
                                                RelativeDateTimeValue
                                                Value)))
 
-;;             +-----> ::select
-;; ::query ----|                     +----> ::timeseries
-;;             +----> ::ag-query ----|                             +----> ::topN
-;;                                   +----> ::grouped-ag-query ----|
-;;                                                                 +----> ::groupBy
-(derive ::select           ::query)
-(derive ::ag-query         ::query)
-(derive ::timeseries       ::ag-query)
-(derive ::grouped-ag-query ::ag-query)
-(derive ::topN             ::grouped-ag-query)
-(derive ::groupBy          ::grouped-ag-query)
+
+;;             +-----> ::select      +----> :groupBy
+;; ::query ----|                     |
+;;             +----> ::ag-query ----+----> ::topN
+;;                                   |                       +----> total
+;;                                   +----> ::timeseries ----|
+;;                                                           +----> grouped-timeseries
+
+(derive ::select             ::query)
+(derive ::ag-query           ::query)
+(derive ::topN               ::ag-query)
+(derive ::groupBy            ::ag-query)
+(derive ::timeseries         ::ag-query)
+(derive ::total              ::timeseries)
+(derive ::grouped-timeseries ::timeseries)
 
 (def ^:private ^:dynamic *query*
   "The INNER part of the query currently being processed.
@@ -66,12 +70,15 @@
   (let [defaults {:intervals   ["1900-01-01/2100-01-01"]
                   :granularity :all
                   :context     {:timeout 60000}}]
-    {::select     (merge defaults {:queryType  :select
-                                   :pagingSpec {:threshold qp/absolute-max-results}})
-     ::timeseries (merge defaults {:queryType :timeseries})
-     ::topN       (merge defaults {:queryType :topN
-                                   :threshold qp/absolute-max-results})
-     ::groupBy    (merge defaults {:queryType :groupBy})}))
+    {::select             (merge defaults {:queryType  :select
+                                           :pagingSpec {:threshold qp/absolute-max-results}})
+     ::total              (merge defaults {:queryType :timeseries})
+     ::grouped-timeseries (merge defaults {:queryType :timeseries})
+     ::topN               (merge defaults {:queryType :topN
+                                           :threshold qp/absolute-max-results})
+     ::groupBy            (merge defaults {:queryType :groupBy})}))
+
+
 
 
 ;;; ### handle-source-table
@@ -218,6 +225,21 @@
                                  "}")
     :year            (extract:timeFormat "yyyy")))
 
+(defn- unit->granularity
+  [unit]
+  (let [iso-period (case unit
+                     :minute  "PT1M"
+                     :hour    "PT1H"
+                     :day     "P1D"
+                     :week    "P1W"
+                     :month   "P1M"
+                     :quarter "P3M"
+                     :year    "P1Y")]
+  {:type      "period"
+   :period    iso-period
+   :timeZone  (or (get-in *query* [:settings :report-timezone])
+                 "UTC")}))
+
 (def ^:private ^:const units-that-need-post-processing-int-parsing
   "`extract:timeFormat` always returns a string; there are cases where we'd like to return an integer instead, such as `:day-of-month`.
    There's no simple way to do this in Druid -- Druid 0.9.0+ *does* let you combine extraction functions with `:cascade`, but we're still supporting 0.8.x.
@@ -248,7 +270,10 @@
 
 (defmulti ^:private handle-breakout query-type-dispatch-fn)
 
-(defmethod handle-breakout ::query [_ _ _]) ; only topN & groupBy handle breakouts
+(defmethod handle-breakout ::query [_ _ _]) ; only topN , grouped-timeseries & groupBy handle breakouts
+
+(defmethod handle-breakout ::grouped-timeseries [_ {[breakout-field] :breakout} druid-query]
+  (assoc druid-query :granularity (unit->granularity (:unit breakout-field))))
 
 (defmethod handle-breakout ::topN [_ {[breakout-field] :breakout} druid-query]
   (assoc druid-query :dimension (->dimension-rvalue breakout-field)))
@@ -416,6 +441,14 @@
                                                      {:dimension (->rvalue field)
                                                       :direction direction}))))
 
+(defmethod handle-order-by ::grouped-timeseries [_ {{ag-type :aggregation-type} :aggregation, [breakout-field] :breakout, [{field :field, direction :direction}] :order-by} druid-query]
+  (let [field             (->rvalue field)
+        breakout-field    (->rvalue breakout-field)
+        sort-by-breakout? (= field breakout-field)]
+    (if (and sort-by-breakout? (= direction :descending))
+      (assoc druid-query :descending true)
+      druid-query)))
+
 
 ;;; ### handle-fields
 
@@ -450,7 +483,7 @@
 
 (defmethod handle-limit ::timeseries [_ {limit :limit} _]
   (when limit
-    (log/warn (u/format-color 'red "WARNING: It doesn't make sense to limit an aggregate query without any breakouts, since it will always return one row. Ignoring the LIMIT clause."))))
+    (log/warn (u/format-color 'red "WARNING: Druid doenst allow limitSpec in timeseries queries. Ignoring the LIMIT clause."))))
 
 (defmethod handle-limit ::topN [_ {limit :limit} druid-query]
   (when limit
@@ -476,17 +509,24 @@
 
 (defn- druid-query-type
   "What type of Druid query type should we perform?"
-  [{breakout-fields :breakout, {ag-type :aggregation-type} :aggregation}]
-  (let [breakouts (condp = (count breakout-fields)
-                    0 :none
-                    1 :one
-                      :many)
-        agg?      (boolean (and ag-type (not= ag-type :rows)))]
-    (match [breakouts agg?]
-      [:none false] ::select
-      [:none  true] ::timeseries
-      [:one      _] ::topN
-      [:many     _] ::groupBy)))
+  [{breakout-fields :breakout, {ag-type :aggregation-type} :aggregation, limit :limit}]
+  (let [breakouts   (condp = (count breakout-fields)
+                      0 :none
+                      1 :one
+                        :many)
+        agg?        (boolean (and ag-type (not= ag-type :rows)))
+        period-set  #{:minute :hour :day :week :month :quarter :year}
+        ts?         (and
+                      (instance? DateTimeField (first breakout-fields))        ;; Checks whether the query is a timeseries
+                      (contains? period-set (:unit (first breakout-fields)))   ;; (excludes x-of-y type breakouts)
+                      (nil? limit))]                                           ;; (excludes queries with LIMIT)
+
+    (match [breakouts agg? ts?]
+      [:none  false    _] ::select
+      [:none  true     _] ::total
+      [:one   _     true] ::grouped-timeseries
+      [:one   _    false] ::topN
+      [:many  _        _] ::groupBy)))
 
 
 (defn- build-druid-query [query]
@@ -513,9 +553,13 @@
 (defmulti ^:private post-process query-type-dispatch-fn)
 
 (defmethod post-process ::select     [_ results] (->> results first :result :events (map :event)))
-(defmethod post-process ::timeseries [_ results] (map :result results))
+(defmethod post-process ::total      [_ results] (map :result results))
 (defmethod post-process ::topN       [_ results] (-> results first :result))
 (defmethod post-process ::groupBy    [_ results] (map :event results))
+
+(defmethod post-process ::grouped-timeseries [_ results]
+  (for [event results]
+    (conj {:timestamp (:timestamp event)} (:result event))))
 
 (defn post-process-native
   "Post-process the results of a *native* Druid query.
