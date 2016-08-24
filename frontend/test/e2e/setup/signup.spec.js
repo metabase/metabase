@@ -22,7 +22,7 @@ describe("setup/signup", () => {
         //TODO: think about aggregating every test suite into a bigger container suite
         // and only do initialize/cleanup once? plus we can also save on browser restart times.
         // an alternative optimization would be to try to run multiple test suites in parallel
-        ({ server, sauceConnect, driver } = await setup({ dbKey: "frontend/test/e2e/support/fixtures/init.db" }));
+        ({ server, sauceConnect, driver } = await setup({dbKey: ''}));
     });
 
     it ("should start", async () => {
@@ -133,27 +133,27 @@ describe("setup/signup", () => {
             await waitForElement(driver, "img[src='/app/img/qb_tutorial/rocket.png']");
             await waitForAndClickElement(driver, ".Button.RunButton");
 
-            // // await waitForAndClickElement(driver, ".TutorialModal .Button.Button--primary", 60000);
-            // // await waitForAndClickElement(driver, ".QueryError2-details a", 60000);
-            //
+            // await waitForAndClickElement(driver, ".TutorialModal .Button.Button--primary", 60000);
+            // await waitForAndClickElement(driver, ".QueryError2-details a", 60000);
+
             // await driver.sleep(20000);
             // await screenshot(driver, "screenshots/setup-tutorial-qb-loaded.png");
             // const logs = await driver.manage().logs().get("browser");
             // console.log(logs);
-            //
-            //FIXME: this part errors out on CI for some reason
-            // await waitForElement(driver, "img[src='/app/img/qb_tutorial/chart.png']", 60000);
-            // await waitForAndClickElement(driver, "#VisualizationTrigger");
-            // //FIXME: click doens't consistently land without timeout here
-            // await driver.sleep(1000);
-            // await waitForAndClickElement(driver, "#VisualizationPopover li:nth-child(3)");
-            //
-            // // end tutorial
-            // await waitForElement(driver, "img[src='/app/img/qb_tutorial/boat.png']");
-            // await waitForAndClickElement(driver, ".Modal .Button.Button--primary");
-            // await waitForAndClickElement(driver, ".PopoverBody .Button.Button--primary");
-            //
-            // await screenshot(driver, "screenshots/setup-tutorial-qb-end.png");
+
+            // FIXME: this part errors out on CI for some reason
+            await waitForElement(driver, "img[src='/app/img/qb_tutorial/chart.png']", 20000);
+            await waitForAndClickElement(driver, "#VisualizationTrigger");
+            //FIXME: click doens't consistently land without timeout here
+            await driver.sleep(1000);
+            await waitForAndClickElement(driver, "#VisualizationPopover li:nth-child(3)");
+
+            // end tutorial
+            await waitForElement(driver, "img[src='/app/img/qb_tutorial/boat.png']");
+            await waitForAndClickElement(driver, ".Modal .Button.Button--primary");
+            await waitForAndClickElement(driver, ".PopoverBody .Button.Button--primary");
+
+            await screenshot(driver, "screenshots/setup-tutorial-qb-end.png");
         });
     });
 
