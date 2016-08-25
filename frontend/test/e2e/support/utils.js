@@ -19,11 +19,13 @@ export const waitForElement = async (driver, selector, timeout = DEFAULT_TIMEOUT
 
 export const waitForElementRemoved = async (driver, selector, timeout = DEFAULT_TIMEOUT) => {
     console.log(`\nwaiting for element to be removed: ${selector}`);
-    if (!(await driver.isElementPresent(By.css(selector)))) {
+    try {
+        const element = findElement(driver, selector);
+        await driver.wait(until.stalenessOf(element), timeout);
+    }
+    catch (error) {
         return;
     }
-    const element = findElement(driver, selector);
-    await driver.wait(until.stalenessOf(element), timeout);
 };
 
 export const waitForElementText = async (driver, selector, text, timeout = DEFAULT_TIMEOUT) => {
@@ -58,7 +60,7 @@ export const waitForElementAndClick = async (driver, selector, timeout = DEFAULT
 
     // queues click behind existing calls, might help with brittleness?
     await delay();
-    return await element.click();
+    return await element3.click();
 };
 
 export const waitForElementAndSendKeys = async (driver, selector, keys, timeout = DEFAULT_TIMEOUT) => {

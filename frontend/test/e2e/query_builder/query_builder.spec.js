@@ -68,6 +68,7 @@ describe("query_builder", () => {
 
             // save dashboard
             await waitForElementAndClick(driver, ".EditHeader .Button.Button--primary");
+            await waitForElementRemoved(driver, ".EditHeader");
         });
     });
 
@@ -100,10 +101,24 @@ describe("query_builder", () => {
             await waitForElementAndClick(driver, ".Button.RunButton");
 
             await waitForElementAndClick(driver, "#VisualizationTrigger");
+            // this step occassionally fails without the timeout
             await driver.sleep(500);
             await waitForElementAndClick(driver, "#VisualizationPopover li:nth-child(3)");
 
             await screenshot(driver, "screenshots/qb-chart-line.png");
+
+            // save question
+            await waitForElementAndClick(driver, ".Header-buttonSection:first-child");
+            await waitForElementAndSendKeys(driver, "#SaveQuestionModal input[name='name']", 'Line Chart');
+            await waitForElementAndClick(driver, "#SaveQuestionModal .Button.Button--primary");
+
+            // add to new dashboard
+            await waitForElementAndClick(driver, "#QuestionSavedModal .Button.Button--primary");
+            await waitForElementAndClick(driver, "#AddToDashSelectDashModal .SortableItemList-list li:first-child>a");
+
+            // save dashboard
+            await waitForElementAndClick(driver, ".EditHeader .Button.Button--primary");
+            await waitForElementRemoved(driver, ".EditHeader");
         });
     });
 

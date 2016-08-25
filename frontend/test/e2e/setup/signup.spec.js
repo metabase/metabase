@@ -139,6 +139,7 @@ describe("setup/signup", () => {
 
             // switch visualization
             await waitForElementAndClick(driver, "#VisualizationTrigger");
+            // this step occassionally fails without the timeout
             await driver.sleep(500);
             await waitForElementAndClick(driver, "#VisualizationPopover li:nth-child(3)");
 
