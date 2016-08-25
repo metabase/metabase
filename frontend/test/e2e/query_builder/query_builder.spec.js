@@ -28,6 +28,7 @@ describe("query_builder", () => {
         expect(await isReady(server.host)).toEqual(true);
     });
 
+    // TODO: lots of opportunities for refactoring out steps here
     describe("tables", () => {
         it("should allow users to create pivot tables", async () => {
             await driver.get(`${server.host}/`);
@@ -105,14 +106,53 @@ describe("query_builder", () => {
             await driver.sleep(500);
             await waitForElementAndClick(driver, "#VisualizationPopover li:nth-child(3)");
 
-            await screenshot(driver, "screenshots/qb-chart-line.png");
+            await screenshot(driver, "screenshots/qb-line-chart.png");
 
             // save question
             await waitForElementAndClick(driver, ".Header-buttonSection:first-child");
             await waitForElementAndSendKeys(driver, "#SaveQuestionModal input[name='name']", 'Line Chart');
             await waitForElementAndClick(driver, "#SaveQuestionModal .Button.Button--primary");
 
-            // add to new dashboard
+            // add to existing dashboard
+            await waitForElementAndClick(driver, "#QuestionSavedModal .Button.Button--primary");
+            await waitForElementAndClick(driver, "#AddToDashSelectDashModal .SortableItemList-list li:first-child>a");
+
+            // save dashboard
+            await waitForElementAndClick(driver, ".EditHeader .Button.Button--primary");
+            await waitForElementRemoved(driver, ".EditHeader");
+        });
+
+        it("should allow users to create bar charts", async () => {
+            // load line chart
+            await driver.get(`${server.host}/card/2`);
+
+            // dismiss saved questions modal
+            await waitForElementAndClick(driver, ".Modal .Button.Button--primary");
+
+            // change breakouts
+            await waitForElementAndClick(driver, ".View-section-breakout.SelectionModule");
+
+            await waitForElementAndClick(driver, "#BreakoutPopover .List-item:first-child .Field-extra>a");
+            await waitForElementAndClick(driver, "#TimeGroupingPopover .List-item:nth-child(4)>a");
+
+            // change visualization
+            await waitForElementAndClick(driver, "#VisualizationTrigger");
+            // this step occassionally fails without the timeout
+            await driver.sleep(500);
+            await waitForElementAndClick(driver, "#VisualizationPopover li:nth-child(4)");
+
+            // run query
+            await waitForElementAndClick(driver, ".Button.RunButton");
+            await waitForElementRemoved(driver, ".Loading", 20000);
+
+            await screenshot(driver, "screenshots/qb-bar-chart.png");
+
+            // save question
+            await waitForElementAndClick(driver, ".Header-buttonSection:first-child");
+            await waitForElementAndSendKeys(driver, "#SaveQuestionModal input[name='name']", 'Bar Chart');
+            await waitForElementAndClick(driver, "#SaveQuestionModal .Button.Button--primary");
+
+            // add to existing dashboard
             await waitForElementAndClick(driver, "#QuestionSavedModal .Button.Button--primary");
             await waitForElementAndClick(driver, "#AddToDashSelectDashModal .SortableItemList-list li:first-child>a");
 
