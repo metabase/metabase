@@ -29,7 +29,7 @@
 ;; ---------------------------+------------------------------------------------
 ;; PUBLIC.VENUES.ID           | CAM_195.test_data_venues.id
 ;; PUBLIC.CHECKINS.USER_ID    | CAM_195.test_data_checkins.user_id
-;; PUBLIC.INCIDENTS.TIMESTAMP | CAM_195.sad_toucan_incidents.incident_timestamp
+;; PUBLIC.INCIDENTS.TIMESTAMP | CAM_195.sad_toucan_incidents.timestamp
 (defonce ^:private ^:const session-schema-number (rand-int 200))
 (defonce ^:private ^:const session-schema        (str "CAM_" session-schema-number))
 (defonce ^:private ^:const session-password      (apply str (repeatedly 16 #(rand-nth (map char (range (int \a) (inc (int \z))))))))
