@@ -111,15 +111,16 @@
                                                       :milliseconds (hx// field-or-value (hsql/raw 1000))))))
 
 (defn- apply-offset-and-limit
-  "Append SQL like `OFFSET 20 FETCH FIRST 10 ROWS ONLY` to the query."
+  "Append SQL like `OFFSET 20 ROWS FETCH NEXT 10 ROWS ONLY` to the end of the query."
   [honeysql-query offset limit]
   (assoc honeysql-query
-    :offset (hsql/raw (format "%d ROWS FETCH NEXT %d ROWS ONLY" offset limit) )))
+    :offset (hsql/raw (format "%d ROWS FETCH NEXT %d ROWS ONLY" offset limit))))
 
 (defn- apply-limit [honeysql-query {value :limit}]
-  ;; Shameless hack! FETCH FIRST ... ROWS ONLY needs to go on the end of the query. Korma doesn't have any built-in
-  ;; way to do this but we can use `k/offset` and set it to 0.
-  ;; OFFSET 0 FETCH FIRST <value> ROWS ONLY
+  ;; HoneySQL doesn't support ANSI SQL "OFFSET <n> ROWS FETCH NEXT <n> ROWS ONLY"
+  ;; The semi-official workaround as suggested by yours truly is just to pass a raw string as the `:offset`
+  ;; which HoneySQL put in the appropriate place
+  ;; see my comment here: https://github.com/jkk/honeysql/issues/58#issuecomment-220450400
   (apply-offset-and-limit honeysql-query 0 value))
 
 (defn- apply-page [honeysql-query {{:keys [items page]} :page}]
