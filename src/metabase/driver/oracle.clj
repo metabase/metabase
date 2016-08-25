@@ -118,8 +118,8 @@
 
 (defn- apply-limit [honeysql-query {value :limit}]
   ;; HoneySQL doesn't support ANSI SQL "OFFSET <n> ROWS FETCH NEXT <n> ROWS ONLY"
-  ;; The semi-official workaround as suggested by yours truly is just to pass a raw string as the `:offset`
-  ;; which HoneySQL put in the appropriate place
+  ;; The semi-official workaround as suggested by yours truly is just to pass a
+  ;; raw string as the `:offset` which HoneySQL puts in the appropriate place
   ;; see my comment here: https://github.com/jkk/honeysql/issues/58#issuecomment-220450400
   (apply-offset-and-limit honeysql-query 0 value))
 

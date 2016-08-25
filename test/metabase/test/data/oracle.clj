@@ -40,7 +40,7 @@
    :BooleanField    "NUMBER(1)"
    :CharField       "VARCHAR2(254)"
    :DateField       "DATE"
-   :DateTimeField   "TIMESTAMP" #_"TIMESTAMP WITH TIME ZONE"
+   :DateTimeField   "TIMESTAMP"
    :DecimalField    "DECIMAL"
    :FloatField      "BINARY_FLOAT"
    :IntegerField    "INTEGER"
