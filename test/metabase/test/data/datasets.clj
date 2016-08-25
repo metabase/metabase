@@ -6,8 +6,12 @@
             [environ.core :refer [env]]
             [expectations :refer [expect]]
             (metabase [config :as config]
-                      [driver :as driver])
+                      [driver :as driver]
+                      [plugins :as plugins])
             [metabase.test.data.interface :as i]))
+
+;; When running tests, we need to make sure plugins (i.e., the Oracle JDBC driver) are loaded because otherwise the Oracle driver won't show up in the list of valid drivers below
+(plugins/load-plugins!)
 
 (driver/find-and-load-drivers!)
 

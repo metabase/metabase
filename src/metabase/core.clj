@@ -18,6 +18,7 @@
                       [logger :as logger]
                       [metabot :as metabot]
                       [middleware :as mb-middleware]
+                      [plugins :as plugins]
                       [routes :as routes]
                       [sample-data :as sample-data]
                       [setup :as setup]
@@ -96,6 +97,10 @@
 
   ;; First of all, lets register a shutdown hook that will tidy things up for us on app exit
   (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable destroy!))
+  (reset! metabase-initialization-progress 0.2)
+
+  ;; load any plugins as needed
+  (plugins/load-plugins!)
   (reset! metabase-initialization-progress 0.3)
 
   ;; Load up all of our Database drivers, which are used for app db work
