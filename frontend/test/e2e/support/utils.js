@@ -19,13 +19,12 @@ export const waitForElement = async (driver, selector, timeout = DEFAULT_TIMEOUT
 
 export const waitForElementRemoved = async (driver, selector, timeout = DEFAULT_TIMEOUT) => {
     console.log(`\nwaiting for element to be removed: ${selector}`);
-    try {
-        const element = findElement(driver, selector);
-        await driver.wait(until.stalenessOf(element), timeout);
-    }
-    catch (error) {
+    // workaround for not being able to catch NoSuchElementError from findElement
+    const element = driver.findElements(By.css(selector))[0];
+    if (!element) {
         return;
     }
+    await driver.wait(until.stalenessOf(element), timeout);
 };
 
 export const waitForElementText = async (driver, selector, text, timeout = DEFAULT_TIMEOUT) => {
