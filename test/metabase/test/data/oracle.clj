@@ -20,7 +20,16 @@
       (throw (Exception. (format "In order to test Oracle, you must specify the env var MB_ORACLE_%s."
                                  (s/upper-case (name env-var)))))))
 
-;; Similar to SQL Server, Oracle on AWS doesn't let you create different databases; like Redshift, we'll create a series of schemas for each DB, with a unique prefix for this "session"
+;; Similar to SQL Server, Oracle on AWS doesn't let you create different databases;
+;; We'll create a unique schema (the same as a "User" in Oracle-land) for each test run and use that to keep
+;; tests from clobbering over one another; we'll also qualify the names of tables to include their DB name
+;;
+;; e.g.
+;; H2 Tests                   | Oracle Tests
+;; ---------------------------+------------------------------------------------
+;; PUBLIC.VENUES.ID           | CAM_195.test_data_venues.id
+;; PUBLIC.CHECKINS.USER_ID    | CAM_195.test_data_checkins.user_id
+;; PUBLIC.INCIDENTS.TIMESTAMP | CAM_195.sad_toucan_incidents.incident_timestamp
 (defonce ^:private ^:const session-schema-number (rand-int 200))
 (defonce ^:private ^:const session-schema        (str "CAM_" session-schema-number))
 (defonce ^:private ^:const session-password      (apply str (repeatedly 16 #(rand-nth (map char (range (int \a) (inc (int \z))))))))
