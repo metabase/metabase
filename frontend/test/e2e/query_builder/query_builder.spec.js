@@ -114,6 +114,7 @@ describe("query_builder", () => {
             await waitForElementAndClick(driver, "#SaveQuestionModal .Button.Button--primary");
 
             // add to existing dashboard
+            await driver.sleep(500);
             await waitForElementAndClick(driver, "#QuestionSavedModal .Button.Button--primary");
             await waitForElementAndClick(driver, "#AddToDashSelectDashModal .SortableItemList-list li:first-child>a");
 
@@ -153,6 +154,7 @@ describe("query_builder", () => {
             await waitForElementAndClick(driver, "#SaveQuestionModal .Button.Button--primary");
 
             // add to existing dashboard
+            await driver.sleep(500);
             await waitForElementAndClick(driver, "#QuestionSavedModal .Button.Button--primary");
             await waitForElementAndClick(driver, "#AddToDashSelectDashModal .SortableItemList-list li:first-child>a");
 
