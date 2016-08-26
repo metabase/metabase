@@ -1,9 +1,9 @@
 
 > **This guide will teach you:**
-> How to compile your own copy of Metabase
-> How to set up a development environment
-> How to run the Metabase Server
-> How to contribute back to the Metabase project
+> * How to compile your own copy of Metabase
+> * How to set up a development environment
+> * How to run the Metabase Server
+> * How to contribute back to the Metabase project
 
 
 # Contributing
