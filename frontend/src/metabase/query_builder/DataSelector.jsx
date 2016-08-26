@@ -223,6 +223,7 @@ export default class DataSelector extends Component {
                     itemIsSelected={(item) => item.table ? item.table.id === this.getTableId() : false}
                     itemIsClickable={(item) => item.table}
                     renderItemIcon={(item) => item.table ? <Icon name="table2" size={18} /> : null}
+                    hideSingleSectionTitle={true}
                 />
             );
         }

@@ -47,7 +47,7 @@ export default class MetadataSchemaList extends Component {
                     <li className="AdminList-section">{filteredSchemas.length} {inflect("schema", filteredSchemas.length)}</li>
                     {filteredSchemas.map(schema =>
                         <li key={schema.name}>
-                            <a href="#" className={cx("AdminList-item flex align-center no-decoration", { selected: selectedSchema && selectedSchema.name === schema.name })} onClick={() => this.props.onChangeSchema(schema)}>
+                            <a className={cx("AdminList-item flex align-center no-decoration", { selected: selectedSchema && selectedSchema.name === schema.name })} onClick={() => this.props.onChangeSchema(schema)}>
                                 {schema.name}
                             </a>
                         </li>

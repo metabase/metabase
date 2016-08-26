@@ -300,11 +300,14 @@
    You may optionally pass any of the OPTIONS below:
 
    *  `:default` - The default value of the setting. (default: `nil`)
-   *  `:type` - Either `:string` (default) or `:boolean`. Non-string settings have special default getters and setters that automatically coerce values to the correct types.
+   *  `:type` - `:string` (default), `:boolean`, or `:json`. Non-`:string` settings have special default getters and setters that automatically coerce values to the correct types.
    *  `:internal?` - This `Setting` is for internal use and shouldn't be exposed in the UI (i.e., not
                      returned by the corresponding endpoints). Default: `false`
    *  `:getter` - A custom getter fn, which takes no arguments. Overrides the default implementation.
-   *  `:setter` - A custom setter fn, which takes a single argument. Overrides the default implementation."
+                  (This can in turn call functions in this namespace like `get-string` or `get-boolean` to invoke the default getter behavior.)
+   *  `:setter` - A custom setter fn, which takes a single argument. Overrides the default implementation.
+                  (This can in turn call functions in this namespace like `set-string!` or `set-boolean!` to invoke the default setter behavior.
+                   Keep in mind that the custom setter may be passed `nil`, which should clear the values of the Setting.)"
   {:style/indent 1}
   [setting-symb description & {:as options}]
   {:pre [(symbol? setting-symb) (string? description)]}

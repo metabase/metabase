@@ -237,7 +237,8 @@
                                                                 :field-name target-field-name})
                             :source-field (map->JoinTableField {:field-id   source-field-id
                                                                 :field-name source-field-name})
-                            :join-alias  (str target-table-name "__via__" source-field-name)})))))
+                            ;; some DBs like Oracle limit the length of identifiers to 30 characters so only take the first 30 here
+                            :join-alias  (apply str (take 30 (str target-table-name "__via__" source-field-name)))})))))
 
 (defn- resolve-tables
   "Resolve the `Tables` in an EXPANDED-QUERY-DICT."

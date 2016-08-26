@@ -13,8 +13,6 @@ import {
     getFriendlyName
 } from "metabase/visualizations/lib/utils";
 
-import Urls from "metabase/lib/urls";
-
 import { MinRowsError, ChartSettingsError } from "metabase/visualizations/lib/errors";
 
 import crossfilter from "crossfilter";
@@ -213,29 +211,33 @@ export default class LineAreaBarChart extends Component {
     }
 
     render() {
-        const { hovered, isDashboard, onAddSeries, onRemoveSeries, actionButtons } = this.props;
+        const { hovered, isDashboard, actionButtons } = this.props;
         const { series } = this.state;
 
-        const card = this.props.series[0].card;
+        const settings = this.getSettings();
 
-        let settings = this.getSettings();
-
-        let isMultiseries = this.state.series.length > 1;
-        let isDashboardMultiseries = this.props.series.length > 1;
-        let isCardMultiseries = isMultiseries && !isDashboardMultiseries;
+        const isMultiseries = this.state.series.length > 1;
+        const isDashboardMultiseries = this.props.series.length > 1;
+        const isCardMultiseries = isMultiseries && !isDashboardMultiseries;
 
         return (
             <div className={cx("flex flex-column p1", this.getHoverClasses(), this.props.className)}>
-                { (isDashboard && !isDashboardMultiseries) &&
-                    <a href={card.id && Urls.card(card.id)} className="Card-title pt1 px1 flex-no-shrink no-decoration h3 text-bold fullscreen-night-text fullscreen-normal-text" style={{fontSize: '1em'}}>{card.name}</a>
+                {/* This is always used to show the original card titles/links + action buttons */}
+                { isDashboard &&
+                    <LegendHeader
+                        className="flex-no-shrink"
+                        series={this.props.series}
+                        actionButtons={actionButtons}
+                        hovered={hovered}
+                        onHoverChange={this.props.onHoverChange}
+                        settings={settings}
+                    />
                 }
-                { isMultiseries &&
+                {/* This only shows transformed card multiseries titles */}
+                { isCardMultiseries &&
                     <LegendHeader
                         className="flex-no-shrink"
                         series={series}
-                        onAddSeries={isCardMultiseries ? undefined : onAddSeries}
-                        onRemoveSeries={onRemoveSeries}
-                        actionButtons={actionButtons}
                         hovered={hovered}
                         onHoverChange={this.props.onHoverChange}
                         settings={settings}

@@ -122,6 +122,7 @@
   {:pre [(integer? db-id) (u/string-or-keyword? table-name)]}
   (let [table-name (format-name table-name)]
     (or (db/select-one-id Table, :db_id db-id, :name table-name)
+        (db/select-one-id Table, :db_id db-id, :name (i/db-qualified-table-name (db/select-one-field :name Database :id db-id) table-name))
         (throw (Exception. (format "No Table '%s' found for Database %d.\nFound: %s" table-name db-id
                                    (u/pprint-to-str (db/select-id->field :name Table, :db_id db-id, :active true))))))))
 
