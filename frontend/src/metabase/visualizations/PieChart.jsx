@@ -24,6 +24,8 @@ const PAD_ANGLE = (Math.PI / 180) * 1; // 1 degree in radians
 const SLICE_THRESHOLD = 1 / 360; // 1 degree in percentage
 const OTHER_SLICE_MIN_PERCENTAGE = 0.003;
 
+const PERCENT_REGEX = /percent/i;
+
 export default class PieChart extends Component {
     static displayName = "Pie";
     static identifier = "pie";
@@ -61,6 +63,8 @@ export default class PieChart extends Component {
         const formatDimension = (dimension, jsx = true) => formatValue(dimension, { column: cols[dimensionIndex], jsx, majorWidth: 0 })
         const formatMetric    =    (metric, jsx = true) => formatValue(metric, { column: cols[metricIndex], jsx, majorWidth: 0 })
         const formatPercent   =               (percent) => (100 * percent).toFixed(2) + "%"
+
+        const showPercentInTooltip = !PERCENT_REGEX.test(cols[metricIndex].name) && !PERCENT_REGEX.test(cols[metricIndex].display_name);
 
         let total = rows.reduce((sum, row) => sum + row[metricIndex], 0);
 
@@ -120,8 +124,7 @@ export default class PieChart extends Component {
             : [
                 { key: getFriendlyName(cols[dimensionIndex]), value: formatDimension(slices[index].key) },
                 { key: getFriendlyName(cols[metricIndex]), value: formatMetric(slices[index].value) },
-                { key: "Percentage", value: formatPercent(slices[index].percentage) }
-            ]
+            ].concat(showPercentInTooltip ? [{ key: "Percentage", value: formatPercent(slices[index].percentage) }] : [])
         });
 
         let value, title;
