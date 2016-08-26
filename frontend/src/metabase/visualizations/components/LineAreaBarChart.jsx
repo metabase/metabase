@@ -137,7 +137,7 @@ export default class LineAreaBarChart extends Component {
                             rows: rows.map(row =>
                                 rowIndexes.map(i => row[i])
                             ),
-                            cols: [cols[dimensionIndex], s.data.cols[metricIndex]]
+                            cols: rowIndexes.map(i => s.data.cols[i])
                         }
                     };
                 });

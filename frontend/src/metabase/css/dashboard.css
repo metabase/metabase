@@ -333,7 +333,7 @@
 }
 
 .dc-chart circle.bubble {
-    fill-opacity: 0.75;
+    fill-opacity: 0.80;
     stroke-width: 1;
     stroke: white;
 }
@@ -405,7 +405,13 @@
 .mute-2 .sub._2 .dot,
 .mute-3 .sub._3 .dot,
 .mute-4 .sub._4 .dot,
-.mute-5 .sub._5 .dot { opacity: 0.25; }
+.mute-5 .sub._5 .dot,
+.mute-0 .sub._0 .bubble,
+.mute-1 .sub._1 .bubble,
+.mute-2 .sub._2 .bubble,
+.mute-3 .sub._3 .bubble,
+.mute-4 .sub._4 .bubble,
+.mute-5 .sub._5 .bubble { opacity: 0.25; }
 
 
 .mute-yl .dc-chart .axis.y,

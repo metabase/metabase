@@ -250,15 +250,28 @@ function applyChartYAxis(chart, settings, series, yExtent, axisName) {
     }
 }
 
-function applyChartTooltips(chart, onHoverChange) {
+function applyChartTooltips(chart, series, onHoverChange) {
+    let [{ data: { cols } }] = series;
     chart.on("renderlet.tooltips", function(chart) {
-        chart.selectAll(".bar, .dot, .area, .line, g.pie-slice, g.features")
+        chart.selectAll(".bar, .dot, .area, .line, .bubble, g.pie-slice, g.features")
             .on("mousemove", function(d, i) {
+                let data;
+                if (Array.isArray(d.key)) { // scatter
+                    data = d.key.map((value, index) => (
+                        { key: getFriendlyName(cols[index]), value: value, col: cols[index] }
+                    ));
+                } else if (d.data) { // line, area, bar
+                    data = [
+                        { key: getFriendlyName(cols[0]), value: d.data.key, col: cols[0] },
+                        { key: getFriendlyName(cols[1]), value: d.data.value, col: cols[1] }
+                    ];
+                }
+
                 onHoverChange && onHoverChange({
                     index: determineSeriesIndexFromElement(this),
                     element: this,
                     d: d,
-                    data: d.data
+                    data: data && _.uniq(data, (d) => d.col)
                 });
             })
             .on("mouseleave", function() {
@@ -709,6 +722,9 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
     let charts = groups.map((group, index) => {
         let chart = dc[getDcjsChartType(chartType)](parent);
 
+        // disable clicks
+        chart.onClick = () => {};
+
         chart
             .dimension(dimension)
             .group(group[0])
@@ -723,9 +739,13 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
             if (chart.radiusValueAccessor) {
                 const isBubble = datas[index][0].length > 2;
                 if (isBubble) {
+                    const BUBBLE_SCALE_FACTOR_MAX = 64;
                     chart
                         .radiusValueAccessor((d) => d.value)
-                        .r().domain(yExtent)
+                        .r(d3.scale.sqrt()
+                            .domain([0, yExtent[1] * BUBBLE_SCALE_FACTOR_MAX])
+                            .range([0, 1])
+                        );
                 } else {
                     chart.radiusValueAccessor((d) => 1)
                     chart.MIN_RADIUS = 3
@@ -833,7 +853,7 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
         applyChartYAxis(chart, settings, right.series, right.extent, "right");
     }
 
-    applyChartTooltips(chart, (hovered) => {
+    applyChartTooltips(chart, series, (hovered) => {
         if (onHoverChange) {
             // disable tooltips on lines
             if (hovered && hovered.element && hovered.element.classList.contains("line")) {
