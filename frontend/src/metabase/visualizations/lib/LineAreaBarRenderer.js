@@ -311,7 +311,7 @@ function applyChartLineBarSettings(chart, settings, chartType) {
     }
 }
 
-function lineAndBarOnRender(chart, settings) {
+function lineAndBarOnRender(chart, settings, onGoalHover, isSplitAxis) {
     // once chart has rendered and we can access the SVG, do customizations to axis labels / etc that you can't do through dc.js
 
     function removeClipPath() {
@@ -489,13 +489,30 @@ function lineAndBarOnRender(chart, settings) {
     function cleanupGoal() {
         // remove dots
         chart.selectAll(".goal .dot").remove();
-        // move to end so it's on top
+
+        // move to end of the parent node so it's on top
         chart.selectAll(".goal").each(function() { this.parentNode.appendChild(this); });
         chart.selectAll(".goal .line").attr({
             "stroke": "rgba(157,160,164, 0.7)",
             "stroke-dasharray": "5,5"
         });
-        // TODO: label
+
+        // add the label
+        let goalLine = chart.selectAll(".goal .line")[0][0];
+        let { x, y, width } = goalLine.getBBox();
+        const labelOnRight = !isSplitAxis;
+        chart.selectAll(".goal .stack._0")
+            .append("text")
+            .text("Goal")
+            .attr({
+                x: labelOnRight ? x + width : x,
+                y: y - 5,
+                "text-anchor": labelOnRight ? "end" : "start",
+                "font-weight": "bold",
+                fill: "rgb(157,160,164)",
+            })
+            .on("mouseenter", function() { onGoalHover(this); })
+            .on("mouseleave", function() { onGoalHover(null); })
     }
 
     // run these first so the rest of the margin computations take it into account
@@ -784,7 +801,8 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
         return chart;
     });
 
-    if (settings["graph.goal"]) {
+    let onGoalHover = () => {};
+    if (settings["graph.goal"] != null) {
         const goalData = [[xDomain[0], settings["graph.goal"]], [xDomain[1], settings["graph.goal"]]];
         const goalDimension = crossfilter(goalData).dimension(d => d[0]);
         const goalGroup = goalDimension.group().reduceSum(d => d[1]);
@@ -799,6 +817,13 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
                     .classed("goal", true);
             });
         charts.push(goalChart);
+
+        onGoalHover = (element) => {
+            onHoverChange(element && {
+                element: element,
+                data: [{ key: "Goal", value: settings["graph.goal"] }]
+            });
+        }
     }
 
     let chart = parent.compose(charts);
@@ -852,6 +877,7 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
     if (right && right.series.length > 0) {
         applyChartYAxis(chart, settings, right.series, right.extent, "right");
     }
+    const isSplitAxis = (right && right.series.length) && (left && left.series.length > 0);
 
     applyChartTooltips(chart, series, (hovered) => {
         if (onHoverChange) {
@@ -872,7 +898,7 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
     chart.render();
 
     // apply any on-rendering functions
-    lineAndBarOnRender(chart, settings);
+    lineAndBarOnRender(chart, settings, onGoalHover, isSplitAxis);
 
     onRender && onRender({ yAxisSplit });
 
