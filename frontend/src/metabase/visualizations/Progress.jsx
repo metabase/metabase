@@ -32,6 +32,16 @@ export default class Progress extends Component {
         const label = ReactDOM.findDOMNode(this.refs.label);
         const container = ReactDOM.findDOMNode(this.refs.container);
 
+        if (this.props.gridSize && this.props.gridSize.height < 4) {
+            pointer.parentNode.style.display = "none";
+            label.parentNode.style.display = "none";
+            // no need to do the rest of the repositioning
+            return;
+        } else {
+            pointer.parentNode.style.display = null;
+            label.parentNode.style.display = null;
+        }
+
         // reset the pointer transform for these computations
         pointer.style.transform = null;
 
@@ -85,7 +95,7 @@ export default class Progress extends Component {
 
         return (
             <div className="full-height flex layout-centered">
-                <div className="flex-full" style={{ padding: 10 }}>
+                <div className="flex-full full-height flex flex-column justify-center" style={{ padding: 10, paddingTop: 0 }}>
                     <div
                         ref="container"
                         className="relative text-bold text-grey-4"
@@ -98,7 +108,7 @@ export default class Progress extends Component {
                             {formatValue(value, { comma: true })}
                         </div>
                     </div>
-                    <div className="mb1 relative" style={{ height: 10 }}>
+                    <div className="relative" style={{ height: 10, marginBottom: 5 }}>
                         <div
                             ref="pointer"
                             style={{
@@ -116,7 +126,8 @@ export default class Progress extends Component {
                     <div className="relative" style={{
                         backgroundColor: restColor,
                         borderRadius: BORDER_RADIUS,
-                        height: 62,
+                        height: "25%",
+                        maxHeight: 65,
                         overflow: "hidden"
                     }}>
                         <div style={{
