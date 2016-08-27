@@ -9,6 +9,7 @@ import { formatValue } from "metabase/lib/formatting";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
+import TooltipTable from "metabase/components/TooltipTable.jsx"
 
 import { normal } from "metabase/lib/colors";
 
@@ -69,9 +70,25 @@ export default class Funnel extends Component {
         }
 
         var infos = calculateStepsInfos(cols, rows, settings, dimensionIndex, metricIndex);
-
         let initial = infos[0];
         infos.shift();
+
+        var tooltipInfos = infos.map((info, rowIndex) => {
+            return [
+                {
+                    key: 'Step',
+                    value: formatDimension(rows[rowIndex][dimensionIndex]),
+                },
+                {
+                    key: getFriendlyName(cols[dimensionIndex]),
+                    value: formatMetric(rows[rowIndex][metricIndex]),
+                },
+                {
+                    key: 'Retained',
+                    value: formatPercent(info.value / initial.value),
+                },
+            ];
+        })
 
         return (
             <div className={cx(styles.Funnel, funnelSmallSize ? styles.Small : null, 'flex', funnelSmallSize ? 'p2' : 'p3')}>
@@ -90,24 +107,11 @@ export default class Funnel extends Component {
                 {infos.map((info, infoIndex) =>
                     <div key={infoIndex} className={cx(styles.FunnelStep, 'flex flex-column')}>
                         <Ellipsified className={styles.Head}>{formatDimension(rows[infoIndex + 1][dimensionIndex])}</Ellipsified>
-                        <Tooltip tooltip={
-                            <table className="py1 px2">
-                                <tbody>
-                                    <tr>
-                                        <td className="text-light text-right">Step:</td>
-                                        <td className="pl1 text-bold text-left">{formatDimension(rows[infoIndex + 1][dimensionIndex])}</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="text-light text-right">{getFriendlyName(cols[dimensionIndex])}:</td>
-                                        <td className="pl1 text-bold text-left">{formatMetric(rows[infoIndex + 1][metricIndex])}</td>
-                                    </tr>
-                                    <tr>
-                                        <td className="text-light text-right">Retained:</td>
-                                        <td className="pl1 text-bold text-left">{formatPercent(info.value / initial.value)}</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                            } verticalAttachments={["bottom", "top"]} isEnabled={funnelSmallSize}>
+                        <Tooltip
+                            isEnabled={funnelSmallSize}
+                            verticalAttachments={["bottom", "top"]}
+                            tooltip={<TooltipTable data={tooltipInfos[infoIndex]}/>}>
+
                             <div className={styles.Graph} style={calculateGraphStyle(info, infoIndex, infos.length + 1)}>&nbsp;</div>
                         </Tooltip>
                         <div className={styles.Infos}>
