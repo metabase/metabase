@@ -94,16 +94,16 @@ export default class Funnel extends Component {
                             <table className="py1 px2">
                                 <tbody>
                                     <tr>
-                                        <th className="text-light text-right">Step:</th>
-                                        <th className="pl1 text-bold text-left">{formatDimension(rows[infoIndex + 1][dimensionIndex])}</th>
+                                        <td className="text-light text-right">Step:</td>
+                                        <td className="pl1 text-bold text-left">{formatDimension(rows[infoIndex + 1][dimensionIndex])}</td>
                                     </tr>
                                     <tr>
-                                        <th className="text-light text-right">{getFriendlyName(cols[dimensionIndex])}:</th>
-                                        <th className="pl1 text-bold text-left">{formatMetric(rows[infoIndex + 1][metricIndex])}</th>
+                                        <td className="text-light text-right">{getFriendlyName(cols[dimensionIndex])}:</td>
+                                        <td className="pl1 text-bold text-left">{formatMetric(rows[infoIndex + 1][metricIndex])}</td>
                                     </tr>
                                     <tr>
-                                        <th className="text-light text-right">Retained:</th>
-                                        <th className="pl1 text-bold text-left">{formatPercent(info.value / initial.value)}</th>
+                                        <td className="text-light text-right">Retained:</td>
+                                        <td className="pl1 text-bold text-left">{formatPercent(info.value / initial.value)}</td>
                                     </tr>
                                 </tbody>
                             </table>
