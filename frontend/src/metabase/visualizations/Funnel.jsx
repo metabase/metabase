@@ -8,9 +8,9 @@ import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import { formatValue } from "metabase/lib/formatting";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
+import Tooltip from "metabase/components/Tooltip.jsx";
 
 import { normal } from "metabase/lib/colors";
-import _ from "underscore";
 
 const DEFAULT_COLORS = Object.values(normal);
 
@@ -48,10 +48,9 @@ export default class Funnel extends Component {
         const { data, settings, gridSize } = this.props;
         let { rows, cols } = data;
 
-        const dimensionIndex = _.findIndex(cols, (col) => col.name === settings["funnel.dimension"]);
-        const metricIndex = _.findIndex(cols, (col) => col.name === settings["funnel.misure"]);
-
-        const funnelType = gridSize.width < 6 ? styles.Small : 'full';
+        const dimensionIndex = cols.findIndex((col) => col.name === settings["funnel.dimension"]);
+        const metricIndex = cols.findIndex((col) => col.name === settings["funnel.misure"]);
+        const funnelSmallSize = gridSize.width < 7 || gridSize.height <= 5;
 
         const formatDimension = (dimension, jsx = true) => formatValue(dimension, { column: cols[dimensionIndex], jsx, majorWidth: 0 })
         const formatMetric    =    (metric, jsx = true) => formatValue(metric, { column: cols[metricIndex], jsx, majorWidth: 0 , comma: true})
@@ -75,7 +74,7 @@ export default class Funnel extends Component {
         infos.shift();
 
         return (
-            <div className={cx(styles.Funnel, funnelType, 'p3 flex')}>
+            <div className={cx(styles.Funnel, funnelSmallSize ? styles.Small : null, 'flex', funnelSmallSize ? 'p2' : 'p3')}>
                 <div className={cx(styles.FunnelStep, styles.Initial, 'flex flex-column')}>
                     <Ellipsified className={styles.Head}>{formatDimension(rows[0][dimensionIndex])}</Ellipsified>
                     <div className={styles.Start}>
@@ -91,7 +90,26 @@ export default class Funnel extends Component {
                 {infos.map((info, infoIndex) =>
                     <div key={infoIndex} className={cx(styles.FunnelStep, 'flex flex-column')}>
                         <Ellipsified className={styles.Head}>{formatDimension(rows[infoIndex + 1][dimensionIndex])}</Ellipsified>
-                        <div className={styles.Graph} style={calculateGraphStyle(info, infoIndex, infos.length + 1)}>&nbsp;</div>
+                        <Tooltip tooltip={
+                            <table className="py1 px2">
+                                <tbody>
+                                    <tr>
+                                        <th className="text-light text-right">Step:</th>
+                                        <th className="pl1 text-bold text-left">{formatDimension(rows[infoIndex + 1][dimensionIndex])}</th>
+                                    </tr>
+                                    <tr>
+                                        <th className="text-light text-right">{getFriendlyName(cols[dimensionIndex])}:</th>
+                                        <th className="pl1 text-bold text-left">{formatMetric(rows[infoIndex + 1][metricIndex])}</th>
+                                    </tr>
+                                    <tr>
+                                        <th className="text-light text-right">Retained:</th>
+                                        <th className="pl1 text-bold text-left">{formatPercent(info.value / initial.value)}</th>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            } verticalAttachments={["bottom", "top"]} isEnabled={funnelSmallSize}>
+                            <div className={styles.Graph} style={calculateGraphStyle(info, infoIndex, infos.length + 1)}>&nbsp;</div>
+                        </Tooltip>
                         <div className={styles.Infos}>
                             <div className={styles.Title}>{formatPercent(info.value / initial.value)}</div>
                             <div className={styles.Subtitle}>{formatMetric(rows[infoIndex + 1][metricIndex])}</div>

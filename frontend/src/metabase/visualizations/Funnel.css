@@ -69,5 +69,5 @@
 }
 
 :local .Small .FunnelStep {
-    border: none;
+    border-color: white;
 }
