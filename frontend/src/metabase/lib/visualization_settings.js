@@ -474,6 +474,30 @@ const SETTINGS = {
     },
     "map.center_longitude": {
         default: -122.4376
+    },
+    "funnel.dimension": {
+        section: "Data",
+        title: "Dimension",
+        widget: ChartSettingSelect,
+        isValid: ([{ card, data }], vizSettings) =>
+            columnsAreValid(card.visualization_settings["funnel.dimension"], data, isDimension),
+        getDefault: (series, vizSettings) =>
+            getDefaultDimensionAndMetric(series).dimension,
+        getProps: ([{ card, data: { cols }}]) => ({
+            options: cols.filter(isDimension).map(getOptionFromColumn)
+        }),
+    },
+    "funnel.misure": {
+        section: "Data",
+        title: "Measure",
+        widget: ChartSettingSelect,
+        isValid: ([{ card, data }], vizSettings) =>
+            columnsAreValid(card.visualization_settings["funnel.misure"], data, isMetric),
+        getDefault: (series, vizSettings) =>
+            getDefaultDimensionAndMetric(series).metric,
+        getProps: ([{ card, data: { cols }}]) => ({
+            options: cols.filter(isMetric).map(getOptionFromColumn)
+        }),
     }
 };
 
@@ -484,7 +508,8 @@ const SETTINGS_PREFIXES_BY_CHART_TYPE = {
     pie: ["pie."],
     scalar: ["scalar."],
     table: ["table."],
-    map: ["map."]
+    map: ["map."],
+    funnel: ["funnel."],
 }
 
 // alias legacy map types

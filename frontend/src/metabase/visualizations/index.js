@@ -6,6 +6,7 @@ import BarChart   from "./BarChart.jsx";
 import PieChart   from "./PieChart.jsx";
 import AreaChart  from "./AreaChart.jsx";
 import MapViz     from "./Map.jsx";
+import Funnel     from "./Funnel.jsx";
 
 const visualizations = new Map();
 const aliases = new Map();
@@ -34,6 +35,7 @@ registerVisualization(BarChart);
 registerVisualization(PieChart);
 registerVisualization(AreaChart);
 registerVisualization(MapViz);
+registerVisualization(Funnel);
 
 
 import { enableVisualizationEasterEgg } from "./lib/utils";
