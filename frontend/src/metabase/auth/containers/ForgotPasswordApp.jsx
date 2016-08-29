@@ -10,6 +10,7 @@ import FormField from "metabase/components/form/FormField.jsx";
 import FormLabel from "metabase/components/form/FormLabel.jsx";
 import FormMessage from "metabase/components/form/FormMessage.jsx";
 import LogoIcon from "metabase/components/LogoIcon.jsx";
+import Icon from "metabase/components/Icon.jsx";
 
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -22,7 +23,7 @@ export default class ForgotPasswordApp extends Component {
         super(props, context);
 
         this.state = {
-            email: null,
+            email: props.location.query.email || null,
             sentNotification: false,
             error: null
         };
@@ -70,7 +71,7 @@ export default class ForgotPasswordApp extends Component {
 
                                   <FormField key="email" fieldName="email" formError={error}>
                                       <FormLabel title={"Email address"}  fieldName={"email"} formError={error} />
-                                      <input className="Form-input Form-offset full" name="email" placeholder="The email you use for your Metabase account" type="text" onChange={(e) => this.setState({"email": e.target.value})} autoFocus />
+                                      <input className="Form-input Form-offset full" name="email" placeholder="The email you use for your Metabase account" type="text" onChange={(e) => this.setState({"email": e.target.value})} defaultValue={this.state.email} autoFocus />
                                       <span className="Form-charm"></span>
                                   </FormField>
 
@@ -85,7 +86,7 @@ export default class ForgotPasswordApp extends Component {
                           <div>
                               <div className="SuccessGroup bg-white bordered rounded shadowed">
                                   <div className="SuccessMark">
-                                      <mb-icon name="check"></mb-icon>
+                                      <Icon name="check" />
                                   </div>
                                   <p className="SuccessText">Check your email for instructions on how to reset your password.</p>
                               </div>

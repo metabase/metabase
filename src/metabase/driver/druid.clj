@@ -28,7 +28,7 @@
   [request-fn url & {:as options}]
   {:pre [(fn? request-fn) (string? url)]}
   (let [options                  (cond-> (merge {:content-type "application/json"} options)
-                                (:body options) (update :body json/generate-string))
+                                   (:body options) (update :body json/generate-string))
         {:keys [status body]} (request-fn url options)]
     (when (not= status 200)
       (throw (Exception. (format "Error [%d]: %s" status body))))

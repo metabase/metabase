@@ -31,7 +31,7 @@
    channels [Required ArrayOfMaps]}
   ;; prevent more than 5 cards
   ;; limit channel types to :email and :slack
-  (check-500 (pulse/create-pulse name *current-user-id* (filter identity (map :id cards)) channels)))
+  (check-500 (pulse/create-pulse! name *current-user-id* (filter identity (map :id cards)) channels)))
 
 
 (defendpoint GET "/:id"
@@ -86,7 +86,7 @@
   [id]
   (let [card (Card id)]
     (read-check Database (:database (:dataset_query card)))
-    (let [result (qp/dataset-query (:dataset_query card) {:executed_by *current-user-id*})]
+    (let [result (qp/dataset-query (:dataset_query card) {:executed-by *current-user-id*})]
       {:status 200, :body (html [:html [:body {:style "margin: 0;"} (binding [render/*include-title* true
                                                                               render/*include-buttons* true]
                                                                       (render/render-pulse-card card result))]])})))
@@ -96,7 +96,7 @@
   [id]
   (let [card (Card id)]
     (read-check Database (:database (:dataset_query card)))
-    (let [result    (qp/dataset-query (:dataset_query card) {:executed_by *current-user-id*})
+    (let [result    (qp/dataset-query (:dataset_query card) {:executed-by *current-user-id*})
           data      (:data result)
           card-type (render/detect-pulse-card-type card data)
           card-html (html (binding [render/*include-title* true]
@@ -111,7 +111,7 @@
   [id]
   (let [card (Card id)]
     (read-check Database (:database (:dataset_query card)))
-    (let [result (qp/dataset-query (:dataset_query card) {:executed_by *current-user-id*})
+    (let [result (qp/dataset-query (:dataset_query card) {:executed-by *current-user-id*})
           ba   (binding [render/*include-title* true]
                  (render/render-pulse-card-to-png card result))]
       {:status 200, :headers {"Content-Type" "image/png"}, :body (new java.io.ByteArrayInputStream ba) })))

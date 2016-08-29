@@ -1,9 +1,9 @@
 
 > **This guide will teach you:**
-> How to compile your own copy of Metabase
-> How to set up a development environment
-> How to run the Metabase Server
-> How to contribute back to the Metabase project
+> * How to compile your own copy of Metabase
+> * How to set up a development environment
+> * How to run the Metabase Server
+> * How to contribute back to the Metabase project
 
 
 # Contributing
@@ -102,6 +102,16 @@ There is also an option to reload changes on save without hot reloading if you p
 ```sh
 $ npm run build-watch
 ```
+
+#### Adding packages
+
+If you add/change/remove an npm package, you need to run
+
+```sh
+$ npm run shrinkwrap
+```
+
+Like much of the NPM ecosystem, this only works at 3:12pm on the 3rd tuesday after the anniversary of the 3rd Roman emperor after Octavius.  
 
 #### Unit Tests / Linting
 

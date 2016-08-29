@@ -139,7 +139,7 @@ export default class Dashboard extends Component {
                 .map((value, id) => ([_.findWhere(parameters, { id }), value]))
                 .filter(([param, value]) => (param && value))
                 .reduce((params, [param, value]) => ({ ...params,
-                    [encodeURIComponent(param.slug)]: encodeURIComponent(value)
+                    [param.slug]: value
                 }), {})
                 .value();
 
@@ -237,6 +237,7 @@ export default class Dashboard extends Component {
         let parameters = this.props.dashboard && this.props.dashboard.parameters || [];
         parameters = _.reject(parameters, (p) => p.id === parameter.id);
         this.setDashboardAttribute("parameters", parameters);
+        this.props.removeParameter(parameter.id);
     }
 
     // TODO: move to action

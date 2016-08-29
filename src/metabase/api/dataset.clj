@@ -9,36 +9,36 @@
                              [database :refer [Database]]
                              [hydrate :refer [hydrate]]
                              [query-execution :refer [QueryExecution]])
-            [metabase.query-processor :as qp]
-            [metabase.util :as u]))
+            (metabase [query-processor :as qp]
+                      [util :as u])))
 
-(def ^:private ^:const api-max-results-bare-rows
+(def ^:private ^:const max-results-bare-rows
   "Maximum number of rows to return specifically on :rows type queries via the API."
   2000)
 
-(def ^:private ^:const api-max-results
+(def ^:private ^:const max-results
   "General maximum number of rows to return from an API query."
   10000)
 
-(def ^:const dataset-query-api-constraints
+(def ^:const query-constraints
   "Default map of constraints that we apply on dataset queries executed by the api."
-  {:max-results           api-max-results
-   :max-results-bare-rows api-max-results-bare-rows})
+  {:max-results           max-results
+   :max-results-bare-rows max-results-bare-rows})
 
 (defendpoint POST "/"
   "Execute an MQL query and retrieve the results as JSON."
   [:as {{:keys [database] :as body} :body}]
   (read-check Database database)
   ;; add sensible constraints for results limits on our query
-  (let [query (assoc body :constraints dataset-query-api-constraints)]
-    (qp/dataset-query query {:executed_by *current-user-id*})))
+  (let [query (assoc body :constraints query-constraints)]
+    (qp/dataset-query query {:executed-by *current-user-id*})))
 
  (defendpoint POST "/duration"
    "Get historical query execution duration."
    [:as {{:keys [database] :as body} :body}]
    (read-check Database database)
    ;; add sensible constraints for results limits on our query
-   (let [query         (assoc body :constraints dataset-query-api-constraints)
+   (let [query         (assoc body :constraints query-constraints)
          running-times (db/select-field :running_time QueryExecution
                          :query_hash (hash query)
                          {:order-by [[:started_at :desc]]
@@ -53,7 +53,7 @@
   [query]
   {query [Required String->Dict]}
   (read-check Database (:database query))
-  (let [{{:keys [columns rows]} :data :keys [status] :as response} (qp/dataset-query query {:executed_by *current-user-id*})
+  (let [{{:keys [columns rows]} :data :keys [status] :as response} (qp/dataset-query query {:executed-by *current-user-id*})
         columns (map name columns)] ; turn keywords into strings, otherwise we get colons in our output
     (if (= status :completed)
       ;; successful query, send CSV file
@@ -77,8 +77,8 @@
     (read-check Database (:database dataset_query))
     ;; add sensible constraints for results limits on our query
     ;; TODO: it would be nice to associate the card :id with the query execution tracking
-    (let [query   (assoc dataset_query :constraints dataset-query-api-constraints)
-          options {:executed_by *current-user-id*}]
+    (let [query   (assoc dataset_query :constraints query-constraints)
+          options {:executed-by *current-user-id*}]
       {:card   (hydrate card :creator)
        :result (qp/dataset-query query options)})))
 

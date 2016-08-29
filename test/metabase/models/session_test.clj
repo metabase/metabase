@@ -1,12 +1,13 @@
 (ns metabase.models.session-test
   (:require [expectations :refer :all]
-            [metabase.db :as db]
+            metabase.db
             (metabase.models [session :refer :all]
                              [user :refer [User]])
             [metabase.test.util :refer :all]
             [metabase.test.data.users :refer :all]
             [metabase.util :as u]))
 
+(resolve-private-fns metabase.db simple-insert-many!)
 ;; first-session-for-user
 (expect
   "the-greatest-day-ever"
@@ -14,7 +15,7 @@
                                   :last_name  (random-name)
                                   :email      (str (random-name) "@metabase.com")
                                   :password   "nada"}]
-    (db/simple-insert-many! Session
+    (simple-insert-many! Session
       [{:id         "the-greatest-day-ever"
         :user_id    user-id
         :created_at (u/->Timestamp "1980-10-19T05:05:05.000Z")}

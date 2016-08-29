@@ -1,18 +1,18 @@
 (ns metabase.task.follow-up-emails
   "Tasks which follow up with Metabase users."
-  (:require [clj-time.coerce :as c]
-            [clj-time.core :as t]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
+            (clj-time [coerce :as c]
+                      [core :as t])
             (clojurewerkz.quartzite [jobs :as jobs]
                                     [triggers :as triggers])
             [clojurewerkz.quartzite.schedule.cron :as cron]
-            [metabase.db :as db]
-            [metabase.email :as email]
+            (metabase [db :as db]
+                      [email :as email])
             [metabase.email.messages :as messages]
-            [metabase.models.activity :as activity]
-            [metabase.models.setting :as setting]
-            [metabase.models.user :as user]
-            [metabase.models.view-log :as view-log]
+            (metabase.models [activity :as activity]
+                             [setting :as setting]
+                             [user :as user]
+                             [view-log :as view-log])
             [metabase.task :as task]))
 
 
