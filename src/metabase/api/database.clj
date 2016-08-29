@@ -149,7 +149,6 @@
   [id]
   (->404 (Database id)
          read-check
-         ;; TODO - this is a bit slow due to the nested hydration.  needs some optimizing.
          (hydrate [:tables [:fields :target :values] :segments :metrics])))
 
 (defendpoint GET "/:id/autocomplete_suggestions"
