@@ -1,7 +1,7 @@
 ## Working with Oracle in Metabase
 
-Starting in v0.20.0, Metabase provides a driver for connecting to Oracle databases. Under the hood, Metabase uses to Oracle's JDBC driver; due to licensing restrictions, we can't
-include ship it as part of Metabase. Luckily, downloading it yourself and making it available to Metabase is straightforward and only takes a few minutes.
+Starting in v0.20.0, Metabase provides a driver for connecting to Oracle databases. Under the hood, Metabase uses Oracle's JDBC driver; due to licensing restrictions, we can't
+include it as part of Metabase. Luckily, downloading it yourself and making it available to Metabase is straightforward and only takes a few minutes.
 
 ### Downloading the Oracle JDBC Driver JAR
 
