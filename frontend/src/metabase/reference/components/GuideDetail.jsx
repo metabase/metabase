@@ -3,8 +3,6 @@ import { Link } from "react-router";
 import pure from "recompose/pure";
 import cx from "classnames";
 
-import S from "./GuideDetail.css";
-
 import {
     getQuestionUrl
 } from "../utils";
@@ -48,50 +46,48 @@ const GuideDetail = ({
         segment: 'text-purple',
         table: 'text-purple'
     };
-    const linkClass = typeToLinkClass[type];
+
+    const linkClass = typeToLinkClass[type]
     const hasLearnMore = type === 'metric' || type === 'segment' || type === 'table';
     const interestingOrImportant = type === 'dashboard' ? 'important' : 'interesting';
 
-    return <div className={S.guideDetail}>
-        <div className={S.guideDetailTitle}>
-            { title &&
-                <Link 
-                    className={cx(S.guideDetailLink, linkClass)} 
-                    to={link}
-                >
-                    {title}
-                </Link>
-            }
-        </div>
-        <div className={S.guideDetailBody}>
-            <div className={S.guideDetailLabel}>
-                {`Why this ${type} is ${interestingOrImportant}`}
-            </div>
-            <div className={cx(S.guideDetailDescription, !points_of_interest && 'text-grey-3')}>
-                {points_of_interest || `Nothing ${interestingOrImportant} yet`}
+    return <div className="relative my4">
+        { title && <ItemTitle link={link} title={title} linkColorClass={linkClass} /> }
+        <div className="mt2">
+            <div>
+                <ContextHeading>
+                    { `Why this ${type} is ${interestingOrImportant}` }
+                </ContextHeading>
+
+                <div className={cx(!points_of_interest && 'text-grey-3')}>
+                    {points_of_interest || `Nothing ${interestingOrImportant} yet`}
+                </div> 
             </div> 
-            <div className={S.guideDetailLabel}>
-                {`Things to be aware of about this ${type}`} 
-            </div>
-            <div className={cx(S.guideDetailDescription, !caveats && 'text-grey-3')}>
-                {caveats || 'Nothing to be aware of yet'}
+
+            <div>
+                <ContextHeading>
+                    {`Things to be aware of about this ${type}`} 
+                </ContextHeading>
+
+                <div className="text-grey-3">
+                    {caveats || 'Nothing to be aware of yet'}
+                </div>
             </div>
             { hasLearnMore &&
                 <Link 
-                    className={cx(linkClass, S.guideDetailLearnMore)}
+                    className={cx(linkClass)}
                     to={learnMoreLink}
                 >
                     Learn more
                 </Link>
             }
             { exploreLinks && exploreLinks.length > 0 && [
-                <div key="detailLabel" className={S.guideDetailLabel}>
+                <div key="detailLabel">
                     Explore this metric
                 </div>,
-                <div key="detailLinks" className={S.guideDetailExploreLinks}>
+                <div key="detailLinks">
                     { exploreLinks.map(link => 
                         <Link
-                            className={cx(linkClass, S.guideDetailExploreLink)} 
                             key={link.url} 
                             to={link.url}
                         >
@@ -103,10 +99,27 @@ const GuideDetail = ({
         </div>
     </div>;
 };
+
 GuideDetail.propTypes = {
     entity: PropTypes.object,
     type: PropTypes.string,
     exploreLinks: PropTypes.array
 };
+
+const ItemTitle = ({ title, link, linkColorClass }) =>
+    <h2>
+        <Link 
+            className={linkColorClass} 
+            to={link}
+        >
+            {title}
+        </Link>
+    </h2>
+
+const ContextHeading = ({ children }) =>
+    <h3 className="mb1">{ children }</h3>
+
+const ContextContent = ({ children }) =>
+    <p className="text-paragraph">{ children }</p>
 
 export default pure(GuideDetail);

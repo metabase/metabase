@@ -82,14 +82,6 @@ export default class ReferenceApp extends Component {
             breadcrumbs,
             isEditing
         } = this.props;
-        return (
-            <SidebarLayout
-                className="flex-full relative"
-                style={ isEditing ? { paddingTop: '43px' } : {}}
-                sidebar={<Sidebar sections={sections} breadcrumbs={breadcrumbs} />}
-            >
-                {children}
-            </SidebarLayout>
-        )
+        return children
     }
 }

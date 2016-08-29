@@ -5,10 +5,6 @@ import { connect } from 'react-redux';
 import { push } from 'react-router-redux';
 import { reduxForm } from "redux-form";
 import i from "icepick";
-import cx from "classnames";
-
-import S from "metabase/reference/Reference.css";
-import D from "metabase/reference/components/GuideDetail.css";
 
 import {
     getQuestionUrl
@@ -250,12 +246,12 @@ export default class ReferenceGettingStartedGuide extends Component {
                 }
                 <LoadingAndErrorWrapper className="full" style={style} loading={!loadingError && loading} error={loadingError}>
                 { () => isEditing ? 
-                    <div className={cx("wrapper wrapper--trim", S.guideWrapper)}>
-                        <div className={S.guideEditHeader}>
-                            <div className={S.guideEditHeaderTitle}>
+                    <div className="wrapper wrapper--trim">
+                        <div>
+                            <div>
                                 Help new Metabase users find their way around
                             </div>
-                            <div className={S.guideEditHeaderDescription}>
+                            <div>
                                 The Getting Started guide highlights the dashboard, 
                                 metrics, segments, and tables that matter most, 
                                 and informs your users of important things they 
@@ -272,14 +268,12 @@ export default class ReferenceGettingStartedGuide extends Component {
                             action={showDashboardModal}
                             expand={() => most_important_dashboard.id.onChange(null)}
                         >
-                            <div className={S.guideEditSection}>
-                                <div className={S.guideEditTitle}>
+                            <div>
+                                <div>
                                     What is your most important dashboard?
                                 </div>
-                                <div className={S.guideEditCards}>
+                                <div>
                                     <GuideDetailEditor 
-                                        className={S.guideEditCard}
-                                        editLabelClasses={S.guideEditLabel}
                                         type="dashboard" 
                                         entities={dashboards}
                                         selectedIds={[most_important_dashboard.id.value]}
@@ -303,16 +297,14 @@ export default class ReferenceGettingStartedGuide extends Component {
                             link="http://www.metabase.com/docs/latest/administration-guide/05-segments-and-metrics#creating-a-metric"
                             expand={() => important_metrics.addField({id: null, caveats: null, points_of_interest: null, important_fields: null})}
                         >
-                            <div className={S.guideEditSection}>
-                                <div className={S.guideEditTitle}>
+                            <div>
+                                <div>
                                     What are your 3-5 most commonly referenced metrics?
                                 </div>
-                                <div className={S.guideEditCards}>
+                                <div>
                                     { important_metrics.map((metricField, index, metricFields) =>
                                         <GuideDetailEditor 
                                             key={index}
-                                            editLabelClasses={S.guideEditLabel}
-                                            className={S.guideEditCard}
                                             type="metric"
                                             metadata={{
                                                 tables,
@@ -337,8 +329,8 @@ export default class ReferenceGettingStartedGuide extends Component {
                                 </div>
                                 { important_metrics.length < 5 && 
                                     important_metrics.length < Object.keys(metrics).length && 
-                                    <div className={S.guideEditAddButton}>
-                                        <div className={S.guideEditAddButtonBody}>
+                                    <div>
+                                        <div>
                                             <button
                                                 className="Button Button--primary Button--large" 
                                                 type="button"
@@ -362,17 +354,15 @@ export default class ReferenceGettingStartedGuide extends Component {
                             link="http://www.metabase.com/docs/latest/administration-guide/05-segments-and-metrics#creating-a-segment"
                             expand={() => important_segments_and_tables.addField({id: null, type: null, caveats: null, points_of_interest: null})}
                         >
-                            <div className={S.guideEditSection}>
-                                <div className={S.guideEditTitle}>
+                            <div>
+                                <div>
                                     What are 3-5 commonly referenced segments or tables 
                                     that would be useful for this audience?
                                 </div>
-                                <div className={S.guideEditCards}>
+                                <div>
                                     { important_segments_and_tables.map((segmentOrTableField, index, segmentOrTableFields) =>
                                         <GuideDetailEditor 
                                             key={index}
-                                            editLabelClasses={S.guideEditLabel}
-                                            className={S.guideEditCard}
                                             type="segment or table"
                                             metadata={{
                                                 databases,
@@ -395,8 +385,8 @@ export default class ReferenceGettingStartedGuide extends Component {
                                 </div>
                                 { important_segments_and_tables.length < 5 && 
                                     important_segments_and_tables.length < Object.keys(tables).concat(Object.keys.segments).length && 
-                                    <div className={S.guideEditAddButton}>
-                                        <div className={S.guideEditAddButtonBody}>
+                                    <div>
+                                        <div>
                                             <button
                                                 className="Button Button--primary Button--large" 
                                                 type="button"
@@ -417,18 +407,17 @@ export default class ReferenceGettingStartedGuide extends Component {
                             collapsedIcon="reference"
                             expand={() => things_to_know.onChange('')}
                         >
-                            <div className={S.guideEditSection}>
-                                <div className={S.guideEditTitle}>
+                            <div>
+                                <div>
                                     What should a user of this data know before they start 
                                     accessing it?
                                 </div>
-                                <div className={S.guideEditCards}>
-                                    <div className={S.guideEditCard}>
-                                        <span className={S.guideEditLabel}>
+                                <div>
+                                    <div>
+                                        <span>
                                             Things to know
                                         </span>
                                         <textarea 
-                                            className={S.guideEditTextarea} 
                                             placeholder="E.g., expectations around data privacy and use, 
                                                 common pitfalls or misunderstandings, information about 
                                                 data warehouse performance, legal notices, etc."
@@ -449,38 +438,28 @@ export default class ReferenceGettingStartedGuide extends Component {
                                 contact.email.onChange('');
                             }}
                         >
-                            <div className={S.guideEditSection}>
-                                <div className={S.guideEditTitle}>
+                            <div>
+                                <div>
                                     Who should users contact for help if they're confused about this data?
                                 </div>
-                                <div className={S.guideEditCards}>
-                                    <div className={S.guideEditCard}>
-                                        <div className={S.guideEditContact}>
-                                            <div className={S.guideEditContactName}>
-                                                <span className={S.guideEditLabel}>
-                                                    Name
-                                                </span>
-                                                <input 
-                                                    className={S.guideEditInput} 
-                                                    placeholder="Julie McHelpfulson" 
-                                                    type="text"
-                                                    {...contact.name}
-                                                />
-                                            </div>
-                                            <div className={S.guideEditContactEmail}>
-                                                <span className={S.guideEditLabel}>
-                                                    Email address
-                                                </span>
-                                                <input 
-                                                    className={S.guideEditInput} 
-                                                    placeholder="julie.mchelpfulson@acme.com" 
-                                                    type="text"
-                                                    {...contact.email}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                <div>
+                                <h3>
+                                    Name
+                                </h3>
+                                <input 
+                                    placeholder="Julie McHelpfulson" 
+                                    type="text"
+                                    {...contact.name}
+                                />
+                            </div>
+                            <span>
+                                Email address
+                            </span>
+                            <input 
+                            placeholder="julie.mchelpfulson@acme.com" 
+                            type="text"
+                            {...contact.email}
+                        />
                             </div>
                         </GuideEditSection>
                     </div> :
@@ -494,13 +473,11 @@ export default class ReferenceGettingStartedGuide extends Component {
                                 startEditing={startEditing}
                                 isSuperuser={user && user.is_superuser}
                             />
-                            <div className={cx("wrapper wrapper--trim", S.guideWrapper)}>
+                            <div className="wrapper wrapper--trim">
                                 { guide.most_important_dashboard !== null && [
-                                    <div key={'dashboardTitle'} className={S.guideTitle}>
-                                        <div className={S.guideTitleBody}>
-                                            Our most important dashboard
-                                        </div>
-                                    </div>,
+                                    <h2 key={'dashboardTitle'}>
+                                        Our most important dashboard
+                                    </h2>,
                                     <GuideDetail 
                                         key={'dashboardDetail'}
                                         type="dashboard"
@@ -509,11 +486,9 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     />
                                 ]}
                                 { guide.important_metrics && guide.important_metrics.length > 0 && [
-                                    <div key={'metricsTitle'} className={S.guideTitle}>
-                                        <div className={S.guideTitleBody}>
-                                            Useful metrics
-                                        </div>
-                                    </div>,
+                                    <h2 key={'metricsTitle'}>
+                                        Numbers that we pay attention to
+                                    </h2>,
                                     guide.important_metrics.map((metricId) =>
                                         <GuideDetail 
                                             key={metricId}
@@ -535,9 +510,9 @@ export default class ReferenceGettingStartedGuide extends Component {
                                             }
                                         />
                                     ),
-                                    <div key={'metricsSeeAll'} className={S.guideSeeAll}>
-                                        <div className={S.guideSeeAllBody}>
-                                            <Link className={cx('text-brand', S.guideSeeAllLink)} to={'/reference/metrics'}>
+                                    <div key={'metricsSeeAll'}>
+                                        <div>
+                                            <Link className="text-brand" to={'/reference/metrics'}>
                                                 See all metrics
                                             </Link>
                                         </div>
@@ -546,11 +521,9 @@ export default class ReferenceGettingStartedGuide extends Component {
 
                                 { ((guide.important_segments && guide.important_segments.length > 0) || 
                                     (guide.important_tables && guide.important_tables.length > 0)) && [
-                                    <div key={'segmentTitle'} className={S.guideTitle}>
-                                        <div className={S.guideTitleBody}>
-                                            Segments and tables
-                                        </div>
-                                    </div>,
+                                    <h2 key={'segmentTitle'}>
+                                        Segments and tables
+                                    </h2>,
                                     guide.important_segments.map((segmentId) =>
                                         <GuideDetail 
                                             key={segmentId}
@@ -567,12 +540,12 @@ export default class ReferenceGettingStartedGuide extends Component {
                                             tables={tables}
                                         />
                                     ),
-                                    <div key={'segmentSeeAll'} className={S.guideSeeAll}>
-                                        <div className={S.guideSeeAllBody}>
-                                            <Link className={cx('text-purple', S.guideSeeAllLink)} to={'/reference/segments'}>
+                                    <div key={'segmentSeeAll'}>
+                                        <div>
+                                            <Link className="Button mr2" to={'/reference/segments'}>
                                                 See all segments
                                             </Link>
-                                            <Link className={cx('text-purple', S.guideSeeAllLink)} to={'/reference/databases'}>
+                                            <Link to={'/reference/databases'}>
                                                 See all tables
                                             </Link>
                                         </div>
@@ -580,37 +553,27 @@ export default class ReferenceGettingStartedGuide extends Component {
                                 ]}
 
                                 { guide.things_to_know && [
-                                    <div key={'thingsToKnowTitle'} className={S.guideTitle}>
-                                        <div className={S.guideTitleBody}>
-                                            Some things to know
-                                        </div>
+                                    <h2 key={'thingsToKnowTitle'}>
+                                        Some things to know
+                                    </h2>,
+                                    <div key={'thingsToKnowDetails'}>
+                                        {guide.things_to_know || `Nothing to know yet`}
                                     </div>,
-                                    <div key={'thingsToKnowDetails'} className={D.guideDetail}>
-                                        <div className={D.guideDetailTitle}>
-                                        </div>
-                                        <div className={D.guideDetailBody}>
-                                            <div className={cx(D.guideDetailDescription, !guide.things_to_know && 'text-grey-3')}>
-                                                {guide.things_to_know || `Nothing to know yet`}
-                                            </div> 
-                                        </div>
-                                    </div>,
-                                    <div key={'thingsToKnowSeeAll'} className={S.guideSeeAll}>
-                                        <div className={S.guideSeeAllBody}>
-                                            <Link className={cx('text-brand', S.guideSeeAllLink)} to={'/reference/databases'}>
-                                                Explore our data
-                                            </Link>
-                                        </div>
+                                    <div key={'thingsToKnowSeeAll'}>
+                                        <Link to={'/reference/databases'}>
+                                            Explore our data
+                                        </Link>
                                     </div>
                                 ]}
 
                                 { guide.contact && (guide.contact.name || guide.contact.email) && [
-                                    <div key={'contactTitle'} className={S.guideTitle}>
-                                        <div className={S.guideTitleBody}>
+                                    <div key={'contactTitle'}>
+                                        <div>
                                             Have questions?
                                         </div>
                                     </div>,
-                                    <div key={'contactDetails'} className={S.guideContact}>
-                                        <div className={S.guideContactBody}>
+                                    <div key={'contactDetails'}>
+                                        <div>
                                             { guide.contact.name && 
                                                 <span className="text-dark mr3">
                                                     {`Contact ${guide.contact.name}`}

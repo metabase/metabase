@@ -2,24 +2,24 @@ import React, { Component, PropTypes } from "react";
 import pure from "recompose/pure";
 import cx from "classnames";
 
-import S from "./GuideHeader.css";
-
 import EditButton from "metabase/reference/components/EditButton.jsx";
 
 const GuideHeader = ({
     startEditing,
     isSuperuser
 }) =>
-    <div className={S.guideHeader}>
-        <div className={cx("wrapper wrapper--trim", S.guideHeaderBody)}>
-            <span className={S.guideHeaderTitle}>Understanding our data</span>
-            { isSuperuser &&
-                <div className={S.guideHeaderButtons}>
-                    <EditButton className={S.guideHeaderEditButton} startEditing={startEditing}/>
-                </div>
-            }
+    <div>
+        <div className="wrapper wrapper--trim py4">
+            <div className="flex align-center">
+                <h1>Hi.</h1>
+                { isSuperuser &&
+                    <EditButton className="ml-auto" startEditing={startEditing}/>
+                }
+            </div>
+            <p className="text-paragraph">This is the perfect place to start if you’re new to your company’s data, or if you just want to check in on what’s going on.</p>
         </div>
     </div>;
+
 GuideHeader.propTypes = {
     startEditing: PropTypes.func.isRequired,
     isSuperuser: PropTypes.bool

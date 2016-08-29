@@ -20,6 +20,7 @@ const EditButton = ({
             <span className="ml1">Edit</span>
         </div>
     </button>
+
 EditButton.propTypes = {
     className: PropTypes.string,
     startEditing: PropTypes.func.isRequired
