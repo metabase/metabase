@@ -17,6 +17,9 @@
   "Valid values for `Table.visibility_type` (field may also be `nil`)."
   #{:hidden :technical :cruft})
 
+
+;;; ------------------------------------------------------------ Entity ------------------------------------------------------------
+
 (i/defentity Table :metabase_table)
 
 (defn- pre-insert [table]
@@ -29,23 +32,36 @@
   (db/cascade-delete! Field :table_id id)
   (db/cascade-delete! 'Card :table_id id))
 
-(defn ^:hydrate fields
-  "Return the `FIELDS` belonging to TABLE."
-  [{:keys [id]}]
-  (db/select Field, :table_id id, :visibility_type [:not= "retired"], {:order-by [[:position :asc] [:name :asc]]}))
+(u/strict-extend (class Table)
+  i/IEntity (merge i/IEntityDefaults
+                   {:hydration-keys     (constantly [:table])
+                    :types              (constantly {:entity_type :keyword, :visibility_type :keyword, :description :clob})
+                    :timestamped?       (constantly true)
+                    :can-read?          (constantly true)
+                    :can-write?         i/superuser?
+                    :pre-insert         pre-insert
+                    :pre-cascade-delete pre-cascade-delete}))
 
-(defn ^:hydrate metrics
-  "Retrieve the metrics for TABLE."
+
+;;; ------------------------------------------------------------ Hydration ------------------------------------------------------------
+
+(defn fields
+  "Return the `FIELDS` belonging to a single TABLE."
+  [{:keys [id]}]
+  (db/select Field, :table_id id :visibility_type [:not= "retired"], {:order-by [[:position :asc] [:name :asc]]}))
+
+(defn metrics
+  "Retrieve the `Metrics` for a single TABLE."
   [{:keys [id]}]
   (retrieve-metrics id :all))
 
-(defn ^:hydrate segments
-  "Retrieve the segments for TABLE."
+(defn segments
+  "Retrieve the `Segments` for a single TABLE."
   [{:keys [id]}]
   (retrieve-segments id :all))
 
 (defn field-values
-  "Return the `FieldValues` for all `Fields` belonging to TABLE."
+  "Return the `FieldValues` for all `Fields` belonging to a single TABLE."
   {:hydrate :field_values, :arglists '([table])}
   [{:keys [id]}]
   (let [field-ids (db/select-ids Field
@@ -61,6 +77,44 @@
   [{:keys [id]}]
   (db/select-one-id Field, :table_id id, :special_type "id", :visibility_type [:not-in ["sensitive" "retired"]]))
 
+
+(defn- with-objects [hydration-key fetch-objects-fn tables]
+  (let [table-ids         (set (map :id tables))
+        table-id->objects (group-by :table_id (when (seq table-ids)
+                                                (fetch-objects-fn table-ids)))]
+    (for [table tables]
+      (assoc table hydration-key (get table-id->objects (:id table) [])))))
+
+(defn with-segments
+  "Efficiently hydrate the `Segments` for a collection of TABLES."
+  {:batched-hydrate :segments}
+  [tables]
+  (with-objects :segments
+    (fn [table-ids]
+      (db/select Segment :table_id [:in table-ids], {:order-by [[:name :asc]]}))
+    tables))
+
+(defn with-metrics
+  "Efficiently hydrate the `Metrics` for a collection of TABLES."
+  {:batched-hydrate :metrics}
+  [tables]
+  (with-objects :metrics
+    (fn [table-ids]
+      (db/select Metric :table_id [:in table-ids], {:order-by [[:name :asc]]}))
+    tables))
+
+(defn with-fields
+  "Efficiently hydrate the `Fields` for a collection of TABLES."
+  {:batched-hydrate :fields}
+  [tables]
+  (with-objects :fields
+    (fn [table-ids]
+      (db/select Field :table_id [:in table-ids], :visibility_type [:not= "retired"], {:order-by [[:position :asc] [:name :asc]]}))
+    tables))
+
+
+;;; ------------------------------------------------------------ Convenience Fns ------------------------------------------------------------
+
 (defn qualified-identifier
   "Return a keyword identifier for TABLE in the form `:schema.table-name` (if the Table has a non-empty `:schema` field) or `:table-name` (if the Table has no `:schema`)."
   ^clojure.lang.Keyword [{schema :schema, table-name :name}]
@@ -73,24 +127,15 @@
   [table]
   (Database (:db_id table)))
 
-(u/strict-extend (class Table)
-  i/IEntity (merge i/IEntityDefaults
-                   {:hydration-keys     (constantly [:table])
-                    :types              (constantly {:entity_type :keyword, :visibility_type :keyword, :description :clob})
-                    :timestamped?       (constantly true)
-                    :can-read?          (constantly true)
-                    :can-write?         i/superuser?
-                    :pre-insert         pre-insert
-                    :pre-cascade-delete pre-cascade-delete}))
-
-
-;; ## Persistence Functions
-
 (defn table-id->database-id
   "Retrieve the `Database` ID for the given table-id."
   [table-id]
   {:pre [(integer? table-id)]}
   (db/select-one-field :db_id Table, :id table-id))
+
+
+;;; ------------------------------------------------------------ Persistence Functions ------------------------------------------------------------
+
 
 
 (defn retire-tables!

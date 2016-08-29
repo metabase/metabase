@@ -90,17 +90,43 @@
   (db/cascade-delete! 'FieldValues :field_id id)
   (db/cascade-delete! 'MetricImportantField :field_id id))
 
-(defn ^:hydrate target
+
+(defn target
   "Return the FK target `Field` that this `Field` points to."
   [{:keys [special_type fk_target_field_id]}]
   (when (and (= :fk special_type)
              fk_target_field_id)
     (Field fk_target_field_id)))
 
-(defn ^:hydrate values
+(defn values
   "Return the `FieldValues` associated with this FIELD."
   [{:keys [id]}]
   (db/select [FieldValues :field_id :values], :field_id id))
+
+(defn with-values
+  "Efficiently hydrate the `FieldValues` for a collection of FIELDS."
+  {:batched-hydrate :values}
+  [fields]
+  (let [field-ids        (set (map :id fields))
+        id->field-values (u/key-by :field_id (when (seq field-ids)
+                                               (db/select FieldValues :field_id [:in field-ids])))]
+    (for [field fields]
+      (assoc field :values (get id->field-values (:id field) [])))))
+
+(defn with-targets
+  "Efficiently hydrate the FK target fields for a collection of FIELDS."
+  {:batched-hydrate :target}
+  [fields]
+  (let [target-field-ids (set (for [field fields
+                                    :when (and (= :fk (:special_type field))
+                                               (:fk_target_field_id field))]
+                                (:fk_target_field_id field)))
+        id->target-field (u/key-by :id (when (seq target-field-ids)
+                                         (db/select Field :id [:in target-field-ids])))]
+    (for [field fields
+          :let  [target-id (:fk_target_field_id field)]]
+      (assoc field :target (id->target-field target-id)))))
+
 
 (defn qualified-name-components
   "Return the pieces that represent a path to FIELD, of the form `[table-name parent-fields-name* field-name]`."
