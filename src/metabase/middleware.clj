@@ -104,10 +104,10 @@
   "Middleware that sets the `:metabase-api-key` keyword on the request if a valid API Key can be found.
    We check the request headers for `X-METABASE-APIKEY` and if it's not found then then no keyword is bound to the request."
   [handler]
-  (fn [{:keys [headers] :as request}]
-    (handler (if-let [api-key (headers metabase-api-key-header)]
-               (assoc request :metabase-api-key api-key)
-               request))))
+  (comp handler (fn [{:keys [headers] :as request}]
+                  (if-let [api-key (headers metabase-api-key-header)]
+                    (assoc request :metabase-api-key api-key)
+                    request))))
 
 
 (defn enforce-api-key
@@ -178,21 +178,20 @@
   "Base-64 encoded public key for this site's SSL certificate. Specify this to enable HTTP Public Key Pinning.
    See http://mzl.la/1EnfqBf for more information.") ; TODO - it would be nice if we could make this a proper link in the UI; consider enabling markdown parsing
 
-;(defn- public-key-pins-header []
-;  (when-let [k (ssl-certificate-public-key)]
-;    {"Public-Key-Pins" (format "pin-sha256=\"base64==%s\"; max-age=31536000" k)}))
+#_(defn- public-key-pins-header []
+  (when-let [k (ssl-certificate-public-key)]
+    {"Public-Key-Pins" (format "pin-sha256=\"base64==%s\"; max-age=31536000" k)}))
 
 (defn- api-security-headers [] ; don't need to include all the nonsense we include with index.html
   (merge (cache-prevention-headers)
          strict-transport-security-header
-         ;(public-key-pins-header)
-         ))
+         #_(public-key-pins-header)))
 
 (defn- index-page-security-headers []
   (merge (cache-prevention-headers)
          strict-transport-security-header
          content-security-policy-header
-         ;(public-key-pins-header)
+         #_(public-key-pins-header)
          {"X-Frame-Options"                   "DENY"          ; Tell browsers not to render our site as an iframe (prevent clickjacking)
           "X-XSS-Protection"                  "1; mode=block" ; Tell browser to block suspected XSS attacks
           "X-Permitted-Cross-Domain-Policies" "none"          ; Prevent Flash / PDF files from including content from site.
