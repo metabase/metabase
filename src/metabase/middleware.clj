@@ -54,24 +54,26 @@
                     request))))
 
 
+(defn- add-current-user-id [{:keys [metabase-session-id] :as request}]
+  (or (when (and metabase-session-id ((resolve 'metabase.core/initialized?)))
+        (when-let [session (db/select-one [Session :created_at :user_id (db/qualify User :is_superuser)]
+                             (db/join [Session :user_id] [User :id])
+                             (db/qualify User :is_active) true
+                             (db/qualify Session :id) metabase-session-id)]
+          (let [session-age-ms (- (System/currentTimeMillis) (or (when-let [^java.util.Date created-at (:created_at session)]
+                                                                   (.getTime created-at))
+                                                                 0))]
+            ;; If the session exists and is not expired (max-session-age > session-age) then validation is good
+            (when (and session (> (config/config-int :max-session-age) (quot session-age-ms 60000)))
+              (assoc request
+                :metabase-user-id (:user_id session)
+                :is-superuser?    (:is_superuser session))))))
+      request))
+
 (defn wrap-current-user-id
   "Add `:metabase-user-id` to the request if a valid session token was passed."
   [handler]
-  (comp handler (fn [{:keys [metabase-session-id] :as request}]
-                  (or (when (and metabase-session-id ((resolve 'metabase.core/initialized?)))
-                        (when-let [session (db/select-one [Session :created_at :user_id (db/qualify User :is_superuser)]
-                                             (db/join [Session :user_id] [User :id])
-                                             (db/qualify User :is_active) true
-                                             (db/qualify Session :id) metabase-session-id)]
-                          (let [session-age-ms (- (System/currentTimeMillis) (or (when-let [^java.util.Date created-at (:created_at session)]
-                                                                                   (.getTime created-at))
-                                                                                 0))]
-                            ;; If the session exists and is not expired (max-session-age > session-age) then validation is good
-                            (when (and session (> (config/config-int :max-session-age) (quot session-age-ms 60000)))
-                              (assoc request
-                                :metabase-user-id (:user_id session)
-                                :is-superuser?    (:is_superuser session))))))
-                      request))))
+  (comp handler add-current-user-id))
 
 
 (defn enforce-authentication
