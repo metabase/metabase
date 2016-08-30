@@ -3,6 +3,7 @@
   (:require [clojure.tools.logging :as log]
             (cheshire factory
                       [generate :refer [add-encoder encode-str encode-nil]])
+            monger.json ; Monger provides custom JSON encoders for Cheshire if you load this namespace -- see http://clojuremongodb.info/articles/integration.html
             [metabase.api.common :refer [*current-user* *current-user-id* *is-superuser?*]]
             (metabase [config :as config]
                       [db :as db])
@@ -32,9 +33,9 @@
 
 ;;; # ------------------------------------------------------------ AUTH & SESSION MANAGEMENT ------------------------------------------------------------
 
-(def ^:private ^:const metabase-session-cookie "metabase.SESSION_ID")
-(def ^:private ^:const metabase-session-header "x-metabase-session")
-(def ^:private ^:const metabase-api-key-header "x-metabase-apikey")
+(def ^:private ^:const ^String metabase-session-cookie "metabase.SESSION_ID")
+(def ^:private ^:const ^String metabase-session-header "x-metabase-session")
+(def ^:private ^:const ^String metabase-api-key-header "x-metabase-apikey")
 
 (def ^:const response-unauthentic "Generic `401 (Unauthenticated)` Ring response map." {:status 401, :body "Unauthenticated"})
 (def ^:const response-forbidden   "Generic `403 (Forbidden)` Ring response map."       {:status 403, :body "Forbidden"})
@@ -46,33 +47,31 @@
    We first check the request :cookies for `metabase.SESSION_ID`, then if no cookie is found we look in the
    http headers for `X-METABASE-SESSION`.  If neither is found then then no keyword is bound to the request."
   [handler]
-  (fn [{:keys [cookies headers] :as request}]
-    (if-let [session-id (or (get-in cookies [metabase-session-cookie :value])
-                            (headers metabase-session-header))]
-      ;; alternatively we could always associate the keyword and just let it be nil if there is no value
-      (handler (assoc request :metabase-session-id session-id))
-      (handler request))))
+  (comp handler (fn [{:keys [cookies headers] :as request}]
+                  (if-let [session-id (or (get-in cookies [metabase-session-cookie :value])
+                                          (headers metabase-session-header))]
+                    (assoc request :metabase-session-id session-id)
+                    request))))
 
 
 (defn wrap-current-user-id
   "Add `:metabase-user-id` to the request if a valid session token was passed."
   [handler]
-  (fn [{:keys [metabase-session-id] :as request}]
-    ;; TODO - what kind of validations can we do on the sessionid to make sure it's safe to handle?  str?  alphanumeric?
-    (handler (or (when (and metabase-session-id ((resolve 'metabase.core/initialized?)))
-                   (when-let [session (db/select-one [Session :created_at :user_id (db/qualify User :is_superuser)]
-                                        (db/join [Session :user_id] [User :id])
-                                        (db/qualify User :is_active) true
-                                        (db/qualify Session :id) metabase-session-id)]
-                     (let [session-age-ms (- (System/currentTimeMillis) (or (when-let [^java.util.Date created-at (:created_at session)]
-                                                                              (.getTime created-at))
-                                                                            0))]
-                       ;; If the session exists and is not expired (max-session-age > session-age) then validation is good
-                       (when (and session (> (config/config-int :max-session-age) (quot session-age-ms 60000)))
-                         (assoc request
-                           :metabase-user-id (:user_id session)
-                           :is-superuser?    (:is_superuser session))))))
-                 request))))
+  (comp handler (fn [{:keys [metabase-session-id] :as request}]
+                  (or (when (and metabase-session-id ((resolve 'metabase.core/initialized?)))
+                        (when-let [session (db/select-one [Session :created_at :user_id (db/qualify User :is_superuser)]
+                                             (db/join [Session :user_id] [User :id])
+                                             (db/qualify User :is_active) true
+                                             (db/qualify Session :id) metabase-session-id)]
+                          (let [session-age-ms (- (System/currentTimeMillis) (or (when-let [^java.util.Date created-at (:created_at session)]
+                                                                                   (.getTime created-at))
+                                                                                 0))]
+                            ;; If the session exists and is not expired (max-session-age > session-age) then validation is good
+                            (when (and session (> (config/config-int :max-session-age) (quot session-age-ms 60000)))
+                              (assoc request
+                                :metabase-user-id (:user_id session)
+                                :is-superuser?    (:is_superuser session))))))
+                      request))))
 
 
 (defn enforce-authentication
