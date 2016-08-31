@@ -39,7 +39,6 @@
 
   (let-404 [field (Field id)]
     (write-check field)
-    (println "special_type:" special_type) ; NOCOMMIT
     (let [special_type       (keyword (get body :special_type (:special_type field)))
           visibility_type    (or visibility_type (:visibility_type field))
           ;; only let target field be set for :fk type fields, and if it's not in the payload then leave the current value
