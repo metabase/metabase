@@ -123,8 +123,7 @@
     -> (check (contains? #{:fav :all :mine} f)
          [400 (str \"Invalid value '\" f \"' for 'f': must be one of: #{:fav :all :mine}\")])"
   [valid-values-set symb value]
-  {:pre [(set? valid-values-set)
-         (symbol? symb)]}
+  {:pre [(set? valid-values-set) (symbol? symb)]}
   (checkp-with (partial contains? valid-values-set) symb value (str "must be one of: " valid-values-set)))
 
 
@@ -362,7 +361,7 @@
 (defannotation NonEmptyString
   "Param must be a non-empty string (strings that only contain whitespace are considered empty)."
   [symb value :nillable]
-  (checkp-with (complement clojure.string/blank?) symb value "value must be a non-empty string."))
+  (checkp-with (complement s/blank?) symb value "value must be a non-empty string."))
 
 (defannotation PublicPerms
   "Param must be an integer and either `0` (no public permissions), `1` (public may read), or `2` (public may read and write)."
