@@ -5,18 +5,14 @@
             [metabase.test.data :refer :all]))
 
 
-;; valid-metadata?
-(expect false (valid-metadata? nil nil nil nil))
-(expect false (valid-metadata? :IntegerField nil nil nil))
-(expect false (valid-metadata? :IntegerField :metric nil nil))
-(expect true (valid-metadata? :IntegerField :metric nil :normal))
-(expect false (valid-metadata? :foo :metric nil :normal))
-(expect false (valid-metadata? :IntegerField :foo nil :normal))
-(expect false (valid-metadata? :IntegerField :metric nil :foo))
-(expect true (valid-metadata? :IntegerField :metric :timestamp_seconds :normal))
-(expect true (valid-metadata? :IntegerField :metric :timestamp_milliseconds :normal))
-(expect false (valid-metadata? :DateTimeField :metric :timestamp_seconds :normal))
-(expect false (valid-metadata? :DateTimeField :metric :timestamp_milliseconds :normal))
+;; valid-special-type-for-base-type?
+(expect true  (valid-special-type-for-base-type? nil                     nil))
+(expect true  (valid-special-type-for-base-type? nil                     :foo))
+(expect true  (valid-special-type-for-base-type? nil                     :IntegerField))
+(expect true  (valid-special-type-for-base-type? :timestamp_seconds      :IntegerField))
+(expect true  (valid-special-type-for-base-type? :timestamp_milliseconds :IntegerField))
+(expect false (valid-special-type-for-base-type? :timestamp_seconds      :DateTimeField))
+(expect false (valid-special-type-for-base-type? :timestamp_milliseconds :DateTimeField))
 
 
 ;; field-should-have-field-values?

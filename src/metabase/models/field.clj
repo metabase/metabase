@@ -46,8 +46,9 @@
     :UUIDField      ; e.g. a Postgres 'UUID' column
     :UnknownField})
 
-(def ^:const field-types
-  "Possible values for `Field.field_type`."
+(def ^:const ^:deprecated field-types
+  "Possible values for `Field.field_type`.
+   `field_type` is deprecated, and issue #2454 is open for removing it entirely. It's no longer displayed in the UI, nor is it possible to change its value from the API."
   #{:metric      ; A number that can be added, graphed, etc.
     :dimension   ; A high or low-cardinality numerical string value that is meant to be used as a grouping
     :info})      ; Non-numerical value that is not meant to be used
@@ -60,18 +61,20 @@
     :sensitive      ; Strict removal of field from all places except data model listing.  queries should error if someone attempts to access.
     :retired})      ; For fields that no longer exist in the physical db.  automatically set by Metabase.  QP should error if encountered in a query.
 
-(defn valid-metadata?
-  "Predicate function that checks if the set of metadata types for a field are sensible."
-  [base-type field-type special-type visibility-type]
-  (and (contains? base-types base-type)
-       (contains? field-types field-type)
-       (contains? visibility-types visibility-type)
-       (or (nil? special-type)
-           (contains? special-types special-type))
-       ;; this verifies that we have a numeric base-type when trying to use the unix timestamp transform (#824)
-       (or (nil? special-type)
-           (not (contains? #{:timestamp_milliseconds :timestamp_seconds} special-type))
-           (contains? #{:BigIntegerField :DecimalField :FloatField :IntegerField} base-type))))
+
+(def ^:const special-type->valid-base-types
+  "Map of special types to set of base types that are allowed to have that special type.
+   Special types not included in this map can be applied to any base type."
+  (let [numeric-base-types #{:BigIntegerField :DecimalField :FloatField :IntegerField}]
+    {:timestamp_seconds      numeric-base-types
+     :timestamp_milliseconds numeric-base-types}))
+
+(defn valid-special-type-for-base-type?
+  "Can SPECIAL-TYPE be used for this BASE-TYPE?"
+  ^Boolean [special-type base-type]
+  (let [valid-base-types (special-type->valid-base-types (keyword special-type))]
+    (or (not valid-base-types)
+        (contains? valid-base-types (keyword base-type)))))
 
 
 (i/defentity Field :metabase_field)
