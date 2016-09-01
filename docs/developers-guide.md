@@ -1,5 +1,5 @@
+**This guide will teach you:**
 
-> **This guide will teach you:**
 > * How to compile your own copy of Metabase
 > * How to set up a development environment
 > * How to run the Metabase Server
