@@ -196,7 +196,6 @@
 
    *  `:up`            - Migrate up
    *  `:force`         - Force migrate up, ignoring locks and any DDL statements that fail.
-   *  `:down`          - Rollback *all* migrations
    *  `:down-one`      - Rollback a single migration
    *  `:print`         - Just print the SQL for running the migrations, don't actually run them.
    *  `:release-locks` - Manually release migration locks left by an earlier failed migration.
@@ -217,7 +216,6 @@
          (case direction
            :up            (migrate-up-if-needed conn liquibase)
            :force         (force-migrate-up-if-needed conn liquibase)
-           :down          (.rollback liquibase 10000 "")
            :down-one      (.rollback liquibase 1 "")
            :print         (println (migrations-sql liquibase))
            :release-locks (.forceReleaseLocks liquibase)))
