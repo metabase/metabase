@@ -32,7 +32,7 @@ The entire Metabase application is compiled and assembled into a single .jar fil
 
 After running the build script simply look in `target/uberjar` for the output .jar file and you are ready to go.
 
-## Building the OS X App
+## Building `Metabase.app`
 
 See [this guide](developers-guide-osx.md).
 
