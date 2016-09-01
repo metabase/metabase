@@ -19,9 +19,9 @@ We don't like getting sued, so before merging any pull request, we'll need each 
 
 These are the set of tools which are required in order to complete any build of the Metabase code.  Follow the links to download and install them on your own before continuing.
 
-1. Oracle JDK 8 (http://www.oracle.com/technetwork/java/javase/downloads/index.html)
-2. Node.js for npm (http://nodejs.org/)
-3. Leiningen (http://leiningen.org/)
+1. [Oracle JDK 8 (http://www.oracle.com/technetwork/java/javase/downloads/index.html)](http://www.oracle.com/technetwork/java/javase/downloads/index.html)
+2. [Node.js for npm (http://nodejs.org/)](http://nodejs.org/)
+3. [Leiningen (http://leiningen.org/)](http://leiningen.org/)
 
 
 # Build Metabase
