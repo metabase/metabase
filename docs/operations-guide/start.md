@@ -137,7 +137,7 @@ This will tell Metabase to look for its application database using the supplied 
 #### Custom Connection URI
 Database connections can be customized by setting the `METABASE_DB_CONNECTION_URI` environment variable. For example:
 
-    export METABASE_DB_CONNECTION_URI=postgres://<username>:<password>@<host>:<port>/<dbname>?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory
+    export MB_DB_CONNECTION_URI=postgres://<username>:<password>@<host>:<port>/<dbname>?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory
     java -jar metabase.jar
 
 This will tell Metabase to connect to postgres with SSL.
