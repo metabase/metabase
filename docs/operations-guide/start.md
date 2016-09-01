@@ -134,6 +134,14 @@ If you prefer to use MySQL we've got you covered.  You can change the applicatio
 
 This will tell Metabase to look for its application database using the supplied MySQL connection information.
 
+#### Custom Connection URI
+Database connections can be customized by setting the `METABASE_DB_CONNECTION_URI` environment variable. For example:
+
+    export METABASE_DB_CONNECTION_URI=postgres://<username>:<password>@<host>:<port>/<dbname>?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory
+    java -jar metabase.jar
+
+This will tell Metabase to connect to postgres with SSL.
+
 
 # Migrating from using the H2 database to MySQL or Postgres
 
