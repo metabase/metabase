@@ -1,12 +1,12 @@
 **Covered in this guide:**
 
-> [Installing Metabase on AWS Elastic Beanstalk](#running-metabase-on-aws-elastic-beanstalk)
-> [Upgrading to new versions of Metabase](#deploying-new-versions-of-metabase)
-> [Retaining Metabase logs on S3](#retaining-metabase-logs)
-> [Running Metabase over HTTPS](#running-metabase-over-https)
-> [Setting the Java timezone](#setting-the-jvm-timezone)
-> [Using Papertrail for logging](#running-metabase-with-papertrail-on-aws)
-> [Protecting invalid hostname access](#protecting-against-invalid-hostname-access)
+*   [Installing Metabase on AWS Elastic Beanstalk](#running-metabase-on-aws-elastic-beanstalk)
+*   [Upgrading to new versions of Metabase](#deploying-new-versions-of-metabase)
+*   [Retaining Metabase logs on S3](#retaining-metabase-logs)
+*   [Running Metabase over HTTPS](#running-metabase-over-https)
+*   [Setting the Java timezone](#setting-the-jvm-timezone)
+*   [Using Papertrail for logging](#running-metabase-with-papertrail-on-aws)
+*   [Protecting invalid hostname access](#protecting-against-invalid-hostname-access)
 
 
 # Running Metabase on AWS Elastic Beanstalk
