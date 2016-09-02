@@ -1,4 +1,5 @@
-> **Covered in this guide:**
+**Covered in this guide:**
+
 > [Installing Metabase on AWS Elastic Beanstalk](#running-metabase-on-aws-elastic-beanstalk)
 > [Upgrading to new versions of Metabase](#deploying-new-versions-of-metabase)
 > [Retaining Metabase logs on S3](#retaining-metabase-logs)

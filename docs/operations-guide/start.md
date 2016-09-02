@@ -1,14 +1,15 @@
 
-**Covered in this guide:**  
-> [How to install Metabase](#installing-and-running-metabase)  
-> [How to upgrade Metabase](#upgrading-metabase)  
-> [Tips for troubleshooting various issues](#troubleshooting-common-problems)   
-> [Configuring the application database](#configuring-the-metabase-application-database)  
-> [Migrating from using the H2 database to MySQL or Postgres](#migrating-from-using-the-h2-database-to-mysql-or-postgres)  
-> [Running database migrations manually](#running-metabase-database-migrations-manually)  
-> [Backing up Metabase Application Data](#backing-up-metabase-application-data)  
-> [Customizing the Metabase Jetty Webserver](#customizing-the-metabase-jetty-webserver)  
-> [Changing password complexity](#changing-metabase-password-complexity)  
+**Covered in this guide:**
+
+> [How to install Metabase](#installing-and-running-metabase)
+> [How to upgrade Metabase](#upgrading-metabase)
+> [Tips for troubleshooting various issues](#troubleshooting-common-problems)
+> [Configuring the application database](#configuring-the-metabase-application-database)
+> [Migrating from using the H2 database to MySQL or Postgres](#migrating-from-using-the-h2-database-to-mysql-or-postgres)
+> [Running database migrations manually](#running-metabase-database-migrations-manually)
+> [Backing up Metabase Application Data](#backing-up-metabase-application-data)
+> [Customizing the Metabase Jetty Webserver](#customizing-the-metabase-jetty-webserver)
+> [Changing password complexity](#changing-metabase-password-complexity)
 > [Handling Timezones](#handling-timezones-in-metabase)
 
 # Installing and Running Metabase
@@ -205,9 +206,9 @@ If you launched Metabase on a laptop or PC the application will create an embedd
 NOTE: If your Metabase is currently running it's best to shut down the Metabase process before making a backup copy of the file.  Then, restart the application.
 
 ### Amazon RDS for the Database Application
-Amazon has its own best practices on how to backup and restore RDS databases, so we'll defer to them.  We recommend that you enable automated RDS Backups.  
+Amazon has its own best practices on how to backup and restore RDS databases, so we'll defer to them.  We recommend that you enable automated RDS Backups.
 
-Instructions can be found in the [Amazon RDS User Guide](http://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html).  
+Instructions can be found in the [Amazon RDS User Guide](http://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html).
 
 ### Self-managed PostgreSQL or MySQL database
 Simply follow the same instructions you would use for making any normal database backup.  It's a large topic more fit for a DBA to answer, but as long as you have a dump of the Metabase database you'll be good to go.
