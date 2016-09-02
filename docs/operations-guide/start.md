@@ -1,16 +1,16 @@
 
 **Covered in this guide:**
 
-> [How to install Metabase](#installing-and-running-metabase)
-> [How to upgrade Metabase](#upgrading-metabase)
-> [Tips for troubleshooting various issues](#troubleshooting-common-problems)
-> [Configuring the application database](#configuring-the-metabase-application-database)
-> [Migrating from using the H2 database to MySQL or Postgres](#migrating-from-using-the-h2-database-to-mysql-or-postgres)
-> [Running database migrations manually](#running-metabase-database-migrations-manually)
-> [Backing up Metabase Application Data](#backing-up-metabase-application-data)
-> [Customizing the Metabase Jetty Webserver](#customizing-the-metabase-jetty-webserver)
-> [Changing password complexity](#changing-metabase-password-complexity)
-> [Handling Timezones](#handling-timezones-in-metabase)
+*  [How to install Metabase](#installing-and-running-metabase)
+*  [How to upgrade Metabase](#upgrading-metabase)
+*  [Tips for troubleshooting various issues](#troubleshooting-common-problems)
+*  [Configuring the application database](#configuring-the-metabase-application-database)
+*  [Migrating from using the H2 database to MySQL or Postgres](#migrating-from-using-the-h2-database-to-mysql-or-postgres)
+*  [Running database migrations manually](#running-metabase-database-migrations-manually)
+*  [Backing up Metabase Application Data](#backing-up-metabase-application-data)
+*  [Customizing the Metabase Jetty Webserver](#customizing-the-metabase-jetty-webserver)
+*  [Changing password complexity](#changing-metabase-password-complexity)
+*  [Handling Timezones](#handling-timezones-in-metabase)
 
 # Installing and Running Metabase
 
