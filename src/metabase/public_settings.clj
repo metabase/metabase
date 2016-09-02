@@ -1,9 +1,11 @@
 (ns metabase.public-settings
   (:require [clojure.string :as s]
+            [cheshire.core :as json]
             (metabase [config :as config]
                       [db :as db])
             (metabase.models [common :as common]
                              [setting :refer [defsetting], :as setting])
+            [metabase.util :as u]
             [metabase.util.password :as password])
   (:import java.util.TimeZone))
 
@@ -34,6 +36,25 @@
 
 (defsetting google-maps-api-key
   "A Google Maps API key is required to enable certain map visualizations.")
+
+(def ^:private assert-valid-json-url
+  "Check that remote URL points to a valid JSON file, or throw an exception.
+   Since the remote file isn't likely to change, this check isn't repeated for URLs that have already succeded;
+   if the check fails, an exception is thrown (thereby preventing memoization)."
+  (memoize (fn [url]
+             (assert (u/is-url? url)
+               (str "Invalid URL: " url))
+             (u/with-timeout 5000
+               (json/parse-string (slurp url)))
+             true)))
+
+(defsetting geojson-url
+  "A URL to a custom GeoJSON file that can be used in map visualizations instead of the default US State Map and World GeoJSON files."
+  :setter (fn [url]
+            (when (seq url)
+              ;; validate that the new value is a valid URL pointing to a valid JSON file or refuse to set it
+              (assert-valid-json-url url))
+            (setting/set-string! :geojson-url url)))
 
 (defn site-url
   "Fetch the site base URL that should be used for password reset emails, etc.
