@@ -438,6 +438,7 @@ function lineAndBarOnRender(chart, settings) {
 
 export default function lineAreaBar(element, { series, onHoverChange, onRender, chartType, isScalarSeries, settings }) {
     console.log('series are!!', series);
+    console.log('settings', settings);
     const colors = settings["graph.colors"];
 
     const isTimeseries = dimensionIsTimeseries(series[0].data);
@@ -528,7 +529,9 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
     let charts = groups.map((group, index) => {
         let chartType1 = (index > 0) ? 'line' : 'bar';
         console.log('chartType1', chartType1);
-        let chart = dc[getDcjsChartType(chartType1)](parent);
+        console.log('group', group);
+
+        let chart = dc[getDcjsChartType(series[index].card.display)](parent);
 
         chart
             .dimension(dimension)
