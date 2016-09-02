@@ -5,7 +5,7 @@
 *   [Retaining Metabase logs on S3](#retaining-metabase-logs)
 *   [Running Metabase over HTTPS](#running-metabase-over-https)
 *   [Setting the Java timezone](#setting-the-jvm-timezone)
-*   [Using Papertrail for logging](#running-metabase-with-papertrail-on-aws)
+*   [Using Papertrail for logging](#using-papertrail-for-logging-on-aws)
 *   [Protecting invalid hostname access](#protecting-against-invalid-hostname-access)
 
 
