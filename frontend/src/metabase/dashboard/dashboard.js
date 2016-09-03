@@ -68,7 +68,7 @@ const DashboardApi = new AngularResourceProxy("Dashboard", [
     "list", "get", "create", "update", "delete", "reposition_cards", "addcard", "removecard"
 ]);
 const MetabaseApi = new AngularResourceProxy("Metabase", ["dataset", "dataset_duration", "db_metadata"]);
-const CardApi = new AngularResourceProxy("Card", ["list", "update", "delete"]);
+const CardApi = new AngularResourceProxy("Card", ["list", "update", "delete", "query"]);
 const RevisionApi = new AngularResourceProxy("Revision", ["list", "revert"]);
 
 // action creators
@@ -152,7 +152,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, d
             }
         }, DATASET_SLOW_TIMEOUT);
 
-        result = await fetchDataOrError(MetabaseApi.dataset(datasetQuery));
+        result = await fetchDataOrError(CardApi.query({cardID: card.id, parameters: datasetQuery.parameters}));
 
         clearTimeout(slowCardTimer);
         return { dashcard_id: dashcard.id, card_id: card.id, result };

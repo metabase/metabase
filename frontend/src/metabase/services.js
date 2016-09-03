@@ -48,6 +48,23 @@ CoreServices.factory('Card', ['$resource', function($resource) {
                 cardId: '@cardId'
             }
         },
+        query: {
+            method: 'POST',
+            url: '/api/card/:cardID/query',
+            params: {
+                cardID: '@cardID'
+            },
+            then: function(resolve) {
+                // enable cancelling of the request using this technique:
+                // http://www.nesterovsky-bros.com/weblog/2015/02/02/CancelAngularjsResourceRequest.aspx
+                if (this.params) {
+                    this.timeout = this.params.timeout;
+                    delete this.params.timeout;
+                }
+                delete this.then;
+                resolve(this);
+            }
+        },
         isfavorite: {
             url: '/api/card/:cardId/favorite',
             method: 'GET',
@@ -565,6 +582,127 @@ CoreServices.factory('Settings', ['$resource', function($resource) {
             method: 'DELETE',
             params: {
                 key: '@key'
+            }
+        }
+    });
+}]);
+
+CoreServices.factory('Permissions', ['$resource', function($resource) {
+    return $resource('/api/permissions', {}, {
+        groups: {
+            method: 'GET',
+            url: '/api/permissions/group',
+            isArray: true
+        },
+        groupDetails: {
+            method: 'GET',
+            url: '/api/permissions/group/:id',
+            params: {
+                id: '@id'
+            }
+        },
+        databaseDetails: {
+            method: 'GET',
+            url: '/api/permissions/database/:id',
+            params: {
+                id: '@id'
+            }
+        },
+        databasePermissions: {
+            method: 'GET',
+            url: '/api/permissions/group/:groupID/database/:databaseID',
+            params: {
+                databaseID: '@databaseID',
+                groupID: '@groupID'
+            }
+        },
+        createGroup: {
+            method: 'POST',
+            url: '/api/permissions/group'
+        },
+        createMembership: {
+            method: 'POST',
+            url: '/api/permissions/membership',
+            isArray: true
+        },
+        deleteMembership: {
+            method: 'DELETE',
+            url: '/api/permissions/membership/:id',
+            params: {
+                id: '@id'
+            }
+        },
+        updateDatabasePermissions: {
+            method: 'POST',
+            url: '/api/permissions/group/:groupID/database/:databaseID',
+            params: {
+                databaseID: '@databaseID',
+                groupID: '@groupID'
+            }
+        },
+        updateGroup: {
+            method: 'PUT',
+            url: '/api/permissions/group/:id',
+            params: {
+                id: '@id'
+            }
+        },
+        deleteGroup: {
+            method: 'DELETE',
+            url: '/api/permissions/group/:id',
+            params: {
+                id: '@id'
+            }
+        },
+        schemaPermissions: {
+            method: 'GET',
+            url: '/api/permissions/group/:groupID/database/:databaseID/schema/:schema',
+            params: {
+                databaseID: '@databaseID',
+                groupID: '@groupID',
+                schema: '@schema'
+            }
+        },
+        createSchemaPermissions: {
+            method: 'POST',
+            url: '/api/permissions/group/:groupID/database/:databaseID/schema',
+            params: {
+                databaseID: '@databaseID',
+                groupID: '@groupID'
+            }
+        },
+        deleteSchemaPermissions: {
+            method: 'DELETE',
+            url: '/api/permissions/group/:groupID/database/:databaseID/schema/:schema',
+            params: {
+                databaseID: '@databaseID',
+                groupID: '@groupID',
+                schema: '@schema'
+            }
+        },
+        updateSchemaPermissions: {
+            method: 'PUT',
+            url: '/api/permissions/group/:groupID/database/:databaseID/schema/:schema',
+            params: {
+                databaseID: '@databaseID',
+                groupID: '@groupID',
+                schema: '@schema'
+            }
+        },
+        createTablePermissions: {
+            method: 'POST',
+            url: '/api/permissions/group/:groupID/table/:tableID',
+            params: {
+                groupID: '@groupID',
+                tableID: '@tableID'
+            }
+        },
+        deleteTablePermissions: {
+            method: 'DELETE',
+            url: '/api/permissions/group/:groupID/table/:tableID',
+            params: {
+                groupID: '@groupID',
+                tableID: '@tableID'
             }
         }
     });

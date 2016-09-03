@@ -1,15 +1,18 @@
 (ns metabase.models.card
   (:require [medley.core :as m]
+            [metabase.api.common :refer [*current-user-id*]]
             [metabase.db :as db]
             (metabase.models [card-label :refer [CardLabel]]
                              [dependency :as dependency]
                              [interface :as i]
                              [label :refer [Label]]
                              [revision :as revision])
-            (metabase [query :as q]
-                      [util :as u])))
+            [metabase.query :as q]
+            [metabase.query-processor.permissions :as qp-perms]
+            [metabase.util :as u]))
 
 (i/defentity Card :report_card)
+
 
 (defn- populate-query-fields [card]
   (let [{query :query, database-id :database, query-type :type} (:dataset_query card)
@@ -35,6 +38,16 @@
   (if-let [label-ids (seq (db/select-field :label_id CardLabel, :card_id id))]
     (db/select Label, :id [:in label-ids], {:order-by [:%lower.name]})
     []))
+
+
+(defn- pre-insert [{:keys [dataset_query], :as card}]
+  (u/prog1 card
+    ;; for native queries we need to make sure the user saving the card has native query permissions for the DB
+    ;; because users can always see native Cards and we don't want someone getting around their lack of permissions that way
+    (when (and *current-user-id*
+               (= (keyword (:type dataset_query)) :native))
+      (let [database (db/select-one ['Database :id :name], :id (:database dataset_query))]
+        (qp-perms/throw-exception-if-user-cannot-run-native-query-referencing-db *current-user-id* database)))))
 
 (defn- pre-cascade-delete [{:keys [id]}]
   (db/cascade-delete! 'PulseCard :card_id id)
@@ -76,12 +89,12 @@
           :can-read?          i/publicly-readable?
           :can-write?         i/publicly-writeable?
           :pre-update         populate-query-fields
-          :pre-insert         populate-query-fields
+          :pre-insert         (comp populate-query-fields pre-insert)
           :pre-cascade-delete pre-cascade-delete})
 
   revision/IRevisioned
   (assoc revision/IRevisionedDefaults
-         :serialize-instance serialize-instance)
+    :serialize-instance serialize-instance)
 
   dependency/IDependent
   {:dependencies card-dependencies})

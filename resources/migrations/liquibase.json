@@ -37,6 +37,7 @@
       {"include": {"file": "migrations/036_add_dashboard_filters_columns.yaml"}},
       {"include": {"file": "migrations/037_add_query_hash_and_indexes.yaml"}},
       {"include": {"file": "migrations/038_getting_started_guide.yaml"}},
-      {"include": {"file": "migrations/039_add_user_google_auth_column.yaml"}}
+      {"include": {"file": "migrations/039_add_user_google_auth_column.yaml"}},
+      {"include": {"file": "migrations/040_permissions_v1.yaml"}}
   ]
 }

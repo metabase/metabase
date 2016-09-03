@@ -26,11 +26,12 @@
   (let [defaults {:display_name (humanization/name->human-readable-name (:name table))}]
     (merge defaults table)))
 
-(defn- pre-cascade-delete [{:keys [id]}]
-  (db/cascade-delete! Segment :table_id id)
-  (db/cascade-delete! Metric :table_id id)
-  (db/cascade-delete! Field :table_id id)
-  (db/cascade-delete! 'Card :table_id id))
+(defn- pre-cascade-delete [{:keys [db_id schema id]}]
+  (db/cascade-delete! Segment           :table_id id)
+  (db/cascade-delete! Metric            :table_id id)
+  (db/cascade-delete! Field             :table_id id)
+  (db/cascade-delete! 'Card             :table_id id)
+  (db/cascade-delete! 'Permissions :object [:like (str "/db/" db_id "/schema/" schema "/table/" id "/%")]))
 
 (u/strict-extend (class Table)
   i/IEntity (merge i/IEntityDefaults

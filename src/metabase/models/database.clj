@@ -3,7 +3,8 @@
             [cheshire.generate :refer [add-encoder encode-map]]
             [metabase.api.common :refer [*current-user*]]
             [metabase.db :as db]
-            [metabase.models.interface :as i]
+            (metabase.models [interface :as i]
+                             [permissions-group :as perm-group])
             [metabase.util :as u]))
 
 (def ^:const protected-password
@@ -13,6 +14,13 @@
 
 (i/defentity Database :metabase_database)
 
+(defn- post-insert [{id :id, :as database}]
+  (u/prog1 database
+    ;; add this database to the default permissions group
+    (db/insert! 'Permissions
+      :object   (str "/db/" id "/")
+      :group_id (:id (perm-group/default)))))
+
 (defn- post-select [{:keys [engine] :as database}]
   (if-not engine database
           (assoc database :features (or (when-let [driver ((resolve 'metabase.driver/engine->driver) engine)]
@@ -20,14 +28,10 @@
                                         []))))
 
 (defn- pre-cascade-delete [{:keys [id]}]
-  (db/cascade-delete! 'Card  :database_id id)
-  (db/cascade-delete! 'Table :db_id id)
-  (db/cascade-delete! 'RawTable :database_id id))
-
-(defn ^:hydrate tables
-  "Return the `Tables` associated with this `Database`."
-  [{:keys [id]}]
-  (db/select 'Table, :db_id id, :active true, {:order-by [[:display_name :asc]]}))
+  (db/cascade-delete! 'Card        :database_id id)
+  (db/cascade-delete! 'Permissions :object [:like (str "/db/" id "/%")])
+  (db/cascade-delete! 'Table       :db_id       id)
+  (db/cascade-delete! 'RawTable    :database_id id))
 
 (defn pk-fields
   "Return all the primary key `Fields` associated with this DATABASE."
@@ -45,9 +49,15 @@
           :timestamped?       (constantly true)
           :can-read?          (constantly true)
           :can-write?         i/superuser?
+          :post-insert        post-insert
           :post-select        post-select
           :pre-cascade-delete pre-cascade-delete}))
 
+
+(defn ^:hydrate tables
+  "Return the `Tables` associated with this `Database`."
+  [{:keys [id]}]
+  (db/select 'Table, :db_id id, :active true, {:order-by [[:display_name :asc]]}))
 
 (defn schema-names
   "Return a *sorted set* of schema names (as strings) associated with this `Database`."

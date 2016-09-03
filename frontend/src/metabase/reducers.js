@@ -12,6 +12,7 @@ import settings from "metabase/admin/settings/settings";
 import * as people from "metabase/admin/people/reducers";
 import databases from "metabase/admin/databases/database";
 import datamodel from "metabase/admin/datamodel/metadata";
+import permissions from "metabase/admin/permissions/permissions";
 
 /* dashboards */
 import dashboard from "metabase/dashboard/dashboard";
@@ -59,7 +60,8 @@ const reducers = {
     databases,
     datamodel: datamodel,
     people: combineReducers(people),
-    settings
+    settings,
+    permissions,
 };
 
 export default reducers;
