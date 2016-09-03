@@ -1,7 +1,6 @@
 import React, { Component, PropTypes } from "react";
 
 import TooltipPopover from "metabase/components/TooltipPopover.jsx"
-import TooltipTable from "metabase/components/TooltipTable.jsx"
 
 import { formatValue } from "metabase/lib/formatting";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
