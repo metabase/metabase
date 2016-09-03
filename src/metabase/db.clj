@@ -63,7 +63,7 @@
   (delay (when-let [uri (config/config-str :mb-db-connection-uri)]
            (parse-connection-string uri))))
 
-(defn- db-type
+(defn db-type
   "The type of backing DB used to run Metabase. `:h2`, `:mysql`, or `:postgres`."
   ^clojure.lang.Keyword []
   (or (:type @connection-string-details)
