@@ -456,7 +456,7 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
         ])
     );
 
-    let xValues = getXValues(datas, chartType);
+    let xValues = getXValues(datas, null);
 
     let dimension, groups, yAxisSplit;
 
@@ -549,11 +549,10 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
     series = groups_to_sort.map((group_to_sort) => group_to_sort.group_series)
 
     let charts = groups.map((group, index) => {
-        //let chartType1 = (index > 0) ? 'line' : 'bar';
-        //console.log('chartType1', chartType1);
         //console.log('group', group);
 
-        let chart = dc[getDcjsChartType(series[index].card.display)](parent);
+        const currentChartType = series[index].card.display
+        let chart = dc[getDcjsChartType(currentChartType)](parent);
 
         chart
             .dimension(dimension)
@@ -578,7 +577,7 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
             chart.stack(group[i])
         }
 
-        applyChartLineBarSettings(chart, settings, chartType, isLinear, isTimeseries);
+        applyChartLineBarSettings(chart, settings, currentChartType, isLinear, isTimeseries);
 
         return chart;
     });
@@ -610,7 +609,7 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
         }
 
         // HACK: compositeChart + ordinal X axis shenanigans
-        if (chartType === "bar") {
+        if (chartType === "bar") { // TODO
             chart._rangeBandPadding(BAR_PADDING_RATIO) // https://github.com/dc-js/dc.js/issues/678
         } else {
             chart._rangeBandPadding(1) // https://github.com/dc-js/dc.js/issues/662
