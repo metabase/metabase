@@ -437,8 +437,8 @@ function lineAndBarOnRender(chart, settings) {
 }
 
 export default function lineAreaBar(element, { series, onHoverChange, onRender, chartType, isScalarSeries, settings }) {
-    console.log('series are!!', series);
-    console.log('settings', settings);
+    //console.log('series are!!', series);
+    //console.log('settings', settings);
     const colors = settings["graph.colors"];
 
     const isTimeseries = dimensionIsTimeseries(series[0].data);
@@ -526,10 +526,32 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
         parent = element;
     }
 
+    const sortOrder = {
+        bar: 0,
+        line: 1
+    }
+    let groups_to_sort = groups.map((group, index) => {
+        console.log('index', index, series[index].card.display)
+        return {'group_series': series[index], index, group}
+    })
+    //console.log('before sort', groups_to_sort);
+    groups_to_sort = groups_to_sort.sort((a, b) => {
+        const a_sortOrder = sortOrder[a.group_series.card.display]
+        const b_sortOrder = sortOrder[b.group_series.card.display]
+        if (a_sortOrder === b_sortOrder) {
+            return a.index - b.index; // preserve old ordering
+        } else {
+            return a_sortOrder - b_sortOrder;
+        }
+    })
+    //console.log('after sort', groups_to_sort);
+    groups = groups_to_sort.map((group_to_sort) => group_to_sort.group)
+    series = groups_to_sort.map((group_to_sort) => group_to_sort.group_series)
+
     let charts = groups.map((group, index) => {
-        let chartType1 = (index > 0) ? 'line' : 'bar';
-        console.log('chartType1', chartType1);
-        console.log('group', group);
+        //let chartType1 = (index > 0) ? 'line' : 'bar';
+        //console.log('chartType1', chartType1);
+        //console.log('group', group);
 
         let chart = dc[getDcjsChartType(series[index].card.display)](parent);
 
