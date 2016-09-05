@@ -330,7 +330,10 @@ function lineAndBarOnRender(chart, settings) {
                 .data(voronoi(vertices), (d) => d&&d.join(","))
                 .enter().append("svg:path")
                     .filter((d) => d != undefined)
-                    .attr("d", (d) => "M" + d.join("L") + "Z")
+                    .attr("d", (d) => {
+console.log(d, "M" + d.join("L") + "Z");
+return "M" + d.join("L") + "Z"
+})
                     .attr("clip-path", (d,i) => "url(#clip-"+i+")")
                     .on("mousemove", ({ point }) => {
                         let e = point[2];
