@@ -88,20 +88,6 @@ export const field_special_types = [{
 export const field_special_types_map = field_special_types
     .reduce((map, type) => Object.assign({}, map, {[type.id]: type}), {});
 
-export const field_field_types = [{
-    'id': 'info',
-    'name': 'Information',
-    'description': 'Non-numerical value that is not meant to be used.'
-}, {
-    'id': 'metric',
-    'name': 'Metric',
-    'description': 'A number that can be added, graphed, etc.'
-}, {
-    'id': 'dimension',
-    'name': 'Dimension',
-    'description': 'A high or low-cardinality numerical string value that is meant to be used as a grouping.'
-}];
-
 export const field_visibility_types = [{
     'id': 'normal',
     'name': 'Everywhere',

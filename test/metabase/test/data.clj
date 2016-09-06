@@ -196,14 +196,11 @@
                                                                        table-name
                                                                        (u/pprint-to-str (dissoc table-definition :rows))
                                                                        (u/pprint-to-str (db/select [Table :schema :name], :db_id (:id db))))))))]
-                 (doseq [{:keys [field-name field-type visibility-type special-type], :as field-definition} (:field-definitions table-definition)]
+                 (doseq [{:keys [field-name visibility-type special-type], :as field-definition} (:field-definitions table-definition)]
                    (let [field (delay (or (i/metabase-instance field-definition @table)
                                           (throw (Exception. (format "Field '%s' not loaded from definition:\n"
                                                                      field-name
                                                                      (u/pprint-to-str field-definition))))))]
-                     (when field-type
-                       (log/debug (format "SET FIELD TYPE %s.%s -> %s" table-name field-name field-type))
-                       (db/update! Field (:id @field) :field_type (name field-type)))
                      (when visibility-type
                        (log/debug (format "SET VISIBILITY TYPE %s.%s -> %s" table-name field-name visibility-type))
                        (db/update! Field (:id @field) :visibility_type (name visibility-type)))

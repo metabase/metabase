@@ -91,7 +91,6 @@
                                :name               "id"
                                :active             true
                                :parent_id          false
-                               :field_type         :info
                                :position           0
                                :preview_display    true
                                :display_name       "ID"
@@ -111,7 +110,6 @@
                                :name               "studio"
                                :active             true
                                :parent_id          false
-                               :field_type         :info
                                :position           0
                                :preview_display    true
                                :display_name       "Studio"
@@ -131,7 +129,6 @@
                                :name               "title"
                                :active             true
                                :parent_id          false
-                               :field_type         :info
                                :position           0
                                :preview_display    true
                                :display_name       "Title"
@@ -168,7 +165,6 @@
                                :name               "name"
                                :active             true
                                :parent_id          false
-                               :field_type         :info
                                :position           0
                                :preview_display    true
                                :display_name       "Name"
@@ -188,7 +184,6 @@
                                :name               "studio"
                                :active             true
                                :parent_id          false
-                               :field_type         :info
                                :position           0
                                :preview_display    true
                                :display_name       "Studio"
@@ -236,7 +231,6 @@
                               :name               "id"
                               :active             true
                               :parent_id          false
-                              :field_type         :info
                               :position           0
                               :preview_display    true
                               :display_name       "ID"
@@ -256,7 +250,6 @@
                               :name               "studio"
                               :active             true
                               :parent_id          false
-                              :field_type         :info
                               :position           0
                               :preview_display    true
                               :display_name       "Studio"
@@ -276,7 +269,6 @@
                               :name               "title"
                               :active             true
                               :parent_id          false
-                              :field_type         :info
                               :position           0
                               :preview_display    true
                               :display_name       "Title"

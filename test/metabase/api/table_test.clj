@@ -122,7 +122,6 @@
       :updated_at         $
       :active             true
       :id                 (id :categories :id)
-      :field_type         "info"
       :position           0
       :preview_display    true
       :created_at         $
@@ -145,7 +144,6 @@
       :updated_at         $
       :active             true
       :id                 (id :categories :name)
-      :field_type         "info"
       :position           0
       :preview_display    true
       :created_at         $
@@ -181,7 +179,6 @@
                                   :updated_at         $
                                   :active             true
                                   :id                 $
-                                  :field_type         "info"
                                   :position           0
                                   :target             nil
                                   :preview_display    true
@@ -203,7 +200,6 @@
                                   :updated_at         $
                                   :active             true
                                   :id                 $
-                                  :field_type         "info"
                                   :position           0
                                   :target             nil
                                   :preview_display    true
@@ -269,7 +265,6 @@
                                   :updated_at         $
                                   :active             true
                                   :id                 $
-                                  :field_type         "info"
                                   :position           0
                                   :target             nil
                                   :preview_display    true
@@ -291,7 +286,6 @@
                                   :updated_at         $
                                   :active             true
                                   :id                 $
-                                  :field_type         "info"
                                   :position           0
                                   :target             nil
                                   :preview_display    true
@@ -313,7 +307,6 @@
                                   :updated_at         $
                                   :active             true
                                   :id                 $
-                                  :field_type         "info"
                                   :position           0
                                   :target             nil
                                   :preview_display    true
@@ -335,7 +328,6 @@
                                   :updated_at         $
                                   :active             true
                                   :id                 $
-                                  :field_type         "info"
                                   :position           0
                                   :target             nil
                                   :preview_display    true
@@ -399,7 +391,6 @@
                                   :updated_at         $
                                   :active             true
                                   :id                 $
-                                  :field_type         "info"
                                   :position           0
                                   :target             nil
                                   :preview_display    true
@@ -421,7 +412,6 @@
                                   :updated_at         $
                                   :active             true
                                   :id                 $
-                                  :field_type         "info"
                                   :position           0
                                   :target             nil
                                   :preview_display    true
@@ -443,7 +433,6 @@
                                   :updated_at         $
                                   :active             true
                                   :id                 $
-                                  :field_type         "info"
                                   :position           0
                                   :target             nil
                                   :preview_display    true
@@ -547,7 +536,6 @@
                          :visibility_type    "normal"
                          :preview_display    $
                          :position           $
-                         :field_type         "info"
                          :active             true
                          :special_type       "fk"
                          :fk_target_field_id $
@@ -587,7 +575,6 @@
                          :visibility_type    "normal"
                          :preview_display    $
                          :position           $
-                         :field_type         "info"
                          :active             true
                          :special_type       "id"
                          :fk_target_field_id $

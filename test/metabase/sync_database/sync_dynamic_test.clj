@@ -287,7 +287,7 @@
     (let [get-fields (fn []
                        (for [field (db/select Field, :table_id table-id, {:order-by [:id]})]
                          (dissoc (tu/boolean-ids-and-timestamps field)
-                                 :active :field_type :position :preview_display)))]
+                                 :active :position :preview_display)))]
       ;; start with no fields
       [(get-fields)
        ;; first sync will add all the fields
