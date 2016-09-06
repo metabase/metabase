@@ -505,76 +505,76 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     ]}
                                 </div>
 
-                                <div className="my4">
-                                { ((guide.important_segments && guide.important_segments.length > 0) || 
-                                    (guide.important_tables && guide.important_tables.length > 0)) && [
-                                    <div className="mt2">
-                                        <SectionHeader key={'segmentTitle'}>
-                                            Segments and tables
-                                        </SectionHeader>
-                                        { guide.important_segments.map((segmentId) =>
-                                            <GuideDetail 
-                                                key={segmentId}
-                                                type="segment"
-                                                entity={segments[segmentId]}
-                                                tables={tables}
-                                            />
-                                        )}
-                                        { guide.important_tables.map((tableId) =>
-                                            <GuideDetail 
-                                                key={tableId}
-                                                type="table"
-                                                entity={tables[tableId]}
-                                                tables={tables}
-                                            />
-                                        )}
-                                    </div>,
-                                    <div key={'segmentSeeAll'}>
-                                        <div>
-                                            <Link className="Button Button--purple mr2" to={'/reference/segments'}>
-                                                See all segments
-                                            </Link>
-                                            <Link className="text-purple text-bold text-no-underline text-underline-hover" to={'/reference/databases'}>
-                                                See all tables
-                                            </Link>
+                                <div className="mt4">
+                                    { ((guide.important_segments && guide.important_segments.length > 0) || 
+                                        (guide.important_tables && guide.important_tables.length > 0)) && [
+                                        <div className="mt2">
+                                            <SectionHeader key={'segmentTitle'}>
+                                                Segments and tables
+                                            </SectionHeader>
+                                            { guide.important_segments.map((segmentId) =>
+                                                <GuideDetail 
+                                                    key={segmentId}
+                                                    type="segment"
+                                                    entity={segments[segmentId]}
+                                                    tables={tables}
+                                                />
+                                            )}
+                                            { guide.important_tables.map((tableId) =>
+                                                <GuideDetail 
+                                                    key={tableId}
+                                                    type="table"
+                                                    entity={tables[tableId]}
+                                                    tables={tables}
+                                                />
+                                            )}
+                                        </div>,
+                                        <div key={'segmentSeeAll'}>
+                                            <div>
+                                                <Link className="Button Button--purple mr2" to={'/reference/segments'}>
+                                                    See all segments
+                                                </Link>
+                                                <Link className="text-purple text-bold text-no-underline text-underline-hover" to={'/reference/databases'}>
+                                                    See all tables
+                                                </Link>
+                                            </div>
                                         </div>
-                                    </div>
-                                ]}
+                                    ]}
                                 </div>
 
-                                { guide.things_to_know && [
-                                    <div className="mt4">
+                                <div className="mt4">
+                                    { guide.things_to_know && [
                                         <SectionHeader key={'thingsToKnowTitle'}>
                                             Other things to know about our data
                                         </SectionHeader>,
                                         <p className="text-paragraph text-measure" key={'thingsToKnowDetails'}>
                                             { guide.things_to_know || `Nothing to know yet`}
                                         </p>,
-                                        <div key={'thingsToKnowSeeAll'}>
-                                            <Link to={'/reference/databases'}>
-                                                Explore our data
-                                            </Link>
-                                        </div>
-                                    </div>
-                                ]}
+                                        <Link className="link text-bold" to={'/reference/databases'} key={'thingsToKnowSeeAll'}>
+                                            Explore our data
+                                        </Link>
+                                    ]}
+                                </div>
 
-                                { guide.contact && (guide.contact.name || guide.contact.email) && [
-                                    <SectionHeader key={'contactTitle'}>
-                                        Have questions?
-                                    </SectionHeader>,
-                                    <div className="mb4 pb4" key={'contactDetails'}>
-                                            { guide.contact.name && 
-                                                <span className="text-dark mr3">
-                                                    {`Contact ${guide.contact.name}`}
-                                                </span>
-                                            }
-                                            { guide.contact.email && 
-                                                <a className="text-brand text-bold no-decoration" href={`mailto:${guide.contact.email}`}>
-                                                    {guide.contact.email}
-                                                </a>
-                                            }
-                                    </div>
-                                ]}
+                                <div className="mt4">
+                                    { guide.contact && (guide.contact.name || guide.contact.email) && [
+                                        <SectionHeader key={'contactTitle'}>
+                                            Have questions?
+                                        </SectionHeader>,
+                                        <div className="mb4 pb4" key={'contactDetails'}>
+                                                { guide.contact.name && 
+                                                    <span className="text-dark mr3">
+                                                        {`Contact ${guide.contact.name}`}
+                                                    </span>
+                                                }
+                                                { guide.contact.email && 
+                                                    <a className="text-brand text-bold no-decoration" href={`mailto:${guide.contact.email}`}>
+                                                        {guide.contact.email}
+                                                    </a>
+                                                }
+                                        </div>
+                                    ]}
+                                </div>
                             </div>
                         </div>
                 }

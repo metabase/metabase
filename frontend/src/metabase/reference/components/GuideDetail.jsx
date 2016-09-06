@@ -83,18 +83,20 @@ const GuideDetail = ({
             </div>
 
             { exploreLinks && exploreLinks.length > 0 && [
-                <h3 key="detailLabel">Explore this metric</h3>,
-                <div className="py2" key="detailLinks">
-                    <Link className="text-brand inline-block mr2 link text-bold" to={link}>View this metric</Link>
-                    { exploreLinks.map(link => 
-                        <Link
-                            className="inline-block text-bold text-brand mr2 link"
-                            key={link.url} 
-                            to={link.url}
-                        >
-                            {`By ${link.name}`}
-                        </Link>
-                    )}
+                <div className="mt2">
+                    <ContextHeading key="detailLabel">Explore this metric</ContextHeading>,
+                    <div key="detailLinks">
+                        <Link className="text-brand inline-block mr2 link text-bold" to={link}>View this metric</Link>
+                        { exploreLinks.map(link => 
+                            <Link
+                                className="inline-block text-bold text-brand mr2 link"
+                                key={link.url} 
+                                to={link.url}
+                            >
+                                {`By ${link.name}`}
+                            </Link>
+                        )}
+                    </div>
                 </div>
             ]}
             { hasLearnMore &&
