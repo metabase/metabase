@@ -1,36 +1,5 @@
-:local(.guideDetailEditor) {
-    composes: relative flex full mb4 from "style";
-    /* to maintain flex proportions and align textarea with with add button */
-    padding-right: calc(3.5rem + 2px);
-}
 :local(.guideDetailEditor):last-child {
     margin-bottom: 0;
-}
-
-:local(.guideDetailEditorClose) {
-    position: absolute;
-    color: var(--input-border-color);
-    top: 1rem;
-    right: 1rem;
-    cursor: pointer;
-}
-
-:local(.guideDetailEditorPicker) {
-    flex: 250;
-    max-width: 250px;
-    margin-right: 50px;
-}
-
-:local(.guideDetailEditorSelect) {
-    composes: flex-full align-center input text-dark p1 block from "style";
-    justify-content: space-between;
-    font-size: 16px;
-}
-
-:local(.guideDetailEditorBody) {
-    flex: 550;
-    max-width: 550px;
-    color: var(--dark-color);
 }
 
 :local(.guideDetailEditorTextarea) {

@@ -5,7 +5,9 @@ import cx from "classnames";
 import Icon from "metabase/components/Icon"
 
 import {
-    getQuestionUrl
+    getQuestionUrl,
+    typeToBgClass,
+    typeToLinkClass,
 } from "../utils";
 
 const GuideDetail = ({
@@ -41,18 +43,6 @@ const GuideDetail = ({
         table: `/reference/databases/${entity.db_id}/tables/${entity.id}`
     };
     const learnMoreLink = typeToLearnMoreLink[type];
-    const typeToLinkClass = {
-        dashboard: 'text-green',
-        metric: 'text-brand',
-        segment: 'text-purple',
-        table: 'text-purple'
-    };
-    const typeToBgClass = {
-        dashboard: 'bg-green',
-        metric: 'bg-brand',
-        segment: 'bg-purple',
-        table: 'bg-purple'
-    };
 
     const linkClass = typeToLinkClass[type]
     const linkHoverClass = `${typeToLinkClass[type]}-hover`
@@ -95,7 +85,7 @@ const GuideDetail = ({
             { exploreLinks && exploreLinks.length > 0 && [
                 <h3 key="detailLabel">Explore this metric</h3>,
                 <div className="py2" key="detailLinks">
-                    <Link className="inline-block mr3" to={link}>View this metric</Link>
+                    <Link className="text-brand inline-block mr2 link text-bold" to={link}>View this metric</Link>
                     { exploreLinks.map(link => 
                         <Link
                             className="inline-block text-bold text-brand mr2 link"

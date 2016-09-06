@@ -450,3 +450,17 @@ export const isGuideEmpty = ({
     important_segments && important_segments.length !== 0 ? false :
     important_tables && important_tables.length !== 0 ? false : 
     true;
+
+export const typeToLinkClass = {
+    dashboard: 'text-green',
+    metric: 'text-brand',
+    segment: 'text-purple',
+    table: 'text-purple'
+};
+
+export const typeToBgClass = {
+    dashboard: 'bg-green',
+    metric: 'bg-brand',
+    segment: 'bg-purple',
+    table: 'bg-purple'
+};

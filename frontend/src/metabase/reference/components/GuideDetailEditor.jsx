@@ -8,6 +8,9 @@ import S from "./GuideDetailEditor.css";
 import Select from "metabase/components/Select.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import DataSelector from "metabase/query_builder/DataSelector.jsx";
+import Tooltip from "metabase/components/Tooltip.jsx";
+
+import { typeToBgClass } from "../utils.js";
 
 const GuideDetailEditor = ({
     className,
@@ -29,6 +32,7 @@ const GuideDetailEditor = ({
         metricImportantFields
     } = metadata;
 
+    const bgClass = typeToBgClass[type];
     const entityId = formField.id.value;
     const tableId = metrics && metrics[entityId] && metrics[entityId].table_id;
     const tableFields = tables && tables[tableId] && tables[tableId].fields || [];
@@ -36,89 +40,106 @@ const GuideDetailEditor = ({
         tableFields.map(fieldId => fields[fieldId]) :
         [];
 
-    return <div className={cx('relative mb2 border-bottom pb4', className)}>
-        { formField.id.value !== null && formField.id.value !== undefined && 
-            <div className={S.guideDetailEditorClose}>
-                <Icon
-                    name="close"
-                    width={24}
-                    height={24}
-                    onClick={removeField}
-                />
+    return <div className={cx('mb2 border-bottom pb4 text-measure', className)}>
+        <div className="relative mt2 flex align-center">
+            <div
+                style={{
+                    width: 40,
+                    height: 40,
+                    left: -60
+                }}
+                className={cx(
+                    'absolute text-white flex align-center justify-center',
+                    bgClass
+                )}
+            >
+                <Icon name={type === 'metric' ? 'ruler' : type} />
             </div>
-        }
-        <div className="text-measure">
-            <EditLabel>{`Pick a ${type}`}</EditLabel>
-            { entities ?
-                <Select 
-                    value={entities[formField.id.value]}
-                    options={Object.values(entities)}
-                    disabledOptionIds={selectedIds}
-                    optionNameFn={option => option.display_name || option.name}
-                    onChange={(entity) => {
-                        //TODO: refactor into function
-                        formField.id.onChange(entity.id);
-                        formField.points_of_interest.onChange(entity.points_of_interest || '');
-                        formField.caveats.onChange(entity.caveats || '');
-                        if (type === 'metric') {
-                            formField.important_fields.onChange(metricImportantFields[entity.id] &&
-                                metricImportantFields[entity.id]
-                                    .map(fieldId => fields[fieldId])
-                            );
-                        }
-                    }}
-                    placeholder={'Select...'}
-                /> :
-                <DataSelector
-                    triggerIconSize={12}
-                    includeTables={true}
-                    query={{
-                        query: {
-                            source_table: formField.type.value === 'table' &&
-                                Number.parseInt(formField.id.value)
-                        },
-                        database: (
-                            formField.type.value === 'table' &&
-                            tables[formField.id.value] &&
-                            tables[formField.id.value].db_id
-                        ) || Number.parseInt(Object.keys(databases)[0]),
-                        segment: formField.type.value === 'segment' &&
-                            Number.parseInt(formField.id.value)
-                    }}
-                    databases={
-                        Object.values(databases)
-                            .map(database => ({
-                                ...database, 
-                                tables: database.tables.map(tableId => tables[tableId])
-                            }))
-                    }
-                    setDatabaseFn={() => null}
-                    tables={Object.values(tables)}
-                    disabledTableIds={selectedIdTypePairs
-                        .filter(idTypePair => idTypePair[1] === 'table')
-                        .map(idTypePair => idTypePair[0])
-                    }
-                    setSourceTableFn={(tableId) => {
-                        const table = tables[tableId]; 
-                        formField.id.onChange(table.id);
-                        formField.type.onChange('table');
-                        formField.points_of_interest.onChange(table.points_of_interest || '');
-                        formField.caveats.onChange(table.caveats || '');
-                    }}
-                    segments={Object.values(segments)}
-                    disabledSegmentIds={selectedIdTypePairs
-                        .filter(idTypePair => idTypePair[1] === 'segment')
-                        .map(idTypePair => idTypePair[0])
-                    }
-                    setSourceSegmentFn={(segmentId) => {
-                        const segment = segments[segmentId]; 
-                        formField.id.onChange(segment.id);
-                        formField.type.onChange('segment');
-                        formField.points_of_interest.onChange(segment.points_of_interest || '');
-                        formField.caveats.onChange(segment.caveats || '');
-                    }}
-                />
+            { formField.id.value !== null && formField.id.value !== undefined && 
+                <div className="right top mt1 mr1 absolute cursor-pointer text-grey-2">
+                    <Tooltip tooltip="Remove item">
+                        <Icon
+                            name="close"
+                            width={16}
+                            height={16}
+                            onClick={removeField}
+                        />
+                    </Tooltip>
+                </div>
             }
+            <div>
+                { entities ?
+                    <Select 
+                        value={entities[formField.id.value]}
+                        options={Object.values(entities)}
+                        disabledOptionIds={selectedIds}
+                        optionNameFn={option => option.display_name || option.name}
+                        onChange={(entity) => {
+                            //TODO: refactor into function
+                            formField.id.onChange(entity.id);
+                            formField.points_of_interest.onChange(entity.points_of_interest || '');
+                            formField.caveats.onChange(entity.caveats || '');
+                            if (type === 'metric') {
+                                formField.important_fields.onChange(metricImportantFields[entity.id] &&
+                                    metricImportantFields[entity.id]
+                                        .map(fieldId => fields[fieldId])
+                                );
+                            }
+                        }}
+                        placeholder={'Select...'}
+                    /> :
+                    <DataSelector
+                        className="inline-block bordered rounded"
+                        triggerIconSize={12}
+                        includeTables={true}
+                        query={{
+                            query: {
+                                source_table: formField.type.value === 'table' &&
+                                    Number.parseInt(formField.id.value)
+                            },
+                            database: (
+                                formField.type.value === 'table' &&
+                                tables[formField.id.value] &&
+                                tables[formField.id.value].db_id
+                            ) || Number.parseInt(Object.keys(databases)[0]),
+                            segment: formField.type.value === 'segment' &&
+                                Number.parseInt(formField.id.value)
+                        }}
+                        databases={
+                            Object.values(databases)
+                                .map(database => ({
+                                    ...database, 
+                                    tables: database.tables.map(tableId => tables[tableId])
+                                }))
+                        }
+                        setDatabaseFn={() => null}
+                        tables={Object.values(tables)}
+                        disabledTableIds={selectedIdTypePairs
+                            .filter(idTypePair => idTypePair[1] === 'table')
+                            .map(idTypePair => idTypePair[0])
+                        }
+                        setSourceTableFn={(tableId) => {
+                            const table = tables[tableId]; 
+                            formField.id.onChange(table.id);
+                            formField.type.onChange('table');
+                            formField.points_of_interest.onChange(table.points_of_interest || '');
+                            formField.caveats.onChange(table.caveats || '');
+                        }}
+                        segments={Object.values(segments)}
+                        disabledSegmentIds={selectedIdTypePairs
+                            .filter(idTypePair => idTypePair[1] === 'segment')
+                            .map(idTypePair => idTypePair[0])
+                        }
+                        setSourceSegmentFn={(segmentId) => {
+                            const segment = segments[segmentId]; 
+                            formField.id.onChange(segment.id);
+                            formField.type.onChange('segment');
+                            formField.points_of_interest.onChange(segment.points_of_interest || '');
+                            formField.caveats.onChange(segment.caveats || '');
+                        }}
+                    />
+                }
+            </div>
         </div>
         <div className=" mt2 text-measure">
             <EditLabel>

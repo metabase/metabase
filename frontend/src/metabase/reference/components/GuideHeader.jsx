@@ -1,6 +1,5 @@
 import React, { Component, PropTypes } from "react";
 import pure from "recompose/pure";
-import cx from "classnames";
 
 import EditButton from "metabase/reference/components/EditButton.jsx";
 

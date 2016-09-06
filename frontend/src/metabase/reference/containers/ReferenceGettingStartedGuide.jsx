@@ -327,17 +327,13 @@ export default class ReferenceGettingStartedGuide extends Component {
                                 </div>
                                 { important_metrics.length < 5 && 
                                     important_metrics.length < Object.keys(metrics).length && 
-                                    <div>
-                                        <div>
-                                            <button
-                                                className="Button Button--primary Button--large" 
-                                                type="button"
-                                                onClick={() => important_metrics.addField({id: null, caveats: null, points_of_interest: null})}
-                                            >
-                                                Add another metric
-                                            </button>
-                                        </div>
-                                    </div>
+                                        <button
+                                            className="Button Button--primary Button--large" 
+                                            type="button"
+                                            onClick={() => important_metrics.addField({id: null, caveats: null, points_of_interest: null})}
+                                        >
+                                            Add another metric
+                                        </button>
                                 }
                             </div>
                         </GuideEditSection>
@@ -515,7 +511,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     <div className="mt2">
                                         <SectionHeader key={'segmentTitle'}>
                                             Segments and tables
-                                        </SectionHeader>,
+                                        </SectionHeader>
                                         { guide.important_segments.map((segmentId) =>
                                             <GuideDetail 
                                                 key={segmentId}
@@ -523,7 +519,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                                 entity={segments[segmentId]}
                                                 tables={tables}
                                             />
-                                        )},
+                                        )}
                                         { guide.important_tables.map((tableId) =>
                                             <GuideDetail 
                                                 key={tableId}
@@ -531,7 +527,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                                 entity={tables[tableId]}
                                                 tables={tables}
                                             />
-                                        )},
+                                        )}
                                     </div>,
                                     <div key={'segmentSeeAll'}>
                                         <div>
@@ -552,7 +548,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                             Other things to know about our data
                                         </SectionHeader>,
                                         <p className="text-paragraph text-measure" key={'thingsToKnowDetails'}>
-                                            {guide.things_to_know || `Nothing to know yet`}
+                                            { guide.things_to_know || `Nothing to know yet`}
                                         </p>,
                                         <div key={'thingsToKnowSeeAll'}>
                                             <Link to={'/reference/databases'}>
