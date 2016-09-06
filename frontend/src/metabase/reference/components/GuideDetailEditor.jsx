@@ -36,7 +36,7 @@ const GuideDetailEditor = ({
         tableFields.map(fieldId => fields[fieldId]) :
         [];
 
-    return <div className={cx(S.guideDetailEditor, className)}>
+    return <div className={cx('relative', className)}>
         { formField.id.value !== null && formField.id.value !== undefined && 
             <div className={S.guideDetailEditorClose}>
                 <Icon
@@ -47,11 +47,10 @@ const GuideDetailEditor = ({
                 />
             </div>
         }
-        <div className={S.guideDetailEditorPicker}>
-            <span className={cx(editLabelClasses, S.guideDetailEditorLabel)}>{`Pick a ${type}`}</span>
+        <div className="text-measure">
+            <EditLabel>{`Pick a ${type}`}</EditLabel>
             { entities ?
                 <Select 
-                    triggerClasses={S.guideDetailEditorSelect}
                     value={entities[formField.id.value]}
                     options={Object.values(entities)}
                     disabledOptionIds={selectedIds}
@@ -71,8 +70,6 @@ const GuideDetailEditor = ({
                     placeholder={'Select...'}
                 /> :
                 <DataSelector
-                    className={S.guideDetailEditorSelect}
-                    style={{display: 'flex'}}
                     triggerIconSize={12}
                     includeTables={true}
                     query={{
@@ -123,13 +120,13 @@ const GuideDetailEditor = ({
                 />
             }
         </div>
-        <div className={S.guideDetailEditorBody}>
-            <span className={cx(editLabelClasses, S.guideDetailEditorLabel)}>
+        <div className="text-measure">
+            <EditLabel>
                 { type === 'dashboard' ?
                         `Why is this dashboard the most important?` :
                         `What is useful or interesting about this ${type}?` 
                 }
-            </span>
+            </EditLabel>
             <textarea 
                 className={S.guideDetailEditorTextarea}
                 placeholder="Write something helpful here"
@@ -137,12 +134,12 @@ const GuideDetailEditor = ({
                 disabled={formField.id.value === null || formField.id.value === undefined}
             />
 
-            <span className={cx(editLabelClasses, S.guideDetailEditorLabel)}>
+            <EditLabel>
                 { type === 'dashboard' ?
                         `Is there anything users of this dashboard should be aware of?` :
                         `Anything users should be aware of about this ${type}?` 
                 }
-            </span>           
+            </EditLabel>           
             <textarea 
                 className={S.guideDetailEditorTextarea} 
                 placeholder="Write something helpful here"
@@ -150,9 +147,9 @@ const GuideDetailEditor = ({
                 disabled={formField.id.value === null || formField.id.value === undefined}                
             />
             { type === 'metric' && [
-                <span key="metricFieldsLabel" className={cx(editLabelClasses, S.guideDetailEditorLabel)}>
+                <EditLabel key="metricFieldsLabel">
                     Which 2-3 fields do you usually group this metric by?
-                </span>,
+                </EditLabel>,
                 <Select
                     key="metricFieldsSelect"
                     triggerClasses={cx('px2', S.guideDetailEditorSelect)}
@@ -178,6 +175,10 @@ const GuideDetailEditor = ({
         </div>
     </div>;
 };
+
+const EditLabel = ({ children } ) =>
+    <h3 className="mb1">{ children }</h3>
+
 GuideDetailEditor.propTypes = {
     className: PropTypes.string,
     type: PropTypes.string.isRequired,

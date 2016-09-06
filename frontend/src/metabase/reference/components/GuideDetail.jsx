@@ -2,6 +2,7 @@ import React, { Component, PropTypes } from "react";
 import { Link } from "react-router";
 import pure from "recompose/pure";
 import cx from "classnames";
+import Icon from "metabase/components/Icon"
 
 import {
     getQuestionUrl
@@ -46,33 +47,48 @@ const GuideDetail = ({
         segment: 'text-purple',
         table: 'text-purple'
     };
+    const typeToBgClass = {
+        dashboard: 'bg-green',
+        metric: 'bg-brand',
+        segment: 'bg-purple',
+        table: 'bg-purple'
+    };
 
     const linkClass = typeToLinkClass[type]
+    const linkHoverClass = `${typeToLinkClass[type]}-hover`
+    const bgClass = typeToBgClass[type]
     const hasLearnMore = type === 'metric' || type === 'segment' || type === 'table';
     const interestingOrImportant = type === 'dashboard' ? 'important' : 'interesting';
 
-    return <div className="relative my4">
-        { title && <ItemTitle link={link} title={title} linkColorClass={linkClass} /> }
-        <div className="mt2">
-            <div>
-                <ContextHeading>
-                    { `Why this ${type} is ${interestingOrImportant}` }
-                </ContextHeading>
-
-                <div className={cx(!points_of_interest && 'text-grey-3')}>
-                    {points_of_interest || `Nothing ${interestingOrImportant} yet`}
-                </div> 
-            </div> 
-
-            <div>
-                <ContextHeading>
-                    {`Things to be aware of about this ${type}`} 
-                </ContextHeading>
-
-                <div className="text-grey-3">
-                    {caveats || 'Nothing to be aware of yet'}
-                </div>
+    return <div className="relative mt2 mb4">
+        <div className="flex align-center">
+            <div style={{
+                width: 40,
+                height: 40,
+                left: -60
+            }}
+            className={cx('absolute text-white flex align-center justify-center', bgClass)}
+            >
+                <Icon name={type === 'metric' ? 'ruler' : type} />
             </div>
+            { title && <ItemTitle link={link} title={title} linkColorClass={linkClass} linkHoverClass={linkHoverClass} /> }
+        </div>
+        <div className="mt2">
+            <ContextHeading>
+                { `Why this ${type} is ${interestingOrImportant}` }
+            </ContextHeading>
+
+            <ContextContent empty={!points_of_interest}>
+                {points_of_interest || `Nothing ${interestingOrImportant} yet`}
+            </ContextContent>
+
+            <ContextHeading>
+                {`Things to be aware of about this ${type}`} 
+            </ContextHeading>
+
+            <ContextContent empty={!caveats}>
+                {caveats || 'Nothing to be aware of yet'}
+            </ContextContent>
             { hasLearnMore &&
                 <Link 
                     className={cx(linkClass)}
@@ -88,6 +104,7 @@ const GuideDetail = ({
                 <div key="detailLinks">
                     { exploreLinks.map(link => 
                         <Link
+                            className="text-bold"
                             key={link.url} 
                             to={link.url}
                         >
@@ -106,10 +123,11 @@ GuideDetail.propTypes = {
     exploreLinks: PropTypes.array
 };
 
-const ItemTitle = ({ title, link, linkColorClass }) =>
+const ItemTitle = ({ title, link, linkColorClass, linkHoverClass }) =>
     <h2>
         <Link 
-            className={linkColorClass} 
+            className={cx(linkColorClass, linkHoverClass)} 
+            style={{ textDecoration: 'none' }}
             to={link}
         >
             {title}
@@ -117,9 +135,12 @@ const ItemTitle = ({ title, link, linkColorClass }) =>
     </h2>
 
 const ContextHeading = ({ children }) =>
-    <h3 className="mb1">{ children }</h3>
+    <h3 className="mb1 text-grey-4">{ children }</h3>
 
-const ContextContent = ({ children }) =>
-    <p className="text-paragraph">{ children }</p>
+const ContextContent = ({ empty, children }) =>
+    <p className={cx('text-paragraph text-measure', { 'text-grey-3': empty})}>
+        { children }
+    </p>
+
 
 export default pure(GuideDetail);

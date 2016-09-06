@@ -217,7 +217,7 @@ export default class ReferenceGettingStartedGuide extends Component {
             .filter(idTypePair => idTypePair[0] !== null);
 
         return (
-            <form className="full" style={style} onSubmit={onSubmit}>
+            <form className="full relative py4" style={style} onSubmit={onSubmit}>
                 { isDashboardModalOpen &&
                     <Modal>
                         <CreateDashboardModal
@@ -248,15 +248,15 @@ export default class ReferenceGettingStartedGuide extends Component {
                 { () => isEditing ? 
                     <div className="wrapper wrapper--trim">
                         <div>
-                            <div>
+                            <h1 className="my3 text-dark">
                                 Help new Metabase users find their way around
-                            </div>
-                            <div>
+                            </h1>
+                            <p className="text-paragraph text-measure">
                                 The Getting Started guide highlights the dashboard, 
                                 metrics, segments, and tables that matter most, 
                                 and informs your users of important things they 
                                 should know before digging into the data.
-                            </div>
+                            </p>
                         </div>
 
                         <GuideEditSection
@@ -269,22 +269,20 @@ export default class ReferenceGettingStartedGuide extends Component {
                             expand={() => most_important_dashboard.id.onChange(null)}
                         >
                             <div>
-                                <div>
+                                <SectionHeader>
                                     What is your most important dashboard?
-                                </div>
-                                <div>
-                                    <GuideDetailEditor 
-                                        type="dashboard" 
-                                        entities={dashboards}
-                                        selectedIds={[most_important_dashboard.id.value]}
-                                        formField={most_important_dashboard}
-                                        removeField={() => {
-                                            most_important_dashboard.id.onChange(null);
-                                            most_important_dashboard.points_of_interest.onChange('');
-                                            most_important_dashboard.caveats.onChange('');
-                                        }}
-                                    />
-                                </div>
+                                </SectionHeader>
+                                <GuideDetailEditor 
+                                    type="dashboard" 
+                                    entities={dashboards}
+                                    selectedIds={[most_important_dashboard.id.value]}
+                                    formField={most_important_dashboard}
+                                    removeField={() => {
+                                        most_important_dashboard.id.onChange(null);
+                                        most_important_dashboard.points_of_interest.onChange('');
+                                        most_important_dashboard.caveats.onChange('');
+                                    }}
+                                />
                             </div>
                         </GuideEditSection>
 
@@ -297,10 +295,10 @@ export default class ReferenceGettingStartedGuide extends Component {
                             link="http://www.metabase.com/docs/latest/administration-guide/05-segments-and-metrics#creating-a-metric"
                             expand={() => important_metrics.addField({id: null, caveats: null, points_of_interest: null, important_fields: null})}
                         >
-                            <div>
-                                <div>
+                            <div className="my2">
+                                <SectionHeader>
                                     What are your 3-5 most commonly referenced metrics?
-                                </div>
+                                </SectionHeader>
                                 <div>
                                     { important_metrics.map((metricField, index, metricFields) =>
                                         <GuideDetailEditor 
@@ -355,10 +353,10 @@ export default class ReferenceGettingStartedGuide extends Component {
                             expand={() => important_segments_and_tables.addField({id: null, type: null, caveats: null, points_of_interest: null})}
                         >
                             <div>
-                                <div>
+                                <h2 className="text-measure text-dark">
                                     What are 3-5 commonly referenced segments or tables 
                                     that would be useful for this audience?
-                                </div>
+                                </h2>
                                 <div>
                                     { important_segments_and_tables.map((segmentOrTableField, index, segmentOrTableFields) =>
                                         <GuideDetailEditor 
@@ -408,22 +406,19 @@ export default class ReferenceGettingStartedGuide extends Component {
                             expand={() => things_to_know.onChange('')}
                         >
                             <div>
-                                <div>
+                                <h2 className="text-dark text-measure">
                                     What should a user of this data know before they start 
                                     accessing it?
-                                </div>
+                                </h2>
                                 <div>
-                                    <div>
-                                        <span>
-                                            Things to know
-                                        </span>
+                                        <h3>Things to know</h3>
                                         <textarea 
+                                            className="input"
                                             placeholder="E.g., expectations around data privacy and use, 
                                                 common pitfalls or misunderstandings, information about 
                                                 data warehouse performance, legal notices, etc."
                                             {...things_to_know}
                                         />
-                                    </div>
                                 </div>
                             </div>
                         </GuideEditSection>
@@ -439,27 +434,25 @@ export default class ReferenceGettingStartedGuide extends Component {
                             }}
                         >
                             <div>
-                                <div>
+                                <SectionHeader>
                                     Who should users contact for help if they're confused about this data?
-                                </div>
+                                </SectionHeader>
                                 <div>
-                                <h3>
-                                    Name
-                                </h3>
+                                    <h3>Name</h3>
+                                    <input 
+                                        className="input"
+                                        placeholder="Julie McHelpfulson" 
+                                        type="text"
+                                        {...contact.name}
+                                    />
+                                </div>
+                                <h3>Email address</h3>
                                 <input 
-                                    placeholder="Julie McHelpfulson" 
+                                    className="input"
+                                    placeholder="julie.mchelpfulson@acme.com" 
                                     type="text"
-                                    {...contact.name}
+                                    {...contact.email}
                                 />
-                            </div>
-                            <span>
-                                Email address
-                            </span>
-                            <input 
-                            placeholder="julie.mchelpfulson@acme.com" 
-                            type="text"
-                            {...contact.email}
-                        />
                             </div>
                         </GuideEditSection>
                     </div> :
@@ -475,55 +468,60 @@ export default class ReferenceGettingStartedGuide extends Component {
                             />
                             <div className="wrapper wrapper--trim">
                                 { guide.most_important_dashboard !== null && [
-                                    <h2 key={'dashboardTitle'}>
-                                        Our most important dashboard
-                                    </h2>,
-                                    <GuideDetail 
-                                        key={'dashboardDetail'}
-                                        type="dashboard"
-                                        entity={dashboards[guide.most_important_dashboard]}
-                                        tables={tables}
-                                    />
-                                ]}
-                                { guide.important_metrics && guide.important_metrics.length > 0 && [
-                                    <h2 key={'metricsTitle'}>
-                                        Numbers that we pay attention to
-                                    </h2>,
-                                    guide.important_metrics.map((metricId) =>
+                                    <div className="my2">
+                                        <SectionHeader key={'dashboardTitle'}>
+                                            Our most important dashboard
+                                        </SectionHeader>,
                                         <GuideDetail 
-                                            key={metricId}
-                                            type="metric"
-                                            entity={metrics[metricId]}
+                                            key={'dashboardDetail'}
+                                            type="dashboard"
+                                            entity={dashboards[guide.most_important_dashboard]}
                                             tables={tables}
-                                            exploreLinks={guide.metric_important_fields[metricId] && 
-                                                guide.metric_important_fields[metricId]
-                                                    .map(fieldId => metadataFields[fieldId])
-                                                    .map(field => ({ 
-                                                        name: field.display_name || field.name,
-                                                        url: getQuestionUrl({
-                                                            dbId: tables[field.table_id] && tables[field.table_id].db_id,
-                                                            tableId: field.table_id,
-                                                            fieldId: field.id,
-                                                            metricId
-                                                        })
-                                                    })) 
-                                            }
                                         />
-                                    ),
-                                    <div key={'metricsSeeAll'}>
-                                        <div>
-                                            <Link className="text-brand" to={'/reference/metrics'}>
-                                                See all metrics
-                                            </Link>
-                                        </div>
                                     </div>
                                 ]}
+                                <div className="my4">
+                                    { guide.important_metrics && guide.important_metrics.length > 0 && [
+                                        <div className="my2">
+                                            <SectionHeader key={'metricsTitle'}>
+                                                Numbers that we pay attention to
+                                            </SectionHeader>,
+                                            { guide.important_metrics.map((metricId) =>
+                                                <GuideDetail 
+                                                    key={metricId}
+                                                    type="metric"
+                                                    entity={metrics[metricId]}
+                                                    tables={tables}
+                                                    exploreLinks={guide.metric_important_fields[metricId] && 
+                                                        guide.metric_important_fields[metricId]
+                                                            .map(fieldId => metadataFields[fieldId])
+                                                            .map(field => ({ 
+                                                                name: field.display_name || field.name,
+                                                                url: getQuestionUrl({
+                                                                    dbId: tables[field.table_id] && tables[field.table_id].db_id,
+                                                                    tableId: field.table_id,
+                                                                    fieldId: field.id,
+                                                                    metricId
+                                                                })
+                                                            })) 
+                                                    }
+                                                />
+                                            )} ,
+                                            <div key={'metricsSeeAll'}>
+                                                <Link className="Button Button--primary" to={'/reference/metrics'}>
+                                                    See all metrics
+                                                </Link>
+                                            </div>
+                                        </div>
+                                    ]}
+                                </div>
 
+                                <div className="my4">
                                 { ((guide.important_segments && guide.important_segments.length > 0) || 
                                     (guide.important_tables && guide.important_tables.length > 0)) && [
-                                    <h2 key={'segmentTitle'}>
+                                    <SectionHeader key={'segmentTitle'}>
                                         Segments and tables
-                                    </h2>,
+                                    </SectionHeader>,
                                     guide.important_segments.map((segmentId) =>
                                         <GuideDetail 
                                             key={segmentId}
@@ -542,38 +540,38 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     ),
                                     <div key={'segmentSeeAll'}>
                                         <div>
-                                            <Link className="Button mr2" to={'/reference/segments'}>
+                                            <Link className="Button Button--purple mr2" to={'/reference/segments'}>
                                                 See all segments
                                             </Link>
-                                            <Link to={'/reference/databases'}>
+                                            <Link className="text-purple" to={'/reference/databases'}>
                                                 See all tables
                                             </Link>
                                         </div>
                                     </div>
                                 ]}
+                                </div>
 
                                 { guide.things_to_know && [
-                                    <h2 key={'thingsToKnowTitle'}>
-                                        Some things to know
-                                    </h2>,
-                                    <div key={'thingsToKnowDetails'}>
-                                        {guide.things_to_know || `Nothing to know yet`}
-                                    </div>,
-                                    <div key={'thingsToKnowSeeAll'}>
-                                        <Link to={'/reference/databases'}>
-                                            Explore our data
-                                        </Link>
+                                    <div className="mt4">
+                                        <SectionHeader key={'thingsToKnowTitle'}>
+                                            Other things to know about our data
+                                        </SectionHeader>,
+                                        <p className="text-paragraph text-measure" key={'thingsToKnowDetails'}>
+                                            {guide.things_to_know || `Nothing to know yet`}
+                                        </p>,
+                                        <div key={'thingsToKnowSeeAll'}>
+                                            <Link to={'/reference/databases'}>
+                                                Explore our data
+                                            </Link>
+                                        </div>
                                     </div>
                                 ]}
 
                                 { guide.contact && (guide.contact.name || guide.contact.email) && [
-                                    <div key={'contactTitle'}>
-                                        <div>
-                                            Have questions?
-                                        </div>
-                                    </div>,
+                                    <SectionHeader key={'contactTitle'}>
+                                        Have questions?
+                                    </SectionHeader>,
                                     <div key={'contactDetails'}>
-                                        <div>
                                             { guide.contact.name && 
                                                 <span className="text-dark mr3">
                                                     {`Contact ${guide.contact.name}`}
@@ -584,7 +582,6 @@ export default class ReferenceGettingStartedGuide extends Component {
                                                     {guide.contact.email}
                                                 </a>
                                             }
-                                        </div>
                                     </div>
                                 ]}
                             </div>
@@ -595,3 +592,7 @@ export default class ReferenceGettingStartedGuide extends Component {
         );
     }
 }
+
+const SectionHeader = ({ children }) =>
+    <h2 className="text-dark text-measure">{children}</h2>
+

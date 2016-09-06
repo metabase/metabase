@@ -52,7 +52,7 @@ const GuideEditSection = ({
                 </a>
         )}
     </div> :
-    <div className={S.guideEditSection}>
+    <div className={cx('my4', S.guideEditSection)}>
         {children}
     </div>;
 GuideEditSection.propTypes = {

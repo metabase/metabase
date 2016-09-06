@@ -111,3 +111,7 @@
     line-height: 1.4em;
     white-space: pre;
 }
+
+.text-measure { max-width: 620px; }
+
+.text-dark { color: #333333; }
