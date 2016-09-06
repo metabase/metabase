@@ -21,6 +21,8 @@ const GuideEditSection = ({
 }) => isCollapsed ?
     <div 
         className={cx(
+            'cursor-pointer',
+            'border-brand-hover',
             S.guideEditSectionCollapsed, 
             isDisabled && S.guideEditSectionDisabled
         )}

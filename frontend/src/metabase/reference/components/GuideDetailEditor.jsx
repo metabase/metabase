@@ -36,7 +36,7 @@ const GuideDetailEditor = ({
         tableFields.map(fieldId => fields[fieldId]) :
         [];
 
-    return <div className={cx('relative', className)}>
+    return <div className={cx('relative mb2 border-bottom pb4', className)}>
         { formField.id.value !== null && formField.id.value !== undefined && 
             <div className={S.guideDetailEditorClose}>
                 <Icon
@@ -120,7 +120,7 @@ const GuideDetailEditor = ({
                 />
             }
         </div>
-        <div className="text-measure">
+        <div className=" mt2 text-measure">
             <EditLabel>
                 { type === 'dashboard' ?
                         `Why is this dashboard the most important?` :

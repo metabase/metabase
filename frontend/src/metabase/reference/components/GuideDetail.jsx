@@ -60,7 +60,7 @@ const GuideDetail = ({
     const hasLearnMore = type === 'metric' || type === 'segment' || type === 'table';
     const interestingOrImportant = type === 'dashboard' ? 'important' : 'interesting';
 
-    return <div className="relative mt2 mb4">
+    return <div className="relative mt2 pb3">
         <div className="flex align-center">
             <div style={{
                 width: 40,
@@ -82,29 +82,23 @@ const GuideDetail = ({
                 {points_of_interest || `Nothing ${interestingOrImportant} yet`}
             </ContextContent>
 
-            <ContextHeading>
-                {`Things to be aware of about this ${type}`} 
-            </ContextHeading>
+            <div className="mt2">
+                <ContextHeading>
+                    {`Things to be aware of about this ${type}`} 
+                </ContextHeading>
 
-            <ContextContent empty={!caveats}>
-                {caveats || 'Nothing to be aware of yet'}
-            </ContextContent>
-            { hasLearnMore &&
-                <Link 
-                    className={cx(linkClass)}
-                    to={learnMoreLink}
-                >
-                    Learn more
-                </Link>
-            }
+                <ContextContent empty={!caveats}>
+                    {caveats || 'Nothing to be aware of yet'}
+                </ContextContent>
+            </div>
+
             { exploreLinks && exploreLinks.length > 0 && [
-                <div key="detailLabel">
-                    Explore this metric
-                </div>,
-                <div key="detailLinks">
+                <h3 key="detailLabel">Explore this metric</h3>,
+                <div className="py2" key="detailLinks">
+                    <Link className="inline-block mr3" to={link}>View this metric</Link>
                     { exploreLinks.map(link => 
                         <Link
-                            className="text-bold"
+                            className="inline-block text-bold text-brand mr2 link"
                             key={link.url} 
                             to={link.url}
                         >
@@ -113,6 +107,14 @@ const GuideDetail = ({
                     )}
                 </div>
             ]}
+            { hasLearnMore &&
+                <Link 
+                    className={cx('block mt3 text-no-underline text-underline-hover text-bold', linkClass)}
+                    to={learnMoreLink}
+                >
+                    Learn more
+                </Link>
+            }
         </div>
     </div>;
 };
@@ -138,7 +140,7 @@ const ContextHeading = ({ children }) =>
     <h3 className="mb1 text-grey-4">{ children }</h3>
 
 const ContextContent = ({ empty, children }) =>
-    <p className={cx('text-paragraph text-measure', { 'text-grey-3': empty})}>
+    <p className={cx('m0 text-paragraph text-measure', { 'text-grey-3': empty})}>
         { children }
     </p>
 

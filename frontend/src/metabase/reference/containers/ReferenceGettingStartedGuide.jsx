@@ -247,9 +247,9 @@ export default class ReferenceGettingStartedGuide extends Component {
                 <LoadingAndErrorWrapper className="full" style={style} loading={!loadingError && loading} error={loadingError}>
                 { () => isEditing ? 
                     <div className="wrapper wrapper--trim">
-                        <div>
+                        <div className="mt4 py2">
                             <h1 className="my3 text-dark">
-                                Help new Metabase users find their way around
+                                Help new Metabase users find their way around.
                             </h1>
                             <p className="text-paragraph text-measure">
                                 The Getting Started guide highlights the dashboard, 
@@ -357,7 +357,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     What are 3-5 commonly referenced segments or tables 
                                     that would be useful for this audience?
                                 </h2>
-                                <div>
+                                <div className="mb2">
                                     { important_segments_and_tables.map((segmentOrTableField, index, segmentOrTableFields) =>
                                         <GuideDetailEditor 
                                             key={index}
@@ -383,17 +383,13 @@ export default class ReferenceGettingStartedGuide extends Component {
                                 </div>
                                 { important_segments_and_tables.length < 5 && 
                                     important_segments_and_tables.length < Object.keys(tables).concat(Object.keys.segments).length && 
-                                    <div>
-                                        <div>
-                                            <button
-                                                className="Button Button--primary Button--large" 
-                                                type="button"
-                                                onClick={() => important_segments_and_tables.addField({id: null, type: null, caveats: null, points_of_interest: null})}
-                                            >
-                                                Add another segment or table
-                                            </button>
-                                        </div>
-                                    </div>
+                                        <button
+                                            className="Button Button--primary Button--large" 
+                                            type="button"
+                                            onClick={() => important_segments_and_tables.addField({id: null, type: null, caveats: null, points_of_interest: null})}
+                                        >
+                                            Add another segment or table
+                                        </button>
                                 }
                             </div>
                         </GuideEditSection>
@@ -410,16 +406,13 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     What should a user of this data know before they start 
                                     accessing it?
                                 </h2>
-                                <div>
-                                        <h3>Things to know</h3>
-                                        <textarea 
-                                            className="input"
-                                            placeholder="E.g., expectations around data privacy and use, 
-                                                common pitfalls or misunderstandings, information about 
-                                                data warehouse performance, legal notices, etc."
-                                            {...things_to_know}
-                                        />
-                                </div>
+                                <textarea 
+                                    className="input full"
+                                    placeholder="E.g., expectations around data privacy and use, 
+                                        common pitfalls or misunderstandings, information about 
+                                        data warehouse performance, legal notices, etc."
+                                    {...things_to_know}
+                                />
                             </div>
                         </GuideEditSection>
 
@@ -519,31 +512,33 @@ export default class ReferenceGettingStartedGuide extends Component {
                                 <div className="my4">
                                 { ((guide.important_segments && guide.important_segments.length > 0) || 
                                     (guide.important_tables && guide.important_tables.length > 0)) && [
-                                    <SectionHeader key={'segmentTitle'}>
-                                        Segments and tables
-                                    </SectionHeader>,
-                                    guide.important_segments.map((segmentId) =>
-                                        <GuideDetail 
-                                            key={segmentId}
-                                            type="segment"
-                                            entity={segments[segmentId]}
-                                            tables={tables}
-                                        />
-                                    ),
-                                    guide.important_tables.map((tableId) =>
-                                        <GuideDetail 
-                                            key={tableId}
-                                            type="table"
-                                            entity={tables[tableId]}
-                                            tables={tables}
-                                        />
-                                    ),
+                                    <div className="mt2">
+                                        <SectionHeader key={'segmentTitle'}>
+                                            Segments and tables
+                                        </SectionHeader>,
+                                        { guide.important_segments.map((segmentId) =>
+                                            <GuideDetail 
+                                                key={segmentId}
+                                                type="segment"
+                                                entity={segments[segmentId]}
+                                                tables={tables}
+                                            />
+                                        )},
+                                        { guide.important_tables.map((tableId) =>
+                                            <GuideDetail 
+                                                key={tableId}
+                                                type="table"
+                                                entity={tables[tableId]}
+                                                tables={tables}
+                                            />
+                                        )},
+                                    </div>,
                                     <div key={'segmentSeeAll'}>
                                         <div>
                                             <Link className="Button Button--purple mr2" to={'/reference/segments'}>
                                                 See all segments
                                             </Link>
-                                            <Link className="text-purple" to={'/reference/databases'}>
+                                            <Link className="text-purple text-bold text-no-underline text-underline-hover" to={'/reference/databases'}>
                                                 See all tables
                                             </Link>
                                         </div>
@@ -571,7 +566,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     <SectionHeader key={'contactTitle'}>
                                         Have questions?
                                     </SectionHeader>,
-                                    <div key={'contactDetails'}>
+                                    <div className="mb4 pb4" key={'contactDetails'}>
                                             { guide.contact.name && 
                                                 <span className="text-dark mr3">
                                                     {`Contact ${guide.contact.name}`}
@@ -594,5 +589,5 @@ export default class ReferenceGettingStartedGuide extends Component {
 }
 
 const SectionHeader = ({ children }) =>
-    <h2 className="text-dark text-measure">{children}</h2>
+    <h2 className="text-dark text-measure mb2">{children}</h2>
 
