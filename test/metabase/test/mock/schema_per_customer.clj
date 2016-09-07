@@ -79,1116 +79,412 @@
 
 (driver/register-driver! :schema-per-customer (SchemaPerCustomerDriver.))
 
+(def ^:private ^:const raw-table-defaults
+  {:schema      nil
+   :database_id true
+   :columns     []
+   :updated_at  true
+   :details     {}
+   :active      true
+   :id          true
+   :created_at  true})
+
+(def ^:private ^:const raw-field-defaults
+  {:column_type         nil
+   :raw_table_id        true
+   :fk_target_column_id false
+   :updated_at          true
+   :details             {}
+   :active              true
+   :id                  true
+   :is_pk               false
+   :created_at          true})
 
 (def ^:const schema-per-customer-raw-tables
-  [{:schema      "s3"
-    :database_id true
-    :columns     [{:column_type         nil
-                   :raw_table_id        true
-                   :name                "id"
-                   :fk_target_column_id false
-                   :updated_at          true
-                   :details             {:base-type "IntegerField"}
-                   :active              true
-                   :id                  true
-                   :is_pk               true
-                   :created_at          true}
-                  {:column_type         nil
-                   :raw_table_id        true
-                   :name                "name"
-                   :fk_target_column_id false
-                   :updated_at          true
-                   :details             {:base-type "TextField", :special-type "name"}
-                   :active              true
-                   :id                  true
-                   :is_pk               false
-                   :created_at          true}]
-    :name        "city"
-    :updated_at  true
-    :details     {}
-    :active      true
-    :id          true
-    :created_at  true}
-   {:schema      "s2"
-    :database_id true
-    :columns     [{:column_type         nil
-                   :raw_table_id        true
-                   :name                "id"
-                   :fk_target_column_id false
-                   :updated_at          true
-                   :details             {:base-type "IntegerField"}
-                   :active              true
-                   :id                  true
-                   :is_pk               true
-                   :created_at          true}
-                  {:column_type         nil
-                   :raw_table_id        true
-                   :name                "reviewer_id"
-                   :fk_target_column_id true
-                   :updated_at          true
-                   :fk_target_column    {:schema "common", :name "user", :col-name "id"}
-                   :details             {:base-type "IntegerField"}
-                   :active              true
-                   :id                  true
-                   :is_pk               false
-                   :created_at          true}
-                  {:column_type         nil
-                   :raw_table_id        true
-                   :name                "text"
-                   :fk_target_column_id false
-                   :updated_at          true
-                   :details             {:base-type "TextField", :special-type "name"}
-                   :active              true
-                   :id                  true
-                   :is_pk               false
-                   :created_at          true}
-                  {:column_type         nil
-                   :raw_table_id        true
-                   :name                "venue_id"
-                   :fk_target_column_id true
-                   :updated_at          true
-                   :fk_target_column    {:schema "s2", :name "venue", :col-name "id"}
-                   :details             {:base-type "IntegerField"}
-                   :active              true
-                   :id                  true
-                   :is_pk               false
-                   :created_at          true}]
-    :name        "review"
-    :updated_at  true
-    :details     {}
-    :active      true
-    :id          true
-    :created_at  true}
-   {:schema      "s3"
-    :database_id true
-    :columns     [{:column_type         nil
-                   :raw_table_id        true
-                   :name                "city_id"
-                   :fk_target_column_id true
-                   :updated_at          true
-                   :fk_target_column    {:schema "s3", :name "city", :col-name "id"}
-                   :details             {:base-type "IntegerField"}
-                   :active              true
-                   :id                  true
-                   :is_pk               false
-                   :created_at          true}
-                  {:column_type         nil
-                   :raw_table_id        true
-                   :name                "id"
-                   :fk_target_column_id false
-                   :updated_at          true
-                   :details             {:base-type "IntegerField"}
-                   :active              true
-                   :id                  true
-                   :is_pk               true
-                   :created_at          true}
-                  {:column_type         nil
-                   :raw_table_id        true
-                   :name                "name"
-                   :fk_target_column_id false
-                   :updated_at          true
-                   :details             {:base-type "TextField", :special-type "name"}
-                   :active              true
-                   :id                  true
-                   :is_pk               false
-                   :created_at          true}]
-    :name        "venue"
-    :updated_at  true
-    :details     {}
-    :active      true
-    :id          true
-    :created_at  true}
-   {:schema      "s2"
-    :database_id true
-    :columns     [{:column_type         nil
-                   :raw_table_id        true
-                   :name                "id"
-                   :fk_target_column_id false
-                   :updated_at          true
-                   :details             {:base-type "IntegerField"}
-                   :active              true
-                   :id                  true
-                   :is_pk               true
-                   :created_at          true}
-                  {:column_type         nil
-                   :raw_table_id        true
-                   :name                "name"
-                   :fk_target_column_id false
-                   :updated_at          true
-                   :details             {:base-type "TextField", :special-type "name"}
-                   :active              true
-                   :id                  true
-                   :is_pk               false
-                   :created_at          true}]
-    :name        "city"
-    :updated_at  true
-    :details     {}
-    :active      true
-    :id          true
-    :created_at  true}
-   {:schema      "s1"
-    :database_id true
-    :columns     [{:column_type         nil
-                   :raw_table_id        true
-                   :name                "city_id"
-                   :fk_target_column_id true
-                   :updated_at          true
-                   :fk_target_column    {:schema "s1", :name "city", :col-name "id"}
-                   :details             {:base-type "IntegerField"}
-                   :active              true
-                   :id                  true
-                   :is_pk               false
-                   :created_at          true}
-                  {:column_type         nil
-                   :raw_table_id        true
-                   :name                "id"
-                   :fk_target_column_id false
-                   :updated_at          true
-                   :details             {:base-type "IntegerField"}
-                   :active              true
-                   :id                  true
-                   :is_pk               true
-                   :created_at          true}
-                  {:column_type         nil
-                   :raw_table_id        true
-                   :name                "name"
-                   :fk_target_column_id false
-                   :updated_at          true
-                   :details             {:base-type "TextField", :special-type "name"}
-                   :active              true
-                   :id                  true
-                   :is_pk               false
-                   :created_at          true}]
-    :name        "venue"
-    :updated_at  true
-    :details     {}
-    :active      true
-    :id          true
-    :created_at  true}
-   {:schema      "common"
-    :database_id true
-    :columns     [{:column_type         nil
-                   :raw_table_id        true
-                   :name                "id"
-                   :fk_target_column_id false
-                   :updated_at          true
-                   :details             {:base-type "IntegerField"}
-                   :active              true
-                   :id                  true
-                   :is_pk               true
-                   :created_at          true}
-                  {:column_type         nil
-                   :raw_table_id        true
-                   :name                "name"
-                   :fk_target_column_id false
-                   :updated_at          true
-                   :details             {:base-type "TextField"}
-                   :active              true
-                   :id                  true
-                   :is_pk               false
-                   :created_at          true}]
-    :name        "user"
-    :updated_at  true
-    :details     {}
-    :active      true
-    :id          true
-    :created_at  true}
-   {:schema      "s3"
-    :database_id true
-    :columns     [{:column_type         nil
-                   :raw_table_id        true
-                   :name                "id"
-                   :fk_target_column_id false
-                   :updated_at          true
-                   :details             {:base-type "IntegerField"}
-                   :active              true
-                   :id                  true
-                   :is_pk               true
-                   :created_at          true}
-                  {:column_type         nil
-                   :raw_table_id        true
-                   :name                "reviewer_id"
-                   :fk_target_column_id true
-                   :updated_at          true
-                   :fk_target_column    {:schema "common", :name "user", :col-name "id"}
-                   :details             {:base-type "IntegerField"}
-                   :active              true
-                   :id                  true
-                   :is_pk               false
-                   :created_at          true}
-                  {:column_type         nil
-                   :raw_table_id        true
-                   :name                "text"
-                   :fk_target_column_id false
-                   :updated_at          true
-                   :details             {:base-type "TextField", :special-type "name"}
-                   :active              true
-                   :id                  true
-                   :is_pk               false
-                   :created_at          true}
-                  {:column_type         nil
-                   :raw_table_id        true
-                   :name                "venue_id"
-                   :fk_target_column_id true
-                   :updated_at          true
-                   :fk_target_column    {:schema "s3", :name "venue", :col-name "id"}
-                   :details             {:base-type "IntegerField"}
-                   :active              true
-                   :id                  true
-                   :is_pk               false
-                   :created_at          true}]
-    :name        "review"
-    :updated_at  true
-    :details     {}
-    :active      true
-    :id          true
-    :created_at  true}
-   {:schema      "s2"
-    :database_id true
-    :columns     [{:column_type         nil
-                   :raw_table_id        true
-                   :name                "city_id"
-                   :fk_target_column_id true
-                   :updated_at          true
-                   :fk_target_column    {:schema "s2", :name "city", :col-name "id"}
-                   :details             {:base-type "IntegerField"}
-                   :active              true
-                   :id                  true
-                   :is_pk               false
-                   :created_at          true}
-                  {:column_type         nil
-                   :raw_table_id        true
-                   :name                "id"
-                   :fk_target_column_id false
-                   :updated_at          true
-                   :details             {:base-type "IntegerField"}
-                   :active              true
-                   :id                  true
-                   :is_pk               true
-                   :created_at          true}
-                  {:column_type         nil
-                   :raw_table_id        true
-                   :name                "name"
-                   :fk_target_column_id false
-                   :updated_at          true
-                   :details             {:base-type "TextField", :special-type "name"}
-                   :active              true
-                   :id                  true
-                   :is_pk               false
-                   :created_at          true}]
-    :name        "venue"
-    :updated_at  true
-    :details     {}
-    :active      true
-    :id          true
-    :created_at  true}
-   {:schema      "s1"
-    :database_id true
-    :columns     [{:column_type         nil
-                   :raw_table_id        true
-                   :name                "id"
-                   :fk_target_column_id false
-                   :updated_at          true
-                   :details             {:base-type "IntegerField"}
-                   :active              true
-                   :id                  true
-                   :is_pk               true
-                   :created_at          true}
-                  {:column_type         nil
-                   :raw_table_id        true
-                   :name                "reviewer_id"
-                   :fk_target_column_id true
-                   :updated_at          true
-                   :fk_target_column    {:schema "common", :name "user", :col-name "id"}
-                   :details             {:base-type "IntegerField"}
-                   :active              true
-                   :id                  true
-                   :is_pk               false
-                   :created_at          true}
-                  {:column_type         nil
-                   :raw_table_id        true
-                   :name                "text"
-                   :fk_target_column_id false
-                   :updated_at          true
-                   :details             {:base-type "TextField", :special-type "name"}
-                   :active              true
-                   :id                  true
-                   :is_pk               false
-                   :created_at          true}
-                  {:column_type         nil
-                   :raw_table_id        true
-                   :name                "venue_id"
-                   :fk_target_column_id true
-                   :updated_at          true
-                   :fk_target_column    {:schema "s1", :name "venue", :col-name "id"}
-                   :details             {:base-type "IntegerField"}
-                   :active              true
-                   :id                  true
-                   :is_pk               false
-                   :created_at          true}]
-    :name        "review"
-    :updated_at  true
-    :details     {}
-    :active      true
-    :id          true
-    :created_at  true}
-   {:schema      "s1"
-    :database_id true
-    :columns     [{:column_type         nil
-                   :raw_table_id        true
-                   :name                "id"
-                   :fk_target_column_id false
-                   :updated_at          true
-                   :details             {:base-type "IntegerField"}
-                   :active              true
-                   :id                  true
-                   :is_pk               true
-                   :created_at          true}
-                  {:column_type         nil
-                   :raw_table_id        true
-                   :name                "name"
-                   :fk_target_column_id false
-                   :updated_at          true
-                   :details             {:base-type "TextField", :special-type "name"}
-                   :active              true
-                   :id                  true
-                   :is_pk               false
-                   :created_at          true}]
-    :name        "city"
-    :updated_at  true
-    :details     {}
-    :active      true
-    :id          true
-    :created_at  true}])
+  [(merge raw-table-defaults
+          {:schema  "s3"
+           :columns [(merge raw-field-defaults
+                            {:name    "id"
+                             :details {:base-type "IntegerField"}
+                             :is_pk   true})
+                     (merge raw-field-defaults
+                            {:name    "name"
+                             :details {:base-type "TextField", :special-type "name"}})]
+           :name    "city"})
+   (merge raw-table-defaults
+          {:schema  "s2"
+           :columns [(merge raw-field-defaults
+                            {:name    "id"
+                             :details {:base-type "IntegerField"}
+                             :is_pk   true})
+                     (merge raw-field-defaults
+                            {:name                "reviewer_id"
+                             :fk_target_column_id true
+                             :fk_target_column    {:schema "common", :name "user", :col-name "id"}
+                             :details             {:base-type "IntegerField"}})
+                     (merge raw-field-defaults
+                            {:name    "text"
+                             :details {:base-type "TextField", :special-type "name"}})
+                     (merge raw-field-defaults
+                            {:name                "venue_id"
+                             :fk_target_column_id true
+                             :fk_target_column    {:schema "s2", :name "venue", :col-name "id"}
+                             :details             {:base-type "IntegerField"}})]
+           :name    "review"})
+   (merge raw-table-defaults
+          {:schema  "s3"
+           :columns [(merge raw-field-defaults
+                            {:name                "city_id"
+                             :fk_target_column_id true
+                             :fk_target_column    {:schema "s3", :name "city", :col-name "id"}
+                             :details             {:base-type "IntegerField"}})
+                     (merge raw-field-defaults
+                            {:name    "id"
+                             :details {:base-type "IntegerField"}
+                             :is_pk   true})
+                     (merge raw-field-defaults
+                            {:name    "name"
+                             :details {:base-type "TextField", :special-type "name"}})]
+           :name    "venue"})
+   (merge raw-table-defaults
+          {:schema  "s2"
+           :columns [(merge raw-field-defaults
+                            {:name    "id"
+                             :details {:base-type "IntegerField"}
+                             :is_pk   true})
+                     (merge raw-field-defaults
+                            {:name    "name"
+                             :details {:base-type "TextField", :special-type "name"}})]
+           :name    "city"})
+   (merge raw-table-defaults
+          {:schema  "s1"
+           :columns [(merge raw-field-defaults
+                            {:name                "city_id"
+                             :fk_target_column_id true
+                             :fk_target_column    {:schema "s1", :name "city", :col-name "id"}
+                             :details             {:base-type "IntegerField"}})
+                     (merge raw-field-defaults
+                            {:name    "id"
+                             :details {:base-type "IntegerField"}
+                             :is_pk   true})
+                     (merge raw-field-defaults
+                            {:name    "name"
+                             :details {:base-type "TextField", :special-type "name"}})]
+           :name    "venue"})
+   (merge raw-table-defaults
+          {:schema  "common"
+           :columns [(merge raw-field-defaults
+                            {:name    "id"
+                             :details {:base-type "IntegerField"}
+                             :is_pk   true})
+                     (merge raw-field-defaults
+                            {:name    "name"
+                             :details {:base-type "TextField"}})]
+           :name    "user"})
+   (merge raw-table-defaults
+          {:schema  "s3"
+           :columns [(merge raw-field-defaults
+                            {:name                "id"
+                             :details {:base-type "IntegerField"}
+                             :is_pk               true})
+                     (merge raw-field-defaults
+                            {:name                "reviewer_id"
+                             :fk_target_column_id true
+                             :fk_target_column    {:schema "common", :name "user", :col-name "id"}
+                             :details             {:base-type "IntegerField"}})
+                     (merge raw-field-defaults
+                            {:name    "text"
+                             :details {:base-type "TextField", :special-type "name"}})
+                     (merge raw-field-defaults
+                            {:name                "venue_id"
+                             :fk_target_column_id true
+                             :fk_target_column    {:schema "s3", :name "venue", :col-name "id"}
+                             :details             {:base-type "IntegerField"}})]
+           :name    "review"})
+   (merge raw-table-defaults
+          {:schema  "s2"
+           :columns [(merge raw-field-defaults
+                            {:name                "city_id"
+                             :fk_target_column_id true
+                             :fk_target_column    {:schema "s2", :name "city", :col-name "id"}
+                             :details             {:base-type "IntegerField"}})
+                     (merge raw-field-defaults
+                            {:name    "id"
+                             :details {:base-type "IntegerField"}
+                             :is_pk   true})
+                     (merge raw-field-defaults
+                            {:name    "name"
+                             :details {:base-type "TextField", :special-type "name"}})]
+           :name    "venue"})
+   (merge raw-table-defaults
+          {:schema  "s1"
+           :columns [(merge raw-field-defaults
+                            {:name    "id"
+                             :details {:base-type "IntegerField"}
+                             :is_pk   true})
+                     (merge raw-field-defaults
+                            {:name                "reviewer_id"
+                             :fk_target_column_id true
+                             :fk_target_column    {:schema "common", :name "user", :col-name "id"}
+                             :details             {:base-type "IntegerField"}})
+                     (merge raw-field-defaults
+                            {:name    "text"
+                             :details {:base-type "TextField", :special-type "name"}})
+                     (merge raw-field-defaults
+                            {:name                "venue_id"
+                             :fk_target_column_id true
+                             :fk_target_column    {:schema "s1", :name "venue", :col-name "id"}
+                             :details             {:base-type "IntegerField"}})]
+           :name    "review"})
+   (merge raw-table-defaults
+          {:schema  "s1"
+           :columns [(merge raw-field-defaults
+                            {:name    "id"
+                             :details {:base-type "IntegerField"}
+                             :is_pk   true})
+                     (merge raw-field-defaults
+                            {:name    "name"
+                             :details {:base-type "TextField", :special-type "name"}})]
+           :name    "city"})])
+
+
+(def ^:private ^:const table-defaults
+  {:description             nil
+   :entity_type             nil
+   :caveats                 nil
+   :points_of_interest      nil
+   :show_in_getting_started false
+   :schema                  nil
+   :raw_table_id            true
+   :fields                  []
+   :rows                    nil
+   :updated_at              true
+   :entity_name             nil
+   :active                  true
+   :id                      true
+   :db_id                   true
+   :visibility_type         nil
+   :created_at              true})
+
+
+(def ^:private ^:const field-defaults
+  {:description        nil
+   :table_id           true
+   :caveats            nil
+   :points_of_interest nil
+   :fk_target_field_id false
+   :updated_at         true
+   :active             true
+   :parent_id          false
+   :id                 true
+   :raw_column_id      true
+   :last_analyzed      false
+   :position           0
+   :visibility_type    :normal
+   :preview_display    true
+   :created_at         true})
 
 (def ^:const schema-per-customer-tables-and-fields
-  [{:description             nil
-    :entity_type             nil
-    :caveats                 nil
-    :points_of_interest      nil
-    :show_in_getting_started false
-    :schema                  "common"
-    :raw_table_id            true
-    :name                    "user"
-    :fields                  [{:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :id
-                               :name               "id"
-                               :fk_target_field_id false
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "ID"
-                               :created_at         true
-                               :base_type          :IntegerField}
-                              {:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :name
-                               :name               "name"
-                               :fk_target_field_id false
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "Name"
-                               :created_at         true
-                               :base_type          :TextField}]
-    :rows                    nil
-    :updated_at              true
-    :entity_name             nil
-    :active                  true
-    :id                      true
-    :db_id                   true
-    :visibility_type         nil
-    :display_name            "User"
-    :created_at              true}
-   {:description             nil
-    :entity_type             nil
-    :caveats                 nil
-    :points_of_interest      nil
-    :show_in_getting_started false
-    :schema                  "s1"
-    :raw_table_id            true
-    :name                    "city"
-    :fields                  [{:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :id
-                               :name               "id"
-                               :fk_target_field_id false
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "ID"
-                               :created_at         true
-                               :base_type          :IntegerField}
-                              {:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :name
-                               :name               "name"
-                               :fk_target_field_id false
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "Name"
-                               :created_at         true
-                               :base_type          :TextField}]
-    :rows                    nil
-    :updated_at              true
-    :entity_name             nil
-    :active                  true
-    :id                      true
-    :db_id                   true
-    :visibility_type         nil
-    :display_name            "City"
-    :created_at              true}
-   {:description             nil
-    :entity_type             nil
-    :caveats                 nil
-    :points_of_interest      nil
-    :show_in_getting_started false
-    :schema                  "s1"
-    :raw_table_id            true
-    :name                    "review"
-    :fields                  [{:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :id
-                               :name               "id"
-                               :fk_target_field_id false
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "ID"
-                               :created_at         true
-                               :base_type          :IntegerField}
-                              {:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :fk
-                               :name               "reviewer_id"
-                               :fk_target_field_id true
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "Reviewer ID"
-                               :created_at         true
-                               :base_type          :IntegerField
-                               :fk_target_field    {:schema "common", :name "user", :col-name "id"}}
-                              {:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :name
-                               :name               "text"
-                               :fk_target_field_id false
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "Text"
-                               :created_at         true
-                               :base_type          :TextField}
-                              {:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :fk
-                               :name               "venue_id"
-                               :fk_target_field_id true
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "Venue ID"
-                               :created_at         true
-                               :base_type          :IntegerField
-                               :fk_target_field    {:schema "s1", :name "venue", :col-name "id"}}]
-    :rows                    nil
-    :updated_at              true
-    :entity_name             nil
-    :active                  true
-    :id                      true
-    :db_id                   true
-    :visibility_type         nil
-    :display_name            "Review"
-    :created_at              true}
-   {:description             nil
-    :entity_type             nil
-    :caveats                 nil
-    :points_of_interest      nil
-    :show_in_getting_started false
-    :schema                  "s1"
-    :raw_table_id            true
-    :name                    "venue"
-    :fields                  [{:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :fk
-                               :name               "city_id"
-                               :fk_target_field_id true
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "City ID"
-                               :created_at         true
-                               :base_type          :IntegerField
-                               :fk_target_field    {:schema "s1", :name "city", :col-name "id"}}
-                              {:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :id
-                               :name               "id"
-                               :fk_target_field_id false
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "ID"
-                               :created_at         true
-                               :base_type          :IntegerField}
-                              {:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :name
-                               :name               "name"
-                               :fk_target_field_id false
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "Name"
-                               :created_at         true
-                               :base_type          :TextField}]
-    :rows                    nil
-    :updated_at              true
-    :entity_name             nil
-    :active                  true
-    :id                      true
-    :db_id                   true
-    :visibility_type         nil
-    :display_name            "Venue"
-    :created_at              true}
-   {:description             nil
-    :entity_type             nil
-    :caveats                 nil
-    :points_of_interest      nil
-    :show_in_getting_started false
-    :schema                  "s2"
-    :raw_table_id            true
-    :name                    "city"
-    :fields                  [{:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :id
-                               :name               "id"
-                               :fk_target_field_id false
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "ID"
-                               :created_at         true
-                               :base_type          :IntegerField}
-                              {:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :name
-                               :name               "name"
-                               :fk_target_field_id false
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "Name"
-                               :created_at         true
-                               :base_type          :TextField}]
-    :rows                    nil
-    :updated_at              true
-    :entity_name             nil
-    :active                  true
-    :id                      true
-    :db_id                   true
-    :visibility_type         nil
-    :display_name            "City"
-    :created_at              true}
-   {:description             nil
-    :entity_type             nil
-    :caveats                 nil
-    :points_of_interest      nil
-    :show_in_getting_started false
-    :schema                  "s2"
-    :raw_table_id            true
-    :name                    "review"
-    :fields                  [{:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :id
-                               :name               "id"
-                               :fk_target_field_id false
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "ID"
-                               :created_at         true
-                               :base_type          :IntegerField}
-                              {:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :fk
-                               :name               "reviewer_id"
-                               :fk_target_field_id true
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "Reviewer ID"
-                               :created_at         true
-                               :base_type          :IntegerField
-                               :fk_target_field    {:schema "common", :name "user", :col-name "id"}}
-                              {:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :name
-                               :name               "text"
-                               :fk_target_field_id false
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "Text"
-                               :created_at         true
-                               :base_type          :TextField}
-                              {:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :fk
-                               :name               "venue_id"
-                               :fk_target_field_id true
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "Venue ID"
-                               :created_at         true
-                               :base_type          :IntegerField
-                               :fk_target_field    {:schema "s2", :name "venue", :col-name "id"}}]
-    :rows                    nil
-    :updated_at              true
-    :entity_name             nil
-    :active                  true
-    :id                      true
-    :db_id                   true
-    :visibility_type         nil
-    :display_name            "Review"
-    :created_at              true}
-   {:description             nil
-    :entity_type             nil
-    :caveats                 nil
-    :points_of_interest      nil
-    :show_in_getting_started false
-    :schema                  "s2"
-    :raw_table_id            true
-    :name                    "venue"
-    :fields                  [{:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :fk
-                               :name               "city_id"
-                               :fk_target_field_id true
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "City ID"
-                               :created_at         true
-                               :base_type          :IntegerField
-                               :fk_target_field    {:schema "s2", :name "city", :col-name "id"}}
-                              {:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :id
-                               :name               "id"
-                               :fk_target_field_id false
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "ID"
-                               :created_at         true
-                               :base_type          :IntegerField}
-                              {:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :name
-                               :name               "name"
-                               :fk_target_field_id false
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "Name"
-                               :created_at         true
-                               :base_type          :TextField}]
-    :rows                    nil
-    :updated_at              true
-    :entity_name             nil
-    :active                  true
-    :id                      true
-    :db_id                   true
-    :visibility_type         nil
-    :display_name            "Venue"
-    :created_at              true}
-   {:description             nil
-    :entity_type             nil
-    :caveats                 nil
-    :points_of_interest      nil
-    :show_in_getting_started false
-    :schema                  "s3"
-    :raw_table_id            true
-    :name                    "city"
-    :fields                  [{:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :id
-                               :name               "id"
-                               :fk_target_field_id false
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "ID"
-                               :created_at         true
-                               :base_type          :IntegerField}
-                              {:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :name
-                               :name               "name"
-                               :fk_target_field_id false
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "Name"
-                               :created_at         true
-                               :base_type          :TextField}]
-    :rows                    nil
-    :updated_at              true
-    :entity_name             nil
-    :active                  true
-    :id                      true
-    :db_id                   true
-    :visibility_type         nil
-    :display_name            "City"
-    :created_at              true}
-   {:description             nil
-    :entity_type             nil
-    :caveats                 nil
-    :points_of_interest      nil
-    :show_in_getting_started false
-    :schema                  "s3"
-    :raw_table_id            true
-    :name                    "review"
-    :fields                  [{:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :id
-                               :name               "id"
-                               :fk_target_field_id false
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "ID"
-                               :created_at         true
-                               :base_type          :IntegerField}
-                              {:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :fk
-                               :name               "reviewer_id"
-                               :fk_target_field_id true
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "Reviewer ID"
-                               :created_at         true
-                               :base_type          :IntegerField
-                               :fk_target_field    {:schema "common", :name "user", :col-name "id"}}
-                              {:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :name
-                               :name               "text"
-                               :fk_target_field_id false
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "Text"
-                               :created_at         true
-                               :base_type          :TextField}
-                              {:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :fk
-                               :name               "venue_id"
-                               :fk_target_field_id true
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "Venue ID"
-                               :created_at         true
-                               :base_type          :IntegerField
-                               :fk_target_field    {:schema "s3", :name "venue", :col-name "id"}}]
-    :rows                    nil
-    :updated_at              true
-    :entity_name             nil
-    :active                  true
-    :id                      true
-    :db_id                   true
-    :visibility_type         nil
-    :display_name            "Review"
-    :created_at              true}
-   {:description             nil
-    :entity_type             nil
-    :caveats                 nil
-    :points_of_interest      nil
-    :show_in_getting_started false
-    :schema                  "s3"
-    :raw_table_id            true
-    :name                    "venue"
-    :fields                  [{:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :fk
-                               :name               "city_id"
-                               :fk_target_field_id true
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "City ID"
-                               :created_at         true
-                               :base_type          :IntegerField
-                               :fk_target_field    {:schema "s3", :name "city", :col-name "id"}}
-                              {:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :id
-                               :name               "id"
-                               :fk_target_field_id false
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "ID"
-                               :created_at         true
-                               :base_type          :IntegerField}
-                              {:description        nil
-                               :table_id           true
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :name
-                               :name               "name"
-                               :fk_target_field_id false
-                               :updated_at         true
-                               :active             true
-                               :parent_id          false
-                               :id                 true
-                               :raw_column_id      true
-                               :last_analyzed      false
-                               :position           0
-                               :visibility_type    :normal
-                               :preview_display    true
-                               :display_name       "Name"
-                               :created_at         true
-                               :base_type          :TextField}]
-    :rows                    nil
-    :updated_at              true
-    :entity_name             nil
-    :active                  true
-    :id                      true
-    :db_id                   true
-    :visibility_type         nil
-    :display_name            "Venue"
-    :created_at              true}])
+  [(merge table-defaults
+          {:schema       "common"
+           :name         "user"
+           :fields       [(merge field-defaults
+                                 {:special_type :id
+                                  :name         "id"
+                                  :display_name "ID"
+                                  :base_type    :IntegerField})
+                          (merge field-defaults
+                                 {:special_type :name
+                                  :name         "name"
+                                  :display_name "Name"
+                                  :base_type    :TextField})]
+           :display_name "User"})
+   (merge table-defaults
+          {:schema       "s1"
+           :name         "city"
+           :fields       [(merge field-defaults
+                                 {:special_type :id
+                                  :name         "id"
+                                  :display_name "ID"
+                                  :base_type    :IntegerField})
+                          (merge field-defaults
+                                 {:special_type :name
+                                  :name         "name"
+                                  :display_name "Name"
+                                  :base_type    :TextField})]
+           :display_name "City"})
+   (merge table-defaults
+          {:schema       "s1"
+           :name         "review"
+           :fields       [(merge field-defaults
+                                 {:special_type :id
+                                  :name         "id"
+                                  :display_name "ID"
+                                  :base_type    :IntegerField})
+                          (merge field-defaults
+                                 {:special_type       :fk
+                                  :name               "reviewer_id"
+                                  :fk_target_field_id true
+                                  :display_name       "Reviewer ID"
+                                  :base_type          :IntegerField
+                                  :fk_target_field    {:schema "common", :name "user", :col-name "id"}})
+                          (merge field-defaults
+                                 {:special_type :name
+                                  :name         "text"
+                                  :display_name "Text"
+                                  :base_type    :TextField})
+                          (merge field-defaults
+                                 {:special_type       :fk
+                                  :name               "venue_id"
+                                  :fk_target_field_id true
+                                  :display_name       "Venue ID"
+                                  :base_type          :IntegerField
+                                  :fk_target_field    {:schema "s1", :name "venue", :col-name "id"}})]
+           :display_name "Review"})
+   (merge table-defaults
+          {:schema       "s1"
+           :name         "venue"
+           :fields       [(merge field-defaults
+                                 {:special_type       :fk
+                                  :name               "city_id"
+                                  :fk_target_field_id true
+                                  :display_name       "City ID"
+                                  :base_type          :IntegerField
+                                  :fk_target_field    {:schema "s1", :name "city", :col-name "id"}})
+                          (merge field-defaults
+                                 {:special_type :id
+                                  :name         "id"
+                                  :display_name "ID"
+                                  :base_type    :IntegerField})
+                          (merge field-defaults
+                                 {:special_type :name
+                                  :name         "name"
+                                  :display_name "Name"
+                                  :base_type    :TextField})]
+           :display_name "Venue"})
+   (merge table-defaults
+          {:schema       "s2"
+           :name         "city"
+           :fields       [(merge field-defaults
+                                 {:special_type :id
+                                  :name         "id"
+                                  :display_name "ID"
+                                  :base_type    :IntegerField})
+                          (merge field-defaults
+                                 {:special_type :name
+                                  :name         "name"
+                                  :display_name "Name"
+                                  :base_type    :TextField})]
+           :display_name "City"})
+   (merge table-defaults
+          {:schema       "s2"
+           :name         "review"
+           :fields       [(merge field-defaults
+                                 {:special_type :id
+                                  :name         "id"
+                                  :display_name "ID"
+                                  :base_type    :IntegerField})
+                          (merge field-defaults
+                                 {:special_type       :fk
+                                  :name               "reviewer_id"
+                                  :fk_target_field_id true
+                                  :display_name       "Reviewer ID"
+                                  :base_type          :IntegerField
+                                  :fk_target_field    {:schema "common", :name "user", :col-name "id"}})
+                          (merge field-defaults
+                                 {:special_type :name
+                                  :name         "text"
+                                  :display_name "Text"
+                                  :base_type    :TextField})
+                          (merge field-defaults
+                                 {:special_type       :fk
+                                  :name               "venue_id"
+                                  :fk_target_field_id true
+                                  :display_name       "Venue ID"
+                                  :base_type          :IntegerField
+                                  :fk_target_field    {:schema "s2", :name "venue", :col-name "id"}})]
+           :display_name "Review"})
+   (merge table-defaults
+          {:schema       "s2"
+           :name         "venue"
+           :fields       [(merge field-defaults
+                                 {:special_type       :fk
+                                  :name               "city_id"
+                                  :fk_target_field_id true
+                                  :display_name       "City ID"
+                                  :base_type          :IntegerField
+                                  :fk_target_field    {:schema "s2", :name "city", :col-name "id"}})
+                          (merge field-defaults
+                                 {:special_type :id
+                                  :name         "id"
+                                  :display_name "ID"
+                                  :base_type    :IntegerField})
+                          (merge field-defaults
+                                 {:special_type :name
+                                  :name         "name"
+                                  :display_name "Name"
+                                  :base_type    :TextField})]
+           :display_name "Venue"})
+   (merge table-defaults
+          {:schema       "s3"
+           :name         "city"
+           :fields       [(merge field-defaults
+                                 {:special_type :id
+                                  :name         "id"
+                                  :display_name "ID"
+                                  :base_type    :IntegerField})
+                          (merge field-defaults
+                                 {:special_type :name
+                                  :name         "name"
+                                  :display_name "Name"
+                                  :base_type    :TextField})]
+           :display_name "City"})
+   (merge table-defaults
+          {:schema       "s3"
+           :name         "review"
+           :fields       [(merge field-defaults
+                                 {:special_type :id
+                                  :name         "id"
+                                  :display_name "ID"
+                                  :base_type    :IntegerField})
+                          (merge field-defaults
+                                 {:special_type       :fk
+                                  :name               "reviewer_id"
+                                  :fk_target_field_id true
+                                  :display_name       "Reviewer ID"
+                                  :base_type          :IntegerField
+                                  :fk_target_field    {:schema "common", :name "user", :col-name "id"}})
+                          (merge field-defaults
+                                 {:special_type :name
+                                  :name         "text"
+                                  :display_name "Text"
+                                  :base_type    :TextField})
+                          (merge field-defaults
+                                 {:special_type       :fk
+                                  :name               "venue_id"
+                                  :fk_target_field_id true
+                                  :display_name       "Venue ID"
+                                  :base_type          :IntegerField
+                                  :fk_target_field    {:schema "s3", :name "venue", :col-name "id"}})]
+           :display_name "Review"})
+   (merge table-defaults
+          {:schema       "s3"
+           :name         "venue"
+           :fields       [(merge field-defaults
+                                 {:special_type       :fk
+                                  :name               "city_id"
+                                  :fk_target_field_id true
+                                  :display_name       "City ID"
+                                  :base_type          :IntegerField
+                                  :fk_target_field    {:schema "s3", :name "city", :col-name "id"}})
+                          (merge field-defaults
+                                 {:special_type :id
+                                  :name         "id"
+                                  :display_name "ID"
+                                  :base_type    :IntegerField})
+                          (merge field-defaults
+                                 {:special_type :name
+                                  :name         "name"
+                                  :display_name "Name"
+                                  :base_type    :TextField})]
+           :display_name "Venue"})])
