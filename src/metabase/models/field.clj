@@ -1,7 +1,7 @@
 (ns metabase.models.field
   (:require (clojure [data :as d]
                      [string :as s])
-            [medley.core :as m]
+            [metabase.config :as config]
             [metabase.db :as db]
             (metabase.models [field-values :refer [FieldValues]]
                              [humanization :as humanization]
@@ -78,9 +78,19 @@
 
 (i/defentity Field :metabase_field)
 
+(defn- assert-valid-special-type [{special-type :special_type}]
+  (when special-type
+    (assert (contains? special-types (keyword special-type))
+      (str "Invalid special type: " special-type))))
+
 (defn- pre-insert [field]
+  (assert-valid-special-type field)
   (let [defaults {:display_name (humanization/name->human-readable-name (:name field))}]
     (merge defaults field)))
+
+(defn- pre-update [field]
+  (u/prog1 field
+    (assert-valid-special-type field)))
 
 (defn- pre-cascade-delete [{:keys [id]}]
   (db/cascade-delete! Field :parent_id id)
@@ -98,6 +108,7 @@
                     :can-read?          (constantly true)
                     :can-write?         i/superuser?
                     :pre-insert         pre-insert
+                    :pre-update         pre-update
                     :pre-cascade-delete pre-cascade-delete}))
 
 
@@ -167,7 +178,8 @@
 ;;; ------------------------------------------------------------ Sync Util Type Inference Fns ------------------------------------------------------------
 
 (def ^:private ^:const pattern+base-types+special-type
-  "Tuples of [pattern set-of-valid-base-types special-type]
+  "Tuples of `[name-pattern set-of-valid-base-types special-type]`.
+   Fields whose name matches the pattern and one of the base types should be given the special type.
 
    *  Convert field name to lowercase before matching against a pattern
    *  Consider a nil set-of-valid-base-types to mean \"match any base type\""
@@ -213,24 +225,23 @@
      [#"^zipcode$"      int-or-text :zip_code]]))
 
 ;; Check that all the pattern tuples are valid
-(doseq [[name-pattern base-types special-type] pattern+base-types+special-type]
-  (assert (instance? java.util.regex.Pattern name-pattern))
-  (assert (every? (partial contains? base-types) base-types))
-  (assert (contains? special-types special-type)))
+(when-not config/is-prod?
+  (doseq [[name-pattern base-types special-type] pattern+base-types+special-type]
+    (assert (instance? java.util.regex.Pattern name-pattern))
+    (assert (every? (partial contains? base-types) base-types))
+    (assert (contains? special-types special-type))))
 
 (defn- infer-field-special-type
   "If `name` and `base-type` matches a known pattern, return the `special_type` we should assign to it."
-  [field-name base_type]
+  [field-name base-type]
   (when (and (string? field-name)
-             (keyword? base_type))
+             (keyword? base-type))
     (or (when (= "id" (s/lower-case field-name)) :id)
-        (when-let [matching-pattern (m/find-first (fn [[name-pattern valid-base-types]]
-                                                    (and (or (nil? valid-base-types)
-                                                             (contains? valid-base-types base_type))
-                                                         (re-matches name-pattern (s/lower-case field-name))))
-                                                  pattern+base-types+special-type)]
-          ;; the actual special-type is the last element of the pattern
-          (last matching-pattern)))))
+        (some (fn [[name-pattern valid-base-types special-type]]
+                (when (and (contains? valid-base-types base-type)
+                           (re-matches name-pattern (s/lower-case field-name)))
+                  special-type))
+              pattern+base-types+special-type))))
 
 
 ;;; ------------------------------------------------------------ Sync Util CRUD Fns ------------------------------------------------------------
@@ -238,26 +249,23 @@
 (defn update-field!
   "Update an existing `Field` from the given FIELD-DEF."
   [{:keys [id], :as existing-field} {field-name :name, :keys [base-type special-type pk? parent-id]}]
-  (let [updated-field (assoc existing-field
-                        :base_type    base-type
-                        :display_name (or (:display_name existing-field)
-                                          (humanization/name->human-readable-name field-name))
-                        :special_type (or (:special_type existing-field)
-                                          special-type
-                                          (when pk? :id)
-                                          (infer-field-special-type field-name base-type))
+  (u/prog1 (assoc existing-field
+             :base_type    base-type
+             :display_name (or (:display_name existing-field)
+                               (humanization/name->human-readable-name field-name))
+             :special_type (or (:special_type existing-field)
+                               special-type
+                               (when pk? :id)
+                               (infer-field-special-type field-name base-type))
 
-                        :parent_id    parent-id)
-        [is-diff? _ _] (d/diff updated-field existing-field)]
+             :parent_id    parent-id)
     ;; if we have a different base-type or special-type, then update
-    (when is-diff?
+    (when (first (d/diff <> existing-field))
       (db/update! Field id
-        :display_name (:display_name updated-field)
+        :display_name (:display_name <>)
         :base_type    base-type
-        :special_type (:special_type updated-field)
-        :parent_id    parent-id))
-    ;; return the updated field when we are done
-    updated-field))
+        :special_type (:special_type <>)
+        :parent_id    parent-id))))
 
 
 (defn create-field!
@@ -266,13 +274,14 @@
   {:pre [(integer? table-id)
          (string? field-name)
          (contains? base-types base-type)]}
-  (db/insert! Field
-    :table_id      table-id
-    :raw_column_id raw-column-id
-    :name          field-name
-    :display_name  (humanization/name->human-readable-name field-name)
-    :base_type     base-type
-    :special_type  (or special-type
+  (let [special-type (or special-type
                        (when pk? :id)
-                       (infer-field-special-type field-name base-type))
-    :parent_id     parent-id))
+                       (infer-field-special-type field-name base-type))]
+    (db/insert! Field
+      :table_id      table-id
+      :raw_column_id raw-column-id
+      :name          field-name
+      :display_name  (humanization/name->human-readable-name field-name)
+      :base_type     base-type
+      :special_type  special-type
+      :parent_id     parent-id)))

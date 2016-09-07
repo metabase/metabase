@@ -32,52 +32,52 @@
                                                 :special_type    :category
                                                 :visibility_type :details-only}))
 ;; date/time based fields should always be excluded
-(expect false (field-should-have-field-values? {:base_type    :DateField
-                                                :special_type :category
+(expect false (field-should-have-field-values? {:base_type       :DateField
+                                                :special_type    :category
                                                 :visibility_type :normal}))
-(expect false (field-should-have-field-values? {:base_type    :DateTimeField
-                                                :special_type :category
+(expect false (field-should-have-field-values? {:base_type       :DateTimeField
+                                                :special_type    :category
                                                 :visibility_type :normal}))
-(expect false (field-should-have-field-values? {:base_type    :TimeField
-                                                :special_type :category
+(expect false (field-should-have-field-values? {:base_type       :TimeField
+                                                :special_type    :category
                                                 :visibility_type :normal}))
 ;; most special types should be excluded
 (expect false (field-should-have-field-values? {:base_type    :CharField
                                                 :special_type :image
                                                 :visibility_type :normal}))
-(expect false (field-should-have-field-values? {:base_type    :CharField
-                                                :special_type :id
+(expect false (field-should-have-field-values? {:base_type       :CharField
+                                                :special_type    :id
                                                 :visibility_type :normal}))
-(expect false (field-should-have-field-values? {:base_type    :CharField
-                                                :special_type :fk
+(expect false (field-should-have-field-values? {:base_type       :CharField
+                                                :special_type    :fk
                                                 :visibility_type :normal}))
-(expect false (field-should-have-field-values? {:base_type    :CharField
-                                                :special_type :latitude
+(expect false (field-should-have-field-values? {:base_type       :CharField
+                                                :special_type    :latitude
                                                 :visibility_type :normal}))
-(expect false (field-should-have-field-values? {:base_type    :CharField
-                                                :special_type :number
+(expect false (field-should-have-field-values? {:base_type       :CharField
+                                                :special_type    :number
                                                 :visibility_type :normal}))
-(expect false (field-should-have-field-values? {:base_type    :CharField
-                                                :special_type :timestamp_milliseconds
+(expect false (field-should-have-field-values? {:base_type       :CharField
+                                                :special_type    :timestamp_milliseconds
                                                 :visibility_type :normal}))
 ;; boolean fields + category/city/state/country fields are g2g
-(expect true (field-should-have-field-values? {:base_type    :BooleanField
-                                               :special_type :number
+(expect true (field-should-have-field-values? {:base_type       :BooleanField
+                                               :special_type    :number
                                                :visibility_type :normal}))
-(expect true (field-should-have-field-values? {:base_type    :CharField
-                                               :special_type :category
+(expect true (field-should-have-field-values? {:base_type       :CharField
+                                               :special_type    :category
                                                :visibility_type :normal}))
-(expect true (field-should-have-field-values? {:base_type    :TextField
-                                               :special_type :city
+(expect true (field-should-have-field-values? {:base_type       :TextField
+                                               :special_type    :city
                                                :visibility_type :normal}))
-(expect true (field-should-have-field-values? {:base_type    :TextField
-                                               :special_type :state
+(expect true (field-should-have-field-values? {:base_type       :TextField
+                                               :special_type    :state
                                                :visibility_type :normal}))
-(expect true (field-should-have-field-values? {:base_type    :TextField
-                                               :special_type :country
+(expect true (field-should-have-field-values? {:base_type       :TextField
+                                               :special_type    :country
                                                :visibility_type :normal}))
-(expect true (field-should-have-field-values? {:base_type    :TextField
-                                               :special_type :name
+(expect true (field-should-have-field-values? {:base_type       :TextField
+                                               :special_type    :name
                                                :visibility_type :normal}))
 
 
