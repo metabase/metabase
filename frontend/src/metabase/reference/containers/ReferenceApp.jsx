@@ -78,10 +78,24 @@ export default class ReferenceApp extends Component {
     render() {
         const {
             children,
+            section,
             sections,
             breadcrumbs,
             isEditing
         } = this.props;
-        return children
+
+        if (section.sidebar === false) {
+            return children;
+        }
+
+        return (
+            <SidebarLayout
+                className="flex-full relative"
+                style={ isEditing ? { paddingTop: '43px' } : {}}
+                sidebar={<Sidebar sections={sections} breadcrumbs={breadcrumbs} />}
+            >
+                {children}
+            </SidebarLayout>
+        );
     }
 }

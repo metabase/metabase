@@ -2,7 +2,7 @@ import { createSelector } from 'reselect';
 import i from "icepick";
 
 import Query, { AggregationClause } from 'metabase/lib/query';
-import { 
+import {
     resourceListToMap
 } from 'metabase/lib/redux';
 
@@ -24,14 +24,15 @@ const referenceSections = {
         id: `/reference/guide`,
         name: "Understanding our data",
         breadcrumb: "Guide",
-        fetch: { 
+        fetch: {
             fetchGuide: [],
             fetchDashboards: [],
             fetchMetrics: [],
-            fetchSegments: [], 
+            fetchSegments: [],
             fetchDatabasesWithMetadata: []
         },
-        icon: "reference"
+        icon: "reference",
+        sidebar: false
     },
     [`/reference/metrics`]: {
         id: `/reference/metrics`,
@@ -95,7 +96,7 @@ const getMetricSections = (metric, table, user) => metric ? {
         type: 'metric',
         breadcrumb: `${metric.name}`,
         fetch: {
-            fetchMetricTable: [metric.id], 
+            fetchMetricTable: [metric.id],
             // currently the only way to fetch metrics important fields
             fetchGuide: []
         },
@@ -678,7 +679,7 @@ export const getIsFormulaExpanded = (state, props) => state.reference.isFormulaE
 
 export const getGuide = (state, props) => state.reference.guide;
 
-export const getDashboards = (state, props) => state.dashboard.dashboardListing && 
+export const getDashboards = (state, props) => state.dashboard.dashboardListing &&
     resourceListToMap(state.dashboard.dashboardListing);
 
 export const getIsDashboardModalOpen = (state, props) => state.reference.isDashboardModalOpen;
