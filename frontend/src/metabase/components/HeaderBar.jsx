@@ -42,7 +42,7 @@ export default class Header extends Component {
 
         return (
             <div className={"QueryBuilder-section flex align-center " + className}>
-                <div className="Entity py3">
+                <div className="Entity py1">
                     {titleAndDescription}
                 </div>
 
