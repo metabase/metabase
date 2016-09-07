@@ -135,11 +135,6 @@
     (db/update-where! Field {:visibility_type "unset"
                              :active          false}
       :visibility_type "retired")
-    ;; anything that is active with field_type = :sensitive gets visibility_type :sensitive
-    (db/update-where! Field {:visibility_type "unset"
-                             :active          true
-                             :field_type      "sensitive"}
-      :visibility_type "sensitive")
     ;; if field is active but preview_display = false then it becomes :details-only
     (db/update-where! Field {:visibility_type "unset"
                              :active          true

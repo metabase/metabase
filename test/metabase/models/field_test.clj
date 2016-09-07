@@ -2,7 +2,8 @@
   (:require [expectations :refer :all]
             (metabase.models [field :refer :all]
                              [field-values :refer :all])
-            [metabase.test.data :refer :all]))
+            [metabase.test.data :refer :all]
+            [metabase.test.util :as tu]))
 
 
 ;; valid-special-type-for-base-type?
@@ -80,7 +81,10 @@
                                                :visibility_type :normal}))
 
 
-;; infer-field-special-type
+;;; infer-field-special-type
+
+(tu/resolve-private-fns metabase.models.field infer-field-special-type)
+
 (expect nil (infer-field-special-type nil nil))
 (expect nil (infer-field-special-type "id" nil))
 (expect nil (infer-field-special-type nil :IntegerField))

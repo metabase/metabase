@@ -289,7 +289,7 @@
     (let [get-fields #(->> (db/select Field, :table_id table-id, {:order-by [:id]})
                            (mapv tu/boolean-ids-and-timestamps)
                            (mapv (fn [m]
-                                   (dissoc m :active :field_type :position :preview_display))))
+                                   (dissoc m :active :position :preview_display))))
           initial-fields (get-fields)
           first-sync     (do
                            (save-table-fields! tbl)

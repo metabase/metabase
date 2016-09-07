@@ -62,7 +62,6 @@
      :last_analyzed      $
      :active             true
      :id                 (id :users :name)
-     :field_type         "info"
      :visibility_type    "normal"
      :position           0
      :preview_display    true
@@ -143,13 +142,6 @@
   (tu/with-temp* [Field [{field-id :id} {:base_type :IntegerField}]]
     ((user->client :crowberto) :put 200 (str "field/" field-id) {:special_type :timestamp_seconds})
     (db/select-one-field :special_type Field, :id field-id)))
-
-;; check that a Field with a :base_type of :sensitive can still be modified as normal.
-;; This was a bug introduced when :visibility-type was added -- see issue #2678
-(expect
-  (tu/with-temp* [Field [{field-id :id} {:field_type "sensitive"}]]
-    (boolean ((user->client :crowberto) :put 200 (str "field/" field-id) {:special_type :avatar}))))
-
 
 
 (defn- field->field-values

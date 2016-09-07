@@ -483,7 +483,6 @@
                                :id                 true
                                :raw_column_id      true
                                :last_analyzed      false
-                               :field_type         :info
                                :position           0
                                :visibility_type    :normal
                                :preview_display    true
@@ -503,7 +502,6 @@
                                :id                 true
                                :raw_column_id      true
                                :last_analyzed      false
-                               :field_type         :info
                                :position           0
                                :visibility_type    :normal
                                :preview_display    true
@@ -540,7 +538,6 @@
                                :id                 true
                                :raw_column_id      true
                                :last_analyzed      false
-                               :field_type         :info
                                :position           0
                                :visibility_type    :normal
                                :preview_display    true
@@ -560,7 +557,6 @@
                                :id                 true
                                :raw_column_id      true
                                :last_analyzed      false
-                               :field_type         :info
                                :position           0
                                :visibility_type    :normal
                                :preview_display    true
@@ -597,7 +593,6 @@
                                :id                 true
                                :raw_column_id      true
                                :last_analyzed      false
-                               :field_type         :info
                                :position           0
                                :visibility_type    :normal
                                :preview_display    true
@@ -617,7 +612,6 @@
                                :id                 true
                                :raw_column_id      true
                                :last_analyzed      false
-                               :field_type         :info
                                :position           0
                                :visibility_type    :normal
                                :preview_display    true
@@ -638,7 +632,6 @@
                                :id                 true
                                :raw_column_id      true
                                :last_analyzed      false
-                               :field_type         :info
                                :position           0
                                :visibility_type    :normal
                                :preview_display    true
@@ -658,7 +651,6 @@
                                :id                 true
                                :raw_column_id      true
                                :last_analyzed      false
-                               :field_type         :info
                                :position           0
                                :visibility_type    :normal
                                :preview_display    true
@@ -696,7 +688,6 @@
                                :id                 true
                                :raw_column_id      true
                                :last_analyzed      false
-                               :field_type         :info
                                :position           0
                                :visibility_type    :normal
                                :preview_display    true
@@ -717,7 +708,6 @@
                                :id                 true
                                :raw_column_id      true
                                :last_analyzed      false
-                               :field_type         :info
                                :position           0
                                :visibility_type    :normal
                                :preview_display    true
@@ -737,7 +727,6 @@
                                :id                 true
                                :raw_column_id      true
                                :last_analyzed      false
-                               :field_type         :info
                                :position           0
                                :visibility_type    :normal
                                :preview_display    true
@@ -774,7 +763,6 @@
                                :id                 true
                                :raw_column_id      true
                                :last_analyzed      false
-                               :field_type         :info
                                :position           0
                                :visibility_type    :normal
                                :preview_display    true
@@ -794,7 +782,6 @@
                                :id                 true
                                :raw_column_id      true
                                :last_analyzed      false
-                               :field_type         :info
                                :position           0
                                :visibility_type    :normal
                                :preview_display    true
@@ -831,7 +818,6 @@
                                :id                 true
                                :raw_column_id      true
                                :last_analyzed      false
-                               :field_type         :info
                                :position           0
                                :visibility_type    :normal
                                :preview_display    true
@@ -851,7 +837,6 @@
                                :id                 true
                                :raw_column_id      true
                                :last_analyzed      false
-                               :field_type         :info
                                :position           0
                                :visibility_type    :normal
                                :preview_display    true
@@ -872,7 +857,6 @@
                                :id                 true
                                :raw_column_id      true
                                :last_analyzed      false
-                               :field_type         :info
                                :position           0
                                :visibility_type    :normal
                                :preview_display    true
@@ -892,7 +876,6 @@
                                :id                 true
                                :raw_column_id      true
                                :last_analyzed      false
-                               :field_type         :info
                                :position           0
                                :visibility_type    :normal
                                :preview_display    true
@@ -930,7 +913,6 @@
                                :id                 true
                                :raw_column_id      true
                                :last_analyzed      false
-                               :field_type         :info
                                :position           0
                                :visibility_type    :normal
                                :preview_display    true
@@ -951,7 +933,6 @@
                                :id                 true
                                :raw_column_id      true
                                :last_analyzed      false
-                               :field_type         :info
                                :position           0
                                :visibility_type    :normal
                                :preview_display    true
@@ -971,7 +952,6 @@
                                :id                 true
                                :raw_column_id      true
                                :last_analyzed      false
-                               :field_type         :info
                                :position           0
                                :visibility_type    :normal
                                :preview_display    true
@@ -1008,7 +988,6 @@
                                :id                 true
                                :raw_column_id      true
                                :last_analyzed      false
-                               :field_type         :info
                                :position           0
                                :visibility_type    :normal
                                :preview_display    true
@@ -1028,7 +1007,6 @@
                                :id                 true
                                :raw_column_id      true
                                :last_analyzed      false
-                               :field_type         :info
                                :position           0
                                :visibility_type    :normal
                                :preview_display    true
@@ -1065,7 +1043,6 @@
                                :id                 true
                                :raw_column_id      true
                                :last_analyzed      false
-                               :field_type         :info
                                :position           0
                                :visibility_type    :normal
                                :preview_display    true
@@ -1085,7 +1062,6 @@
                                :id                 true
                                :raw_column_id      true
                                :last_analyzed      false
-                               :field_type         :info
                                :position           0
                                :visibility_type    :normal
                                :preview_display    true
@@ -1106,7 +1082,6 @@
                                :id                 true
                                :raw_column_id      true
                                :last_analyzed      false
-                               :field_type         :info
                                :position           0
                                :visibility_type    :normal
                                :preview_display    true
@@ -1126,7 +1101,6 @@
                                :id                 true
                                :raw_column_id      true
                                :last_analyzed      false
-                               :field_type         :info
                                :position           0
                                :visibility_type    :normal
                                :preview_display    true
@@ -1164,7 +1138,6 @@
                                :id                 true
                                :raw_column_id      true
                                :last_analyzed      false
-                               :field_type         :info
                                :position           0
                                :visibility_type    :normal
                                :preview_display    true
@@ -1185,7 +1158,6 @@
                                :id                 true
                                :raw_column_id      true
                                :last_analyzed      false
-                               :field_type         :info
                                :position           0
                                :visibility_type    :normal
                                :preview_display    true
@@ -1205,7 +1177,6 @@
                                :id                 true
                                :raw_column_id      true
                                :last_analyzed      false
-                               :field_type         :info
                                :position           0
                                :visibility_type    :normal
                                :preview_display    true

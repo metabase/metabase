@@ -8,6 +8,9 @@
                              [interface :as i])
             [metabase.util :as u]))
 
+
+;;; ------------------------------------------------------------ Type Mappings ------------------------------------------------------------
+
 (def ^:const special-types
   "Possible values for `Field.special_type`."
   #{:avatar
@@ -46,13 +49,6 @@
     :UUIDField      ; e.g. a Postgres 'UUID' column
     :UnknownField})
 
-(def ^:const ^:deprecated field-types
-  "Possible values for `Field.field_type`.
-   `field_type` is deprecated, and issue #2454 is open for removing it entirely. It's no longer displayed in the UI, nor is it possible to change its value from the API."
-  #{:metric      ; A number that can be added, graphed, etc.
-    :dimension   ; A high or low-cardinality numerical string value that is meant to be used as a grouping
-    :info})      ; Non-numerical value that is not meant to be used
-
 (def ^:const visibility-types
   "Possible values for `Field.visibility_type`."
   #{:normal         ; Default setting.  field has no visibility restrictions.
@@ -77,21 +73,35 @@
         (contains? valid-base-types (keyword base-type)))))
 
 
+
+;;; ------------------------------------------------------------ Entity & Lifecycle ------------------------------------------------------------
+
 (i/defentity Field :metabase_field)
 
 (defn- pre-insert [field]
-  (let [defaults {:active          true
-                  :preview_display true
-                  :field_type      :info
-                  :visibility_type :normal
-                  :position        0
-                  :display_name    (humanization/name->human-readable-name (:name field))}]
+  (let [defaults {:display_name (humanization/name->human-readable-name (:name field))}]
     (merge defaults field)))
 
 (defn- pre-cascade-delete [{:keys [id]}]
   (db/cascade-delete! Field :parent_id id)
   (db/cascade-delete! 'FieldValues :field_id id)
   (db/cascade-delete! 'MetricImportantField :field_id id))
+
+(u/strict-extend (class Field)
+  i/IEntity (merge i/IEntityDefaults
+                   {:hydration-keys     (constantly [:destination :field :origin])
+                    :types              (constantly {:base_type       :keyword
+                                                     :special_type    :keyword
+                                                     :visibility_type :keyword
+                                                     :description     :clob})
+                    :timestamped?       (constantly true)
+                    :can-read?          (constantly true)
+                    :can-write?         i/superuser?
+                    :pre-insert         pre-insert
+                    :pre-cascade-delete pre-cascade-delete}))
+
+
+;;; ------------------------------------------------------------ Hydration / Util Fns ------------------------------------------------------------
 
 
 (defn target
@@ -153,19 +163,8 @@
   [{:keys [table_id]}]
   (db/select-one 'Table, :id table_id))
 
-(u/strict-extend (class Field)
-  i/IEntity (merge i/IEntityDefaults
-                   {:hydration-keys     (constantly [:destination :field :origin])
-                    :types              (constantly {:base_type       :keyword
-                                                     :field_type      :keyword
-                                                     :special_type    :keyword
-                                                     :visibility_type :keyword
-                                                     :description     :clob})
-                    :timestamped?       (constantly true)
-                    :can-read?          (constantly true)
-                    :can-write?         i/superuser?
-                    :pre-insert         pre-insert
-                    :pre-cascade-delete pre-cascade-delete}))
+
+;;; ------------------------------------------------------------ Sync Util Type Inference Fns ------------------------------------------------------------
 
 (def ^:private ^:const pattern+base-types+special-type
   "Tuples of [pattern set-of-valid-base-types special-type]
@@ -219,7 +218,7 @@
   (assert (every? (partial contains? base-types) base-types))
   (assert (contains? special-types special-type)))
 
-(defn infer-field-special-type
+(defn- infer-field-special-type
   "If `name` and `base-type` matches a known pattern, return the `special_type` we should assign to it."
   [field-name base_type]
   (when (and (string? field-name)
@@ -233,6 +232,8 @@
           ;; the actual special-type is the last element of the pattern
           (last matching-pattern)))))
 
+
+;;; ------------------------------------------------------------ Sync Util CRUD Fns ------------------------------------------------------------
 
 (defn update-field!
   "Update an existing `Field` from the given FIELD-DEF."

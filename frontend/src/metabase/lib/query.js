@@ -521,7 +521,6 @@ var Query = {
                 operators_lookup: {},
                 valid_operators: [],
                 active: true,
-                field_type: "info",
                 fk_target_field_id: null,
                 parent_id: null,
                 preview_display: true,
