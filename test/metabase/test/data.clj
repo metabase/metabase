@@ -188,7 +188,7 @@
              ;; Sync the database
              (sync-database/sync-database! db)
 
-             ;; Add extra metadata like Field field-type, base-type, etc.
+             ;; Add extra metadata like Field base-type, etc.
              (doseq [^TableDefinition table-definition (:table-definitions database-definition)]
                (let [table-name (:table-name table-definition)
                      table      (delay (or  (i/metabase-instance table-definition db)

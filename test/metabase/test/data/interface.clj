@@ -131,7 +131,7 @@
 
 (defn create-field-definition
   "Create a new `FieldDefinition`; verify its values."
-  ^FieldDefinition [{:keys [field-name base-type field-type special-type visibility-type fk], :as field-definition-map}]
+  ^FieldDefinition [field-definition-map]
   (s/validate FieldDefinition (map->FieldDefinition field-definition-map)))
 
 (defn create-table-definition
