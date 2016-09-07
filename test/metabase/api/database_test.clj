@@ -266,7 +266,6 @@
                                                        :active             true
                                                        :id                 $
                                                        :raw_column_id      $
-                                                       :field_type         "info"
                                                        :position           0
                                                        :target             nil
                                                        :preview_display    true
@@ -289,7 +288,6 @@
                                                        :active             true
                                                        :id                 $
                                                        :raw_column_id      $
-                                                       :field_type         "info"
                                                        :position           0
                                                        :target             nil
                                                        :preview_display    true

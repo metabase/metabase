@@ -84,13 +84,14 @@
   (let-404 [table (Table id)]
     (read-check table)
     (let [field-ids (db/select-ids Field, :table_id id, :visibility_type [:not= "retired"])]
-      (for [origin-field (db/select Field, :fk_target_field_id [:in field-ids])]
-        ;; it's silly to be hydrating some of these tables/dbs
-        {:relationship   :Mt1
-         :origin_id      (:id origin-field)
-         :origin         (hydrate origin-field [:table :db])
-         :destination_id (:fk_target_field_id origin-field)
-         :destination    (hydrate (Field (:fk_target_field_id origin-field)) :table)}))))
+      (when (seq field-ids)
+        (for [origin-field (db/select Field, :fk_target_field_id [:in field-ids])]
+          ;; it's silly to be hydrating some of these tables/dbs
+          {:relationship   :Mt1
+           :origin_id      (:id origin-field)
+           :origin         (hydrate origin-field [:table :db])
+           :destination_id (:fk_target_field_id origin-field)
+           :destination    (hydrate (Field (:fk_target_field_id origin-field)) :table)})))))
 
 (defendpoint POST "/:id/sync"
   "Re-sync the metadata for this `Table`."

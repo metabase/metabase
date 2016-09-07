@@ -107,8 +107,7 @@
   ([table-id]
    (retrieve-metrics table-id :active))
   ([table-id state]
-   {:pre [(integer? table-id)
-          (keyword? state)]}
+   {:pre [(integer? table-id) (keyword? state)]}
    (-> (if (= :all state)
          (db/select Metric, :table_id table-id, {:order-by [[:name :asc]]})
          (db/select Metric, :table_id table-id, :is_active (= :active state), {:order-by [[:name :asc]]}))

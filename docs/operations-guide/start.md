@@ -1,15 +1,16 @@
 
-**Covered in this guide:**  
-> [How to install Metabase](#installing-and-running-metabase)  
-> [How to upgrade Metabase](#upgrading-metabase)  
-> [Tips for troubleshooting various issues](#troubleshooting-common-problems)   
-> [Configuring the application database](#configuring-the-metabase-application-database)  
-> [Migrating from using the H2 database to MySQL or Postgres](#migrating-from-using-the-h2-database-to-mysql-or-postgres)  
-> [Running database migrations manually](#running-metabase-database-migrations-manually)  
-> [Backing up Metabase Application Data](#backing-up-metabase-application-data)  
-> [Customizing the Metabase Jetty Webserver](#customizing-the-metabase-jetty-webserver)  
-> [Changing password complexity](#changing-metabase-password-complexity)  
-> [Handling Timezones](#handling-timezones-in-metabase)
+**Covered in this guide:**
+
+*  [How to install Metabase](#installing-and-running-metabase)
+*  [How to upgrade Metabase](#upgrading-metabase)
+*  [Tips for troubleshooting various issues](#troubleshooting-common-problems)
+*  [Configuring the application database](#configuring-the-metabase-application-database)
+*  [Migrating from using the H2 database to MySQL or Postgres](#migrating-from-using-the-h2-database-to-mysql-or-postgres)
+*  [Running database migrations manually](#running-metabase-database-migrations-manually)
+*  [Backing up Metabase Application Data](#backing-up-metabase-application-data)
+*  [Customizing the Metabase Jetty Webserver](#customizing-the-metabase-jetty-webserver)
+*  [Changing password complexity](#changing-metabase-password-complexity)
+*  [Handling Timezones](#handling-timezones-in-metabase)
 
 # Installing and Running Metabase
 
@@ -139,11 +140,12 @@ This will tell Metabase to look for its application database using the supplied 
 
 If you decide to use the default application database (H2) when you initially start using Metabase, but decide later that you'd like to switch to a more production ready database such as MySQL or Postgres we make the transition easy for you.
 
-Metabase provides a custom migration command for upgrading H2 application database files by copying their data to a new database.  Here's what you'll want to do.
+Metabase provides a custom migration command for upgrading H2 application database files by copying their data to a new database. Here's what you'll want to do:
 
-1. Shutdown your Metabase instance so that it's not running.  This ensures no accidental data gets written to the db while migrating.
-2. Make a backup copy of your H2 application database by following the instructions in [Backing up Metabase Application Data](#backing-up-metabase-application-data).  Safety first!
-3. Run the Metabase data migration command using the appropriate environment variables for the target database you want to migrate to.  You can find details about specifying MySQL and Postgres databases at [Configuring the application database](#configuring-the-metabase-application-database).  Here's an example of migrating to Postgres.
+1. Shutdown your Metabase instance so that it's not running. This ensures no accidental data gets written to the db while migrating.
+2. Make a backup copy of your H2 application database by following the instructions in [Backing up Metabase Application Data](#backing-up-metabase-application-data). Safety first!
+3. Run the Metabase data migration command using the appropriate environment variables for the target database you want to migrate to.  You can find details about specifying MySQL and Postgres databases at [Configuring the application database](#configuring-the-metabase-application-database). Here's an example of migrating to Postgres.
+
 ```
 export MB_DB_TYPE=postgres
 export MB_DB_DBNAME=metabase
@@ -153,9 +155,13 @@ export MB_DB_PASS=<password>
 export MB_DB_HOST=localhost
 java -jar metabase.jar load-from-h2 <path-to-metabase-h2-database-file>
 ```
+
 It is expected that you will run the command against a brand new (empty!) database and Metabase will handle all of the work of creating the database schema and migrating the data for you.
 
-**Note:** It is required that wherever you are running this migration command can connect to the target MySQL or Postgres database.  So if you are attempting to move the data to a cloud database make sure you take that into consideration.
+###### Notes
+
+*  It is required that wherever you are running this migration command can connect to the target MySQL or Postgres database. So if you are attempting to move the data to a cloud database make sure you take that into consideration.
+*  The code that handles these migrations uses a Postgres SQL command that is only available in Postgres 9.4 or newer versions. Please make sure you Postgres database is version 9.4 or newer.
 
 
 # Running Metabase database migrations manually
@@ -205,9 +211,9 @@ If you launched Metabase on a laptop or PC the application will create an embedd
 NOTE: If your Metabase is currently running it's best to shut down the Metabase process before making a backup copy of the file.  Then, restart the application.
 
 ### Amazon RDS for the Database Application
-Amazon has its own best practices on how to backup and restore RDS databases, so we'll defer to them.  We recommend that you enable automated RDS Backups.  
+Amazon has its own best practices on how to backup and restore RDS databases, so we'll defer to them.  We recommend that you enable automated RDS Backups.
 
-Instructions can be found in the [Amazon RDS User Guide](http://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html).  
+Instructions can be found in the [Amazon RDS User Guide](http://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html).
 
 ### Self-managed PostgreSQL or MySQL database
 Simply follow the same instructions you would use for making any normal database backup.  It's a large topic more fit for a DBA to answer, but as long as you have a dump of the Metabase database you'll be good to go.

@@ -57,6 +57,7 @@ export const FETCH_DATABASE_METADATA = "metabase/dashboard/FETCH_DATABASE_METADA
 
 export const SET_EDITING_PARAMETER_ID = "metabase/dashboard/SET_EDITING_PARAMETER_ID";
 export const ADD_PARAMETER = "metabase/dashboard/ADD_PARAMETER";
+export const REMOVE_PARAMETER = "metabase/dashboard/REMOVE_PARAMETER";
 export const SET_PARAMETER_MAPPING = "metabase/dashboard/SET_PARAMETER_MAPPING";
 export const SET_PARAMETER_NAME = "metabase/dashboard/SET_PARAMETER_NAME";
 export const SET_PARAMETER_VALUE = "metabase/dashboard/SET_PARAMETER_VALUE";
@@ -316,6 +317,11 @@ export const setParameterValue = createThunkAction(SET_PARAMETER_VALUE, (paramet
     }
 )
 
+export const removeParameter = createThunkAction(REMOVE_PARAMETER, (parameterId) =>
+    (dispatch, getState) => ({ id: parameterId })
+);
+
+
 // reducers
 
 const dashboardId = handleActions({
@@ -405,7 +411,8 @@ const cardDurations = handleActions({
 }, {});
 
 const parameterValues = handleActions({
-    [SET_PARAMETER_VALUE]: { next: (state, { payload: { id, value }}) => i.assoc(state, id, value) }
+    [SET_PARAMETER_VALUE]: { next: (state, { payload: { id, value }}) => i.assoc(state, id, value) },
+    [REMOVE_PARAMETER]: { next: (state, { payload: { id }}) => i.dissoc(state, id) }
 }, {});
 
 const dashboardListing = handleActions({

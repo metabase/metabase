@@ -1,6 +1,7 @@
 (ns metabase.api.field-test
   (:require [expectations :refer :all]
             [metabase.db :as db]
+            [metabase.driver :as driver]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [field-values :refer [FieldValues]]
@@ -24,7 +25,7 @@
      :is_full_sync       true
      :organization_id    nil
      :description        nil
-     :features           (mapv name (metabase.driver/features (metabase.driver/engine->driver :h2)))}))
+     :features           (mapv name (driver/features (driver/engine->driver :h2)))}))
 
 
 ;; ## GET /api/field/:id
@@ -61,7 +62,6 @@
      :last_analyzed      $
      :active             true
      :id                 (id :users :name)
-     :field_type         "info"
      :visibility_type    "normal"
      :position           0
      :preview_display    true
@@ -100,23 +100,7 @@
     :description     nil
     :special_type    nil
     :visibility_type :sensitive}]
-  (tu/with-temp* [Database [{database-id :id} {:name               "Field Test"
-                                               :engine             :yeehaw
-                                               :caveats            nil
-                                               :points_of_interest nil
-                                               :details            {}
-                                               :is_sample          false}]
-                  Table    [{table-id :id}    {:name   "Field Test"
-                                               :db_id  database-id
-                                               :active true}]
-                  Field    [{field-id :id}    {:table_id        table-id
-                                               :name            "Field Test"
-                                               :base_type       :TextField
-                                               :field_type      :info
-                                               :special_type    nil
-                                               :active          true
-                                               :preview_display true
-                                               :position        1}]]
+  (tu/with-temp* [Field [{field-id :id} {:name "Field Test"}]]
     (let [original-val (simple-field-details (Field field-id))]
       ;; set it
       ((user->client :crowberto) :put 200 (format "field/%d" field-id) {:name            "something else"
@@ -136,47 +120,28 @@
 (expect
   [true
    nil]
-  (tu/with-temp* [Database [{database-id :id} {:name               "Field Test"
-                                               :engine             :yeehaw
-                                               :caveats            nil
-                                               :points_of_interest nil
-                                               :details            {}
-                                               :is_sample          false}]
-                  Table    [{table-id :id}    {:name   "Field Test"
-                                               :db_id  database-id
-                                               :active true}]
-                  Field    [{field-id1 :id}   {:table_id        table-id
-                                               :name            "Target Field"
-                                               :base_type       :TextField
-                                               :field_type      :info
-                                               :special_type    :id
-                                               :active          true
-                                               :preview_display true
-                                               :position        1}]
-                  Field    [{field-id :id}    {:table_id           table-id
-                                               :name               "Field Test"
-                                               :base_type          :TextField
-                                               :field_type         :info
-                                               :special_type       :fk
-                                               :fk_target_field_id field-id1
-                                               :active             true
-                                               :preview_display    true
-                                               :position           1}]]
+  (tu/with-temp* [Field [{fk-field-id :id}]
+                  Field [{field-id :id}    {:special_type :fk, :fk_target_field_id fk-field-id}]]
     (let [original-val (boolean (db/select-one-field :fk_target_field_id Field, :id field-id))]
       ;; unset the :fk special-type
       ((user->client :crowberto) :put 200 (format "field/%d" field-id) {:special_type :name})
       [original-val
        (db/select-one-field :fk_target_field_id Field, :id field-id)])))
 
-;; check that you can't set a field to :timestamp_seconds if it's not of a proper base_type
+;; check that you can't set a field to :timestamp_seconds/:timestamp_milliseconds if it's not of a proper base_type
 (expect
-  ["Invalid Request."
+  ["Special type :timestamp_seconds cannot be used for fields with base type :TextField. Base type must be one of: #{:BigIntegerField :DecimalField :IntegerField :FloatField}"
    nil]
-  (tu/with-temp* [Database [{database-id :id}]
-                  Table    [{table-id :id} {:db_id database-id}]
-                  Field    [{field-id :id} {:table_id table-id}]]
+  (tu/with-temp* [Field [{field-id :id} {:base_type :TextField, :special_type nil}]]
     [((user->client :crowberto) :put 400 (str "field/" field-id) {:special_type :timestamp_seconds})
      (db/select-one-field :special_type Field, :id field-id)]))
+
+;; check that you *can* set it if it *is* the proper base type
+(expect
+  :timestamp_seconds
+  (tu/with-temp* [Field [{field-id :id} {:base_type :IntegerField}]]
+    ((user->client :crowberto) :put 200 (str "field/" field-id) {:special_type :timestamp_seconds})
+    (db/select-one-field :special_type Field, :id field-id)))
 
 
 (defn- field->field-values

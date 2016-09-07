@@ -17,10 +17,6 @@
   [symb value :nillable]
   (checkp-contains? field/visibility-types symb (keyword value)))
 
-(defannotation FieldType
-  "Param must be a valid `Field` base type."
-  [symb value :nillable]
-  (checkp-contains? field/field-types symb (keyword value)))
 
 (defendpoint GET "/:id"
   "Get `Field` with ID."
@@ -29,35 +25,45 @@
          read-check
          (hydrate [:table :db])))
 
+
 (defendpoint PUT "/:id"
   "Update `Field` with ID."
-  [id :as {{:keys [special_type visibility_type fk_target_field_id description display_name caveats points_of_interest], :as body} :body}]
-  {special_type    FieldSpecialType
-   visibility_type FieldVisibilityType
-   display_name    NonEmptyString}
+  [id :as {{:keys [caveats description display_name fk_target_field_id points_of_interest special_type visibility_type], :as body} :body}]
+  {caveats            NonEmptyString
+   description        NonEmptyString
+   display_name       NonEmptyString
+   fk_target_field_id Integer
+   points_of_interest NonEmptyString
+   special_type       FieldSpecialType
+   visibility_type    FieldVisibilityType}
+
   (let-404 [field (Field id)]
     (write-check field)
-    (let [special_type       (if (contains? body :special_type) special_type (:special_type field))
+    (let [special_type       (keyword (get body :special_type (:special_type field)))
           visibility_type    (or visibility_type (:visibility_type field))
-          fk_target_field_id (when (= :fk special_type)
-                               ;; only let target field be set for :fk type fields,
-                               ;; and if it's not in the payload then leave the current value
-                               (if (contains? body :fk_target_field_id)
-                                 fk_target_field_id
-                                 (:fk_target_field_id field)))]
-      (check-400 (field/valid-metadata? (:base_type field) (:field_type field) special_type visibility_type))
-      ;; validate that fk_target_field_id is a valid Field within the same database as our field
-      (when fk_target_field_id
-        (checkp (db/exists? Field :id fk_target_field_id)
+          ;; only let target field be set for :fk type fields, and if it's not in the payload then leave the current value
+          fk-target-field-id (when (= :fk special_type)
+                               (get body :fk_target_field_id (:fk_target_field_id field)))]
+      ;; make sure that the special type is allowed for the base type
+      (check (field/valid-special-type-for-base-type? special_type (:base_type field))
+        [400 (format "Special type %s cannot be used for fields with base type %s. Base type must be one of: %s"
+                     special_type
+                     (:base_type field)
+                     (field/special-type->valid-base-types special_type))])
+      ;; validate that fk_target_field_id is a valid Field
+      ;; TODO - we should also check that the Field is within the same database as our field
+      (when fk-target-field-id
+        (checkp (db/exists? Field :id fk-target-field-id)
           :fk_target_field_id "Invalid target field"))
-      ;; update the Field.  start with keys that may be set to NULL then conditionally add other keys if they have values
-      (check-500 (db/update! Field id (merge {:description        description
-                                              :caveats            caveats
+      ;; everything checks out, now update the field
+      (check-500 (db/update! Field id (merge {:caveats            caveats
+                                              :description        description
+                                              :fk_target_field_id fk_target_field_id
                                               :points_of_interest points_of_interest
                                               :special_type       special_type
-                                              :visibility_type    visibility_type
-                                              :fk_target_field_id fk_target_field_id}
+                                              :visibility_type    visibility_type}
                                              (when display_name {:display_name display_name}))))
+      ;; return updated field
       (Field id))))
 
 (defendpoint GET "/:id/summary"

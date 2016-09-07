@@ -97,199 +97,80 @@
          (get-table))])))
 
 
+(def ^:private ^:const field-defaults
+  {:id                 true
+   :table_id           true
+   :raw_column_id      true
+   :description        nil
+   :caveats            nil
+   :points_of_interest nil
+   :visibility_type    :normal
+   :special_type       nil
+   :parent_id          false
+   :fk_target_field_id false
+   :last_analyzed      false
+   :created_at         true
+   :updated_at         true})
+
 ;; save-table-fields!
 ;; this test also covers create-field! and update-field!
 (expect
   [[]
    ;; initial sync
-   [{:id                 true
-     :table_id           true
-     :raw_column_id      true
-     :name               "First"
-     :display_name       "First"
-     :description        nil
-     :caveats            nil
-     :points_of_interest nil
-     :base_type          :IntegerField
-     :visibility_type    :normal
-     :special_type       :id
-     :parent_id          false
-     :fk_target_field_id false
-     :last_analyzed      false
-     :created_at         true
-     :updated_at         true}
-    {:id                 true
-     :table_id           true
-     :raw_column_id      true
-     :name               "Second"
-     :display_name       "Second"
-     :description        nil
-     :caveats            nil
-     :points_of_interest nil
-     :base_type          :TextField
-     :visibility_type    :normal
-     :special_type       :category
-     :parent_id          false
-     :fk_target_field_id false
-     :last_analyzed      false
-     :created_at         true
-     :updated_at         true}
-    {:id                 true
-     :table_id           true
-     :raw_column_id      true
-     :name               "Third"
-     :display_name       "Third"
-     :description        nil
-     :caveats            nil
-     :points_of_interest nil
-     :base_type          :BooleanField
-     :visibility_type    :normal
-     :special_type       nil
-     :parent_id          false
-     :fk_target_field_id false
-     :last_analyzed      false
-     :created_at         true
-     :updated_at         true}]
+   [(merge field-defaults {:name         "First"
+                           :display_name "First"
+                           :base_type    :IntegerField
+                           :special_type :id})
+    (merge field-defaults {:name         "Second"
+                           :display_name "Second"
+                           :base_type    :TextField})
+    (merge field-defaults {:name         "Third"
+                           :display_name "Third"
+                           :base_type    :BooleanField
+                           :special_type nil})]
    ;; add column, modify first column
-   [{:id                 true
-     :table_id           true
-     :raw_column_id      true
-     :name               "First"
-     :display_name       "First"
-     :description        nil
-     :caveats            nil
-     :points_of_interest nil
-     :base_type          :DecimalField
-     :visibility_type    :normal
-     :special_type       :id                  ; existing special types are NOT modified
-     :parent_id          false
-     :fk_target_field_id false
-     :last_analyzed      false
-     :created_at         true
-     :updated_at         true}
-    {:id                 true
-     :table_id           true
-     :raw_column_id      true
-     :name               "Second"
-     :display_name       "Second"
-     :description        nil
-     :caveats            nil
-     :points_of_interest nil
-     :base_type          :TextField
-     :visibility_type    :normal
-     :special_type       :category
-     :parent_id          false
-     :fk_target_field_id false
-     :last_analyzed      false
-     :created_at         true
-     :updated_at         true}
-    {:id                 true
-     :table_id           true
-     :raw_column_id      true
-     :name               "Third"
-     :display_name       "Third"
-     :description        nil
-     :caveats            nil
-     :points_of_interest nil
-     :base_type          :BooleanField
-     :visibility_type    :normal
-     :special_type       nil
-     :parent_id          false
-     :fk_target_field_id false
-     :last_analyzed      false
-     :created_at         true
-     :updated_at         true}
-    {:id                 true
-     :table_id           true
-     :raw_column_id      true
-     :name               "rating"
-     :display_name       "Rating"
-     :description        nil
-     :caveats            nil
-     :points_of_interest nil
-     :base_type          :IntegerField
-     :visibility_type    :normal
-     :special_type       :category             ; should be infered from name
-     :parent_id          false
-     :fk_target_field_id false
-     :last_analyzed      false
-     :created_at         true
-     :updated_at         true}]
+   [(merge field-defaults {:name         "First"
+                           :display_name "First"
+                           :base_type    :DecimalField
+                           :special_type :id}) ; existing special types are NOT modified
+    (merge field-defaults {:name         "Second"
+                           :display_name "Second"
+                           :base_type    :TextField})
+    (merge field-defaults {:name         "Third"
+                           :display_name "Third"
+                           :base_type    :BooleanField
+                           :special_type nil})
+    (merge field-defaults {:name         "rating"
+                           :display_name "Rating"
+                           :base_type    :IntegerField
+                           :special_type :category})]
    ;; first column retired, 3rd column now a pk
-   [{:id                 true
-     :table_id           true
-     :raw_column_id      true
-     :name               "First"
-     :display_name       "First"
-     :description        nil
-     :caveats            nil
-     :points_of_interest nil
-     :base_type          :DecimalField
-     :visibility_type    :retired             ; field retired when RawColumn disabled
-     :special_type       :id
-     :parent_id          false
-     :fk_target_field_id false
-     :last_analyzed      false
-     :created_at         true
-     :updated_at         true}
-    {:id                 true
-     :table_id           true
-     :raw_column_id      true
-     :name               "Second"
-     :display_name       "Second"
-     :description        nil
-     :caveats            nil
-     :points_of_interest nil
-     :base_type          :TextField
-     :visibility_type    :normal
-     :special_type       :category
-     :parent_id          false
-     :fk_target_field_id false
-     :last_analyzed      false
-     :created_at         true
-     :updated_at         true}
-    {:id                 true
-     :table_id           true
-     :raw_column_id      true
-     :name               "Third"
-     :display_name       "Third"
-     :description        nil
-     :caveats            nil
-     :points_of_interest nil
-     :base_type          :BooleanField
-     :visibility_type    :normal
-     :special_type       :id,                  ; special type can be set if it was nil before
-     :parent_id          false
-     :fk_target_field_id false
-     :last_analyzed      false
-     :created_at         true
-     :updated_at         true}
-    {:id                 true
-     :table_id           true
-     :raw_column_id      true
-     :name               "rating"
-     :display_name       "Rating"
-     :description        nil
-     :caveats            nil
-     :points_of_interest nil
-     :base_type          :IntegerField
-     :visibility_type    :normal
-     :special_type       :category             ; should be infered from name
-     :parent_id          false
-     :fk_target_field_id false
-     :last_analyzed      false
-     :created_at         true
-     :updated_at         true}]]
+   [(merge field-defaults {:name            "First"
+                           :display_name    "First"
+                           :base_type       :DecimalField
+                           :visibility_type :retired ; field retired when RawColumn disabled
+                           :special_type    :id})
+    (merge field-defaults {:name         "Second"
+                           :display_name "Second"
+                           :base_type    :TextField})
+    (merge field-defaults {:name         "Third"
+                           :display_name "Third"
+                           :base_type    :BooleanField
+                           :special_type :id}) ; special type can be set if it was nil before
+    (merge field-defaults {:name         "rating"
+                           :display_name "Rating"
+                           :base_type    :IntegerField
+                           :special_type :category})]]
   (tu/with-temp* [Database  [{database-id :id}]
                   RawTable  [{raw-table-id :id, :as table} {:database_id database-id}]
                   RawColumn [{raw-column-id1 :id} {:raw_table_id raw-table-id, :name "First", :is_pk true, :details {:base-type "IntegerField"}}]
-                  RawColumn [{raw-column-id2 :id} {:raw_table_id raw-table-id, :name "Second", :details {:special-type :category, :base-type "TextField"}}]
+                  RawColumn [{raw-column-id2 :id} {:raw_table_id raw-table-id, :name "Second", :details {:base-type "TextField"}}]
                   RawColumn [{raw-column-id3 :id} {:raw_table_id raw-table-id, :name "Third", :details {:base-type "BooleanField"}}]
                   Table     [{table-id :id, :as tbl} {:db_id database-id, :raw_table_id raw-table-id}]]
     (let [get-fields #(->> (db/select Field, :table_id table-id, {:order-by [:id]})
                            (mapv tu/boolean-ids-and-timestamps)
                            (mapv (fn [m]
-                                   (dissoc m :active :field_type :position :preview_display))))
+                                   (dissoc m :active :position :preview_display))))
           initial-fields (get-fields)
           first-sync     (do
                            (save-table-fields! tbl)
@@ -314,11 +195,12 @@
 
 ;; retire-tables!
 (expect
-  (let [disabled-movies-table (fn [tbl]
-                                (if-not (= "movies" (:name tbl))
-                                  tbl
-                                  (assoc tbl :active false
-                                         :fields [])))]
+  (let [disabled-movies-table (fn [table]
+                                (if-not (= "movies" (:name table))
+                                  table
+                                  (assoc table
+                                    :active false
+                                    :fields [])))]
     [moviedb/moviedb-tables-and-fields
      (mapv disabled-movies-table moviedb/moviedb-tables-and-fields)])
   (tu/with-temp* [Database [{database-id :id, :as db} {:engine :moviedb}]]

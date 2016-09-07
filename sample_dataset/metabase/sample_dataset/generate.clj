@@ -337,8 +337,7 @@
                           :latitude   {:description "This is the latitude of the user on sign-up. It might be updated in the future to the last seen location."}
                           :longitude  {:description "This is the longitude of the user on sign-up. It might be updated in the future to the last seen location."}
                           :name       {:description "The name of the user who owns an account"}
-                          :password   {:description "This is the salted password of the user. It should not be visible"
-                                       :field_type  :sensitive}
+                          :password   {:description "This is the salted password of the user. It should not be visible"}
                           :source     {:description "The channel through which we acquired this user. Valid values include: Affiliate, Facebook, Google, Organic and Twitter"}
                           :state      {:description "The state or province of the account’s billing address"}
                           :zip        {:description  "The postal code of the account’s billing address"
