@@ -9,7 +9,7 @@ const TitleAndDescription = ({ title, description }) =>
     <div className="flex align-center">
         <h2 className="mr1">{title}</h2>
         { description &&
-            <Tooltip tooltip={description}>
+            <Tooltip tooltip={description} maxWidth={'22em'}>
                 <IconBorder>
                     <Icon name='info'/>
                 </IconBorder>
