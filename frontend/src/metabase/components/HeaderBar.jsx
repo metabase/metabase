@@ -24,11 +24,11 @@ export default class Header extends Component {
                 </div>
             );
         } else {
-            if(name && description) {
+            if (name && description) {
                 titleAndDescription = (
                     <TitleAndDescription
-                        title={ name } 
-                        description={ description }
+                        title={name} 
+                        description={description}
                     />
                 );
             } else {
