@@ -460,7 +460,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     <div className="my2">
                                         <SectionHeader key={'dashboardTitle'}>
                                             Our most important dashboard
-                                        </SectionHeader>,
+                                        </SectionHeader>
                                         <GuideDetail 
                                             key={'dashboardDetail'}
                                             type="dashboard"
@@ -474,7 +474,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                         <div className="my2">
                                             <SectionHeader key={'metricsTitle'}>
                                                 Numbers that we pay attention to
-                                            </SectionHeader>,
+                                            </SectionHeader>
                                             { guide.important_metrics.map((metricId) =>
                                                 <GuideDetail 
                                                     key={metricId}
@@ -585,5 +585,5 @@ export default class ReferenceGettingStartedGuide extends Component {
 }
 
 const SectionHeader = ({ children }) =>
-    <h2 className="text-dark text-measure mb2">{children}</h2>
+    <h2 className="text-dark text-measure mb4">{children}</h2>
 
