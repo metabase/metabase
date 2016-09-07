@@ -21,6 +21,7 @@ const GuideEditSection = ({
 }) => isCollapsed ?
     <div 
         className={cx(
+            'text-measure',
             'cursor-pointer',
             'border-brand-hover',
             S.guideEditSectionCollapsed, 

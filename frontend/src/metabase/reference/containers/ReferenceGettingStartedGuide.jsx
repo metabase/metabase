@@ -35,6 +35,8 @@ import {
     updateSetting
 } from 'metabase/admin/settings/settings';
 
+import S from "../components/GuideDetailEditor.css";
+
 import {
     getGuide,
     getUser,
@@ -357,7 +359,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     { important_segments_and_tables.map((segmentOrTableField, index, segmentOrTableFields) =>
                                         <GuideDetailEditor 
                                             key={index}
-                                            type="segment or table"
+                                            type="segment"
                                             metadata={{
                                                 databases,
                                                 tables,
@@ -397,13 +399,13 @@ export default class ReferenceGettingStartedGuide extends Component {
                             collapsedIcon="reference"
                             expand={() => things_to_know.onChange('')}
                         >
-                            <div>
-                                <h2 className="text-dark text-measure">
+                            <div className="text-measure">
+                                <SectionHeader>
                                     What should a user of this data know before they start 
                                     accessing it?
-                                </h2>
+                                </SectionHeader>
                                 <textarea 
-                                    className="input full"
+                                    className={S.guideDetailEditorTextarea} 
                                     placeholder="E.g., expectations around data privacy and use, 
                                         common pitfalls or misunderstandings, information about 
                                         data warehouse performance, legal notices, etc."
@@ -426,22 +428,26 @@ export default class ReferenceGettingStartedGuide extends Component {
                                 <SectionHeader>
                                     Who should users contact for help if they're confused about this data?
                                 </SectionHeader>
-                                <div>
-                                    <h3>Name</h3>
-                                    <input 
-                                        className="input"
-                                        placeholder="Julie McHelpfulson" 
-                                        type="text"
-                                        {...contact.name}
-                                    />
+                                <div className="flex">
+                                    <div className="flex-full">
+                                        <h3 className="mb1">Name</h3>
+                                        <input 
+                                            className="input text-paragraph"
+                                            placeholder="Julie McHelpfulson" 
+                                            type="text"
+                                            {...contact.name}
+                                        />
+                                    </div>
+                                    <div className="flex-full">
+                                        <h3 className="mb1">Email address</h3>
+                                        <input 
+                                            className="input text-paragraph"
+                                            placeholder="julie.mchelpfulson@acme.com" 
+                                            type="text"
+                                            {...contact.email}
+                                        />
+                                    </div>
                                 </div>
-                                <h3>Email address</h3>
-                                <input 
-                                    className="input"
-                                    placeholder="julie.mchelpfulson@acme.com" 
-                                    type="text"
-                                    {...contact.email}
-                                />
                             </div>
                         </GuideEditSection>
                     </div> :
@@ -460,7 +466,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     <div className="my2">
                                         <SectionHeader key={'dashboardTitle'}>
                                             Our most important dashboard
-                                        </SectionHeader>,
+                                        </SectionHeader>
                                         <GuideDetail 
                                             key={'dashboardDetail'}
                                             type="dashboard"
@@ -474,7 +480,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                         <div className="my2">
                                             <SectionHeader key={'metricsTitle'}>
                                                 Numbers that we pay attention to
-                                            </SectionHeader>,
+                                            </SectionHeader>
                                             { guide.important_metrics.map((metricId) =>
                                                 <GuideDetail 
                                                     key={metricId}
@@ -585,5 +591,5 @@ export default class ReferenceGettingStartedGuide extends Component {
 }
 
 const SectionHeader = ({ children }) =>
-    <h2 className="text-dark text-measure mb2">{children}</h2>
+    <h2 className="text-dark text-measure mb4">{children}</h2>
 

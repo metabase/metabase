@@ -34,11 +34,14 @@ const GuideDetailEditor = ({
 
     const bgClass = typeToBgClass[type];
     const entityId = formField.id.value;
+    const disabled = formField.id.value === null || formField.id.value === undefined
     const tableId = metrics && metrics[entityId] && metrics[entityId].table_id;
     const tableFields = tables && tables[tableId] && tables[tableId].fields || [];
     const fieldsByMetric = type === 'metric' ?
         tableFields.map(fieldId => fields[fieldId]) :
         [];
+
+    const selectClasses = 'input h3 px2 py1'
 
     return <div className={cx('mb2 border-bottom pb4 text-measure', className)}>
         <div className="relative mt2 flex align-center">
@@ -55,21 +58,10 @@ const GuideDetailEditor = ({
             >
                 <Icon name={type === 'metric' ? 'ruler' : type} />
             </div>
-            { formField.id.value !== null && formField.id.value !== undefined && 
-                <div className="right top mt1 mr1 absolute cursor-pointer text-grey-2">
-                    <Tooltip tooltip="Remove item">
-                        <Icon
-                            name="close"
-                            width={16}
-                            height={16}
-                            onClick={removeField}
-                        />
-                    </Tooltip>
-                </div>
-            }
-            <div>
+            <div className="py2">
                 { entities ?
                     <Select 
+                        className={selectClasses}
                         value={entities[formField.id.value]}
                         options={Object.values(entities)}
                         disabledOptionIds={selectedIds}
@@ -89,7 +81,7 @@ const GuideDetailEditor = ({
                         placeholder={'Select...'}
                     /> :
                     <DataSelector
-                        className="inline-block bordered rounded"
+                        className={cx(selectClasses, 'inline-block', 'rounded', 'text-bold')}
                         triggerIconSize={12}
                         includeTables={true}
                         query={{
@@ -140,59 +132,76 @@ const GuideDetailEditor = ({
                     />
                 }
             </div>
+            <div className="ml-auto cursor-pointer text-grey-2">
+                <Tooltip tooltip="Remove item">
+                    <Icon
+                        name="close"
+                        width={16}
+                        height={16}
+                        onClick={removeField}
+                    />
+                </Tooltip>
+            </div>
         </div>
-        <div className=" mt2 text-measure">
-            <EditLabel>
-                { type === 'dashboard' ?
-                        `Why is this dashboard the most important?` :
-                        `What is useful or interesting about this ${type}?` 
-                }
-            </EditLabel>
-            <textarea 
-                className={S.guideDetailEditorTextarea}
-                placeholder="Write something helpful here"
-                {...formField.points_of_interest}
-                disabled={formField.id.value === null || formField.id.value === undefined}
-            />
-
-            <EditLabel>
-                { type === 'dashboard' ?
-                        `Is there anything users of this dashboard should be aware of?` :
-                        `Anything users should be aware of about this ${type}?` 
-                }
-            </EditLabel>           
-            <textarea 
-                className={S.guideDetailEditorTextarea} 
-                placeholder="Write something helpful here"
-                {...formField.caveats}
-                disabled={formField.id.value === null || formField.id.value === undefined}                
-            />
-            { type === 'metric' && [
-                <EditLabel key="metricFieldsLabel">
-                    Which 2-3 fields do you usually group this metric by?
-                </EditLabel>,
-                <Select
-                    key="metricFieldsSelect"
-                    triggerClasses={cx('px2', S.guideDetailEditorSelect)}
-                    options={fieldsByMetric} 
-                    optionNameFn={option => option.display_name || option.name}
-                    placeholder="Select..."
-                    values={formField.important_fields.value || []}
-                    disabledOptionIds={formField.important_fields.value && formField.important_fields.value.length === 3 ?
-                        fieldsByMetric
-                            .filter(field => !formField.important_fields.value.includes(field))
-                            .map(field => field.id) :
-                        []
+        <div className="mt2 text-measure">
+            <div className={cx('mb2', { 'disabled' : disabled })}>
+                <EditLabel>
+                    { type === 'dashboard' ?
+                            `Why is this dashboard the most important?` :
+                            `What is useful or interesting about this ${type}?` 
                     }
-                    onChange={(field) => {
-                        const importantFields = formField.important_fields.value || [];
-                        return importantFields.includes(field) ?
-                            formField.important_fields.onChange(importantFields.filter(importantField => importantField !== field)) :
-                            importantFields.length < 3 && formField.important_fields.onChange(importantFields.concat(field));
-                    }}
-                    disabled={formField.id.value === null || formField.id.value === undefined}
+                </EditLabel>
+                <textarea 
+                    className={S.guideDetailEditorTextarea}
+                    placeholder="Write something helpful here"
+                    {...formField.points_of_interest}
+                    disabled={disabled}
                 />
-            ]}
+            </div>
+
+            <div className={cx('mb2', { 'disabled' : disabled })}>
+                <EditLabel>
+                    { type === 'dashboard' ?
+                            `Is there anything users of this dashboard should be aware of?` :
+                            `Anything users should be aware of about this ${type}?` 
+                    }
+                </EditLabel>           
+                <textarea 
+                    className={S.guideDetailEditorTextarea} 
+                    placeholder="Write something helpful here"
+                    {...formField.caveats}
+                    disabled={disabled}
+                />
+            </div>
+            { type === 'metric' && 
+                <div className={cx('mb2', { 'disabled' : disabled })}>
+                    <EditLabel key="metricFieldsLabel">
+                        Which 2-3 fields do you usually group this metric by?
+                    </EditLabel>
+                    <Select
+                        className={cx(selectClasses, 'inline-block')}
+                        key="metricFieldsSelect"
+                        triggerClasses={cx('px2', S.guideDetailEditorSelect)}
+                        options={fieldsByMetric} 
+                        optionNameFn={option => option.display_name || option.name}
+                        placeholder="Select..."
+                        values={formField.important_fields.value || []}
+                        disabledOptionIds={formField.important_fields.value && formField.important_fields.value.length === 3 ?
+                            fieldsByMetric
+                                .filter(field => !formField.important_fields.value.includes(field))
+                                .map(field => field.id) :
+                            []
+                        }
+                        onChange={(field) => {
+                            const importantFields = formField.important_fields.value || [];
+                            return importantFields.includes(field) ?
+                                formField.important_fields.onChange(importantFields.filter(importantField => importantField !== field)) :
+                                importantFields.length < 3 && formField.important_fields.onChange(importantFields.concat(field));
+                        }}
+                        disabled={formField.id.value === null || formField.id.value === undefined}
+                    />
+                </div>
+            }
         </div>
     </div>;
 };

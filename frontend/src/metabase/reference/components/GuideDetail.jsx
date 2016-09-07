@@ -120,11 +120,11 @@ GuideDetail.propTypes = {
 const ItemTitle = ({ title, link, linkColorClass, linkHoverClass }) =>
     <h2>
         <Link 
-            className={cx(linkColorClass, linkHoverClass)} 
+            className={ cx(linkColorClass, linkHoverClass) } 
             style={{ textDecoration: 'none' }}
-            to={link}
+            to={ link }
         >
-            {title}
+            { title }
         </Link>
     </h2>
 
@@ -132,7 +132,7 @@ const ContextHeading = ({ children }) =>
     <h3 className="mb1 text-grey-4">{ children }</h3>
 
 const ContextContent = ({ empty, children }) =>
-    <p className={cx('m0 text-paragraph text-measure', { 'text-grey-3': empty})}>
+    <p className={cx('m0 text-paragraph text-measure', { 'text-grey-3': empty })}>
         { children }
     </p>
 
