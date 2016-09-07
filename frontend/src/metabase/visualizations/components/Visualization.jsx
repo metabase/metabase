@@ -85,6 +85,7 @@ export default class Visualization extends Component {
 
         // don't try to load settings unless data is loaded
         let settings = this.props.settings || {};
+        let all_series_settings = series.map((_) => {});
 
         if (!loading && !error) {
             settings = this.props.settings || getSettings(series);
@@ -103,6 +104,7 @@ export default class Visualization extends Component {
                     error = e.message || "Could not display this chart with this data.";
                 }
             }
+            all_series_settings = series.map((series_item) => getSettings([series_item]))
         }
         if (!error) {
             noResults = getIn(series, [0, "data", "rows", "length"]) === 0;
@@ -114,7 +116,6 @@ export default class Visualization extends Component {
         } else if (isSlow) {
             extra = <LoadingSpinner className={isSlow === "usually-slow" ? "text-gold" : "text-slate"} size={18} />
         }
-
         return (
             <div className={cx(className, "flex flex-column")}>
                 { isDashboard && (loading || error || !CardVisualization.noHeader) || replacementContent ?
@@ -179,6 +180,7 @@ export default class Visualization extends Component {
                         className="flex-full"
                         series={series}
                         settings={settings}
+                        all_settings={all_series_settings}
                         card={series[0].card} // convienence for single-series visualizations
                         data={series[0].data} // convienence for single-series visualizations
                         hovered={this.state.hovered}

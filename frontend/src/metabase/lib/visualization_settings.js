@@ -116,8 +116,7 @@ const SETTINGS = {
         isValid: ([{ card, data }], vizSettings) =>
             columnsAreValid(card.visualization_settings["graph.dimensions"], data, isDimension) &&
             columnsAreValid(card.visualization_settings["graph.metrics"], data, isMetric),
-        getDefault: (series, vizSettings) =>
-            getDefaultDimensionsAndMetrics(series).dimensions,
+        getDefault: (series, vizSettings) => getDefaultDimensionsAndMetrics(series).dimensions,
         getProps: ([{ card, data }], vizSettings) => {
             const value = vizSettings["graph.dimensions"];
             const options = data.cols.filter(isDimension).map(getOptionFromColumn);

@@ -287,6 +287,7 @@ function lineAndBarOnRender(chart, settings) {
             const overlapping = Object.keys(overlappedIndex).length;
             enableDots = overlapping < DOT_OVERLAP_COUNT_LIMIT || (overlapping / total) < DOT_OVERLAP_RATIO;
         }
+        console.log(chart);
         chart.svg()
             .classed("enable-dots", enableDots)
             .classed("enable-dots-onhover", !enableDots);
@@ -331,7 +332,7 @@ function lineAndBarOnRender(chart, settings) {
                 .enter().append("svg:path")
                     .filter((d) => d != undefined)
                     .attr("d", (d) => {
-console.log(d, "M" + d.join("L") + "Z");
+                        //console.log(d, "M" + d.join("L") + "Z");
 return "M" + d.join("L") + "Z"
 })
                     .attr("clip-path", (d,i) => "url(#clip-"+i+")")
@@ -439,9 +440,7 @@ return "M" + d.join("L") + "Z"
     chart.render();
 }
 
-export default function lineAreaBar(element, { series, onHoverChange, onRender, chartType, isScalarSeries, settings }) {
-    //console.log('series are!!', series);
-    //console.log('settings', settings);
+export default function lineAreaBar(element, { series, onHoverChange, onRender, chartType, isScalarSeries, settings, all_settings }) {
     const colors = settings["graph.colors"];
 
     const isTimeseries = dimensionIsTimeseries(series[0].data);
@@ -535,7 +534,7 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
     }
     let groups_to_sort = groups.map((group, index) => {
         console.log('index', index, series[index].card.display)
-        return {'group_series': series[index], index, group}
+        return {'group_series': series[index], _settings: all_settings[index], index, group}
     })
     //console.log('before sort', groups_to_sort);
     groups_to_sort = groups_to_sort.sort((a, b) => {
@@ -550,6 +549,7 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
     //console.log('after sort', groups_to_sort);
     groups = groups_to_sort.map((group_to_sort) => group_to_sort.group)
     series = groups_to_sort.map((group_to_sort) => group_to_sort.group_series)
+    all_settings = groups_to_sort.map((group_to_sort) => group_to_sort._settings)
 
     let charts = groups.map((group, index) => {
         //console.log('group', group);
@@ -579,8 +579,8 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
         for (var i = 1; i < group.length; i++) {
             chart.stack(group[i])
         }
-
-        applyChartLineBarSettings(chart, settings, currentChartType, isLinear, isTimeseries);
+        console.log(all_settings[index])
+        applyChartLineBarSettings(chart, all_settings[index], currentChartType, isLinear, isTimeseries);
 
         return chart;
     });
