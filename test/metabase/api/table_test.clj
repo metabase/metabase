@@ -118,24 +118,24 @@
                      (assoc :table_id (id :categories))
                      (dissoc :target))]
     [(merge defaults (match-$ (Field (id :categories :id))
-                       {:special_type       "id"
+                       {:special_type       "type/PK"
                         :name               "ID"
                         :display_name       "ID"
                         :updated_at         $
                         :id                 (id :categories :id)
                         :created_at         $
-                        :base_type          "BigIntegerField"
+                        :base_type          "type/BigInteger"
                         :fk_target_field_id $
                         :raw_column_id      $
                         :last_analyzed      $}))
      (merge defaults (match-$ (Field (id :categories :name))
-                       {:special_type       "name"
+                       {:special_type       "type/Name"
                         :name               "NAME"
                         :display_name       "Name"
                         :updated_at         $
                         :id                 (id :categories :name)
                         :created_at         $
-                        :base_type          "TextField"
+                        :base_type          "type/Text"
                         :fk_target_field_id $
                         :raw_column_id      $
                         :last_analyzed      $}))])
@@ -150,26 +150,26 @@
             :display_name "Categories"
             :fields       (let [defaults (assoc field-defaults :table_id (id :categories))]
                             [(merge defaults (match-$ (Field (id :categories :id))
-                                               {:special_type       "id"
+                                               {:special_type       "type/PK"
                                                 :name               "ID"
                                                 :display_name       "ID"
                                                 :updated_at         $
                                                 :id                 $
                                                 :position           0
                                                 :created_at         $
-                                                :base_type          "BigIntegerField"
+                                                :base_type          "type/BigInteger"
                                                 :fk_target_field_id $
                                                 :raw_column_id      $
                                                 :last_analyzed      $}))
                              (merge defaults (match-$ (Field (id :categories :name))
-                                               {:special_type       "name"
+                                               {:special_type       "type/Name"
                                                 :name               "NAME"
                                                 :display_name       "Name"
                                                 :updated_at         $
                                                 :id                 $
                                                 :position           0
                                                 :created_at         $
-                                                :base_type          "TextField"
+                                                :base_type          "type/Text"
                                                 :fk_target_field_id $
                                                 :raw_column_id      $
                                                 :last_analyzed      $}))])
@@ -209,13 +209,13 @@
             :display_name "Users"
             :fields       (let [defaults (assoc field-defaults :table_id (id :users))]
                             [(merge defaults (match-$ (Field (id :users :id))
-                                               {:special_type       "id"
+                                               {:special_type       "type/PK"
                                                 :name               "ID"
                                                 :display_name       "ID"
                                                 :updated_at         $
                                                 :id                 $
                                                 :created_at         $
-                                                :base_type          "BigIntegerField"
+                                                :base_type          "type/BigInteger"
                                                 :visibility_type    "normal"
                                                 :fk_target_field_id $
                                                 :raw_column_id      $
@@ -227,31 +227,31 @@
                                                 :updated_at         $
                                                 :id                 $
                                                 :created_at         $
-                                                :base_type          "DateTimeField"
+                                                :base_type          "type/DateTime"
                                                 :visibility_type    "normal"
                                                 :fk_target_field_id $
                                                 :raw_column_id      $
                                                 :last_analyzed      $}))
                              (merge defaults (match-$ (Field (id :users :name))
-                                               {:special_type       "name"
+                                               {:special_type       "type/Name"
                                                 :name               "NAME"
                                                 :display_name       "Name"
                                                 :updated_at         $
                                                 :id                 $
                                                 :created_at         $
-                                                :base_type          "TextField"
+                                                :base_type          "type/Text"
                                                 :visibility_type    "normal"
                                                 :fk_target_field_id $
                                                 :raw_column_id      $
                                                 :last_analyzed      $}))
                              (merge defaults (match-$ (Field :table_id (id :users), :name "PASSWORD")
-                                               {:special_type       "category"
+                                               {:special_type       "type/Category"
                                                 :name               "PASSWORD"
                                                 :display_name       "Password"
                                                 :updated_at         $
                                                 :id                 $
                                                 :created_at         $
-                                                :base_type          "TextField"
+                                                :base_type          "type/Text"
                                                 :visibility_type    "sensitive"
                                                 :fk_target_field_id $
                                                 :raw_column_id      $
@@ -289,13 +289,13 @@
             :display_name "Users"
             :fields       (let [defaults (assoc field-defaults :table_id (id :users))]
                             [(merge defaults (match-$ (Field (id :users :id))
-                                               {:special_type       "id"
+                                               {:special_type       "type/PK"
                                                 :name               "ID"
                                                 :display_name       "ID"
                                                 :updated_at         $
                                                 :id                 $
                                                 :created_at         $
-                                                :base_type          "BigIntegerField"
+                                                :base_type          "type/BigInteger"
                                                 :fk_target_field_id $
                                                 :raw_column_id      $
                                                 :last_analyzed      $}))
@@ -306,18 +306,18 @@
                                                 :updated_at         $
                                                 :id                 $
                                                 :created_at         $
-                                                :base_type          "DateTimeField"
+                                                :base_type          "type/DateTime"
                                                 :fk_target_field_id $
                                                 :raw_column_id      $
                                                 :last_analyzed      $}))
                              (merge defaults (match-$ (Field (id :users :name))
-                                               {:special_type       "name"
+                                               {:special_type       "type/Name"
                                                 :name               "NAME"
                                                 :display_name       "Name"
                                                 :updated_at         $
                                                 :id                 $
                                                 :created_at         $
-                                                :base_type          "TextField"
+                                                :base_type          "type/Text"
                                                 :fk_target_field_id $
                                                 :raw_column_id      $
                                                 :last_analyzed      $}))])
@@ -385,10 +385,10 @@
                                 :raw_column_id      $
                                 :name               "USER_ID"
                                 :display_name       "User ID"
-                                :base_type          "IntegerField"
+                                :base_type          "type/Integer"
                                 :preview_display    $
                                 :position           $
-                                :special_type       "fk"
+                                :special_type       "type/FK"
                                 :fk_target_field_id $
                                 :created_at         $
                                 :updated_at         $
@@ -410,10 +410,10 @@
                                 :raw_column_id      $
                                 :name               "ID"
                                 :display_name       "ID"
-                                :base_type          "BigIntegerField"
+                                :base_type          "type/BigInteger"
                                 :preview_display    $
                                 :position           $
-                                :special_type       "id"
+                                :special_type       "type/PK"
                                 :fk_target_field_id $
                                 :created_at         $
                                 :updated_at         $

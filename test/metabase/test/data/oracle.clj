@@ -45,15 +45,14 @@
 
 
 (def ^:private ^:const field-base-type->sql-type
-  {:BigIntegerField "NUMBER(*,0)"
-   :BooleanField    "NUMBER(1)"
-   :CharField       "VARCHAR2(254)"
-   :DateField       "DATE"
-   :DateTimeField   "TIMESTAMP"
-   :DecimalField    "DECIMAL"
-   :FloatField      "BINARY_FLOAT"
-   :IntegerField    "INTEGER"
-   :TextField       "VARCHAR2(4000)"}) ; Oracle doesn't have a TEXT type so use the maximum size for a VARCHAR2
+  {:type/BigInteger "NUMBER(*,0)"
+   :type/Boolean    "NUMBER(1)"
+   :type/Date       "DATE"
+   :type/DateTime   "TIMESTAMP"
+   :type/Decimal    "DECIMAL"
+   :type/Float      "BINARY_FLOAT"
+   :type/Integer    "INTEGER"
+   :type/Text       "VARCHAR2(4000)"}) ; Oracle doesn't have a TEXT type so use the maximum size for a VARCHAR2
 
 (defn- drop-table-if-exists-sql [{:keys [database-name]} {:keys [table-name]}]
   (format "BEGIN
@@ -90,11 +89,11 @@
           :default-schema               (constantly session-schema)
           :engine                       (constantly :oracle)
           :expected-base-type->actual   (fn [_ base-type]
-                                          (condp = base-type
-                                            :IntegerField    :DecimalField ; Oracle doesn't have INTEGERs
-                                            :BigIntegerField :DecimalField
+                                          ;; Oracle doesn't have INTEGERs
+                                          (if (isa? base-type :type/Integer)
+                                            :type/Decimal
                                             base-type))
-          :id-field-type                (constantly :DecimalField)}))
+          :id-field-type                (constantly :type/Decimal)}))
 
 (defn- dbspec []
   (sql/connection-details->spec (OracleDriver.) @db-connection-details))

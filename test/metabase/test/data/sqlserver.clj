@@ -12,16 +12,15 @@
   (:import metabase.driver.sqlserver.SQLServerDriver))
 
 (def ^:private ^:const field-base-type->sql-type
-  {:BigIntegerField "BIGINT"
-   :BooleanField    "BIT"
-   :CharField       "VARCHAR(254)"
-   :DateField       "DATE"
-   :DateTimeField   "DATETIME"
-   :DecimalField    "DECIMAL"
-   :FloatField      "FLOAT"
-   :IntegerField    "INTEGER"
-   :TextField       "TEXT"
-   :TimeField       "TIME"})
+  {:type/BigInteger "BIGINT"
+   :type/Boolean    "BIT"
+   :type/Date       "DATE"
+   :type/DateTime   "DATETIME"
+   :type/Decimal    "DECIMAL"
+   :type/Float      "FLOAT"
+   :type/Integer    "INTEGER"
+   :type/Text       "TEXT"
+   :type/Time       "TIME"})
 
 (def ^:private db-name-counter
   "We destroy and create the same temporary databases serveral times when running our query processor tests. (why?)

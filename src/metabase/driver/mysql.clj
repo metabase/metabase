@@ -11,37 +11,37 @@
 ;;; # IMPLEMENTATION
 
 (defn- column->base-type [column-type]
-  ({:BIGINT     :BigIntegerField
-    :BINARY     :UnknownField
-    :BIT        :BooleanField
-    :BLOB       :UnknownField
-    :CHAR       :CharField
-    :DATE       :DateField
-    :DATETIME   :DateTimeField
-    :DECIMAL    :DecimalField
-    :DOUBLE     :FloatField
-    :ENUM       :UnknownField
-    :FLOAT      :FloatField
-    :INT        :IntegerField
-    :INTEGER    :IntegerField
-    :LONGBLOB   :UnknownField
-    :LONGTEXT   :TextField
-    :MEDIUMBLOB :UnknownField
-    :MEDIUMINT  :IntegerField
-    :MEDIUMTEXT :TextField
-    :NUMERIC    :DecimalField
-    :REAL       :FloatField
-    :SET        :UnknownField
-    :SMALLINT   :IntegerField
-    :TEXT       :TextField
-    :TIME       :TimeField
-    :TIMESTAMP  :DateTimeField
-    :TINYBLOB   :UnknownField
-    :TINYINT    :IntegerField
-    :TINYTEXT   :TextField
-    :VARBINARY  :UnknownField
-    :VARCHAR    :TextField
-    :YEAR       :IntegerField} (keyword (s/replace (name column-type) #"\sUNSIGNED$" "")))) ; strip off " UNSIGNED" from end if present
+  ({:BIGINT     :type/BigInteger
+    :BINARY     :type/*
+    :BIT        :type/Boolean
+    :BLOB       :type/*
+    :CHAR       :type/Text
+    :DATE       :type/Date
+    :DATETIME   :type/DateTime
+    :DECIMAL    :type/Decimal
+    :DOUBLE     :type/Float
+    :ENUM       :type/*
+    :FLOAT      :type/Float
+    :INT        :type/Integer
+    :INTEGER    :type/Integer
+    :LONGBLOB   :type/*
+    :LONGTEXT   :type/Text
+    :MEDIUMBLOB :type/*
+    :MEDIUMINT  :type/Integer
+    :MEDIUMTEXT :type/Text
+    :NUMERIC    :type/Decimal
+    :REAL       :type/Float
+    :SET        :type/*
+    :SMALLINT   :type/Integer
+    :TEXT       :type/Text
+    :TIME       :type/Time
+    :TIMESTAMP  :type/DateTime
+    :TINYBLOB   :type/*
+    :TINYINT    :type/Integer
+    :TINYTEXT   :type/Text
+    :VARBINARY  :type/*
+    :VARCHAR    :type/Text
+    :YEAR       :type/Integer} (keyword (s/replace (name column-type) #"\sUNSIGNED$" "")))) ; strip off " UNSIGNED" from end if present
 
 (def ^:private ^:const connection-args
   "Map of args for the MySQL JDBC connection string.

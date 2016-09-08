@@ -59,8 +59,8 @@
 (s/defrecord Field [field-id           :- su/IntGreaterThanZero
                     field-name         :- su/NonBlankString
                     field-display-name :- su/NonBlankString
-                    base-type          :- (apply s/enum field/base-types)
-                    special-type       :- (s/maybe (apply s/enum field/special-types))
+                    base-type          :- su/FieldType
+                    special-type       :- (s/maybe su/FieldType)
                     visibility-type    :- (apply s/enum field/visibility-types)
                     table-id           :- su/IntGreaterThanZero
                     schema-name        :- (s/maybe su/NonBlankString)

@@ -15,7 +15,7 @@
 
 (expect
   {:values       [1 2 3 4]
-   :special-type :category}
+   :special-type :type/Category}
   (with-redefs-fn {#'metadata-queries/field-distinct-values (constantly [1 2 3 4])}
     #(test:cardinality-and-extract-field-values {} {})))
 

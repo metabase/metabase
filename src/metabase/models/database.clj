@@ -34,7 +34,7 @@
   [{:keys [id]}]
   (let [table-ids (db/select-ids 'Table, :db_id id, :active true)]
     (when (seq table-ids)
-      (db/select 'Field, :table_id [:in table-ids], :special_type "id"))))
+      (db/select 'Field, :table_id [:in table-ids], :special_type (db/isa :type/PK)))))
 
 
 (u/strict-extend (class Database)

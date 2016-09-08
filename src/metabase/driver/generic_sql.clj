@@ -215,7 +215,7 @@
         pk-field       (field/Field (table/pk-field-id table))
         pk-field-k     (when pk-field
                          (qualify+escape table pk-field))
-        transform-fn   (if (contains? #{:TextField :CharField} (:base_type field))
+        transform-fn   (if (isa? (:base_type field) :type/Text)
                          u/jdbc-clob->str
                          identity)
         select*        {:select   [[field-k :field]]                ; if we don't specify an explicit ORDER BY some DBs like Redshift will return them in a (seemingly) random order
@@ -338,8 +338,8 @@
          (merge {:name      column_name
                  :custom    {:column-type type_name}
                  :base-type (or (column->base-type driver (keyword type_name))
-                                (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :UnknownField." type_name))
-                                    :UnknownField))}
+                                (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :type/*." type_name))
+                                    :type/*))}
                 (when calculated-special-type
                   {:special-type calculated-special-type})))))
 

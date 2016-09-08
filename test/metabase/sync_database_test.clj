@@ -16,18 +16,18 @@
   {"movie"  {:name "movie"
              :schema "default"
              :fields #{{:name      "id"
-                        :base-type :IntegerField}
+                        :base-type :type/Integer}
                        {:name      "title"
-                        :base-type :TextField}
+                        :base-type :type/Text}
                        {:name      "studio"
-                        :base-type :TextField}}}
+                        :base-type :type/Text}}}
    "studio" {:name "studio"
              :schema nil
              :fields #{{:name         "studio"
-                        :base-type    :TextField
-                        :special-type :id}
+                        :base-type    :type/Text
+                        :special-type :type/PK}
                        {:name      "name"
-                        :base-type :TextField}}}})
+                        :base-type :type/Text}}}})
 
 (defrecord SyncTestDriver []
   clojure.lang.Named
@@ -104,34 +104,34 @@
            :name         "movie"
            :display_name "Movie"
            :fields       [(merge field-defaults
-                                 {:special_type :id
+                                 {:special_type :type/PK
                                   :name         "id"
                                   :display_name "ID"
-                                  :base_type    :IntegerField})
+                                  :base_type    :type/Integer})
                           (merge field-defaults
-                                 {:special_type       :fk
+                                 {:special_type       :type/FK
                                   :name               "studio"
                                   :display_name       "Studio"
-                                  :base_type          :TextField
+                                  :base_type          :type/Text
                                   :fk_target_field_id true})
                           (merge field-defaults
                                  {:special_type nil
                                   :name         "title"
                                   :display_name "Title"
-                                  :base_type    :TextField})]})
+                                  :base_type    :type/Text})]})
    (merge table-defaults
           {:name         "studio"
            :display_name "Studio"
            :fields       [(merge field-defaults
-                                 {:special_type :name
+                                 {:special_type :type/Name
                                   :name         "name"
                                   :display_name "Name"
-                                  :base_type    :TextField})
+                                  :base_type    :type/Text})
                           (merge field-defaults
-                                 {:special_type :id
+                                 {:special_type :type/PK
                                   :name         "studio"
                                   :display_name "Studio"
-                                  :base_type    :TextField})]})]
+                                  :base_type    :type/Text})]})]
   (tu/with-temp Database [fake-db {:engine :sync-test}]
     (sync-database! fake-db)
     ;; we are purposely running the sync twice to test for possible logic issues which only manifest
@@ -148,20 +148,20 @@
           :name         "movie"
           :display_name "Movie"
           :fields       [(merge field-defaults
-                                {:special_type :id
+                                {:special_type :type/PK
                                  :name         "id"
                                  :display_name "ID"
-                                 :base_type    :IntegerField})
+                                 :base_type    :type/Integer})
                          (merge field-defaults
                                 {:special_type nil
                                  :name         "studio"
                                  :display_name "Studio"
-                                 :base_type    :TextField})
+                                 :base_type    :type/Text})
                          (merge field-defaults
                                 {:special_type nil
                                  :name         "title"
                                  :display_name "Title"
-                                 :base_type    :TextField})]})
+                                 :base_type    :type/Text})]})
   (tu/with-temp* [Database [fake-db {:engine :sync-test}]
                   RawTable [{raw-table-id :id} {:database_id (:id fake-db), :name "movie", :schema "default"}]
                   Table    [fake-table {:raw_table_id raw-table-id
@@ -229,11 +229,11 @@
 ;; ## Individual Helper Fns
 
 ;; ## TEST PK SYNCING
-(expect [:id
+(expect [:type/PK
          nil
-         :id
-         :latitude
-         :id]
+         :type/PK
+         :type/Latitude
+         :type/PK]
   (let [get-special-type (fn [] (db/select-one-field :special_type Field, :id (id :venues :id)))]
     [;; Special type should be :id to begin with
      (get-special-type)
@@ -244,7 +244,7 @@
      (do (sync-table! @venues-table)
          (get-special-type))
      ;; sync-table! should *not* change the special type of fields that are marked with a different type
-     (do (db/update! Field (id :venues :id), :special_type :latitude)
+     (do (db/update! Field (id :venues :id), :special_type :type/Latitude)
          (get-special-type))
      ;; Make sure that sync-table runs set-table-pks-if-needed!
      (do (db/update! Field (id :venues :id), :special_type nil)
@@ -265,12 +265,12 @@
   (db/select-one-field :fk_target_field_id Field, :id (id :venues :category_id)))
 
 ;; Check that sync-table! causes FKs to be set like we'd expect
-(expect [{:special_type :fk, :fk_target_field_id true}
+(expect [{:special_type :type/FK, :fk_target_field_id true}
          {:special_type nil, :fk_target_field_id false}
-         {:special_type :fk, :fk_target_field_id true}]
+         {:special_type :type/FK, :fk_target_field_id true}]
   (let [field-id (id :checkins :user_id)
         get-special-type-and-fk-exists? (fn []
-                                          (into {} (-> (db/select-one [Field :special_type :fk_target_field_id], :id field-id)
+                                          (into {} (-> (db/select-one [Field :special_type :type/FK_target_field_id], :id field-id)
                                                        (update :fk_target_field_id #(db/exists? Field :id %)))))]
     [ ;; FK should exist to start with
      (get-special-type-and-fk-exists?)

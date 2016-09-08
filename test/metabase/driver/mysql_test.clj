@@ -7,7 +7,7 @@
 ;; MySQL allows 0000-00-00 dates, but JDBC does not; make sure that MySQL is converting them to NULL when returning them like we asked
 (def-database-definition ^:private ^:const all-zero-dates
   ["exciting-moments-in-history"
-   [{:field-name "moment", :base-type :DateTimeField}]
+   [{:field-name "moment", :base-type :type/DateTime}]
    [["0000-00-00"]]])
 
 (expect-with-engine :mysql

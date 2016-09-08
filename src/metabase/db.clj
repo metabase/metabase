@@ -860,3 +860,22 @@
   [[source-entity fk] [dest-entity pk]]
   {:left-join [(entity->table-name dest-entity) [:= (qualify source-entity fk)
                                                     (qualify dest-entity pk)]]})
+
+
+(defn isa
+  "Convenience for generating an HoneySQL `IN` clause for a keyword and all of its descendents.
+   Intended for use with the type hierarchy in `metabase.types`.
+
+     (db/select Field :special_type (db/isa :type/URL))
+      ->
+     (db/select Field :special_type [:in #{\"type/URL\" \"type/ImageURL\" \"type/AvatarURL\"}])
+
+   Also accepts optional EXPR for use directly in a HoneySQL `where`:
+
+     (db/select Field {:where (db/isa :special_type :type/URL)})
+     ->
+     (db/select Field {:where [:in :special_type #{\"type/URL\" \"type/ImageURL\" \"type/AvatarURL\"}]})"
+  ([type-keyword]
+   [:in (set (map u/keyword->qualified-name (cons type-keyword (descendants type-keyword))))])
+  ([expr type-keyword]
+   [:in expr (last (isa type-keyword))]))

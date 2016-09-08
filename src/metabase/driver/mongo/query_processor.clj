@@ -103,10 +103,10 @@
     (mongo-let [field (as-> field <>
                         (->initial-rvalue <>)
                         (cond
-                          (= special-type :timestamp_milliseconds)
+                          (isa? special-type :type/UNIXTimestampSeconds)
                           {$add [(java.util.Date. 0) <>]}
 
-                          (= special-type :timestamp_seconds)
+                          (isa? special-type :type/UNIXTimestampMilliseconds)
                           {$add [(java.util.Date. 0) {$multiply [<> 1000]}]}
 
                           :else <>))]
@@ -162,7 +162,7 @@
   Value
   (->rvalue [{value :value, {:keys [field-name base-type]} :field}]
     (if (and (= field-name "_id")
-             (= base-type  :UnknownField))
+             (= base-type  :type/*))
       `(ObjectId. ~value)
       value))
 
