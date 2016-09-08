@@ -263,18 +263,45 @@ function lineAndBarOnRender(chart, settings, all_settings) {
     }
 
     function enableDots() {
-        //const dots = chart.svg().selectAll(".dc-tooltip .dot")[0];
-        for (let i in all_settings) {
-            let enableDots;
-            const current_settings = all_settings[i];
-            if (current_settings["line.marker_enabled"]) {
-                let the_dots = chart.svg().selectAll('.chart-body').filter(function (d, j) { return j === parseInt(i, 10) + 1;}).selectAll('.dot')
-                let dots = the_dots[0]
-                window.test3 = dots;
-                if (dots.length === 0 || dots.length > 500) {
-                    continue;
+        if (all_settings.length > 1) {
+            for (let i in all_settings) {
+                let enableDots;
+                const current_settings = all_settings[i];
+                if (current_settings["line.marker_enabled"]) {
+                    let the_dots = chart.svg().selectAll('.chart-body').filter(function (d, j) { return j === parseInt(i, 10) + 1;}).selectAll('.dot')
+                    let dots = the_dots[0]
+                    window.test3 = dots;
+                    if (dots.length === 0 || dots.length > 500) {
+                        continue;
+                    }
+                    let vertices = dots.map((e, index) => {
+                        let rect = e.getBoundingClientRect();
+                        return [rect.left, rect.top, index];
+                    });
+                    const overlappedIndex = {};
+                    // essentially pairs of vertices closest to each other
+                    for (let { source, target } of d3.geom.voronoi().links(vertices)) {
+                        if (Math.sqrt(Math.pow(source[0] - target[0], 2) + Math.pow(source[1] - target[1], 2)) < DOT_OVERLAP_DISTANCE) {
+                            // if they overlap, mark both as overlapped
+                            overlappedIndex[source[2]] = overlappedIndex[target[2]] = true;
+                        }
+                    }
+                    const total = vertices.length;
+                    const overlapping = Object.keys(overlappedIndex).length;
+                    enableDots = overlapping < DOT_OVERLAP_COUNT_LIMIT || (overlapping / total) < DOT_OVERLAP_RATIO;
+                    the_dots.classed('enable-dot', enableDots)
                 }
-                let vertices = dots.map((e, index) => {
+            }
+        } else {
+            let enableDots;
+            const dots = chart.svg().selectAll(".dc-tooltip .dot")[0];
+            if (settings["line.marker_enabled"] != null) {
+                enableDots = !!settings["line.marker_enabled"];
+            } else if (dots.length > 500) {
+                // more than 500 dots is almost certainly too dense, don't waste time computing the voronoi map
+                enableDots = false;
+            } else {
+                const vertices = dots.map((e, index) => {
                     let rect = e.getBoundingClientRect();
                     return [rect.left, rect.top, index];
                 });
@@ -289,35 +316,12 @@ function lineAndBarOnRender(chart, settings, all_settings) {
                 const total = vertices.length;
                 const overlapping = Object.keys(overlappedIndex).length;
                 enableDots = overlapping < DOT_OVERLAP_COUNT_LIMIT || (overlapping / total) < DOT_OVERLAP_RATIO;
-                the_dots.classed('enable-dot', enableDots)
             }
+            console.log(chart);
+            chart.svg()
+                .classed("enable-dots", enableDots)
+                .classed("enable-dots-onhover", !enableDots);
         }
-        /*if (settings["line.marker_enabled"] != null) {
-            enableDots = !!settings["line.marker_enabled"];
-        } else if (dots.length > 500) {
-            // more than 500 dots is almost certainly too dense, don't waste time computing the voronoi map
-            enableDots = false;
-        } else {
-            const vertices = dots.map((e, index) => {
-                let rect = e.getBoundingClientRect();
-                return [rect.left, rect.top, index];
-            });
-            const overlappedIndex = {};
-            // essentially pairs of vertices closest to each other
-            for (let { source, target } of d3.geom.voronoi().links(vertices)) {
-                if (Math.sqrt(Math.pow(source[0] - target[0], 2) + Math.pow(source[1] - target[1], 2)) < DOT_OVERLAP_DISTANCE) {
-                    // if they overlap, mark both as overlapped
-                    overlappedIndex[source[2]] = overlappedIndex[target[2]] = true;
-                }
-            }
-            const total = vertices.length;
-            const overlapping = Object.keys(overlappedIndex).length;
-            enableDots = overlapping < DOT_OVERLAP_COUNT_LIMIT || (overlapping / total) < DOT_OVERLAP_RATIO;
-        }
-        console.log(chart);
-        chart.svg()
-            .classed("enable-dots", enableDots)
-            .classed("enable-dots-onhover", !enableDots);*/
     }
 
     function voronoiHover() {
@@ -554,29 +558,6 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
     } else {
         parent = element;
     }
-
-    const sortOrder = {
-        bar: 0,
-        line: 1
-    }
-    let groups_to_sort = groups.map((group, index) => {
-        console.log('index', index, series[index].card.display)
-        return {'group_series': series[index], _settings: all_settings[index], index, group}
-    })
-    //console.log('before sort', groups_to_sort);
-    groups_to_sort = groups_to_sort.sort((a, b) => {
-        const a_sortOrder = sortOrder[a.group_series.card.display]
-        const b_sortOrder = sortOrder[b.group_series.card.display]
-        if (a_sortOrder === b_sortOrder) {
-            return a.index - b.index; // preserve old ordering
-        } else {
-            return a_sortOrder - b_sortOrder;
-        }
-    })
-    //console.log('after sort', groups_to_sort);
-    groups = groups_to_sort.map((group_to_sort) => group_to_sort.group)
-    series = groups_to_sort.map((group_to_sort) => group_to_sort.group_series)
-    all_settings = groups_to_sort.map((group_to_sort) => group_to_sort._settings)
 
     let charts = groups.map((group, index) => {
         //console.log('group', group);

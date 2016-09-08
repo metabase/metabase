@@ -116,12 +116,35 @@ export default class Visualization extends Component {
         } else if (isSlow) {
             extra = <LoadingSpinner className={isSlow === "usually-slow" ? "text-gold" : "text-slate"} size={18} />
         }
+
+
+    const sortOrder = {
+        bar: 0,
+        line: 1
+    }
+    let series_to_sort = series.map((group, index) => {
+        console.log('index', index, series[index].card.display)
+        return {'the_series': series[index], _settings: all_series_settings[index]}
+    })
+    console.log('before sort', series_to_sort);
+    series_to_sort = series_to_sort.sort((a, b) => {
+        const a_sortOrder = sortOrder[a.the_series.card.display]
+        const b_sortOrder = sortOrder[b.the_series.card.display]
+        if (a_sortOrder === b_sortOrder) {
+            return a.index - b.index; // preserve old ordering
+        } else {
+            return a_sortOrder - b_sortOrder;
+        }
+    })
+    console.log('after sort', series_to_sort);
+    const sorted_series = series_to_sort.map((the_series) => the_series.the_series)
+    const sorted_all_series_settings = series_to_sort.map((the_series) => the_series._settings)
         return (
             <div className={cx(className, "flex flex-column")}>
                 { isDashboard && (loading || error || !CardVisualization.noHeader) || replacementContent ?
                     <div className="p1 flex-no-shrink">
                         <LegendHeader
-                            series={series}
+                            series={sorted_series}
                             actionButtons={extra}
                             settings={settings}
                         />
@@ -178,9 +201,9 @@ export default class Visualization extends Component {
                     <CardVisualization
                         {...this.props}
                         className="flex-full"
-                        series={series}
+                        series={sorted_series}
                         settings={settings}
-                        all_settings={all_series_settings}
+                        all_settings={sorted_all_series_settings}
                         card={series[0].card} // convienence for single-series visualizations
                         data={series[0].data} // convienence for single-series visualizations
                         hovered={this.state.hovered}
