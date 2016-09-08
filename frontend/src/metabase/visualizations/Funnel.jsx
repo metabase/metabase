@@ -50,7 +50,7 @@ export default class Funnel extends Component {
 
         const dimensionIndex = cols.findIndex((col) => col.name === settings["funnel.dimension"]);
         const metricIndex = cols.findIndex((col) => col.name === settings["funnel.misure"]);
-        const funnelSmallSize = gridSize.width < 7 || gridSize.height <= 5;
+        const funnelSmallSize = gridSize && (gridSize.width < 7 || gridSize.height <= 5);
 
         const formatDimension = (dimension, jsx = true) => formatValue(dimension, { column: cols[dimensionIndex], jsx, majorWidth: 0 })
         const formatMetric    =    (metric, jsx = true) => formatValue(metric, { column: cols[metricIndex], jsx, majorWidth: 0 , comma: true})
