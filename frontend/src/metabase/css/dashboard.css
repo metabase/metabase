@@ -323,6 +323,7 @@
   fill-opacity: 1;
 }
 
+.dc-tooltip circle.dot.enable-dot,
 .enable-dots .dc-tooltip circle.dot {
   r: 3px !important;
   fill: white;
@@ -332,6 +333,8 @@
   stroke-opacity: 1 !important;
 }
 
+.dc-tooltip circle.dot.enable-dot:hover,
+.dc-tooltip circle.dot.enable-dot.hover,
 .enable-dots .dc-tooltip circle.dot:hover,
 .enable-dots .dc-tooltip circle.dot.hover {
   fill: currentColor;

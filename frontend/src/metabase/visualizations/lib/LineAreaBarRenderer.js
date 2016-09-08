@@ -238,7 +238,7 @@ function applyChartLineBarSettings(chart, settings, chartType, isLinear, isTimes
     }
 }
 
-function lineAndBarOnRender(chart, settings) {
+function lineAndBarOnRender(chart, settings, all_settings) {
     // once chart has rendered and we can access the SVG, do customizations to axis labels / etc that you can't do through dc.js
 
     function removeClipPath() {
@@ -263,9 +263,36 @@ function lineAndBarOnRender(chart, settings) {
     }
 
     function enableDots() {
-        let enableDots;
-        const dots = chart.svg().selectAll(".dc-tooltip .dot")[0];
-        if (settings["line.marker_enabled"] != null) {
+        //const dots = chart.svg().selectAll(".dc-tooltip .dot")[0];
+        for (let i in all_settings) {
+            let enableDots;
+            const current_settings = all_settings[i];
+            if (current_settings["line.marker_enabled"]) {
+                let the_dots = chart.svg().selectAll('.chart-body').filter(function (d, j) { return j === parseInt(i, 10) + 1;}).selectAll('.dot')
+                let dots = the_dots[0]
+                window.test3 = dots;
+                if (dots.length === 0 || dots.length > 500) {
+                    continue;
+                }
+                let vertices = dots.map((e, index) => {
+                    let rect = e.getBoundingClientRect();
+                    return [rect.left, rect.top, index];
+                });
+                const overlappedIndex = {};
+                // essentially pairs of vertices closest to each other
+                for (let { source, target } of d3.geom.voronoi().links(vertices)) {
+                    if (Math.sqrt(Math.pow(source[0] - target[0], 2) + Math.pow(source[1] - target[1], 2)) < DOT_OVERLAP_DISTANCE) {
+                        // if they overlap, mark both as overlapped
+                        overlappedIndex[source[2]] = overlappedIndex[target[2]] = true;
+                    }
+                }
+                const total = vertices.length;
+                const overlapping = Object.keys(overlappedIndex).length;
+                enableDots = overlapping < DOT_OVERLAP_COUNT_LIMIT || (overlapping / total) < DOT_OVERLAP_RATIO;
+                the_dots.classed('enable-dot', enableDots)
+            }
+        }
+        /*if (settings["line.marker_enabled"] != null) {
             enableDots = !!settings["line.marker_enabled"];
         } else if (dots.length > 500) {
             // more than 500 dots is almost certainly too dense, don't waste time computing the voronoi map
@@ -290,7 +317,7 @@ function lineAndBarOnRender(chart, settings) {
         console.log(chart);
         chart.svg()
             .classed("enable-dots", enableDots)
-            .classed("enable-dots-onhover", !enableDots);
+            .classed("enable-dots-onhover", !enableDots);*/
     }
 
     function voronoiHover() {
@@ -654,7 +681,7 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
     chart.render();
 
     // apply any on-rendering functions
-    lineAndBarOnRender(chart, settings);
+    lineAndBarOnRender(chart, settings, all_settings);
 
     onRender && onRender({ yAxisSplit });
 
