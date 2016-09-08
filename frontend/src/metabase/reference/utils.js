@@ -2,6 +2,7 @@ import i from "icepick";
 
 import { titleize, humanize } from "metabase/lib/formatting";
 import { startNewCard, serializeCardForUrl } from "metabase/lib/card";
+import { isPK } from "metabase/lib/types";
 
 export const idsToObjectMap = (ids, objects) => ids
     .map(id => objects[id])
@@ -128,12 +129,12 @@ export const databaseToForeignKeys = (database) => database && database.tables_l
         // ignore tables without primary key
         .filter(table => table && table.fields_lookup &&
             Object.values(table.fields_lookup)
-                .find(field => field.special_type === 'id')
+                .find(field => isPK(field.special_type))
         )
         .map(table => ({
             table: table,
             field: table && table.fields_lookup && Object.values(table.fields_lookup)
-                .find(field => field.special_type === 'id')
+                .find(field => isPK(field.special_type))
         }))
         .map(({ table, field }) => ({
             id: field.id,

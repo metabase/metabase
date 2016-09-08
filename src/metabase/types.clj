@@ -16,8 +16,10 @@
 
 (derive :type/Float :type/Number)
 (derive :type/Decimal :type/Float)
-(derive :type/Latitude :type/Float)
-(derive :type/Longitude :type/Float)
+
+(derive :type/Coordinate :type/Float)
+(derive :type/Latitude :type/Coordinate)
+(derive :type/Longitude :type/Coordinate)
 
 
 ;;; Text Types
@@ -57,6 +59,15 @@
 
 (derive :type/Boolean :type/*)
 
+;;; "Virtual" Types
+
+(derive :type/Address :type/*)
+(derive :type/City :type/Address)
+(derive :type/State :type/Address)
+(derive :type/Country :type/Address)
+(derive :type/Name :type/Address)
+(derive :type/Zip :type/Address)
+
 
 ;;; Legacy Special Types. These will hopefully be going away in the future when we add columns like `:is_pk` and `:cardinality`
 
@@ -66,11 +77,18 @@
 (derive :type/PK :type/Special)
 
 (derive :type/Category :type/Special)
+
 (derive :type/City :type/Category)
 (derive :type/State :type/Category)
 (derive :type/Country :type/Category)
 (derive :type/Name :type/Category)
 
-(defn- describe-types []
+
+;;; ------------------------------------------------------------ Util Fns ------------------------------------------------------------
+
+(defn types->parents
+  "Return a map of various types to their parent types.
+   This is intended for export to the frontend as part of `MetabaseBootstrap` so it can build its own implementation of `isa?`."
+  []
   (into {} (for [t (descendants :type/*)]
              {t (parents t)})))

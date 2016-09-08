@@ -14,6 +14,7 @@ import { formatSQL, humanize } from "metabase/lib/formatting";
 import Query from "metabase/lib/query";
 import { createQuery } from "metabase/lib/query";
 import { loadTableAndForeignKeys } from "metabase/lib/table";
+import { isPK, isFK } from "metabase/lib/types";
 import Utils from "metabase/lib/utils";
 import { applyParameters } from "metabase/meta/Card";
 
@@ -852,7 +853,7 @@ export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnInde
             isForeignColumn = coldef.table_id && coldef.table_id !== sourceTableID && coldef.fk_field_id,
             fieldRefForm    = isForeignColumn ? ['fk->', coldef.fk_field_id, coldef.id] : ['field-id', coldef.id];
 
-        if (coldef.special_type === "id") {
+        if (isPK(coldef.special_type)) {
             // action is on a PK column
             let newCard = startNewCard("query", card.dataset_query.database);
 
@@ -864,7 +865,7 @@ export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnInde
             dispatch(setCardAndRun(newCard));
 
             MetabaseAnalytics.trackEvent("QueryBuilder", "Table Cell Click", "PK");
-        } else if (coldef.special_type === "fk") {
+        } else if (isFK(coldef.special_type)) {
             // action is on an FK column
             let newCard = startNewCard("query", card.dataset_query.database);
 
@@ -917,7 +918,7 @@ export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, (fk) => {
         // extract the value we will use to filter our new query
         var originValue;
         for (var i=0; i < queryResult.data.cols.length; i++) {
-            if (queryResult.data.cols[i].special_type === "id") {
+            if (isPK(queryResult.data.cols[i].special_type)) {
                 originValue = queryResult.data.rows[0][i];
             }
         }
@@ -943,7 +944,7 @@ export const loadObjectDetailFKReferences = createThunkAction(LOAD_OBJECT_DETAIL
         function getObjectDetailIdValue(data) {
             for (var i=0; i < data.cols.length; i++) {
                 var coldef = data.cols[i];
-                if (coldef.special_type === "id") {
+                if (isPK(coldef.special_type)) {
                     return data.rows[0][i];
                 }
             }

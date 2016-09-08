@@ -1,5 +1,7 @@
 import _ from "underscore";
 
+import { isa, isFK, TYPE } from "metabase/lib/types";
+
 // primary field types used for picking operators, etc
 export const NUMBER = "NUMBER";
 export const STRING = "STRING";
@@ -20,41 +22,40 @@ export const UNKNOWN = "UNKNOWN";
 // NOTE: be sure not to create cycles using the "other" types
 const TYPES = {
     [DATE_TIME]: {
-        base: ["DateTimeField", "DateField", "TimeField"],
-        special: ["timestamp_milliseconds", "timestamp_seconds"]
+        base: [TYPE.DateTime],
+        special: [TYPE.DateTime]
     },
     [NUMBER]: {
-        base: ["IntegerField", "DecimalField", "FloatField", "BigIntegerField"],
-        special: ["number"]
+        base: [TYPE.Number],
+        special: [TYPE.Number]
     },
     [STRING]: {
-        base: ["CharField", "TextField"],
-        special: ["name"]
+        base: [TYPE.Text],
+        special: [TYPE.Text]
     },
     [BOOLEAN]: {
-        base: ["BooleanField"]
+        base: [TYPE.Boolean]
     },
     [COORDINATE]: {
-        special: ["latitude", "longitude"]
+        special: [TYPE.Coordinate]
     },
     [LOCATION]: {
-        special: ["city", "country", "state", "zip_code"]
+        special: [TYPE.Address]
     },
     [ENTITY]: {
-        special: ["fk", "id", "name"]
+        special: [TYPE.FK, TYPE.PK, TYPE.Name]
     },
     [SUMMABLE]: {
         include: [NUMBER],
         exclude: [ENTITY, LOCATION, DATE_TIME]
     },
     [CATEGORY]: {
-        base: ["BooleanField"],
-        special: ["category"],
+        base: [TYPE.Boolean],
+        special: [TYPE.Category],
         include: [LOCATION]
     },
     // NOTE: this is defunct right now.  see definition of isDimension below.
     [DIMENSION]: {
-        field: ["dimension"],
         include: [DATE_TIME, CATEGORY, ENTITY]
     }
 };
@@ -66,9 +67,13 @@ export function isFieldType(type, field) {
 
     let def = TYPES[type];
     // check to see if it belongs to any of the field types:
-    for (let prop of ["field", "base", "special"]) {
-        if (def[prop] && _.contains(def[prop], field[prop+"_type"])) {
-            return true;
+    for (let prop of ["base", "special"]) {
+        const defTypes = def[prop];
+        if (defTypes) {
+            const fieldType = field[prop + "_type"];
+            for (const defType of defTypes) {
+                if (isa(fieldType, defType)) return true;
+            }
         }
     }
     // recursively check to see if it's NOT another field type:
@@ -109,8 +114,7 @@ export const isCategory = isFieldType.bind(null, CATEGORY);
 export const isDimension = (col) => (col && col.source !== "aggregation");
 export const isMetric    = (col) => (col && col.source !== "breakout") && isSummable(col);
 
-export const isNumericBaseType = (field) => TYPES[NUMBER].base
-    .some(type => type === field.base_type);
+export const isNumericBaseType = (field) => isa(field && field.base_type, TYPE.Number);
 
 // operator argument constructors:
 
@@ -195,7 +199,7 @@ function longitudeFieldSelectArgument(field, table) {
     return {
         type: "select",
         values: table.fields
-            .filter(field => field.special_type === "longitude")
+            .filter(field => isa(field.special_type, TYPE.Longitude))
             .map(field => ({
                 key: field.id,
                 name: field.display_name
@@ -474,10 +478,10 @@ export function hasLatitudeAndLongitudeColumns(columnDefs) {
     let hasLatitude = false;
     let hasLongitude = false;
     for (let col of columnDefs) {
-        if (col.special_type === "latitude") {
+        if (isa(col.special_type, TYPE.Latitude)) {
             hasLatitude = true;
         }
-        if (col.special_type === "longitude") {
+        if (isa(col.special_type, TYPE.Longitude)) {
             hasLongitude = true;
         }
     }
@@ -528,7 +532,7 @@ export function computeMetadataStrength(table) {
         table.fields.forEach(function(field) {
             score(field.description);
             score(field.special_type);
-            if (field.special_type === "fk") {
+            if (isFK(field.special_type)) {
                 score(field.target);
             }
         });

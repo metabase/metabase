@@ -153,7 +153,7 @@ describe("Reference utils.js", () => {
                         fields_lookup: {
                             1: {
                                 id: 1,
-                                special_type: 'id',
+                                special_type: 'type/PK',
                                 display_name: 'bar',
                                 description: 'foobar'
                             }
@@ -166,7 +166,7 @@ describe("Reference utils.js", () => {
                         fields_lookup: {
                             2: {
                                 id: 2,
-                                special_type: 'id',
+                                special_type: 'type/PK',
                                 display_name: 'foo',
                                 description: 'barfoo'
                             }
