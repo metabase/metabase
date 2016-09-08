@@ -8,27 +8,39 @@
             [metabase.test.data.users :refer :all]
             [metabase.util :as u]))
 
-;; we'll swap out hydration-key-> with one that will track the keys used, and we'll warn about unused ones at the end
+;; we'll swap out hydration-key->f with one that will track the keys used, and we'll warn about unused ones at the end
 
-(def ^:private used-fn-keys (atom #{}))
-
-(let [hydration-key->f @(resolve 'metabase.models.hydrate/hydration-key->f)]
+(let [used-fn-keys     (atom #{})
+      hydration-key->f @(resolve 'metabase.models.hydrate/hydration-key->f)]
   (intern 'metabase.models.hydrate 'hydration-key->f
           (fn [k]
             (swap! used-fn-keys conj k)
-            (hydration-key->f k))))
-
-(defn- check-all-hydration-keys-used
-  {:expectations-options :after-run}
-  []
-  (let [hydrate-k->f   @@(resolve 'metabase.models.hydrate/k->f)
-        available-keys (set (keys hydrate-k->f))
-        used-keys      @used-fn-keys
-        unused-keys    (set/difference available-keys used-keys)]
-    (when (seq unused-keys)
+            (hydration-key->f k)))
+  (defn- check-all-hydration-keys-used
+    {:expectations-options :after-run}
+    []
+    (let [hydrate-k->f   @@(resolve 'metabase.models.hydrate/k->f)
+          available-keys (set (keys hydrate-k->f))
+          used-keys      @used-fn-keys
+          unused-keys    (set/difference available-keys used-keys)]
       (doseq [k unused-keys]
-        (println (u/format-color 'red "%s is marked `^:hydrate` but is never used for hydration." (hydrate-k->f k))))
-      (System/exit -1))))
+        (println (u/format-color 'red "WARNING: %s is marked `^:hydrate` but is never used for hydration." (hydrate-k->f k)))))))
+
+(let [used-fn-keys             (atom #{})
+      hydration-key->batched-f @(resolve 'metabase.models.hydrate/hydration-key->batched-f)]
+  (intern 'metabase.models.hydrate 'hydration-key->batched-f
+          (fn [k]
+            (swap! used-fn-keys conj k)
+            (hydration-key->batched-f k)))
+  (defn- check-all-batched-hydration-keys-used
+    {:expectations-options :after-run}
+    []
+    (let [hydrate-k->f   @@(resolve 'metabase.models.hydrate/k->batched-f)
+          available-keys (set (keys hydrate-k->f))
+          used-keys      @used-fn-keys
+          unused-keys    (set/difference available-keys used-keys)]
+      (doseq [k unused-keys]
+        (println (u/format-color 'red "WARNING: %s is marked `^:batched-hydrate` but is never used for hydration." (hydrate-k->f k)))))))
 
 
 (defn- ^:hydrate x [{:keys [id]}]
@@ -52,20 +64,20 @@
 (expect :toucan_id
   (k->k_id :toucan))
 
-;; ### can-batched-hydrate?
-(def can-batched-hydrate? (ns-resolve 'metabase.models.hydrate 'can-batched-hydrate?))
+;; ### can-automagically-batched-hydrate?
+(def can-automagically-batched-hydrate? (ns-resolve 'metabase.models.hydrate 'can-automagically-batched-hydrate?))
 
 ;; should fail for unknown keys
 (expect false
-  (can-batched-hydrate? [{:a_id 1} {:a_id 2}] :a))
+  (can-automagically-batched-hydrate? [{:a_id 1} {:a_id 2}] :a))
 
 ;; should work for known keys if k_id present in every map
 (expect true
-  (can-batched-hydrate? [{:user_id 1} {:user_id 2}] :user))
+  (can-automagically-batched-hydrate? [{:user_id 1} {:user_id 2}] :user))
 
 ;; should fail for known keys if k_id isn't present in every map
 (expect false
-  (can-batched-hydrate? [{:user_id 1} {:user_id 2} {:x 3}] :user))
+  (can-automagically-batched-hydrate? [{:user_id 1} {:user_id 2} {:x 3}] :user))
 
 ;; ### valid-hydration-form?
 (def valid-hydration-form? (ns-resolve 'metabase.models.hydrate 'valid-hydration-form?))

@@ -344,15 +344,28 @@
        (every? map? coll)))
 
 (defn maybe?
-  "True if X is `nil`, or if it satisfies PRED. (PRED is only called if X is non-nil.)
+  "Returns `true` if X is `nil`, otherwise calls (F X).
+   This can be used to see something is either `nil` or statisfies a predicate function:
 
-     (string? nil)        -> false
-     (string? \"A\")      -> true
-     (maybe? string? nil) -> true
-     (maybe? string? \"A\") -> true"
-  [pred x]
+     (string? nil)          -> false
+     (string? \"A\")        -> true
+     (maybe? string? nil)   -> true
+     (maybe? string? \"A\") -> true
+
+   It can also be used to make sure a given function won't throw a `NullPointerException`:
+
+     (s/lower-case nil)            -> NullPointerException
+     (s/lower-case \"ABC\")        -> \"abc\"
+     (maybe? s/lower-case nil)     -> true
+     (maybe? s/lower-case \"ABC\") -> \"abc\"
+
+   The latter use-case can be useful for things like sorting where some values in a collection
+   might be `nil`:
+
+     (sort-by (partial maybe? s/lower-case) some-collection)"
+  [f x]
   (or (nil? x)
-      (pred x)))
+      (f x)))
 
 
 (def ^:private ^:const host-up-timeout

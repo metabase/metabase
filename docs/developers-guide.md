@@ -1,9 +1,9 @@
+**This guide will teach you:**
 
-> **This guide will teach you:**
-> How to compile your own copy of Metabase
-> How to set up a development environment
-> How to run the Metabase Server
-> How to contribute back to the Metabase project
+> * How to compile your own copy of Metabase
+> * How to set up a development environment
+> * How to run the Metabase Server
+> * How to contribute back to the Metabase project
 
 
 # Contributing
@@ -19,9 +19,9 @@ We don't like getting sued, so before merging any pull request, we'll need each 
 
 These are the set of tools which are required in order to complete any build of the Metabase code.  Follow the links to download and install them on your own before continuing.
 
-1. Oracle JDK 8 (http://www.oracle.com/technetwork/java/javase/downloads/index.html)
-2. Node.js for npm (http://nodejs.org/)
-3. Leiningen (http://leiningen.org/)
+1. [Oracle JDK 8 (http://www.oracle.com/technetwork/java/javase/downloads/index.html)](http://www.oracle.com/technetwork/java/javase/downloads/index.html)
+2. [Node.js for npm (http://nodejs.org/)](http://nodejs.org/)
+3. [Leiningen (http://leiningen.org/)](http://leiningen.org/)
 
 
 # Build Metabase
@@ -32,7 +32,7 @@ The entire Metabase application is compiled and assembled into a single .jar fil
 
 After running the build script simply look in `target/uberjar` for the output .jar file and you are ready to go.
 
-## Building the OS X App
+## Building `Metabase.app`
 
 See [this guide](developers-guide-osx.md).
 

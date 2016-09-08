@@ -24,7 +24,7 @@
    :TimeField       "TIME"})
 
 (def ^:private db-name-counter
-  "We destroy and create the same temporary databases serveral times when running our query processor tests.
+  "We destroy and create the same temporary databases serveral times when running our query processor tests. (why?)
 
    To kick other users off of the database when we destroy it, we `ALTER DATABASE SET SINGLE_USER ROLLBACK IMMEDIATE`.
    This has the side effect of preventing any other connections to the database. If our tests barf for any reason,
@@ -103,7 +103,7 @@
             :engine                       (constantly :sqlserver)})))
 
 
-(defn- cleanup-leftover-dbs
+(defn- cleanup-leftover-dbs!
   "Clean up any leftover DBs that weren't destroyed by the last test run (eg, if it failed for some reason).
    This is important because we're limited to a quota of 30 DBs on RDS."
   {:expectations-options :before-run}

@@ -3,6 +3,7 @@ import ReactDOM from "react-dom";
 
 import Input from "metabase/components/Input.jsx";
 import HeaderModal from "metabase/components/HeaderModal.jsx";
+import TitleAndDescription from "metabase/components/TitleAndDescription.jsx";
 
 export default class Header extends Component {
     static defaultProps = {
@@ -76,16 +77,17 @@ export default class Header extends Component {
         } else {
             if (this.props.item && this.props.item.id != null) {
                 titleAndDescription = (
-                    <div className="Header-title my1 py2">
-                        <h2 className="Header-title-name">{this.props.item.name}</h2>
-                        <h4 className="Header-title-description text-grey-3">{this.props.item.description || "No description yet"}</h4>
-                    </div>
+                    <TitleAndDescription
+                        title={this.props.item.name} 
+                        description={this.props.item.description}
+                    />
                 );
             } else {
                 titleAndDescription = (
-                    <div className="Header-title flex align-center">
-                        <h1 className="Header-title-name my1">{"New " + this.props.objectType}</h1>
-                    </div>
+                    <TitleAndDescription
+                        title={`New ${this.props.objectType}`}
+                        description={this.props.item.description}
+                    />
                 );
             }
         }
@@ -116,7 +118,7 @@ export default class Header extends Component {
                 {this.renderEditHeader()}
                 {this.renderHeaderModal()}
                 <div className={"QueryBuilder-section flex align-center " + this.props.headerClassName} ref="header">
-                    <div className="Entity">
+                    <div className="Entity py3">
                         {titleAndDescription}
                         {attribution}
                     </div>

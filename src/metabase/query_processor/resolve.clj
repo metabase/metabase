@@ -194,6 +194,7 @@
         expanded-query-dict
         ;; Otherwise fetch + resolve the Fields in question
         (let [fields (->> (u/key-by :id (db/select [field/Field :name :display_name :base_type :special_type :visibility_type :table_id :parent_id :description :id]
+                                          :visibility_type [:not-in ["sensitive"]]
                                           :id [:in field-ids]))
                           (m/map-vals rename-mb-field-keys)
                           (m/map-vals #(assoc % :parent (when-let [parent-id (:parent-id %)]
@@ -237,7 +238,8 @@
                                                                 :field-name target-field-name})
                             :source-field (map->JoinTableField {:field-id   source-field-id
                                                                 :field-name source-field-name})
-                            :join-alias  (str target-table-name "__via__" source-field-name)})))))
+                            ;; some DBs like Oracle limit the length of identifiers to 30 characters so only take the first 30 here
+                            :join-alias  (apply str (take 30 (str target-table-name "__via__" source-field-name)))})))))
 
 (defn- resolve-tables
   "Resolve the `Tables` in an EXPANDED-QUERY-DICT."

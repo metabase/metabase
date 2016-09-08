@@ -2,21 +2,18 @@
   (:require [expectations :refer :all]
             (metabase.models [field :refer :all]
                              [field-values :refer :all])
-            [metabase.test.data :refer :all]))
+            [metabase.test.data :refer :all]
+            [metabase.test.util :as tu]))
 
 
-;; valid-metadata?
-(expect false (valid-metadata? nil nil nil nil))
-(expect false (valid-metadata? :IntegerField nil nil nil))
-(expect false (valid-metadata? :IntegerField :metric nil nil))
-(expect true (valid-metadata? :IntegerField :metric nil :normal))
-(expect false (valid-metadata? :foo :metric nil :normal))
-(expect false (valid-metadata? :IntegerField :foo nil :normal))
-(expect false (valid-metadata? :IntegerField :metric nil :foo))
-(expect true (valid-metadata? :IntegerField :metric :timestamp_seconds :normal))
-(expect true (valid-metadata? :IntegerField :metric :timestamp_milliseconds :normal))
-(expect false (valid-metadata? :DateTimeField :metric :timestamp_seconds :normal))
-(expect false (valid-metadata? :DateTimeField :metric :timestamp_milliseconds :normal))
+;; valid-special-type-for-base-type?
+(expect true  (valid-special-type-for-base-type? nil                     nil))
+(expect true  (valid-special-type-for-base-type? nil                     :foo))
+(expect true  (valid-special-type-for-base-type? nil                     :IntegerField))
+(expect true  (valid-special-type-for-base-type? :timestamp_seconds      :IntegerField))
+(expect true  (valid-special-type-for-base-type? :timestamp_milliseconds :IntegerField))
+(expect false (valid-special-type-for-base-type? :timestamp_seconds      :DateTimeField))
+(expect false (valid-special-type-for-base-type? :timestamp_milliseconds :DateTimeField))
 
 
 ;; field-should-have-field-values?
@@ -35,56 +32,59 @@
                                                 :special_type    :category
                                                 :visibility_type :details-only}))
 ;; date/time based fields should always be excluded
-(expect false (field-should-have-field-values? {:base_type    :DateField
-                                                :special_type :category
+(expect false (field-should-have-field-values? {:base_type       :DateField
+                                                :special_type    :category
                                                 :visibility_type :normal}))
-(expect false (field-should-have-field-values? {:base_type    :DateTimeField
-                                                :special_type :category
+(expect false (field-should-have-field-values? {:base_type       :DateTimeField
+                                                :special_type    :category
                                                 :visibility_type :normal}))
-(expect false (field-should-have-field-values? {:base_type    :TimeField
-                                                :special_type :category
+(expect false (field-should-have-field-values? {:base_type       :TimeField
+                                                :special_type    :category
                                                 :visibility_type :normal}))
 ;; most special types should be excluded
 (expect false (field-should-have-field-values? {:base_type    :CharField
                                                 :special_type :image
                                                 :visibility_type :normal}))
-(expect false (field-should-have-field-values? {:base_type    :CharField
-                                                :special_type :id
+(expect false (field-should-have-field-values? {:base_type       :CharField
+                                                :special_type    :id
                                                 :visibility_type :normal}))
-(expect false (field-should-have-field-values? {:base_type    :CharField
-                                                :special_type :fk
+(expect false (field-should-have-field-values? {:base_type       :CharField
+                                                :special_type    :fk
                                                 :visibility_type :normal}))
-(expect false (field-should-have-field-values? {:base_type    :CharField
-                                                :special_type :latitude
+(expect false (field-should-have-field-values? {:base_type       :CharField
+                                                :special_type    :latitude
                                                 :visibility_type :normal}))
-(expect false (field-should-have-field-values? {:base_type    :CharField
-                                                :special_type :number
+(expect false (field-should-have-field-values? {:base_type       :CharField
+                                                :special_type    :number
                                                 :visibility_type :normal}))
-(expect false (field-should-have-field-values? {:base_type    :CharField
-                                                :special_type :timestamp_milliseconds
+(expect false (field-should-have-field-values? {:base_type       :CharField
+                                                :special_type    :timestamp_milliseconds
                                                 :visibility_type :normal}))
 ;; boolean fields + category/city/state/country fields are g2g
-(expect true (field-should-have-field-values? {:base_type    :BooleanField
-                                               :special_type :number
+(expect true (field-should-have-field-values? {:base_type       :BooleanField
+                                               :special_type    :number
                                                :visibility_type :normal}))
-(expect true (field-should-have-field-values? {:base_type    :CharField
-                                               :special_type :category
+(expect true (field-should-have-field-values? {:base_type       :CharField
+                                               :special_type    :category
                                                :visibility_type :normal}))
-(expect true (field-should-have-field-values? {:base_type    :TextField
-                                               :special_type :city
+(expect true (field-should-have-field-values? {:base_type       :TextField
+                                               :special_type    :city
                                                :visibility_type :normal}))
-(expect true (field-should-have-field-values? {:base_type    :TextField
-                                               :special_type :state
+(expect true (field-should-have-field-values? {:base_type       :TextField
+                                               :special_type    :state
                                                :visibility_type :normal}))
-(expect true (field-should-have-field-values? {:base_type    :TextField
-                                               :special_type :country
+(expect true (field-should-have-field-values? {:base_type       :TextField
+                                               :special_type    :country
                                                :visibility_type :normal}))
-(expect true (field-should-have-field-values? {:base_type    :TextField
-                                               :special_type :name
+(expect true (field-should-have-field-values? {:base_type       :TextField
+                                               :special_type    :name
                                                :visibility_type :normal}))
 
 
-;; infer-field-special-type
+;;; infer-field-special-type
+
+(tu/resolve-private-fns metabase.models.field infer-field-special-type)
+
 (expect nil (infer-field-special-type nil nil))
 (expect nil (infer-field-special-type "id" nil))
 (expect nil (infer-field-special-type nil :IntegerField))

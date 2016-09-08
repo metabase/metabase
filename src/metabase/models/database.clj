@@ -29,6 +29,14 @@
   [{:keys [id]}]
   (db/select 'Table, :db_id id, :active true, {:order-by [[:display_name :asc]]}))
 
+(defn pk-fields
+  "Return all the primary key `Fields` associated with this DATABASE."
+  [{:keys [id]}]
+  (let [table-ids (db/select-ids 'Table, :db_id id, :active true)]
+    (when (seq table-ids)
+      (db/select 'Field, :table_id [:in table-ids], :special_type "id"))))
+
+
 (u/strict-extend (class Database)
   i/IEntity
   (merge i/IEntityDefaults
@@ -45,12 +53,9 @@
   "Return a *sorted set* of schema names (as strings) associated with this `Database`."
   [{:keys [id]}]
   (when id
-    (apply sorted-set (sort-by (fn [schema-name]
-                                 (when schema-name
-                                   (s/lower-case schema-name)))
-                               (db/select-field :schema 'Table
-                                 :db_id id
-                                 {:modifiers [:DISTINCT]})))))
+    (apply sorted-set (db/select-field :schema 'Table
+                        :db_id id
+                        {:modifiers [:DISTINCT]}))))
 
 (defn schema-exists?
   "Does DATABASE have any tables with SCHEMA?"

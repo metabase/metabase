@@ -1,11 +1,12 @@
-> **Covered in this guide:**  
-> [Installing Metabase on AWS Elastic Beanstalk](#running-metabase-on-aws-elastic-beanstalk)  
-> [Upgrading to new versions of Metabase](#deploying-new-versions-of-metabase)  
-> [Retaining Metabase logs on S3](#retaining-metabase-logs)  
-> [Running Metabase over HTTPS](#running-metabase-over-https)  
-> [Setting the Java timezone](#setting-the-jvm-timezone)  
-> [Using Papertrail for logging](#running-metabase-with-papertrail-on-aws)  
-> [Protecting invalid hostname access](#protecting-against-invalid-hostname-access)
+**Covered in this guide:**
+
+*   [Installing Metabase on AWS Elastic Beanstalk](#running-metabase-on-aws-elastic-beanstalk)
+*   [Upgrading to new versions of Metabase](#deploying-new-versions-of-metabase)
+*   [Retaining Metabase logs on S3](#retaining-metabase-logs)
+*   [Running Metabase over HTTPS](#running-metabase-over-https)
+*   [Setting the Java timezone](#setting-the-jvm-timezone)
+*   [Using Papertrail for logging](#using-papertrail-for-logging-on-aws)
+*   [Protecting invalid hostname access](#protecting-against-invalid-hostname-access)
 
 
 # Running Metabase on AWS Elastic Beanstalk
@@ -17,7 +18,7 @@ The Metabase team runs a number of production installations on AWS using Elastic
 
 Metabase provides an Elastic Beanstalk pre-configured launch url to help new installations getting started.  If you are starting fresh we recommend you follow this link to begin creating the Elastic Beanstalk deployment with a few choices pre-filled.
 
-[Launch Metabase on Elastic Beanstalk](http://downloads.metabase.com/v0.17.1/launch-aws-eb.html)
+[Launch Metabase on Elastic Beanstalk](http://downloads.metabase.com/v0.19.3/launch-aws-eb.html)
 
 The rest of this guide will follow each phase of the Elastic Beanstalk setup step-by-step.
 
@@ -54,7 +55,7 @@ When your environment type settings look like the above then go ahead and click 
 
 The application version describes the exact binary you wish to deploy to your Elastic Beanstalk application.  Metabase provides a pre-built AWS Elastic Beanstalk application version which can be linked to directly.  Simply enter the following url in the `S3 URL` textbox:
 
-http://downloads.metabase.com/v0.17.1/metabase-aws-eb.zip
+http://downloads.metabase.com/v0.19.3/metabase-aws-eb.zip
 
 Leave all the settings under Deployment Limits on their defaults.  These settings won't impact Metabase.
 
@@ -120,8 +121,8 @@ If you clicked the checkbox to create an RDS instance you will come to this sect
 
 Here you'll make the appropriate choices to configure your RDS database to work with Metabase.  Again, we cover each choice one-by-one:
 
-* `Snapshot` should be left as None.
-* `DB engine` must be set to `postgres`.  Currently this is the only RDS database type that Metabase supports.
+* `Snapshot` should be left as `None`.
+* `DB engine` should be set to `postgres`. Metabase also supports MySQL/Maria DB as backing databases, but this guide currently only covers running Metabase on Postgres.
 * `DB engine version` can simply be left on the default, which should be the latest version.
 * For `Instance class` you can choose any size, we recommend `db.t2.small` or bigger for production installs.  Metabase is pretty efficient so there is no need to make this a big instance.
 * You can safely leave `Allocated storage` to the default size.
@@ -187,7 +188,7 @@ Here's each step:
 1. Go to Elastic Beanstalk and select your `Metabase` application
 * Click on `Application Versions` on the left nav (you can also choose `Application Versions` from the dropdown at the top of the page)
 * Download the latest Metabase Elastic Beanstalk deployment file
-  * http://downloads.metabase.com/v0.17.1/metabase-aws-eb.zip
+  * http://downloads.metabase.com/v0.19.3/metabase-aws-eb.zip
 * Upload a new Application Version
 	* Click the `Upload` button on the upper right side of the listing
 		* Give the new version a name, ideally including the Metabase version number (e.g. v0.13.0)

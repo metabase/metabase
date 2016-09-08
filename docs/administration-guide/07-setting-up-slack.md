@@ -13,13 +13,13 @@ You should see this form:
 
 ![Slack Settings](images/SlackSettings.png)
 
-Then just click on the large and conveniently placed button `Get an API token from Slack` which will open a new browser tab and send you over to Slack to create the token.
+Then just click on the large and conveniently placed button `Create a Slack Bot User for Metabot` which will open a new browser tab and send you over to Slack to create the Bot user account.
 
-Click over to the tab that was opened and you'll now be on the Slack API page under the Authentication section which will show you any API tokens that you have created for your various Slack teams.  
+Click over to the tab that was opened and you'll now be on the Slack Bot creation page.  
 
 ![Slack API Auth](images/SlackAPIAuth.png)
 
-Now just click the `Create token` button next to the team you want to integrate with and a token will be generated for you.  It will look like `xoxp-etc-etc-etc` and all you need to do is copy that value and head back to Metabase.
+Now give the Bot user a helpful name (we suggest `Metabot`) and click the `Add bot integration` button and a bot user will be generated for you.  Look for the Bot's API token in the next page. It will look like `xoxp-etc-etc-etc` and all you need to do is copy that value and head back to Metabase.
 
 Paste the value into the text box for `Slack API Token` and click the button to save your changes.  That's it!  Metabase will automatically run a quick test to check that the API token is working properly and if not you'll get an error message.
 
