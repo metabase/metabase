@@ -36,6 +36,7 @@ If this is a bug report, help us diagnose your issue by checking the appropriate
    - [ ] SQL Server
    - [ ] Crate
    - [ ] Oracle
+   - [ ] H2
    - [ ] Other: ____________________
 *  I'm using Metabase version:
    - [ ] 0.18.0
