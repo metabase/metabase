@@ -61,36 +61,28 @@ const TYPES = {
 };
 
 export function isFieldType(type, field) {
-    if (!field) {
-        return false;
+    if (!field) return false;
+
+    const typeDefinition = TYPES[type];
+    // check to see if it belongs to any of the field types:
+    for (const prop of ["base", "special"]) {
+        const allowedTypes = typeDefinition[prop];
+        if (!allowedTypes) continue;
+
+        const fieldType = field[prop + "_type"];
+        for (const allowedType of allowedTypes) {
+            if (isa(fieldType, allowedType)) return true;
+        }
     }
 
-    let def = TYPES[type];
-    // check to see if it belongs to any of the field types:
-    for (let prop of ["base", "special"]) {
-        const defTypes = def[prop];
-        if (defTypes) {
-            const fieldType = field[prop + "_type"];
-            for (const defType of defTypes) {
-                if (isa(fieldType, defType)) return true;
-            }
-        }
-    }
     // recursively check to see if it's NOT another field type:
-    if (def.exclude) {
-        for (let excludeType of def.exclude) {
-            if (isFieldType(excludeType, field)) {
-                return false;
-            }
-        }
+    for (const excludedType of (typeDefinition.exclude || [])) {
+        if (isFieldType(excludedType, field)) return false;
     }
+
     // recursively check to see if it's another field type:
-    if (def.include) {
-        for (let includeType of def.include) {
-            if (isFieldType(includeType, field)) {
-                return true;
-            }
-        }
+    for (const includedType of (typeDefinition.include || [])) {
+        if (isFieldType(includedType, field)) return true;
     }
     return false;
 }
