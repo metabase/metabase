@@ -85,8 +85,9 @@
   [[binding database] & body]
   `(let [f# (fn [~binding]
               ~@body)]
-     (if *mongo-connection* (f# *mongo-connection*)
-         (-with-mongo-connection f# ~database))))
+     (if *mongo-connection*
+       (f# *mongo-connection*)
+       (-with-mongo-connection f# ~database))))
 
 ;; TODO - this isn't neccesarily Mongo-specific; consider moving
 (defn values->base-type

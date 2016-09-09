@@ -1603,14 +1603,14 @@
 
 (expect-with-non-timeseries-dbs
   (if (i/has-questionable-timezone-support? *driver*)
-    [[1  6] [2 10] [3  4] [4  9] [5  9] [6  8] [7  8] [8  9] [9  7] [10  9]]
-    [[1  8] [2  9] [3  9] [4  4] [5 11] [6  8] [7  6] [8 10] [9  6] [10 10]])
+    [[1 6] [2 10] [3 4] [4 9] [5  9] [6 8] [7 8] [8  9] [9 7] [10  9]]
+    [[1 8] [2  9] [3 9] [4 4] [5 11] [6 8] [7 6] [8 10] [9 6] [10 10]])
   (sad-toucan-incidents-with-bucketing :day-of-month))
 
 (expect-with-non-timeseries-dbs
   (if (i/has-questionable-timezone-support? *driver*)
-    [[152  6] [153 10] [154  4] [155  9] [156  9] [157  8] [158  8] [159  9] [160  7] [161  9]]
-    [[152  8] [153  9] [154  9] [155  4] [156 11] [157  8] [158  6] [159 10] [160  6] [161 10]])
+    [[152 6] [153 10] [154 4] [155 9] [156  9] [157  8] [158 8] [159  9] [160 7] [161  9]]
+    [[152 8] [153  9] [154 9] [155 4] [156 11] [157  8] [158 6] [159 10] [160 6] [161 10]])
   (sad-toucan-incidents-with-bucketing :day-of-year))
 
 (expect-with-non-timeseries-dbs

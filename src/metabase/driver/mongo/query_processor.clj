@@ -162,7 +162,7 @@
   Value
   (->rvalue [{value :value, {:keys [field-name base-type]} :field}]
     (if (and (= field-name "_id")
-             (= base-type  :type/*))
+             (= base-type  :type/*)) ; partial workaround for BSON ID Fields -- TODO fix this propertly (#1367)
       `(ObjectId. ~value)
       value))
 
@@ -195,7 +195,7 @@
   RelativeDateTimeValue
   (->rvalue [{:keys [amount unit field]}]
     (->rvalue (map->DateTimeValue {:value (u/relative-date (or unit :day) amount)
-                                       :field field}))))
+                                   :field field}))))
 
 
 ;;; ## CLAUSE APPLICATION

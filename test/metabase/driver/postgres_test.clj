@@ -51,7 +51,7 @@
 
 ;; Verify that we identify JSON columns and mark metadata properly during sync
 (expect-with-engine :postgres
-  :json
+  :type/SerializedJSON
   (data/with-temp-db
     [_
      (i/create-database-definition "Postgres with a JSON Field"

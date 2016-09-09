@@ -12,7 +12,8 @@
             [metabase.util.honeysql-extensions :as hx])
   ;; This is necessary for when NonValidatingFactory is passed in the sslfactory connection string argument,
   ;; e.x. when connecting to a Heroku Postgres database from outside of Heroku.
-  (:import org.postgresql.ssl.NonValidatingFactory))
+  (:import java.util.UUID
+           org.postgresql.ssl.NonValidatingFactory))
 
 (defn- column->base-type
   "Map of Postgres column types -> Field base types.
@@ -79,9 +80,9 @@
 (defn- column->special-type
   "Attempt to determine the special-type of a Field given its name and Postgres column type."
   [column-name column-type]
-  ;; this is really, really simple right now.  if its postgres :json type then it's :json special-type
+  ;; this is really, really simple right now.  if its postgres :json type then it's :type/SerializedJSON special-type
   (when (= column-type :json)
-    :json))
+    :type/SerializedJSON))
 
 (def ^:const ssl-params
   "Params to include in the JDBC connection spec for an SSL connection."
@@ -167,9 +168,9 @@
     message))
 
 (defn- prepare-value [{value :value, {:keys [base-type]} :field}]
-  (if (and (= base-type :type/UUID)
+  (if (and (isa? base-type :type/UUID)
            value)
-    (java.util.UUID/fromString value)
+    (UUID/fromString value)
     value))
 
 

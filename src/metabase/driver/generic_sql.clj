@@ -46,7 +46,7 @@
 
   (column->special-type ^clojure.lang.Keyword [this, ^String column-name, ^Keyword column-type]
     "*OPTIONAL*. Attempt to determine the special-type of a field given the column name and native type.
-     For example, the Postgres driver can mark Postgres JSON type columns as `:json` special type.")
+     For example, the Postgres driver can mark Postgres JSON type columns as `:type/SerializedJSON` special type.")
 
   (connection-details->spec [this, ^Map details-map]
     "Given a `Database` DETAILS-MAP, return a JDBC connection spec.")
@@ -341,6 +341,8 @@
                                 (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :type/*." type_name))
                                     :type/*))}
                 (when calculated-special-type
+                  (assert (isa? calculated-special-type :type/*)
+                    (str "Invalid type: " calculated-special-type))
                   {:special-type calculated-special-type})))))
 
 (defn- add-table-pks
