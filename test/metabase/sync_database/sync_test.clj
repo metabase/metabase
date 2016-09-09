@@ -41,7 +41,7 @@
                   Field     [{target1 :id}                   {:table_id t2, :raw_column_id raw-target1, :name "target1"}]
                   Field     [{target2 :id}                   {:table_id t2, :raw_column_id raw-target2, :name "target2"}]]
     (let [get-fields (fn [table-id]
-                       (->> (db/select [Field :name :special_type :type/FK_target_field_id], :table_id table-id)
+                       (->> (db/select [Field :name :special_type :fk_target_field_id], :table_id table-id)
                             (mapv tu/boolean-ids-and-timestamps)))]
       [ ;; original list should not have any fks
        (get-fields t1)

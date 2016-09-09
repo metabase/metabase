@@ -270,7 +270,7 @@
          {:special_type :type/FK, :fk_target_field_id true}]
   (let [field-id (id :checkins :user_id)
         get-special-type-and-fk-exists? (fn []
-                                          (into {} (-> (db/select-one [Field :special_type :type/FK_target_field_id], :id field-id)
+                                          (into {} (-> (db/select-one [Field :special_type :fk_target_field_id], :id field-id)
                                                        (update :fk_target_field_id #(db/exists? Field :id %)))))]
     [ ;; FK should exist to start with
      (get-special-type-and-fk-exists?)
