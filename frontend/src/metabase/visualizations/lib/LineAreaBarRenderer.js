@@ -238,7 +238,7 @@ function applyChartLineBarSettings(chart, settings, chartType, isLinear, isTimes
     }
 }
 
-function lineAndBarOnRender(chart, settings, all_settings) {
+function lineAndBarOnRender(chart, settings, all_settings, series) {
     // once chart has rendered and we can access the SVG, do customizations to axis labels / etc that you can't do through dc.js
 
     function removeClipPath() {
@@ -267,10 +267,15 @@ function lineAndBarOnRender(chart, settings, all_settings) {
             for (let i in all_settings) {
                 let enableDots;
                 const current_settings = all_settings[i];
+                if (series[i].card.display !== 'line') {
+                    continue;
+                }
                 if (current_settings["line.marker_enabled"]) {
                     let the_dots = chart.svg().selectAll('.chart-body').filter(function (d, j) { return j === parseInt(i, 10) + 1;}).selectAll('.dot')
                     let dots = the_dots[0]
-                    window.test3 = dots;
+                    if (typeof dots === 'undefined') {
+                        continue;
+                    }
                     if (dots.length === 0 || dots.length > 500) {
                         continue;
                     }
@@ -662,7 +667,7 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
     chart.render();
 
     // apply any on-rendering functions
-    lineAndBarOnRender(chart, settings, all_settings);
+    lineAndBarOnRender(chart, settings, all_settings, series);
 
     onRender && onRender({ yAxisSplit });
 

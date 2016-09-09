@@ -64,8 +64,8 @@ export default class CardRenderer extends Component {
         element = document.createElement("div");
         parent.appendChild(element);
 
-        try {
             this._chart = this.props.renderer(element, this.props);
+        try {
         } catch (err) {
             console.error(err);
             this.props.onRenderError(err.message || err);
