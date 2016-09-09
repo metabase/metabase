@@ -13,7 +13,27 @@ const wordCount = (string) => string.split(' ').length;
 
 const TooltipPopover = ({ children, maxWidth, ...props }) => {
 
-    const needsSpace = wordCount(children) > CONDITIONAL_WORD_COUNT
+    let popoverContent;
+
+    if (typeof children === "string")  {
+        const needsSpace = wordCount(children) > CONDITIONAL_WORD_COUNT;
+        popoverContent = (
+            <div
+                className={cx(
+                    { 'py1 px2': !needsSpace },
+                    { 'py2 px3': needsSpace }
+                )}
+                style={{
+                    maxWidth: maxWidth || "12em",
+                    lineHeight: needsSpace ? 1.54 : 1
+                }}
+            >
+                {children}
+            </div>
+        );
+    } else {
+        popoverContent = children;
+    }
 
     return (
         <Popover
@@ -21,22 +41,7 @@ const TooltipPopover = ({ children, maxWidth, ...props }) => {
             targetOffsetY={10}
             {...props}
         >
-            { typeof children === "string" ?
-                <div
-                    className={cx(
-                        { 'py1 px2': !needsSpace },
-                        { 'py2 px3': needsSpace }
-                    )}
-                    style={{
-                        maxWidth: maxWidth || "12em",
-                        lineHeight: needsSpace ? 1.54 : 1
-                    }}
-                >
-                    {children}
-                </div>
-            :
-               children
-            }
+            {popoverContent}
         </Popover>
     )
 }
