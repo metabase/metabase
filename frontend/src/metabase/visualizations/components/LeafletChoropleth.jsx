@@ -15,10 +15,19 @@ const LeafletChoropleth = ({ series, geoJson, minimalBounds, getColor, onHoverFe
             element.style.backgroundColor = "transparent";
 
             const map = L.map(element, {
-                scrollWheelZoom: false,
                 zoomSnap: 0,
                 worldCopyJump: true,
-                attributionControl: false
+                attributionControl: false,
+
+                // disable zoom controls
+                dragging: false,
+                tap: false,
+                zoomControl: false,
+                touchZoom: false,
+                doubleClickZoom: false,
+                scrollWheelZoom: false,
+                boxZoom: false,
+                keyboard: false,
             });
 
             // L.tileLayer("http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
