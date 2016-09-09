@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import { getOperators } from "metabase/lib/schema_metadata";
 import { createLookupByProperty } from "metabase/lib/table";
-import { isFK } from "metabase/lib/types";
+import { isFK, TYPE } from "metabase/lib/types";
 
 
 export const NEW_QUERY_TEMPLATES = {
@@ -518,7 +518,7 @@ var Query = {
                 display_name: field[1],
                 name: field[1],
                 // TODO: we need to do something better here because filtering depends on knowing a sensible type for the field
-                base_type: "type/Integer",
+                base_type: TYPE.Integer,
                 operators_lookup: {},
                 valid_operators: [],
                 active: true,
@@ -724,8 +724,8 @@ var Query = {
                 return null;
             }
         } else {
-            // NOTE: incomplete (missing name etc), count/distinct are actually type/Integer, but close enough for now
-            columns.push({ base_type: "type/Float", special_type: "type/Number" });
+            // NOTE: incomplete (missing name etc), count/distinct are actually TYPE.Integer, but close enough for now
+            columns.push({ base_type: TYPE.Float, special_type: TYPE.Number });
         }
         return columns;
     }
