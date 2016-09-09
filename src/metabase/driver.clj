@@ -293,21 +293,22 @@
   (or (some (fn [[mapped-class mapped-type]]
               (when (isa? klass mapped-class)
                 mapped-type))
-            {Boolean                        :type/Boolean
-             Double                         :type/Float
-             Float                          :type/Float
-             Integer                        :type/Integer
-             Long                           :type/Integer
-             String                         :type/Text
-             java.math.BigDecimal           :type/Decimal
-             java.math.BigInteger           :type/BigInteger
-             java.sql.Date                  :type/Date
-             java.sql.Timestamp             :type/DateTime
-             java.util.Date                 :type/DateTime
-             java.util.UUID                 :type/Text
-             clojure.lang.IPersistentMap    :type/Dictionary
-             clojure.lang.IPersistentVector :type/Array
-             org.postgresql.util.PGobject   :type/*})
+            [[Boolean                        :type/Boolean]
+             [Double                         :type/Float]
+             [Float                          :type/Float]
+             [Integer                        :type/Integer]
+             [Long                           :type/Integer]
+             [java.math.BigDecimal           :type/Decimal]
+             [java.math.BigInteger           :type/BigInteger]
+             [Number                         :type/Number]
+             [String                         :type/Text]
+             [java.sql.Date                  :type/Date]
+             [java.sql.Timestamp             :type/DateTime]
+             [java.util.Date                 :type/DateTime]
+             [java.util.UUID                 :type/Text]       ; shouldn't this be :type/UUID ?
+             [clojure.lang.IPersistentMap    :type/Dictionary]
+             [clojure.lang.IPersistentVector :type/Array]
+             [org.postgresql.util.PGobject   :type/*]])
       (log/warn (format "Don't know how to map class '%s' to a Field base_type, falling back to :type/*." klass))
       :type/*))
 

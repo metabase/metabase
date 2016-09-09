@@ -91,7 +91,7 @@
                                  (update special-types st safe-inc)
                                  special-types)))
       (update :nested-fields (fn [nested-fields]
-                               (if (isa? (type field-value) clojure.lang.IPersistentMap)
+                               (if (map? field-value)
                                  (find-nested-fields field-value nested-fields)
                                  nested-fields)))))
 

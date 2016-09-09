@@ -103,10 +103,10 @@
     (mongo-let [field (as-> field <>
                         (->initial-rvalue <>)
                         (cond
-                          (isa? special-type :type/UNIXTimestampSeconds)
+                          (isa? special-type :type/UNIXTimestampMilliseconds)
                           {$add [(java.util.Date. 0) <>]}
 
-                          (isa? special-type :type/UNIXTimestampMilliseconds)
+                          (isa? special-type :type/UNIXTimestampSeconds)
                           {$add [(java.util.Date. 0) {$multiply [<> 1000]}]}
 
                           :else <>))]
