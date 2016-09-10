@@ -42,7 +42,7 @@ describe('schema_metadata', () => {
             expect(getFieldType({ special_type: TYPE.Longitude })).toEqual(COORDINATE)
         });
         it('should know something that is string-like', () => {
-            expect(getFieldType({ base_type: TYPE.StringLike })).toEqual(STRING_LIKE);
+            expect(getFieldType({ base_type: TYPE.TextLike })).toEqual(STRING_LIKE);
             expect(getFieldType({ base_type: TYPE.IPAddress })).toEqual(STRING_LIKE);
         });
         it('should know what it doesn\'t know', () => {
