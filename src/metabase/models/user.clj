@@ -123,5 +123,5 @@
 
 (defn instance-created-at
   "The date this Metabase instance was created.  We use the `:date_joined` of the first `User` to determine this."
-  []
+  ^java.sql.Timestamp []
   (db/select-one-field :date_joined User, {:order-by [[:date_joined :asc]]}))

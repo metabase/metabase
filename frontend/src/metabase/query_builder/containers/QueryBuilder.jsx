@@ -5,6 +5,7 @@ import _ from "underscore";
 
 import { AngularResourceProxy } from "metabase/lib/redux";
 import { loadTableAndForeignKeys } from "metabase/lib/table";
+import { isPK, isFK } from "metabase/lib/types";
 
 import NotFound from "metabase/components/NotFound.jsx";
 import QueryHeader from "../QueryHeader.jsx";
@@ -53,11 +54,7 @@ function cellIsClickable(queryResult, rowIndex, columnIndex) {
 
     if (!coldef || !coldef.special_type) return false;
 
-    if (coldef.table_id != null && coldef.special_type === 'id' || (coldef.special_type === 'fk' && coldef.target)) {
-        return true;
-    } else {
-        return false;
-    }
+    return (coldef.table_id != null && (isPK(coldef.special_type) || (isFK(coldef.special_type) && coldef.target)));
 }
 
 function autocompleteResults(card, prefix) {

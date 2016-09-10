@@ -87,13 +87,13 @@
 
 (defn- datetime-field?
   [field]
-  (or (contains? #{:DateTimeField :TimeField :DateField} (:base_type field))
-      (contains? #{:timestamp_seconds :timestamp_milliseconds} (:special_type field))))
+  (or (isa? (:base_type field) :type/DateTime)
+      (isa? (:base_type field) :type/DateTime)))
 
 (defn- number-field?
   [field]
-  (or (contains? #{:IntegerField :DecimalField :FloatField :BigIntegerField} (:base_type field))
-      (contains? #{:number} (:special_type field))))
+  (or (isa? (:base_type field)    :type/Number)
+      (isa? (:special_type field) :type/Number)))
 
 
 ;;; # ------------------------------------------------------------ FORMATTING ------------------------------------------------------------

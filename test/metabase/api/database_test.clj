@@ -259,7 +259,7 @@
                                                        :table_id           (id :categories)
                                                        :caveats            nil
                                                        :points_of_interest nil
-                                                       :special_type       "id"
+                                                       :special_type       "type/PK"
                                                        :name               "ID"
                                                        :display_name       "ID"
                                                        :updated_at         $
@@ -271,7 +271,7 @@
                                                        :preview_display    true
                                                        :created_at         $
                                                        :last_analyzed      $
-                                                       :base_type          "BigIntegerField"
+                                                       :base_type          "type/BigInteger"
                                                        :visibility_type    "normal"
                                                        :fk_target_field_id $
                                                        :parent_id          nil
@@ -281,7 +281,7 @@
                                                        :table_id           (id :categories)
                                                        :caveats            nil
                                                        :points_of_interest nil
-                                                       :special_type       "name"
+                                                       :special_type       "type/Name"
                                                        :name               "NAME"
                                                        :display_name       "Name"
                                                        :updated_at         $
@@ -293,7 +293,7 @@
                                                        :preview_display    true
                                                        :created_at         $
                                                        :last_analyzed      $
-                                                       :base_type          "TextField"
+                                                       :base_type          "type/Text"
                                                        :visibility_type    "normal"
                                                        :fk_target_field_id $
                                                        :parent_id          nil

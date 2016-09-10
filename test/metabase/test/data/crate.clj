@@ -9,16 +9,15 @@
   (:import metabase.driver.crate.CrateDriver))
 
 (def ^:private ^:const field-base-type->sql-type
-  {:BigIntegerField "long"
-   :BooleanField    "boolean"
-   :CharField       "string"
-   :DateField       "timestamp"
-   :DateTimeField   "timestamp"
-   :DecimalField    "integer"
-   :FloatField      "float"
-   :IntegerField    "integer"
-   :TextField       "string"
-   :TimeField       "timestamp"})
+  {:type/BigInteger "long"
+   :type/Boolean    "boolean"
+   :type/Date       "timestamp"
+   :type/DateTime   "timestamp"
+   :type/Decimal    "integer"
+   :type/Float      "float"
+   :type/Integer    "integer"
+   :type/Text       "string"
+   :type/Time       "timestamp"})
 
 
 (defn- timestamp->CrateDateTime

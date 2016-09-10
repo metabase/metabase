@@ -14,7 +14,7 @@
 
 (defn- save-fks!
   "Update all of the FK relationships present in DATABASE based on what's captured in the raw schema.
-   This will set :special_type :fk and :fk_target_field_id <field-id> for each found FK relationship.
+   This will set :special_type :type/FK and :fk_target_field_id <field-id> for each found FK relationship.
    NOTE: we currently overwrite any previously defined metadata when doing this."
   [fk-sources]
   {:pre [(coll? fk-sources)
@@ -24,7 +24,7 @@
     (when-let [source-field-id (db/select-one-id Field, :raw_column_id fk-source-id, :visibility_type [:not= "retired"])]
       (when-let [target-field-id (db/select-one-id Field, :raw_column_id fk-target-id, :visibility_type [:not= "retired"])]
         (db/update! Field source-field-id
-          :special_type       :fk
+          :special_type       :type/FK
           :fk_target_field_id target-field-id)))))
 
 

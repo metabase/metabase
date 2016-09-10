@@ -16,8 +16,8 @@
 
 (s/defrecord FieldDefinition [field-name      :- su/NonBlankString
                               base-type       :- (s/cond-pre {:native su/NonBlankString}
-                                                             (apply s/enum field/base-types))
-                              special-type    :- (s/maybe (apply s/enum field/special-types))
+                                                             su/FieldType)
+                              special-type    :- (s/maybe su/FieldType)
                               visibility-type :- (s/maybe (apply s/enum field/visibility-types))
                               fk              :- (s/maybe s/Keyword)])
 
@@ -105,7 +105,7 @@
     "*OPTIONAL*. Return the base type type that is actually used to store `Fields` of BASE-TYPE.
      The default implementation of this method is an identity fn. This is provided so DBs that don't support a given BASE-TYPE used in the test data
      can specifiy what type we should expect in the results instead.
-     For example, Oracle has `INTEGER` data types, so `:IntegerField` test values are instead stored as `NUMBER`, which we map to `:DecimalField`.")
+     For example, Oracle has `INTEGER` data types, so `:type/Integer` test values are instead stored as `NUMBER`, which we map to `:type/Decimal`.")
 
   (format-name ^String [this, ^String table-or-field-name]
     "*OPTIONAL* Transform a lowercase string `Table` or `Field` name in a way appropriate for this dataset
@@ -116,7 +116,7 @@
      Defaults to `(not (contains? (metabase.driver/features this) :set-timezone)`")
 
   (id-field-type ^clojure.lang.Keyword [this]
-    "*OPTIONAL* Return the `base_type` of the `id` `Field` (e.g. `:IntegerField` or `:BigIntegerField`). Defaults to `:IntegerField`."))
+    "*OPTIONAL* Return the `base_type` of the `id` `Field` (e.g. `:type/Integer` or `:type/BigInteger`). Defaults to `:type/Integer`."))
 
 (def IDatasetLoaderDefaultsMixin
   {:expected-base-type->actual         (u/drop-first-arg identity)
@@ -124,7 +124,7 @@
    :format-name                        (u/drop-first-arg identity)
    :has-questionable-timezone-support? (fn [driver]
                                          (not (contains? (driver/features driver) :set-timezone)))
-   :id-field-type                      (constantly :IntegerField)})
+   :id-field-type                      (constantly :type/Integer)})
 
 
 ;; ## Helper Functions for Creating New Definitions

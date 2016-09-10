@@ -79,26 +79,26 @@
    [(merge field-defaults
            {:name    "beak_size"
             :is_pk   true
-            :details {:inches 7, :special-type "category", :base-type "IntegerField"}})]
+            :details {:inches 7, :special-type "type/Category", :base-type "type/Integer"}})]
    [(merge field-defaults
            {:name    "beak_size"
-            :details {:inches 8, :base-type "IntegerField"}})
+            :details {:inches 8, :base-type "type/Integer"}})
     (merge field-defaults
            {:name    "num_feathers"
-            :details {:count 10000, :base-type "IntegerField"}})]
+            :details {:count 10000, :base-type "type/Integer"}})]
    [(merge field-defaults
            {:name    "beak_size"
-            :details {:inches 8, :base-type "IntegerField"}
+            :details {:inches 8, :base-type "type/Integer"}
             :active  false})
     (merge field-defaults
            {:name    "num_feathers"
-            :details {:count 12000, :base-type "IntegerField"}})]
+            :details {:count 12000, :base-type "type/Integer"}})]
    [(merge field-defaults
            {:name    "beak_size"
-            :details {:inches 8, :base-type "IntegerField"}})
+            :details {:inches 8, :base-type "type/Integer"}})
     (merge field-defaults
            {:name    "num_feathers"
-            :details {:count 12000, :base-type "IntegerField"}})]]
+            :details {:count 12000, :base-type "type/Integer"}})]]
   (tu/with-temp* [Database [{database-id :id}]
                   RawTable [{raw-table-id :id, :as table} {:database_id database-id}]]
     (let [get-columns #(->> (db/select RawColumn, :raw_table_id raw-table-id, {:order-by [:id]})
@@ -107,21 +107,21 @@
       [(get-columns)
        ;; now add a column
        (do
-         (save-all-table-columns! table [{:name "beak_size", :base-type :IntegerField, :details {:inches 7}, :pk? true, :special-type "category"}])
+         (save-all-table-columns! table [{:name "beak_size", :base-type :type/Integer, :details {:inches 7}, :pk? true, :special-type "type/Category"}])
          (get-columns))
        ;; now add another column and modify the first
        (do
-         (save-all-table-columns! table [{:name "beak_size", :base-type :IntegerField, :details {:inches 8}}
-                                         {:name "num_feathers", :base-type :IntegerField, :details {:count 10000}}])
+         (save-all-table-columns! table [{:name "beak_size", :base-type :type/Integer, :details {:inches 8}}
+                                         {:name "num_feathers", :base-type :type/Integer, :details {:count 10000}}])
          (get-columns))
        ;; now remove the first column
        (do
-         (save-all-table-columns! table [{:name "num_feathers", :base-type :IntegerField, :details {:count 12000}}])
+         (save-all-table-columns! table [{:name "num_feathers", :base-type :type/Integer, :details {:count 12000}}])
          (get-columns))
        ;; lastly, resurrect the first column (this ensures uniqueness by name)
        (do
-         (save-all-table-columns! table [{:name "beak_size", :base-type :IntegerField, :details {:inches 8}}
-                                         {:name "num_feathers", :base-type :IntegerField, :details {:count 12000}}])
+         (save-all-table-columns! table [{:name "beak_size", :base-type :type/Integer, :details {:inches 8}}
+                                         {:name "num_feathers", :base-type :type/Integer, :details {:count 12000}}])
          (get-columns))])))
 
 ;; create-raw-table
@@ -152,7 +152,7 @@
             :columns [(merge field-defaults
                              {:name    "beak_size"
                               :is_pk   true
-                              :details {:inches 7, :base-type "IntegerField"}})]})]]
+                              :details {:inches 7, :base-type "type/Integer"}})]})]]
   (tu/with-temp* [Database [{database-id :id, :as db}]]
     [(get-tables database-id)
      ;; now add a table
@@ -168,7 +168,7 @@
                                        :name    "toucanery"
                                        :details {:owner "Cam"}
                                        :fields  [{:name      "beak_size"
-                                                  :base-type :IntegerField
+                                                  :base-type :type/Integer
                                                   :pk?       true
                                                   :details   {:inches 7}}]})
        (get-tables database-id))]))
@@ -187,7 +187,7 @@
             :columns [(merge field-defaults
                              {:name    "beak_size"
                               :is_pk   true
-                              :details {:inches 7, :base-type "IntegerField"}})]})]]
+                              :details {:inches 7, :base-type "type/Integer"}})]})]]
   (tu/with-temp* [Database [{database-id :id, :as db}]
                   RawTable [table {:database_id database-id
                                    :schema      "aviary"
@@ -200,7 +200,7 @@
                                  :name    "toucanery"
                                  :details {:owner "Cam", :sqft 10000}
                                  :fields [{:name      "beak_size"
-                                           :base-type :IntegerField
+                                           :base-type :type/Integer
                                            :pk?       true
                                            :details   {:inches 7}}]})
        (get-tables database-id))]))

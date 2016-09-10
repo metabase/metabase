@@ -11,42 +11,42 @@
 (defn- column->base-type
   "See [this page](https://msdn.microsoft.com/en-us/library/ms187752.aspx) for details."
   [column-type]
-  ({:bigint           :BigIntegerField
-     :binary           :UnknownField
-     :bit              :BooleanField ; actually this is 1 / 0 instead of true / false ...
-     :char             :CharField
-     :cursor           :UnknownField
-     :date             :DateField
-     :datetime         :DateTimeField
-     :datetime2        :DateTimeField
-     :datetimeoffset   :DateTimeField
-     :decimal          :DecimalField
-     :float            :FloatField
-     :geography        :UnknownField
-     :geometry         :UnknownField
-     :hierarchyid      :UnknownField
-     :image            :UnknownField
-     :int              :IntegerField
-     :money            :DecimalField
-     :nchar            :CharField
-     :ntext            :TextField
-     :numeric          :DecimalField
-     :nvarchar         :TextField
-     :real             :FloatField
-     :smalldatetime    :DateTimeField
-     :smallint         :IntegerField
-     :smallmoney       :DecimalField
-     :sql_variant      :UnknownField
-     :table            :UnknownField
-     :text             :TextField
-     :time             :TimeField
-     :timestamp        :UnknownField ; not a standard SQL timestamp, see https://msdn.microsoft.com/en-us/library/ms182776.aspx
-     :tinyint          :IntegerField
-     :uniqueidentifier :UUIDField
-     :varbinary        :UnknownField
-     :varchar          :TextField
-     :xml              :UnknownField
-     (keyword "int identity") :IntegerField} column-type)) ; auto-incrementing integer (ie pk) field
+  ({:bigint           :type/BigInteger
+    :binary           :type/*
+    :bit              :type/Boolean ; actually this is 1 / 0 instead of true / false ...
+    :char             :type/Text
+    :cursor           :type/*
+    :date             :type/Date
+    :datetime         :type/DateTime
+    :datetime2        :type/DateTime
+    :datetimeoffset   :type/DateTime
+    :decimal          :type/Decimal
+    :float            :type/Float
+    :geography        :type/*
+    :geometry         :type/*
+    :hierarchyid      :type/*
+    :image            :type/*
+    :int              :type/Integer
+    :money            :type/Decimal
+    :nchar            :type/Text
+    :ntext            :type/Text
+    :numeric          :type/Decimal
+    :nvarchar         :type/Text
+    :real             :type/Float
+    :smalldatetime    :type/DateTime
+    :smallint         :type/Integer
+    :smallmoney       :type/Decimal
+    :sql_variant      :type/*
+    :table            :type/*
+    :text             :type/Text
+    :time             :type/Time
+    :timestamp        :type/* ; not a standard SQL timestamp, see https://msdn.microsoft.com/en-us/library/ms182776.aspx
+    :tinyint          :type/Integer
+    :uniqueidentifier :type/UUID
+    :varbinary        :type/*
+    :varchar          :type/Text
+    :xml              :type/*
+    (keyword "int identity") :type/Integer} column-type)) ; auto-incrementing integer (ie pk) field
 
 (defn- connection-details->spec [{:keys [domain instance ssl], :as details}]
   (-> ;; Having the `:ssl` key present, even if it is `false`, will make the driver attempt to connect with SSL
