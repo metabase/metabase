@@ -16,6 +16,7 @@
    :type/Decimal    "DECIMAL"
    :type/Float      "FLOAT"
    :type/Integer    "INTEGER"
+   :type/IPAddress  "INET"
    :type/Text       "TEXT"
    :type/Time       "TIME"
    :type/UUID       "UUID"})

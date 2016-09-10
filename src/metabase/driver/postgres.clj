@@ -34,7 +34,7 @@
     :float4        :type/Float
     :float8        :type/Float
     :geometry      :type/*
-    :inet          :type/Text
+    :inet          :type/IPAddress
     :int           :type/Integer
     :int2          :type/Integer
     :int4          :type/Integer
@@ -81,8 +81,10 @@
   "Attempt to determine the special-type of a Field given its name and Postgres column type."
   [column-name column-type]
   ;; this is really, really simple right now.  if its postgres :json type then it's :type/SerializedJSON special-type
-  (when (= column-type :json)
-    :type/SerializedJSON))
+  (case column-type
+    :json :type/SerializedJSON
+    :inet :type/IPAddress
+    nil))
 
 (def ^:const ssl-params
   "Params to include in the JDBC connection spec for an SSL connection."
@@ -168,10 +170,12 @@
     message))
 
 (defn- prepare-value [{value :value, {:keys [base-type]} :field}]
-  (if (and (isa? base-type :type/UUID)
-           value)
-    (UUID/fromString value)
-    value))
+  (if-not value
+    value
+    (cond
+      (isa? base-type :type/UUID)      (UUID/fromString value)
+      (isa? base-type :type/IPAddress) (hx/cast :inet value)
+      :else                            value)))
 
 
 (defn- materialized-views
