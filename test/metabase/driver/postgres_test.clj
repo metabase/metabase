@@ -62,7 +62,7 @@
 
 
 ;;; # UUID Support
-(i/def-database-definition ^:const ^:private with-uuid
+(i/def-database-definition ^:private with-uuid
   ["users"
    [{:field-name "user_id", :base-type :type/UUID}]
    [[#uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]
@@ -99,7 +99,7 @@
 
 
 ;; Make sure that Tables / Fields with dots in their names get escaped properly
-(i/def-database-definition ^:const ^:private dots-in-names
+(i/def-database-definition ^:private dots-in-names
   ["objects.stuff"
    [{:field-name "dotted.name", :base-type :type/Text}]
    [["toucan_cage"]
@@ -117,7 +117,7 @@
 
 
 ;; Make sure that duplicate column names (e.g. caused by using a FK) still return both columns
-(i/def-database-definition ^:const ^:private duplicate-names
+(i/def-database-definition ^:private duplicate-names
   ["birds"
    [{:field-name "name", :base-type :type/Text}]
    [["Rasta"]
@@ -134,6 +134,22 @@
         (data/run-query people
           (ql/fields $name $bird_id->birds.name)))
       :data (dissoc :cols :native_form)))
+
+
+;;; Check support for `inet` columns
+(i/def-database-definition ^:private ip-addresses
+  ["addresses"
+   [{:field-name "ip", :base-type {:native "inet"}}]
+   [[(hsql/raw "'192.168.1.1'::inet")]
+    [(hsql/raw "'10.4.4.15'::inet")]]])
+
+;; Filtering by inet columns should add the appropriate SQL cast, e.g. `cast('192.168.1.1' AS inet)` (otherwise this wouldn't work)
+(expect-with-engine :postgres
+  [[1]]
+  (rows (data/dataset metabase.driver.postgres-test/ip-addresses
+          (data/run-query addresses
+            (ql/aggregation (ql/count))
+            (ql/filter (ql/= $ip "192.168.1.1"))))))
 
 
 ;; Check that we properly fetch materialized views.

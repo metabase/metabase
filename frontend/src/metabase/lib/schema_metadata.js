@@ -5,6 +5,7 @@ import { isa, isFK, TYPE } from "metabase/lib/types";
 // primary field types used for picking operators, etc
 export const NUMBER = "NUMBER";
 export const STRING = "STRING";
+export const STRING_LIKE = "STRING_LIKE";
 export const BOOLEAN = "BOOLEAN";
 export const DATE_TIME = "DATE_TIME";
 export const LOCATION = "LOCATION";
@@ -32,6 +33,9 @@ const TYPES = {
     [STRING]: {
         base: [TYPE.Text],
         special: [TYPE.Text]
+    },
+    [STRING_LIKE]: {
+        base: [TYPE.TextLike]
     },
     [BOOLEAN]: {
         base: [TYPE.Boolean]
@@ -89,10 +93,8 @@ export function isFieldType(type, field) {
 
 export function getFieldType(field) {
     // try more specific types first, then more generic types
-    for (let type of [DATE_TIME, LOCATION, COORDINATE, NUMBER, STRING, BOOLEAN]) {
-        if (isFieldType(type, field)) {
-            return type;
-        }
+    for (const type of [DATE_TIME, LOCATION, COORDINATE, NUMBER, STRING, STRING_LIKE, BOOLEAN]) {
+        if (isFieldType(type, field)) return type;
     }
 }
 
@@ -270,6 +272,12 @@ const OPERATORS_BY_TYPE_ORDERED = {
         { name: "STARTS_WITH",      verboseName: "Starts with", advanced: true},
         { name: "ENDS_WITH",        verboseName: "Ends with", advanced: true}
     ],
+    [STRING_LIKE]: [
+        { name: "=",                verboseName: "Is" },
+        { name: "!=",               verboseName: "Is not" },
+        { name: "IS_NULL",          verboseName: "Is empty", advanced: true },
+        { name: "NOT_NULL",         verboseName: "Not empty", advanced: true }
+    ],
     [DATE_TIME]: [
         { name: "=",                verboseName: "Is" },
         { name: "<",                verboseName: "Before" },
@@ -315,10 +323,10 @@ const MORE_VERBOSE_NAMES = {
 }
 
 export function getOperators(field, table) {
-    let type = getFieldType(field) || UNKNOWN;
+    const type = getFieldType(field) || UNKNOWN;
     return OPERATORS_BY_TYPE_ORDERED[type].map(operatorForType => {
-        let operator = OPERATORS[operatorForType.name];
-        let verboseNameLower = operatorForType.verboseName.toLowerCase();
+        const operator = OPERATORS[operatorForType.name];
+        const verboseNameLower = operatorForType.verboseName.toLowerCase();
         return {
             ...operator,
             ...operatorForType,
@@ -428,11 +436,7 @@ function populateFields(aggregator, fields) {
 // TODO: unit test
 export function getAggregators(table) {
     const supportedAggregations = Aggregators.filter(function (agg) {
-        if (agg.requiredDriverFeature && table.db && !_.contains(table.db.features, agg.requiredDriverFeature)) {
-            return false;
-        } else {
-            return true;
-        }
+        return !(agg.requiredDriverFeature && table.db && !_.contains(table.db.features, agg.requiredDriverFeature));
     });
     return _.map(supportedAggregations, function(aggregator) {
         return populateFields(aggregator, table.fields);
@@ -469,7 +473,7 @@ export function addValidOperatorsToFields(table) {
 export function hasLatitudeAndLongitudeColumns(columnDefs) {
     let hasLatitude = false;
     let hasLongitude = false;
-    for (let col of columnDefs) {
+    for (const col of columnDefs) {
         if (isa(col.special_type, TYPE.Latitude)) {
             hasLatitude = true;
         }
@@ -503,6 +507,7 @@ export const ICON_MAPPING = {
     [LOCATION]: 'location',
     [COORDINATE]: 'location',
     [STRING]: 'string',
+    [STRING_LIKE]: 'string',
     [NUMBER]: 'int',
     [BOOLEAN]: 'io'
 };
