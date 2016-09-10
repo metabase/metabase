@@ -499,20 +499,22 @@ function lineAndBarOnRender(chart, settings, onGoalHover, isSplitAxis) {
 
         // add the label
         let goalLine = chart.selectAll(".goal .line")[0][0];
-        let { x, y, width } = goalLine.getBBox();
-        const labelOnRight = !isSplitAxis;
-        chart.selectAll(".goal .stack._0")
-            .append("text")
-            .text("Goal")
-            .attr({
-                x: labelOnRight ? x + width : x,
-                y: y - 5,
-                "text-anchor": labelOnRight ? "end" : "start",
-                "font-weight": "bold",
-                fill: "rgb(157,160,164)",
-            })
-            .on("mouseenter", function() { onGoalHover(this); })
-            .on("mouseleave", function() { onGoalHover(null); })
+        if (goalLine) {
+            let { x, y, width } = goalLine.getBBox();
+            const labelOnRight = !isSplitAxis;
+            chart.selectAll(".goal .stack._0")
+                .append("text")
+                .text("Goal")
+                .attr({
+                    x: labelOnRight ? x + width : x,
+                    y: y - 5,
+                    "text-anchor": labelOnRight ? "end" : "start",
+                    "font-weight": "bold",
+                    fill: "rgb(157,160,164)",
+                })
+                .on("mouseenter", function() { onGoalHover(this); })
+                .on("mouseleave", function() { onGoalHover(null); })
+        }
     }
 
     // run these first so the rest of the margin computations take it into account
