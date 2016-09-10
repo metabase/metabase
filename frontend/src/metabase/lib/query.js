@@ -550,14 +550,14 @@ var Query = {
         }
     },
 
-    getFieldOptions(fields, includeJoins = false, filterFn = (fields) => fields, usedFields = {}) {
+    getFieldOptions(fields, includeJoins = false, filterFn = _.identity, usedFields = {}) {
         var results = {
             count: 0,
             fields: null,
             fks: []
         };
         // filter based on filterFn, then remove fks if they'll be duplicated in the joins fields
-        results.fields = filterFn(fields).filter((f) => !usedFields[f.id] && (isFK(f.special_type) || !includeJoins));
+        results.fields = filterFn(fields).filter((f) => !usedFields[f.id] && (!isFK(f.special_type) || !includeJoins));
         results.count += results.fields.length;
         if (includeJoins) {
             results.fks = fields.filter((f) => isFK(f.special_type) && f.target).map((joinField) => {

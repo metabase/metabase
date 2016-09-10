@@ -89,10 +89,8 @@ export function isFieldType(type, field) {
 
 export function getFieldType(field) {
     // try more specific types first, then more generic types
-    for (let type of [DATE_TIME, LOCATION, COORDINATE, NUMBER, STRING, BOOLEAN]) {
-        if (isFieldType(type, field)) {
-            return type;
-        }
+    for (const type of [DATE_TIME, LOCATION, COORDINATE, NUMBER, STRING, BOOLEAN]) {
+        if (isFieldType(type, field)) return type;
     }
 }
 
@@ -315,10 +313,10 @@ const MORE_VERBOSE_NAMES = {
 }
 
 export function getOperators(field, table) {
-    let type = getFieldType(field) || UNKNOWN;
+    const type = getFieldType(field) || UNKNOWN;
     return OPERATORS_BY_TYPE_ORDERED[type].map(operatorForType => {
-        let operator = OPERATORS[operatorForType.name];
-        let verboseNameLower = operatorForType.verboseName.toLowerCase();
+        const operator = OPERATORS[operatorForType.name];
+        const verboseNameLower = operatorForType.verboseName.toLowerCase();
         return {
             ...operator,
             ...operatorForType,
@@ -428,11 +426,7 @@ function populateFields(aggregator, fields) {
 // TODO: unit test
 export function getAggregators(table) {
     const supportedAggregations = Aggregators.filter(function (agg) {
-        if (agg.requiredDriverFeature && table.db && !_.contains(table.db.features, agg.requiredDriverFeature)) {
-            return false;
-        } else {
-            return true;
-        }
+        return !(agg.requiredDriverFeature && table.db && !_.contains(table.db.features, agg.requiredDriverFeature));
     });
     return _.map(supportedAggregations, function(aggregator) {
         return populateFields(aggregator, table.fields);
@@ -469,7 +463,7 @@ export function addValidOperatorsToFields(table) {
 export function hasLatitudeAndLongitudeColumns(columnDefs) {
     let hasLatitude = false;
     let hasLongitude = false;
-    for (let col of columnDefs) {
+    for (const col of columnDefs) {
         if (isa(col.special_type, TYPE.Latitude)) {
             hasLatitude = true;
         }
