@@ -42,8 +42,6 @@
 (derive :type/SerializedJSON :type/Text)
 (derive :type/SerializedJSON :type/Collection)
 
-(derive :type/IPAddress :type/Text)
-
 ;;; DateTime Types
 
 (derive :type/DateTime :type/*)
@@ -60,6 +58,11 @@
 ;;; Other
 
 (derive :type/Boolean :type/*)
+
+;;; Text-Like Types: Things that should be displayed as text for most purposes but that shouldn't support advanced filter options like starts with / contains
+
+(derive :type/TextLike :type/*)
+(derive :type/IPAddress :type/TextLike)
 
 ;;; "Virtual" Types
 

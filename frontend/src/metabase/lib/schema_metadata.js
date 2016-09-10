@@ -5,6 +5,7 @@ import { isa, isFK, TYPE } from "metabase/lib/types";
 // primary field types used for picking operators, etc
 export const NUMBER = "NUMBER";
 export const STRING = "STRING";
+export const STRING_LIKE = "STRING_LIKE";
 export const BOOLEAN = "BOOLEAN";
 export const DATE_TIME = "DATE_TIME";
 export const LOCATION = "LOCATION";
@@ -32,6 +33,9 @@ const TYPES = {
     [STRING]: {
         base: [TYPE.Text],
         special: [TYPE.Text]
+    },
+    [STRING_LIKE]: {
+        base: [TYPE.TextLike]
     },
     [BOOLEAN]: {
         base: [TYPE.Boolean]
@@ -268,6 +272,12 @@ const OPERATORS_BY_TYPE_ORDERED = {
         { name: "STARTS_WITH",      verboseName: "Starts with", advanced: true},
         { name: "ENDS_WITH",        verboseName: "Ends with", advanced: true}
     ],
+    [STRING_LIKE]: [
+        { name: "=",                verboseName: "Is" },
+        { name: "!=",               verboseName: "Is not" },
+        { name: "IS_NULL",          verboseName: "Is empty", advanced: true },
+        { name: "NOT_NULL",         verboseName: "Not empty", advanced: true }
+    ],
     [DATE_TIME]: [
         { name: "=",                verboseName: "Is" },
         { name: "<",                verboseName: "Before" },
@@ -497,6 +507,7 @@ export const ICON_MAPPING = {
     [LOCATION]: 'location',
     [COORDINATE]: 'location',
     [STRING]: 'string',
+    [STRING_LIKE]: 'string',
     [NUMBER]: 'int',
     [BOOLEAN]: 'io'
 };
