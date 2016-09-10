@@ -155,7 +155,10 @@ export default class QueryBuilder extends Component {
     }
 
     componentDidUpdate() {
-        ReactDOM.findDOMNode(this.refs.viz).style.opacity = 1.0;
+        let viz = ReactDOM.findDOMNode(this.refs.viz);
+        if (viz) {
+            viz.style.opacity = 1.0;
+        }
     }
 
     componentWillUnmount() {
@@ -166,7 +169,10 @@ export default class QueryBuilder extends Component {
     // Debounce the function to improve resizing performance.
     handleResize(e) {
         this.forceUpdateDebounced();
-        ReactDOM.findDOMNode(this.refs.viz).style.opacity = 0.2;
+        let viz = ReactDOM.findDOMNode(this.refs.viz);
+        if (viz) {
+            viz.style.opacity = 0.2;
+        }
     }
 
     render() {
