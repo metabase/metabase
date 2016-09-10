@@ -93,7 +93,7 @@ export function isFieldType(type, field) {
 
 export function getFieldType(field) {
     // try more specific types first, then more generic types
-    for (const type of [DATE_TIME, LOCATION, COORDINATE, NUMBER, STRING, BOOLEAN]) {
+    for (const type of [DATE_TIME, LOCATION, COORDINATE, NUMBER, STRING, STRING_LIKE, BOOLEAN]) {
         if (isFieldType(type, field)) return type;
     }
 }

@@ -47,22 +47,24 @@
   (doseq [{:keys [keypath value]} (driver/table-rows-seq driver database metabase-metadata-table)]
     ;; TODO: this does not support schemas in dbs :(
     (let [[_ table-name field-name k] (re-matches #"^([^.]+)\.(?:([^.]+)\.)?([^.]+)$" keypath)]
-      (try (when-not (if field-name
-                       (when-let [table-id (db/select-one-id Table
-                                             ;; TODO: this needs to support schemas
-                                             ;; TODO: eventually limit this to "core" schema tables
-                                             :db_id  (:id database)
-                                             :name   table-name
-                                             :active true)]
-                         (db/update-where! Field {:name     field-name
-                                                  :table_id table-id}
+      ;; ignore legacy entries that try to set field_type since it's no longer part of Field
+      (when-not (= (keyword k) :field_type)
+        (try (when-not (if field-name
+                         (when-let [table-id (db/select-one-id Table
+                                               ;; TODO: this needs to support schemas
+                                               ;; TODO: eventually limit this to "core" schema tables
+                                               :db_id  (:id database)
+                                               :name   table-name
+                                               :active true)]
+                           (db/update-where! Field {:name     field-name
+                                                    :table_id table-id}
+                             (keyword k) value))
+                         (db/update-where! Table {:name  table-name
+                                                  :db_id (:id database)}
                            (keyword k) value))
-                       (db/update-where! Table {:name  table-name
-                                                :db_id (:id database)}
-                         (keyword k) value))
-             (log/error (u/format-color "Error syncing _metabase_metadata: no matching keypath: %s" keypath)))
-           (catch Throwable e
-             (log/error (u/format-color 'red "Error in _metabase_metadata: %s" (.getMessage e))))))))
+               (log/error (u/format-color "Error syncing _metabase_metadata: no matching keypath: %s" keypath)))
+             (catch Throwable e
+               (log/error (u/format-color 'red "Error in _metabase_metadata: %s" (.getMessage e)))))))))
 
 
 (defn- save-table-fields!

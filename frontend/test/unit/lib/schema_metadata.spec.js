@@ -2,6 +2,7 @@ import {
     getFieldType,
     DATE_TIME,
     STRING,
+    STRING_LIKE,
     NUMBER,
     BOOLEAN,
     LOCATION,
@@ -39,6 +40,10 @@ describe('schema_metadata', () => {
         it('should know a coordinate', () => {
             expect(getFieldType({ special_type: TYPE.Latitude })).toEqual(COORDINATE)
             expect(getFieldType({ special_type: TYPE.Longitude })).toEqual(COORDINATE)
+        });
+        it('should know something that is string-like', () => {
+            expect(getFieldType({ base_type: TYPE.StringLike })).toEqual(STRING_LIKE);
+            expect(getFieldType({ base_type: TYPE.IPAddress })).toEqual(STRING_LIKE);
         });
         it('should know what it doesn\'t know', () => {
             expect(getFieldType({ base_type: 'DERP DERP DERP' })).toEqual(undefined)
