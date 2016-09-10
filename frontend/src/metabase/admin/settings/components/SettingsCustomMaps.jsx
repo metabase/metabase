@@ -4,6 +4,8 @@ import Utils from "metabase/lib/utils";
 
 import Select, { Option } from "metabase/components/Select.jsx";
 import Confirm from "metabase/components/Confirm.jsx";
+import Ellipsified from "metabase/components/Ellipsified.jsx";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
 import cx from "classnames";
 import fetch from 'isomorphic-fetch';
@@ -74,6 +76,7 @@ export default class SettingsCustomMaps extends Component {
             });
             this.setState({ geoJson: await geoJsonResponse.json() });
         } catch (e) {
+            this.setState({ geoJsonError: e });
             console.warn("map fetch failed", e)
         }
     }
@@ -124,28 +127,40 @@ export default class SettingsCustomMaps extends Component {
 
 const ListMaps = ({ maps, onEditMap, onAddMap, onDeleteMap }) =>
     <div>
-        <h2>Custom Maps</h2>
-        <p className="text-grey-4 flex align-center">
-            <span>Add your own GeoJSON files</span>
-            <button className="Button Button--primary ml1" onClick={onAddMap}>Add a map</button>
-        </p>
-        <table>
-            {maps.filter(map => !map.builtin).map(map =>
-                <tr key={map.id}>
-                    <td>
-                        <a className="cursor-pointer" onClick={() => onEditMap(map)}>{map.name}</a>
-                    </td>
-                    <td>
-                        {map.url}
-                    </td>
-                    <td>
-                        <Confirm action={() => onDeleteMap(map)} title="Delete custom map">
-                            <button className="Button Button--small Button--danger">Remove</button>
-                        </Confirm>
-                    </td>
-                </tr>
-            )}
-        </table>
+        <section className="PageHeader px2 clearfix">
+            <div className="inline-block">
+                <h2 className="PageTitle mb1">Custom Maps</h2>
+                <span>Add your own GeoJSON files</span>
+            </div>
+            <button className="Button Button--primary float-right" onClick={onAddMap}>Add a map</button>
+        </section>
+        <section>
+            <table className="ContentTable">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>URL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {maps.filter(map => !map.builtin).map(map =>
+                    <tr key={map.id}>
+                        <td className="cursor-pointer" onClick={() => onEditMap(map)}>
+                            {map.name}
+                        </td>
+                        <td className="cursor-pointer" onClick={() => onEditMap(map)}>
+                            <Ellipsified style={{ maxWidth: 600 }}>{map.url}</Ellipsified>
+                        </td>
+                        <td className="Table-actions">
+                            <Confirm action={() => onDeleteMap(map)} title="Delete custom map">
+                                <button className="Button Button--danger">Remove</button>
+                            </Confirm>
+                        </td>
+                    </tr>
+                )}
+                </tbody>
+            </table>
+        </section>
     </div>
 
 const GeoJsonPropertySelect = ({ value, onChange, geoJson }) => {
@@ -178,10 +193,10 @@ const GeoJsonPropertySelect = ({ value, onChange, geoJson }) => {
     )
 }
 
-const EditMap = ({ map, onMapChange, originalMap, geoJson, onLoadGeoJson, onCancel, onSave }) =>
-    <ul>
+const EditMap = ({ map, onMapChange, originalMap, geoJson, geoJsonError, onLoadGeoJson, onCancel, onSave }) =>
+    <div>
         <h2>{ !originalMap ? "Add a new map" : "Edit map" }</h2>
-        <li className="m2 mb4">
+        <div className="m2 mb4">
             <div className="text-grey-4 text-bold text-uppercase pb1">Map Name</div>
             <div className="flex">
                 <input
@@ -192,8 +207,8 @@ const EditMap = ({ map, onMapChange, originalMap, geoJson, onLoadGeoJson, onCanc
                     onChange={(e) => onMapChange({ ...map, "name": e.target.value })}
                 />
             </div>
-        </li>
-        <li className="m2 mb4">
+        </div>
+        <div className="m2 mb4">
             <div className="text-grey-4 text-bold text-uppercase pb1">GeoJSON URL</div>
             <div className="flex">
                 <input
@@ -205,31 +220,35 @@ const EditMap = ({ map, onMapChange, originalMap, geoJson, onLoadGeoJson, onCanc
                 />
                 <button className={cx("Button ml1", { "Button--primary" : !geoJson })} onClick={onLoadGeoJson}>{geoJson ? "Refresh" : "Load"}</button>
             </div>
-        </li>
-        { geoJson &&
-            <li className="m2 mb4">
-                <div className="text-grey-4 text-bold text-uppercase pb1">Name Property</div>
-                <GeoJsonPropertySelect
-                    value={map.region_name}
-                    onChange={(value) => onMapChange({ ...map, "region_name": value })}
-                    geoJson={geoJson}
-                />
-            </li>
+        </div>
+        { geoJson !== undefined &&
+            <LoadingAndErrorWrapper loading={geoJson === null} error={geoJsonError}>
+            { () =>
+                <div>
+                    <div className="m2 mb4">
+                        <div className="text-grey-4 text-bold text-uppercase pb1">Name Property</div>
+                        <GeoJsonPropertySelect
+                            value={map.region_name}
+                            onChange={(value) => onMapChange({ ...map, "region_name": value })}
+                            geoJson={geoJson}
+                        />
+                    </div>
+                    <div className="m2 mb4">
+                        <div className="text-grey-4 text-bold text-uppercase pb1">Region Property</div>
+                        <GeoJsonPropertySelect
+                            value={map.region_key}
+                            onChange={(value) => onMapChange({ ...map, "region_key": value })}
+                            geoJson={geoJson}
+                        />
+                    </div>
+                </div>
+            }
+            </LoadingAndErrorWrapper>
         }
-        { geoJson &&
-            <li className="m2 mb4">
-                <div className="text-grey-4 text-bold text-uppercase pb1">Region Property</div>
-                <GeoJsonPropertySelect
-                    value={map.region_key}
-                    onChange={(value) => onMapChange({ ...map, "region_key": value })}
-                    geoJson={geoJson}
-                />
-            </li>
-        }
-        <li className="m2 mb4">
+        <div className="m2 mb4">
             <button className={cx("Button Button--borderless")} onClick={onCancel}>Cancel</button>
             <button className={cx("Button Button--primary ml1", { "disabled" : !map.name || !map.url || !map.region_name || !map.region_key })} onClick={onSave}>
                 {originalMap ? "Save map" : "Add map"}
             </button>
-        </li>
-    </ul>
+        </div>
+    </div>
