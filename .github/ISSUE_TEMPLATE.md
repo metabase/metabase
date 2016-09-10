@@ -1,48 +1,29 @@
+------
+Before filing an issue we'd appreciate it if you could take a moment to ensure
+there isn't already an open issue or pull-request.
+-----
 
+### Database support
+If there's an exisiting issue, please add a +1 in the comments as we
+prioritize drivers by the level of support. Otherwise, please include the name
+of the database and the version.
 
-### Bug Report Info
+### Feature requests and proposals
+We're excited to hear how we can make Metabase better. Please add as much detail
+as you can on your use case.
 
-If this is a bug report, help us diagnose your issue by checking the appropriate boxes below:
+### Bugs
+If you're filing an issue about a bug please include as much information
+as you can including the following.
 
-*  I'm using this browser:
-   - [ ] Chrome
-   - [ ] Firefox
-   - [ ] Safari
-   - [ ] Internet Explorer / Edge
-   - [ ] Other: ____________________
-*  My computer's OS is:
-   - [ ] OS X
-   - [ ] Windows
-   - [ ] Linux
-   - [ ] Other: ____________________
-*  I'm running Metabase:
-   - [ ] Locally from the JAR
-   - [ ] Locally with the Mac App
-   - [ ] On AWS (via Docker)
-   - [ ] On Heroku
-   - [ ] Other: ____________________
-* *Internally*, Metabase is using this database: (This is the database Metabase stores internal information like accounts and dashboards in, *not* one you're running queries against. If you haven't done anything special to configure this, Metabase defaults to using H2 when running locally; if you're running Metabase on AWS or Heroku using the provided scripts/instructions, you're most likely using Postgres.):
-   - [ ] H2
-   - [ ] Postgres
-   - [ ] MySQL
-*  My data is in a database of this type:
-   - [ ] Postgres
-   - [ ] MySQL
-   - [ ] Redshift
-   - [ ] BigQuery
-   - [ ] MongoDB
-   - [ ] SQLite
-   - [ ] Druid
-   - [ ] SQL Server
-   - [ ] Crate
-   - [ ] Oracle
-   - [ ] H2
-   - [ ] Other: ____________________
-*  I'm using Metabase version:
-   - [ ] 0.18.0
-   - [ ] 0.18.1
-   - [ ] 0.19.0
-   - [ ] 0.19.1
-   - [ ] 0.19.2
-   - [ ] 0.19.3
-   - [ ] Other: ____________________
+- Your browser and the version: (e.x. Chrome 52.1, Firefox 48.0, IE 10)
+- Your operating system: (e.x. OS X 10, Windows XP, etc)
+- Your databases: (e.x. MySQL, Postgres, MongoDB, …)
+- Metabase version: (e.x. 0.19.3)
+- Metabase hosting environment: (e.x. Mac app, Elastic Beanstalk, Docker, Heroku, Linux/Ubuntu 12)
+- Metabase internal database: (e.x. H2 (default), MySQL, Postgres)
+
+- *Repeatable steps to reproduce the issue*
+
+Thanks for being part of the Metabase project!
+-------
