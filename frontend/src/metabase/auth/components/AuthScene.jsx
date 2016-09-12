@@ -109,7 +109,8 @@ export default class AuthScene extends Component {
                         </svg>
                     </div>
                 </div>
-                <div className="bg-brand block py3 absolute bottom left right"></div>
+                <! -- 09-12-2016 -->
+                <div id="caspian" className="bg-brand block py3 absolute bottom left right"></div>
             </section>
         );
     }
