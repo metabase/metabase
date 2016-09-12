@@ -86,7 +86,7 @@ function applyChartTimeseriesXAxis(chart, settings, series, xValues, xDomain, xI
         }
 
         chart.xAxis().tickFormat(timestamp => {
-            // these dates are in the browser's timezone, change to UTC
+            // HACK: these dates are in the browser's timezone, change to UTC
             let timestampUTC = moment(timestamp).format().replace(/[+-]\d+:\d+$/, "Z");
             return formatValue(timestampUTC, { column: dimensionColumn })
         });
@@ -99,8 +99,8 @@ function applyChartTimeseriesXAxis(chart, settings, series, xValues, xDomain, xI
     }
 
     // pad the domain slightly to prevent clipping
-    xDomain[0] = moment(xDomain[0]).subtract(dataInterval.count * 0.75, dataInterval.interval);
-    xDomain[1] = moment(xDomain[1]).add(dataInterval.count * 0.75, dataInterval.interval);
+    xDomain[0] = moment(xDomain[0]).subtract(dataInterval.count * 0.75, dataInterval.interval).toDate();
+    xDomain[1] = moment(xDomain[1]).add(dataInterval.count * 0.75, dataInterval.interval).toDate();
 
     // set the x scale
     chart.x(d3.time.scale.utc().domain(xDomain));//.nice(d3.time[dataInterval.interval]));
@@ -608,7 +608,7 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
         s.data.rows.map(row => [
             // don't parse as timestamp if we're going to display as a quantitative scale, e.x. years and Unix timestamps
             (settings["graph.x_axis._is_timeseries"] && !isQuantitative) ?
-                parseTimestamp(row[0], s.data.cols[0].unit)
+                parseTimestamp(row[0], s.data.cols[0].unit).toDate()
             : settings["graph.x_axis._is_numeric"] ?
                 row[0]
             :
@@ -636,13 +636,12 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
         if (isTimeseries) {
             // replace xValues with
             xValues = d3.time[xInterval.interval]
-                .range(xDomain[0], xDomain[1].add(1, "ms"), xInterval.count)
-                .map(d => moment(d));
+                .range(xDomain[0], moment(xDomain[1]).add(1, "ms").toDate(), xInterval.count);
             datas = fillMissingValues(
                 datas,
                 xValues,
                 settings["line.missing"] === "zero" ? 0 : null,
-                (m) => d3.round(m.toDate().getTime(), -1) // moment sometimes rounds up 1ms?
+                (m) => d3.round(m.getTime(), -1) // sometimes rounds up 1ms?
             );
         } if (isQuantitative) {
             xValues = d3.range(xDomain[0], xDomain[1] + xInterval, xInterval);
