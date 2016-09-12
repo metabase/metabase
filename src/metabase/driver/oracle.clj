@@ -14,31 +14,31 @@
 
 (def ^:private ^:const pattern->type
   [;; Any types -- see http://docs.oracle.com/cd/B28359_01/server.111/b28286/sql_elements001.htm#i107578
-   [#"ANYDATA"     :UnknownField]  ; Instance of a given type with data plus a description of the type (?)
-   [#"ANYTYPE"     :UnknownField]  ; Can be any named SQL type or an unnamed transient type
-   [#"ARRAY"       :UnknownField]
-   [#"BFILE"       :UnknownField]
-   [#"BLOB"        :UnknownField]
-   [#"RAW"         :UnknownField]
-   [#"CHAR"        :TextField]
-   [#"CLOB"        :TextField]
-   [#"DATE"        :DateField]
-   [#"DOUBLE"      :FloatField]
-   [#"^EXPRESSION" :UnknownField]  ; Expression filter type
-   [#"FLOAT"       :FloatField]
-   [#"INTERVAL"    :DateTimeField] ; Does this make sense?
-   [#"LONG RAW"    :UnknownField]
-   [#"LONG"        :TextField]
-   [#"^ORD"        :UnknownField]  ; Media types -- http://docs.oracle.com/cd/B28359_01/server.111/b28286/sql_elements001.htm#i121058
-   [#"NUMBER"      :DecimalField]
-   [#"REAL"        :FloatField]
-   [#"REF"         :UnknownField]
-   [#"ROWID"       :UnknownField]
-   [#"^SDO_"       :UnknownField]  ; Spatial types -- see http://docs.oracle.com/cd/B28359_01/server.111/b28286/sql_elements001.htm#i107588
-   [#"STRUCT"      :UnknownField]
-   [#"TIMESTAMP"   :DateTimeField]
-   [#"URI"         :TextField]
-   [#"XML"         :UnknownField]])
+   [#"ANYDATA"     :type/*]  ; Instance of a given type with data plus a description of the type (?)
+   [#"ANYTYPE"     :type/*]  ; Can be any named SQL type or an unnamed transient type
+   [#"ARRAY"       :type/*]
+   [#"BFILE"       :type/*]
+   [#"BLOB"        :type/*]
+   [#"RAW"         :type/*]
+   [#"CHAR"        :type/Text]
+   [#"CLOB"        :type/Text]
+   [#"DATE"        :type/Date]
+   [#"DOUBLE"      :type/Float]
+   [#"^EXPRESSION" :type/*]  ; Expression filter type
+   [#"FLOAT"       :type/Float]
+   [#"INTERVAL"    :type/DateTime] ; Does this make sense?
+   [#"LONG RAW"    :type/*]
+   [#"LONG"        :type/Text]
+   [#"^ORD"        :type/*]  ; Media types -- http://docs.oracle.com/cd/B28359_01/server.111/b28286/sql_elements001.htm#i121058
+   [#"NUMBER"      :type/Decimal]
+   [#"REAL"        :type/Float]
+   [#"REF"         :type/*]
+   [#"ROWID"       :type/*]
+   [#"^SDO_"       :type/*]  ; Spatial types -- see http://docs.oracle.com/cd/B28359_01/server.111/b28286/sql_elements001.htm#i107588
+   [#"STRUCT"      :type/*]
+   [#"TIMESTAMP"   :type/DateTime]
+   [#"URI"         :type/Text]
+   [#"XML"         :type/*]])
 
 (defn- connection-details->spec [{:keys [sid], :as details}]
   (update (dbspec/oracle details) :subname (u/rpartial str \: sid)))

@@ -206,7 +206,7 @@
                        (db/update! Field (:id @field) :visibility_type (name visibility-type)))
                      (when special-type
                        (log/debug (format "SET SPECIAL TYPE %s.%s -> %s" table-name field-name special-type))
-                       (db/update! Field (:id @field) :special_type (name special-type)))))))
+                       (db/update! Field (:id @field) :special_type (u/keyword->qualified-name special-type)))))))
              db))))))
 
 (defn remove-database!

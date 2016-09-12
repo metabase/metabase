@@ -59,14 +59,14 @@
   (cond
     ;; 1. url?
     (and (string? field-value)
-         (u/is-url? field-value)) :url
+         (u/is-url? field-value)) :type/URL
     ;; 2. json?
     (and (string? field-value)
          (or (.startsWith "{" field-value)
              (.startsWith "[" field-value))) (when-let [j (u/try-apply json/parse-string field-value)]
                                            (when (or (map? j)
                                                      (sequential? j))
-                                             :json))))
+                                             :type/SerializedJSON))))
 
 (defn- find-nested-fields [field-value nested-fields]
   (loop [[k & more-keys] (keys field-value)
@@ -91,7 +91,7 @@
                                  (update special-types st safe-inc)
                                  special-types)))
       (update :nested-fields (fn [nested-fields]
-                               (if (isa? (type field-value) clojure.lang.IPersistentMap)
+                               (if (map? field-value)
                                  (find-nested-fields field-value nested-fields)
                                  nested-fields)))))
 

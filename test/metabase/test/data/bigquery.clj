@@ -119,17 +119,16 @@
 
 
 (def ^:private ^:const base-type->bigquery-type
-  {:BigIntegerField :INTEGER
-   :BooleanField    :BOOLEAN
-   :CharField       :STRING
-   :DateField       :TIMESTAMP
-   :DateTimeField   :TIMESTAMP
-   :DecimalField    :FLOAT
-   :DictionaryField :RECORD
-   :FloatField      :FLOAT
-   :IntegerField    :INTEGER
-   :TextField       :STRING
-   :TimeField       :TIMESTAMP})
+  {:type/BigInteger :INTEGER
+   :type/Boolean    :BOOLEAN
+   :type/Date       :TIMESTAMP
+   :type/DateTime   :TIMESTAMP
+   :type/Decimal    :FLOAT
+   :type/Dictionary :RECORD
+   :type/Float      :FLOAT
+   :type/Integer    :INTEGER
+   :type/Text       :STRING
+   :type/Time       :TIMESTAMP})
 
 (defn- fielddefs->field-name->base-type
   "Convert FIELD-DEFINITIONS to a format appropriate for passing to `create-table!`."

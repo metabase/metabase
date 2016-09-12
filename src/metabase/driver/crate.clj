@@ -11,33 +11,33 @@
 (def ^:private ^:const column->base-type
   "Map of Crate column types -> Field base types
    Crate data types -> https://crate.io/docs/reference/sql/data_types.html"
-  {:integer         :IntegerField
-   :string          :TextField
-   :boolean         :BooleanField
-   :byte            :IntegerField
-   :short           :IntegerField
-   :long            :BigIntegerField
-   :float           :FloatField
-   :double          :FloatField
-   :ip              :UnknownField
-   :timestamp       :DateTimeField
-   :geo_shape       :DictionaryField
-   :geo_point       :ArrayField
-   :object          :DictionaryField
-   :array           :ArrayField
-   :object_array    :ArrayField
-   :string_array    :ArrayField
-   :integer_array   :ArrayField
-   :float_array     :ArrayField
-   :boolean_array   :ArrayField
-   :byte_array      :ArrayField
-   :timestamp_array :ArrayField
-   :short_array     :ArrayField
-   :long_array      :ArrayField
-   :double_array    :ArrayField
-   :ip_array        :ArrayField
-   :geo_shape_array :ArrayField
-   :geo_point_array :ArrayField})
+  {:integer         :type/Integer
+   :string          :type/Text
+   :boolean         :type/Boolean
+   :byte            :type/Integer
+   :short           :type/Integer
+   :long            :type/BigInteger
+   :float           :type/Float
+   :double          :type/Float
+   :ip              :type/*
+   :timestamp       :type/DateTime
+   :geo_shape       :type/Dictionary
+   :geo_point       :type/Array
+   :object          :type/Dictionary
+   :array           :type/Array
+   :object_array    :type/Array
+   :string_array    :type/Array
+   :integer_array   :type/Array
+   :float_array     :type/Array
+   :boolean_array   :type/Array
+   :byte_array      :type/Array
+   :timestamp_array :type/Array
+   :short_array     :type/Array
+   :long_array      :type/Array
+   :double_array    :type/Array
+   :ip_array        :type/Array
+   :geo_shape_array :type/Array
+   :geo_point_array :type/Array})
 
 
 (def ^:private ^:const now (hsql/call :current_timestamp 3))

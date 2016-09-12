@@ -9,7 +9,7 @@
   "Schema for the expected output of `analyze-table`."
   {(s/optional-key :row_count) (s/maybe s/Int)
    (s/optional-key :fields)    [{:id                               su/IntGreaterThanZero
-                                 (s/optional-key :special-type)    (apply s/enum field/special-types)
+                                 (s/optional-key :special-type)    su/FieldType
                                  (s/optional-key :preview-display) s/Bool
                                  (s/optional-key :values)          [s/Any]}]})
 
@@ -21,8 +21,8 @@
 (def DescribeTableField
   "Schema for a given Field as provided in `describe-table` or `analyze-table`."
   {:name                           su/NonBlankString
-   :base-type                      (apply s/enum field/base-types)
-   (s/optional-key :special-type)  (apply s/enum field/special-types)
+   :base-type                      su/FieldType
+   (s/optional-key :special-type)  su/FieldType
    (s/optional-key :pk?)           s/Bool
    (s/optional-key :nested-fields) #{(s/recursive #'DescribeTableField)}
    (s/optional-key :custom)        {s/Any s/Any}})

@@ -10,33 +10,33 @@
                    :schema nil
                    :fields #{{:name          "id"
                               :pk?           true
-                              :base-type     :IntegerField}
+                              :base-type     :type/Integer}
                              {:name          "ts"
-                              :base-type     :BigIntegerField
-                              :special-type  :timestamp_milliseconds}
+                              :base-type     :type/BigInteger
+                              :special-type  :type/UNIXTimestampMilliseconds}
                              {:name          "toucan"
-                              :base-type     :DictionaryField
+                              :base-type     :type/Dictionary
                               :nested-fields #{{:name          "name"
-                                                :base-type     :TextField}
+                                                :base-type     :type/Text}
                                                {:name          "details"
-                                                :base-type     :DictionaryField
+                                                :base-type     :type/Dictionary
                                                 :nested-fields #{{:name         "age"
-                                                                  :base-type    :IntegerField}
+                                                                  :base-type    :type/Integer}
                                                                  {:name         "weight"
-                                                                  :special-type :category
-                                                                  :base-type    :DecimalField}}}}}
+                                                                  :special-type :type/Category
+                                                                  :base-type    :type/Decimal}}}}}
                              {:name          "buyer"
-                              :base-type     :DictionaryField
+                              :base-type     :type/Dictionary
                               :nested-fields #{{:name      "name"
-                                                :base-type :TextField}
+                                                :base-type :type/Text}
                                                {:name      "cc"
-                                                :base-type :TextField}}}}}
+                                                :base-type :type/Text}}}}}
    "employees" {:name "employees"
                 :schema nil
                 :fields #{{:name      "id"
-                           :base-type :IntegerField}
+                           :base-type :type/Integer}
                           {:name      "name"
-                           :base-type :TextField}}}})
+                           :base-type :type/Text}}}})
 
 (defrecord ToucaneryDriver []
   clojure.lang.Named
@@ -117,65 +117,65 @@
            :fields       [(merge field-defaults
                                  {:name         "id"
                                   :display_name "ID"
-                                  :base_type    :IntegerField
-                                  :special_type :id})
+                                  :base_type    :type/Integer
+                                  :special_type :type/PK})
                           (merge field-defaults
                                  {:name         "name"
                                   :display_name "Name"
-                                  :base_type    :TextField
-                                  :special_type :name})]
+                                  :base_type    :type/Text
+                                  :special_type :type/Name})]
            :display_name "Employees"})
    (merge table-defaults
           {:name         "transactions"
            :fields       [(merge field-defaults
                                  {:name         "age"
                                   :display_name "Age"
-                                  :base_type    :IntegerField
+                                  :base_type    :type/Integer
                                   :parent_id    true})
                           (merge field-defaults
                                  {:name         "buyer"
                                   :display_name "Buyer"
-                                  :base_type    :DictionaryField})
+                                  :base_type    :type/Dictionary})
                           (merge field-defaults
                                  {:name         "cc"
                                   :display_name "Cc"
-                                  :base_type    :TextField
+                                  :base_type    :type/Text
                                   :parent_id    true})
                           (merge field-defaults
                                  {:name         "details"
                                   :display_name "Details"
-                                  :base_type    :DictionaryField
+                                  :base_type    :type/Dictionary
                                   :parent_id    true})
                           (merge field-defaults
                                  {:name         "id"
                                   :display_name "ID"
-                                  :base_type    :IntegerField
-                                  :special_type :id})
+                                  :base_type    :type/Integer
+                                  :special_type :type/PK})
                           (merge field-defaults
                                  {:name         "name"
                                   :display_name "Name"
-                                  :base_type    :TextField
+                                  :base_type    :type/Text
                                   :parent_id    true
-                                  :special_type :name})
+                                  :special_type :type/Name})
                           (merge field-defaults
                                  {:name         "name"
                                   :display_name "Name"
-                                  :base_type    :TextField
+                                  :base_type    :type/Text
                                   :parent_id    true
-                                  :special_type :name})
+                                  :special_type :type/Name})
                           (merge field-defaults
                                  {:name         "toucan"
                                   :display_name "Toucan"
-                                  :base_type    :DictionaryField})
+                                  :base_type    :type/Dictionary})
                           (merge field-defaults
                                  {:name         "ts"
                                   :display_name "Ts"
-                                  :base_type    :BigIntegerField
-                                  :special_type :timestamp_milliseconds})
+                                  :base_type    :type/BigInteger
+                                  :special_type :type/UNIXTimestampMilliseconds})
                           (merge field-defaults
                                  {:name         "weight"
                                   :display_name "Weight"
-                                  :base_type    :DecimalField
+                                  :base_type    :type/Decimal
                                   :parent_id    true
-                                  :special_type :category})]
+                                  :special_type :type/Category})]
            :display_name "Transactions"})])

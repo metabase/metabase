@@ -14,21 +14,21 @@
 ;; because SQLite types can have optional lengths, e.g. NVARCHAR(100) or NUMERIC(10,5)
 ;; See also http://www.sqlite.org/datatype3.html
 (def ^:private ^:const pattern->type
-  [[#"BIGINT"   :BigIntegerField]
-   [#"BIG INT"  :BigIntegerField]
-   [#"INT"      :IntegerField]
-   [#"CHAR"     :TextField]
-   [#"TEXT"     :TextField]
-   [#"CLOB"     :TextField]
-   [#"BLOB"     :UnknownField]
-   [#"REAL"     :FloatField]
-   [#"DOUB"     :FloatField]
-   [#"FLOA"     :FloatField]
-   [#"NUMERIC"  :FloatField]
-   [#"DECIMAL"  :DecimalField]
-   [#"BOOLEAN"  :BooleanField]
-   [#"DATETIME" :DateTimeField]
-   [#"DATE"     :DateField]])
+  [[#"BIGINT"   :type/BigInteger]
+   [#"BIG INT"  :type/BigInteger]
+   [#"INT"      :type/Integer]
+   [#"CHAR"     :type/Text]
+   [#"TEXT"     :type/Text]
+   [#"CLOB"     :type/Text]
+   [#"BLOB"     :type/*]
+   [#"REAL"     :type/Float]
+   [#"DOUB"     :type/Float]
+   [#"FLOA"     :type/Float]
+   [#"NUMERIC"  :type/Float]
+   [#"DECIMAL"  :type/Decimal]
+   [#"BOOLEAN"  :type/Boolean]
+   [#"DATETIME" :type/DateTime]
+   [#"DATE"     :type/Date]])
 
 ;; register the SQLite concatnation operator `||` with HoneySQL as `sqlite-concat`
 ;; (hsql/format (hsql/call :sqlite-concat :a :b)) -> "(a || b)"

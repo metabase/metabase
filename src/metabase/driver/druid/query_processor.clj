@@ -59,11 +59,14 @@
    "Is this `Field`/`DateTimeField` a `:dimension` or `:metric`?"))
 
 (extend-protocol IDimensionOrMetric
-  Field         (dimension-or-metric? [this] (case (:base-type this)
-                                               :TextField    :dimension
-                                               :FloatField   :metric
-                                               :IntegerField :metric))
-  DateTimeField (dimension-or-metric? [this] (dimension-or-metric? (:field this))))
+  Field         (dimension-or-metric? [{:keys [base-type]}]
+                  (cond
+                    (isa? base-type :type/Text)    :dimension
+                    (isa? base-type :type/Float)   :metric
+                    (isa? base-type :type/Integer) :metric))
+
+  DateTimeField (dimension-or-metric? [this]
+                  (dimension-or-metric? (:field this))))
 
 
 (def ^:private ^:const query-type->default-query

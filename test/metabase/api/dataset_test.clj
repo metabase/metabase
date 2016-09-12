@@ -53,7 +53,7 @@
   ;; the second result is checking our QueryExection log to ensure it captured the right details
   [{:data         {:rows    [[1000]]
                    :columns ["count"]
-                   :cols    [{:base_type "IntegerField", :special_type "number", :name "count", :display_name "count", :id nil, :table_id nil,
+                   :cols    [{:base_type "type/Integer", :special_type "type/Number", :name "count", :display_name "count", :id nil, :table_id nil,
                               :description nil, :target nil, :extra_info {}, :source "aggregation"}]
                    :native_form true}
     :row_count    1
@@ -151,7 +151,7 @@
              :archived               false}
     :result {:data         {:rows    [[1000]]
                             :columns ["count"]
-                            :cols    [{:base_type "IntegerField", :special_type "number", :name "count", :display_name "count", :id nil, :table_id nil,
+                            :cols    [{:base_type "type/Integer", :special_type "type/Number", :name "count", :display_name "count", :id nil, :table_id nil,
                                        :description nil, :target nil, :extra_info {}, :source "aggregation"}]
                             :native_form true}
              :row_count    1

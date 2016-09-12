@@ -69,8 +69,8 @@
   ;; string-encoded booleans + dates are treated as strings (!)
   {:name      field-name
    :base-type (if (= :metric druid-field-type)
-                :FloatField
-                :TextField)})
+                :type/Float
+                :type/Text)})
 
 (defn- describe-table [database table]
   (let [details                      (:details database)
@@ -80,7 +80,7 @@
      :fields (set (concat
                     ;; every Druid table is an event stream w/ a timestamp field
                     [{:name       "timestamp"
-                      :base-type  :DateTimeField
+                      :base-type  :type/DateTime
                       :pk?        true}]
                     (map (partial describe-table-field :dimension) dimensions)
                     (map (partial describe-table-field :metric) metrics)))}))
