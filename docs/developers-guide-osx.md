@@ -10,8 +10,7 @@ NOTE: These instructions are only for packaging a built Metabase uberjar into `M
 
 3.  Update Perl. I'm not sure these steps are actually needed, so feel free to try skipping it and come back to it if it fails:
   
-```
-   bash
+```bash
    # Upgrade Perl
    brew install perl
    
@@ -27,8 +26,7 @@ NOTE: These instructions are only for packaging a built Metabase uberjar into `M
 
 4.  Next, you'll need to run the following commands before building the app:
 
-```
-   bash
+```bash
    # Fetch and initialize git submodule
    git submodule update --init
    
@@ -59,8 +57,7 @@ Run `./bin/osx-setup` again at any time in the future to copy the latest version
 
 A handy Perl script called `./bin/osx-release` takes care of all of the details for you. Before you run it for the first time, you'll need to set up a few additional things:
 
-```
-bash
+```bash
 # Install aws command-line client (if needed)
 brew install awscli
 
@@ -81,8 +78,7 @@ cp /path/to/private/key.pem OSX/dsa_priv.pem
 You'll probably also want an Apple Developer ID Application Certificate in your computer's keychain. You'll need to generate a Certificate Signing Request from Keychain Access, and have Sameer go to [the Apple Developer Site](https://developer.apple.com/account/mac/certificate/) and generate one for you, then load the file on your computer. 
 
 After that, you are good to go:
-```
-bash
+```bash
 # Bundle entire app, and upload to s3
 ./bin/osx-release
 ```

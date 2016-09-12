@@ -54,8 +54,7 @@ Both components are built and assembled together into a single jar file which ru
 
 Metabase depends on lots of other 3rd party libraries to run, so as you are developing you'll need to keep those up to date.  These don't run automatically during development, so kick them off manually when needed.
 
-```
-sh
+```sh
 # clojure dependencies
 $ lein deps
 # javascript dependencies
@@ -86,15 +85,13 @@ Frontend tasks are managed by `npm`. All available tasks can be found in `packag
 
 To build the frontend client without watching for changes, you can use:
 
-```
-sh
+```sh
 $ npm run build
 ```
 
 If you're working on the frontend directly, you'll most likely want to reload changes on save, and in the case of React components, do so while maintaining state. To start a build with hot reloading, use:
 
-```
-sh
+```sh
 $ npm run build-hot
 ```
 
@@ -102,8 +99,7 @@ Note that at this time if you change CSS variables, those changes will only be p
 
 There is also an option to reload changes on save without hot reloading if you prefer that.
 
-```
-sh
+```sh
 $ npm run build-watch
 ```
 
@@ -111,8 +107,7 @@ $ npm run build-watch
 
 If you add/change/remove an npm package, you need to run
 
-```
-sh
+```sh
 $ npm run shrinkwrap
 ```
 
@@ -168,8 +163,7 @@ Emacs will ask you if the code is safe to load. You can answer `!` to save it as
 By default, Emacs will insert this code as a customization at the bottom of your `init.el`.
 You'll probably want to tell Emacs to store customizations in a different file. Add the following to your `init.el`:
 
-```
-emacs-lisp
+```emacs-lisp
 (setq custom-file (concat user-emacs-directory ".custom.el")) ; tell Customize to save customizations to ~/.emacs.d/.custom.el
 (ignore-errors                                                ; load customizations from ~/.emacs.d/.custom.el
   (load-file custom-file))
