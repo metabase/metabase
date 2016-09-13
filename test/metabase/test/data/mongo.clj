@@ -22,15 +22,14 @@
   (destroy-db! dbdef)
   (with-mongo-connection [mongo-db (database->connection-details dbdef)]
     (doseq [{:keys [field-definitions table-name rows]} table-definitions]
-      (let [field-names (->> field-definitions
-                             (map :field-name)
-                             (map keyword))]
+      (let [field-names (for [field-definition field-definitions]
+                          (keyword (:field-name field-definition)))]
         ;; Use map-indexed so we can get an ID for each row (index + 1)
         (doseq [[i row] (map-indexed (partial vector) rows)]
           (let [row (for [v row]
                       ;; Conver all the java.sql.Timestamps to java.util.Date, because the Mongo driver insists on being obnoxious and going from
                       ;; using Timestamps in 2.x to Dates in 3.x
-                      (if (isa? (type v) java.sql.Timestamp)
+                      (if (instance? java.sql.Timestamp v)
                         (java.util.Date. (.getTime ^java.sql.Timestamp v))
                         v))]
             (try

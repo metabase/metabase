@@ -308,6 +308,7 @@
              [java.util.UUID                 :type/Text]       ; shouldn't this be :type/UUID ?
              [clojure.lang.IPersistentMap    :type/Dictionary]
              [clojure.lang.IPersistentVector :type/Array]
+             [org.bson.types.ObjectId        :type/MongoBSONID]
              [org.postgresql.util.PGobject   :type/*]])
       (log/warn (format "Don't know how to map class '%s' to a Field base_type, falling back to :type/*." klass))
       :type/*))
