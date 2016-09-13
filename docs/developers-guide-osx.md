@@ -10,19 +10,19 @@ NOTE: These instructions are only for packaging a built Metabase uberjar into `M
 
 3.  Update Perl. I'm not sure these steps are actually needed, so feel free to try skipping it and come back to it if it fails:
   
-```bash
-   # Upgrade Perl
-   brew install perl
-   
-   # Add new version of perl to your $PATH
-   # (replace "5.24.0_1" below with whatever version you installed)
-   echo 'export PATH="/usr/local/Cellar/perl/5.24.0_1/bin:$PATH"' >> ~/.bash_profile
-   source ~/.bash_profile
-   
-   # Double-check that we're using the newer version of CPAN
-   # (If this is your first time running CPAN, use the default config settings when prompted)
-   cpan --version # You should see a line like "running under Perl version 5.24.0."
-```
+    ```bash
+      # Upgrade Perl
+      brew install perl
+      
+      # Add new version of perl to your $PATH
+      # (replace "5.24.0_1" below with whatever version you installed)
+      echo 'export PATH="/usr/local/Cellar/perl/5.24.0_1/bin:$PATH"' >> ~/.bash_profile
+      source ~/.bash_profile
+      
+      # Double-check that we're using the newer version of CPAN
+      # (If this is your first time running CPAN, use the default config settings when prompted)
+      cpan --version # You should see a line like "running under Perl version 5.24.0."
+    ```
 
 4.  Next, you'll need to run the following commands before building the app:
 
