@@ -20,6 +20,13 @@ import ChartSettingToggle from "metabase/visualizations/components/settings/Char
 import ChartSettingFieldsPicker from "metabase/visualizations/components/settings/ChartSettingFieldsPicker.jsx";
 import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker.jsx";
 import ChartSettingOrderedFields from "metabase/visualizations/components/settings/ChartSettingOrderedFields.jsx";
+import ChartSettingCodeEditor from "metabase/visualizations/components/settings/ChartSettingCodeEditor.jsx";
+
+import DEFAULT_VEGA_LITE from "metabase/visualizations/lib/custom/default-vega-lite-spec";
+import DEFAULT_VEGA from "metabase/visualizations/lib/custom/default-vega-spec";
+import DEFAULT_D3 from "metabase/visualizations/lib/custom/default-d3";
+import DEFAULT_DC from "metabase/visualizations/lib/custom/default-dc";
+import DEFAULT_REACT from "metabase/visualizations/lib/custom/default-react";
 
 function columnsAreValid(colNames, data, filter = () => true) {
     if (typeof colNames === "string") {
@@ -474,7 +481,65 @@ const SETTINGS = {
     },
     "map.center_longitude": {
         default: -122.4376
-    }
+    },
+    "custom.type": {
+        widget: ChartSettingSelect,
+        props: {
+            options: [
+                { name: "Vega", value: "vega" },
+                { name: "Vega-Lite", value: "vegalite" },
+                { name: "D3", value: "d3" },
+                { name: "dc.js", value: "dc" },
+                { name: "React", value: "react" },
+                { name: "External", value: "external" },
+            ]
+        },
+    },
+    "custom.external.url": {
+        widget: ChartSettingInput,
+        default: window.location.origin + "/app/external.html#react",
+        getHidden: (series, vizSettings) => vizSettings["custom.type"] !== "external"
+    },
+    "custom.vega.definition": {
+        widget: ChartSettingCodeEditor,
+        default: JSON.stringify(DEFAULT_VEGA, null, 2),
+        props: {
+            mode: "ace/mode/json"
+        },
+        getHidden: (series, vizSettings) => vizSettings["custom.type"] !== "vega"
+    },
+    "custom.vegalite.definition": {
+        widget: ChartSettingCodeEditor,
+        default: JSON.stringify(DEFAULT_VEGA_LITE, null, 2),
+        props: {
+            mode: "ace/mode/json"
+        },
+        getHidden: (series, vizSettings) => vizSettings["custom.type"] !== "vegalite"
+    },
+    "custom.d3.definition": {
+        widget: ChartSettingCodeEditor,
+        default: DEFAULT_D3,
+        props: {
+            mode: "ace/mode/javascript"
+        },
+        getHidden: (series, vizSettings) => vizSettings["custom.type"] !== "d3"
+    },
+    "custom.dc.definition": {
+        widget: ChartSettingCodeEditor,
+        default: DEFAULT_DC,
+        props: {
+            mode: "ace/mode/javascript"
+        },
+        getHidden: (series, vizSettings) => vizSettings["custom.type"] !== "dc"
+    },
+    "custom.react.definition": {
+        widget: ChartSettingCodeEditor,
+        default: DEFAULT_REACT,
+        props: {
+            mode: "ace/mode/javascript"
+        },
+        getHidden: (series, vizSettings) => vizSettings["custom.type"] !== "react"
+    },
 };
 
 const SETTINGS_PREFIXES_BY_CHART_TYPE = {
@@ -484,7 +549,8 @@ const SETTINGS_PREFIXES_BY_CHART_TYPE = {
     pie: ["pie."],
     scalar: ["scalar."],
     table: ["table."],
-    map: ["map."]
+    map: ["map."],
+    custom: ["custom."]
 }
 
 // alias legacy map types

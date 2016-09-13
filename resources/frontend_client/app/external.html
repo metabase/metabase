@@ -1,0 +1,127 @@
+<script>
+  function safeClone(object) {
+    return JSON.parse(JSON.stringify(object, function(key, value) {
+      if (Array.isArray(value) || (value && value.constructor === Object) ||
+        value == null || typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+        return value;
+      }
+    }));
+  }
+
+  function forceUpdate() {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ forceUpdate: true }, "*");
+    } else if (window.opener && window.opener !== window) {
+      window.opener.postMessage({ forceUpdate: true }, "*");
+    }
+  }
+
+  function init() {
+    window.addEventListener("message", function(event) {
+      var props = event && event.data && event.data.props;
+      if (props) {
+        Object.keys(props).filter(k => props[k] && props[k].__fn).map(name => {
+          props[name] = function() {
+            event.source.postMessage({
+              callback: {
+                name: name,
+                args: safeClone(Array.prototype.slice.call(arguments))
+              }
+            }, "*");
+          };
+        });
+
+        var propsEvent = new Event("props");
+        propsEvent.props = props;
+        window.dispatchEvent(propsEvent);
+      }
+    });
+
+    window.addEventListener("props", function(e) {
+      if (typeof window.onprops === "function") {
+        window.onprops(e);
+      }
+    }, false);
+
+    forceUpdate();
+  }
+
+</script>
+
+<div id="container" />
+
+<!-- react, moment, d3 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/0.14.7/react.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/0.14.7/react-dom.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.16/d3.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.12.0/moment.js" charset="utf-8"></script>
+<!-- calendar-heatmap -->
+<link rel="stylesheet" href="https://cdn.rawgit.com/DKirwan/calendar-heatmap/master/src/calendar-heatmap.css" media="screen" title="no title" charset="utf-8">
+<script src="https://cdn.rawgit.com/DKirwan/calendar-heatmap/master/src/calendar-heatmap.js" type="text/javascript" charset="utf-8"></script>
+<!-- EventDrops -->
+<script src="https://cdn.rawgit.com/marmelab/EventDrops/master/dist/eventDrops.js"></script>
+<link rel="stylesheet" href="https://cdn.rawgit.com/marmelab/EventDrops/master/style.css" media="screen" title="no title" charset="utf-8">
+
+<script type="text/javascript">
+
+window.addEventListener("props", function(e) {
+    var props = e.props;
+    console.log("PROPS", props);
+
+    if (window.location.hash === "#react") {
+        var Hello = React.createClass({
+            displayName: 'Hello',
+            render: function() {
+                return React.createElement(
+                    "pre",
+                    {},
+                    JSON.stringify(props.series[0].data.cols, null, 2)
+                );
+            }
+        });
+
+        ReactDOM.render(
+            React.createElement(Hello, props),
+            document.getElementById('container')
+        );
+    } else if (window.location.hash === "#calendar") {
+        calendarHeatmap()
+            .data(props.series[0].data.rows.map(function(row) {
+                return {
+                    date: moment.parseZone(row[0]),
+                    count: row[1]
+                }
+            }))
+        .selector('#container')();
+    } else if (window.location.hash === "#eventdrops") {
+        var data = props.series.map(function(s) {
+            return {
+                name: s.card.name || "New Card",
+                dates: [].concat.apply([], s.data.rows.map(function(row) {
+                    let dates = [];
+                    for (var i = 0; i < row[1]; i++) {
+                        dates.push(new Date(row[0]).getTime())
+                    }
+                    return dates;
+                }))
+            };
+        })
+
+        let extents = d3.extent.apply(d3, props.series.map(function(s) {
+            return d3.extent(s.data.rows, function(row) {
+                return new Date(row[0]);
+            });
+        }))
+        var eventDropsChart = d3.chart.eventDrops()
+            .start(extents[0])
+            .end(extents[1]);
+        d3.select('#container')
+            .datum(data)
+            .call(eventDropsChart);
+    }
+});
+</script>
+
+<script type="text/javascript">
+  init();
+</script>
