@@ -7,9 +7,13 @@
                              [field :refer [Field]]
                              [table :refer [Table] :as table])
             [metabase.query-processor :as qp]
+            [metabase.query-processor.expand :as ql]
+            [metabase.query-processor-test :refer [rows]]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets])
-  (:import metabase.driver.mongo.MongoDriver))
+            [metabase.test.data.datasets :as datasets]
+            [metabase.test.data.interface :as i])
+  (:import org.bson.types.ObjectId
+           metabase.driver.mongo.MongoDriver))
 
 ;; ## Logic for selectively running mongo
 
@@ -166,3 +170,19 @@
                     :table_id (:id (table-name->table nm))
                     {:order-by [:name]})]
         (into {} field))))
+
+
+;;; Check that we support Mongo BSON ID and can filter by it (#1367)
+
+(i/def-database-definition ^:private with-bson-ids
+  ["birds"
+   [{:field-name "name", :base-type :type/Text}
+    {:field-name "bird_id", :base-type :type/MongoBSONID}]
+   [["Rasta Toucan" (ObjectId. "012345678901234567890123")]
+    ["Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef")]]])
+
+(datasets/expect-with-engine :mongo
+  [[2 "Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef")]]
+  (rows (data/dataset metabase.driver.mongo-test/with-bson-ids
+          (data/run-query birds
+            (ql/filter (ql/= $bird_id "abcdefabcdefabcdefabcdef"))))))

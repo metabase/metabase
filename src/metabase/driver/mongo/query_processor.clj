@@ -160,10 +160,9 @@
     (str \$ (->lvalue this)))
 
   Value
-  (->rvalue [{value :value, {:keys [field-name base-type]} :field}]
-    (if (and (= field-name "_id")
-             (= base-type  :type/*)) ; partial workaround for BSON ID Fields -- TODO fix this propertly (#1367)
-      `(ObjectId. ~value)
+  (->rvalue [{value :value, {:keys [base-type]} :field}]
+    (if (isa? base-type :type/MongoBSONID)
+      (ObjectId. value)
       value))
 
   DateTimeValue
