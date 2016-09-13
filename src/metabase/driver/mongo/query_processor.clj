@@ -148,6 +148,7 @@
                                        3]})
           :year            {$year field})))))
 
+
 (extend-protocol IRValue
   nil (->rvalue [_] nil)
 
@@ -162,7 +163,7 @@
   Value
   (->rvalue [{value :value, {:keys [base-type]} :field}]
     (if (isa? base-type :type/MongoBSONID)
-      (ObjectId. value)
+      (ObjectId. (str value))
       value))
 
   DateTimeValue
