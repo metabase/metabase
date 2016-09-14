@@ -474,6 +474,34 @@ const SETTINGS = {
     },
     "map.center_longitude": {
         default: -122.4376
+    },
+    "funnel.step": {
+        section: "Data",
+        title: "Step",
+        widget: ChartSettingSelect,
+        isValid: ([{ card, data }], vizSettings) =>
+            columnsAreValid(card.visualization_settings["funnel.step"], data, isDimension),
+        getDefault: (series, vizSettings) =>
+            getDefaultDimensionAndMetric(series).dimension,
+        getProps: ([{ card, data: { cols }}]) => ({
+            options: cols.filter(isDimension).map(getOptionFromColumn)
+        }),
+    },
+    "funnel.metrics": {
+        section: "Data",
+        title: "Metrics",
+        widget: ChartSettingFieldsPicker,
+        isValid: ([{ card, data }], vizSettings) =>
+            columnsAreValid(card.visualization_settings["funnel.metrics"], data, isMetric),
+        getDefault: (series, vizSettings) =>
+            getDefaultDimensionsAndMetrics(series).metrics,
+        getProps: ([{ card, data }], vizSettings) => {
+            const options = data.cols.filter(isMetric).map(getOptionFromColumn);
+            return {
+                options,
+                addAnother: options.length > 1 ? "Add another series..." : null
+            };
+        }
     }
 };
 
@@ -482,6 +510,7 @@ const SETTINGS_PREFIXES_BY_CHART_TYPE = {
     area: ["graph.", "line.", "stackable."],
     bar: ["graph.", "stackable."],
     pie: ["pie."],
+    funnel: ["funnel."],
     scalar: ["scalar."],
     table: ["table."],
     map: ["map."]

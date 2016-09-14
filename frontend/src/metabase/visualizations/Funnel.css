@@ -1,0 +1,24 @@
+:local .Funnel {
+
+}
+
+:local .StepLabel {
+    font-weight: bold;
+    font-style: italic;
+}
+
+:local .SeriesLabel {
+    font-weight: bold;
+}
+
+:local .SeriesCounter {
+    font-style: italic;
+}
+
+:local .StepLabel {
+    font-weight: bold;
+}
+
+:local .StepCounter {
+    font-style: italic;
+}
