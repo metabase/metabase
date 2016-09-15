@@ -27,7 +27,7 @@ const ChartSettingsTabs = ({ tabs, selectTab, activeTab}) =>
 const Widget = ({ title, hidden, disabled, widget, value, onChange, props }) => {
     const W = widget;
     return (
-        <div className={cx("mb3", { hide: hidden, disable: disabled })}>
+        <div className={cx("mb2", { hide: hidden, disable: disabled })}>
             { title && <h4 className="mb1">{title}</h4> }
             { W && <W value={value} onChange={onChange} {...props}/> }
         </div>

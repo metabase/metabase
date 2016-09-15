@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 import { connect } from "react-redux";
 import cx from "classnames";
 import _ from "underscore";
@@ -150,6 +151,13 @@ export default class QueryBuilder extends Component {
         }
     }
 
+    componentDidUpdate() {
+        let viz = ReactDOM.findDOMNode(this.refs.viz);
+        if (viz) {
+            viz.style.opacity = 1.0;
+        }
+    }
+
     componentWillUnmount() {
         window.removeEventListener('resize', this.handleResize);
     }
@@ -158,6 +166,10 @@ export default class QueryBuilder extends Component {
     // Debounce the function to improve resizing performance.
     handleResize(e) {
         this.forceUpdateDebounced();
+        let viz = ReactDOM.findDOMNode(this.refs.viz);
+        if (viz) {
+            viz.style.opacity = 0.2;
+        }
     }
 
     render() {
@@ -196,7 +208,7 @@ export default class QueryBuilder extends Component {
                         }
                     </div>
 
-                    <div id="react_qb_viz" className="flex z1">
+                    <div ref="viz" id="react_qb_viz" className="flex z1" style={{ "transition": "opacity 0.25s ease-in-out" }}>
                         <QueryVisualization {...this.props}/>
                     </div>
                 </div>
