@@ -231,11 +231,19 @@ const SETTINGS = {
             (card.display === "area" && vizSettings["graph.metrics"].length > 1)
         )
     },
-    "graph.goal": {
+    "graph.show_goal": {
         section: "Display",
-        title: "Goal",
+        title: "Show goal",
+        widget: ChartSettingToggle,
+        default: false
+    },
+    "graph.goal_value": {
+        section: "Display",
+        title: "Goal value",
         widget: ChartSettingInputNumeric,
-        default: null
+        default: 0,
+        getHidden: (series, vizSettings) => vizSettings["graph.show_goal"] !== true,
+        readDependencies: ["graph.show_goal"]
     },
     "line.missing": {
         section: "Display",
