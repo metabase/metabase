@@ -56,6 +56,16 @@ const SECTIONS = [
         ]
     },
     {
+        name: "Updates",
+        settings: [
+            {
+                key: "check-for-updates",
+                display_name: "Check for updates",
+                type: "boolean"
+            }
+        ]
+    },
+    {
         name: "Email",
         settings: [
             {
@@ -126,16 +136,6 @@ const SECTIONS = [
                 required: true,
                 autoFocus: false
             },
-        ]
-    },
-    {
-        name: "Updates",
-        settings: [
-            {
-                key: "check-for-updates",
-                display_name: "Check for updates",
-                type: "boolean"
-            }
         ]
     },
     {

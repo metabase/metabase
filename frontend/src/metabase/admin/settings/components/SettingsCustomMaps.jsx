@@ -202,7 +202,7 @@ const GeoJsonPropertySelect = ({ value, onChange, geoJson }) => {
                 <Option key={name} value={name}>
                     <div>
                         <div>{name}</div>
-                        <div className="" style={{ maxWidth: 250, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        <div className="mt1 h6" style={{ maxWidth: 250, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                             {values.join(", ")}
                         </div>
                     </div>
