@@ -49,6 +49,10 @@ export default class CardRenderer extends Component {
     }
 
     renderChart() {
+        if (this.props.width == null || this.props.height == null) {
+            return;
+        }
+
         let parent = ReactDOM.findDOMNode(this);
 
         // deregister previous chart:

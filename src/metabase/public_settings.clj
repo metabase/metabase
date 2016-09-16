@@ -82,4 +82,5 @@
    :has_sample_dataset    (db/exists? 'Database, :is_sample true)
    :google_auth_client_id (setting/get :google-auth-client-id)
    :google_maps_api_key   (google-maps-api-key)
+   :custom_geojson        (setting/get :custom-geojson)
    :types                 (types/types->parents)})

@@ -1,6 +1,8 @@
 import _  from "underscore";
 import crossfilter from "crossfilter";
 
+import MetabaseSettings from "metabase/lib/settings";
+
 import {
     getChartTypeFromData,
     DIMENSION_DIMENSION_METRIC,
@@ -578,12 +580,9 @@ const SETTINGS = {
                     return "us_states";
             }
         },
-        props: {
-            options: [
-                { name: "United States", value: "us_states" },
-                { name: "World", value: "world_countries" },
-            ]
-        },
+        getProps: () => ({
+            options: Object.entries(MetabaseSettings.get("custom_geojson", {})).map(([key, value]) => ({ name: value.name, value: key }))
+        }),
         getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region"
     },
     "map.metric": {
