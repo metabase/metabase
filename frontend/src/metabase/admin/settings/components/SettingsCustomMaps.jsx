@@ -147,7 +147,7 @@ export default class SettingsCustomMaps extends Component {
 
 const ListMaps = ({ maps, onEditMap, onAddMap, onDeleteMap }) =>
     <div>
-        <section className="PageHeader px2 clearfix">
+        <section className="p2 clearfix">
             <div className="inline-block">
                 <h2 className="PageTitle mb1">Custom Maps</h2>
                 <span>Add your own GeoJSON files</span>
@@ -212,11 +212,17 @@ const GeoJsonPropertySelect = ({ value, onChange, geoJson }) => {
     )
 }
 
+const SettingContainer = ({ name, description, className="py1", children }) =>
+    <div className={className}>
+        { name && <div className="text-grey-4 text-bold text-uppercase my1">{name}</div>}
+        { description && <div className="text-grey-4 my1">{description}</div>}
+        {children}
+    </div>
+
 const EditMap = ({ map, onMapChange, originalMap, geoJson, geoJsonLoading, geoJsonError, onLoadGeoJson, onCancel, onSave }) =>
-    <div>
+    <div className="mx2">
         <h2>{ !originalMap ? "Add a new map" : "Edit map" }</h2>
-        <div className="m2 mb4">
-            <div className="text-grey-4 text-bold text-uppercase pb1">Map Name</div>
+        <SettingContainer description="What do you want to call this map?">
             <div className="flex">
                 <input
                     type="text"
@@ -226,9 +232,8 @@ const EditMap = ({ map, onMapChange, originalMap, geoJson, geoJsonLoading, geoJs
                     onChange={(e) => onMapChange({ ...map, "name": e.target.value })}
                 />
             </div>
-        </div>
-        <div className="m2 mb4">
-            <div className="text-grey-4 text-bold text-uppercase pb1">GeoJSON URL</div>
+        </SettingContainer>
+        <SettingContainer description="URL for the GeoJSON file you want to use">
             <div className="flex">
                 <input
                     type="text"
@@ -239,32 +244,30 @@ const EditMap = ({ map, onMapChange, originalMap, geoJson, geoJsonLoading, geoJs
                 />
                 <button className={cx("Button ml1", { "Button--primary" : !geoJson })} onClick={onLoadGeoJson}>{geoJson ? "Refresh" : "Load"}</button>
             </div>
-        </div>
+        </SettingContainer>
         { (geoJson || geoJsonLoading || geoJsonError) &&
             <LoadingAndErrorWrapper loading={geoJsonLoading} error={geoJsonError}>
             { () =>
                 <div>
-                    <div className="m2 mb4">
-                        <div className="text-grey-4 text-bold text-uppercase pb1">Name Property</div>
+                    <SettingContainer description="Which property specifies the region’s identifier?">
                         <GeoJsonPropertySelect
                             value={map.region_name}
                             onChange={(value) => onMapChange({ ...map, "region_name": value })}
                             geoJson={geoJson}
                         />
-                    </div>
-                    <div className="m2 mb4">
-                        <div className="text-grey-4 text-bold text-uppercase pb1">Region Property</div>
+                    </SettingContainer>
+                    <SettingContainer description="Which property specifies the region’s display name?">
                         <GeoJsonPropertySelect
                             value={map.region_key}
                             onChange={(value) => onMapChange({ ...map, "region_key": value })}
                             geoJson={geoJson}
                         />
-                    </div>
+                    </SettingContainer>
                 </div>
             }
             </LoadingAndErrorWrapper>
         }
-        <div className="m2 mb4">
+        <div className="py1">
             <button className={cx("Button Button--borderless")} onClick={onCancel}>Cancel</button>
             <button className={cx("Button Button--primary ml1", { "disabled" : !map.name || !map.url || !map.region_name || !map.region_key })} onClick={onSave}>
                 {originalMap ? "Save map" : "Add map"}
