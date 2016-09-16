@@ -75,7 +75,7 @@
   "Return the ID of the primary key `Field` for TABLE."
   {:hydrate :pk_field, :arglists '([table])}
   [{:keys [id]}]
-  (db/select-one-id Field, :table_id id, :special_type "id", :visibility_type [:not-in ["sensitive" "retired"]]))
+  (db/select-one-id Field, :table_id id, :special_type (db/isa :type/PK), :visibility_type [:not-in ["sensitive" "retired"]]))
 
 
 (defn- with-objects [hydration-key fetch-objects-fn tables]

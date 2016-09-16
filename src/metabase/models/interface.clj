@@ -106,7 +106,7 @@
     "Return a map of keyword field names to their types for fields that should be serialized/deserialized in a special way. Valid types are `:json`, `:keyword`, or `:clob`.
 
      *  `:json` serializes objects as JSON strings before going into the DB, and parses JSON strings when coming out
-     *  `:keyword` calls `name` before going into the DB, and `keyword` when coming out
+     *  `:keyword` calls `u/keyword->qualified-name` before going into the DB, and `keyword` when coming out
      *  `:clob` converts clobs to Strings (via `metabase.util/jdbc-clob->str`) when coming out
 
        (types [_] {:cards :json}) ; encode `:cards` as JSON when stored in the DB"))
@@ -123,7 +123,7 @@
                       (if (string? s)
                         (json/parse-string s keyword)
                         obj)))}
-   :keyword {:in  name
+   :keyword {:in  u/keyword->qualified-name
              :out keyword}
    :clob    {:in  identity
              :out u/jdbc-clob->str}})

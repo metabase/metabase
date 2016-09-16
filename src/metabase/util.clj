@@ -662,3 +662,11 @@
   [f coll]
   (into {} (for [item coll]
              {(f item) item})))
+
+(defn keyword->qualified-name
+  "Return keyword K as a string, including its namespace, if any (unlike `name`).
+
+     (keyword->qualified-name :type/FK) ->  \"type/FK\""
+  [k]
+  (when k
+    (s/replace (str k) #"^:" "")))

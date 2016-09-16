@@ -179,7 +179,7 @@ export default class SettingsEditorApp extends Component {
                 <SettingsHeader ref="header" />
                 <div className="MetadataEditor-main flex flex-row flex-full mt2">
                     {this.renderSettingsSections()}
-                    <div className="px2">
+                    <div className="px2 flex-full">
                         {this.renderSettingsPane()}
                     </div>
                 </div>

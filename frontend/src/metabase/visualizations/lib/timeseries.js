@@ -1,4 +1,3 @@
-import d3 from "d3";
 import moment from "moment";
 
 import { isDate } from "metabase/lib/schema_metadata";
@@ -10,15 +9,15 @@ const TIMESERIES_UNITS = new Set([
     "day",
     "week",
     "month",
-    "quarter"
-    // "year" // https://github.com/metabase/metabase/issues/1992
+    "quarter",
+    "year" // https://github.com/metabase/metabase/issues/1992
 ]);
 
 // investigate the response from a dataset query and determine if the dimension is a timeseries
-export function dimensionIsTimeseries({ cols, rows }) {
+export function dimensionIsTimeseries({ cols, rows }, i = 0) {
     return (
-        (isDate(cols[0]) && (cols[0].unit == null || TIMESERIES_UNITS.has(cols[0].unit))) ||
-        moment(rows[0] && rows[0][0], moment.ISO_8601).isValid()
+        (isDate(cols[i]) && (cols[i].unit == null || TIMESERIES_UNITS.has(cols[i].unit))) ||
+        moment(rows[0] && rows[0][i], moment.ISO_8601).isValid()
     );
 }
 
@@ -96,12 +95,11 @@ export function computeTimeseriesDataInverval(xValues, unit) {
     return TIMESERIES_INTERVALS[computeTimeseriesDataInvervalIndex(xValues, unit)];
 }
 
-export function computeTimeseriesTicksInterval(xValues, unit, chartWidth, minPixels) {
+export function computeTimeseriesTicksInterval(xDomain, xInterval, chartWidth, minPixels) {
     // If the interval that matches the data granularity results in too many ticks reduce the granularity until it doesn't.
     // TODO: compute this directly instead of iteratively
     let maxTickCount = Math.round(chartWidth / minPixels);
-    let xDomain = d3.extent(xValues);
-    let index = computeTimeseriesDataInvervalIndex(xValues, unit);
+    let index = TIMESERIES_INTERVALS.indexOf(xInterval);
     while (index < TIMESERIES_INTERVALS.length - 1) {
         let interval = TIMESERIES_INTERVALS[index];
         let intervalMs = moment(0).add(interval.count, interval.interval).valueOf();

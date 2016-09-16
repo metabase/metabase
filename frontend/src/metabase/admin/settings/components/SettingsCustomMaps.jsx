@@ -17,7 +17,9 @@ export default class SettingsCustomMaps extends Component {
         this.state = {
             map: null,
             originalMap: null,
-            geoJson: null
+            geoJson: null,
+            geoJsonLoading: false,
+            geoJsonError: null,
         };
     }
 
@@ -69,14 +71,26 @@ export default class SettingsCustomMaps extends Component {
     _loadGeoJson = async () => {
         try {
             const { map } = this.state;
-            this.setState({ geoJson: null });
+            this.setState({
+                geoJson: null,
+                geoJsonLoading: true,
+                geoJsonError: null,
+            });
             await this._saveMap(map.id, map);
             let geoJsonResponse = await fetch("/api/geojson/" + map.id, {
                 credentials: "same-origin"
             });
-            this.setState({ geoJson: await geoJsonResponse.json() });
+            this.setState({
+                geoJson: await geoJsonResponse.json(),
+                geoJsonLoading: false,
+                geoJsonError: null,
+            });
         } catch (e) {
-            this.setState({ geoJsonError: e });
+            this.setState({
+                geoJson: null,
+                geoJsonLoading: false,
+                geoJsonError: e,
+            });
             console.warn("map fetch failed", e)
         }
     }
@@ -91,6 +105,8 @@ export default class SettingsCustomMaps extends Component {
                     originalMap={this.state.originalMap}
                     onMapChange={(map) => this.setState({ map })}
                     geoJson={this.state.geoJson}
+                    geoJsonLoading={this.state.geoJsonLoading}
+                    geoJsonError={this.state.geoJsonError}
                     onLoadGeoJson={this._loadGeoJson}
                     onCancel={this._cancel}
                     onSave={this._save}
@@ -106,7 +122,9 @@ export default class SettingsCustomMaps extends Component {
                         ...map
                     },
                     originalMap: map,
-                    geoJson: null
+                    geoJson: null,
+                    geoJsonLoading: false,
+                    geoJsonError: null,
                 }, this._loadGeoJson)}
                 onAddMap={() => this.setState({
                     map: {
@@ -117,7 +135,9 @@ export default class SettingsCustomMaps extends Component {
                         region_name: null
                     },
                     originalMap: null,
-                    geoJson: null
+                    geoJson: null,
+                    geoJsonLoading: false,
+                    geoJsonError: null,
                 })}
                 onDeleteMap={this._delete}
             />
@@ -171,7 +191,6 @@ const GeoJsonPropertySelect = ({ value, onChange, geoJson }) => {
             options[property].push(feature.properties[property]);
         }
     }
-    console.log(options)
 
     return (
         <Select
@@ -193,7 +212,7 @@ const GeoJsonPropertySelect = ({ value, onChange, geoJson }) => {
     )
 }
 
-const EditMap = ({ map, onMapChange, originalMap, geoJson, geoJsonError, onLoadGeoJson, onCancel, onSave }) =>
+const EditMap = ({ map, onMapChange, originalMap, geoJson, geoJsonLoading, geoJsonError, onLoadGeoJson, onCancel, onSave }) =>
     <div>
         <h2>{ !originalMap ? "Add a new map" : "Edit map" }</h2>
         <div className="m2 mb4">
@@ -221,8 +240,8 @@ const EditMap = ({ map, onMapChange, originalMap, geoJson, geoJsonError, onLoadG
                 <button className={cx("Button ml1", { "Button--primary" : !geoJson })} onClick={onLoadGeoJson}>{geoJson ? "Refresh" : "Load"}</button>
             </div>
         </div>
-        { geoJson !== undefined &&
-            <LoadingAndErrorWrapper loading={geoJson === null} error={geoJsonError}>
+        { (geoJson || geoJsonLoading || geoJsonError) &&
+            <LoadingAndErrorWrapper loading={geoJsonLoading} error={geoJsonError}>
             { () =>
                 <div>
                     <div className="m2 mb4">

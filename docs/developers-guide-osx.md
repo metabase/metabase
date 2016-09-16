@@ -10,43 +10,43 @@ NOTE: These instructions are only for packaging a built Metabase uberjar into `M
 
 3.  Update Perl. I'm not sure these steps are actually needed, so feel free to try skipping it and come back to it if it fails:
   
-   ```bash
-   # Upgrade Perl
-   brew install perl
-   
-   # Add new version of perl to your $PATH
-   # (replace "5.24.0_1" below with whatever version you installed)
-   echo 'export PATH="/usr/local/Cellar/perl/5.24.0_1/bin:$PATH"' >> ~/.bash_profile
-   source ~/.bash_profile
-   
-   # Double-check that we're using the newer version of CPAN
-   # (If this is your first time running CPAN, use the default config settings when prompted)
-   cpan --version # You should see a line like "running under Perl version 5.24.0."
-   ```
+    ```bash
+      # Upgrade Perl
+      brew install perl
+      
+      # Add new version of perl to your $PATH
+      # (replace "5.24.0_1" below with whatever version you installed)
+      echo 'export PATH="/usr/local/Cellar/perl/5.24.0_1/bin:$PATH"' >> ~/.bash_profile
+      source ~/.bash_profile
+      
+      # Double-check that we're using the newer version of CPAN
+      # (If this is your first time running CPAN, use the default config settings when prompted)
+      cpan --version # You should see a line like "running under Perl version 5.24.0."
+    ```
 
 4.  Next, you'll need to run the following commands before building the app:
 
     ```bash
-   # Fetch and initialize git submodule
-   git submodule update --init
-   
-   # Install libcurl (needed by WWW::Curl::Simple (I think))
-   brew install curl && brew link curl --force
-   
-   # The new version of LLVM is snippy so have CPAN pass compiler flags to fix errors
-   # (Make sure this file exists first. If you didn't upgrade Perl in the step above, 
-   # it might be in a different location; perhaps called "Config.pm". 
-   # You may need to run "cpan" (no arguments) to generate an appropriate initial config. 
-   # As above, you can go with the defaults).
-   sed -i '' -e "s/'make_arg' => q\[\]/'make_arg' => q\[CCFLAGS=\"-Wno-return-type\"\]/" ~/.cpan/CPAN/MyConfig.pm
+      # Fetch and initialize git submodule
+      git submodule update --init
+      
+      # Install libcurl (needed by WWW::Curl::Simple (I think))
+      brew install curl && brew link curl --force
+      
+      # The new version of LLVM is snippy so have CPAN pass compiler flags to fix errors
+      # (Make sure this file exists first. If you didn't upgrade Perl in the step above, 
+      # it might be in a different location; perhaps called "Config.pm". 
+      # You may need to run "cpan" (no arguments) to generate an appropriate initial config. 
+      # As above, you can go with the defaults).
+      sed -i '' -e "s/'make_arg' => q\[\]/'make_arg' => q\[CCFLAGS=\"-Wno-return-type\"\]/" ~/.cpan/CPAN/MyConfig.pm
 
-   # Install Perl modules used by ./bin/osx-setup and ./bin/osx-release
-   # You may have to run this as sudo if you didn't upgrade perl as described in step above
-   cpan install File::Copy::Recursive JSON Readonly String::Util Text::Caml WWW::Curl::Simple
-   
-   # Copy JRE and uberjar
-   ./bin/osx-setup
-   ```
+      # Install Perl modules used by ./bin/osx-setup and ./bin/osx-release
+      # You may have to run this as sudo if you didn't upgrade perl as described in step above
+      cpan install File::Copy::Recursive JSON Readonly String::Util Text::Caml WWW::Curl::Simple
+      
+      # Copy JRE and uberjar
+      ./bin/osx-setup
+    ```
 
 `./bin/osx-setup` will build run commands to build the uberjar for you if needed.
 Run `./bin/osx-setup` again at any time in the future to copy the latest version of the uberjar into the project.
