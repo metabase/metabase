@@ -11,7 +11,7 @@
             [metabase.test.mock.toucanery :as toucanery]
             [metabase.test.util :as tu]))
 
-(tu/resolve-private-fns metabase.sync-database.sync-dynamic
+(tu/resolve-private-vars metabase.sync-database.sync-dynamic
   save-table-fields!)
 
 (defn- get-tables [database-id]

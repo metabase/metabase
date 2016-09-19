@@ -6,7 +6,7 @@
             (metabase.test.data [dataset-definitions :as defs]
                                 [datasets :as datasets]
                                 [interface :as i])
-            [metabase.test.util :refer [resolve-private-fns]]
+            [metabase.test.util :refer [resolve-private-vars]]
             [metabase.util :as u])
   (:import metabase.driver.druid.DruidDriver))
 
@@ -129,7 +129,7 @@
   "Maximum number of seconds we should wait for the indexing task to finish before deciding it's failed."
   180)
 
-(resolve-private-fns metabase.driver.druid GET POST)
+(resolve-private-vars metabase.driver.druid GET POST)
 
 (defn- run-indexing-task
   "Run a batched ingestion task on HOST."

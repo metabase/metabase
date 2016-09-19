@@ -64,7 +64,7 @@
   (str (java.util.UUID/randomUUID)))
 
 
-(tu/resolve-private-fns metabase.db simple-insert!)
+(tu/resolve-private-vars metabase.db simple-insert!)
 
 ;; valid session ID
 (expect

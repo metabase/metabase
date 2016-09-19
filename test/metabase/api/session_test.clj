@@ -11,7 +11,7 @@
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
             [metabase.util :as u]
-            [metabase.test.util :refer [random-name resolve-private-fns with-temporary-setting-values with-temp], :as tu]))
+            [metabase.test.util :refer [random-name resolve-private-vars with-temporary-setting-values with-temp], :as tu]))
 
 ;; ## POST /api/session
 ;; Test that we can login
@@ -182,7 +182,7 @@
 
 ;;; ------------------------------------------------------------ TESTS FOR GOOGLE AUTH STUFF ------------------------------------------------------------
 
-(resolve-private-fns metabase.api.session email->domain email-in-domain? autocreate-user-allowed-for-email? google-auth-create-new-user! google-auth-fetch-or-create-user!)
+(resolve-private-vars metabase.api.session email->domain email-in-domain? autocreate-user-allowed-for-email? google-auth-create-new-user! google-auth-fetch-or-create-user!)
 
 ;;; tests for email->domain
 (expect "metabase.com"   (email->domain "cam@metabase.com"))

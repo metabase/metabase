@@ -3,7 +3,7 @@
             [metabase.db :as db]
             [metabase.test.util :as tu]))
 
-(tu/resolve-private-fns metabase.db parse-connection-string)
+(tu/resolve-private-vars metabase.db parse-connection-string)
 
 ;; parse minimal connection string
 (expect {:type :postgres :user nil :password nil :host "localhost" :port nil :dbname "toms_cool_db" }

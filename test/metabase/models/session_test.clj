@@ -7,7 +7,7 @@
             [metabase.test.data.users :refer :all]
             [metabase.util :as u]))
 
-(resolve-private-fns metabase.db simple-insert-many!)
+(resolve-private-vars metabase.db simple-insert-many!)
 ;; first-session-for-user
 (expect
   "the-greatest-day-ever"

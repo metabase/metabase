@@ -172,7 +172,7 @@
 
 ;; timezone tests
 
-(tu/resolve-private-fns metabase.driver.generic-sql.query-processor
+(tu/resolve-private-vars metabase.driver.generic-sql.query-processor
   run-query-with-timezone)
 
 (defn- get-timezone-with-report-timezone [report-timezone]
