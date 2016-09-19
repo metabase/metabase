@@ -38,10 +38,11 @@
                  (throw (Exception. (str "Invalid JSON URL or resource: " url-or-resource-path)))))))
 
 (def ^:private CustomGeoJSON
-  {s/Keyword {:name        s/Str
-              :url         (s/constrained s/Str valid-json-url-or-resource? "URL must point to a valid JSON file.")
-              :region_key  (s/maybe s/Str)
-              :region_name (s/maybe s/Str)}})
+  {s/Keyword {:name                     s/Str
+              :url                      (s/constrained s/Str valid-json-url-or-resource? "URL must point to a valid JSON file.")
+              :region_key               (s/maybe s/Str)
+              :region_name              (s/maybe s/Str)
+              (s/optional-key :builtin) s/Bool}})
 
 (def ^:private builtin-geojson
   {:us_states {:name "United States" :url "/app/charts/us-states.json" :region_key "name" :region_name "name" :builtin true}

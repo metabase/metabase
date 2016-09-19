@@ -14,10 +14,20 @@
   "https://raw.githubusercontent.com/metabase/metabase/master/test_resources/test.geojson")
 
 (def ^:private ^:const test-custom-geojson
-  {:middle-earth {:name        "Middle Earth"
-                  :url         test-geojson-url
-                  :region_key  nil
-                  :region_name nil}})
+  {:middle-earth    {:name        "Middle Earth"
+                     :url         test-geojson-url
+                     :region_key  nil
+                     :region_name nil}
+   :us_states       {:name "United States"
+                     :url "/app/charts/us-states.json"
+                     :region_key "name"
+                     :region_name "name"
+                     :builtin true}
+   :world_countries {:name "World"
+                     :url "/app/charts/world.json"
+                     :region_key "ISO_A2"
+                     :region_name "NAME"
+                     :builtin true}})
 
 
 ;;; test valid-json-url?
