@@ -312,7 +312,7 @@
 (expect false (mbql-query? {:type "native"}))
 (expect true  (mbql-query? {:type "query"}))
 
-(tu/resolve-private-fns metabase.query-processor query-without-aggregations-or-limits?)
+(tu/resolve-private-vars metabase.query-processor query-without-aggregations-or-limits?)
 
 ;; query-without-aggregations-or-limits?
 (expect false (query-without-aggregations-or-limits? {:query {:aggregation {:aggregation-type :count}}}))

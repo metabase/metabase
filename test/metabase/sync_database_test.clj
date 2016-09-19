@@ -10,7 +10,7 @@
                              [table :refer [Table]])
             [metabase.sync-database :refer :all]
             (metabase.test [data :refer :all]
-                           [util :refer [resolve-private-fns] :as tu])))
+                           [util :refer [resolve-private-vars] :as tu])))
 
 (def ^:private ^:const sync-test-tables
   {"movie"  {:name "movie"

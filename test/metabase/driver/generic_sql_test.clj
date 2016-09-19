@@ -9,7 +9,7 @@
             [metabase.test.data :refer :all]
             (metabase.test.data [dataset-definitions :as defs]
                                 [datasets :as datasets])
-            [metabase.test.util :refer [resolve-private-fns]])
+            [metabase.test.util :refer [resolve-private-vars]])
   (:import metabase.driver.h2.H2Driver))
 
 (def ^:private users-table      (delay (Table :name "USERS")))
@@ -79,7 +79,7 @@
                {:id (id :venues :price), :values [1 2 3 4]}]}
   (driver/analyze-table (H2Driver.) @venues-table (set (mapv :id (table/fields @venues-table)))))
 
-(resolve-private-fns metabase.driver.generic-sql field-avg-length field-values-lazy-seq table-rows-seq)
+(resolve-private-vars metabase.driver.generic-sql field-avg-length field-values-lazy-seq table-rows-seq)
 
 ;;; FIELD-AVG-LENGTH
 (datasets/expect-with-engines @generic-sql-engines
