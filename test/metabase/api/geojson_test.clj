@@ -5,8 +5,10 @@
             [metabase.test.data.users :refer [user->client]]
             [metabase.test.util :as tu]))
 
-(tu/resolve-private-fns metabase.api.geojson
+(tu/resolve-private-vars metabase.api.geojson
   valid-json-url?
+  valid-json-resource?
+  builtin-geojson
   CustomGeoJSON)
 
 (def ^:private ^:const ^String test-geojson-url
@@ -14,25 +16,21 @@
   "https://raw.githubusercontent.com/metabase/metabase/master/test_resources/test.geojson")
 
 (def ^:private ^:const test-custom-geojson
-  {:middle-earth    {:name        "Middle Earth"
-                     :url         test-geojson-url
-                     :region_key  nil
-                     :region_name nil}
-   :us_states       {:name "United States"
-                     :url "/app/charts/us-states.json"
-                     :region_key "name"
-                     :region_name "name"
-                     :builtin true}
-   :world_countries {:name "World"
-                     :url "/app/charts/world.json"
-                     :region_key "ISO_A2"
-                     :region_name "NAME"
-                     :builtin true}})
+  {:middle-earth {:name        "Middle Earth"
+                  :url         test-geojson-url
+                  :builtin     true
+                  :region_key  nil
+                  :region_name nil}})
 
 
 ;;; test valid-json-url?
 (expect
   (valid-json-url? test-geojson-url))
+
+
+;;; test valid-json-resource?
+(expect
+  (valid-json-resource? "/app/charts/us-states.json"))
 
 
 ;;; test the CustomGeoJSON schema
@@ -57,7 +55,7 @@
 
 ;;; test that we can set the value of custom-geojson via the normal routes
 (expect
-  test-custom-geojson
+  (merge @builtin-geojson test-custom-geojson)
   ;; bind a temporary value so it will get set back to its old value here after the API calls are done stomping all over it
   (tu/with-temporary-setting-values [custom-geojson nil]
     ((user->client :crowberto) :put 200 "setting/custom-geojson" {:value test-custom-geojson})
