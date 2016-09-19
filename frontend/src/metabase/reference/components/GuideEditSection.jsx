@@ -19,35 +19,36 @@ const GuideEditSection = ({
     action,
     expand
 }) => isCollapsed ?
-    <div 
+    <div
         className={cx(
             'text-measure',
-            'cursor-pointer',
-            'border-brand-hover',
-            S.guideEditSectionCollapsed, 
-            isDisabled && S.guideEditSectionDisabled
+            S.guideEditSectionCollapsed,
+            {
+                'cursor-pointer border-brand-hover': !isDisabled,
+                [S.guideEditSectionDisabled]: isDisabled
+            }
         )}
         onClick={!isDisabled && expand}
     >
         <Icon className={S.guideEditSectionCollapsedIcon} name={collapsedIcon} size={24} />
         <span className={S.guideEditSectionCollapsedTitle}>{collapsedTitle}</span>
-        {(showLink || isDisabled) && (link ? (link.startsWith('http') ? 
-                <a 
-                    className={S.guideEditSectionCollapsedLink} 
-                    href={link} 
+        {(showLink || isDisabled) && (link ? (link.startsWith('http') ?
+                <a
+                    className={S.guideEditSectionCollapsedLink}
+                    href={link}
                     target="_blank"
                 >
                     {linkMessage}
                 </a> :
-                <Link 
-                    className={S.guideEditSectionCollapsedLink} 
+                <Link
+                    className={S.guideEditSectionCollapsedLink}
                     to={link}
                 >
                     {linkMessage}
                 </Link>
-            ) : 
+            ) :
             action &&
-                <a 
+                <a
                     className={S.guideEditSectionCollapsedLink}
                     onClick={action}
                 >
