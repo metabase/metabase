@@ -14,7 +14,7 @@ const LegacyChoropleth = ({ series, geoJson, projection, getColor, onHoverFeatur
     return (
         <div className="absolute top bottom left right flex layout-centered">
             <ShouldUpdate series={series} shouldUpdate={(props, nextProps) => !isSameSeries(props.series, nextProps.series)}>
-                { () =>
+                { () =>  // eslint-disable-line react/display-name
                     <svg className="flex-full m1" viewBox={`0 0 ${width} ${height}`}>
                     {geoJson.features.map((feature, index) =>
                         <path
