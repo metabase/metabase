@@ -14,7 +14,7 @@
 
 (defn- save-fks!
   "Update all of the FK relationships present in DATABASE based on what's captured in the raw schema.
-   This will set :special_type :fk and :fk_target_field_id <field-id> for each found FK relationship.
+   This will set :special_type :type/FK and :fk_target_field_id <field-id> for each found FK relationship.
    NOTE: we currently overwrite any previously defined metadata when doing this."
   [fk-sources]
   {:pre [(coll? fk-sources)
@@ -24,7 +24,7 @@
     (when-let [source-field-id (db/select-one-id Field, :raw_column_id fk-source-id, :visibility_type [:not= "retired"])]
       (when-let [target-field-id (db/select-one-id Field, :raw_column_id fk-target-id, :visibility_type [:not= "retired"])]
         (db/update! Field source-field-id
-          :special_type       :fk
+          :special_type       :type/FK
           :fk_target_field_id target-field-id)))))
 
 
@@ -47,22 +47,24 @@
   (doseq [{:keys [keypath value]} (driver/table-rows-seq driver database metabase-metadata-table)]
     ;; TODO: this does not support schemas in dbs :(
     (let [[_ table-name field-name k] (re-matches #"^([^.]+)\.(?:([^.]+)\.)?([^.]+)$" keypath)]
-      (try (when-not (if field-name
-                       (when-let [table-id (db/select-one-id Table
-                                             ;; TODO: this needs to support schemas
-                                             ;; TODO: eventually limit this to "core" schema tables
-                                             :db_id  (:id database)
-                                             :name   table-name
-                                             :active true)]
-                         (db/update-where! Field {:name     field-name
-                                                  :table_id table-id}
+      ;; ignore legacy entries that try to set field_type since it's no longer part of Field
+      (when-not (= (keyword k) :field_type)
+        (try (when-not (if field-name
+                         (when-let [table-id (db/select-one-id Table
+                                               ;; TODO: this needs to support schemas
+                                               ;; TODO: eventually limit this to "core" schema tables
+                                               :db_id  (:id database)
+                                               :name   table-name
+                                               :active true)]
+                           (db/update-where! Field {:name     field-name
+                                                    :table_id table-id}
+                             (keyword k) value))
+                         (db/update-where! Table {:name  table-name
+                                                  :db_id (:id database)}
                            (keyword k) value))
-                       (db/update-where! Table {:name  table-name
-                                                :db_id (:id database)}
-                         (keyword k) value))
-             (log/error (u/format-color "Error syncing _metabase_metadata: no matching keypath: %s" keypath)))
-           (catch Throwable e
-             (log/error (u/format-color 'red "Error in _metabase_metadata: %s" (.getMessage e))))))))
+               (log/error (u/format-color "Error syncing _metabase_metadata: no matching keypath: %s" keypath)))
+             (catch Throwable e
+               (log/error (u/format-color 'red "Error in _metabase_metadata: %s" (.getMessage e)))))))))
 
 
 (defn- save-table-fields!

@@ -5,6 +5,7 @@ import _ from "underscore";
 
 import { getOperators } from "metabase/lib/schema_metadata";
 import { createLookupByProperty } from "metabase/lib/table";
+import { isFK, TYPE } from "metabase/lib/types";
 
 
 export const NEW_QUERY_TEMPLATES = {
@@ -517,11 +518,10 @@ var Query = {
                 display_name: field[1],
                 name: field[1],
                 // TODO: we need to do something better here because filtering depends on knowing a sensible type for the field
-                base_type: "IntegerField",
+                base_type: TYPE.Integer,
                 operators_lookup: {},
                 valid_operators: [],
                 active: true,
-                field_type: "info",
                 fk_target_field_id: null,
                 parent_id: null,
                 preview_display: true,
@@ -550,17 +550,17 @@ var Query = {
         }
     },
 
-    getFieldOptions(fields, includeJoins = false, filterFn = (fields) => fields, usedFields = {}) {
+    getFieldOptions(fields, includeJoins = false, filterFn = _.identity, usedFields = {}) {
         var results = {
             count: 0,
             fields: null,
             fks: []
         };
         // filter based on filterFn, then remove fks if they'll be duplicated in the joins fields
-        results.fields = filterFn(fields).filter((f) => !usedFields[f.id] && (f.special_type !== "fk" || !includeJoins));
+        results.fields = filterFn(fields).filter((f) => !usedFields[f.id] && (!isFK(f.special_type) || !includeJoins));
         results.count += results.fields.length;
         if (includeJoins) {
-            results.fks = fields.filter((f) => f.special_type === "fk" && f.target).map((joinField) => {
+            results.fks = fields.filter((f) => isFK(f.special_type) && f.target).map((joinField) => {
                 var targetFields = filterFn(joinField.target.table.fields).filter(f => (!Array.isArray(f.id) || f.id[0] !== "aggregation") && !usedFields[f.id]);
                 results.count += targetFields.length;
                 return {
@@ -718,14 +718,14 @@ var Query = {
     },
 
     getQueryColumns(tableMetadata, query) {
-        let columns = Query.getBreakouts(query).map(b => Query.getQueryColumn(tableMetadata, b))
+        let columns = Query.getBreakouts(query).map(b => Query.getQueryColumn(tableMetadata, b));
         if (Query.getAggregationType(query) === "rows") {
             if (columns.length === 0) {
                 return null;
             }
         } else {
-            // NOTE: incomplete (missing name etc), count/distinct are actually IntegerField, but close enough for now
-            columns.push({ base_type: "FloatField", special_type: "number" });
+            // NOTE: incomplete (missing name etc), count/distinct are actually TYPE.Integer, but close enough for now
+            columns.push({ base_type: TYPE.Float, special_type: TYPE.Number });
         }
         return columns;
     }

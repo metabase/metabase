@@ -3,6 +3,7 @@
   (:require [clojure.tools.logging :as log]
             (cheshire factory
                       [generate :refer [add-encoder encode-str encode-nil]])
+            monger.json ; Monger provides custom JSON encoders for Cheshire if you load this namespace -- see http://clojuremongodb.info/articles/integration.html
             [metabase.api.common :refer [*current-user* *current-user-id* *is-superuser?*]]
             (metabase [config :as config]
                       [db :as db])
@@ -32,9 +33,9 @@
 
 ;;; # ------------------------------------------------------------ AUTH & SESSION MANAGEMENT ------------------------------------------------------------
 
-(def ^:private ^:const metabase-session-cookie "metabase.SESSION_ID")
-(def ^:private ^:const metabase-session-header "x-metabase-session")
-(def ^:private ^:const metabase-api-key-header "x-metabase-apikey")
+(def ^:private ^:const ^String metabase-session-cookie "metabase.SESSION_ID")
+(def ^:private ^:const ^String metabase-session-header "x-metabase-session")
+(def ^:private ^:const ^String metabase-api-key-header "x-metabase-apikey")
 
 (def ^:const response-unauthentic "Generic `401 (Unauthenticated)` Ring response map." {:status 401, :body "Unauthenticated"})
 (def ^:const response-forbidden   "Generic `403 (Forbidden)` Ring response map."       {:status 403, :body "Forbidden"})
@@ -46,33 +47,33 @@
    We first check the request :cookies for `metabase.SESSION_ID`, then if no cookie is found we look in the
    http headers for `X-METABASE-SESSION`.  If neither is found then then no keyword is bound to the request."
   [handler]
-  (fn [{:keys [cookies headers] :as request}]
-    (if-let [session-id (or (get-in cookies [metabase-session-cookie :value])
-                            (headers metabase-session-header))]
-      ;; alternatively we could always associate the keyword and just let it be nil if there is no value
-      (handler (assoc request :metabase-session-id session-id))
-      (handler request))))
+  (comp handler (fn [{:keys [cookies headers] :as request}]
+                  (if-let [session-id (or (get-in cookies [metabase-session-cookie :value])
+                                          (headers metabase-session-header))]
+                    (assoc request :metabase-session-id session-id)
+                    request))))
 
+
+(defn- add-current-user-id [{:keys [metabase-session-id] :as request}]
+  (or (when (and metabase-session-id ((resolve 'metabase.core/initialized?)))
+        (when-let [session (db/select-one [Session :created_at :user_id (db/qualify User :is_superuser)]
+                             (db/join [Session :user_id] [User :id])
+                             (db/qualify User :is_active) true
+                             (db/qualify Session :id) metabase-session-id)]
+          (let [session-age-ms (- (System/currentTimeMillis) (or (when-let [^java.util.Date created-at (:created_at session)]
+                                                                   (.getTime created-at))
+                                                                 0))]
+            ;; If the session exists and is not expired (max-session-age > session-age) then validation is good
+            (when (and session (> (config/config-int :max-session-age) (quot session-age-ms 60000)))
+              (assoc request
+                :metabase-user-id (:user_id session)
+                :is-superuser?    (:is_superuser session))))))
+      request))
 
 (defn wrap-current-user-id
   "Add `:metabase-user-id` to the request if a valid session token was passed."
   [handler]
-  (fn [{:keys [metabase-session-id] :as request}]
-    ;; TODO - what kind of validations can we do on the sessionid to make sure it's safe to handle?  str?  alphanumeric?
-    (handler (or (when (and metabase-session-id ((resolve 'metabase.core/initialized?)))
-                   (when-let [session (db/select-one [Session :created_at :user_id (db/qualify User :is_superuser)]
-                                        (db/join [Session :user_id] [User :id])
-                                        (db/qualify User :is_active) true
-                                        (db/qualify Session :id) metabase-session-id)]
-                     (let [session-age-ms (- (System/currentTimeMillis) (or (when-let [^java.util.Date created-at (:created_at session)]
-                                                                              (.getTime created-at))
-                                                                            0))]
-                       ;; If the session exists and is not expired (max-session-age > session-age) then validation is good
-                       (when (and session (> (config/config-int :max-session-age) (quot session-age-ms 60000)))
-                         (assoc request
-                           :metabase-user-id (:user_id session)
-                           :is-superuser?    (:is_superuser session))))))
-                 request))))
+  (comp handler add-current-user-id))
 
 
 (defn enforce-authentication
@@ -105,10 +106,10 @@
   "Middleware that sets the `:metabase-api-key` keyword on the request if a valid API Key can be found.
    We check the request headers for `X-METABASE-APIKEY` and if it's not found then then no keyword is bound to the request."
   [handler]
-  (fn [{:keys [headers] :as request}]
-    (handler (if-let [api-key (headers metabase-api-key-header)]
-               (assoc request :metabase-api-key api-key)
-               request))))
+  (comp handler (fn [{:keys [headers] :as request}]
+                  (if-let [api-key (headers metabase-api-key-header)]
+                    (assoc request :metabase-api-key api-key)
+                    request))))
 
 
 (defn enforce-api-key
@@ -179,21 +180,20 @@
   "Base-64 encoded public key for this site's SSL certificate. Specify this to enable HTTP Public Key Pinning.
    See http://mzl.la/1EnfqBf for more information.") ; TODO - it would be nice if we could make this a proper link in the UI; consider enabling markdown parsing
 
-;(defn- public-key-pins-header []
-;  (when-let [k (ssl-certificate-public-key)]
-;    {"Public-Key-Pins" (format "pin-sha256=\"base64==%s\"; max-age=31536000" k)}))
+#_(defn- public-key-pins-header []
+  (when-let [k (ssl-certificate-public-key)]
+    {"Public-Key-Pins" (format "pin-sha256=\"base64==%s\"; max-age=31536000" k)}))
 
 (defn- api-security-headers [] ; don't need to include all the nonsense we include with index.html
   (merge (cache-prevention-headers)
          strict-transport-security-header
-         ;(public-key-pins-header)
-         ))
+         #_(public-key-pins-header)))
 
 (defn- index-page-security-headers []
   (merge (cache-prevention-headers)
          strict-transport-security-header
          content-security-policy-header
-         ;(public-key-pins-header)
+         #_(public-key-pins-header)
          {"X-Frame-Options"                   "DENY"          ; Tell browsers not to render our site as an iframe (prevent clickjacking)
           "X-XSS-Protection"                  "1; mode=block" ; Tell browser to block suspected XSS attacks
           "X-Permitted-Cross-Domain-Policies" "none"          ; Prevent Flash / PDF files from including content from site.

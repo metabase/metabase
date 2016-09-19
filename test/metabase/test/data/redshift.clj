@@ -13,15 +13,14 @@
 
 ;; Time, UUID types aren't supported by redshift
 (def ^:private ^:const field-base-type->sql-type
-  {:BigIntegerField "BIGINT"
-   :BooleanField    "BOOL"
-   :CharField       "VARCHAR(254)"
-   :DateField       "DATE"
-   :DateTimeField   "TIMESTAMP"
-   :DecimalField    "DECIMAL"
-   :FloatField      "FLOAT8"
-   :IntegerField    "INTEGER"
-   :TextField       "TEXT"})
+  {:type/BigInteger "BIGINT"
+   :type/Boolean    "BOOL"
+   :type/Date       "DATE"
+   :type/DateTime   "TIMESTAMP"
+   :type/Decimal    "DECIMAL"
+   :type/Float      "FLOAT8"
+   :type/Integer    "INTEGER"
+   :type/Text       "TEXT"})
 
 (defn- get-db-env-var
   "Look up the relevant env var for AWS connection details or throw an exception if it's not set.

@@ -123,13 +123,10 @@
 
 (u/strict-extend (class Field)
   WithTempDefaults
-  {:with-temp-defaults (fn [_] {:active          true
-                                :base_type       :TextField
-                                :field_type      :info
-                                :name            (random-name)
-                                :position        1
-                                :preview_display true
-                                :table_id        (data/id :venues)})})
+  {:with-temp-defaults (fn [_] {:base_type :type/Text
+                                :name      (random-name)
+                                :position  1
+                                :table_id  (data/id :venues)})})
 
 (u/strict-extend (class Metric)
   WithTempDefaults

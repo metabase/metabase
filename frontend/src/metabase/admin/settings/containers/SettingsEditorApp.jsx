@@ -10,6 +10,7 @@ import SettingsSlackForm from "../components/SettingsSlackForm.jsx";
 import SettingsSetupList from "../components/SettingsSetupList.jsx";
 import SettingsUpdatesForm from "../components/SettingsUpdatesForm.jsx";
 import SettingsSingleSignOnForm from "../components/SettingsSingleSignOnForm.jsx";
+import SettingsCustomMaps from "../components/SettingsCustomMaps.jsx";
 
 import _ from "underscore";
 import cx from 'classnames';
@@ -82,52 +83,49 @@ export default class SettingsEditorApp extends Component {
 
         if (section.name === "Email") {
             return (
-                <div className="px2">
-                    <SettingsEmailForm
-                        ref="emailForm"
-                        elements={section.settings}
-                        updateEmailSettings={this.props.updateEmailSettings}
-                        sendTestEmail={this.props.sendTestEmail}
-                    />
-                </div>
+                <SettingsEmailForm
+                    ref="emailForm"
+                    elements={section.settings}
+                    updateEmailSettings={this.props.updateEmailSettings}
+                    sendTestEmail={this.props.sendTestEmail}
+                />
             );
         } else if (section.name === "Setup") {
             return (
-                <div className="px2">
-                    <SettingsSetupList
-                        ref="settingsForm" />
-                </div>
+                <SettingsSetupList
+                    ref="settingsForm"
+                />
             );
         } else if (section.name === "Slack") {
             return (
-                <div className="px2">
-                    <SettingsSlackForm
-                        ref="slackForm"
-                        elements={section.settings}
-                        updateSlackSettings={this.props.updateSlackSettings}
-                    />
-                </div>
+                <SettingsSlackForm
+                    ref="slackForm"
+                    elements={section.settings}
+                    updateSlackSettings={this.props.updateSlackSettings}
+                />
             );
         } else if (section.name === "Updates") {
             return (
-                <div className="px2">
-                    <SettingsUpdatesForm
-                        ref="updatesForm"
-                        settings={this.props.settings}
-                        elements={section.settings}
-                        updateSetting={this.updateSetting}
-                        handleChangeEvent={this.handleChangeEvent}
-                    />
-                </div>
+                <SettingsUpdatesForm
+                    settings={this.props.settings}
+                    elements={section.settings}
+                    updateSetting={this.updateSetting}
+                    handleChangeEvent={this.handleChangeEvent}
+                />
             );
         } else if (section.name === "Single Sign-On") {
             return (
-                <div className="px2">
-                    <SettingsSingleSignOnForm
-                        elements={section.settings}
-                        updateSetting={this.updateSetting}
-                    />
-                </div>
+                <SettingsSingleSignOnForm
+                    elements={section.settings}
+                    updateSetting={this.updateSetting}
+                />
+            );
+        } else if (section.name === "Custom Maps") {
+            return (
+                <SettingsCustomMaps
+                    elements={section.settings}
+                    reloadSettings={this.props.reloadSettings}
+                />
             );
         } else {
             let settings = section.settings.map((setting, index) => {
@@ -135,9 +133,7 @@ export default class SettingsEditorApp extends Component {
             });
 
             return (
-                <div className="px2">
-                    <ul>{settings}</ul>
-                </div>
+                <ul>{settings}</ul>
             );
         }
     }
@@ -183,7 +179,9 @@ export default class SettingsEditorApp extends Component {
                 <SettingsHeader ref="header" />
                 <div className="MetadataEditor-main flex flex-row flex-full mt2">
                     {this.renderSettingsSections()}
-                    {this.renderSettingsPane()}
+                    <div className="px2 flex-full">
+                        {this.renderSettingsPane()}
+                    </div>
                 </div>
             </div>
         );

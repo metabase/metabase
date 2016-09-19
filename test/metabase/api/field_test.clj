@@ -1,6 +1,7 @@
 (ns metabase.api.field-test
   (:require [expectations :refer :all]
             [metabase.db :as db]
+            [metabase.driver :as driver]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [field-values :refer [FieldValues]]
@@ -24,7 +25,7 @@
      :is_full_sync       true
      :organization_id    nil
      :description        nil
-     :features           (mapv name (metabase.driver/features (metabase.driver/engine->driver :h2)))}))
+     :features           (mapv name (driver/features (driver/engine->driver :h2)))}))
 
 
 ;; ## GET /api/field/:id
@@ -52,7 +53,7 @@
                             :show_in_getting_started false
                             :raw_table_id            $
                             :created_at              $})
-     :special_type       "name"
+     :special_type       "type/Name"
      :name               "NAME"
      :display_name       "Name"
      :caveats            nil
@@ -61,12 +62,11 @@
      :last_analyzed      $
      :active             true
      :id                 (id :users :name)
-     :field_type         "info"
      :visibility_type    "normal"
      :position           0
      :preview_display    true
      :created_at         $
-     :base_type          "TextField"
+     :base_type          "type/Text"
      :fk_target_field_id nil
      :parent_id          nil})
   ((user->client :rasta) :get 200 (format "field/%d" (id :users :name))))
@@ -93,36 +93,20 @@
    {:name            "Field Test"
     :display_name    "yay"
     :description     "foobar"
-    :special_type    :name
+    :special_type    :type/Name
     :visibility_type :sensitive}
    {:name            "Field Test"
     :display_name    "yay"
     :description     nil
     :special_type    nil
     :visibility_type :sensitive}]
-  (tu/with-temp* [Database [{database-id :id} {:name               "Field Test"
-                                               :engine             :yeehaw
-                                               :caveats            nil
-                                               :points_of_interest nil
-                                               :details            {}
-                                               :is_sample          false}]
-                  Table    [{table-id :id}    {:name   "Field Test"
-                                               :db_id  database-id
-                                               :active true}]
-                  Field    [{field-id :id}    {:table_id        table-id
-                                               :name            "Field Test"
-                                               :base_type       :TextField
-                                               :field_type      :info
-                                               :special_type    nil
-                                               :active          true
-                                               :preview_display true
-                                               :position        1}]]
+  (tu/with-temp* [Field [{field-id :id} {:name "Field Test"}]]
     (let [original-val (simple-field-details (Field field-id))]
       ;; set it
       ((user->client :crowberto) :put 200 (format "field/%d" field-id) {:name            "something else"
                                                                         :display_name    "yay"
                                                                         :description     "foobar"
-                                                                        :special_type    :name
+                                                                        :special_type    :type/Name
                                                                         :visibility_type :sensitive})
       (let [updated-val (simple-field-details (Field field-id))]
         ;; unset it
@@ -132,51 +116,25 @@
          updated-val
          (simple-field-details (Field field-id))]))))
 
-;; when we set the special-type from :fk to something else, make sure fk_target_field_id is set to nil
+;; when we set the special-type from :type/FK to something else, make sure fk_target_field_id is set to nil
 (expect
   [true
    nil]
-  (tu/with-temp* [Database [{database-id :id} {:name               "Field Test"
-                                               :engine             :yeehaw
-                                               :caveats            nil
-                                               :points_of_interest nil
-                                               :details            {}
-                                               :is_sample          false}]
-                  Table    [{table-id :id}    {:name   "Field Test"
-                                               :db_id  database-id
-                                               :active true}]
-                  Field    [{field-id1 :id}   {:table_id        table-id
-                                               :name            "Target Field"
-                                               :base_type       :TextField
-                                               :field_type      :info
-                                               :special_type    :id
-                                               :active          true
-                                               :preview_display true
-                                               :position        1}]
-                  Field    [{field-id :id}    {:table_id           table-id
-                                               :name               "Field Test"
-                                               :base_type          :TextField
-                                               :field_type         :info
-                                               :special_type       :fk
-                                               :fk_target_field_id field-id1
-                                               :active             true
-                                               :preview_display    true
-                                               :position           1}]]
+  (tu/with-temp* [Field [{fk-field-id :id}]
+                  Field [{field-id :id}    {:special_type :type/FK, :fk_target_field_id fk-field-id}]]
     (let [original-val (boolean (db/select-one-field :fk_target_field_id Field, :id field-id))]
-      ;; unset the :fk special-type
-      ((user->client :crowberto) :put 200 (format "field/%d" field-id) {:special_type :name})
+      ;; unset the :type/FK special-type
+      ((user->client :crowberto) :put 200 (format "field/%d" field-id) {:special_type :type/Name})
       [original-val
        (db/select-one-field :fk_target_field_id Field, :id field-id)])))
 
-;; check that you can't set a field to :timestamp_seconds if it's not of a proper base_type
+
+;; check that you *can* set it if it *is* the proper base type
 (expect
-  ["Invalid Request."
-   nil]
-  (tu/with-temp* [Database [{database-id :id}]
-                  Table    [{table-id :id} {:db_id database-id}]
-                  Field    [{field-id :id} {:table_id table-id}]]
-    [((user->client :crowberto) :put 400 (str "field/" field-id) {:special_type :timestamp_seconds})
-     (db/select-one-field :special_type Field, :id field-id)]))
+  :type/UNIXTimestampSeconds
+  (tu/with-temp* [Field [{field-id :id} {:base_type :type/Integer}]]
+    ((user->client :crowberto) :put 200 (str "field/" field-id) {:special_type :type/UNIXTimestampSeconds})
+    (db/select-one-field :special_type Field, :id field-id)))
 
 
 (defn- field->field-values
@@ -188,7 +146,7 @@
   (:id (field->field-values table-key field-key)))
 
 ;; ## GET /api/field/:id/values
-;; Should return something useful for a field that has special_type :category
+;; Should return something useful for a field that has special_type :type/Category
 (expect
   {:field_id              (id :venues :price)
    :human_readable_values {}
@@ -202,7 +160,7 @@
     (-> ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price)))
         (dissoc :created_at :updated_at))))
 
-;; Should return nothing for a field whose special_type is *not* :category
+;; Should return nothing for a field whose special_type is *not* :type/Category
 (expect
   {:values                {}
    :human_readable_values {}}
@@ -246,7 +204,7 @@
        (dissoc :created_at :updated_at))])
 
 ;; Check that we get an error if we call value_map_update on something that isn't a category
-(expect "You can only update the mapped values of a Field whose 'special_type' is 'category'/'city'/'state'/'country' or whose 'base_type' is 'BooleanField'."
+(expect "You can only update the mapped values of a Field whose 'special_type' is 'category'/'city'/'state'/'country' or whose 'base_type' is 'type/Boolean'."
   ((user->client :crowberto) :post 400 (format "field/%d/value_map_update" (id :venues :id))
    {:values_map {:1 "$"
                  :2 "$$"

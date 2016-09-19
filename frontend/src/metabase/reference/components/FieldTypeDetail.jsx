@@ -5,6 +5,7 @@ import pure from "recompose/pure";
 
 import * as MetabaseCore from "metabase/lib/core";
 import { isNumericBaseType } from "metabase/lib/schema_metadata";
+import { isFK } from "metabase/lib/types";
 
 import Select from "metabase/components/Select.jsx";
 
@@ -57,8 +58,8 @@ const FieldTypeDetail = ({
                 </span>
                 <span className="ml4">
                     { isEditing ?
-                        (fieldTypeFormField.value === 'fk' ||
-                        (field.special_type === 'fk' && fieldTypeFormField.value === undefined)) &&
+                        (isFK(fieldTypeFormField.value) ||
+                        (isFK(field.special_type) && fieldTypeFormField.value === undefined)) &&
                         <Select
                             triggerClasses="rounded bordered p1 inline-block"
                             placeholder="Select a field type"
@@ -71,7 +72,7 @@ const FieldTypeDetail = ({
                             onChange={(foreignKey) => foreignKeyFormField.onChange(foreignKey.id)}
                             optionNameFn={(foreignKey) => foreignKey.name}
                         /> :
-                        field.special_type === 'fk' &&
+                        isFK(field.special_type) &&
                         <span>
                             {i.getIn(foreignKeys, [field.fk_target_field_id, "name"])}
                         </span>

@@ -290,28 +290,28 @@
   "Return the `Field.base_type` that corresponds to a given class returned by the DB.
    This is used to infer the types of results that come back from native queries."
   [klass]
-  (or ({Boolean                         :BooleanField
-        Double                          :FloatField
-        Float                           :FloatField
-        Integer                         :IntegerField
-        Long                            :IntegerField
-        String                          :TextField
-        java.math.BigDecimal            :DecimalField
-        java.math.BigInteger            :BigIntegerField
-        java.sql.Date                   :DateField
-        java.sql.Timestamp              :DateTimeField
-        java.util.Date                  :DateTimeField
-        java.util.UUID                  :TextField
-        clojure.lang.PersistentArrayMap :DictionaryField
-        clojure.lang.PersistentHashMap  :DictionaryField
-        clojure.lang.PersistentVector   :ArrayField
-        org.postgresql.util.PGobject    :UnknownField} klass)
-      (condp isa? klass
-        clojure.lang.IPersistentMap     :DictionaryField
-        clojure.lang.IPersistentVector  :ArrayField
-        nil)
-      (do (log/warn (format "Don't know how to map class '%s' to a Field base_type, falling back to :UnknownField." klass))
-          :UnknownField)))
+  (or (some (fn [[mapped-class mapped-type]]
+              (when (isa? klass mapped-class)
+                mapped-type))
+            [[Boolean                        :type/Boolean]
+             [Double                         :type/Float]
+             [Float                          :type/Float]
+             [Integer                        :type/Integer]
+             [Long                           :type/Integer]
+             [java.math.BigDecimal           :type/Decimal]
+             [java.math.BigInteger           :type/BigInteger]
+             [Number                         :type/Number]
+             [String                         :type/Text]
+             [java.sql.Date                  :type/Date]
+             [java.sql.Timestamp             :type/DateTime]
+             [java.util.Date                 :type/DateTime]
+             [java.util.UUID                 :type/Text]       ; shouldn't this be :type/UUID ?
+             [clojure.lang.IPersistentMap    :type/Dictionary]
+             [clojure.lang.IPersistentVector :type/Array]
+             [org.bson.types.ObjectId        :type/MongoBSONID]
+             [org.postgresql.util.PGobject   :type/*]])
+      (log/warn (format "Don't know how to map class '%s' to a Field base_type, falling back to :type/*." klass))
+      :type/*))
 
 ;; ## Driver Lookup
 

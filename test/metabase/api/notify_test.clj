@@ -17,11 +17,9 @@
 (expect
   {:status 404
    :body "Not found."}
-  (try (client/post ((resolve 'metabase.http-client/build-url) "notify/db/10000" {}) {:accept :json
-                                                                                      :headers {"X-METABASE-APIKEY" "test-api-key"}})
+  (try (client/post (http/build-url "notify/db/10000" {}) {:accept  :json
+                                                           :headers {"X-METABASE-APIKEY" "test-api-key"}})
        (catch clojure.lang.ExceptionInfo e
-         (-> (.getData ^clojure.lang.ExceptionInfo e)
-             (:object)
-             (select-keys [:status :body])))))
+         (select-keys (:object (ex-data e)) [:status :body]))))
 
 ;; TODO - how can we validate the normal scenario given that it just kicks off a background job?
