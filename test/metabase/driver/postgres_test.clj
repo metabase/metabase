@@ -7,7 +7,7 @@
             [metabase.driver.generic-sql :as sql]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]])
-            [metabase.query-processor-test :refer [rows]]
+            [metabase.query-processor-test.util :refer [rows]]
             [metabase.query-processor.expand :as ql]
             [metabase.test.data :as data]
             (metabase.test.data [datasets :refer [expect-with-engine]]

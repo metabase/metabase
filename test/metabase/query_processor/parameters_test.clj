@@ -12,7 +12,7 @@
             [metabase.query-processor :as qp]
             (metabase.query-processor [expand :as ql]
                                       [parameters :refer :all])
-            [metabase.query-processor-test :refer [non-timeseries-engines first-row format-rows-by]]
+            [metabase.query-processor-test.util :refer [non-timeseries-engines first-row format-rows-by]]
             [metabase.test.data :as data]
             (metabase.test.data [datasets :as datasets]
                                 [users :refer :all])

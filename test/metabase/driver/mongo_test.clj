@@ -8,7 +8,7 @@
                              [table :refer [Table] :as table])
             [metabase.query-processor :as qp]
             [metabase.query-processor.expand :as ql]
-            [metabase.query-processor-test :refer [rows]]
+            [metabase.query-processor-test.util :refer [rows]]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
             [metabase.test.data.interface :as i])
