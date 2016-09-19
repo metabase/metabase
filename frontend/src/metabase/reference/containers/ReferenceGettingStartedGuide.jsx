@@ -58,7 +58,7 @@ import {
 } from '../utils';
 
 const mapStateToProps = (state, props) => {
-    const guide = getGuide(state, props); 
+    const guide = getGuide(state, props);
     const dashboards = getDashboards(state, props);
     const metrics = getMetrics(state, props);
     const segments = getSegments(state, props);
@@ -66,8 +66,8 @@ const mapStateToProps = (state, props) => {
     const fields = getFields(state, props);
     const databases = getDatabases(state, props);
 
-    // redux-form populates fields with stale values after update 
-    // if we dont specify nulls here 
+    // redux-form populates fields with stale values after update
+    // if we dont specify nulls here
     // could use a lot of refactoring
     const initialValues = guide && {
         things_to_know: guide.things_to_know || null,
@@ -75,13 +75,13 @@ const mapStateToProps = (state, props) => {
         most_important_dashboard: guide.most_important_dashboard !== null ?
             dashboards[guide.most_important_dashboard] :
             {},
-        important_metrics: guide.important_metrics && guide.important_metrics.length > 0 ? 
+        important_metrics: guide.important_metrics && guide.important_metrics.length > 0 ?
             guide.important_metrics
                 .map(metricId => metrics[metricId] && i.assoc(metrics[metricId], 'important_fields', guide.metric_important_fields[metricId] && guide.metric_important_fields[metricId].map(fieldId => fields[fieldId]))) :
             [],
-        important_segments_and_tables: 
+        important_segments_and_tables:
             (guide.important_segments && guide.important_segments.length > 0) ||
-            (guide.important_tables && guide.important_tables.length > 0) ? 
+            (guide.important_tables && guide.important_tables.length > 0) ?
                 guide.important_segments
                     .map(segmentId => segments[segmentId] && i.assoc(segments[segmentId], 'type', 'segment'))
                     .concat(guide.important_tables
@@ -99,14 +99,14 @@ const mapStateToProps = (state, props) => {
         tables,
         databases,
         // FIXME: avoids naming conflict, tried using the propNamespace option
-        // version but couldn't quite get it to work together with passing in 
+        // version but couldn't quite get it to work together with passing in
         // dynamic initialValues
         metadataFields: fields,
         loading: getLoading(state, props),
         // naming this 'error' will conflict with redux form
         loadingError: getError(state, props),
         isEditing: getIsEditing(state, props),
-        isDashboardModalOpen: getIsDashboardModalOpen(state, props), 
+        isDashboardModalOpen: getIsDashboardModalOpen(state, props),
         // redux form doesn't pass this through to component
         // need to use to reset form field arrays
         initialValues: initialValues,
@@ -206,7 +206,7 @@ export default class ReferenceGettingStartedGuide extends Component {
             push
         } = this.props;
 
-        const onSubmit = handleSubmit(async (fields) => 
+        const onSubmit = handleSubmit(async (fields) =>
             await tryUpdateGuide(fields, this.props)
         );
 
@@ -234,9 +234,9 @@ export default class ReferenceGettingStartedGuide extends Component {
 
                                 MetabaseAnalytics.trackEvent("Dashboard", "Create");
                             }}
-                            closeFn={hideDashboardModal} 
+                            closeFn={hideDashboardModal}
                         />
-                    </Modal> 
+                    </Modal>
                 }
                 { isEditing &&
                     <EditHeader
@@ -247,16 +247,16 @@ export default class ReferenceGettingStartedGuide extends Component {
                     />
                 }
                 <LoadingAndErrorWrapper className="full" style={style} loading={!loadingError && loading} error={loadingError}>
-                { () => isEditing ? 
+                { () => isEditing ?
                     <div className="wrapper wrapper--trim">
                         <div className="mt4 py2">
                             <h1 className="my3 text-dark">
                                 Help new Metabase users find their way around.
                             </h1>
                             <p className="text-paragraph text-measure">
-                                The Getting Started guide highlights the dashboard, 
-                                metrics, segments, and tables that matter most, 
-                                and informs your users of important things they 
+                                The Getting Started guide highlights the dashboard,
+                                metrics, segments, and tables that matter most,
+                                and informs your users of important things they
                                 should know before digging into the data.
                             </p>
                         </div>
@@ -274,8 +274,8 @@ export default class ReferenceGettingStartedGuide extends Component {
                                 <SectionHeader>
                                     What is your most important dashboard?
                                 </SectionHeader>
-                                <GuideDetailEditor 
-                                    type="dashboard" 
+                                <GuideDetailEditor
+                                    type="dashboard"
                                     entities={dashboards}
                                     selectedIds={[most_important_dashboard.id.value]}
                                     formField={most_important_dashboard}
@@ -303,7 +303,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                 </SectionHeader>
                                 <div>
                                     { important_metrics.map((metricField, index, metricFields) =>
-                                        <GuideDetailEditor 
+                                        <GuideDetailEditor
                                             key={index}
                                             type="metric"
                                             metadata={{
@@ -327,10 +327,10 @@ export default class ReferenceGettingStartedGuide extends Component {
                                         />
                                     )}
                                 </div>
-                                { important_metrics.length < 5 && 
-                                    important_metrics.length < Object.keys(metrics).length && 
+                                { important_metrics.length < 5 &&
+                                    important_metrics.length < Object.keys(metrics).length &&
                                         <button
-                                            className="Button Button--primary Button--large" 
+                                            className="Button Button--primary Button--large"
                                             type="button"
                                             onClick={() => important_metrics.addField({id: null, caveats: null, points_of_interest: null})}
                                         >
@@ -352,12 +352,12 @@ export default class ReferenceGettingStartedGuide extends Component {
                         >
                             <div>
                                 <h2 className="text-measure text-dark">
-                                    What are 3-5 commonly referenced segments or tables 
+                                    What are 3-5 commonly referenced segments or tables
                                     that would be useful for this audience?
                                 </h2>
                                 <div className="mb2">
                                     { important_segments_and_tables.map((segmentOrTableField, index, segmentOrTableFields) =>
-                                        <GuideDetailEditor 
+                                        <GuideDetailEditor
                                             key={index}
                                             type="segment"
                                             metadata={{
@@ -379,10 +379,10 @@ export default class ReferenceGettingStartedGuide extends Component {
                                         />
                                     )}
                                 </div>
-                                { important_segments_and_tables.length < 5 && 
-                                    important_segments_and_tables.length < Object.keys(tables).concat(Object.keys.segments).length && 
+                                { important_segments_and_tables.length < 5 &&
+                                    important_segments_and_tables.length < Object.keys(tables).concat(Object.keys.segments).length &&
                                         <button
-                                            className="Button Button--primary Button--large" 
+                                            className="Button Button--primary Button--large"
                                             type="button"
                                             onClick={() => important_segments_and_tables.addField({id: null, type: null, caveats: null, points_of_interest: null})}
                                         >
@@ -391,7 +391,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                 }
                             </div>
                         </GuideEditSection>
-                        
+
                         <GuideEditSection
                             isCollapsed={things_to_know.value === null}
                             isDisabled={false}
@@ -401,13 +401,13 @@ export default class ReferenceGettingStartedGuide extends Component {
                         >
                             <div className="text-measure">
                                 <SectionHeader>
-                                    What should a user of this data know before they start 
+                                    What should a user of this data know before they start
                                     accessing it?
                                 </SectionHeader>
-                                <textarea 
-                                    className={S.guideDetailEditorTextarea} 
-                                    placeholder="E.g., expectations around data privacy and use, 
-                                        common pitfalls or misunderstandings, information about 
+                                <textarea
+                                    className={S.guideDetailEditorTextarea}
+                                    placeholder="E.g., expectations around data privacy and use,
+                                        common pitfalls or misunderstandings, information about
                                         data warehouse performance, legal notices, etc."
                                     {...things_to_know}
                                 />
@@ -431,18 +431,18 @@ export default class ReferenceGettingStartedGuide extends Component {
                                 <div className="flex">
                                     <div className="flex-full">
                                         <h3 className="mb1">Name</h3>
-                                        <input 
+                                        <input
                                             className="input text-paragraph"
-                                            placeholder="Julie McHelpfulson" 
+                                            placeholder="Julie McHelpfulson"
                                             type="text"
                                             {...contact.name}
                                         />
                                     </div>
                                     <div className="flex-full">
                                         <h3 className="mb1">Email address</h3>
-                                        <input 
+                                        <input
                                             className="input text-paragraph"
-                                            placeholder="julie.mchelpfulson@acme.com" 
+                                            placeholder="julie.mchelpfulson@acme.com"
                                             type="text"
                                             {...contact.email}
                                         />
@@ -451,13 +451,13 @@ export default class ReferenceGettingStartedGuide extends Component {
                             </div>
                         </GuideEditSection>
                     </div> :
-                    !guide || isGuideEmpty(guide) ? 
-                        <GuideEmptyState 
+                    !guide || isGuideEmpty(guide) ?
+                        <GuideEmptyState
                             isSuperuser={user && user.is_superuser}
-                            startEditing={startEditing} 
-                        /> : 
+                            startEditing={startEditing}
+                        /> :
                         <div>
-                            <GuideHeader 
+                            <GuideHeader
                                 startEditing={startEditing}
                                 isSuperuser={user && user.is_superuser}
                             />
@@ -467,7 +467,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                         <SectionHeader key={'dashboardTitle'}>
                                             Our most important dashboard
                                         </SectionHeader>
-                                        <GuideDetail 
+                                        <GuideDetail
                                             key={'dashboardDetail'}
                                             type="dashboard"
                                             entity={dashboards[guide.most_important_dashboard]}
@@ -482,15 +482,15 @@ export default class ReferenceGettingStartedGuide extends Component {
                                                 Numbers that we pay attention to
                                             </SectionHeader>
                                             { guide.important_metrics.map((metricId) =>
-                                                <GuideDetail 
+                                                <GuideDetail
                                                     key={metricId}
                                                     type="metric"
                                                     entity={metrics[metricId]}
                                                     tables={tables}
-                                                    exploreLinks={guide.metric_important_fields[metricId] && 
+                                                    exploreLinks={guide.metric_important_fields[metricId] &&
                                                         guide.metric_important_fields[metricId]
                                                             .map(fieldId => metadataFields[fieldId])
-                                                            .map(field => ({ 
+                                                            .map(field => ({
                                                                 name: field.display_name || field.name,
                                                                 url: getQuestionUrl({
                                                                     dbId: tables[field.table_id] && tables[field.table_id].db_id,
@@ -498,7 +498,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                                                     fieldId: field.id,
                                                                     metricId
                                                                 })
-                                                            })) 
+                                                            }))
                                                     }
                                                 />
                                             )} ,
@@ -512,14 +512,14 @@ export default class ReferenceGettingStartedGuide extends Component {
                                 </div>
 
                                 <div className="mt4">
-                                    { ((guide.important_segments && guide.important_segments.length > 0) || 
+                                    { ((guide.important_segments && guide.important_segments.length > 0) ||
                                         (guide.important_tables && guide.important_tables.length > 0)) && [
                                         <div className="mt2">
                                             <SectionHeader key={'segmentTitle'}>
                                                 Segments and tables
                                             </SectionHeader>
                                             { guide.important_segments.map((segmentId) =>
-                                                <GuideDetail 
+                                                <GuideDetail
                                                     key={segmentId}
                                                     type="segment"
                                                     entity={segments[segmentId]}
@@ -527,7 +527,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                                 />
                                             )}
                                             { guide.important_tables.map((tableId) =>
-                                                <GuideDetail 
+                                                <GuideDetail
                                                     key={tableId}
                                                     type="table"
                                                     entity={tables[tableId]}
@@ -540,7 +540,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                                 <Link className="Button Button--purple mr2" to={'/reference/segments'}>
                                                     See all segments
                                                 </Link>
-                                                <Link className="text-purple text-bold text-no-underline text-underline-hover" to={'/reference/databases'}>
+                                                <Link className="text-purple text-bold no-decoration text-underline-hover" to={'/reference/databases'}>
                                                     See all tables
                                                 </Link>
                                             </div>
@@ -568,12 +568,12 @@ export default class ReferenceGettingStartedGuide extends Component {
                                             Have questions?
                                         </SectionHeader>,
                                         <div className="mb4 pb4" key={'contactDetails'}>
-                                                { guide.contact.name && 
+                                                { guide.contact.name &&
                                                     <span className="text-dark mr3">
                                                         {`Contact ${guide.contact.name}`}
                                                     </span>
                                                 }
-                                                { guide.contact.email && 
+                                                { guide.contact.email &&
                                                     <a className="text-brand text-bold no-decoration" href={`mailto:${guide.contact.email}`}>
                                                         {guide.contact.email}
                                                     </a>
@@ -592,4 +592,3 @@ export default class ReferenceGettingStartedGuide extends Component {
 
 const SectionHeader = ({ children }) =>
     <h2 className="text-dark text-measure mb4">{children}</h2>
-

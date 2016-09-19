@@ -74,7 +74,7 @@ const GuideDetail = ({
 
             <div className="mt2">
                 <ContextHeading>
-                    {`Things to be aware of about this ${type}`} 
+                    {`Things to be aware of about this ${type}`}
                 </ContextHeading>
 
                 <ContextContent empty={!caveats}>
@@ -87,10 +87,10 @@ const GuideDetail = ({
                     <ContextHeading key="detailLabel">Explore this metric</ContextHeading>,
                     <div key="detailLinks">
                         <Link className="text-brand inline-block mr2 link text-bold" to={link}>View this metric</Link>
-                        { exploreLinks.map(link => 
+                        { exploreLinks.map(link =>
                             <Link
                                 className="inline-block text-bold text-brand mr2 link"
-                                key={link.url} 
+                                key={link.url}
                                 to={link.url}
                             >
                                 {`By ${link.name}`}
@@ -100,8 +100,8 @@ const GuideDetail = ({
                 </div>
             ]}
             { hasLearnMore &&
-                <Link 
-                    className={cx('block mt3 text-no-underline text-underline-hover text-bold', linkClass)}
+                <Link
+                    className={cx('block mt3 no-decoration text-underline-hover text-bold', linkClass)}
                     to={learnMoreLink}
                 >
                     Learn more
@@ -119,8 +119,8 @@ GuideDetail.propTypes = {
 
 const ItemTitle = ({ title, link, linkColorClass, linkHoverClass }) =>
     <h2>
-        <Link 
-            className={ cx(linkColorClass, linkHoverClass) } 
+        <Link
+            className={ cx(linkColorClass, linkHoverClass) }
             style={{ textDecoration: 'none' }}
             to={ link }
         >
