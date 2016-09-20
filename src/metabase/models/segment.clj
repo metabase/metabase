@@ -99,7 +99,7 @@
   "Update an existing `Segment`.
 
    Returns the updated `Segment` or throws an Exception."
-  [{:keys [id name description caveats points_of_interest definition revision_message]} user-id]
+  [{:keys [id name description caveats points_of_interest show_in_getting_started definition revision_message]} user-id]
   {:pre [(integer? id)
          (string? name)
          (map? definition)
@@ -107,11 +107,12 @@
          (string? revision_message)]}
   ;; update the segment itself
   (db/update! Segment id
-    :name               name
-    :description        description
-    :caveats            caveats
-    :points_of_interest points_of_interest
-    :definition         definition)
+    :name                    name
+    :description             description
+    :caveats                 caveats
+    :points_of_interest      points_of_interest
+    :show_in_getting_started show_in_getting_started
+    :definition              definition)
   (u/prog1 (retrieve-segment id)
     (events/publish-event :segment-update (assoc <> :actor_id user-id, :revision_message revision_message))))
 

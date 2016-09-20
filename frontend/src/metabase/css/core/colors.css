@@ -151,7 +151,9 @@
 .bg-grey-3 { background-color: var(--grey-3) }
 .bg-grey-4 { background-color: var(--grey-4) }
 
-.text-dark, :local(.text-dark) { color: var(--dark-color); }
+.text-dark, :local(.text-dark) {
+    color: var(--dark-color);
+}
 
 /* white  - move to bottom for specificity since its often used on hovers, etc */
 .text-white, :local(.text-white),

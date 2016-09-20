@@ -436,6 +436,14 @@ CoreServices.factory('Metric', ['$resource', function($resource) {
             method: 'PUT',
             params: { metricId: '@id' }
         },
+        update_important_fields: {
+            url: '/api/metric/:metricId/important_fields',
+            method: 'PUT',
+            params: { 
+                metricId: '@metricId',
+                important_field_ids: '@important_field_ids'
+            }
+        },
         delete: {
             method: 'DELETE',
             params: { metricId: '@metricId' }
@@ -566,6 +574,15 @@ CoreServices.factory('Settings', ['$resource', function($resource) {
             params: {
                 key: '@key'
             }
+        }
+    });
+}]);
+
+CoreServices.factory('GettingStarted', ['$resource', function($resource) {
+    return $resource('/api/getting_started', {}, {
+        get: {
+            url: '/api/getting_started',
+            method: 'GET',
         }
     });
 }]);

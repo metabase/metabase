@@ -3,7 +3,7 @@ import cx from "classnames";
 import pure from "recompose/pure";
 
 import S from "./UsefulQuestions.css";
-import D from "metabase/components/Detail.css";
+import D from "metabase/reference/components/Detail.css";
 import L from "metabase/components/List.css";
 
 import QueryButton from "metabase/components/QueryButton.jsx";

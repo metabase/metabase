@@ -3,6 +3,10 @@ import i from "icepick";
 
 import Query, { AggregationClause } from 'metabase/lib/query';
 import {
+    resourceListToMap
+} from 'metabase/lib/redux';
+
+import {
     idsToObjectMap,
     buildBreadcrumbs,
     databaseToForeignKeys,
@@ -14,13 +18,21 @@ import {
 //TODO: refactor to use different container components for each section
 // initialize section metadata in there
 // may not be worthwhile due to the extra boilerplate required
-// ideal solution is to pass metadata to each section through router
+// try using a higher-order component to reduce boilerplate?
 const referenceSections = {
     [`/reference/guide`]: {
         id: `/reference/guide`,
         name: "Understanding our data",
         breadcrumb: "Guide",
-        icon: "reference"
+        fetch: {
+            fetchGuide: [],
+            fetchDashboards: [],
+            fetchMetrics: [],
+            fetchSegments: [],
+            fetchDatabasesWithMetadata: []
+        },
+        icon: "reference",
+        sidebar: false
     },
     [`/reference/metrics`]: {
         id: `/reference/metrics`,
@@ -83,7 +95,11 @@ const getMetricSections = (metric, table, user) => metric ? {
         update: 'updateMetric',
         type: 'metric',
         breadcrumb: `${metric.name}`,
-        fetch: {fetchMetricTable: [metric.id]},
+        fetch: {
+            fetchMetricTable: [metric.id],
+            // currently the only way to fetch metrics important fields
+            fetchGuide: []
+        },
         get: 'getMetric',
         icon: "document",
         headerIcon: "ruler",
@@ -414,21 +430,21 @@ export const getUser = (state, props) => state.currentUser;
 export const getSectionId = (state, props) => props.location.pathname;
 
 export const getMetricId = (state, props) => Number.parseInt(props.params.metricId);
-const getMetrics = (state, props) => state.metadata.metrics;
+export const getMetrics = (state, props) => state.metadata.metrics;
 export const getMetric = createSelector(
     [getMetricId, getMetrics],
     (metricId, metrics) => metrics[metricId] || { id: metricId }
 );
 
 export const getSegmentId = (state, props) => Number.parseInt(props.params.segmentId);
-const getSegments = (state, props) => state.metadata.segments;
+export const getSegments = (state, props) => state.metadata.segments;
 export const getSegment = createSelector(
     [getSegmentId, getSegments],
     (segmentId, segments) => segments[segmentId] || { id: segmentId }
 );
 
 export const getDatabaseId = (state, props) => Number.parseInt(props.params.databaseId);
-const getDatabases = (state, props) => state.metadata.databases;
+export const getDatabases = (state, props) => state.metadata.databases;
 const getDatabase = createSelector(
     [getDatabaseId, getDatabases],
     (databaseId, databases) => databases[databaseId] || { id: databaseId }
@@ -459,7 +475,7 @@ export const getTable = createSelector(
 );
 
 export const getFieldId = (state, props) => Number.parseInt(props.params.fieldId);
-const getFields = (state, props) => state.metadata.fields;
+export const getFields = (state, props) => state.metadata.fields;
 const getFieldsByTable = createSelector(
     [getTable, getFields],
     (table, fields) => table && table.fields ? idsToObjectMap(table.fields, fields) : {}
@@ -660,3 +676,10 @@ export const getHasQuestions = createSelector(
 export const getIsEditing = (state, props) => state.reference.isEditing;
 
 export const getIsFormulaExpanded = (state, props) => state.reference.isFormulaExpanded;
+
+export const getGuide = (state, props) => state.reference.guide;
+
+export const getDashboards = (state, props) => state.dashboard.dashboardListing &&
+    resourceListToMap(state.dashboard.dashboardListing);
+
+export const getIsDashboardModalOpen = (state, props) => state.reference.isDashboardModalOpen;
