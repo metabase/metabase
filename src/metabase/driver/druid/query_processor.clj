@@ -11,6 +11,8 @@
            (metabase.query_processor.interface AgFieldRef
                                                DateTimeField
                                                DateTimeValue
+                                               Expression
+                                               ExpressionRef
                                                Field
                                                RelativeDateTimeValue
                                                Value)))
@@ -28,35 +30,53 @@
 (derive ::topN               ::ag-query)
 (derive ::groupBy            ::ag-query)
 (derive ::timeseries         ::ag-query)
-(derive ::total              ::timeseries)
-(derive ::grouped-timeseries ::timeseries)
+(derive ::total              ::timeseries) ; a "timeseries" query with no breakouts
+(derive ::grouped-timeseries ::timeseries) ; a "timeseries" query with breakouts
+
 
 (def ^:private ^:dynamic *query*
   "The INNER part of the query currently being processed.
    (`:settings` is merged in from the outer query as well so we can access timezone info)."
   nil)
 
+
 (defn- query-type-dispatch-fn [query-type & _] query-type)
+
 
 (defprotocol ^:private IRValue
   (^:private ->rvalue [this]))
 
 (extend-protocol IRValue
-  nil                   (->rvalue [_] nil)
-  Object                (->rvalue [this] this)
-  AgFieldRef            (->rvalue [_] (let [ag-type (or (get-in *query* [:aggregation :aggregation-type])
-                                                        (throw (Exception. "Unknown aggregation type!")))]
-                                        (if (= ag-type :distinct) :distinct___count
-                                            ag-type)))
-  Field                 (->rvalue [this] (:field-name this))
-  DateTimeField         (->rvalue [this] (->rvalue (:field this)))
-  Value                 (->rvalue [this] (:value this))
-  DateTimeValue         (->rvalue [{{unit :unit} :field, value :value}] (u/date->iso-8601 (u/date-trunc-or-extract unit value)))
-  RelativeDateTimeValue (->rvalue [{:keys [unit amount]}] (u/date->iso-8601 (u/date-trunc-or-extract unit (u/relative-date unit amount)))))
+  nil           (->rvalue [_] nil)
+  Object        (->rvalue [this] this)
+  Field         (->rvalue [this] (:field-name this))
+  DateTimeField (->rvalue [this] (->rvalue (:field this)))
+  Value         (->rvalue [this] (:value this))
+
+  AgFieldRef
+  (->rvalue [_]
+    (let [ag-type (or (get-in *query* [:aggregation :aggregation-type])
+                      (throw (Exception. "Unknown aggregation type!")))]
+      (if (= ag-type :distinct)
+        :distinct___count
+        ag-type)))
+
+  DateTimeValue
+  (->rvalue [{{unit :unit} :field, value :value}]
+    (u/date->iso-8601 (u/date-trunc-or-extract unit value)))
+
+  RelativeDateTimeValue
+  (->rvalue [{:keys [unit amount]}]
+    (u/date->iso-8601 (u/date-trunc-or-extract unit (u/relative-date unit amount))))
+
+  ExpressionRef
+  (->rvalue [{:keys [expression-name]}]
+    (throw (Exception. "Metabase does not currently support using expressions in filters or other clauses."))))
+
 
 (defprotocol ^:private IDimensionOrMetric
   (^:private dimension-or-metric? [this]
-   "Is this `Field`/`DateTimeField` a `:dimension` or `:metric`?"))
+   "Is this `Field`/`DateTimeField` a `:dimension` or a `:metric`?"))
 
 (extend-protocol IDimensionOrMetric
   Field         (dimension-or-metric? [{:keys [base-type]}]
@@ -66,7 +86,9 @@
                     (isa? base-type :type/Integer) :metric))
 
   DateTimeField (dimension-or-metric? [this]
-                  (dimension-or-metric? (:field this))))
+                  (dimension-or-metric? (:field this)))
+
+  ExpressionRef (dimension-or-metric? [_] nil)) ; expressions are handled in post-processing for druid; thus they aren't actually part of the query
 
 
 (def ^:private ^:const query-type->default-query
@@ -82,13 +104,27 @@
      ::groupBy            (merge defaults {:queryType :groupBy})}))
 
 
+;;; ### Post Aggregation Helper Fns
+
+(defn- postAggregation:fieldAccess [field-name]
+  {:type      :fieldAccess
+   :fieldName field-name})
+
+(defn- postAggregation:constant [numerical-value]
+  {:type  :constant
+   :value numerical-value})
+
+(defn- postAggregation:arithmetic {:style/indent 2} [output-name operator args]
+  {:type   :arithmetic
+   :name   output-name
+   :fn     operator
+   :fields (vec args)})
 
 
 ;;; ### handle-source-table
 
 (defn- handle-source-table [_ {{source-table-name :name} :source-table} druid-query]
-  {:pre [(or (string? source-table-name)
-             (keyword? source-table-name))]}
+  {:pre [(u/string-or-keyword? source-table-name)]}
   (assoc druid-query :dataSource source-table-name))
 
 
@@ -154,18 +190,16 @@
 
                [:avg      _] {:aggregations     [(ag:count ag-field :___count)
                                                  (ag:doubleSum ag-field :___sum)]
-                              :postAggregations [{:type   :arithmetic
-                                                  :name   :avg
-                                                  :fn     :/
-                                                  :fields [{:type :fieldAccess, :fieldName :___sum}
-                                                           {:type :fieldAccess, :fieldName :___count}]}]}
-
+                              :postAggregations [(postAggregation:arithmetic :avg :/
+                                                   [(postAggregation:fieldAccess :___sum)
+                                                    (postAggregation:fieldAccess :___count)])]}
                [:distinct _] {:aggregations [{:type       :cardinality
                                               :name       :distinct___count
                                               :fieldNames [(->rvalue ag-field)]}]}
                [:sum      _] {:aggregations [(ag:doubleSum ag-field :sum)]}
                [:min      _] {:aggregations [(ag:doubleMin ag-field)]}
                [:max      _] {:aggregations [(ag:doubleMax ag-field)]})))))
+
 
 
 ;;; ### handle-breakout
@@ -430,7 +464,7 @@
   (let [field             (->rvalue field)
         breakout-field    (->rvalue breakout-field)
         sort-by-breakout? (= field breakout-field)
-        ag-field          (if (= ag-type :distinct) :distinct___count ag-type)]
+        ag-field          (if (= ag-type :distinct) :distinct___count (or ag-type :___sad))]
     (assoc druid-query :metric (match [sort-by-breakout? direction]
                                  [true  :ascending]  {:type :alphaNumeric}
                                  [true  :descending] {:type :inverted, :metric {:type :alphaNumeric}}
@@ -458,7 +492,7 @@
 
 (defmethod handle-fields ::query [_ {fields :fields} _]
   (when fields
-    (log/warn (u/format-color 'red "WARNING: It only makes sense to specify :fields for a bare rows query. Ignoring the clause."))))
+    (log/warn (u/format-color 'red "WARNING: It only makes sense to specify :fields for a query with no breakouts or aggregations. Ignoring the clause."))))
 
 (defmethod handle-fields ::select [_ {fields :fields} druid-query]
   (when (seq fields)
@@ -507,28 +541,29 @@
     (log/warn (u/format-color 'red "WARNING: 'page' is not yet implemented."))))
 
 
-;;; ## Build + Log + Process Query
+;;; ------------------------------------------------------------ Build + Log + Process Query ------------------------------------------------------------
 
 (def ^:private ^:const timeseries-units
   #{:minute :hour :day :week :month :quarter :year})
 
 (defn- druid-query-type
   "What type of Druid query type should we perform?"
-  [{breakout-fields :breakout, {ag-type :aggregation-type} :aggregation, limit :limit}]
-  (let [breakouts (condp = (count breakout-fields)
-                    0 :none
-                    1 :one
+  [{breakout-fields :breakout, expressions :expressions, {ag-type :aggregation-type} :aggregation, limit :limit}]
+  (let [breakouts   (condp = (count breakout-fields)
+                      0 :none
+                      1 :one
                       :many)
-        agg?      (boolean (and ag-type (not= ag-type :rows)))
-        ts?       (and (instance? DateTimeField (first breakout-fields))            ; Checks whether the query is a timeseries
-                       (contains? timeseries-units (:unit (first breakout-fields))) ; (excludes x-of-y type breakouts)
-                       (nil? limit))]                                               ; (excludes queries with LIMIT)
-    (match [breakouts agg? ts?]
-      [:none  false    _] ::select
-      [:none  true     _] ::total
-      [:one   _     true] ::grouped-timeseries
-      [:one   _    false] ::topN
-      [:many  _        _] ::groupBy)))
+        agg?        (boolean (or (and ag-type (not= ag-type :rows))
+                                 #_(seq expressions)))
+        timeseries? (and (instance? DateTimeField (first breakout-fields))            ; Checks whether the query is a timeseries
+                         (contains? timeseries-units (:unit (first breakout-fields))) ; (excludes x-of-y type breakouts)
+                         (nil? limit))]                                               ; (excludes queries with LIMIT)
+    (match [breakouts agg? timeseries?]
+      [:none false _    ] ::select
+      [:none true  _    ] ::total
+      [:one  _     true ] ::grouped-timeseries
+      [:one  _     false] ::topN
+      [:many _     _    ] ::groupBy)))
 
 
 (defn- build-druid-query [query]
@@ -554,12 +589,12 @@
 
 (defmulti ^:private post-process query-type-dispatch-fn)
 
-(defmethod post-process ::select     [_ results] (->> results first :result :events (map :event)))
-(defmethod post-process ::total      [_ results] (map :result results))
-(defmethod post-process ::topN       [_ results] (-> results first :result))
-(defmethod post-process ::groupBy    [_ results] (map :event results))
+(defmethod post-process ::select  [_ results] (->> results first :result :events (map :event)))
+#_(defmethod post-process ::total   [_ results] (map :result results))
+(defmethod post-process ::topN    [_ results] (-> results first :result))
+(defmethod post-process ::groupBy [_ results] (map :event results))
 
-(defmethod post-process ::grouped-timeseries [_ results]
+(defmethod post-process ::timeseries [_ results]
   (for [event results]
     (conj {:timestamp (:timestamp event)} (:result event))))
 
@@ -592,10 +627,30 @@
   ;; Merge `:settings` into the inner query dict so the QP has access to it
   (let [mbql-query (assoc (:query query)
                      :settings (:settings query))]
-    (binding [*query* mbql-query]
-      (let [[query-type druid-query] (build-druid-query mbql-query)]
-        {:query      druid-query
-         :query-type query-type}))))
+    (let [[query-type druid-query] (binding [*query* mbql-query]
+                                     (build-druid-query mbql-query))]
+      {:query       druid-query
+       :query-type  query-type
+       :expressions (get-in query [:query :expressions])})))
+
+
+(def ^:private operator->reduce-f
+  {:- -
+   :* *
+   :+ +
+   :/ /})
+
+(defn- handle-expression [{:keys [operator args], :as k} results]
+  (let [reduce-f (or (operator->reduce-f operator)
+                     (throw (Exception. (str "Invalid operator: " operator))))]
+    (reduce reduce-f (for [arg args]
+                       (if (number? arg)
+                         arg
+                         (let [v (get results (keyword (->rvalue arg)) "0")]
+                           (cond
+                             (string? v) (Double/parseDouble v)
+                             (number? v) v
+                             :else       0)))))))
 
 
 (defn- columns->getter-fns
@@ -605,31 +660,36 @@
    integer since Druid returns the approximate floating point value for cardinality queries (See Druid documentation regarding cardinality and HLL)."
   [columns]
   (vec (for [k columns]
-         (case k
-            :distinct___count (comp math/round k)
-            :timestamp___int  (comp (fn [^String s]
-                                      (when (seq s)
-                                        (Integer/parseInt s)))
-                                    k)
-            k))))
+         (cond
+           (= k :distinct___count)                 (comp math/round k)
+           (= k :timestamp___int)                  (comp (fn [^String s]
+                                                           (when (seq s)
+                                                             (Integer/parseInt s)))
+                                                         k)
+           (and (vector? k)
+                (keyword? (first k))
+                (instance? Expression (second k))) (partial handle-expression (second k))
+           :else                                   k))))
 
 (defn execute-query
   "Execute a query for a Druid DB."
-  [do-query {database :database, {:keys [query query-type mbql?]} :native}]
+  [do-query {database :database, {:keys [query query-type expressions mbql?]} :native}]
   {:pre [database query]}
   (let [details    (:details database)
         query      (if (string? query)
                      (json/parse-string query keyword)
                      query)
-        query-type (or query-type (keyword "metabase.driver.druid.query-processor" (name (:queryType query))))
+        query-type (or query-type (keyword "metabase.driver.druid.query-processor" (name (or (:queryType query)
+                                                                                             (throw (Exception. "Query is missing queryType."))))))
         results    (->> (do-query details query)
                         (post-process query-type)
                         remove-bonus-keys)
         columns    (keys (first results))
-        getters    (columns->getter-fns columns)]
+        getters    (columns->getter-fns (concat columns expressions))]
     ;; rename any occurances of `:timestamp___int` to `:timestamp` in the results so the user doesn't know about our behind-the-scenes conversion
     ;; and apply any other post-processing on the value such as parsing some units to int and rounding up approximate cardinality values.
-    {:columns   (vec (replace {:timestamp___int :timestamp :distinct___count :count} columns))
+    {:columns   (vec (concat (replace {:timestamp___int :timestamp :distinct___count :count} columns)
+                             (keys expressions)))
      :rows      (for [row results]
                   (for [getter getters]
                     (getter row)))

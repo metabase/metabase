@@ -34,7 +34,7 @@
       (throw (Exception. (format "Error [%d]: %s" status body))))
     (try (json/parse-string body keyword)
          (catch Throwable _
-           (throw (Exception. (str "Failed to parse body: " body)))))))
+           (throw (ex-info "Failed to parse body" {:raw-body body}))))))
 
 (def ^:private ^{:arglists '([url & {:as options}])} GET  (partial do-request http/get))
 (def ^:private ^{:arglists '([url & {:as options}])} POST (partial do-request http/post))
@@ -55,6 +55,7 @@
          ;; try to extract the error
          (let [message (or (u/ignore-exceptions
                              (:error (json/parse-string (:body (:object (ex-data e))) keyword)))
+                           (:raw-body (ex-data e))
                            (.getMessage e))]
 
            (log/error (u/format-color 'red "Error running query:\n%s" message))
