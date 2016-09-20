@@ -590,5 +590,5 @@ export default class ReferenceGettingStartedGuide extends Component {
     }
 }
 
-const SectionHeader = ({ children }) =>
-    <h2 className="text-dark text-measure mb4">{children}</h2>
+const SectionHeader = ({ children }) => // eslint-disable-line react/prop-types
+    <h2 className="text-dark text-measure mb4">{children}</h2> 
