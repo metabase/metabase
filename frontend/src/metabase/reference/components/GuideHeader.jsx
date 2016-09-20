@@ -10,7 +10,7 @@ const GuideHeader = ({
     <div>
         <div className="wrapper wrapper--trim py4 my3">
             <div className="flex align-center">
-                <h1 className="text-dark" style={{fontWeight: 700}}>Hi.</h1>
+                <h1 className="text-dark" style={{fontWeight: 700}}>Start here.</h1>
                 { isSuperuser &&
                     <span className="ml-auto">
                         <EditButton startEditing={startEditing}/>
