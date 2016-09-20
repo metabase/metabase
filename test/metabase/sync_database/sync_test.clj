@@ -15,7 +15,7 @@
                                 [schema-per-customer :as schema-per-customer])
             [metabase.test.util :as tu]))
 
-(tu/resolve-private-fns metabase.sync-database.sync
+(tu/resolve-private-vars metabase.sync-database.sync
   save-fks! save-table-fields!)
 
 (defn- get-tables [database-id]

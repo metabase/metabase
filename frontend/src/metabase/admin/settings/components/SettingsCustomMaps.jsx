@@ -247,7 +247,7 @@ const EditMap = ({ map, onMapChange, originalMap, geoJson, geoJsonLoading, geoJs
         </SettingContainer>
         { (geoJson || geoJsonLoading || geoJsonError) &&
             <LoadingAndErrorWrapper loading={geoJsonLoading} error={geoJsonError}>
-            { () =>
+            { () =>  // eslint-disable-line react/display-name
                 <div>
                     <SettingContainer description="Which property specifies the region’s identifier?">
                         <GeoJsonPropertySelect

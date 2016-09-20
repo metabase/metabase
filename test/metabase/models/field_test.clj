@@ -73,7 +73,7 @@
 
 ;;; infer-field-special-type
 
-(tu/resolve-private-fns metabase.models.field infer-field-special-type)
+(tu/resolve-private-vars metabase.models.field infer-field-special-type)
 
 (expect nil            (infer-field-special-type nil       nil))
 (expect nil            (infer-field-special-type "id"      nil))

@@ -22,7 +22,7 @@
 
 ;;; ## mark-json-field!
 
-(tu/resolve-private-fns metabase.sync-database.analyze values-are-valid-json?)
+(tu/resolve-private-vars metabase.sync-database.analyze values-are-valid-json?)
 
 (def ^:const ^:private fake-values-seq-json
   "A sequence of values that should be marked is valid JSON.")

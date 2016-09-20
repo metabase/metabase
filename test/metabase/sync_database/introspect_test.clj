@@ -10,7 +10,7 @@
             [metabase.test.util :as tu]
             [metabase.util :as u]))
 
-(tu/resolve-private-fns metabase.sync-database.introspect
+(tu/resolve-private-vars metabase.sync-database.introspect
   save-all-table-columns! save-all-table-fks! create-raw-table! update-raw-table! disable-raw-tables!)
 
 (defn get-tables [database-id]
