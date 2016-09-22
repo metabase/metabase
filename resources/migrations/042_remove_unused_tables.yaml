@@ -3,6 +3,9 @@ databaseChangeLog:
       id: 42
       author: camsaul
       changes:
+        - dropForeignKeyConstraint:
+            baseTableName: query_queryexecution
+            constraintName: fk_queryexecution_ref_query_id
         - dropColumn:
             tableName: query_queryexecution
             columnName: query_id
