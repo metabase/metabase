@@ -91,8 +91,7 @@
    :parameters              [{:hash "abc123", :name "test", :type "date"}]
    :public_perms            0
    :updated_at              true
-   :created_at              true
-   :organization_id         nil}
+   :created_at              true}
   (-> ((user->client :rasta) :post 200 "dashboard" {:name         "Test Create Dashboard"
                                                     :public_perms 0
                                                     :parameters   [{:hash "abc123", :name "test", :type "date"}]})
@@ -126,14 +125,12 @@
                                                    :public_perms           0
                                                    :creator_id             (user->id :rasta)
                                                    :creator                (user-details (fetch-user :rasta))
-                                                   :organization_id        nil
                                                    :display                "table"
                                                    :query_type             nil
                                                    :dataset_query          {}
                                                    :visualization_settings {}
                                                    :archived               false}
-                              :series              []}]
-   :organization_id         nil}
+                              :series              []}]}
   ;; fetch a dashboard WITH a dashboard card on it
   (tu/with-temp* [Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
                   Card          [{card-id :id}      {:name "Dashboard Test Card"}]
@@ -152,7 +149,6 @@
     :public_perms            0
     :updated_at              true
     :created_at              true
-    :organization_id         nil
     :parameters              []}
    {:name                    "My Cool Dashboard"
     :description             "Some awesome description"
@@ -163,7 +159,6 @@
     :public_perms            0
     :updated_at              true
     :created_at              true
-    :organization_id         nil
     :parameters              []}
    {:name                    "My Cool Dashboard"
     :description             "Some awesome description"
@@ -174,7 +169,6 @@
     :public_perms            0
     :updated_at              true
     :created_at              true
-    :organization_id         nil
     :parameters              []}]
   (tu/with-temp Dashboard [{dashboard-id :id} {:name "Test Dashboard"}]
     (mapv dashboard-response [(Dashboard dashboard-id)

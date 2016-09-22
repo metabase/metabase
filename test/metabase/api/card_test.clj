@@ -134,7 +134,6 @@
   (expect-with-temp [Database [{database-id :id}]
                      Table    [{table-id :id}  {:db_id database-id}]]
     {:description            nil
-     :organization_id        nil
      :name                   card-name
      :creator_id             (user->id :rasta)
      :dataset_query          {:database database-id
@@ -169,7 +168,6 @@
     {:description            nil
      :can_read               true
      :can_write              true
-     :organization_id        nil
      :dashboard_count        0
      :name                   $
      :creator_id             (user->id :rasta)

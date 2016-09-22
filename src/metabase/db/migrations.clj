@@ -22,9 +22,6 @@
 
 (defentity ^:private DataMigrations :data_migrations)
 
-;; This is defined here since we still need it for some of the data migrations below. It's no longer used.
-(defentity ^:deprecated ^:private ForeignKey :metabase_foreignkey)
-
 (defn- migration-ran? [migration-name]
   (db/exists? DataMigrations :id (name migration-name)))
 
@@ -108,17 +105,6 @@
     (db/delete! Activity :topic "database-sync")))
 
 
-;; Clean up duplicate FK entries
-(defmigration remove-duplicate-fk-entries
-  (let [existing-fks (db/select ForeignKey)
-        grouped-fks  (group-by #(str (:origin_id %) "_" (:destination_id %)) existing-fks)]
-    (doseq [[k fks] grouped-fks]
-      (when (< 1 (count fks))
-        (log/debug "Removing duplicate FK entries for" k)
-        (doseq [duplicate-fk (drop-last fks)]
-          (db/delete! ForeignKey, :id (:id duplicate-fk)))))))
-
-
 ;; Migrate dashboards to the new grid
 ;; NOTE: this scales the dashboards by 4x in the Y-scale and 3x in the X-scale
 (defmigration update-dashboards-to-new-grid
@@ -171,15 +157,6 @@
             :col 0)
           (when more
             (recur more (+ row-target (:sizeY bad-card)))))))))
-
-
-;; migrate FK information from old ForeignKey model to Field.fk_target_field_id
-(defmigration migrate-fk-metadata
-  (when (> 1 (db/select-one-count Field :fk_target_field_id [:not= nil]))
-    (when-let [fks (not-empty (db/select ForeignKey))]
-      (doseq [{:keys [origin_id destination_id]} fks]
-        (db/update! Field origin_id
-          :fk_target_field_id destination_id)))))
 
 
 ;; populate RawTable and RawColumn information

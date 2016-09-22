@@ -212,9 +212,8 @@
    `with-temp` should be preferrable going forward over creating random objects *without*
    deleting them afterward.
 
-    (with-temp EmailReport [report {:creator_id      (user->id :rasta)
-                                    :name            (random-name)
-                                    :organization_id @org-id}]
+    (with-temp EmailReport [report {:creator_id (user->id :rasta)
+                                    :name       (random-name)}]
       ...)"
   [entity [binding-form & [options-map]] & body]
   `(do-with-temp ~entity ~options-map (fn [~binding-form]
