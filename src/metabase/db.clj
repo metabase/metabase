@@ -106,7 +106,7 @@
 ;;; |                                                        MIGRATE                                                         |
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 
-(def ^:private ^:const ^String changelog-file "migrations/liquibase.json")
+(def ^:private ^:const ^String changelog-file "liquibase.yaml")
 
 (defn- migrations-sql
   "Return a string of SQL containing the DDL statements needed to perform unran LIQUIBASE migrations."
