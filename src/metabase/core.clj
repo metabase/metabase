@@ -108,7 +108,7 @@
   (reset! metabase-initialization-progress 0.4)
 
   ;; startup database.  validates connection & runs any necessary migrations
-  (db/setup-db :auto-migrate (config/config-bool :mb-db-automigrate))
+  (db/setup-db! :auto-migrate (config/config-bool :mb-db-automigrate))
   (reset! metabase-initialization-progress 0.5)
 
   ;; run a very quick check to see if we are doing a first time installation
@@ -203,7 +203,7 @@
 
 (def ^:private cmd->fn
   {:migrate      (fn [direction]
-                   (db/migrate @db/db-connection-details (keyword direction)))
+                   (db/migrate! @db/db-connection-details (keyword direction)))
    :load-from-h2 (fn [& [h2-connection-string-or-nil]]
                    (require 'metabase.cmd.load-from-h2)
                    ((resolve 'metabase.cmd.load-from-h2/load-from-h2!) h2-connection-string-or-nil))})

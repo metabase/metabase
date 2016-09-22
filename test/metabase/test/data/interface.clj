@@ -68,7 +68,7 @@
   (metabase-instance [{:keys [database-name]} engine-kw]
     (assert (string? database-name))
     (assert (keyword? engine-kw))
-    (db/setup-db-if-needed, :auto-migrate true)
+    (db/setup-db-if-needed!, :auto-migrate true)
     (Database :name database-name, :engine (name engine-kw))))
 
 
