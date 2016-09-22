@@ -582,7 +582,6 @@
                          :executor_id       executed-by
                          :json_query        query
                          :query_hash        query-hash
-                         :query_id          nil
                          :version           0
                          :status            :starting
                          :error             ""

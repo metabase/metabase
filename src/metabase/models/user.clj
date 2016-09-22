@@ -21,7 +21,6 @@
   (let [salt     (str (java.util.UUID/randomUUID))
         defaults {:date_joined  (u/new-sql-timestamp)
                   :last_login   nil
-                  :is_staff     true
                   :is_active    true
                   :is_superuser false}]
     ;; always salt + encrypt the password before putting new User in the DB

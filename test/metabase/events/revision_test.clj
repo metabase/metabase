@@ -31,7 +31,6 @@
   {:description            nil
    :table_id               (id :categories)
    :database_id            (id)
-   :organization_id        nil
    :query_type             "query"
    :name                   (:name card)
    :creator_id             (:creator_id card)
