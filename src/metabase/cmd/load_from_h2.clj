@@ -194,7 +194,7 @@
 
    Defaults to using `@metabase.db/db-file` as the connection string."
   [h2-connection-string-or-nil]
-  (db/setup-db)
+  (db/setup-db!)
   (jdbc/with-db-transaction [target-db-conn (db/jdbc-details)]
     (jdbc/db-set-rollback-only! target-db-conn)
     (disable-db-constraints! target-db-conn)

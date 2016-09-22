@@ -181,7 +181,7 @@ When the application launches, if there are necessary database changes, you'll r
     -- *********************************************************************
     -- Update Database Script
     -- *********************************************************************
-    -- Change Log: migrations/liquibase.json
+    -- Change Log: migrations/liquibase.yaml
     -- Ran at: 12/1/15 12:45 PM
     -- Against: @jdbc:h2:file:/Users/agilliland/workspace/metabase/metabase/metabase.db
     -- Liquibase version: 3.4.1
