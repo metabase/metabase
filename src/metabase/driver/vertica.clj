@@ -29,7 +29,7 @@
     :Float          :type/Float
     :Date           :type/Date
     :Time           :type/Time
-    :Timetz         :type/Time
+    :TimeTz         :type/Time
     :Timestamp      :type/DateTime
     :TimestampTz    :type/DateTime
     :AUTO_INCREMENT :type/Integer

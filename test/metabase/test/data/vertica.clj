@@ -9,17 +9,17 @@
   (:import metabase.driver.vertica.VerticaDriver))
 
 (def ^:private ^:const field-base-type->sql-type
-  {:BigIntegerField "BIGINT"
-   :BooleanField    "BOOLEAN"
-   :CharField       "VARCHAR(254)"
-   :DateField       "DATE"
-   :DateTimeField   "TIMESTAMP"
-   :DecimalField    "NUMERIC"
-   :FloatField      "FLOAT"
-   :IntegerField    "INTEGER"
-   :TextField       "VARCHAR(254)"
-   :TimeField       "TIME"
-   :UUIDField       "VARCHAR(254)"})
+  {:type/BigInteger "BIGINT"
+   :type/Boolean    "BOOLEAN"
+   :type/Char       "VARCHAR(254)"
+   :type/Date       "DATE"
+   :type/DateTime   "TIMESTAMP"
+   :type/Decimal    "NUMERIC"
+   :type/Float      "FLOAT"
+   :type/Integer    "INTEGER"
+   :type/Text       "VARCHAR(254)"
+   :type/Time       "TIME"
+   :type/UUID       "VARCHAR(254)"})
 
 
 (defn- database->connection-details [context {:keys [database-name short-lived?]}]
