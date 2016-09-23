@@ -21,7 +21,6 @@
   (let [salt     (str (java.util.UUID/randomUUID))
         defaults {:date_joined  (u/new-sql-timestamp)
                   :last_login   nil
-                  :is_staff     true
                   :is_active    true
                   :is_superuser false}]
     ;; always salt + encrypt the password before putting new User in the DB
@@ -123,5 +122,5 @@
 
 (defn instance-created-at
   "The date this Metabase instance was created.  We use the `:date_joined` of the first `User` to determine this."
-  []
+  ^java.sql.Timestamp []
   (db/select-one-field :date_joined User, {:order-by [[:date_joined :asc]]}))

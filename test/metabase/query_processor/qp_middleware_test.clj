@@ -4,9 +4,9 @@
             [metabase.driver :as driver]
             [metabase.query-processor :refer :all]
             [metabase.models.setting :as setting]
-            [metabase.test.util :refer [resolve-private-fns]]))
+            [metabase.test.util :refer [resolve-private-vars]]))
 
-(resolve-private-fns metabase.query-processor
+(resolve-private-vars metabase.query-processor
   wrap-catch-exceptions post-add-row-count-and-status post-format-rows pre-add-settings)
 
 

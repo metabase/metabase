@@ -1,6 +1,7 @@
 (ns metabase.api.metric
   "/api/metric endpoints."
   (:require [clojure.data :as data]
+            [clojure.tools.logging :as log]
             [compojure.core :refer [defroutes GET PUT POST DELETE]]
             [metabase.api.common :refer :all]
             [metabase.db :as db]
@@ -36,21 +37,22 @@
 
 (defendpoint PUT "/:id"
   "Update a `Metric` with ID."
-  [id :as {{:keys [name description caveats points_of_interest how_is_this_calculated definition revision_message]} :body}]
+  [id :as {{:keys [name description caveats points_of_interest how_is_this_calculated show_in_getting_started definition revision_message]} :body}]
   {name             [Required NonEmptyString]
    revision_message [Required NonEmptyString]
    definition       [Required Dict]}
   (check-superuser)
   (check-404 (metric/exists? id))
   (metric/update-metric!
-    {:id                     id
-     :name                   name
-     :description            description
-     :caveats                caveats
-     :points_of_interest     points_of_interest
-     :how_is_this_calculated how_is_this_calculated
-     :definition             definition
-     :revision_message       revision_message}
+    {:id                      id
+     :name                    name
+     :description             description
+     :caveats                 caveats
+     :points_of_interest      points_of_interest
+     :how_is_this_calculated  how_is_this_calculated
+     :show_in_getting_started show_in_getting_started
+     :definition              definition
+     :revision_message        revision_message}
     *current-user-id*))
 
 (defendpoint PUT "/:id/important_fields"
@@ -62,8 +64,9 @@
   (check-404 (metric/exists? id))
   (check (<= (count important_field_ids) 3)
     [400 "A Metric can have a maximum of 3 important fields."])
-  (let [[fields-to-remove fields-to-add] (data/diff (set (db/select-field :field_id 'MetricImportantField :metric_id 1))
+  (let [[fields-to-remove fields-to-add] (data/diff (set (db/select-field :field_id 'MetricImportantField :metric_id id))
                                                     (set important_field_ids))]
+
     ;; delete old fields as needed
     (when (seq fields-to-remove)
       (db/delete! 'MetricImportantField {:metric_id id, :field_id [:in fields-to-remove]}))

@@ -77,7 +77,7 @@
 
     (try
       (log/info "Setting up test DB and running migrations...")
-      (db/setup-db :auto-migrate true)
+      (db/setup-db! :auto-migrate true)
       (setting/set! :site-name "Metabase Test")
       (core/initialization-complete!)
 

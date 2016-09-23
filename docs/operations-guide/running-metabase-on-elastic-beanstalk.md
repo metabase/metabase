@@ -1,11 +1,12 @@
-> **Covered in this guide:**  
-> [Installing Metabase on AWS Elastic Beanstalk](#running-metabase-on-aws-elastic-beanstalk)  
-> [Upgrading to new versions of Metabase](#deploying-new-versions-of-metabase)  
-> [Retaining Metabase logs on S3](#retaining-metabase-logs)  
-> [Running Metabase over HTTPS](#running-metabase-over-https)  
-> [Setting the Java timezone](#setting-the-jvm-timezone)  
-> [Using Papertrail for logging](#running-metabase-with-papertrail-on-aws)  
-> [Protecting invalid hostname access](#protecting-against-invalid-hostname-access)
+**Covered in this guide:**
+
+*   [Installing Metabase on AWS Elastic Beanstalk](#running-metabase-on-aws-elastic-beanstalk)
+*   [Upgrading to new versions of Metabase](#deploying-new-versions-of-metabase)
+*   [Retaining Metabase logs on S3](#retaining-metabase-logs)
+*   [Running Metabase over HTTPS](#running-metabase-over-https)
+*   [Setting the Java timezone](#setting-the-jvm-timezone)
+*   [Using Papertrail for logging](#using-papertrail-for-logging-on-aws)
+*   [Protecting invalid hostname access](#protecting-against-invalid-hostname-access)
 
 
 # Running Metabase on AWS Elastic Beanstalk
@@ -120,8 +121,8 @@ If you clicked the checkbox to create an RDS instance you will come to this sect
 
 Here you'll make the appropriate choices to configure your RDS database to work with Metabase.  Again, we cover each choice one-by-one:
 
-* `Snapshot` should be left as None.
-* `DB engine` must be set to `postgres`.  Currently this is the only RDS database type that Metabase supports.
+* `Snapshot` should be left as `None`.
+* `DB engine` should be set to `postgres`. Metabase also supports MySQL/Maria DB as backing databases, but this guide currently only covers running Metabase on Postgres.
 * `DB engine version` can simply be left on the default, which should be the latest version.
 * For `Instance class` you can choose any size, we recommend `db.t2.small` or bigger for production installs.  Metabase is pretty efficient so there is no need to make this a big instance.
 * You can safely leave `Allocated storage` to the default size.

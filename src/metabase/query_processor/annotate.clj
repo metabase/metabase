@@ -1,11 +1,13 @@
 (ns metabase.query-processor.annotate
   (:require [clojure.set :as set]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.db :as db]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor.interface :as i]
-            [metabase.util :as u]))
+            [metabase.util :as u])
+  (:import metabase.query_processor.interface.ExpressionRef))
 
 ;; Fields should be returned in the following order:
 ;; 1.  Breakout Fields
@@ -80,10 +82,7 @@
    (This is for handling Mongo nested Fields, I think (?))"
   [field]
   {:post [(keyword? (:field-name %))]}
-  (assoc field :field-name (->> (rest (i/qualified-name-components field))
-                                (interpose ".")
-                                (apply str)
-                                keyword)))
+  (assoc field :field-name (keyword (str/join \. (rest (i/qualified-name-components field))))))
 
 (defn- ag-type->field-name
   "Return the (keyword) name that should be used for the column in the results. This is the same as the name of the aggregation,
@@ -108,14 +107,14 @@
                            :special-type       (:special-type ag-field)})
                         ;; Always treat count or distinct count as an integer even if the DB in question returns it as something wacky like a BigDecimal or Float
                         (when (contains? #{:count :distinct} ag-type)
-                          {:base-type    :IntegerField
-                           :special-type :number})
+                          {:base-type    :type/Integer
+                           :special-type :type/Number})
                         ;; For the time being every Expression is an arithmetic operator and returns a floating-point number, so hardcoding these types is fine;
                         ;; In the future when we extend Expressions to handle more functionality we'll want to introduce logic that associates a return type with a given expression.
                         ;; But this will work for the purposes of a patch release.
-                        (when (instance? metabase.query_processor.interface.ExpressionRef ag-field)
-                          {:base-type    :FloatField
-                           :special-type :number})))))
+                        (when (instance? ExpressionRef ag-field)
+                          {:base-type    :type/Float
+                           :special-type :type/Number})))))
 
 (defn- add-unknown-fields-if-needed
   "When create info maps for any fields we didn't expect to come back from the query.
@@ -130,7 +129,7 @@
       (log/warn (u/format-color 'yellow "There are fields we weren't expecting in the results: %s\nExpected: %s\nActual: %s"
                   missing-keys expected-keys actual-keys)))
     (concat fields (for [k missing-keys]
-                     {:base-type          :UnknownField
+                     {:base-type          :type/*
                       :preview-display    true
                       :special-type       nil
                       :field-name         k
@@ -157,10 +156,10 @@
   "Return a importance for FIELD based on the relative importance of its `:special-type`.
    i.e. a Field with special type `:id` should be sorted ahead of all other Fields in the results."
   [{:keys [special-type]}]
-  (condp = special-type
-    :id   :0-id
-    :name :1-name
-          :2-other))
+  (cond
+    (isa? special-type :type/PK)   :0-id
+    (isa? special-type :type/Name) :1-name
+    :else                          :2-other))
 
 (defn- field-importance-fn
   "Create a function to return an \"importance\" vector for use in sorting FIELD."
@@ -208,7 +207,7 @@
   "Fetch fk info and return a function that returns the destination Field of a given Field."
   ([fields]
    (or (fk-field->dest-fn fields (for [{:keys [special_type id]} fields
-                                       :when (= special_type :fk)]
+                                       :when (isa? special_type :type/FK)]
                                    id))
        (constantly nil)))
   ;; Fetch the foreign key fields whose origin is in the returned Fields, create a map of origin-field-id->destination-field-id
@@ -228,7 +227,7 @@
      (some-> id id->dest-id dest-id->field))))
 
 (defn- add-extra-info-to-fk-fields
-  "Add `:extra_info` about foreign keys to `Fields` whose `special_type` is `:fk`."
+  "Add `:extra_info` about foreign keys to `Fields` whose `special_type` is a `:type/FK`."
   [fields]
   (let [field->dest (fk-field->dest-fn fields)]
     (for [field fields]
@@ -236,7 +235,9 @@
         (assoc field
           :target     (when dest-field
                         (into {} dest-field))
-          :extra_info (if table_id {:target_table_id table_id} {}))))))
+          :extra_info (if table_id
+                        {:target_table_id table_id}
+                        {}))))))
 
 (defn- resolve-sort-and-format-columns
   "Collect the Fields referenced in QUERY, sort them according to the rules at the top

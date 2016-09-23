@@ -18,7 +18,7 @@
                                 [users :refer :all])
             [metabase.test.util :as tu]))
 
-(tu/resolve-private-fns metabase.query-processor.parameters
+(tu/resolve-private-vars metabase.query-processor.parameters
   absolute-date->range relative-date->range)
 
 (expect {:end "2016-03-31", :start "2016-01-01"} (absolute-date->range "Q1-2016"))

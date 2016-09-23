@@ -1,11 +1,13 @@
 
 import Scalar     from "./Scalar.jsx";
+import Progress   from "./Progress.jsx";
 import Table      from "./Table.jsx";
 import LineChart  from "./LineChart.jsx";
 import BarChart   from "./BarChart.jsx";
 import PieChart   from "./PieChart.jsx";
 import AreaChart  from "./AreaChart.jsx";
 import MapViz     from "./Map.jsx";
+import ScatterPlot from "./ScatterPlot.jsx";
 
 const visualizations = new Map();
 const aliases = new Map();
@@ -28,13 +30,14 @@ export function registerVisualization(visualization) {
 }
 
 registerVisualization(Scalar);
+registerVisualization(Progress);
 registerVisualization(Table);
 registerVisualization(LineChart);
 registerVisualization(BarChart);
-registerVisualization(PieChart);
 registerVisualization(AreaChart);
+registerVisualization(ScatterPlot);
+registerVisualization(PieChart);
 registerVisualization(MapViz);
-
 
 import { enableVisualizationEasterEgg } from "./lib/utils";
 import XKCDChart from "./XKCDChart.jsx";

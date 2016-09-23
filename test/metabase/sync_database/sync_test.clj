@@ -15,7 +15,7 @@
                                 [schema-per-customer :as schema-per-customer])
             [metabase.test.util :as tu]))
 
-(tu/resolve-private-fns metabase.sync-database.sync
+(tu/resolve-private-vars metabase.sync-database.sync
   save-fks! save-table-fields!)
 
 (defn- get-tables [database-id]
@@ -26,9 +26,9 @@
 ;; save-fks!
 (expect
   [[{:special_type nil, :name "fk1", :fk_target_field_id false}]
-   [{:special_type :fk, :name "fk1", :fk_target_field_id true}]
-   [{:special_type :fk, :name "fk1", :fk_target_field_id true}]
-   [{:special_type :fk, :name "fk1", :fk_target_field_id true}]]
+   [{:special_type :type/FK, :name "fk1", :fk_target_field_id true}]
+   [{:special_type :type/FK, :name "fk1", :fk_target_field_id true}]
+   [{:special_type :type/FK, :name "fk1", :fk_target_field_id true}]]
   (tu/with-temp* [Database  [{database-id :id}]
                   RawTable  [{raw-table-id1 :id, :as table}  {:database_id database-id, :name "fk_source"}]
                   RawColumn [{raw-fk1 :id}                   {:raw_table_id raw-table-id1, :name "fk1"}]
@@ -97,211 +97,92 @@
          (get-table))])))
 
 
+(def ^:private ^:const field-defaults
+  {:id                 true
+   :table_id           true
+   :raw_column_id      true
+   :description        nil
+   :caveats            nil
+   :points_of_interest nil
+   :visibility_type    :normal
+   :special_type       nil
+   :parent_id          false
+   :fk_target_field_id false
+   :last_analyzed      false
+   :created_at         true
+   :updated_at         true})
+
 ;; save-table-fields!
 ;; this test also covers create-field! and update-field!
 (expect
   [[]
    ;; initial sync
-   [{:id                 true
-     :table_id           true
-     :raw_column_id      true
-     :name               "First"
-     :display_name       "First"
-     :description        nil
-     :caveats            nil
-     :points_of_interest nil
-     :base_type          :IntegerField
-     :visibility_type    :normal
-     :special_type       :id
-     :parent_id          false
-     :fk_target_field_id false
-     :last_analyzed      false
-     :created_at         true
-     :updated_at         true}
-    {:id                 true
-     :table_id           true
-     :raw_column_id      true
-     :name               "Second"
-     :display_name       "Second"
-     :description        nil
-     :caveats            nil
-     :points_of_interest nil
-     :base_type          :TextField
-     :visibility_type    :normal
-     :special_type       :category
-     :parent_id          false
-     :fk_target_field_id false
-     :last_analyzed      false
-     :created_at         true
-     :updated_at         true}
-    {:id                 true
-     :table_id           true
-     :raw_column_id      true
-     :name               "Third"
-     :display_name       "Third"
-     :description        nil
-     :caveats            nil
-     :points_of_interest nil
-     :base_type          :BooleanField
-     :visibility_type    :normal
-     :special_type       nil
-     :parent_id          false
-     :fk_target_field_id false
-     :last_analyzed      false
-     :created_at         true
-     :updated_at         true}]
+   [(merge field-defaults {:name         "First"
+                           :display_name "First"
+                           :base_type    :type/Integer
+                           :special_type :type/PK})
+    (merge field-defaults {:name         "Second"
+                           :display_name "Second"
+                           :base_type    :type/Text})
+    (merge field-defaults {:name         "Third"
+                           :display_name "Third"
+                           :base_type    :type/Boolean
+                           :special_type nil})]
    ;; add column, modify first column
-   [{:id                 true
-     :table_id           true
-     :raw_column_id      true
-     :name               "First"
-     :display_name       "First"
-     :description        nil
-     :caveats            nil
-     :points_of_interest nil
-     :base_type          :DecimalField
-     :visibility_type    :normal
-     :special_type       :id                  ; existing special types are NOT modified
-     :parent_id          false
-     :fk_target_field_id false
-     :last_analyzed      false
-     :created_at         true
-     :updated_at         true}
-    {:id                 true
-     :table_id           true
-     :raw_column_id      true
-     :name               "Second"
-     :display_name       "Second"
-     :description        nil
-     :caveats            nil
-     :points_of_interest nil
-     :base_type          :TextField
-     :visibility_type    :normal
-     :special_type       :category
-     :parent_id          false
-     :fk_target_field_id false
-     :last_analyzed      false
-     :created_at         true
-     :updated_at         true}
-    {:id                 true
-     :table_id           true
-     :raw_column_id      true
-     :name               "Third"
-     :display_name       "Third"
-     :description        nil
-     :caveats            nil
-     :points_of_interest nil
-     :base_type          :BooleanField
-     :visibility_type    :normal
-     :special_type       nil
-     :parent_id          false
-     :fk_target_field_id false
-     :last_analyzed      false
-     :created_at         true
-     :updated_at         true}
-    {:id                 true
-     :table_id           true
-     :raw_column_id      true
-     :name               "rating"
-     :display_name       "Rating"
-     :description        nil
-     :caveats            nil
-     :points_of_interest nil
-     :base_type          :IntegerField
-     :visibility_type    :normal
-     :special_type       :category             ; should be infered from name
-     :parent_id          false
-     :fk_target_field_id false
-     :last_analyzed      false
-     :created_at         true
-     :updated_at         true}]
+   [(merge field-defaults {:name         "First"
+                           :display_name "First"
+                           :base_type    :type/Decimal
+                           :special_type :type/PK}) ; existing special types are NOT modified
+    (merge field-defaults {:name         "Second"
+                           :display_name "Second"
+                           :base_type    :type/Text})
+    (merge field-defaults {:name         "Third"
+                           :display_name "Third"
+                           :base_type    :type/Boolean
+                           :special_type nil})
+    (merge field-defaults {:name         "rating"
+                           :display_name "Rating"
+                           :base_type    :type/Integer
+                           :special_type :type/Category})]
    ;; first column retired, 3rd column now a pk
-   [{:id                 true
-     :table_id           true
-     :raw_column_id      true
-     :name               "First"
-     :display_name       "First"
-     :description        nil
-     :caveats            nil
-     :points_of_interest nil
-     :base_type          :DecimalField
-     :visibility_type    :retired             ; field retired when RawColumn disabled
-     :special_type       :id
-     :parent_id          false
-     :fk_target_field_id false
-     :last_analyzed      false
-     :created_at         true
-     :updated_at         true}
-    {:id                 true
-     :table_id           true
-     :raw_column_id      true
-     :name               "Second"
-     :display_name       "Second"
-     :description        nil
-     :caveats            nil
-     :points_of_interest nil
-     :base_type          :TextField
-     :visibility_type    :normal
-     :special_type       :category
-     :parent_id          false
-     :fk_target_field_id false
-     :last_analyzed      false
-     :created_at         true
-     :updated_at         true}
-    {:id                 true
-     :table_id           true
-     :raw_column_id      true
-     :name               "Third"
-     :display_name       "Third"
-     :description        nil
-     :caveats            nil
-     :points_of_interest nil
-     :base_type          :BooleanField
-     :visibility_type    :normal
-     :special_type       :id,                  ; special type can be set if it was nil before
-     :parent_id          false
-     :fk_target_field_id false
-     :last_analyzed      false
-     :created_at         true
-     :updated_at         true}
-    {:id                 true
-     :table_id           true
-     :raw_column_id      true
-     :name               "rating"
-     :display_name       "Rating"
-     :description        nil
-     :caveats            nil
-     :points_of_interest nil
-     :base_type          :IntegerField
-     :visibility_type    :normal
-     :special_type       :category             ; should be infered from name
-     :parent_id          false
-     :fk_target_field_id false
-     :last_analyzed      false
-     :created_at         true
-     :updated_at         true}]]
+   [(merge field-defaults {:name            "First"
+                           :display_name    "First"
+                           :base_type       :type/Decimal
+                           :visibility_type :retired ; field retired when RawColumn disabled
+                           :special_type    :type/PK})
+    (merge field-defaults {:name         "Second"
+                           :display_name "Second"
+                           :base_type    :type/Text})
+    (merge field-defaults {:name         "Third"
+                           :display_name "Third"
+                           :base_type    :type/Boolean
+                           :special_type :type/PK}) ; special type can be set if it was nil before
+    (merge field-defaults {:name         "rating"
+                           :display_name "Rating"
+                           :base_type    :type/Integer
+                           :special_type :type/Category})]]
   (tu/with-temp* [Database  [{database-id :id}]
                   RawTable  [{raw-table-id :id, :as table} {:database_id database-id}]
-                  RawColumn [{raw-column-id1 :id} {:raw_table_id raw-table-id, :name "First", :is_pk true, :details {:base-type "IntegerField"}}]
-                  RawColumn [{raw-column-id2 :id} {:raw_table_id raw-table-id, :name "Second", :details {:special-type :category, :base-type "TextField"}}]
-                  RawColumn [{raw-column-id3 :id} {:raw_table_id raw-table-id, :name "Third", :details {:base-type "BooleanField"}}]
-                  Table     [{table-id :id, :as tbl} {:db_id database-id, :raw_table_id raw-table-id}]]
+                  RawColumn [{raw-column-id1 :id}          {:raw_table_id raw-table-id, :name "First", :is_pk true, :details {:base-type "type/Integer"}}]
+                  RawColumn [{raw-column-id2 :id}          {:raw_table_id raw-table-id, :name "Second", :details {:base-type "type/Text"}}]
+                  RawColumn [{raw-column-id3 :id}          {:raw_table_id raw-table-id, :name "Third", :details {:base-type "type/Boolean"}}]
+                  Table     [{table-id :id, :as tbl}       {:db_id database-id, :raw_table_id raw-table-id}]]
     (let [get-fields #(->> (db/select Field, :table_id table-id, {:order-by [:id]})
                            (mapv tu/boolean-ids-and-timestamps)
                            (mapv (fn [m]
-                                   (dissoc m :active :field_type :position :preview_display))))
+                                   (dissoc m :active :position :preview_display))))
           initial-fields (get-fields)
           first-sync     (do
                            (save-table-fields! tbl)
                            (get-fields))]
-      (tu/with-temp* [RawColumn [_ {:raw_table_id raw-table-id, :name "rating", :details {:base-type "IntegerField"}}]]
+      (tu/with-temp* [RawColumn [_ {:raw_table_id raw-table-id, :name "rating", :details {:base-type "type/Integer"}}]]
         ;; start with no fields
         [initial-fields
          ;; first sync will add all the fields
          first-sync
          ;; now add another column and modify the first
          (do
-           (db/update! RawColumn raw-column-id1, :is_pk false, :details {:base-type "DecimalField"})
+           (db/update! RawColumn raw-column-id1, :is_pk false, :details {:base-type "type/Decimal"})
            (save-table-fields! tbl)
            (get-fields))
          ;; now disable the first column
@@ -314,11 +195,12 @@
 
 ;; retire-tables!
 (expect
-  (let [disabled-movies-table (fn [tbl]
-                                (if-not (= "movies" (:name tbl))
-                                  tbl
-                                  (assoc tbl :active false
-                                         :fields [])))]
+  (let [disabled-movies-table (fn [table]
+                                (if-not (= "movies" (:name table))
+                                  table
+                                  (assoc table
+                                    :active false
+                                    :fields [])))]
     [moviedb/moviedb-tables-and-fields
      (mapv disabled-movies-table moviedb/moviedb-tables-and-fields)])
   (tu/with-temp* [Database [{database-id :id, :as db} {:engine :moviedb}]]
@@ -342,12 +224,13 @@
 
 ;; update-data-models-for-table!
 (expect
-  (let [disable-fks #(map (fn [field]
-                            (if (= :fk (:special_type field))
-                              (assoc field
-                                :special_type       nil
-                                :fk_target_field_id false)
-                              field)) %)]
+  (let [disable-fks (fn [fields]
+                      (for [field fields]
+                        (if (isa? (:special_type field) :type/FK)
+                          (assoc field
+                            :special_type       nil
+                            :fk_target_field_id false)
+                          field)))]
     [[(-> (last moviedb/moviedb-tables-and-fields)
           (update :fields disable-fks))]
      [(-> (last moviedb/moviedb-tables-and-fields)
@@ -362,25 +245,25 @@
 
       ;; stub out the Table we are going to sync for real below
       (let [raw-table-id (db/select-one-id RawTable, :database_id database-id, :name "roles")
-            tbl          (db/insert! Table
+            table        (db/insert! Table
                            :db_id        database-id
                            :raw_table_id raw-table-id
                            :name         "roles"
                            :active       true)]
-        [;; now lets run a sync and check what we got
+        [ ;; now lets run a sync and check what we got
          (do
-           (update-data-models-for-table! tbl)
+           (update-data-models-for-table! table)
            (get-tables database-id))
          ;; run the sync a second time to see how we respond to repeat syncing (should be same since nothing changed)
          (do
-           (update-data-models-for-table! tbl)
+           (update-data-models-for-table! table)
            (get-tables database-id))
          ;; one more time, but lets disable the table this time and ensure that's handled properly
          (do
            (db/update-where! RawTable {:database_id database-id
                                        :name        "roles"}
              :active false)
-           (update-data-models-for-table! tbl)
+           (update-data-models-for-table! table)
            (get-tables database-id))]))))
 
 
@@ -418,7 +301,7 @@
          (get-tables database-id))])))
 
 
-(defn resolve-fk-targets
+(defn- resolve-fk-targets
   "Convert :fk_target_[column|field]_id into more testable information with table/schema names."
   [m]
   (let [resolve-raw-column (fn [column-id]
@@ -471,15 +354,15 @@
 ;;; ------------------------------------------------------------ Make sure that "crufty" tables are marked as such ------------------------------------------------------------
 (i/def-database-definition ^:const ^:private db-with-some-cruft
   ["acquired_toucans"
-   [{:field-name "species",              :base-type :CharField}
-    {:field-name "cam_has_acquired_one", :base-type :BooleanField}]
+   [{:field-name "species",              :base-type :type/Text}
+    {:field-name "cam_has_acquired_one", :base-type :type/Boolean}]
    [["Toco"               false]
     ["Chestnut-Mandibled" true]
     ["Keel-billed"        false]
     ["Channel-billed"     false]]]
   ["south_migrationhistory"
-   [{:field-name "app_name",  :base-type :CharField}
-    {:field-name "migration", :base-type :CharField}]
+   [{:field-name "app_name",  :base-type :type/Text}
+    {:field-name "migration", :base-type :type/Text}]
    [["main" "0001_initial"]
     ["main" "0002_add_toucans"]]])
 

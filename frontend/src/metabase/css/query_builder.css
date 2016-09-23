@@ -663,6 +663,10 @@
     margin-bottom: 2px;
 }
 
+.List-item--disabled .List-item-title {
+    color: var(--grey-3);
+}
+
 .List-item--segment .Icon,
 .List-item--segment .List-item-title {
   color: var(--purple-color);
@@ -673,7 +677,7 @@
   color: var(--brand-color);
 }
 
-.List-item:hover,
+.List-item:not(.List-item--disabled):hover,
 .List-item--selected {
     background-color: currentColor;
     border-color: rgba(0,0,0,0.2);
@@ -684,12 +688,12 @@
     color: var(--default-font-color);
 }
 
-.List-item:hover .List-item-title,
+.List-item:not(.List-item--disabled):hover .List-item-title,
 .List-item--selected .List-item-title {
     color: white;
 }
 
-.List-item:hover .Icon,
+.List-item:not(.List-item--disabled):hover .Icon,
 .List-item--selected .Icon {
     color: white;
 }
@@ -699,7 +703,7 @@
     visibility: hidden;
 }
 
-.List-item:hover .FieldList-grouping-trigger,
+.List-item:not(.List-item--disabled):hover .FieldList-grouping-trigger,
 .List-item--selected .FieldList-grouping-trigger {
     visibility: visible;
     border-left: 2px solid rgba(0,0,0,0.1);

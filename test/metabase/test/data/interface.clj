@@ -3,36 +3,39 @@
 
    Objects that implement `IDatasetLoader` know how to load a `DatabaseDefinition` into an
    actual physical RDMS database. This functionality allows us to easily test with multiple datasets."
-  (:require [clojure.string :as s]
+  (:require [clojure.string :as str]
+            [schema.core :as s]
             (metabase [db :as db]
                       [driver :as driver])
             (metabase.models [database :refer [Database]]
                              [field :refer [Field] :as field]
                              [table :refer [Table]])
-            [metabase.util :as u])
+            [metabase.util :as u]
+            [metabase.util.schema :as su])
   (:import clojure.lang.Keyword))
 
-(defrecord FieldDefinition [^String  field-name
-                            ^Keyword base-type
-                            ^Keyword field-type
-                            ^Keyword special-type
-                            ^Keyword visibility-type
-                            ^Keyword fk])
+(s/defrecord FieldDefinition [field-name      :- su/NonBlankString
+                              base-type       :- (s/cond-pre {:native su/NonBlankString}
+                                                             su/FieldType)
+                              special-type    :- (s/maybe su/FieldType)
+                              visibility-type :- (s/maybe (apply s/enum field/visibility-types))
+                              fk              :- (s/maybe s/Keyword)])
 
-(defrecord TableDefinition [^String table-name
-                            field-definitions
-                            rows])
+(s/defrecord TableDefinition [table-name        :- su/NonBlankString
+                              field-definitions :- [FieldDefinition]
+                              rows              :- [[s/Any]]])
 
-(defrecord DatabaseDefinition [^String database-name
-                               table-definitions
-                               ;; Optional. Set this to non-nil to let dataset loaders know that we don't intend to keep it
-                               ;; for long -- they can adjust connection behavior, e.g. choosing simple connections instead of creating pools.
-                               ^Boolean short-lived?])
+(s/defrecord DatabaseDefinition [database-name     :- su/NonBlankString
+                                 table-definitions :- [TableDefinition]
+                                 ;; Optional. Set this to non-nil to let dataset loaders know that we don't intend to keep it
+                                 ;; for long -- they can adjust connection behavior, e.g. choosing simple connections instead of creating pools.
+                                 ;; TODO - not sure this is still used now that we create connection pools directly via C3P0; we might be able to remove it
+                                 short-lived?      :- (s/maybe s/Bool)])
 
 (defn escaped-name
   "Return escaped version of database name suitable for use as a filename / database name / etc."
   ^String [^DatabaseDefinition database-definition]
-  (s/replace (:database-name database-definition) #"\s+" "_"))
+  (str/replace (:database-name database-definition) #"\s+" "_"))
 
 (defn db-qualified-table-name
   "Return a combined table name qualified with the name of its database, suitable for use as an identifier.
@@ -41,7 +44,7 @@
   ^String [^String database-name, ^String table-name]
   {:pre [(string? database-name) (string? table-name)]}
   ;; take up to last 30 characters because databases like Oracle have limits on the lengths of identifiers
-  (apply str (take-last 30 (s/replace (s/lower-case (str database-name \_ table-name)) #"-" "_"))))
+  (apply str (take-last 30 (str/replace (str/lower-case (str database-name \_ table-name)) #"-" "_"))))
 
 
 (defprotocol IMetabaseInstance
@@ -53,19 +56,19 @@
 (extend-protocol IMetabaseInstance
   FieldDefinition
   (metabase-instance [this table]
-    (Field :table_id (:id table), :%lower.name (s/lower-case (:field-name this))))
+    (Field :table_id (:id table), :%lower.name (str/lower-case (:field-name this))))
 
   TableDefinition
   (metabase-instance [this database]
     ;; Look first for an exact table-name match; otherwise allow DB-qualified table names for drivers that need them like Oracle
-    (or (Table :db_id (:id database), :%lower.name (s/lower-case (:table-name this)))
+    (or (Table :db_id (:id database), :%lower.name (str/lower-case (:table-name this)))
         (Table :db_id (:id database), :%lower.name (db-qualified-table-name (:name database) (:table-name this)))))
 
   DatabaseDefinition
   (metabase-instance [{:keys [database-name]} engine-kw]
     (assert (string? database-name))
     (assert (keyword? engine-kw))
-    (db/setup-db-if-needed :auto-migrate true)
+    (db/setup-db-if-needed!, :auto-migrate true)
     (Database :name database-name, :engine (name engine-kw))))
 
 
@@ -102,7 +105,7 @@
     "*OPTIONAL*. Return the base type type that is actually used to store `Fields` of BASE-TYPE.
      The default implementation of this method is an identity fn. This is provided so DBs that don't support a given BASE-TYPE used in the test data
      can specifiy what type we should expect in the results instead.
-     For example, Oracle has `INTEGER` data types, so `:IntegerField` test values are instead stored as `NUMBER`, which we map to `:DecimalField`.")
+     For example, Oracle has `INTEGER` data types, so `:type/Integer` test values are instead stored as `NUMBER`, which we map to `:type/Decimal`.")
 
   (format-name ^String [this, ^String table-or-field-name]
     "*OPTIONAL* Transform a lowercase string `Table` or `Field` name in a way appropriate for this dataset
@@ -113,7 +116,7 @@
      Defaults to `(not (contains? (metabase.driver/features this) :set-timezone)`")
 
   (id-field-type ^clojure.lang.Keyword [this]
-    "*OPTIONAL* Return the `base_type` of the `id` `Field` (e.g. `:IntegerField` or `:BigIntegerField`). Defaults to `:IntegerField`."))
+    "*OPTIONAL* Return the `base_type` of the `id` `Field` (e.g. `:type/Integer` or `:type/BigInteger`). Defaults to `:type/Integer`."))
 
 (def IDatasetLoaderDefaultsMixin
   {:expected-base-type->actual         (u/drop-first-arg identity)
@@ -121,42 +124,29 @@
    :format-name                        (u/drop-first-arg identity)
    :has-questionable-timezone-support? (fn [driver]
                                          (not (contains? (driver/features driver) :set-timezone)))
-   :id-field-type                      (constantly :IntegerField)})
+   :id-field-type                      (constantly :type/Integer)})
 
 
 ;; ## Helper Functions for Creating New Definitions
 
 (defn create-field-definition
   "Create a new `FieldDefinition`; verify its values."
-  ^FieldDefinition [{:keys [field-name base-type field-type special-type visibility-type fk], :as field-definition-map}]
-  (assert (or (contains? field/base-types base-type)
-              (and (map? base-type)
-                   (string? (:native base-type))))
-    (str (format "Invalid field base type: '%s'\n" base-type)
-         "Field base-type should be either a valid base type like :TextField or be some native type wrapped in a map, like {:native \"JSON\"}."))
-  (when field-type
-    (assert (contains? field/field-types field-type)))
-  (when visibility-type
-    (assert (contains? field/visibility-types visibility-type)))
-  (when special-type
-    (assert (contains? field/special-types special-type)))
-  (map->FieldDefinition field-definition-map))
+  ^FieldDefinition [field-definition-map]
+  (s/validate FieldDefinition (map->FieldDefinition field-definition-map)))
 
 (defn create-table-definition
   "Convenience for creating a `TableDefinition`."
-  ^TableDefinition [^String table-name field-definition-maps rows]
-  (map->TableDefinition {:table-name          table-name
-                         :rows                rows
-                         :field-definitions   (mapv create-field-definition field-definition-maps)}))
+  ^TableDefinition [^String table-name, field-definition-maps rows]
+  (s/validate TableDefinition (map->TableDefinition {:table-name        table-name
+                                                     :rows              rows
+                                                     :field-definitions (mapv create-field-definition field-definition-maps)})))
 
 (defn create-database-definition
   "Convenience for creating a new `DatabaseDefinition`."
   ^DatabaseDefinition [^String database-name & table-name+field-definition-maps+rows]
-  {:pre [(string? database-name)
-         (not (s/blank? database-name))]}
-  (map->DatabaseDefinition {:database-name     database-name
-                            :table-definitions (mapv (partial apply create-table-definition)
-                                                     table-name+field-definition-maps+rows)}))
+  (s/validate DatabaseDefinition (map->DatabaseDefinition {:database-name     database-name
+                                                           :table-definitions (mapv (partial apply create-table-definition)
+                                                                                    table-name+field-definition-maps+rows)})))
 
 (defmacro def-database-definition
   "Convenience for creating a new `DatabaseDefinition` named by the symbol DATASET-NAME."
@@ -221,8 +211,8 @@
     field-name
     (let [[_ fk-table fk-dest-name] field-name]
       (-> fk-table
-          (s/replace #"ies$" "y")
-          (s/replace #"s$" "")
+          (str/replace #"ies$" "y")
+          (str/replace #"s$" "")
           (str  \_ (flatten-field-name fk-dest-name))))))
 
 (defn flatten-dbdef

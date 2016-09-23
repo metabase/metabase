@@ -39,17 +39,18 @@
 
 (defendpoint PUT "/:id"
   "Update `Table` with ID."
-  [id :as {{:keys [display_name entity_type visibility_type description caveats points_of_interest]} :body}]
+  [id :as {{:keys [display_name entity_type visibility_type description caveats points_of_interest show_in_getting_started]} :body}]
   {display_name    NonEmptyString,
    entity_type     TableEntityType,
    visibility_type TableVisibilityType}
   (write-check Table id)
   (check-500 (db/update-non-nil-keys! Table id
-               :display_name       display_name
-               :caveats            caveats
-               :points_of_interest points_of_interest
-               :entity_type        entity_type
-               :description        description))
+               :display_name            display_name
+               :caveats                 caveats
+               :points_of_interest      points_of_interest
+               :show_in_getting_started show_in_getting_started
+               :entity_type             entity_type
+               :description             description))
   (check-500 (db/update! Table id, :visibility_type visibility_type))
   (Table id))
 

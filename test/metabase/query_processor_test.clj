@@ -105,12 +105,12 @@
    {:table_id (id :categories)
     :id       (id :categories col)}
    (case col
-     :id   {:special_type :id
+     :id   {:special_type :type/PK
             :base_type    (id-field-type)
             :name         (format-name "id")
             :display_name "ID"}
-     :name {:special_type :name
-            :base_type    (expected-base-type->actual :TextField)
+     :name {:special_type :type/Name
+            :base_type    (expected-base-type->actual :type/Text)
             :name         (format-name "name")
             :display_name "Name"})))
 
@@ -123,16 +123,16 @@
    {:table_id (id :users)
     :id       (id :users col)}
    (case col
-     :id         {:special_type :id
+     :id         {:special_type :type/PK
                   :base_type    (id-field-type)
                   :name         (format-name "id")
                   :display_name "ID"}
-     :name       {:special_type :name
-                  :base_type    (expected-base-type->actual :TextField)
+     :name       {:special_type :type/Name
+                  :base_type    (expected-base-type->actual :type/Text)
                   :name         (format-name "name")
                   :display_name "Name"}
      :last_login {:special_type nil
-                  :base_type    (expected-base-type->actual :DateTimeField)
+                  :base_type    (expected-base-type->actual :type/DateTime)
                   :name         (format-name "last_login")
                   :display_name "Last Login"
                   :unit         :default})))
@@ -151,7 +151,7 @@
    {:table_id (id :venues)
     :id       (id :venues col)}
    (case col
-     :id          {:special_type :id
+     :id          {:special_type :type/PK
                    :base_type    (id-field-type)
                    :name         (format-name "id")
                    :display_name "ID"}
@@ -160,25 +160,25 @@
                                    {})
                    :target       (target-field (categories-col :id))
                    :special_type (if (fks-supported?)
-                                   :fk
-                                   :category)
-                   :base_type    (expected-base-type->actual :IntegerField)
+                                   :type/FK
+                                   :type/Category)
+                   :base_type    (expected-base-type->actual :type/Integer)
                    :name         (format-name "category_id")
                    :display_name "Category ID"}
-     :price       {:special_type :category
-                   :base_type    (expected-base-type->actual :IntegerField)
+     :price       {:special_type :type/Category
+                   :base_type    (expected-base-type->actual :type/Integer)
                    :name         (format-name "price")
                    :display_name "Price"}
-     :longitude   {:special_type :longitude,
-                   :base_type    (expected-base-type->actual :FloatField)
+     :longitude   {:special_type :type/Longitude
+                   :base_type    (expected-base-type->actual :type/Float)
                    :name         (format-name "longitude")
                    :display_name "Longitude"}
-     :latitude    {:special_type :latitude
-                   :base_type    (expected-base-type->actual :FloatField)
+     :latitude    {:special_type :type/Latitude
+                   :base_type    (expected-base-type->actual :type/Float)
                    :name         (format-name "latitude")
                    :display_name "Latitude"}
-     :name        {:special_type :name
-                   :base_type    (expected-base-type->actual :TextField)
+     :name        {:special_type :type/Name
+                   :base_type    (expected-base-type->actual :type/Text)
                    :name         (format-name "name")
                    :display_name "Name"})))
 
@@ -196,24 +196,26 @@
    {:table_id (id :checkins)
     :id       (id :checkins col)}
    (case col
-     :id       {:special_type :id
+     :id       {:special_type :type/PK
                 :base_type    (id-field-type)
                 :name         (format-name "id")
                 :display_name "ID"}
-     :venue_id {:extra_info   (if (fks-supported?) {:target_table_id (id :venues)}
-                                  {})
+     :venue_id {:extra_info   (if (fks-supported?)
+                                {:target_table_id (id :venues)}
+                                {})
                 :target       (target-field (venues-col :id))
                 :special_type (when (fks-supported?)
-                                :fk)
-                :base_type    (expected-base-type->actual :IntegerField)
+                                :type/FK)
+                :base_type    (expected-base-type->actual :type/Integer)
                 :name         (format-name "venue_id")
                 :display_name "Venue ID"}
      :user_id  {:extra_info   (if (fks-supported?) {:target_table_id (id :users)}
                                   {})
                 :target       (target-field (users-col :id))
-                :special_type (if (fks-supported?) :fk
-                                  :category)
-                :base_type    (expected-base-type->actual :IntegerField)
+                :special_type (if (fks-supported?)
+                                :type/FK
+                                :type/Category)
+                :base_type    (expected-base-type->actual :type/Integer)
                 :name         (format-name "user_id")
                 :display_name "User ID"})))
 
@@ -228,8 +230,8 @@
   {:arglists '([ag-col-kw] [ag-col-kw field])}
   ([ag-col-kw]
    (case ag-col-kw
-     :count  {:base_type    :IntegerField
-              :special_type :number
+     :count  {:base_type    :type/Integer
+              :special_type :type/Number
               :name         "count"
               :display_name "count"
               :id           nil
@@ -278,7 +280,10 @@
      :else        (vec (for [row rows]
                          (vec (for [[f v] (partition 2 (interleave format-fns row))]
                                 (when (or v format-nil-values?)
-                                  (f v)))))))))
+                                  (try (f v)
+                                       (catch Throwable e
+                                         (printf "(%s %s) failed: %s" f v (.getMessage e))
+                                         (throw e)))))))))))
 
 (def ^:private formatted-venues-rows (partial format-rows-by [int str int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int]))
 
@@ -307,7 +312,7 @@
 (expect false (mbql-query? {:type "native"}))
 (expect true  (mbql-query? {:type "query"}))
 
-(tu/resolve-private-fns metabase.query-processor query-without-aggregations-or-limits?)
+(tu/resolve-private-vars metabase.query-processor query-without-aggregations-or-limits?)
 
 ;; query-without-aggregations-or-limits?
 (expect false (query-without-aggregations-or-limits? {:query {:aggregation {:aggregation-type :count}}}))
@@ -772,8 +777,8 @@
 
 (defn- cumulative-count-col [col-fn col-name]
   (assoc (aggregate-col :count (col-fn col-name))
-         :base_type    :IntegerField
-         :special_type :number))
+    :base_type    :type/Integer
+    :special_type :type/Number))
 
 ;;; cum_count w/o breakout should be treated the same as count
 (qp-expect-with-all-engines
@@ -1598,14 +1603,14 @@
 
 (expect-with-non-timeseries-dbs
   (if (i/has-questionable-timezone-support? *driver*)
-    [[1  6] [2 10] [3  4] [4  9] [5  9] [6  8] [7  8] [8  9] [9  7] [10  9]]
-    [[1  8] [2  9] [3  9] [4  4] [5 11] [6  8] [7  6] [8 10] [9  6] [10 10]])
+    [[1 6] [2 10] [3 4] [4 9] [5  9] [6 8] [7 8] [8  9] [9 7] [10  9]]
+    [[1 8] [2  9] [3 9] [4 4] [5 11] [6 8] [7 6] [8 10] [9 6] [10 10]])
   (sad-toucan-incidents-with-bucketing :day-of-month))
 
 (expect-with-non-timeseries-dbs
   (if (i/has-questionable-timezone-support? *driver*)
-    [[152  6] [153 10] [154  4] [155  9] [156  9] [157  8] [158  8] [159  9] [160  7] [161  9]]
-    [[152  8] [153  9] [154  9] [155  4] [156 11] [157  8] [158  6] [159 10] [160  6] [161 10]])
+    [[152 6] [153 10] [154 4] [155 9] [156  9] [157  8] [158 8] [159  9] [160 7] [161  9]]
+    [[152 8] [153  9] [154 9] [155 4] [156 11] [157  8] [158 6] [159 10] [160 6] [161 10]])
   (sad-toucan-incidents-with-bucketing :day-of-year))
 
 (expect-with-non-timeseries-dbs
@@ -1670,7 +1675,7 @@
   (create-database-definition (str "a-checkin-every-" interval-seconds "-seconds")
     ["checkins"
      [{:field-name "timestamp"
-       :base-type  :DateTimeField}]
+       :base-type  :type/DateTime}]
      (vec (for [i (range -15 15)]
             ;; Create timestamps using relative dates (e.g. `DATEADD(second, -195, GETUTCDATE())` instead of generating `java.sql.Timestamps` here so
             ;; they'll be in the DB's native timezone. Some DBs refuse to use the same timezone we're running the tests from *cough* SQL Server *cough*

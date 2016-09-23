@@ -76,10 +76,10 @@
   Field
   (formatted [{:keys [schema-name table-name special-type field-name]}]
     (let [field (keyword (hx/qualify-and-escape-dots schema-name table-name field-name))]
-      (case special-type
-        :timestamp_seconds      (sql/unix-timestamp->timestamp (driver) field :seconds)
-        :timestamp_milliseconds (sql/unix-timestamp->timestamp (driver) field :milliseconds)
-        field)))
+      (cond
+        (isa? special-type :type/UNIXTimestampSeconds)      (sql/unix-timestamp->timestamp (driver) field :seconds)
+        (isa? special-type :type/UNIXTimestampMilliseconds) (sql/unix-timestamp->timestamp (driver) field :milliseconds)
+        :else                                               field)))
 
   DateTimeField
   (formatted [{unit :unit, field :field}]

@@ -101,7 +101,7 @@ var config = module.exports = {
                 loader: 'eslint'
             },
             {
-                test: /\.(eot|woff2?|ttf|svg)$/,
+                test: /\.(eot|woff2?|ttf|svg|png)$/,
                 loader: "file-loader"
             },
             {

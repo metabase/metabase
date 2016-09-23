@@ -10,24 +10,24 @@
                              [table :refer [Table]])
             [metabase.sync-database :refer :all]
             (metabase.test [data :refer :all]
-                           [util :refer [resolve-private-fns] :as tu])))
+                           [util :refer [resolve-private-vars] :as tu])))
 
 (def ^:private ^:const sync-test-tables
   {"movie"  {:name "movie"
              :schema "default"
              :fields #{{:name      "id"
-                        :base-type :IntegerField}
+                        :base-type :type/Integer}
                        {:name      "title"
-                        :base-type :TextField}
+                        :base-type :type/Text}
                        {:name      "studio"
-                        :base-type :TextField}}}
+                        :base-type :type/Text}}}
    "studio" {:name "studio"
              :schema nil
              :fields #{{:name         "studio"
-                        :base-type    :TextField
-                        :special-type :id}
+                        :base-type    :type/Text
+                        :special-type :type/PK}
                        {:name      "name"
-                        :base-type :TextField}}}})
+                        :base-type :type/Text}}}})
 
 (defrecord SyncTestDriver []
   clojure.lang.Named
@@ -62,142 +62,76 @@
                                 (into {} (dissoc field :table :db :children :qualified-name :qualified-name-components :values :target))))
                tu/boolean-ids-and-timestamps)))
 
+(def ^:private ^:const table-defaults
+  {:id                      true
+   :db_id                   true
+   :raw_table_id            true
+   :schema                  nil
+   :description             nil
+   :caveats                 nil
+   :points_of_interest      nil
+   :show_in_getting_started false
+   :entity_type             nil
+   :entity_name             nil
+   :visibility_type         nil
+   :rows                    nil
+   :active                  true
+   :created_at              true
+   :updated_at              true})
+
+(def ^:private ^:const field-defaults
+  {:id                 true
+   :table_id           true
+   :raw_column_id      true
+   :description        nil
+   :caveats            nil
+   :points_of_interest nil
+   :active             true
+   :parent_id          false
+   :position           0
+   :preview_display    true
+   :visibility_type    :normal
+   :fk_target_field_id false
+   :created_at         true
+   :updated_at         true
+   :last_analyzed      true})
+
+
 ;; ## SYNC DATABASE
 (expect
-  [{:id                      true
-    :db_id                   true
-    :raw_table_id            true
-    :schema                  "default"
-    :name                    "movie"
-    :display_name            "Movie"
-    :description             nil
-    :caveats                 nil
-    :points_of_interest      nil
-    :show_in_getting_started false
-    :entity_type             nil
-    :entity_name             nil
-    :visibility_type         nil
-    :rows                    nil
-    :active                  true
-    :created_at              true
-    :updated_at              true
-    :fields                  [{:id                 true
-                               :table_id           true
-                               :raw_column_id      true
-                               :description        nil
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :id
-                               :name               "id"
-                               :active             true
-                               :parent_id          false
-                               :field_type         :info
-                               :position           0
-                               :preview_display    true
-                               :display_name       "ID"
-                               :base_type          :IntegerField
-                               :visibility_type    :normal
-                               :fk_target_field_id false
-                               :created_at         true
-                               :updated_at         true
-                               :last_analyzed      true}
-                              {:id                 true
-                               :table_id           true
-                               :raw_column_id      true
-                               :description        nil
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :fk
-                               :name               "studio"
-                               :active             true
-                               :parent_id          false
-                               :field_type         :info
-                               :position           0
-                               :preview_display    true
-                               :display_name       "Studio"
-                               :base_type          :TextField
-                               :visibility_type    :normal
-                               :fk_target_field_id true
-                               :created_at         true
-                               :updated_at         true
-                               :last_analyzed      true}
-                              {:id                 true
-                               :table_id           true
-                               :raw_column_id      true
-                               :description        nil
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       nil
-                               :name               "title"
-                               :active             true
-                               :parent_id          false
-                               :field_type         :info
-                               :position           0
-                               :preview_display    true
-                               :display_name       "Title"
-                               :base_type          :TextField
-                               :visibility_type    :normal
-                               :fk_target_field_id false
-                               :created_at         true
-                               :updated_at         true
-                               :last_analyzed      true}]}
-   {:id                      true
-    :db_id                   true
-    :raw_table_id            true
-    :schema                  nil
-    :name                    "studio"
-    :display_name            "Studio"
-    :description             nil
-    :caveats                 nil
-    :points_of_interest      nil
-    :show_in_getting_started false
-    :entity_type             nil
-    :entity_name             nil
-    :visibility_type         nil
-    :rows                    nil
-    :active                  true
-    :created_at              true
-    :updated_at              true
-    :fields                  [{:id                 true
-                               :table_id           true
-                               :raw_column_id      true
-                               :description        nil
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :name
-                               :name               "name"
-                               :active             true
-                               :parent_id          false
-                               :field_type         :info
-                               :position           0
-                               :preview_display    true
-                               :display_name       "Name"
-                               :base_type          :TextField
-                               :visibility_type    :normal
-                               :fk_target_field_id false
-                               :created_at         true
-                               :updated_at         true
-                               :last_analyzed      true}
-                              {:id                 true
-                               :table_id           true
-                               :raw_column_id      true
-                               :description        nil
-                               :caveats            nil
-                               :points_of_interest nil
-                               :special_type       :id
-                               :name               "studio"
-                               :active             true
-                               :parent_id          false
-                               :field_type         :info
-                               :position           0
-                               :preview_display    true
-                               :display_name       "Studio"
-                               :base_type          :TextField
-                               :visibility_type    :normal
-                               :fk_target_field_id false
-                               :created_at         true
-                               :updated_at         true
-                               :last_analyzed      true}]}]
+  [(merge table-defaults
+          {:schema       "default"
+           :name         "movie"
+           :display_name "Movie"
+           :fields       [(merge field-defaults
+                                 {:special_type :type/PK
+                                  :name         "id"
+                                  :display_name "ID"
+                                  :base_type    :type/Integer})
+                          (merge field-defaults
+                                 {:special_type       :type/FK
+                                  :name               "studio"
+                                  :display_name       "Studio"
+                                  :base_type          :type/Text
+                                  :fk_target_field_id true})
+                          (merge field-defaults
+                                 {:special_type nil
+                                  :name         "title"
+                                  :display_name "Title"
+                                  :base_type    :type/Text})]})
+   (merge table-defaults
+          {:name         "studio"
+           :display_name "Studio"
+           :fields       [(merge field-defaults
+                                 {:special_type :type/Name
+                                  :name         "name"
+                                  :display_name "Name"
+                                  :base_type    :type/Text})
+                          (merge field-defaults
+                                 {:special_type :type/PK
+                                  :name         "studio"
+                                  :display_name "Studio"
+                                  :base_type    :type/Text})]})]
   (tu/with-temp Database [fake-db {:engine :sync-test}]
     (sync-database! fake-db)
     ;; we are purposely running the sync twice to test for possible logic issues which only manifest
@@ -209,83 +143,25 @@
 ;; ## SYNC TABLE
 
 (expect
-  {:id                      true
-   :db_id                   true
-   :raw_table_id            true
-   :schema                  "default"
-   :name                    "movie"
-   :display_name            "Movie"
-   :description             nil
-   :caveats                 nil
-   :points_of_interest      nil
-   :show_in_getting_started false
-   :entity_type             nil
-   :entity_name             nil
-   :visibility_type         nil
-   :rows                    nil
-   :active                  true
-   :created_at              true
-   :updated_at              true
-   :fields                  [{:id                 true
-                              :table_id           true
-                              :raw_column_id      true
-                              :description        nil
-                              :caveats            nil
-                              :points_of_interest nil
-                              :special_type       :id
-                              :name               "id"
-                              :active             true
-                              :parent_id          false
-                              :field_type         :info
-                              :position           0
-                              :preview_display    true
-                              :display_name       "ID"
-                              :base_type          :IntegerField
-                              :visibility_type    :normal
-                              :fk_target_field_id false
-                              :created_at         true
-                              :updated_at         true
-                              :last_analyzed      true}
-                             {:id                 true
-                              :table_id           true
-                              :raw_column_id      true
-                              :description        nil
-                              :caveats            nil
-                              :points_of_interest nil
-                              :special_type       nil
-                              :name               "studio"
-                              :active             true
-                              :parent_id          false
-                              :field_type         :info
-                              :position           0
-                              :preview_display    true
-                              :display_name       "Studio"
-                              :base_type          :TextField
-                              :visibility_type    :normal
-                              :fk_target_field_id false
-                              :created_at         true
-                              :updated_at         true
-                              :last_analyzed      true}
-                             {:id                 true
-                              :table_id           true
-                              :raw_column_id      true
-                              :description        nil
-                              :caveats            nil
-                              :points_of_interest nil
-                              :special_type       nil
-                              :name               "title"
-                              :active             true
-                              :parent_id          false
-                              :field_type         :info
-                              :position           0
-                              :preview_display    true
-                              :display_name       "Title"
-                              :base_type          :TextField
-                              :visibility_type    :normal
-                              :fk_target_field_id false
-                              :created_at         true
-                              :updated_at         true
-                              :last_analyzed      true}]}
+  (merge table-defaults
+         {:schema       "default"
+          :name         "movie"
+          :display_name "Movie"
+          :fields       [(merge field-defaults
+                                {:special_type :type/PK
+                                 :name         "id"
+                                 :display_name "ID"
+                                 :base_type    :type/Integer})
+                         (merge field-defaults
+                                {:special_type nil
+                                 :name         "studio"
+                                 :display_name "Studio"
+                                 :base_type    :type/Text})
+                         (merge field-defaults
+                                {:special_type nil
+                                 :name         "title"
+                                 :display_name "Title"
+                                 :base_type    :type/Text})]})
   (tu/with-temp* [Database [fake-db {:engine :sync-test}]
                   RawTable [{raw-table-id :id} {:database_id (:id fake-db), :name "movie", :schema "default"}]
                   Table    [fake-table {:raw_table_id raw-table-id
@@ -353,11 +229,11 @@
 ;; ## Individual Helper Fns
 
 ;; ## TEST PK SYNCING
-(expect [:id
+(expect [:type/PK
          nil
-         :id
-         :latitude
-         :id]
+         :type/PK
+         :type/Latitude
+         :type/PK]
   (let [get-special-type (fn [] (db/select-one-field :special_type Field, :id (id :venues :id)))]
     [;; Special type should be :id to begin with
      (get-special-type)
@@ -368,7 +244,7 @@
      (do (sync-table! @venues-table)
          (get-special-type))
      ;; sync-table! should *not* change the special type of fields that are marked with a different type
-     (do (db/update! Field (id :venues :id), :special_type :latitude)
+     (do (db/update! Field (id :venues :id), :special_type :type/Latitude)
          (get-special-type))
      ;; Make sure that sync-table runs set-table-pks-if-needed!
      (do (db/update! Field (id :venues :id), :special_type nil)
@@ -389,9 +265,9 @@
   (db/select-one-field :fk_target_field_id Field, :id (id :venues :category_id)))
 
 ;; Check that sync-table! causes FKs to be set like we'd expect
-(expect [{:special_type :fk, :fk_target_field_id true}
+(expect [{:special_type :type/FK, :fk_target_field_id true}
          {:special_type nil, :fk_target_field_id false}
-         {:special_type :fk, :fk_target_field_id true}]
+         {:special_type :type/FK, :fk_target_field_id true}]
   (let [field-id (id :checkins :user_id)
         get-special-type-and-fk-exists? (fn []
                                           (into {} (-> (db/select-one [Field :special_type :fk_target_field_id], :id field-id)

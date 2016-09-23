@@ -146,13 +146,15 @@
 /* Google Maps widgets */
 .DashCard .gm-style-mtc,
 .DashCard .gm-bundled-control,
-.DashCard .PinMapUpdateButton {
+.DashCard .PinMapUpdateButton,
+.leaflet-container .leaflet-control-container {
   opacity: 0.01;
   transition: opacity 0.3s linear;
 }
 .DashCard:hover .gm-style-mtc,
 .DashCard:hover .gm-bundled-control,
-.DashCard:hover .PinMapUpdateButton {
+.DashCard:hover .PinMapUpdateButton,
+.leaflet-container:hover .leaflet-control-container {
   opacity: 1;
 }
 
@@ -332,6 +334,12 @@
   stroke-opacity: 1 !important;
 }
 
+.dc-chart circle.bubble {
+    fill-opacity: 0.80;
+    stroke-width: 1;
+    stroke: white;
+}
+
 .enable-dots .dc-tooltip circle.dot:hover,
 .enable-dots .dc-tooltip circle.dot.hover {
   fill: currentColor;
@@ -399,7 +407,13 @@
 .mute-2 .sub._2 .dot,
 .mute-3 .sub._3 .dot,
 .mute-4 .sub._4 .dot,
-.mute-5 .sub._5 .dot { opacity: 0.25; }
+.mute-5 .sub._5 .dot,
+.mute-0 .sub._0 .bubble,
+.mute-1 .sub._1 .bubble,
+.mute-2 .sub._2 .bubble,
+.mute-3 .sub._3 .bubble,
+.mute-4 .sub._4 .bubble,
+.mute-5 .sub._5 .bubble { opacity: 0.25; }
 
 
 .mute-yl .dc-chart .axis.y,

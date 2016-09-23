@@ -1,10 +1,10 @@
 [ ;; 151 cities where Tupac was sighted
  ["cities" [{:field-name "name"
-             :base-type  :CharField}
+             :base-type  :type/Text}
             {:field-name "latitude"
-             :base-type  :FloatField}
+             :base-type  :type/Float}
             {:field-name "longitude"
-             :base-type  :FloatField}]
+             :base-type  :type/Float}]
   [["Akron" 41.0817920535084 -81.5219209322972]
    ["Albany" 42.6674396618158 -73.8032049534362]
    ["Albuquerque" 35.1148836731619 -106.627751577878]
@@ -159,7 +159,7 @@
 
  ;; 15 Categories "where" Tupac was sighted
  ["categories" [{:field-name "name"
-                 :base-type  :CharField}]
+                 :base-type  :type/Text}]
   [["At a Restaurant"]
    ["At the Movies"]
    ["Walking Down the Street"]
@@ -178,14 +178,14 @@
 
  ;; 1000 random sightings of Tupac
  ["sightings" [{:field-name "city_id"
-                :base-type  :IntegerField
+                :base-type  :type/Integer
                 :fk         :cities}
                {:field-name "category_id"
-                :base-type  :IntegerField
+                :base-type  :type/Integer
                 :fk         :categories}
                {:field-name   "timestamp"
-                :base-type    :BigIntegerField
-                :special-type :timestamp_seconds}]
+                :base-type    :type/BigInteger
+                :special-type :type/UNIXTimestampSeconds}]
   [[23 14 927183600]
    [65 13 978854400]
    [60 10 886752000]

@@ -85,7 +85,7 @@
       response-unauthentic)))
 
 (def ^:private current-user-fields
-  (vec (concat [User :is_active :is_staff :google_auth] (models/default-fields User))))
+  (vec (concat [User :is_active :google_auth] (models/default-fields User))))
 
 (defn bind-current-user
   "Middleware that binds `metabase.api.common/*current-user*` and `*current-user-id*`

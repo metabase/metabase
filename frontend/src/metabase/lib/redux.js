@@ -1,5 +1,6 @@
 import moment from "moment";
 import _ from "underscore";
+import i from "icepick";
 
 import { createStore as originalCreateStore, applyMiddleware, compose } from "redux";
 import promise from 'redux-promise';
@@ -10,6 +11,8 @@ import { createHistory } from 'history';
 import { createAngularHistory } from "./createAngularHistory";
 
 import { reduxReactRouter } from 'redux-router';
+
+import { setRequestState, clearRequestState } from "metabase/redux/requests";
 
 // convienence
 export { combineReducers } from "redux";
@@ -91,12 +94,72 @@ export function momentifyObjectsTimestamps(objects, keys) {
     return _.mapObject(objects, o => momentifyTimestamps(o, keys));
 }
 
+//filters out angular cruft in resource list
+export const cleanResources = (resources) => resources
+    .filter(resource => resource.id !== undefined);
+
 //filters out angular cruft and turns into id indexed map
-export const resourceListToMap = (resources) => resources
-    .filter(resource => resource.id !== undefined)
+export const resourceListToMap = (resources) => cleanResources(resources)
     .reduce((map, resource) => Object.assign({}, map, {[resource.id]: resource}), {});
 
 //filters out angular cruft in resource
 export const cleanResource = (resource) => Object.keys(resource)
     .filter(key => key.charAt(0) !== "$")
     .reduce((map, key) => Object.assign({}, map, {[key]: resource[key]}), {});
+
+export const fetchData = async ({
+    dispatch, 
+    getState, 
+    requestStatePath, 
+    existingStatePath, 
+    getData, 
+    reload
+}) => {
+    const existingData = i.getIn(getState(), existingStatePath);
+    const statePath = requestStatePath.concat(['fetch']);
+    try {
+        const requestState = i.getIn(getState(), ["requests", ...statePath]);
+        if (!requestState || requestState.error || reload) {
+            dispatch(setRequestState({ statePath, state: "LOADING" }));
+            const data = await getData();
+            dispatch(setRequestState({ statePath, state: "LOADED" }));
+
+            return data;
+        }
+
+        return existingData;
+    }
+    catch(error) {
+        dispatch(setRequestState({ statePath, error }));
+        console.error(error);
+        return existingData;
+    }
+}
+
+export const updateData = async ({
+    dispatch, 
+    getState, 
+    requestStatePath, 
+    existingStatePath,
+    // specify any request paths that need to be invalidated after this update 
+    dependentRequestStatePaths,
+    putData
+}) => {
+    const existingData = i.getIn(getState(), existingStatePath);
+    const statePath = requestStatePath.concat(['update']);
+    try {
+        dispatch(setRequestState({ statePath, state: "LOADING" }));
+        const data = await putData();
+        dispatch(setRequestState({ statePath, state: "LOADED" }));
+
+        (dependentRequestStatePaths || [])
+            .forEach(statePath => dispatch(clearRequestState({ statePath })));
+
+        return data;
+    }
+    catch(error) {
+        dispatch(setRequestState({ statePath, error }));
+        console.error(error);
+        return existingData;
+    }
+}

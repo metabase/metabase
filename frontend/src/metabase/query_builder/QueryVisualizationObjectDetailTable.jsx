@@ -5,6 +5,7 @@ import Icon from 'metabase/components/Icon.jsx';
 import IconBorder from 'metabase/components/IconBorder.jsx';
 import LoadingSpinner from 'metabase/components/LoadingSpinner.jsx';
 import { foreignKeyCountsByOriginTable } from 'metabase/lib/schema_metadata';
+import { isPK } from "metabase/lib/types";
 import { singularize, inflect } from 'inflection';
 
 import cx from "classnames";
@@ -37,7 +38,7 @@ export default class QueryVisualizationObjectDetailTable extends Component {
 
         for (var i=0; i < this.props.data.cols.length; i++) {
             var coldef = this.props.data.cols[i];
-            if (coldef.special_type === "id") {
+            if (isPK(coldef.special_type)) {
                 return this.props.data.rows[0][i];
             }
         }

@@ -1,8 +1,8 @@
 [["incidents" [{:field-name "severity"
-                 :base-type  :IntegerField}
+                 :base-type  :type/Integer}
                 {:field-name   "timestamp"
-                 :base-type    :BigIntegerField
-                 :special-type :timestamp_milliseconds}]
+                 :base-type    :type/BigInteger
+                 :special-type :type/UNIXTimestampMilliseconds}]
    [[4 1433587200000]
     [0 1433965860000]
     [5 1433864520000]

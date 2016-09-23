@@ -6,6 +6,7 @@ import { push } from "react-router-redux";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { augmentTable } from "metabase/lib/table";
 import { loadTableAndForeignKeys } from "metabase/lib/table";
+import { isFK } from "metabase/lib/types";
 
 
 // resource wrappers
@@ -159,7 +160,7 @@ export const updateFieldSpecialType = createThunkAction("UPDATE_FIELD_SPECIAL_TY
     return function(dispatch, getState) {
 
         // If we are changing the field from a FK to something else, we should delete any FKs present
-        if (field.target && field.target.id != null && field.special_type !== "fk") {
+        if (field.target && field.target.id != null && isFK(field.special_type)) {
             // we have something that used to be an FK and is now not an FK
             // clean up after ourselves
             field.target = null;
