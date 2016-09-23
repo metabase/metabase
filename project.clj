@@ -65,7 +65,8 @@
                  [org.yaml/snakeyaml "1.17"]                          ; YAML parser (required by liquibase)
                  [org.xerial/sqlite-jdbc "3.8.11.2"]                  ; SQLite driver
                  [postgresql "9.3-1102.jdbc41"]                       ; Postgres driver
-                 [org.clojars.prepor/vertica-jdbc "7.0.1-0"]          ; 
+                 ;[org.clojars.prepor/vertica-jdbc "7.0.1-0"]          ; Vertica driver. This driver is getting a bit outdated...
+                 [org.clojars.erp12/jdbc-vertica "7.2.2"]             ; Vertica driver. A bit more updated Vertica.
                  [io.crate/crate-jdbc "1.13.0"]                       ; Crate JDBC driver
                  [io.crate/crate-client "0.55.2"]                     ; Crate Java client (used by Crate JDBC)
                  [prismatic/schema "1.1.3"]                           ; Data schema declaration and validation library

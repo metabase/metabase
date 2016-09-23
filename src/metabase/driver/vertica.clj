@@ -205,12 +205,12 @@
                                                            :type         :boolean
                                                            :default      false}])
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
-  sql/ISQLDriver 
+  sql/ISQLDriver
   VerticaISQLDriverMixin)
 
 
 ;; only register the Vertica driver if the JDBC driver is available
-(when (u/ignore-exceptions 
+(when (u/ignore-exceptions
         (Class/forName "com.vertica.jdbc.Driver"))
   (driver/register-driver! :vertica (VerticaDriver.)))
 
