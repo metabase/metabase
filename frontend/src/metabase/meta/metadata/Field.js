@@ -39,7 +39,7 @@ export default class Field extends Base {
     isID()        { return isPK(this.special_type); }
 
     values() {
-        return (this._object.values && this._object.values.length > 0 && this._object.values[0].values) || []
+        return (this._object.values && this._object.values.values) || []
     }
 
     icon() {
