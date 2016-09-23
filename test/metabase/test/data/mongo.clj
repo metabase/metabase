@@ -14,29 +14,28 @@
   ([_ _ dbdef]
    (database->connection-details dbdef)))
 
-(defn- destroy-db! [_ dbdef]
+(defn- destroy-db! [dbdef]
   (with-open [mongo-connection (mg/connect (database->connection-details dbdef))]
     (mg/drop-db mongo-connection (i/escaped-name dbdef))))
 
-(defn- create-db! [this {:keys [table-definitions], :as dbdef}]
-  (destroy-db! this dbdef)
-  (with-mongo-connection [^com.mongodb.DB mongo-db (database->connection-details dbdef)]
+(defn- create-db! [{:keys [table-definitions], :as dbdef}]
+  (destroy-db! dbdef)
+  (with-mongo-connection [mongo-db (database->connection-details dbdef)]
     (doseq [{:keys [field-definitions table-name rows]} table-definitions]
-      (let [field-names (->> field-definitions
-                             (map :field-name)
-                             (map keyword))]
+      (let [field-names (for [field-definition field-definitions]
+                          (keyword (:field-name field-definition)))]
         ;; Use map-indexed so we can get an ID for each row (index + 1)
         (doseq [[i row] (map-indexed (partial vector) rows)]
           (let [row (for [v row]
                       ;; Conver all the java.sql.Timestamps to java.util.Date, because the Mongo driver insists on being obnoxious and going from
                       ;; using Timestamps in 2.x to Dates in 3.x
-                      (if (= (type v) java.sql.Timestamp)
+                      (if (instance? java.sql.Timestamp v)
                         (java.util.Date. (.getTime ^java.sql.Timestamp v))
                         v))]
             (try
               ;; Insert each row
               (mc/insert mongo-db (name table-name) (assoc (zipmap field-names row)
-                                                           :_id (inc i)))
+                                                      :_id (inc i)))
               ;; If row already exists then nothing to do
               (catch com.mongodb.MongoException _))))))))
 
@@ -44,8 +43,8 @@
 (u/strict-extend MongoDriver
   i/IDatasetLoader
   (merge i/IDatasetLoaderDefaultsMixin
-         {:create-db!                   create-db!
-          :destroy-db!                  destroy-db!
+         {:create-db!                   (u/drop-first-arg create-db!)
+          :destroy-db!                  (u/drop-first-arg destroy-db!)
           :database->connection-details database->connection-details
           :engine                       (constantly :mongo)
           :format-name                  (fn [_ table-or-field-name]

@@ -1,3 +1,5 @@
+import { TYPE } from "metabase/lib/types";
+
 export const user_roles = [{
     'id': 'user',
     'name': 'User',
@@ -9,98 +11,84 @@ export const user_roles = [{
 }];
 
 export const field_special_types = [{
-    'id': 'id',
+    'id': TYPE.PK,
     'name': 'Entity Key',
     'section': 'Overall Row',
     'description': 'The primary key for this table.'
 }, {
-    'id': 'name',
+    'id': TYPE.Name,
     'name': 'Entity Name',
     'section': 'Overall Row',
     'description': 'The "name" of each record. Usually a column called "name", "title", etc.'
 }, {
-    'id': 'fk',
+    'id': TYPE.FK,
     'name': 'Foreign Key',
     'section': 'Overall Row',
     'description': 'Points to another table to make a connection.'
 }, {
-    'id': 'avatar',
+    'id': TYPE.AvatarURL,
     'name': 'Avatar Image URL',
     'section': 'Common'
 }, {
-    'id': 'category',
+    'id': TYPE.Category,
     'name': 'Category',
     'section': 'Common'
 }, {
-    'id': 'city',
+    'id': TYPE.City,
     'name': 'City',
     'section': 'Common'
 }, {
-    'id': 'country',
+    'id': TYPE.Country,
     'name': 'Country',
     'section': 'Common'
 }, {
-    'id': 'desc',
+    'id': TYPE.Description,
     'name': 'Description',
     'section': 'Common'
 }, {
-    'id': 'image',
+    'id': TYPE.ImageURL,
     'name': 'Image URL',
     'section': 'Common'
 }, {
-    'id': 'json',
+    'id': TYPE.SerializedJSON,
     'name': 'Field containing JSON',
     'section': 'Common'
 }, {
-    'id': 'latitude',
+    'id': TYPE.Latitude,
     'name': 'Latitude',
     'section': 'Common'
 }, {
-    'id': 'longitude',
+    'id': TYPE.Longitude,
     'name': 'Longitude',
     'section': 'Common'
 }, {
-    'id': 'number',
+    'id': TYPE.Number,
     'name': 'Number',
     'section': 'Common'
 }, {
-    'id': 'state',
+    'id': TYPE.State,
     'name': 'State',
     'section': 'Common'
 }, {
-    id: 'timestamp_seconds',
+    id: TYPE.UNIXTimestampSeconds,
     name: 'UNIX Timestamp (Seconds)',
     'section': 'Common'
 }, {
-    id: 'timestamp_milliseconds',
+    id: TYPE.UNIXTimestampMilliseconds,
     name: 'UNIX Timestamp (Milliseconds)',
     'section': 'Common'
 }, {
-    'id': 'url',
+    'id': TYPE.URL,
     'name': 'URL',
     'section': 'Common'
 }, {
-    'id': 'zip_code',
+    'id': TYPE.ZipCode,
     'name': 'Zip Code',
     'section': 'Common'
 }];
 
 export const field_special_types_map = field_special_types
     .reduce((map, type) => Object.assign({}, map, {[type.id]: type}), {});
-
-export const field_field_types = [{
-    'id': 'info',
-    'name': 'Information',
-    'description': 'Non-numerical value that is not meant to be used.'
-}, {
-    'id': 'metric',
-    'name': 'Metric',
-    'description': 'A number that can be added, graphed, etc.'
-}, {
-    'id': 'dimension',
-    'name': 'Dimension',
-    'description': 'A high or low-cardinality numerical string value that is meant to be used as a grouping.'
-}];
 
 export const field_visibility_types = [{
     'id': 'normal',

@@ -17,7 +17,7 @@
 
 ;;; ------------------------------------------------------------ simple substitution -- {{x}} ------------------------------------------------------------
 
-(tu/resolve-private-fns metabase.query-processor.sql-parameters substitute)
+(tu/resolve-private-vars metabase.query-processor.sql-parameters substitute)
 
 (expect "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
   (substitute "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}}"
@@ -145,7 +145,7 @@
 
 ;;; ------------------------------------------------------------ tests for value-for-tag ------------------------------------------------------------
 
-(tu/resolve-private-fns metabase.query-processor.sql-parameters value-for-tag)
+(tu/resolve-private-vars metabase.query-processor.sql-parameters value-for-tag)
 
 ;; variable -- specified
 (expect

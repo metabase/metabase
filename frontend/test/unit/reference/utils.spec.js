@@ -8,6 +8,8 @@ import {
     getQuestion
 } from 'metabase/reference/utils';
 
+import { TYPE } from "metabase/lib/types";
+
 describe("Reference utils.js", () => {
     const getProps = ({
         section = {
@@ -153,7 +155,7 @@ describe("Reference utils.js", () => {
                         fields_lookup: {
                             1: {
                                 id: 1,
-                                special_type: 'id',
+                                special_type: TYPE.PK,
                                 display_name: 'bar',
                                 description: 'foobar'
                             }
@@ -166,7 +168,7 @@ describe("Reference utils.js", () => {
                         fields_lookup: {
                             2: {
                                 id: 2,
-                                special_type: 'id',
+                                special_type: TYPE.PK,
                                 display_name: 'foo',
                                 description: 'barfoo'
                             }

@@ -8,7 +8,7 @@
                              [view-log :refer [ViewLog]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [match-$ expect-with-temp resolve-private-fns], :as tu]
+            [metabase.test.util :refer [match-$ expect-with-temp resolve-private-vars], :as tu]
             [metabase.util :as u]))
 
 ;; GET /
@@ -172,7 +172,7 @@
 
 ;;; activities->referenced-objects, referenced-objects->existing-objects, add-model-exists-info
 
-(resolve-private-fns metabase.api.activity activities->referenced-objects referenced-objects->existing-objects add-model-exists-info)
+(resolve-private-vars metabase.api.activity activities->referenced-objects referenced-objects->existing-objects add-model-exists-info)
 
 (def ^:private ^:const fake-activities
   [{:model "dashboard", :model_id  43, :topic :dashboard-create,    :details {}}

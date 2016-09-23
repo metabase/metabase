@@ -63,7 +63,7 @@
   (delay (when-let [uri (config/config-str :mb-db-connection-uri)]
            (parse-connection-string uri))))
 
-(defn- db-type
+(defn db-type
   "The type of backing DB used to run Metabase. `:h2`, `:mysql`, or `:postgres`."
   ^clojure.lang.Keyword []
   (or (:type @connection-string-details)
@@ -106,7 +106,7 @@
 ;;; |                                                        MIGRATE                                                         |
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 
-(def ^:private ^:const ^String changelog-file "migrations/liquibase.json")
+(def ^:private ^:const ^String changelog-file "liquibase.yaml")
 
 (defn- migrations-sql
   "Return a string of SQL containing the DDL statements needed to perform unran LIQUIBASE migrations."
@@ -149,7 +149,7 @@
       (Thread/sleep 2000)
       (throw (Exception. "Database has migration lock; cannot run migrations. You can force-release these locks by running `java -jar metabase.jar migrate release-locks`.")))))
 
-(defn- migrate-up-if-needed
+(defn- migrate-up-if-needed!
   "Run any unran LIQUIBASE migrations, if needed.
 
    This creates SQL for the migrations to be performed, then executes each DDL statement.
@@ -161,8 +161,8 @@
     (doseq [line (migrations-lines liquibase)]
       (jdbc/execute! conn [line]))))
 
-(defn- force-migrate-up-if-needed
-  "Force migrating up. This does two things differently from `migrate-up-if-needed`:
+(defn- force-migrate-up-if-needed!
+  "Force migrating up. This does two things differently from `migrate-up-if-needed!`:
 
    1.  This doesn't check to make sure the DB locks are cleared
    2.  Any DDL statements that fail are ignored
@@ -191,20 +191,22 @@
          ^Database       database       (.findCorrectDatabaseImplementation (DatabaseFactory/getInstance) liquibase-conn)]
      (Liquibase. changelog-file (ClassLoaderResourceAccessor.) database))))
 
-(defn migrate
+(defn migrate!
   "Migrate the database (this can also be ran via command line like `java -jar metabase.jar migrate up` or `lein run migrate up`):
 
    *  `:up`            - Migrate up
    *  `:force`         - Force migrate up, ignoring locks and any DDL statements that fail.
-   *  `:down`          - Rollback *all* migrations
    *  `:down-one`      - Rollback a single migration
    *  `:print`         - Just print the SQL for running the migrations, don't actually run them.
    *  `:release-locks` - Manually release migration locks left by an earlier failed migration.
-                         (This shouldn't be necessary now that we run migrations inside a transaction, but is available just in case)."
+                         (This shouldn't be necessary now that we run migrations inside a transaction, but is available just in case).
+
+   Note that this only performs *schema migrations*, not data migrations. Data migrations are handled separately by `metabase.db.migrations/run-all`.
+   (`setup-db!`, below, calls both this function and `run-all`)."
   ([]
-   (migrate :up))
+   (migrate! :up))
   ([direction]
-   (migrate @db-connection-details direction))
+   (migrate! @db-connection-details direction))
   ([db-details direction]
    (jdbc/with-db-transaction [conn (jdbc-details db-details)]
      ;; Tell transaction to automatically `.rollback` instead of `.commit` when the transaction finishes
@@ -215,9 +217,8 @@
      (try
        (let [liquibase (conn->liquibase conn)]
          (case direction
-           :up            (migrate-up-if-needed conn liquibase)
-           :force         (force-migrate-up-if-needed conn liquibase)
-           :down          (.rollback liquibase 10000 "")
+           :up            (migrate-up-if-needed! conn liquibase)
+           :force         (force-migrate-up-if-needed! conn liquibase)
            :down-one      (.rollback liquibase 1 "")
            :print         (println (migrations-sql liquibase))
            :release-locks (.forceReleaseLocks liquibase)))
@@ -270,12 +271,12 @@
   "Transaction connection to the *Metabase* backing DB connection pool. Used internally by `transaction`."
   nil)
 
-(declare setup-db-if-needed)
+(declare setup-db-if-needed!)
 
 (defn- db-connection
   "Get a JDBC connection spec for the Metabase DB."
   []
-  (setup-db-if-needed)
+  (setup-db-if-needed!)
   (or *transaction-connection*
       @db-connection-pool
       (throw (Exception. "DB is not setup."))))
@@ -329,7 +330,7 @@
     (format "Unable to connect to Metabase %s DB." (name engine)))
   (log/info "Verify Database Connection ... ✅"))
 
-(defn setup-db
+(defn setup-db!
   "Do general preparation of database by validating that we can connect.
    Caller can specify if we should run any pending database migrations."
   [& {:keys [db-details auto-migrate]
@@ -341,10 +342,10 @@
 
   ;; Run through our DB migration process and make sure DB is fully prepared
   (if auto-migrate
-    (migrate db-details :up)
+    (migrate! db-details :up)
     ;; if we are not doing auto migrations then print out migration sql for user to run manually
     ;; then throw an exception to short circuit the setup process and make it clear we can't proceed
-    (let [sql (migrate db-details :print)]
+    (let [sql (migrate! db-details :print)]
       (log/info (str "Database Upgrade Required\n\n"
                      "NOTICE: Your database requires updates to work with this version of Metabase.  "
                      "Please execute the following sql commands on your database before proceeding.\n\n"
@@ -362,11 +363,11 @@
   (require 'metabase.db.migrations)
   ((resolve 'metabase.db.migrations/run-all)))
 
-(defn setup-db-if-needed
-  "Call `setup-db` if DB is not already setup; otherwise no-op."
+(defn setup-db-if-needed!
+  "Call `setup-db!` if DB is not already setup; otherwise this does nothing."
   [& args]
   (when-not @setup-db-has-been-called?
-    (apply setup-db args)))
+    (apply setup-db! args)))
 
 
 ;;; +------------------------------------------------------------------------------------------------------------------------+
@@ -862,3 +863,22 @@
   [[source-entity fk] [dest-entity pk]]
   {:left-join [(entity->table-name dest-entity) [:= (qualify source-entity fk)
                                                     (qualify dest-entity pk)]]})
+
+
+(defn isa
+  "Convenience for generating an HoneySQL `IN` clause for a keyword and all of its descendents.
+   Intended for use with the type hierarchy in `metabase.types`.
+
+     (db/select Field :special_type (db/isa :type/URL))
+      ->
+     (db/select Field :special_type [:in #{\"type/URL\" \"type/ImageURL\" \"type/AvatarURL\"}])
+
+   Also accepts optional EXPR for use directly in a HoneySQL `where`:
+
+     (db/select Field {:where (db/isa :special_type :type/URL)})
+     ->
+     (db/select Field {:where [:in :special_type #{\"type/URL\" \"type/ImageURL\" \"type/AvatarURL\"}]})"
+  ([type-keyword]
+   [:in (set (map u/keyword->qualified-name (cons type-keyword (descendants type-keyword))))])
+  ([expr type-keyword]
+   [:in expr (last (isa type-keyword))]))

@@ -9,6 +9,7 @@
                           [email :as email]
                           [field :as field]
                           [getting-started :as getting-started]
+                          [geojson :as geojson]
                           [label :as label]
                           [metric :as metric]
                           [notify :as notify]
@@ -42,6 +43,7 @@
   (context "/email"           [] (+auth email/routes))
   (context "/field"           [] (+auth field/routes))
   (context "/getting_started" [] (+auth getting-started/routes))
+  (context "/geojson"         [] (+auth geojson/routes))
   (GET     "/health"          [] (if ((resolve 'metabase.core/initialized?))
                                    {:status 200, :body {:status "ok"}}
                                    {:status 503, :body {:status "initializing", :progress ((resolve 'metabase.core/initialization-progress))}}))

@@ -15,12 +15,12 @@
             [metabase.util :as u]))
 
 (def ^:private ^:const percent-valid-url-threshold
-  "Fields that have at least this percent of values that are valid URLs should be marked as `special_type = :url`."
+  "Fields that have at least this percent of values that are valid URLs should be given a special type of `:type/URL`."
   0.95)
 
 
 (def ^:private ^:const low-cardinality-threshold
-  "Fields with less than this many distinct values should automatically be marked with `special_type = :category`."
+  "Fields with less than this many distinct values should automatically be given a special type of `:type/Category`."
   40)
 
 (def ^:private ^:const field-values-entry-max-length
@@ -45,16 +45,12 @@
 (defn test-for-cardinality?
   "Should FIELD should be tested for cardinality?"
   [field is-new?]
-  (let [not-field-values-elligible #{:ArrayField
-                                     :DateField
-                                     :DateTimeField
-                                     :DictionaryField
-                                     :TimeField
-                                     :UnknownField}]
-    (or (field-values/field-should-have-field-values? field)
-        (and (nil? (:special_type field))
-             is-new?
-             (not (contains? not-field-values-elligible (:base_type field)))))))
+  (or (field-values/field-should-have-field-values? field)
+      (and (nil? (:special_type field))
+           is-new?
+           (not (isa? (:base_type field) :type/DateTime))
+           (not (isa? (:base_type field) :type/Collection))
+           (not (= (:base_type field) :type/*)))))
 
 (defn test:cardinality-and-extract-field-values
   "Extract field-values for FIELD.  If number of values exceeds `low-cardinality-threshold` then we return an empty set of values."
@@ -71,13 +67,13 @@
     ;; TODO: eventually we can check for :nullable? based on the original values above
     (cond-> (assoc field-stats :values distinct-values)
       (and (nil? (:special_type field))
-           (pos? (count distinct-values))) (assoc :special-type :category))))
+           (pos? (count distinct-values))) (assoc :special-type :type/Category))))
 
 (defn- test:no-preview-display
   "If FIELD's is textual and its average length is too great, mark it so it isn't displayed in the UI."
   [driver field field-stats]
   (if-not (and (= :normal (:visibility_type field))
-               (contains? #{:CharField :TextField} (:base_type field)))
+               (isa? (:base_type field) :type/Text))
     ;; this field isn't suited for this test
     field-stats
     ;; test for avg length
@@ -89,10 +85,10 @@
           (assoc field-stats :preview-display false))))))
 
 (defn- test:url-special-type
-  "If FIELD is texual, doesn't have a `special_type`, and its non-nil values are primarily URLs, mark it as `special_type` `url`."
+  "If FIELD is texual, doesn't have a `special_type`, and its non-nil values are primarily URLs, mark it as `special_type` `:type/URL`."
   [driver field field-stats]
   (if-not (and (not (:special_type field))
-               (contains? #{:CharField :TextField} (:base_type field)))
+               (isa? (:base_type field) :type/Text))
     ;; this field isn't suited for this test
     field-stats
     ;; test for url values
@@ -129,15 +125,15 @@
    are valid serialized JSON dictionaries or arrays."
   [driver field field-stats]
   (if-not (and (not (:special_type field))
-               (contains? #{:CharField :TextField} (:base_type field)))
+               (not (isa? (:base_type field) :type/Text)))
     ;; this field isn't suited for this test
     field-stats
     ;; check for json values
     (if-not (values-are-valid-json? (take driver/max-sync-lazy-seq-results (driver/field-values-lazy-seq driver field)))
       field-stats
       (do
-        (log/debug (u/format-color 'green "Field '%s' looks like it contains valid JSON objects. Setting special_type to :json." (field/qualified-name field)))
-        (assoc field-stats :special-type :json, :preview-display false)))))
+        (log/debug (u/format-color 'green "Field '%s' looks like it contains valid JSON objects. Setting special_type to :type/JSON." (field/qualified-name field)))
+        (assoc field-stats :special-type :type/JSON, :preview-display false)))))
 
 (defn- test:new-field
   "Do the various tests that should only be done for a new `Field`.

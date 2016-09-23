@@ -6,7 +6,7 @@
             (metabase.test.data [dataset-definitions :as defs]
                                 [datasets :as datasets]
                                 [interface :as i])
-            [metabase.test.util :refer [resolve-private-fns]]
+            [metabase.test.util :refer [resolve-private-vars]]
             [metabase.util :as u])
   (:import java.util.Arrays
            com.google.api.client.util.DateTime
@@ -14,7 +14,7 @@
            (com.google.api.services.bigquery.model Dataset DatasetReference QueryRequest Table TableDataInsertAllRequest TableDataInsertAllRequest$Rows TableFieldSchema TableReference TableRow TableSchema)
            metabase.driver.bigquery.BigQueryDriver))
 
-(resolve-private-fns metabase.driver.bigquery execute execute-no-auto-retry post-process-native)
+(resolve-private-vars metabase.driver.bigquery execute execute-no-auto-retry post-process-native)
 
 ;;; # ------------------------------------------------------------ CONNECTION DETAILS ------------------------------------------------------------
 
@@ -119,17 +119,16 @@
 
 
 (def ^:private ^:const base-type->bigquery-type
-  {:BigIntegerField :INTEGER
-   :BooleanField    :BOOLEAN
-   :CharField       :STRING
-   :DateField       :TIMESTAMP
-   :DateTimeField   :TIMESTAMP
-   :DecimalField    :FLOAT
-   :DictionaryField :RECORD
-   :FloatField      :FLOAT
-   :IntegerField    :INTEGER
-   :TextField       :STRING
-   :TimeField       :TIMESTAMP})
+  {:type/BigInteger :INTEGER
+   :type/Boolean    :BOOLEAN
+   :type/Date       :TIMESTAMP
+   :type/DateTime   :TIMESTAMP
+   :type/Decimal    :FLOAT
+   :type/Dictionary :RECORD
+   :type/Float      :FLOAT
+   :type/Integer    :INTEGER
+   :type/Text       :STRING
+   :type/Time       :TIMESTAMP})
 
 (defn- fielddefs->field-name->base-type
   "Convert FIELD-DEFINITIONS to a format appropriate for passing to `create-table!`."

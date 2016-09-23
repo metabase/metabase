@@ -4,6 +4,7 @@ import { Link } from "react-router";
 
 import * as MetabaseCore from "metabase/lib/core";
 import { isNumericBaseType } from "metabase/lib/schema_metadata";
+import { isa, isFK, TYPE } from "metabase/lib/types";
 
 import i from 'icepick';
 
@@ -23,7 +24,7 @@ const Field = ({
     icon,
     isEditing,
     formField
-}) => 
+}) =>
     <div className={cx(S.item)}>
         <div className={S.leftIcons}>
             { icon && <Icon className={S.chartIcon} name={icon} size={20} /> }
@@ -58,9 +59,8 @@ const Field = ({
                                         'name': 'No field type',
                                         'section': 'Other'
                                     })
-                                    .filter(type => !isNumericBaseType(field) ?
-                                        !(type.id && type.id.startsWith("timestamp_")) :
-                                        true
+                                    .filter(type =>
+                                        isNumericBaseType(field) || !isa(type && type.id, TYPE.UNIXTimestamp)
                                     )
                             }
                             onChange={(type) => formField.special_type.onChange(type.id)}
@@ -84,8 +84,8 @@ const Field = ({
                 </div>
                 <div className={F.fieldForeignKey}>
                     { isEditing ?
-                        (formField.special_type.value === 'fk' ||
-                        (field.special_type === 'fk' && formField.special_type.value === undefined)) &&
+                        (isFK(formField.special_type.value) ||
+                        (isFK(field.special_type) && formField.special_type.value === undefined)) &&
                         <Select
                             triggerClasses={F.fieldSelect}
                             placeholder="Select a field type"
@@ -98,7 +98,7 @@ const Field = ({
                             onChange={(foreignKey) => formField.fk_target_field_id.onChange(foreignKey.id)}
                             optionNameFn={(foreignKey) => foreignKey.name}
                         /> :
-                        field.special_type === 'fk' &&
+                        isFK(field.special_type) &&
                         <span>
                             {i.getIn(foreignKeys, [field.fk_target_field_id, "name"])}
                         </span>

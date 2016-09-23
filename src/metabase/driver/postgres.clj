@@ -12,76 +12,79 @@
             [metabase.util.honeysql-extensions :as hx])
   ;; This is necessary for when NonValidatingFactory is passed in the sslfactory connection string argument,
   ;; e.x. when connecting to a Heroku Postgres database from outside of Heroku.
-  (:import org.postgresql.ssl.NonValidatingFactory))
+  (:import java.util.UUID
+           org.postgresql.ssl.NonValidatingFactory))
 
 (defn- column->base-type
   "Map of Postgres column types -> Field base types.
    Add more mappings here as you come across them."
   [column-type]
-  ({:bigint        :BigIntegerField
-    :bigserial     :BigIntegerField
-    :bit           :UnknownField
-    :bool          :BooleanField
-    :boolean       :BooleanField
-    :box           :UnknownField
-    :bpchar        :CharField       ; "blank-padded char" is the internal name of "character"
-    :bytea         :UnknownField    ; byte array
-    :cidr          :TextField       ; IPv4/IPv6 network address
-    :circle        :UnknownField
-    :date          :DateField
-    :decimal       :DecimalField
-    :float4        :FloatField
-    :float8        :FloatField
-    :geometry      :UnknownField
-    :inet          :TextField
-    :int           :IntegerField
-    :int2          :IntegerField
-    :int4          :IntegerField
-    :int8          :BigIntegerField
-    :interval      :UnknownField    ; time span
-    :json          :TextField
-    :jsonb         :TextField
-    :line          :UnknownField
-    :lseg          :UnknownField
-    :macaddr       :TextField
-    :money         :DecimalField
-    :numeric       :DecimalField
-    :path          :UnknownField
-    :pg_lsn        :IntegerField    ; PG Log Sequence #
-    :point         :UnknownField
-    :real          :FloatField
-    :serial        :IntegerField
-    :serial2       :IntegerField
-    :serial4       :IntegerField
-    :serial8       :BigIntegerField
-    :smallint      :IntegerField
-    :smallserial   :IntegerField
-    :text          :TextField
-    :time          :TimeField
-    :timetz        :TimeField
-    :timestamp     :DateTimeField
-    :timestamptz   :DateTimeField
-    :tsquery       :UnknownField
-    :tsvector      :UnknownField
-    :txid_snapshot :UnknownField
-    :uuid          :UUIDField
-    :varbit        :UnknownField
-    :varchar       :TextField
-    :xml           :TextField
-    (keyword "bit varying")                :UnknownField
-    (keyword "character varying")          :TextField
-    (keyword "double precision")           :FloatField
-    (keyword "time with time zone")        :TimeField
-    (keyword "time without time zone")     :TimeField
-    (keyword "timestamp with timezone")    :DateTimeField
-    (keyword "timestamp without timezone") :DateTimeField} column-type))
+  ({:bigint        :type/BigInteger
+    :bigserial     :type/BigInteger
+    :bit           :type/*
+    :bool          :type/Boolean
+    :boolean       :type/Boolean
+    :box           :type/*
+    :bpchar        :type/Text       ; "blank-padded char" is the internal name of "character"
+    :bytea         :type/*          ; byte array
+    :cidr          :type/Text       ; IPv4/IPv6 network address
+    :circle        :type/*
+    :date          :type/Date
+    :decimal       :type/Decimal
+    :float4        :type/Float
+    :float8        :type/Float
+    :geometry      :type/*
+    :inet          :type/IPAddress
+    :int           :type/Integer
+    :int2          :type/Integer
+    :int4          :type/Integer
+    :int8          :type/BigInteger
+    :interval      :type/*          ; time span
+    :json          :type/Text
+    :jsonb         :type/Text
+    :line          :type/*
+    :lseg          :type/*
+    :macaddr       :type/Text
+    :money         :type/Decimal
+    :numeric       :type/Decimal
+    :path          :type/*
+    :pg_lsn        :type/Integer    ; PG Log Sequence #
+    :point         :type/*
+    :real          :type/Float
+    :serial        :type/Integer
+    :serial2       :type/Integer
+    :serial4       :type/Integer
+    :serial8       :type/BigInteger
+    :smallint      :type/Integer
+    :smallserial   :type/Integer
+    :text          :type/Text
+    :time          :type/Time
+    :timetz        :type/Time
+    :timestamp     :type/DateTime
+    :timestamptz   :type/DateTime
+    :tsquery       :type/*
+    :tsvector      :type/*
+    :txid_snapshot :type/*
+    :uuid          :type/UUID
+    :varbit        :type/*
+    :varchar       :type/Text
+    :xml           :type/Text
+    (keyword "bit varying")                :type/*
+    (keyword "character varying")          :type/Text
+    (keyword "double precision")           :type/Float
+    (keyword "time with time zone")        :type/Time
+    (keyword "time without time zone")     :type/Time
+    (keyword "timestamp with timezone")    :type/DateTime
+    (keyword "timestamp without timezone") :type/DateTime} column-type))
 
 (defn- column->special-type
   "Attempt to determine the special-type of a Field given its name and Postgres column type."
   [column-name column-type]
-  ;; this is really, really simple right now.  if its postgres :json type then it's :json special-type
-  (when (= column-type :json)
-    :json))
+  ;; this is really, really simple right now.  if its postgres :json type then it's :type/SerializedJSON special-type
+  (case column-type
+    :json :type/SerializedJSON
+    :inet :type/IPAddress
+    nil))
 
 (def ^:const ssl-params
   "Params to include in the JDBC connection spec for an SSL connection."
@@ -167,10 +170,12 @@
     message))
 
 (defn- prepare-value [{value :value, {:keys [base-type]} :field}]
-  (if (and (= base-type :UUIDField)
-           value)
-    (java.util.UUID/fromString value)
-    value))
+  (if-not value
+    value
+    (cond
+      (isa? base-type :type/UUID)      (UUID/fromString value)
+      (isa? base-type :type/IPAddress) (hx/cast :inet value)
+      :else                            value)))
 
 
 (defn- materialized-views

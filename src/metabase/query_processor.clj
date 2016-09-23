@@ -224,8 +224,8 @@
                 (seq fields)))))
 
 (defn- datetime-field? [{:keys [base-type special-type]}]
-  (or (contains? #{:DateField :DateTimeField} base-type)
-      (contains? #{:timestamp_seconds :timestamp_milliseconds} special-type)))
+  (or (isa? base-type :type/DateTime)
+      (isa? special-type :type/DateTime)))
 
 (defn- fields-for-source-table
   "Return the all fields for SOURCE-TABLE, for use as an implicit `:fields` clause."
@@ -582,7 +582,6 @@
                          :executor_id       executed-by
                          :json_query        query
                          :query_hash        query-hash
-                         :query_id          nil
                          :version           0
                          :status            :starting
                          :error             ""

@@ -23,11 +23,11 @@
 ;;    *  date
 
 [["users" [{:field-name "name"
-            :base-type  :CharField}
+            :base-type  :type/Text}
            {:field-name "last_login"
-            :base-type  :DateTimeField}
+            :base-type  :type/DateTime}
            {:field-name "password"
-            :base-type  :CharField
+            :base-type  :type/Text
             :visibility-type :sensitive}]
   [["Plato Yeshua" #inst "2014-04-01T08:30" "4be68cda-6fd5-4ba7-944e-2b475600bda5"]
    ["Felipinho Asklepios" #inst "2014-12-05T15:15" "5bb19ad9-f3f8-421f-9750-7d398e38428d"]
@@ -45,7 +45,7 @@
    ["Broen Olujimi" #inst "2014-10-03T13:45" "f9b65c74-9f91-4cfd-9248-94a53af82866"]
    ["Rüstem Hebel" #inst "2014-08-01T12:45" "02ad6b15-54b0-4491-bf0f-d781b0a2c4f5"]]]
  ["categories" [{:field-name "name"
-                 :base-type  :CharField}]
+                 :base-type  :type/Text}]
   [["African"]
    ["American"]
    ["Artisan"]
@@ -122,18 +122,18 @@
    ["Wine Bar"]
    ["Winery"]]]
  ["venues" [{:field-name   "name"
-             :base-type    :CharField}
+             :base-type    :type/Text}
             {:field-name   "latitude"
-             :base-type    :FloatField
-             :special-type :latitude}
+             :base-type    :type/Float
+             :special-type :type/Latitude}
             {:field-name   "longitude"
-             :base-type    :FloatField
-             :special-type :longitude}
+             :base-type    :type/Float
+             :special-type :type/Longitude}
             {:field-name   "price"
-             :base-type    :IntegerField
-             :special-type :category}
+             :base-type    :type/Integer
+             :special-type :type/Category}
             {:field-name   "category_id"
-             :base-type    :IntegerField
+             :base-type    :type/Integer
              :fk           :categories}]
   [["Red Medicine" 10.0646 -165.374 3 4]                               ;   1
    ["Stout Burgers & Beers" 34.0996 -118.329 2 11]                     ;   2
@@ -236,13 +236,13 @@
    ["Golden Road Brewing" 34.1505 -118.274 2 10]                       ;  99
    ["Mohawk Bend" 34.0777 -118.265 2 46]]]                             ; 100
  ["checkins" [{:field-name "user_id"
-               :base-type  :IntegerField
+               :base-type  :type/Integer
                :fk         :users}
               {:field-name "venue_id"
-               :base-type  :IntegerField
+               :base-type  :type/Integer
                :fk         :venues}
               {:field-name "date"
-               :base-type  :DateField}]
+               :base-type  :type/Date}]
   [[5 12 #inst "2014-04-07T07"]
    [1 31 #inst "2014-09-18T07"]
    [8 56 #inst "2014-09-15T07"]

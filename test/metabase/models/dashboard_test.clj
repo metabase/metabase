@@ -110,7 +110,7 @@
 
 ;;; revert-dashboard!
 
-(tu/resolve-private-fns metabase.models.dashboard revert-dashboard!)
+(tu/resolve-private-vars metabase.models.dashboard revert-dashboard!)
 
 (expect
   [{:name         "Test Dashboard"

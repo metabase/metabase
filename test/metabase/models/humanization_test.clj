@@ -6,7 +6,7 @@
             [metabase.test.util :as tu]
             [metabase.db :as db]))
 
-(tu/resolve-private-fns metabase.models.humanization
+(tu/resolve-private-vars metabase.models.humanization
   name->human-readable-name:simple name->human-readable-name:advanced)
 
 ;;; name->human-readable-name:advanced
