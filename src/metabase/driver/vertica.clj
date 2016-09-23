@@ -16,24 +16,24 @@
   "Map of Vertica column types -> Field base types.
    Add more mappings here as you come across them."
   [column-type]
-  ({:Boolean :BooleanField
-    :Integer :IntegerField
-    :Bigint :BigIntegerField
-    :Varbinary :UnknownField
-    :Binary :UnknownField
-    :Char :TextField
-    :Varchar :TextField
-    :Money :DecimalField
-    :Numeric :DecimalField
-    :Double :DecimalField
-    :Float :FloatField
-    :Date :DateField
-    :Time :TimeField
-    :Timetz :TimeField
-    :Timestamp :DateTimeField
-    :TimestampTz :DateTimeField
-    (keyword "Long Varchar") :TextField
-    (keyword "Long Varbinary") :UnknownField}
+  ({:Boolean     :type/Boolean
+    :Integer     :type/Integer
+    :Bigint      :type/BigInteger
+    :Varbinary   :type/*
+    :Binary      :type/*
+    :Char        :type/Text
+    :Varchar     :type/Text
+    :Money       :type/Decimal
+    :Numeric     :type/Decimal
+    :Double      :type/Decimal
+    :Float       :type/Float
+    :Date        :type/Date
+    :Time        :type/Time
+    :Timetz      :type/Time
+    :Timestamp   :type/DateTime
+    :TimestampTz :type/DateTime
+    (keyword "Long Varchar")    :type/Text
+    (keyword "Long Varbinary")  :type/*}
    column-type))
 
 (defn- column->special-type
