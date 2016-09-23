@@ -14,7 +14,10 @@ export default class ColumnarSelector extends Component {
     render() {
         const isItemSelected = (item, column) => column.selectedItems ?
             column.selectedItems.includes(item) :
-            column.selectedItem === item; 
+            column.selectedItem === item;
+        const isItemDisabled = (item, column) => column.disabledOptionIds ?
+            column.disabledOptionIds.includes(item.id) :
+            false;
 
         var columns = this.props.columns.map((column, columnIndex) => {
             var sectionElements;
@@ -27,10 +30,10 @@ export default class ColumnarSelector extends Component {
                         var itemClasses = cx({
                             'ColumnarSelector-row': true,
                             'ColumnarSelector-row--selected': isItemSelected(item, column),
-                            'ColumnarSelector-row--disabled': column.disabledOptionIds.includes(item.id),
+                            'ColumnarSelector-row--disabled': isItemDisabled(item, column),
                             'flex': true,
                             'no-decoration': true,
-                            'cursor-default': column.disabledOptionIds.includes(item.id)
+                            'cursor-default': isItemDisabled(item, column)
                         });
                         var checkIcon = lastColumn ? <Icon name="check" size={14}/> : null;
                         var descriptionElement;
@@ -40,7 +43,7 @@ export default class ColumnarSelector extends Component {
                         }
                         return (
                             <li key={rowIndex}>
-                                <a className={itemClasses} onClick={!column.disabledOptionIds.includes(item.id) && column.itemSelectFn.bind(null, item)}>
+                                <a className={itemClasses} onClick={!isItemDisabled(item, column) && column.itemSelectFn.bind(null, item)}>
                                     {checkIcon}
                                     <div className="flex flex-column">
                                         {column.itemTitleFn(item)}
