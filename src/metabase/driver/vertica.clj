@@ -37,13 +37,6 @@
     (keyword "Long Varbinary")  :type/*}
    column-type))
 
-(defn- column->special-type
-  "Attempt to determine the special-type of a Field given its name and Postgres column type."
-  [column-name column-type]
-  ;; this is really, really simple right now.  if its postgres :json type then it's :json special-type
-  (when (= column-type :json)
-    :json))
-
 (defn- connection-details->spec [{:keys [ssl] :as details-map}]
   (-> details-map
       (update :port (fn [port]
@@ -145,7 +138,7 @@
   "Implementations of `ISQLDriver` methods for `VerticaDriver`."
   (merge (sql/ISQLDriverDefaultsMixin)
          {:column->base-type         (u/drop-first-arg column->base-type)
-          :column->special-type      (u/drop-first-arg column->special-type)
+          ;; :column->special-type      (u/drop-first-arg column->special-type)
           :connection-details->spec  (u/drop-first-arg connection-details->spec)
           :date                      (u/drop-first-arg date)
           :prepare-value             (u/drop-first-arg prepare-value)
