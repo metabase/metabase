@@ -44,25 +44,12 @@
   (when (= column-type :json)
     :json))
 
-(def ^:const ssl-params
-  "Params to include in the JDBC connection spec for an SSL connection."
-  {:ssl        true
-   :sslmode    "require"
-   :sslfactory "org.postgresql.ssl.NonValidatingFactory"})  ; HACK Why enable SSL if we disable certificate validation?
-
-(def ^:const disable-ssl-params
-  "Params to include in the JDBC connection spec to disable SSL."
-  {:sslmode "disable"})
-
 (defn- connection-details->spec [{:keys [ssl] :as details-map}]
   (-> details-map
       (update :port (fn [port]
                       (if (string? port) (Integer/parseInt port)
                           port)))
       (dissoc :ssl)               ; remove :ssl in case it's false; DB will still try (& fail) to connect if the key is there
-      (merge (if ssl
-               ssl-params
-               disable-ssl-params))
       (rename-keys {:dbname :db})
       dbspec/vertica))
 
@@ -86,11 +73,9 @@
     :hour            (date-trunc :hour expr)
     :hour-of-day     (extract-integer :hour expr)
     :day             (hx/->date expr)
-    ;; Postgres DOW is 0 (Sun) - 6 (Sat); increment this to be consistent with Java, H2, MySQL, and Mongo (1-7)
     :day-of-week     (hx/inc (extract-integer :dow expr))
     :day-of-month    (extract-integer :day expr)
     :day-of-year     (extract-integer :doy expr)
-    ;; Postgres weeks start on Monday, so shift this date into the proper bucket and then decrement the resulting day
     :week            (hx/- (date-trunc :week (hx/+ expr one-day))
                            one-day)
     :week-of-year    (extract-integer :week (hx/+ expr one-day))
@@ -134,28 +119,19 @@
     value))
 
 
-;(defn- materialized-views
-;  "Fetch the Materialized Views for a Postgres DATABASE.
-;   These are returned as a set of maps, the same format as `:tables` returned by `describe-database`."
-;  [database]
-;  (try (set (jdbc/query (sql/db->jdbc-connection-spec database)
-;                        ["SELECT schemaname AS \"schema\", matviewname AS \"name\" FROM pg_matviews;"]
-;       (catch Throwable e
-;         (log/error "Failed to fetch materialized views for this database:" (.getMessage e))))
-
-;(defn- describe-database
-;  "Custom implementation of `describe-database` for Postgres.
-;   Postgres Materialized Views are not returned by normal JDBC methods: see [issue #2355](https://github.com/metabase/metabase/issues/2355); we have to manually fetch them.
-;   This implementation combines the results from the generic SQL default implementation with materialized views fetched from `materialized-views`."
-;  [driver database]
-;  (update (sql/describe-database driver database) :tables (u/rpartial set/union (materialized-views database))))
+(defn- materialized-views
+  "Fetch the Materialized Views for a Vertica DATABASE.
+   These are returned as a set of maps, the same format as `:tables` returned by `describe-database`."
+  [database]
+  (try (set (jdbc/query (sql/db->jdbc-connection-spec database)
+                        ["SELECT TABLE_SCHEMA AS \"schema\", TABLE_NAME AS \"name\" FROM V_CATALOG.VIEWS;"]))
+       (catch Throwable e
+         (log/error "Failed to fetch materialized views for this database:" (.getMessage e)))))
 
 (defn- describe-database
-  "Custom implementation of `describe-database` for Vertica.
-   Vertica Materialized Views are not returned by normal JDBC methods: see [issue #2355](https://github.com/metabase/metabase/issues/2355); we have to manually fetch them.
-   This implementation combines the results from the generic SQL default implementation with materialized views fetched from `materialized-views`."
+  "Custom implementation of `describe-database` for Vertica."
   [driver database]
-  (sql/describe-database driver database))
+  (update (sql/describe-database driver database) :tables (u/rpartial set/union (materialized-views database))))
 
 (defn- string-length-fn [field-key]
   (hsql/call :char_length (hx/cast :Varchar field-key)))
@@ -173,7 +149,7 @@
           :connection-details->spec  (u/drop-first-arg connection-details->spec)
           :date                      (u/drop-first-arg date)
           :prepare-value             (u/drop-first-arg prepare-value)
-          :set-timezone-sql          (constantly "UPDATE pg_settings SET setting = ? WHERE name ILIKE 'timezone';")
+          :set-timezone-sql          (constantly "SET TIME ZONE TO ?;")
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
