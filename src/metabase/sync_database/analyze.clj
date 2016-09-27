@@ -59,6 +59,7 @@
 (defn test:cardinality-and-extract-field-values
   "Extract field-values for FIELD.  If number of values exceeds `low-cardinality-threshold` then we return an empty set of values."
   [field field-stats]
+  (println "testing for cardinality" (select-keys field [:special_type :name]))
   ;; TODO: we need some way of marking a field as not allowing field-values so that we can skip this work if it's not appropriate
   ;;       for example, :category fields with more than MAX values don't need to be rescanned all the time
   (let [non-nil-values  (filter identity (queries/field-distinct-values field (inc low-cardinality-threshold)))
