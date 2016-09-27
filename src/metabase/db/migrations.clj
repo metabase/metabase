@@ -259,12 +259,23 @@
   (doseq [[_ t] old-base-type->new-type]
     (assert (isa? (keyword t) :type/*))))
 
+;; migrate all of the old base + special types to the new ones.
+;; This also takes care of any types that are already correct other than the fact that they're missing :type/ in the front.
+;; This was a bug that existed for a bit in 0.20.0-SNAPSHOT but has since been corrected
 (defmigration migrate-field-types
   (doseq [[old-type new-type] old-special-type->new-type]
+    ;; migrate things like :timestamp_milliseconds -> :type/UNIXTimestampMilliseconds
     (db/update-where! 'Field {:%lower.special_type (s/lower-case old-type)}
+      :special_type new-type)
+    ;; migrate things like :UNIXTimestampMilliseconds -> :type/UNIXTimestampMilliseconds
+    (db/update-where! 'Field {:special_type (name (keyword new-type))}
       :special_type new-type))
   (doseq [[old-type new-type] old-base-type->new-type]
+    ;; migrate things like :DateTimeField -> :type/DateTime
     (db/update-where! 'Field {:%lower.base_type (s/lower-case old-type)}
+      :base_type new-type)
+    ;; migrate things like :DateTime -> :type/DateTime
+    (db/update-where! 'Field {:base_type (name (keyword new-type))}
       :base_type new-type)))
 
 ;; if there were invalid field types in the database anywhere fix those so the new stricter validation logic doesn't blow up
