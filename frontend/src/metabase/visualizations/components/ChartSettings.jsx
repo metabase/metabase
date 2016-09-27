@@ -27,7 +27,7 @@ const ChartSettingsTabs = ({ tabs, selectTab, activeTab}) =>
 const Widget = ({ title, hidden, disabled, widget, value, onChange, props }) => {
     const W = widget;
     return (
-        <div className={cx("mb3", { hide: hidden, disable: disabled })}>
+        <div className={cx("mb2", { hide: hidden, disable: disabled })}>
             { title && <h4 className="mb1">{title}</h4> }
             { W && <W value={value} onChange={onChange} {...props}/> }
         </div>
@@ -48,9 +48,9 @@ class ChartSettings extends Component {
         this.setState({ currentTab: tab });
     }
 
-    onUpdateVisualizationSetting = (path, value) => {
+    onUpdateVisualizationSetting = (key, value) => {
         this.onChangeSettings({
-            [path.join(".")]: value
+            [key]: value
         });
     }
 
@@ -75,6 +75,18 @@ class ChartSettings extends Component {
         return assocIn(this.props.series, [0, "card", "visualization_settings"], this.state.settings);
     }
 
+    getChartTypeName(){
+      switch(this.props.series[0].card.display){
+        case "table":
+          return "table";
+        case "scalar":
+          return "number";
+        default:
+          return "chart";
+      }
+    }
+
+
     render () {
         const { onClose } = this.props;
 
@@ -88,12 +100,11 @@ class ChartSettings extends Component {
         const tabNames = Object.keys(tabs);
         const currentTab = this.state.currentTab || tabNames[0];
         const widgets = tabs[currentTab];
-
         const isDirty = !_.isEqual(this.props.series[0].card.visualization_settings, this.state.settings);
 
         return (
           <div className="flex flex-column spread p4">
-              <h2 className="my2">Customize this chart</h2>
+              <h2 className="my2">Customize this {this.getChartTypeName()}</h2>
               { tabNames.length > 1 &&
                   <ChartSettingsTabs tabs={tabNames} selectTab={this.selectTab} activeTab={currentTab}/>
               }

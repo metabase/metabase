@@ -160,7 +160,7 @@
 
 ;; ## Metric Revisions
 
-(tu/resolve-private-fns metabase.models.metric serialize-metric diff-metrics)
+(tu/resolve-private-vars metabase.models.metric serialize-metric diff-metrics)
 
 ;; serialize-metric
 (expect

@@ -1,4 +1,7 @@
-import { fetchData, updateData } from 'metabase/redux/metadata';
+import { 
+    fetchData, 
+    updateData 
+} from 'metabase/lib/redux';
 
 describe("Metadata", () => {
     const getDefaultArgs = ({

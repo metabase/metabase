@@ -172,6 +172,7 @@ export const getRoutes = (store) =>
                 <Route path="databases/:databaseId" component={DatabaseEditApp} />
 
                 <Route path="datamodel">
+                    <IndexRedirect to="database" />
                     <Route path="database" component={MetadataEditorApp} />
                     <Route path="database/:databaseId" component={MetadataEditorApp} />
                     <Route path="database/:databaseId/:mode" component={MetadataEditorApp} />

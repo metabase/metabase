@@ -1,5 +1,6 @@
 (ns metabase.models.database
-  (:require [cheshire.generate :refer [add-encoder encode-map]]
+  (:require [clojure.string :as s]
+            [cheshire.generate :refer [add-encoder encode-map]]
             [metabase.api.common :refer [*current-user*]]
             [metabase.db :as db]
             [metabase.models.interface :as i]
@@ -8,6 +9,7 @@
 (def ^:const protected-password
   "The string to replace passwords with when serializing Databases."
   "**MetabasePass**")
+
 
 (i/defentity Database :metabase_database)
 
@@ -27,6 +29,14 @@
   [{:keys [id]}]
   (db/select 'Table, :db_id id, :active true, {:order-by [[:display_name :asc]]}))
 
+(defn pk-fields
+  "Return all the primary key `Fields` associated with this DATABASE."
+  [{:keys [id]}]
+  (let [table-ids (db/select-ids 'Table, :db_id id, :active true)]
+    (when (seq table-ids)
+      (db/select 'Field, :table_id [:in table-ids], :special_type (db/isa :type/PK)))))
+
+
 (u/strict-extend (class Database)
   i/IEntity
   (merge i/IEntityDefaults
@@ -37,6 +47,20 @@
           :can-write?         i/superuser?
           :post-select        post-select
           :pre-cascade-delete pre-cascade-delete}))
+
+
+(defn schema-names
+  "Return a *sorted set* of schema names (as strings) associated with this `Database`."
+  [{:keys [id]}]
+  (when id
+    (apply sorted-set (db/select-field :schema 'Table
+                        :db_id id
+                        {:modifiers [:DISTINCT]}))))
+
+(defn schema-exists?
+  "Does DATABASE have any tables with SCHEMA?"
+  ^Boolean [{:keys [id]}, schema]
+  (db/exists? 'Table :db_id id, :schema (some-> schema name)))
 
 
 (add-encoder DatabaseInstance (fn [db json-generator]

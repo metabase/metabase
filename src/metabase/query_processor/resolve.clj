@@ -104,8 +104,8 @@
                                                                map->Field
                                                                (assoc :fk-field-id fk-field-id))]
     ;; try to resolve the Field with the ones available in field-id->field
-    (let [datetime-field? (or (contains? #{:DateField :DateTimeField} base-type)
-                              (contains? #{:timestamp_seconds :timestamp_milliseconds} special-type))]
+    (let [datetime-field? (or (isa? base-type :type/DateTime)
+                              (isa? special-type :type/DateTime))]
       (if-not datetime-field?
         field
         (map->DateTimeField {:field field
@@ -194,6 +194,7 @@
         expanded-query-dict
         ;; Otherwise fetch + resolve the Fields in question
         (let [fields (->> (u/key-by :id (db/select [field/Field :name :display_name :base_type :special_type :visibility_type :table_id :parent_id :description :id]
+                                          :visibility_type [:not-in ["sensitive"]]
                                           :id [:in field-ids]))
                           (m/map-vals rename-mb-field-keys)
                           (m/map-vals #(assoc % :parent (when-let [parent-id (:parent-id %)]
@@ -223,7 +224,7 @@
                            [:= :target-pk.table_id :target-table.id]]
                :where     [:and [:in :source-fk.id      (set fk-field-ids)]
                                 [:=  :source-fk.table_id     source-table-id]
-                                [:=  :source-fk.special_type "fk"]]})))
+                                (db/isa :source-fk.special_type :type/FK)]})))
 
 (defn- fk-field-ids->joined-tables
   "Fetch info for PK/FK `Fields` for the JOIN-TABLES referenced in a Query."
@@ -237,7 +238,8 @@
                                                                 :field-name target-field-name})
                             :source-field (map->JoinTableField {:field-id   source-field-id
                                                                 :field-name source-field-name})
-                            :join-alias  (str target-table-name "__via__" source-field-name)})))))
+                            ;; some DBs like Oracle limit the length of identifiers to 30 characters so only take the first 30 here
+                            :join-alias  (apply str (take 30 (str target-table-name "__via__" source-field-name)))})))))
 
 (defn- resolve-tables
   "Resolve the `Tables` in an EXPANDED-QUERY-DICT."

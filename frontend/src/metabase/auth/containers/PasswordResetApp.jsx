@@ -10,6 +10,7 @@ import FormField from "metabase/components/form/FormField.jsx";
 import FormLabel from "metabase/components/form/FormLabel.jsx";
 import FormMessage from "metabase/components/form/FormMessage.jsx";
 import LogoIcon from "metabase/components/LogoIcon.jsx";
+import Icon from "metabase/components/Icon.jsx";
 
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -155,7 +156,7 @@ export default class PasswordResetApp extends Component {
                           <div className="Grid-cell">
                               <div className="SuccessGroup bg-white bordered rounded shadowed">
                                   <div className="SuccessMark">
-                                      <mb-icon name="check"></mb-icon>
+                                      <Icon name="check" />
                                   </div>
                                   <p>Your password has been reset.</p>
                                   <p>

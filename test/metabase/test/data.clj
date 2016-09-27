@@ -122,6 +122,7 @@
   {:pre [(integer? db-id) (u/string-or-keyword? table-name)]}
   (let [table-name (format-name table-name)]
     (or (db/select-one-id Table, :db_id db-id, :name table-name)
+        (db/select-one-id Table, :db_id db-id, :name (i/db-qualified-table-name (db/select-one-field :name Database :id db-id) table-name))
         (throw (Exception. (format "No Table '%s' found for Database %d.\nFound: %s" table-name db-id
                                    (u/pprint-to-str (db/select-id->field :name Table, :db_id db-id, :active true))))))))
 
@@ -187,7 +188,7 @@
              ;; Sync the database
              (sync-database/sync-database! db)
 
-             ;; Add extra metadata like Field field-type, base-type, etc.
+             ;; Add extra metadata like Field base-type, etc.
              (doseq [^TableDefinition table-definition (:table-definitions database-definition)]
                (let [table-name (:table-name table-definition)
                      table      (delay (or  (i/metabase-instance table-definition db)
@@ -195,20 +196,17 @@
                                                                        table-name
                                                                        (u/pprint-to-str (dissoc table-definition :rows))
                                                                        (u/pprint-to-str (db/select [Table :schema :name], :db_id (:id db))))))))]
-                 (doseq [{:keys [field-name field-type visibility-type special-type], :as field-definition} (:field-definitions table-definition)]
+                 (doseq [{:keys [field-name visibility-type special-type], :as field-definition} (:field-definitions table-definition)]
                    (let [field (delay (or (i/metabase-instance field-definition @table)
                                           (throw (Exception. (format "Field '%s' not loaded from definition:\n"
                                                                      field-name
                                                                      (u/pprint-to-str field-definition))))))]
-                     (when field-type
-                       (log/debug (format "SET FIELD TYPE %s.%s -> %s" table-name field-name field-type))
-                       (db/update! Field (:id @field) :field_type (name field-type)))
                      (when visibility-type
                        (log/debug (format "SET VISIBILITY TYPE %s.%s -> %s" table-name field-name visibility-type))
                        (db/update! Field (:id @field) :visibility_type (name visibility-type)))
                      (when special-type
                        (log/debug (format "SET SPECIAL TYPE %s.%s -> %s" table-name field-name special-type))
-                       (db/update! Field (:id @field) :special_type (name special-type)))))))
+                       (db/update! Field (:id @field) :special_type (u/keyword->qualified-name special-type)))))))
              db))))))
 
 (defn remove-database!

@@ -23,7 +23,7 @@
 
 /* left */
 
-.text-left { text-align: left; }
+.text-left, :local(.text-left) { text-align: left; }
 
 @media screen and (--breakpoint-min-sm) {
     .sm-text-left { text-align: left; }
@@ -43,7 +43,7 @@
 
 /* right */
 
-.text-right { text-align: right; }
+.text-right, :local(.text-right) { text-align: right; }
 
 @media screen and (--breakpoint-min-sm) {
     .sm-text-right { text-align: right; }
@@ -81,16 +81,21 @@
   color: var(--body-text-color); /* TODO - is this bad? */
 }
 
+.text-paragraph, :local(.text-paragraph) {
+  font-size: 1.143em;
+  line-height: 1.5em;
+}
+
 .text-current {
     color: currentColor;
 }
 
 .text-underline {
-    text-decoration: underline;;
+    text-decoration: underline;
 }
 
 .text-underline-hover:hover {
-    text-decoration: underline;;
+    text-decoration: underline;
 }
 
 .text-ellipsis {
@@ -105,4 +110,8 @@
     padding: 0.2em 0.4em;
     line-height: 1.4em;
     white-space: pre;
+}
+
+.text-measure {
+    max-width: 620px;
 }

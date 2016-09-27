@@ -34,7 +34,7 @@ case $CIRCLE_NODE_INDEX in
         ENGINES=h2,mongo,mysql,bigquery \
             lein test
         ;;
-    1)  ENGINES=h2,sqlserver \
+    1)  ENGINES=h2,sqlserver,oracle \
         MB_DB_TYPE=postgres MB_DB_DBNAME=circle_test MB_DB_PORT=5432 MB_DB_USER=ubuntu MB_DB_HOST=localhost \
             lein test
         ;;

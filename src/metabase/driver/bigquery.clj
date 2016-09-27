@@ -143,12 +143,12 @@
    (execute (.get (.tables client) project-id dataset-id table-id))))
 
 (def ^:private ^:const  bigquery-type->base-type
-  {"BOOLEAN"   :BooleanField
-   "FLOAT"     :FloatField
-   "INTEGER"   :IntegerField
-   "RECORD"    :DictionaryField ; RECORD -> field has a nested schema
-   "STRING"    :TextField
-   "TIMESTAMP" :DateTimeField})
+  {"BOOLEAN"   :type/Boolean
+   "FLOAT"     :type/Float
+   "INTEGER"   :type/Integer
+   "RECORD"    :type/Dictionary ; RECORD -> field has a nested schema
+   "STRING"    :type/Text
+   "TIMESTAMP" :type/DateTime})
 
 (defn- table-schema->metabase-field-info [^TableSchema schema]
   (for [^TableFieldSchema field (.getFields schema)]
@@ -374,7 +374,7 @@
                          (and (seq schema-name) (seq field-name) (seq table-name))
                          (log/error "Don't know how to alias: " this))]}
   (cond
-    field (recur field) ; DateTimeField
+    field (recur field) ; type/DateTime
     index (name (let [{{{ag-type :aggregation-type} :aggregation} :query} sqlqp/*query*]
                   (if (= ag-type :distinct) :count
                       ag-type)))

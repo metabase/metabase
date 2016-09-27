@@ -69,6 +69,7 @@
 (expect true (is-url? "http://www.cool.com"))
 (expect true (is-url? "http://localhost/"))
 (expect true (is-url? "http://localhost:3000"))
+(expect true (is-url? "https://www.mapbox.com/help/data/stations.geojson"))
 (expect true (is-url? "http://www.cool.com:3000"))
 (expect true (is-url? "http://localhost:3000/auth/reset_password/144_f98987de-53ca-4335-81da-31bb0de8ea2b#new"))
 (expect false (is-url? "google.com"))                      ; missing protocol

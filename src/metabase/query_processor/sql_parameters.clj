@@ -35,12 +35,19 @@
   (first (hsql/format x
            :quoting ((resolve 'metabase.driver.generic-sql/quote-style) *driver*))))
 
+(defn- format-oracle-date [s]
+  (format "TO_TIMESTAMP('%s', 'yyyy-MM-dd')" (u/format-date "yyyy-MM-dd" (u/->Date s))))
+
+(defn- oracle-driver? ^Boolean []
+  (when-let [oracle-driver-class (u/ignore-exceptions (Class/forName "metabase.driver.oracle.OracleDriver"))]
+    (instance? oracle-driver-class *driver*)))
+
 (extend-protocol ISQLParamSubstituion
   nil         (->sql [_]    "NULL")
   Object      (->sql [this] (str this))
   Boolean     (->sql [this] (if this "TRUE" "FALSE"))
   NumberValue (->sql [this] (:value this))
-  String      (->sql [this] (str \' (s/replace this #"'" "\\\\'") \'))
+  String      (->sql [this] (str \' (s/replace this #"'" "\\\\'") \')) ; quote single quotes inside the string
   Keyword     (->sql [this] (honeysql->sql this))
   SqlCall     (->sql [this] (honeysql->sql this))
 
@@ -53,9 +60,18 @@
 
   DateRange
   (->sql [{:keys [start end]}]
-    (if (= start end)
-      (format "= '%s'" start)
-      (format "BETWEEN '%s' AND '%s'" start end)))
+    ;; This is a dirty dirty HACK! Unfortuantely Oracle is super-dumb when it comes to automatically converting strings to dates
+    ;; so we need to add the cast here
+    ;; TODO - fix this when we move to support native params in non-SQL databases
+    ;; Perhaps by making ->sql a multimethod that dispatches off of type and engine
+    (if (oracle-driver?)
+      (if (= start end)
+        (format "= %s" (format-oracle-date start))
+        (format "BETWEEN %s AND %s" (format-oracle-date start) (format-oracle-date end)))
+      ;; Not the Oracle driver
+      (if (= start end)
+        (format "= '%s'" start)
+        (format "BETWEEN '%s' AND '%s'" start end))))
 
   Dimension
   (->sql [{:keys [field param]}]

@@ -7,6 +7,7 @@ import BarChart from "./BarChart.jsx";
 
 import Urls from "metabase/lib/urls";
 import { formatValue } from "metabase/lib/formatting";
+import { TYPE } from "metabase/lib/types";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 import { getSettings } from "metabase/lib/visualization_settings";
 
@@ -66,7 +67,7 @@ export default class Scalar extends Component {
                 card: { ...s.card, display: "bar" },
                 data: {
                     cols: [
-                        { base_type: "TextField", display_name: "Name", name: "dimension" },
+                        { base_type: TYPE.Text, display_name: "Name", name: "dimension" },
                         { ...s.data.cols[0], display_name: "Value", name: "metric" }],
                     rows: [
                         [s.card.name, s.data.rows[0][0]]

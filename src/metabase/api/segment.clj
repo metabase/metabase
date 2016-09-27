@@ -35,20 +35,21 @@
 
 (defendpoint PUT "/:id"
   "Update a `Segment` with ID."
-  [id :as {{:keys [name description caveats points_of_interest definition revision_message]} :body}]
+  [id :as {{:keys [name description caveats points_of_interest show_in_getting_started definition revision_message]} :body}]
   {name             [Required NonEmptyString]
    revision_message [Required NonEmptyString]
    definition       [Required Dict]}
   (check-superuser)
   (check-404 (segment/exists? id))
   (segment/update-segment!
-    {:id                 id
-     :name               name
-     :description        description
-     :caveats            caveats
-     :points_of_interest points_of_interest
-     :definition         definition
-     :revision_message   revision_message}
+    {:id                      id
+     :name                    name
+     :description             description
+     :caveats                 caveats
+     :points_of_interest      points_of_interest
+     :show_in_getting_started show_in_getting_started
+     :definition              definition
+     :revision_message        revision_message}
     *current-user-id*))
 
 

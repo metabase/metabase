@@ -44,9 +44,21 @@
     "Gets called by `insert!` immediately before inserting a new object immediately before the SQL `INSERT` call.
      This provides an opportunity to do things like encode JSON or provide default values for certain fields.
 
-         (pre-insert [_ query]
+         (pre-insert [query]
            (let [defaults {:version 1}]
              (merge defaults query))) ; set some default values")
+
+  (post-insert [this]
+    "Gets called by `insert!` with an object that was newly inserted into the database.
+     This provides an opportunity to trigger specific logic that should occur when an object is inserted or modify the object that is returned.
+     The value returned by this method is returned to the caller of `insert!`. The default implementation is `identity`.
+
+       (post-insert [user]
+         (assoc user :newly-created true))
+
+       (post-insert [user]
+         (u/prog1 user
+           (add-user-to-magic-perm-groups! <>)))")
 
   (pre-update [this]
     "Called by `update!` before DB operations happen. A good place to set updated values for fields like `updated_at`.")
@@ -62,7 +74,7 @@
 
      The output of this function is ignored.
 
-        (pre-cascade-delete [_ {database-id :id :as database}]
+        (pre-cascade-delete [{database-id :id :as database}]
           (cascade-delete! Card :database_id database-id)
           ...)")
 
@@ -94,7 +106,7 @@
     "Return a map of keyword field names to their types for fields that should be serialized/deserialized in a special way. Valid types are `:json`, `:keyword`, or `:clob`.
 
      *  `:json` serializes objects as JSON strings before going into the DB, and parses JSON strings when coming out
-     *  `:keyword` calls `name` before going into the DB, and `keyword` when coming out
+     *  `:keyword` calls `u/keyword->qualified-name` before going into the DB, and `keyword` when coming out
      *  `:clob` converts clobs to Strings (via `metabase.util/jdbc-clob->str`) when coming out
 
        (types [_] {:cards :json}) ; encode `:cards` as JSON when stored in the DB"))
@@ -111,7 +123,7 @@
                       (if (string? s)
                         (json/parse-string s keyword)
                         obj)))}
-   :keyword {:in  name
+   :keyword {:in  u/keyword->qualified-name
              :out keyword}
    :clob    {:in  identity
              :out u/jdbc-clob->str}})
@@ -178,6 +190,7 @@
    :can-read?          (fn [this & _] (throw (UnsupportedOperationException. (format "No implementation of can-read? for %s; please provide one."  (class this)))))
    :can-write?         (fn [this & _] (throw (UnsupportedOperationException. (format "No implementation of can-write? for %s; please provide one." (class this)))))
    :pre-insert         identity
+   :post-insert        identity
    :pre-update         identity
    :post-select        identity
    :pre-cascade-delete (constantly nil)})

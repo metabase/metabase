@@ -13,8 +13,6 @@ import {
     getFriendlyName
 } from "metabase/visualizations/lib/utils";
 
-import Urls from "metabase/lib/urls";
-
 import { MinRowsError, ChartSettingsError } from "metabase/visualizations/lib/errors";
 
 import crossfilter from "crossfilter";
@@ -59,7 +57,6 @@ export default class LineAreaBarChart extends Component {
         super(props, context);
         this.state = {
             series: null,
-            isMultiseries: null
         };
     }
 
@@ -88,7 +85,6 @@ export default class LineAreaBarChart extends Component {
         let { series, settings } = newProps;
         let nextState = {
             series: series,
-            isMultiseries: false
         };
         let s = series && series.length === 1 && series[0];
         if (s && s.data) {
@@ -103,13 +99,14 @@ export default class LineAreaBarChart extends Component {
                 _.findIndex(cols, (col) => col.name === metricName)
             );
 
+            const bubbleIndex = settings["scatter.bubble"] && _.findIndex(cols, (col) => col.name === settings["scatter.bubble"]);
+            const extraIndexes = bubbleIndex && bubbleIndex >= 0 ? [bubbleIndex] : [];
+
             if (dimensions.length > 1) {
                 const dataset = crossfilter(rows);
                 const [dimensionIndex, seriesIndex] = dimensionIndexes;
-                const rowIndexes = [dimensionIndex].concat(metricIndexes);
+                const rowIndexes = [dimensionIndex].concat(metricIndexes, extraIndexes);
                 const seriesGroup = dataset.dimension(d => d[seriesIndex]).group()
-
-                nextState.isMultiseries = true;
                 nextState.series = seriesGroup.reduce(
                     (p, v) => p.concat([rowIndexes.map(i => v[i])]),
                     (p, v) => null, () => []
@@ -127,9 +124,9 @@ export default class LineAreaBarChart extends Component {
             } else {
                 const dimensionIndex = dimensionIndexes[0];
 
-                nextState.isMultiseries = metrics.length > 1;
                 nextState.series = metricIndexes.map(metricIndex => {
                     const col = cols[metricIndex];
+                    const rowIndexes = [dimensionIndex].concat(metricIndex, extraIndexes);
                     return {
                         card: {
                             ...s.card,
@@ -137,8 +134,10 @@ export default class LineAreaBarChart extends Component {
                             name: getFriendlyName(col)
                         },
                         data: {
-                            rows: rows.map(row => [row[dimensionIndex], row[metricIndex]]),
-                            cols: [cols[dimensionIndex], s.data.cols[metricIndex]]
+                            rows: rows.map(row =>
+                                rowIndexes.map(i => row[i])
+                            ),
+                            cols: rowIndexes.map(i => s.data.cols[i])
                         }
                     };
                 });
@@ -212,25 +211,33 @@ export default class LineAreaBarChart extends Component {
     }
 
     render() {
-        const { hovered, isDashboard, onAddSeries, onRemoveSeries, actionButtons } = this.props;
-        const { series, isMultiseries } = this.state;
+        const { hovered, isDashboard, actionButtons } = this.props;
+        const { series } = this.state;
 
-        const card = this.props.series[0].card;
+        const settings = this.getSettings();
 
-        let settings = this.getSettings();
+        const isMultiseries = this.state.series.length > 1;
+        const isDashboardMultiseries = this.props.series.length > 1;
+        const isCardMultiseries = isMultiseries && !isDashboardMultiseries;
 
         return (
             <div className={cx("flex flex-column p1", this.getHoverClasses(), this.props.className)}>
-                { (isDashboard && isMultiseries) &&
-                    <a href={card.id && Urls.card(card.id)} className="Card-title pt1 px1 flex-no-shrink no-decoration h3 text-bold fullscreen-night-text fullscreen-normal-text" style={{fontSize: '1em'}}>{card.name}</a>
+                {/* This is always used to show the original card titles/links + action buttons */}
+                { isDashboard &&
+                    <LegendHeader
+                        className="flex-no-shrink"
+                        series={this.props.series}
+                        actionButtons={actionButtons}
+                        hovered={hovered}
+                        onHoverChange={this.props.onHoverChange}
+                        settings={settings}
+                    />
                 }
-                { (isDashboard || isMultiseries) &&
+                {/* This only shows transformed card multiseries titles */}
+                { isCardMultiseries &&
                     <LegendHeader
                         className="flex-no-shrink"
                         series={series}
-                        onAddSeries={isMultiseries ? undefined : onAddSeries}
-                        onRemoveSeries={onRemoveSeries}
-                        actionButtons={actionButtons}
                         hovered={hovered}
                         onHoverChange={this.props.onHoverChange}
                         settings={settings}

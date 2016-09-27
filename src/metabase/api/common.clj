@@ -17,7 +17,7 @@
 ;;; ## DYNAMIC VARIABLES
 ;; These get bound by middleware for each HTTP request.
 
-(def ^:dynamic *current-user-id*
+(def ^:dynamic ^Integer *current-user-id*
   "Int ID or `nil` of user associated with current API call."
   nil)
 
@@ -25,6 +25,10 @@
   "Delay that returns the `User` (or nil) associated with the current API call.
    ex. `@*current-user*`"
   (atom nil)) ; default binding is just something that will return nil when dereferenced
+
+(def ^:dynamic ^Boolean *is-superuser?*
+  "Is the current user a superuser?"
+  false)
 
 
 ;;; ## CONDITIONAL RESPONSE FUNCTIONS / MACROS
@@ -62,19 +66,19 @@
   (check-404 (db/exists? entity, :id id)))
 
 (defn check-superuser
-  "Check that `*current-user*` is a superuser or throw a 403."
+  "Check that `*current-user*` is a superuser or throw a 403. This doesn't require a DB call."
   []
-  (check-403 (db/exists? 'User, :id *current-user-id*, :is_superuser true)))
+  (check-403 *is-superuser?*))
 
 
 ;;; #### checkp- functions: as in "check param". These functions expect that you pass a symbol so they can throw exceptions w/ relevant error messages.
 
-(defn invalid-param-exception
-  "Create an `ExceptionInfo` that contains information about an invalid API params in the expected format."
+(defn throw-invalid-param-exception
+  "Throw an `ExceptionInfo` that contains information about an invalid API params in the expected format."
   [field-name message]
-  (ex-info (format "Invalid field: %s" field-name)
+  (throw (ex-info (format "Invalid field: %s" field-name)
            {:status-code 400
-            :errors      {(keyword field-name) message}}))
+            :errors      {(keyword field-name) message}})))
 
 (defn checkp
   "Assertion mechanism for use inside API functions that validates individual input params.
@@ -87,7 +91,7 @@
       (checkp test field-name message)"
   ([tst field-name message]
    (when-not tst
-     (throw (invalid-param-exception (str field-name) message)))))
+     (throw-invalid-param-exception (str field-name) message))))
 
 (defn checkp-with
   "Check (F VALUE), or throw an exception with STATUS-CODE (default is 400).
@@ -119,8 +123,7 @@
     -> (check (contains? #{:fav :all :mine} f)
          [400 (str \"Invalid value '\" f \"' for 'f': must be one of: #{:fav :all :mine}\")])"
   [valid-values-set symb value]
-  {:pre [(set? valid-values-set)
-         (symbol? symb)]}
+  {:pre [(set? valid-values-set) (symbol? symb)]}
   (checkp-with (partial contains? valid-values-set) symb value (str "must be one of: " valid-values-set)))
 
 
@@ -287,8 +290,9 @@
 (defannotation Required
   "Param may not be `nil`."
   [symb value]
-  (or value
-      (throw (invalid-param-exception (name symb) "field is a required param."))))
+  (u/prog1 value
+    (when (nil? value)
+      (throw-invalid-param-exception (name symb) "field is a required param."))))
 
 (defannotation Date
   "Parse param string as an [ISO 8601 date](http://en.wikipedia.org/wiki/ISO_8601), e.g.
@@ -296,7 +300,7 @@
   [symb value :nillable]
   (try (u/->Timestamp value)
        (catch Throwable _
-         (throw (invalid-param-exception (name symb) (format "'%s' is not a valid date." value))))))
+         (throw-invalid-param-exception (name symb) (format "'%s' is not a valid date." value)))))
 
 (defannotation String->Integer
   "Param is converted from a string to an integer."
@@ -319,7 +323,7 @@
     (= value "true")  true
     (= value "false") false
     (nil? value)      nil
-    :else             (throw (invalid-param-exception (name symb) (format "'%s' is not a valid boolean." value)))))
+    :else             (throw-invalid-param-exception (name symb) (format "'%s' is not a valid boolean." value))))
 
 (defannotation Integer
   "Param must be an integer (this does *not* cast the param)."
@@ -340,18 +344,24 @@
   "Param must be an array of integers (this does *not* cast the param)."
   [symb value :nillable]
   (checkp-with vector? symb value "value must be an array.")
-  (mapv (fn [v] (checkp-with integer? symb v "array value must be an integer.")) value))
+  (mapv #(checkp-with integer? symb % "array value must be a integer.") value))
+
+(defannotation ArrayOfStrings
+  "Param must be an array of strings (this does *not* cast the param)."
+  [symb value :nillable]
+  (checkp-with vector? symb value "value must be an array.")
+  (mapv #(checkp-with string? symb % "array value must be a string.") value))
 
 (defannotation ArrayOfMaps
   "Param must be an array of maps (this does *not* cast the param)."
   [symb value :nillable]
   (checkp-with vector? symb value "value must be an array.")
-  (mapv (fn [v] (checkp-with map? symb v "array value must be a map.")) value))
+  (mapv #(checkp-with map? symb % "array value must be a map.") value))
 
 (defannotation NonEmptyString
   "Param must be a non-empty string (strings that only contain whitespace are considered empty)."
   [symb value :nillable]
-  (checkp-with (complement clojure.string/blank?) symb value "value must be a non-empty string."))
+  (checkp-with (complement s/blank?) symb value "value must be a non-empty string."))
 
 (defannotation PublicPerms
   "Param must be an integer and either `0` (no public permissions), `1` (public may read), or `2` (public may read and write)."

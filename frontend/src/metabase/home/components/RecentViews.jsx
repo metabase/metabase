@@ -61,8 +61,7 @@ export default class RecentViews extends Component {
                     </ul>
                 :
                     <div className="flex flex-column layout-centered text-normal text-grey-2">
-                        <span className="QuestionCircle mt4">!</span>
-                        <p className="p3 text-centered text-grey-4" style={{ "maxWidth": "100%" }}>You haven't looked at any Dashboards or Questions recently</p>
+                        <p className="p3 text-centered text-grey-2" style={{ "maxWidth": "100%" }}>You haven't looked at any dashboards or questions recently</p>
                     </div>
                 }
             </SidebarSection>

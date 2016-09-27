@@ -145,19 +145,25 @@ export class Option extends Component {
 class LegacySelect extends Component {
     static propTypes = {
         value: PropTypes.any,
+        values: PropTypes.array,
         options: PropTypes.array.isRequired,
+        disabledOptionIds: PropTypes.array, 
         placeholder: PropTypes.string,
+        emptyPlaceholder: PropTypes.string,
         onChange: PropTypes.func,
         optionNameFn: PropTypes.func,
         optionValueFn: PropTypes.func,
         className: PropTypes.string,
         isInitiallyOpen: PropTypes.bool,
+        disabled: PropTypes.bool,
         //TODO: clean up hardcoded "AdminSelect" class on trigger to avoid this workaround
         triggerClasses: PropTypes.string
     };
 
     static defaultProps = {
         placeholder: "",
+        emptyPlaceholder: "Nothing to select",
+        disabledOptionIds: [],
         optionNameFn: (option) => option.name,
         optionValueFn: (option) => option,
         isInitiallyOpen: false,
@@ -168,13 +174,23 @@ class LegacySelect extends Component {
     }
 
     render() {
-        const { className, value, onChange, options, optionNameFn, optionValueFn, placeholder, isInitiallyOpen } = this.props;
+        const { className, value, values, onChange, options, disabledOptionIds, optionNameFn, optionValueFn, placeholder, emptyPlaceholder, isInitiallyOpen, disabled } = this.props;
 
-        var selectedName = value ? optionNameFn(value) : placeholder;
+        var selectedName = value ? 
+            optionNameFn(value) : 
+            options && options.length > 0 ? 
+                placeholder : 
+                emptyPlaceholder;
 
         var triggerElement = (
-            <div className={"flex align-center " + (!value ? " text-grey-3" : "")}>
-                <span className="mr1">{selectedName}</span>
+            <div className={cx("flex align-center", !value && (!values || values.length === 0) ? " text-grey-2" : "")}>
+                { values && values.length !== 0 ?
+                    values
+                        .map(value => optionNameFn(value))
+                        .sort()
+                        .map((name, index) => <span key={index} className="mr1">{`${name}${index !== (values.length - 1) ? ',   ' : ''}`}</span>) :
+                    <span className="mr1">{selectedName}</span>
+                }
                 <Icon className="flex-align-right" name="chevrondown" size={12}/>
             </div>
         );
@@ -190,15 +206,21 @@ class LegacySelect extends Component {
         var columns = [
             {
                 selectedItem: value,
+                selectedItems: values,
                 sections: sections,
+                disabledOptionIds: disabledOptionIds,
                 itemTitleFn: optionNameFn,
                 itemDescriptionFn: (item) => item.description,
                 itemSelectFn: (item) => {
-                    onChange(optionValueFn(item))
-                    this.toggle();
+                    onChange(optionValueFn(item));
+                    if (!values) {
+                        this.toggle();
+                    }
                 }
             }
         ];
+
+        const disablePopover = disabled || !options || options.length === 0;
 
         return (
             <PopoverWithTrigger
@@ -207,6 +229,7 @@ class LegacySelect extends Component {
                 triggerElement={triggerElement}
                 triggerClasses={this.props.triggerClasses || cx("AdminSelect", this.props.className)}
                 isInitiallyOpen={isInitiallyOpen}
+                disabled={disablePopover}
             >
                 <div onClick={(e) => e.stopPropagation()}>
                     <ColumnarSelector

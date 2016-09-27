@@ -83,7 +83,7 @@ export default class EntityList extends Component {
       switch (this.props.name) {
         case 'All questions':
           return {
-            icon: '',
+            icon: 'all',
             message: 'No questions have been saved yet.'
           }
         case 'Recently viewed':
@@ -109,7 +109,7 @@ export default class EntityList extends Component {
         case 'Archive':
           return {
             icon: 'archive',
-            message: 'If you no longer need a question you can archive it.'
+            message: 'If you no longer need a question, you can archive it.'
           }
         default:
           return {

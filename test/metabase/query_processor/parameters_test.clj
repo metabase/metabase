@@ -12,13 +12,13 @@
             [metabase.query-processor :as qp]
             (metabase.query-processor [expand :as ql]
                                       [parameters :refer :all])
-            [metabase.query-processor-test :refer [non-timeseries-engines first-row]]
+            [metabase.query-processor-test :refer [non-timeseries-engines first-row format-rows-by]]
             [metabase.test.data :as data]
             (metabase.test.data [datasets :as datasets]
                                 [users :refer :all])
             [metabase.test.util :as tu]))
 
-(tu/resolve-private-fns metabase.query-processor.parameters
+(tu/resolve-private-vars metabase.query-processor.parameters
   absolute-date->range relative-date->range)
 
 (expect {:end "2016-03-31", :start "2016-01-01"} (absolute-date->range "Q1-2016"))
@@ -139,38 +139,44 @@
 ;; check that date ranges work correctly
 (datasets/expect-with-engines params-test-engines
   [29]
-  (first-row (qp/process-query {:database   (data/id)
-                                :type       :query
-                                :query      (data/query checkins
-                                              (ql/aggregation (ql/count)))
-                                :parameters [{:hash   "abc123"
-                                              :name   "foo"
-                                              :type   "date"
-                                              :target ["dimension" ["field-id" (data/id :checkins :date)]]
-                                              :value  "2015-04-01~2015-05-01"}]})))
+  (first-row
+    (format-rows-by [int]
+      (qp/process-query {:database   (data/id)
+                         :type       :query
+                         :query      (data/query checkins
+                                       (ql/aggregation (ql/count)))
+                         :parameters [{:hash   "abc123"
+                                       :name   "foo"
+                                       :type   "date"
+                                       :target ["dimension" ["field-id" (data/id :checkins :date)]]
+                                       :value  "2015-04-01~2015-05-01"}]}))))
 
 ;; check that IDs work correctly (passed in as numbers)
 (datasets/expect-with-engines params-test-engines
   [1]
-  (first-row (qp/process-query {:database   (data/id)
-                                :type       :query
-                                :query      (data/query checkins
-                                              (ql/aggregation (ql/count)))
-                                :parameters [{:hash   "abc123"
-                                              :name   "foo"
-                                              :type   "number"
-                                              :target ["dimension" ["field-id" (data/id :checkins :id)]]
-                                              :value  100}]})))
+  (first-row
+    (format-rows-by [int]
+      (qp/process-query {:database   (data/id)
+                         :type       :query
+                         :query      (data/query checkins
+                                       (ql/aggregation (ql/count)))
+                         :parameters [{:hash   "abc123"
+                                       :name   "foo"
+                                       :type   "number"
+                                       :target ["dimension" ["field-id" (data/id :checkins :id)]]
+                                       :value  100}]}))))
 
 ;; check that IDs work correctly (passed in as strings, as the frontend is wont to do; should get converted)
 (datasets/expect-with-engines params-test-engines
   [1]
-  (first-row (qp/process-query {:database   (data/id)
-                                :type       :query
-                                :query      (data/query checkins
-                                              (ql/aggregation (ql/count)))
-                                :parameters [{:hash   "abc123"
-                                              :name   "foo"
-                                              :type   "number"
-                                              :target ["dimension" ["field-id" (data/id :checkins :id)]]
-                                              :value  "100"}]})))
+  (first-row
+    (format-rows-by [int]
+      (qp/process-query {:database   (data/id)
+                         :type       :query
+                         :query      (data/query checkins
+                                       (ql/aggregation (ql/count)))
+                         :parameters [{:hash   "abc123"
+                                       :name   "foo"
+                                       :type   "number"
+                                       :target ["dimension" ["field-id" (data/id :checkins :id)]]
+                                       :value  "100"}]}))))

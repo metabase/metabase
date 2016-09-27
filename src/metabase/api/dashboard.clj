@@ -45,7 +45,7 @@
 
 (defendpoint PUT "/:id"
   "Update a `Dashboard`."
-  [id :as {{:keys [description name parameters], :as dashboard} :body}]
+  [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started], :as dashboard} :body}]
   {name       [Required NonEmptyString]
    parameters [ArrayOfMaps]}
   (write-check Dashboard id)

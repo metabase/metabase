@@ -28,7 +28,7 @@ export default class AuthScene extends Component {
                             <path fill="#fff" d="M1.5,91 L78,73.5 L87,119.5 L41.5,149 L1.5,91 Z" id="Path-Copy" stroke="#B6CCE5" ></path>
                             <path fill="#fff" d="M77.5000001,74.5 L143,44 L174,46 L86.0000001,119.5 L77.5000001,74.5 Z" id="Path-Copy-7" stroke="#B6CCE5" ></path>
                             <path fill="#fff" d="M142.5,45 L205,25.5 L229,39.5 L173.5,47.5 L142.5,45 Z" id="Path-Copy-9" stroke="#B6CCE5" ></path>
-                            <path fill="#fff" d="M158.499999,99 L225.499999,80.5 L270.999999,87.5 L226.999999,125 L158.499999,99 Z" id="Path-Copy-2" stroke="#B6CCE5" ></path>
+                            <path fill="#fff" d="M158.499999,99 L225.499999,80.5 L270.999999,87.5 L226.999999,125 L158.499999,99 Z" id="Path-Copy-3" stroke="#B6CCE5" ></path>
                             <path fill="#fff" d="M156.499999,101.5 L172.999999,47 L226.499999,39 L226.499999,81 L156.499999,101.5 Z" id="Path-Copy-11" stroke="#B6CCE5" ></path>
                             <path fill="#fff" d="M243.000001,88.5 L225.5,43.5 L288,39 L288,81.5 L243.000001,88.5 Z" id="Path-Copy-12" stroke="#B6CCE5"  transform="translate(256.750000, 63.750000) scale(-1, 1) translate(-256.750000, -63.750000) "></path>
                             <path fill="#fff" d="M286.5,44.5 L342.5,64 L319.5,110.5 L270,86.5 L286.5,44.5 Z" id="Path-Copy-4" stroke="#B6CCE5" ></path>
@@ -109,7 +109,8 @@ export default class AuthScene extends Component {
                         </svg>
                     </div>
                 </div>
-                <div className="bg-brand block py3 absolute bottom left right"></div>
+                { /*  09-12-2016 */ }
+                <div id="caspian" className="bg-brand block py3 absolute bottom left right"></div>
             </section>
         );
     }

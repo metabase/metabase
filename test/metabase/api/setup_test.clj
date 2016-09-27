@@ -6,7 +6,8 @@
             (metabase.models [session :refer [Session]]
                              [setting :as setting]
                              [user :refer [User]])
-            [metabase.setup :as setup]
+            (metabase [public-settings :as public-settings]
+                      [setup :as setup])
             (metabase.test [data :refer :all]
                            [util :refer [match-$ random-name], :as tu])
             [metabase.util :as u]))
@@ -19,7 +20,7 @@
   (expect
     [true
      email]
-    [(tu/is-uuid-string? (:id (http/client :post 200 "setup" {:token (setup/token-create)
+    [(tu/is-uuid-string? (:id (http/client :post 200 "setup" {:token (setup/create-token!)
                                                               :prefs {:site_name "Metabase Test"}
                                                               :user  {:first_name user-name
                                                                       :last_name  user-name
@@ -27,8 +28,8 @@
                                                                       :password   "anythingUP12!!"}})))
      (do
        ;; reset our setup token
-       (setup/token-create)
-       (setting/get :admin-email))]))
+       (setup/create-token!)
+       (public-settings/admin-email))]))
 
 
 ;; Test input validations

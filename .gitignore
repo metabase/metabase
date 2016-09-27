@@ -41,3 +41,4 @@ bin/release/aws-eb/metabase-aws-eb.zip
 /.env
 /npm-debug.log
 /screenshots
+/plugins
