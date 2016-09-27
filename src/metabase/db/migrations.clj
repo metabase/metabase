@@ -272,4 +272,4 @@
   (db/update-where! 'Field {:base_type [:not-like "type/%"]}
     :base_type "type/*")
   (db/update-where! 'Field {:special_type [:not-like "type/%"]}
-    :special_type "type/*"))
+    :special_type nil))
