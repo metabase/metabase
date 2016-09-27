@@ -2,7 +2,7 @@
   "Unit tests for /api/dataset endpoints."
   (:require [clojure.string :as s]
             [expectations :refer :all]
-            [metabase.api.dataset :refer [dataset-query-api-constraints]]
+            [metabase.api.dataset :refer [query-constraints]]
             [metabase.db :as db]
             (metabase.models [card :refer [Card]]
                              [query-execution :refer [QueryExecution]])
@@ -53,7 +53,7 @@
   ;; the second result is checking our QueryExection log to ensure it captured the right details
   [{:data         {:rows    [[1000]]
                    :columns ["count"]
-                   :cols    [{:base_type "IntegerField", :special_type "number", :name "count", :display_name "count", :id nil, :table_id nil,
+                   :cols    [{:base_type "type/Integer", :special_type "type/Number", :name "count", :display_name "count", :id nil, :table_id nil,
                               :description nil, :target nil, :extra_info {}, :source "aggregation"}]
                    :native_form true}
     :row_count    1
@@ -65,7 +65,7 @@
                                (ql/aggregation (ql/count))))
                       (assoc :type "query")
                       (assoc-in [:query :aggregation] {:aggregation-type "count"})
-                      (assoc :constraints dataset-query-api-constraints))
+                      (assoc :constraints query-constraints))
     :started_at   true
     :finished_at  true
     :running_time true}
@@ -81,7 +81,7 @@
                                (ql/aggregation (ql/count))))
                       (assoc :type "query")
                       (assoc-in [:query :aggregation] {:aggregation-type "count"})
-                      (assoc :constraints dataset-query-api-constraints))
+                      (assoc :constraints query-constraints))
     :started_at   true
     :finished_at  true
     :running_time true
@@ -108,7 +108,7 @@
                 :json_query   {:database    (id)
                                :type        "native"
                                :native      {:query "foobar"}
-                               :constraints dataset-query-api-constraints}
+                               :constraints query-constraints}
                 :started_at   true
                 :finished_at  true
                 :running_time true}]
@@ -151,7 +151,7 @@
              :archived               false}
     :result {:data         {:rows    [[1000]]
                             :columns ["count"]
-                            :cols    [{:base_type "IntegerField", :special_type "number", :name "count", :display_name "count", :id nil, :table_id nil,
+                            :cols    [{:base_type "type/Integer", :special_type "type/Number", :name "count", :display_name "count", :id nil, :table_id nil,
                                        :description nil, :target nil, :extra_info {}, :source "aggregation"}]
                             :native_form true}
              :row_count    1
@@ -163,7 +163,7 @@
                                    (ql/aggregation (ql/count))))
                                (assoc :type "query")
                                (assoc-in [:query :aggregation] {:aggregation-type "count"})
-                               (assoc :constraints dataset-query-api-constraints))
+                               (assoc :constraints query-constraints))
              :started_at   true
              :finished_at  true
              :running_time true}}
@@ -179,7 +179,7 @@
                           (ql/aggregation (ql/count))))
                       (assoc :type "query")
                       (assoc-in [:query :aggregation] {:aggregation-type "count"})
-                      (assoc :constraints dataset-query-api-constraints))
+                      (assoc :constraints query-constraints))
     :started_at   true
     :finished_at  true
     :running_time true

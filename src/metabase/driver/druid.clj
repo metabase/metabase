@@ -28,7 +28,7 @@
   [request-fn url & {:as options}]
   {:pre [(fn? request-fn) (string? url)]}
   (let [options                  (cond-> (merge {:content-type "application/json"} options)
-                                (:body options) (update :body json/generate-string))
+                                   (:body options) (update :body json/generate-string))
         {:keys [status body]} (request-fn url options)]
     (when (not= status 200)
       (throw (Exception. (format "Error [%d]: %s" status body))))
@@ -65,12 +65,12 @@
 ;;; ### Sync
 
 (defn- describe-table-field [druid-field-type field-name]
-  (merge {:name field-name}
-         ;; all dimensions are Strings, and all metrics as JS Numbers, I think (?)
-         ;; string-encoded booleans + dates are treated as strings (!)
-         (if (= :metric druid-field-type)
-           {:field-type :metric,    :base-type :FloatField}
-           {:field-type :dimension, :base-type :TextField})))
+  ;; all dimensions are Strings, and all metrics as JS Numbers, I think (?)
+  ;; string-encoded booleans + dates are treated as strings (!)
+  {:name      field-name
+   :base-type (if (= :metric druid-field-type)
+                :type/Float
+                :type/Text)})
 
 (defn- describe-table [database table]
   (let [details                      (:details database)
@@ -80,8 +80,7 @@
      :fields (set (concat
                     ;; every Druid table is an event stream w/ a timestamp field
                     [{:name       "timestamp"
-                      :base-type  :DateTimeField
-                      :field-type :dimension
+                      :base-type  :type/DateTime
                       :pk?        true}]
                     (map (partial describe-table-field :dimension) dimensions)
                     (map (partial describe-table-field :metric) metrics)))}))

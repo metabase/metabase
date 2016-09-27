@@ -1,8 +1,7 @@
 ;; -*- comment-column: 35; -*-
 (ns metabase.core
   (:gen-class)
-  (:require [clojure.string :as s]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             [ring.adapter.jetty :as ring-jetty]
             (ring.middleware [cookies :refer [wrap-cookies]]
                              [gzip :refer [wrap-gzip]]
@@ -19,6 +18,7 @@
                       [logger :as logger]
                       [metabot :as metabot]
                       [middleware :as mb-middleware]
+                      [plugins :as plugins]
                       [routes :as routes]
                       [sample-data :as sample-data]
                       [setup :as setup]
@@ -29,43 +29,8 @@
 
 ;;; CONFIG
 
-;; TODO - Should the be moved to `metabase.public-settings` ?
-
-(defsetting site-name
-  "The name used for this instance of Metabase."
-  :default "Metabase")
-
-(defsetting -site-url
-  "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\"")
-
-(defsetting admin-email
-  "The email address users should be referred to if they encounter a problem.")
-
-(defsetting anon-tracking-enabled
-  "Enable the collection of anonymous usage data in order to help Metabase improve."
-  :type   :boolean
-  :default true)
-
-(defsetting google-maps-api-key
-  "A Google Maps API key is required to enable certain map visualizations.")
-
-(defn site-url
-  "Fetch the site base URL that should be used for password reset emails, etc.
-   This strips off any trailing slashes that may have been added.
-
-   The first time this function is called, we'll set the value of the setting `-site-url` with the value of
-   the ORIGIN header (falling back to HOST if needed, i.e. for unit tests) of some API request.
-   Subsequently, the site URL can only be changed via the admin page."
-  {:arglists '([request])}
-  [{{:strs [origin host]} :headers}]
-  {:pre  [(or origin host)]
-   :post [(string? %)]}
-  (or (some-> (-site-url)
-              (s/replace #"/$" "")) ; strip off trailing slash if one was included
-      (-site-url (or origin host))))
-
-(def app
-  "The primary entry point to the HTTP server"
+(def ^:private app
+  "The primary entry point to the Ring HTTP server."
   (-> routes/routes
       mb-middleware/log-api-call
       mb-middleware/add-security-headers ; Add HTTP headers to API responses to prevent them from being cached
@@ -106,7 +71,7 @@
 (defn- -init-create-setup-token
   "Create and set a new setup token and log it."
   []
-  (let [setup-token (setup/token-create)                    ; we need this here to create the initial token
+  (let [setup-token (setup/create-token!)                    ; we need this here to create the initial token
         hostname    (or (config/config-str :mb-jetty-host) "localhost")
         port        (config/config-int :mb-jetty-port)
         setup-url   (str "http://"
@@ -116,7 +81,7 @@
     (log/info (u/format-color 'green "Please use the following url to setup your Metabase installation:\n\n%s\n\n"
                               setup-url))))
 
-(defn destroy
+(defn- destroy!
   "General application shutdown function which should be called once at application shuddown."
   []
   (log/info "Metabase Shutting Down ...")
@@ -131,7 +96,11 @@
   (reset! metabase-initialization-progress 0.1)
 
   ;; First of all, lets register a shutdown hook that will tidy things up for us on app exit
-  (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable destroy))
+  (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable destroy!))
+  (reset! metabase-initialization-progress 0.2)
+
+  ;; load any plugins as needed
+  (plugins/load-plugins!)
   (reset! metabase-initialization-progress 0.3)
 
   ;; Load up all of our Database drivers, which are used for app db work
@@ -139,7 +108,7 @@
   (reset! metabase-initialization-progress 0.4)
 
   ;; startup database.  validates connection & runs any necessary migrations
-  (db/setup-db :auto-migrate (config/config-bool :mb-db-automigrate))
+  (db/setup-db! :auto-migrate (config/config-bool :mb-db-automigrate))
   (reset! metabase-initialization-progress 0.5)
 
   ;; run a very quick check to see if we are doing a first time installation
@@ -234,7 +203,7 @@
 
 (def ^:private cmd->fn
   {:migrate      (fn [direction]
-                   (db/migrate @db/db-connection-details (keyword direction)))
+                   (db/migrate! @db/db-connection-details (keyword direction)))
    :load-from-h2 (fn [& [h2-connection-string-or-nil]]
                    (require 'metabase.cmd.load-from-h2)
                    ((resolve 'metabase.cmd.load-from-h2/load-from-h2!) h2-connection-string-or-nil))})

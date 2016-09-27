@@ -1,8 +1,10 @@
 (ns metabase.db.migrations
   "Clojure-land data migration definitions and fns for running them."
   (:require [clojure.tools.logging :as log]
-            (metabase [db :as db]
-                      [driver :as driver])
+            (metabase [config :as config]
+                      [db :as db]
+                      [driver :as driver]
+                      types)
             [metabase.events.activity-feed :refer [activity-feed-topics]]
             (metabase.models [activity :refer [Activity]]
                              [card :refer [Card]]
@@ -19,9 +21,6 @@
 ;;; # Migration Helpers
 
 (defentity ^:private DataMigrations :data_migrations)
-
-;; This is defined here since we still need it for some of the data migrations below. It's no longer used.
-(defentity ^:deprecated ^:private ForeignKey :metabase_foreignkey)
 
 (defn- migration-ran? [migration-name]
   (db/exists? DataMigrations :id (name migration-name)))
@@ -106,17 +105,6 @@
     (db/delete! Activity :topic "database-sync")))
 
 
-;; Clean up duplicate FK entries
-(defmigration remove-duplicate-fk-entries
-  (let [existing-fks (db/select ForeignKey)
-        grouped-fks  (group-by #(str (:origin_id %) "_" (:destination_id %)) existing-fks)]
-    (doseq [[k fks] grouped-fks]
-      (when (< 1 (count fks))
-        (log/debug "Removing duplicate FK entries for" k)
-        (doseq [duplicate-fk (drop-last fks)]
-          (db/delete! ForeignKey, :id (:id duplicate-fk)))))))
-
-
 ;; Migrate dashboards to the new grid
 ;; NOTE: this scales the dashboards by 4x in the Y-scale and 3x in the X-scale
 (defmigration update-dashboards-to-new-grid
@@ -135,11 +123,6 @@
     (db/update-where! Field {:visibility_type "unset"
                              :active          false}
       :visibility_type "retired")
-    ;; anything that is active with field_type = :sensitive gets visibility_type :sensitive
-    (db/update-where! Field {:visibility_type "unset"
-                             :active          true
-                             :field_type      "sensitive"}
-      :visibility_type "sensitive")
     ;; if field is active but preview_display = false then it becomes :details-only
     (db/update-where! Field {:visibility_type "unset"
                              :active          true
@@ -174,15 +157,6 @@
             :col 0)
           (when more
             (recur more (+ row-target (:sizeY bad-card)))))))))
-
-
-;; migrate FK information from old ForeignKey model to Field.fk_target_field_id
-(defmigration migrate-fk-metadata
-  (when (> 1 (db/select-one-count Field :fk_target_field_id [:not= nil]))
-    (when-let [fks (not-empty (db/select ForeignKey))]
-      (doseq [{:keys [origin_id destination_id]} fks]
-        (db/update! Field origin_id
-          :fk_target_field_id destination_id)))))
 
 
 ;; populate RawTable and RawColumn information
@@ -236,3 +210,58 @@
                                  :last_analyzed (u/new-sql-timestamp))
                                ;; add this column to the set we've processed already
                                (swap! processed-fields conj column-name)))))))))))))))))
+
+
+;;; New type system
+(def ^:private ^:const old-special-type->new-type
+  {"avatar"                 "type/AvatarURL"
+   "category"               "type/Category"
+   "city"                   "type/City"
+   "country"                "type/Country"
+   "desc"                   "type/Description"
+   "fk"                     "type/FK"
+   "id"                     "type/PK"
+   "image"                  "type/ImageURL"
+   "json"                   "type/SerializedJSON"
+   "latitude"               "type/Latitude"
+   "longitude"              "type/Longitude"
+   "name"                   "type/Name"
+   "number"                 "type/Number"
+   "state"                  "type/State"
+   "timestamp_milliseconds" "type/UNIXTimestampMilliseconds"
+   "timestamp_seconds"      "type/UNIXTimestampSeconds"
+   "url"                    "type/URL"
+   "zip_code"               "type/ZipCode"})
+
+;; make sure the new types are all valid
+(when-not config/is-prod?
+  (doseq [[_ t] old-special-type->new-type]
+    (assert (isa? (keyword t) :type/*))))
+
+(def ^:private ^:const old-base-type->new-type
+  {"ArrayField"      "type/Array"
+   "BigIntegerField" "type/BigInteger"
+   "BooleanField"    "type/Boolean"
+   "CharField"       "type/Text"
+   "DateField"       "type/Date"
+   "DateTimeField"   "type/DateTime"
+   "DecimalField"    "type/Decimal"
+   "DictionaryField" "type/Dictionary"
+   "FloatField"      "type/Float"
+   "IntegerField"    "type/Integer"
+   "TextField"       "type/Text"
+   "TimeField"       "type/Time"
+   "UUIDField"       "type/UUID"
+   "UnknownField"    "type/*"})
+
+(when-not config/is-prod?
+  (doseq [[_ t] old-base-type->new-type]
+    (assert (isa? (keyword t) :type/*))))
+
+(defmigration migrate-base-types
+  (doseq [[old-type new-type] old-special-type->new-type]
+    (db/update-where! 'Field {:special_type old-type}
+      :special_type new-type))
+  (doseq [[old-type new-type] old-base-type->new-type]
+    (db/update-where! 'Field {:base_type old-type}
+      :base_type new-type)))

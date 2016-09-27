@@ -127,7 +127,6 @@
      :date_joined  $
      :last_login   $
      :is_active    true
-     :is_staff     true
      :is_superuser false
      :is_qbnewb    true
      :google_auth  false

@@ -8,9 +8,11 @@ import SegmentForm from "./SegmentForm.jsx";
 
 import { segmentEditSelectors } from "../selectors";
 import * as actions from "../metadata";
+import { clearRequestState } from "metabase/redux/requests";
 
 const mapDispatchToProps = {
     ...actions,
+    clearRequestState,
     onChangeLocation: push
 };
 
@@ -37,9 +39,11 @@ export default class SegmentApp extends Component {
         let { tableMetadata } = this.props;
         if (segment.id != null) {
             await this.props.updateSegment(segment);
+            this.props.clearRequestState({statePath: ['metadata', 'segments']});
             MetabaseAnalytics.trackEvent("Data Model", "Segment Updated");
         } else {
             await this.props.createSegment(segment);
+            this.props.clearRequestState({statePath: ['metadata', 'segments']});
             MetabaseAnalytics.trackEvent("Data Model", "Segment Created");
         }
 

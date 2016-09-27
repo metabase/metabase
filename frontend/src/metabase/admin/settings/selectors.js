@@ -56,6 +56,16 @@ const SECTIONS = [
         ]
     },
     {
+        name: "Updates",
+        settings: [
+            {
+                key: "check-for-updates",
+                display_name: "Check for updates",
+                type: "boolean"
+            }
+        ]
+    },
+    {
         name: "Email",
         settings: [
             {
@@ -129,16 +139,6 @@ const SECTIONS = [
         ]
     },
     {
-        name: "Updates",
-        settings: [
-            {
-                key: "check-for-updates",
-                display_name: "Check for updates",
-                type: "boolean"
-            }
-        ]
-    },
-    {
         name: "Single Sign-On",
         settings: [
             {
@@ -146,6 +146,14 @@ const SECTIONS = [
             },
             {
                 key: "google-auth-auto-create-accounts-domain"
+            }
+        ]
+    },
+    {
+        name: "Custom Maps",
+        settings: [
+            {
+                key: "custom-geojson"
             }
         ]
     }

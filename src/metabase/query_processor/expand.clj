@@ -9,8 +9,8 @@
             [metabase.db :as db]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor.interface :refer [*driver*], :as i]
-            [metabase.util :as u])
-
+            [metabase.util :as u]
+            [metabase.util.schema :as su])
   (:import (metabase.query_processor.interface AgFieldRef
                                                BetweenFilter
                                                ComparisonFilter
@@ -29,7 +29,7 @@
 
 (s/defn ^:private ^:always-validate normalize-token :- s/Keyword
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased keyword."
-  [token :- (s/named (s/cond-pre s/Keyword s/Str) "Valid token (keyword or string)")]
+  [token :- su/KeywordOrString]
   (-> (name token)
       str/lower-case
       (str/replace #"_" "-")
@@ -48,7 +48,7 @@
 
 (s/defn ^:ql ^:always-validate field-id :- FieldPlaceholder
   "Create a generic reference to a `Field` with ID."
-  [id :- i/IntGreaterThanZero]
+  [id :- su/IntGreaterThanZero]
   (i/map->FieldPlaceholder {:field-id id}))
 
 (s/defn ^:private ^:always-validate field :- i/AnyField
@@ -108,7 +108,7 @@
 
 (s/defn ^:ql ^:always-validate expression :- ExpressionRef
   {:added "0.17.0"}
-  [expression-name :- (s/cond-pre s/Str s/Keyword)]
+  [expression-name :- su/KeywordOrString]
   (i/strict-map->ExpressionRef {:expression-name (name expression-name)}))
 
 

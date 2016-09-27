@@ -15,7 +15,7 @@ const EmptyState = ({ title, message, icon, image, action, link }) =>
             <img src={`${image}.png`} height="250px" alt={message} srcSet={`${image}@2x.png 2x`} />
         }
         <div className="flex justify-center">
-            <h3 className="text-grey-2 mt4" style={{maxWidth: "350px"}}>{message}</h3>
+            <h3 className="text-grey-2 mt4" style={{maxWidth: "375px"}}>{message}</h3>
         </div>
         { action &&
             <Link to={link} className="Button Button--primary mt3" target={link.startsWith('http') ? "_blank" : ""}>{action}</Link>

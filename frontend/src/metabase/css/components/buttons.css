@@ -54,6 +54,11 @@
     font-size: 0.8rem;
 }
 
+.Button--large {
+    padding: 0.8rem 1.25rem;
+    font-size: 1rem;
+}
+
 .Button-normal {
     font-weight: normal;
 }
@@ -95,7 +100,12 @@
 .Button--purple {
     color: white;
     background-color: #A989C5;
-    border: 1px solid #885AB1;
+    border: 1px solid #A989C5;
+}
+
+.Button--purple:hover {
+    background-color: #885AB1;
+    border-color: #885AB1;
 }
 
 .Button--borderless {

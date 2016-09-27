@@ -20,7 +20,7 @@
 ;; create a channel then select its details
 (defn- create-pulse-then-select!
   [name creator cards channels]
-  (let [{:keys [cards channels] :as pulse} (create-pulse name creator cards channels)]
+  (let [{:keys [cards channels] :as pulse} (create-pulse! name creator cards channels)]
     (-> pulse
         (dissoc :id :creator :public_perms :created_at :updated_at)
         (assoc :cards (mapv #(dissoc % :id) cards))
@@ -116,7 +116,7 @@
         (dissoc :id :pulse_id :created_at :updated_at)
         (m/dissoc-in [:details :emails]))))
 
-;; create-pulse
+;; create-pulse!
 ;; simple example with a single card
 (expect
   {:creator_id (user->id :rasta)

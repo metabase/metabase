@@ -26,6 +26,10 @@ import {
     selectSection as fetchQuestions
 } from 'metabase/questions/questions';
 
+import {
+    fetchDashboards
+} from 'metabase/dashboard/dashboard';
+
 const mapStateToProps = (state, props) => ({
     sectionId: getSectionId(state, props),
     databaseId: getDatabaseId(state, props),
@@ -37,6 +41,7 @@ const mapStateToProps = (state, props) => ({
 
 const mapDispatchToProps = {
     fetchQuestions,
+    fetchDashboards,
     ...metadataActions,
     ...actions
 };
@@ -65,6 +70,7 @@ export default class ReferenceApp extends Component {
         newProps.endEditing();
         newProps.endLoading();
         newProps.clearError();
+        newProps.collapseFormula();
 
         await tryFetchData(newProps);
     }
@@ -72,18 +78,24 @@ export default class ReferenceApp extends Component {
     render() {
         const {
             children,
+            section,
             sections,
             breadcrumbs,
             isEditing
         } = this.props;
+
+        if (section.sidebar === false) {
+            return children;
+        }
+
         return (
             <SidebarLayout
-                className="flex-full"
+                className="flex-full relative"
                 style={ isEditing ? { paddingTop: '43px' } : {}}
                 sidebar={<Sidebar sections={sections} breadcrumbs={breadcrumbs} />}
             >
                 {children}
             </SidebarLayout>
-        )
+        );
     }
 }

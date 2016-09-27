@@ -29,7 +29,7 @@ export default class DashCard extends Component {
     static propTypes = {
         dashcard: PropTypes.object.isRequired,
         dashcardData: PropTypes.object.isRequired,
-
+        parameterValues: PropTypes.object.isRequired,
         markNewCardSeen: PropTypes.func.isRequired,
         fetchCardData: PropTypes.func.isRequired,
     };
@@ -67,7 +67,7 @@ export default class DashCard extends Component {
     }
 
     render() {
-        const { dashcard, dashcardData, cardDurations, isEditing, isEditingParameter, onAddSeries, onRemove } = this.props;
+        const { dashcard, dashcardData, cardDurations, parameterValues, isEditing, isEditingParameter, onAddSeries, onRemove } = this.props;
 
         const cards = [dashcard.card].concat(dashcard.series || []);
         const series = cards
@@ -82,7 +82,12 @@ export default class DashCard extends Component {
         const usuallyFast = _.every(series, (s) => s.duration && s.duration.average < s.duration.fast_threshold);
         const isSlow = loading && _.some(series, (s) => s.duration) && (usuallyFast ? "usually-fast" : "usually-slow");
 
-        const hasUnmappedParameters = _.any(series, (s) => s.json_query && _.any(s.json_query.parameters, (p) => p.target == null));
+        const parameterMap = dashcard && dashcard.parameter_mappings && dashcard.parameter_mappings
+            .reduce((map, mapping) => ({...map, [mapping.parameter_id]: mapping}), {});
+
+        const isMappedToAllParameters = !parameterValues || Object.keys(parameterValues)
+            .filter(parameterId => parameterValues[parameterId] !== null)
+            .every(parameterId => parameterMap[parameterId]);
 
         const errors = series.map(s => s.error).filter(e => e);
         const error = errors[0] || this.state.error;
@@ -105,7 +110,7 @@ export default class DashCard extends Component {
             <div
                 className={"Card bordered rounded flex flex-column " + cx({
                     "Card--recent": dashcard.isAdded,
-                    "Card--unmapped": hasUnmappedParameters && !isEditing,
+                    "Card--unmapped": !isMappedToAllParameters && !isEditing,
                     "Card--slow": isSlow === "usually-slow"
                 })}
             >

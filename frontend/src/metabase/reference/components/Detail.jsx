@@ -6,7 +6,7 @@ import S from "./Detail.css";
 import cx from "classnames";
 import pure from "recompose/pure";
 
-const Detail = ({ name, description, placeholder, url, icon, isEditing, field }) =>
+const Detail = ({ name, description, placeholder, subtitleClass, url, icon, isEditing, field }) =>
     <div className={cx(S.detail)}>
         <div className={S.detailBody}>
             <div className={S.detailTitle}>
@@ -18,12 +18,14 @@ const Detail = ({ name, description, placeholder, url, icon, isEditing, field })
             <div className={cx(description ? S.detailSubtitle : S.detailSubtitleLight, { "mt1" : true })}>
                 { isEditing ?
                     <textarea
-                        className={S.detailTextArea}
+                        className={S.detailTextarea}
                         placeholder={placeholder}
                         {...field}
+                        //FIXME: use initialValues from redux forms instead of default value
+                        // to allow for reinitializing on cancel (see ReferenceGettingStartedGuide.jsx)
                         defaultValue={description}
                     /> :
-                    description || placeholder || 'No description yet'
+                    <span className={subtitleClass}>{description || placeholder || 'No description yet'}</span>
                 }
                 { isEditing && field.error && field.touched &&
                     <span className="text-error">{field.error}</span>
@@ -37,6 +39,7 @@ Detail.propTypes = {
     url:                PropTypes.string,
     description:        PropTypes.string,
     placeholder:        PropTypes.string,
+    subtitleClass:      PropTypes.string,
     icon:               PropTypes.string,
     isEditing:          PropTypes.bool,
     field:              PropTypes.object

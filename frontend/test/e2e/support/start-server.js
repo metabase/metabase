@@ -44,9 +44,12 @@ class Server {
     }
 
     async stop() {
-        if (--this.count === 0) {
-            await this.kill();
-        }
+        // timeout allows for another test suite to reuse this server
+        setTimeout(() => {
+            if (--this.count === 0) {
+                this.kill();
+            }
+        }, 10000)
     }
 
     async wait() {
@@ -59,7 +62,11 @@ class Server {
         if (servers.has(this.dbKey)) {
             servers.delete(this.dbKey);
             this.process.kill('SIGKILL');
-            await fs.unlink(`${this.dbFile}.h2.db`);
+            try {
+                await fs.unlink(`${this.dbFile}.h2.db`);
+            } catch (e) {
+                console.log("failed to remove dbFile", this.dbFile, e);
+            }
         }
     }
 }

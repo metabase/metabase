@@ -8,9 +8,11 @@ import MetricForm from "./MetricForm.jsx";
 
 import { metricEditSelectors } from "../selectors";
 import * as actions from "../metadata";
+import { clearRequestState } from "metabase/redux/requests";
 
 const mapDispatchToProps = {
     ...actions,
+    clearRequestState,
     onChangeLocation: push
 };
 
@@ -37,9 +39,11 @@ export default class MetricApp extends Component {
         let { tableMetadata } = this.props;
         if (metric.id != null) {
             await this.props.updateMetric(metric);
+            this.props.clearRequestState({statePath: ['metadata', 'metrics']});
             MetabaseAnalytics.trackEvent("Data Model", "Metric Updated");
         } else {
             await this.props.createMetric(metric);
+            this.props.clearRequestState({statePath: ['metadata', 'metrics']});
             MetabaseAnalytics.trackEvent("Data Model", "Metric Created");
         }
 

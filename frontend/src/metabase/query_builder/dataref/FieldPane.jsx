@@ -2,7 +2,7 @@
 import React, { Component, PropTypes } from "react";
 
 import DetailPane from "./DetailPane.jsx";
-import QueryButton from "./QueryButton.jsx";
+import QueryButton from "metabase/components/QueryButton.jsx";
 import UseForButton from "./UseForButton.jsx";
 
 import Query from "metabase/lib/query";

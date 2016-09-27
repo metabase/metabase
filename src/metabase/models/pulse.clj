@@ -148,8 +148,7 @@
     (->> (retrieve-pulse id)
          (events/publish-event :pulse-update))))
 
-;; TODO - rename to `create-pulse!`
-(defn create-pulse
+(defn create-pulse!
   "Create a new `Pulse` by inserting it into the database along with all associated pieces of data such as:
   `PulseCards`, `PulseChannels`, and `PulseChannelRecipients`.
 

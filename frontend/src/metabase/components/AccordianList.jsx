@@ -34,6 +34,7 @@ export default class AccordianList extends Component {
     }
 
     static propTypes = {
+        id: PropTypes.string,
         sections: PropTypes.array.isRequired,
         searchable: PropTypes.bool,
         initiallyOpenSection: PropTypes.number,
@@ -41,6 +42,7 @@ export default class AccordianList extends Component {
         onChange: PropTypes.func,
         onChangeSection: PropTypes.func,
         itemIsSelected: PropTypes.func,
+        itemIsClickable: PropTypes.func,
         renderItem: PropTypes.func,
         renderSectionIcon: PropTypes.func,
         getItemClasses: PropTypes.func,
@@ -101,6 +103,14 @@ export default class AccordianList extends Component {
         return selectedSection === sectionIndex;
     }
 
+    itemIsClickable(item) {
+        if (this.props.itemIsClickable) {
+            return this.props.itemIsClickable(item);
+        } else {
+            return true;
+        }
+    }
+
     itemIsSelected(item) {
         if (this.props.itemIsSelected) {
             return this.props.itemIsSelected(item);
@@ -144,7 +154,7 @@ export default class AccordianList extends Component {
     }
 
     render() {
-        const { searchable, sections, showItemArrows, alwaysTogglable, alwaysExpanded, hideSingleSectionTitle, style } = this.props;
+        const { id, searchable, searchPlaceholder, sections, showItemArrows, alwaysTogglable, alwaysExpanded, hideSingleSectionTitle, style } = this.props;
         const { searchText } = this.state;
 
         const openSection = this.getOpenSection();
@@ -152,7 +162,7 @@ export default class AccordianList extends Component {
             alwaysExpanded || openSection === sectionIndex;
 
         return (
-            <div className={this.props.className} style={{ width: '300px', ...style }}>
+            <div id={id} className={this.props.className} style={{ width: '300px', ...style }}>
                 {sections.map((section, sectionIndex) =>
                     <section key={sectionIndex} className={cx("List-section", { "List-section--open": sectionIsOpen(sectionIndex) })}>
                         { section.name && alwaysExpanded ?
@@ -188,6 +198,7 @@ export default class AccordianList extends Component {
                                     <ListSearchField
                                         onChange={(val) => this.setState({searchText: val})}
                                         searchText={this.state.searchText}
+                                        placeholder={searchPlaceholder}
                                     />
                                 </div>
                             </div>
@@ -199,11 +210,11 @@ export default class AccordianList extends Component {
                                 className={cx("p1", { "border-bottom scroll-y scroll-show": !alwaysExpanded })}
                             >
                                 { section.items.filter((i) => searchText ? (i.name.toLowerCase().includes(searchText.toLowerCase())) : true ).map((item, itemIndex) =>
-                                    <li key={itemIndex} className={cx("List-item flex", { 'List-item--selected': this.itemIsSelected(item, itemIndex) }, this.getItemClasses(item, itemIndex))}>
+                                    <li key={itemIndex} className={cx("List-item flex", { 'List-item--selected': this.itemIsSelected(item, itemIndex), 'List-item--disabled': !this.itemIsClickable(item) }, this.getItemClasses(item, itemIndex))}>
                                         <a
-                                            className="flex-full flex align-center px1 cursor-pointer"
+                                            className={cx("flex-full flex align-center px1", this.itemIsClickable(item) ? "cursor-pointer" : "cursor-default")}
                                             style={{ paddingTop: "0.25rem", paddingBottom: "0.25rem" }}
-                                            onClick={this.onChange.bind(this, item)}
+                                            onClick={this.itemIsClickable(item) && this.onChange.bind(this, item)}
                                         >
                                             { this.renderItemIcon(item, itemIndex) }
                                             <h4 className="List-item-title ml2">{item.name}</h4>

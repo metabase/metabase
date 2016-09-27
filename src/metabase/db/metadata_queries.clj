@@ -29,7 +29,7 @@
 
 (defn field-distinct-values
   "Return the distinct values of FIELD.
-   This is used to create a `FieldValues` object for `:category` Fields."
+   This is used to create a `FieldValues` object for `:type/Category` Fields."
   ([field]
     (field-distinct-values field @(resolve 'metabase.sync-database.analyze/low-cardinality-threshold)))
   ([{field-id :id :as field} max-results]

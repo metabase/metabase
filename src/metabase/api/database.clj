@@ -1,6 +1,7 @@
 (ns metabase.api.database
   "/api/database endpoints."
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as s]
+            [clojure.tools.logging :as log]
             [compojure.core :refer [GET POST PUT DELETE]]
             [metabase.api.common :refer :all]
             (metabase [config :as config]
@@ -10,7 +11,7 @@
                       [sample-data :as sample-data]
                       [util :as u])
             (metabase.models common
-                             [database :refer [Database protected-password]]
+                             [database :refer [Database protected-password], :as database]
                              [field :refer [Field]]
                              [hydrate :refer [hydrate]]
                              [table :refer [Table]])))
@@ -149,7 +150,6 @@
   [id]
   (->404 (Database id)
          read-check
-         ;; TODO - this is a bit slow due to the nested hydration.  needs some optimizing.
          (hydrate [:tables [:fields :target :values] :segments :metrics])))
 
 (defendpoint GET "/:id/autocomplete_suggestions"
@@ -201,9 +201,7 @@
   "Get a list of all primary key `Fields` for `Database`."
   [id]
   (read-check Database id)
-  (let [table_ids (db/select-ids Table, :db_id id, :active true)]
-    (sort-by #(:name (:table %)) (-> (db/select Field, :table_id [:in table_ids], :special_type "id")
-                                     (hydrate :table)))))
+  (sort-by (comp s/lower-case :name :table) (hydrate (database/pk-fields {:id id}) :table)))
 
 (defendpoint POST "/:id/sync"
   "Update the metadata for this `Database`."

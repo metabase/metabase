@@ -1,14 +1,16 @@
 import { pivot } from "metabase/lib/data_grid";
 
+import { TYPE } from "metabase/lib/types";
+
 function makeData(rows) {
     return {
         rows: rows,
         cols: [
-            { name: "D1", display_name: "Dimension 1", base_type: "TextField" },
-            { name: "D2", display_name: "Dimension 2", base_type: "TextField" },
-            { name: "M",  display_name: "Metric",      base_type: "IntegerField" }
+            { name: "D1", display_name: "Dimension 1", base_type: TYPE.Text },
+            { name: "D2", display_name: "Dimension 2", base_type: TYPE.Text },
+            { name: "M",  display_name: "Metric",      base_type: TYPE.Integer }
         ]
-    }
+    };
 }
 
 describe("data_grid", () => {

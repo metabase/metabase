@@ -1,4 +1,6 @@
 (ns metabase.sample-dataset.generate
+  "Logic for generating the sample dataset.
+   Run this with `lein generate-sample-dataset`."
   (:require (clojure.java [io :as io]
                           [jdbc :as jdbc])
             [clojure.math.numeric-tower :as math]
@@ -316,7 +318,7 @@
     :field        "PRODUCT_ID"
     :dest-table   "PRODUCTS"}])
 
-(def ^:private ^:const annotations
+(def ^:private ^:const metabase-metadata
   {:orders   {:description "This is a confirmed order for a product from a user."
               :columns     {:created_at {:description "The date and time an order was submitted."}
                             :id         {:description "This is a unique ID for the product. It is also called the “Invoice number” or “Confirmation number” in customer facing emails and screens."}
@@ -337,12 +339,11 @@
                           :latitude   {:description "This is the latitude of the user on sign-up. It might be updated in the future to the last seen location."}
                           :longitude  {:description "This is the longitude of the user on sign-up. It might be updated in the future to the last seen location."}
                           :name       {:description "The name of the user who owns an account"}
-                          :password   {:description "This is the salted password of the user. It should not be visible"
-                                       :field_type  :sensitive}
+                          :password   {:description "This is the salted password of the user. It should not be visible"}
                           :source     {:description "The channel through which we acquired this user. Valid values include: Affiliate, Facebook, Google, Organic and Twitter"}
                           :state      {:description "The state or province of the account’s billing address"}
                           :zip        {:description  "The postal code of the account’s billing address"
-                                       :special_type :zip_code}}}
+                                       :special_type "type/ZipCode"}}}
    :products {:description "This is our product catalog. It includes all products ever sold by the Sample Company."
               :columns      {:category   {:description "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget"}
                              :created_at {:description "The date the product was added to our catalog."}
@@ -354,7 +355,7 @@
                              :vendor     {:description "The source of the product."}}}
    :reviews  {:description "These are reviews our customers have left on products. Note that these are not tied to orders so it is possible people have reviewed products they did not purchase from us."
               :columns     {:body       {:description  "The review the user left. Limited to 2000 characters."
-                                         :special_type :desc}
+                                         :special_type "type/Description"}
                             :created_at {:description "The day and time a review was written by a user."}
                             :id         {:description "A unique internal identifier for the review. Should not be used externally."}
                             :product_id {:description "The product the review was for"}
@@ -397,12 +398,12 @@
      ;; Insert the _metabase_metadata table
      (println "Inserting _metabase_metadata...")
      (jdbc/execute! db ["CREATE TABLE \"_METABASE_METADATA\" (\"KEYPATH\" VARCHAR(255), \"VALUE\" VARCHAR(255), PRIMARY KEY (\"KEYPATH\"));"])
-     (jdbc/insert-multi! db "_METABASE_METADATA" (reduce concat (for [[table-name {table-description :description, columns :columns}] annotations]
+     (jdbc/insert-multi! db "_METABASE_METADATA" (reduce concat (for [[table-name {table-description :description, columns :columns}] metabase-metadata]
                                                                   (let [table-name (s/upper-case (name table-name))]
                                                                     (conj (for [[column-name kvs] columns
                                                                                 [k v]             kvs]
                                                                             {:keypath (format "%s.%s.%s" table-name (s/upper-case (name column-name)) (name k))
-                                                                             :value   (name v)})
+                                                                             :value   v})
                                                                           {:keypath (format "%s.description" table-name)
                                                                            :value table-description})))))
 
@@ -417,4 +418,5 @@
 (defn -main [& [filename]]
   (let [filename (or filename sample-dataset-filename)]
     (println (format "Writing sample dataset to %s..." filename))
-    (create-h2-db filename)))
+    (create-h2-db filename)
+    (System/exit 0)))

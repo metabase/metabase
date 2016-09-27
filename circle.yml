@@ -10,20 +10,13 @@ machine:
     version: 4.4.7
 dependencies:
   override:
-    - sudo apt-get purge mongodb-org*
-    - sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
-    - echo "deb http://repo.mongodb.org/apt/ubuntu precise/mongodb-org/3.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.0.list
-    - sudo add-apt-repository ppa:crate/stable -y
-    - sudo apt-get update
-    - sudo apt-get install -y mongodb-org crate
-    # ulimit setting refused Crate service to start on CircleCI container - so comment it
-    - sudo sed -i '/MAX_LOCKED_MEMORY/s/^/#/' /etc/init/crate.conf
-    - sudo service mongod restart
-    - sudo service crate restart
     - lein deps
     - pip install awscli==1.7.3
-    - npm cache clean
     - npm install -g npm@2.15.9
+    # Forces the Sauce Connect binary to be downloaded during dependencies phase so it's cached
+    - SAUCE_CONNECT_DOWNLOAD_ON_INSTALL=true npm install
+    - mkdir plugins
+    - wget --output-document=plugins/ojdbc7.jar $ORACLE_JDBC_JAR
 database:
   post:
     # MySQL doesn't load named timezone information automatically, you have to run this command to load it
@@ -31,16 +24,20 @@ database:
 test:
   override:
     # 0) runs unit tests w/ H2 local DB. Runs against H2, Mongo, MySQL, BigQuery
-    # 1) runs unit tests w/ Postgres local DB. Runs against H2, SQL Server
+    # 1) runs unit tests w/ Postgres local DB. Runs against H2, SQL Server, Oracle
     # 2) runs unit tests w/ MySQL local DB. Runs against H2, Postgres, SQLite, Crate
     # 3) runs unit tests w/ H2 local DB. Runs against H2, Redshift, Druid
     # 4) runs Eastwood linter, Bikeshed linter, docstring-checker & ./bin/reflection-linter
     # 5) runs JS linter + JS test
     # 6) runs lein uberjar. (We don't run bin/build because we're not really concerned about `npm install` (etc) in this test, which runs elsewhere)
-    - case $CIRCLE_NODE_INDEX in 0) ENGINES=h2,mongo,mysql,bigquery lein test ;; 1) ENGINES=h2,sqlserver MB_DB_TYPE=postgres MB_DB_DBNAME=circle_test MB_DB_PORT=5432 MB_DB_USER=ubuntu MB_DB_HOST=localhost lein test ;; 2) ENGINES=h2,postgres,sqlite,crate MB_DB_TYPE=mysql MB_DB_DBNAME=circle_test MB_DB_PORT=3306 MB_DB_USER=ubuntu MB_DB_HOST=localhost lein test ;; 3) ENGINES=h2,redshift,druid lein test ;; 4) lein eastwood && lein bikeshed && lein docstring-checker && ./bin/reflection-linter ;; 5) npm install && npm run lint && npm run test ;; 6) lein uberjar ;; esac:
+    - ./bin/ci:
         parallel: true
 deployment:
   master:
     branch: master
     commands:
       - ./bin/deploy-webhook $DEPLOY_WEBHOOK
+general:
+  artifacts:
+    - target/uberjar/metabase.jar
+    - screenshots

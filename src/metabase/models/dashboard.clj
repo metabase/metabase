@@ -55,15 +55,18 @@
 
 (defn update-dashboard!
   "Update a `Dashboard`"
-  [{:keys [id name description parameters], :as dashboard} user-id]
+  [{:keys [id name description parameters caveats points_of_interest show_in_getting_started], :as dashboard} user-id]
   {:pre [(map? dashboard)
          (integer? id)
          (u/maybe? u/sequence-of-maps? parameters)
          (integer? user-id)]}
   (db/update-non-nil-keys! Dashboard id
-    :description description
-    :name        name
-    :parameters  parameters)
+    :description             description
+    :name                    name
+    :parameters              parameters
+    :caveats                 caveats
+    :points_of_interest      points_of_interest
+    :show_in_getting_started show_in_getting_started)
   (u/prog1 (Dashboard id)
     (events/publish-event :dashboard-update (assoc <> :actor_id user-id))))
 

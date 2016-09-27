@@ -168,10 +168,6 @@
     word-wrap: break-word;
 }
 
-.cursor-pointer {
-    cursor: pointer;
-}
-
 .tooltip {
     position: absolute;
     background-color: #fff;

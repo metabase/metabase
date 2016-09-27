@@ -1,29 +1,23 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
-import { Link } from "react-router";
 import ReactDOM from "react-dom";
 import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
-import i from "icepick";
+import { push } from "react-router-redux";
 
-import * as MetabaseCore from "metabase/lib/core";
-import { isNumericBaseType } from "metabase/lib/schema_metadata";
-
-import S from "metabase/components/List.css";
-import D from "metabase/components/Detail.css";
-import R from "metabase/reference/Reference.css";
+import S from "metabase/reference/Reference.css";
 
 import List from "metabase/components/List.jsx";
-import Detail from "metabase/components/Detail.jsx";
-import Icon from "metabase/components/Icon.jsx";
-import Ellipsified from "metabase/components/Ellipsified.jsx";
-import IconBorder from "metabase/components/IconBorder.jsx";
-import Select from "metabase/components/Select.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
-import RevisionMessageModal from "metabase/reference/components/RevisionMessageModal.jsx";
-
-import cx from "classnames";
+import EditHeader from "metabase/reference/components/EditHeader.jsx";
+import ReferenceHeader from "metabase/reference/components/ReferenceHeader.jsx";
+import Detail from "metabase/reference/components/Detail.jsx";
+import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail.jsx";
+import UsefulQuestions from "metabase/reference/components/UsefulQuestions.jsx";
+import FieldsToGroupBy from "metabase/reference/components/FieldsToGroupBy.jsx";
+import Formula from "metabase/reference/components/Formula.jsx";
+import MetricImportantFieldsDetail from "metabase/reference/components/MetricImportantFieldsDetail.jsx";
 
 import {
     tryUpdateData
@@ -32,36 +26,62 @@ import {
 import {
     getSection,
     getData,
+    getTable,
+    getFields,
+    getGuide,
     getError,
     getLoading,
     getUser,
+    getHasQuestions,
     getIsEditing,
     getHasDisplayName,
     getHasRevisionHistory,
     getHasSingleSchema,
+    getIsFormulaExpanded,
     getForeignKeys
 } from "../selectors";
 
 import * as metadataActions from 'metabase/redux/metadata';
 import * as actions from 'metabase/reference/reference';
 
-const mapStateToProps = (state, props) => ({
-    section: getSection(state, props),
-    entity: getData(state, props) || {},
-    loading: getLoading(state, props),
-    // naming this 'error' will conflict with redux form
-    loadingError: getError(state, props),
-    user: getUser(state, props),
-    foreignKeys: getForeignKeys(state, props),
-    isEditing: getIsEditing(state, props),
-    hasSingleSchema: getHasSingleSchema(state, props),
-    hasDisplayName: getHasDisplayName(state, props),
-    hasRevisionHistory: getHasRevisionHistory(state, props)
-});
+const mapStateToProps = (state, props) => {
+    const entity = getData(state, props) || {};
+    const guide = getGuide(state, props);
+    const fields = getFields(state, props);
+    
+    const initialValues = {
+        important_fields: guide && guide.metric_important_fields &&
+            guide.metric_important_fields[entity.id] &&
+            guide.metric_important_fields[entity.id]
+                .map(fieldId => fields[fieldId]) ||
+                []
+    };
+
+    return {
+        section: getSection(state, props),
+        entity,
+        table: getTable(state, props),
+        metadataFields: fields,
+        guide,
+        loading: getLoading(state, props),
+        // naming this 'error' will conflict with redux form
+        loadingError: getError(state, props),
+        user: getUser(state, props),
+        foreignKeys: getForeignKeys(state, props),
+        isEditing: getIsEditing(state, props),
+        hasSingleSchema: getHasSingleSchema(state, props),
+        hasQuestions: getHasQuestions(state, props),
+        hasDisplayName: getHasDisplayName(state, props),
+        isFormulaExpanded: getIsFormulaExpanded(state, props),
+        hasRevisionHistory: getHasRevisionHistory(state, props),
+        initialValues,
+    }
+};
 
 const mapDispatchToProps = {
     ...metadataActions,
-    ...actions
+    ...actions,
+    onChangeLocation: push
 };
 
 const validate = (values, props) => props.hasRevisionHistory ?
@@ -72,20 +92,26 @@ const validate = (values, props) => props.hasRevisionHistory ?
 @connect(mapStateToProps, mapDispatchToProps)
 @reduxForm({
     form: 'details',
-    fields: ['name', 'display_name', 'description', 'revision_message', 'points_of_interest', 'caveats', 'how_is_this_calculated', 'special_type', 'fk_target_field_id'],
+    fields: ['name', 'display_name', 'description', 'revision_message', 'points_of_interest', 'caveats', 'how_is_this_calculated', 'special_type', 'fk_target_field_id', 'important_fields'],
     validate
 })
 export default class ReferenceEntity extends Component {
     static propTypes = {
         style: PropTypes.object.isRequired,
         entity: PropTypes.object.isRequired,
+        table: PropTypes.object,
+        metadataFields: PropTypes.object,
+        guide: PropTypes.object,
         user: PropTypes.object.isRequired,
         foreignKeys: PropTypes.object,
         isEditing: PropTypes.bool,
+        hasQuestions: PropTypes.bool,
         startEditing: PropTypes.func.isRequired,
         endEditing: PropTypes.func.isRequired,
         startLoading: PropTypes.func.isRequired,
         endLoading: PropTypes.func.isRequired,
+        expandFormula: PropTypes.func.isRequired,
+        collapseFormula: PropTypes.func.isRequired,
         setError: PropTypes.func.isRequired,
         updateField: PropTypes.func.isRequired,
         handleSubmit: PropTypes.func.isRequired,
@@ -94,30 +120,41 @@ export default class ReferenceEntity extends Component {
         section: PropTypes.object.isRequired,
         hasSingleSchema: PropTypes.bool,
         hasDisplayName: PropTypes.bool,
+        isFormulaExpanded: PropTypes.bool,
         hasRevisionHistory: PropTypes.bool,
         loading: PropTypes.bool,
         loadingError: PropTypes.object,
-        submitting: PropTypes.bool
+        submitting: PropTypes.bool,
+        onChangeLocation: PropTypes.func.isRequired
     };
 
     render() {
         const {
-            fields: { name, display_name, description, revision_message, points_of_interest, caveats, how_is_this_calculated, special_type, fk_target_field_id },
+            fields: { name, display_name, description, revision_message, points_of_interest, caveats, how_is_this_calculated, special_type, fk_target_field_id, important_fields },
             style,
             section,
             entity,
+            table,
+            metadataFields,
+            guide,
             loadingError,
             loading,
             user,
             foreignKeys,
             isEditing,
+            hasQuestions,
             startEditing,
             endEditing,
+            expandFormula,
+            collapseFormula,
             hasSingleSchema,
             hasDisplayName,
+            isFormulaExpanded,
             hasRevisionHistory,
             handleSubmit,
-            submitting
+            resetForm,
+            submitting,
+            onChangeLocation
         } = this.props;
 
         const onSubmit = handleSubmit(async (fields) =>
@@ -129,117 +166,27 @@ export default class ReferenceEntity extends Component {
                 onSubmit={onSubmit}
             >
                 { isEditing &&
-                    <div className={cx("EditHeader wrapper py1", R.subheader)}>
-                        <div>
-                            You are editing this page
-                        </div>
-                        <div className={R.subheaderButtons}>
-                            { hasRevisionHistory ?
-                                <RevisionMessageModal
-                                    action={() => onSubmit()}
-                                    field={revision_message}
-                                    submitting={submitting}
-                                >
-                                    <button
-                                        className={cx("Button", "Button--primary", "Button--white", "Button--small", R.saveButton)}
-                                        type="button"
-                                        disabled={submitting}
-                                    >
-                                        SAVE
-                                    </button>
-                                </RevisionMessageModal> :
-                                <button
-                                    className={cx("Button", "Button--primary", "Button--white", "Button--small", R.saveButton)}
-                                    type="submit"
-                                    disabled={submitting}
-                                >
-                                    SAVE
-                                </button>
-                            }
-
-                            <button
-                                type="button"
-                                className={cx("Button", "Button--white", "Button--small", R.cancelButton)}
-                                onClick={endEditing}
-                            >
-                                CANCEL
-                            </button>
-                        </div>
-                    </div>
+                    <EditHeader
+                        hasRevisionHistory={hasRevisionHistory}
+                        onSubmit={onSubmit}
+                        endEditing={endEditing}
+                        reinitializeForm={resetForm}
+                        submitting={submitting}
+                        revisionMessageFormField={revision_message}
+                    />
                 }
-                { /* NOTE: this doesn't currently use ReferenceHeader since it is much more complicated */ }
-                <div className="wrapper wrapper--trim">
-                    <div className={cx("relative", S.header)}>
-                        <div className={S.leftIcons}>
-                            { section.headerIcon &&
-                                <IconBorder borderWidth="0" style={{backgroundColor: "#E9F4F8"}}>
-                                    <Icon
-                                        className="text-brand"
-                                        name={section.headerIcon}
-                                        width={24}
-                                        height={24}
-                                    />
-                                </IconBorder>
-                            }
-                        </div>
-                        { section.type === 'table' && !hasSingleSchema && !isEditing &&
-                            <div className={R.headerSchema}>{entity.schema}</div>
-                        }
-                        <div className={R.headerBody} style={isEditing ? {alignItems: "flex-start"} : {}}>
-                            { isEditing ?
-                                hasDisplayName ?
-                                    <input
-                                        className={R.headerTextInput}
-                                        type="text"
-                                        placeholder={entity.name}
-                                        {...display_name}
-                                        defaultValue={entity.display_name}
-                                    /> :
-                                    <input
-                                        className={R.headerTextInput}
-                                        type="text"
-                                        placeholder={entity.name}
-                                        {...name}
-                                        defaultValue={entity.name}
-                                    /> :
-                                [
-                                    <Ellipsified key="1" className={!section.headerLink && "flex-full"} tooltipMaxWidth="100%">
-                                        { hasDisplayName ?
-                                            entity.display_name || entity.name :
-                                            entity.name
-                                        }
-                                    </Ellipsified>,
-                                    section.headerLink &&
-                                        <div key="2" className={cx("flex-full", S.headerButton)}>
-                                            <Link
-                                                to={section.headerLink}
-                                                className={cx("Button", "Button--borderless", R.editButton)}
-                                                data-metabase-event={`Data Reference;Entity -> QB click;${section.type}`}
-                                            >
-                                                <div className="flex align-center relative">
-                                                    <span className="mr1">See this {section.type}</span>
-                                                    <Icon name="chevronright" size={16} />
-                                                </div>
-                                            </Link>
-                                        </div>
-                                ]
-                            }
-                            { user.is_superuser && !isEditing &&
-                                <div className={S.headerButton}>
-                                    <a
-                                        onClick={startEditing}
-                                        className={cx("Button", "Button--borderless", R.editButton)}
-                                    >
-                                        <div className="flex align-center relative">
-                                            <Icon name="pencil" size={16} />
-                                            <span className="ml1">Edit</span>
-                                        </div>
-                                    </a>
-                                </div>
-                            }
-                        </div>
-                    </div>
-                </div>
+                <ReferenceHeader
+                    entity={entity}
+                    table={table}
+                    section={section}
+                    user={user}
+                    isEditing={isEditing}
+                    hasSingleSchema={hasSingleSchema}
+                    hasDisplayName={hasDisplayName}
+                    startEditing={startEditing}
+                    displayNameFormField={display_name}
+                    nameFormField={name}
+                />
                 <LoadingAndErrorWrapper loading={!loadingError && loading} error={loadingError}>
                 { () =>
                     <div className="wrapper wrapper--trim">
@@ -260,6 +207,7 @@ export default class ReferenceEntity extends Component {
                                         id="name"
                                         name="Actual name in database"
                                         description={entity.name}
+                                        subtitleClass={S.tableActualName}
                                     />
                                 </li>
                             }
@@ -295,6 +243,19 @@ export default class ReferenceEntity extends Component {
                                     />
                                 </li>
                             }
+                            { (section.type === 'metric' || section.type === 'segment') &&
+                                table && !isEditing &&
+                                <li className="relative">
+                                    <Formula
+                                        type={section.type}
+                                        entity={entity}
+                                        table={table}
+                                        isExpanded={isFormulaExpanded}
+                                        expandFormula={expandFormula}
+                                        collapseFormula={collapseFormula}
+                                    />
+                                </li>
+                            }
                             { !isEditing && section.type === 'field' &&
                                 <li className="relative">
                                     <Detail
@@ -305,71 +266,56 @@ export default class ReferenceEntity extends Component {
                                 </li>
                             }
                             { section.type === 'field' &&
-                                //TODO: could use some refactoring. a lot of overlap with Field.jsx and ListItem.jsx
                                 <li className="relative">
-                                    <div className={cx(D.detail)}>
-                                        <div className={D.detailBody}>
-                                            <div className={D.detailTitle}>
-                                                <span className={D.detailName}>Field type</span>
-                                            </div>
-                                            <div className={cx(D.detailSubtitle, { "mt1" : true })}>
-                                                <span>
-                                                    { isEditing ?
-                                                        <Select
-                                                            triggerClasses="rounded bordered p1 inline-block"
-                                                            placeholder="Select a field type"
-                                                            value={
-                                                                MetabaseCore.field_special_types_map[special_type.value] ||
-                                                                MetabaseCore.field_special_types_map[entity.special_type]
-                                                            }
-                                                            options={
-                                                                MetabaseCore.field_special_types
-                                                                    .concat({
-                                                                        'id': null,
-                                                                        'name': 'No field type',
-                                                                        'section': 'Other'
-                                                                    })
-                                                                    .filter(type => !isNumericBaseType(entity) ?
-                                                                        !(type.id && type.id.startsWith("timestamp_")) :
-                                                                        true
-                                                                    )
-                                                            }
-                                                            onChange={(type) => special_type.onChange(type.id)}
-                                                        /> :
-                                                        <span>
-                                                            { i.getIn(
-                                                                    MetabaseCore.field_special_types_map,
-                                                                    [entity.special_type, 'name']
-                                                                ) || 'No field type'
-                                                            }
-                                                        </span>
-                                                    }
-                                                </span>
-                                                <span className="ml4">
-                                                    { isEditing ?
-                                                        (special_type.value === 'fk' ||
-                                                        (entity.special_type === 'fk' && special_type.value === undefined)) &&
-                                                        <Select
-                                                            triggerClasses="rounded bordered p1 inline-block"
-                                                            placeholder="Select a field type"
-                                                            value={
-                                                                foreignKeys[fk_target_field_id.value] ||
-                                                                foreignKeys[entity.fk_target_field_id] ||
-                                                                {name: "Select a Foreign Key"}
-                                                            }
-                                                            options={Object.values(foreignKeys)}
-                                                            onChange={(foreignKey) => fk_target_field_id.onChange(foreignKey.id)}
-                                                            optionNameFn={(foreignKey) => foreignKey.name}
-                                                        /> :
-                                                        entity.special_type === 'fk' &&
-                                                        <span>
-                                                            {i.getIn(foreignKeys, [entity.fk_target_field_id, "name"])}
-                                                        </span>
-                                                    }
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <FieldTypeDetail
+                                        field={entity}
+                                        foreignKeys={foreignKeys}
+                                        fieldTypeFormField={special_type}
+                                        foreignKeyFormField={fk_target_field_id}
+                                        isEditing={isEditing}
+                                    />
+                                </li>
+                            }
+                            { hasQuestions && !isEditing &&
+                                <li className="relative">
+                                    <UsefulQuestions questions={section.questions} />
+                                </li>
+                            }
+                            { section.type === 'metric' &&
+                                <li className="relative">
+                                    <MetricImportantFieldsDetail
+                                        fields={guide && guide.metric_important_fields[entity.id] &&
+                                            Object.values(guide.metric_important_fields[entity.id])
+                                                .map(fieldId => metadataFields[fieldId])
+                                                .reduce((map, field) => ({ ...map, [field.id]: field }), {})
+                                        }
+                                        table={table}
+                                        allFields={metadataFields}
+                                        metric={entity}
+                                        onChangeLocation={onChangeLocation}
+                                        isEditing={isEditing}
+                                        formField={important_fields}
+                                    />
+                                </li>
+                            }
+                            { section.type === 'metric' && !isEditing &&
+                                <li className="relative">
+                                    <FieldsToGroupBy
+                                        fields={table.fields
+                                            .filter(fieldId => !guide || !guide.metric_important_fields[entity.id] ||
+                                                !guide.metric_important_fields[entity.id].includes(fieldId)
+                                            )
+                                            .map(fieldId => metadataFields[fieldId])
+                                            .reduce((map, field) => ({ ...map, [field.id]: field }), {})
+                                        }
+                                        databaseId={table.db_id} 
+                                        metric={entity}
+                                        title={ guide && guide.metric_important_fields[entity.id] ?
+                                            "Other fields you can group this metric by" :
+                                            "Fields you can group this metric by"
+                                        }
+                                        onChangeLocation={onChangeLocation}
+                                    />
                                 </li>
                             }
                         </List>

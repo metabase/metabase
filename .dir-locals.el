@@ -39,7 +39,7 @@
                               (project 1)
                               (qp-expect-with-engines 1)
                               (render-file 1)
-                              (resolve-private-fns 1)
+                              (resolve-private-vars 1)
                               (select 1)
                               (sync-in-context 2)
                               (when-testing-engine 1)

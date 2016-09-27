@@ -119,7 +119,7 @@
    lon-col-idx String->Integer
    query       String->Dict}
   (let [updated-query (update query :query #(query-with-inside-filter % lat-field lon-field x y zoom))
-        result        (qp/dataset-query updated-query {:executed_by   *current-user-id*
+        result        (qp/dataset-query updated-query {:executed-by   *current-user-id*
                                                        :synchronously true})
         points        (for [row (-> result :data :rows)]
                         [(nth row lat-col-idx) (nth row lon-col-idx)])]

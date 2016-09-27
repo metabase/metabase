@@ -1,10 +1,12 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
 import { connect } from "react-redux";
 import cx from "classnames";
 import _ from "underscore";
 
 import { AngularResourceProxy } from "metabase/lib/redux";
 import { loadTableAndForeignKeys } from "metabase/lib/table";
+import { isPK, isFK } from "metabase/lib/types";
 
 import NotFound from "metabase/components/NotFound.jsx";
 import QueryHeader from "../QueryHeader.jsx";
@@ -53,11 +55,7 @@ function cellIsClickable(queryResult, rowIndex, columnIndex) {
 
     if (!coldef || !coldef.special_type) return false;
 
-    if (coldef.table_id != null && coldef.special_type === 'id' || (coldef.special_type === 'fk' && coldef.target)) {
-        return true;
-    } else {
-        return false;
-    }
+    return (coldef.table_id != null && (isPK(coldef.special_type) || (isFK(coldef.special_type) && coldef.target)));
 }
 
 function autocompleteResults(card, prefix) {
@@ -153,6 +151,13 @@ export default class QueryBuilder extends Component {
         }
     }
 
+    componentDidUpdate() {
+        let viz = ReactDOM.findDOMNode(this.refs.viz);
+        if (viz) {
+            viz.style.opacity = 1.0;
+        }
+    }
+
     componentWillUnmount() {
         window.removeEventListener('resize', this.handleResize);
     }
@@ -161,6 +166,10 @@ export default class QueryBuilder extends Component {
     // Debounce the function to improve resizing performance.
     handleResize(e) {
         this.forceUpdateDebounced();
+        let viz = ReactDOM.findDOMNode(this.refs.viz);
+        if (viz) {
+            viz.style.opacity = 0.2;
+        }
     }
 
     render() {
@@ -199,7 +208,7 @@ export default class QueryBuilder extends Component {
                         }
                     </div>
 
-                    <div id="react_qb_viz" className="flex z1">
+                    <div ref="viz" id="react_qb_viz" className="flex z1" style={{ "transition": "opacity 0.25s ease-in-out" }}>
                         <QueryVisualization {...this.props}/>
                     </div>
                 </div>

@@ -66,3 +66,13 @@
           :subname db
           :make-pool? make-pool?}
          (dissoc opts :db)))
+
+(defn oracle
+  "Create a database specification for an Oracle database. Opts should include keys
+  for :user and :password. You can also optionally set host and port."
+  [{:keys [host port]
+    :or {host "localhost", port 1521}
+    :as opts}]
+  (merge {:subprotocol "oracle:thin"
+          :subname     (str "@" host ":" port)}
+         (dissoc opts :host :port)))

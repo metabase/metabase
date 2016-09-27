@@ -7,15 +7,17 @@
             [metabase.models.table :as table]
             [metabase.query-processor :as qp]
             [metabase.query-processor.sql-parameters :refer :all]
-            [metabase.query-processor-test :refer [engines-that-support first-row]]
+            [metabase.query-processor-test :refer [engines-that-support first-row format-rows-by]]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
-            [metabase.test.util :as tu]))
+            [metabase.test.data.generic-sql :as generic-sql]
+            [metabase.test.util :as tu]
+            [metabase.test.data.generic-sql :as generic]))
 
 
 ;;; ------------------------------------------------------------ simple substitution -- {{x}} ------------------------------------------------------------
 
-(tu/resolve-private-fns metabase.query-processor.sql-parameters substitute)
+(tu/resolve-private-vars metabase.query-processor.sql-parameters substitute)
 
 (expect "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
   (substitute "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}}"
@@ -143,7 +145,7 @@
 
 ;;; ------------------------------------------------------------ tests for value-for-tag ------------------------------------------------------------
 
-(tu/resolve-private-fns metabase.query-processor.sql-parameters value-for-tag)
+(tu/resolve-private-vars metabase.query-processor.sql-parameters value-for-tag)
 
 ;; variable -- specified
 (expect
@@ -327,8 +329,14 @@
 
 ;;; ------------------------------------------------------------ "REAL" END-TO-END-TESTS ------------------------------------------------------------
 
+(defn- quote-name [identifier]
+  (generic-sql/quote-name datasets/*driver* identifier))
+
 (defn- checkins-identifier []
-  (name (table/qualified-identifier (db/select-one ['Table :name :schema], :id (data/id :checkins)))))
+  (let [{table-name :name, schema :schema} (db/select-one ['Table :name :schema], :id (data/id :checkins))]
+    (str (when (seq schema)
+           (str (quote-name schema) \.))
+         (quote-name table-name))))
 
 ;; as with the MBQL parameters tests redshift and crate fail for unknown reasons; disable their tests for now
 (def ^:private ^:const sql-parameters-engines
@@ -337,20 +345,22 @@
 (datasets/expect-with-engines sql-parameters-engines
   [29]
   (first-row
-    (qp/process-query
-      {:database      (data/id)
-       :type          :native
-       :native     {:query (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}};" (checkins-identifier))
-                    :template_tags {:checkin_date {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}}}
-       :parameters [{:type "date/range", :target ["dimension" ["template-tag" "checkin_date"]], :value "2015-04-01~2015-05-01"}]})))
+    (format-rows-by [int]
+      (qp/process-query
+        {:database   (data/id)
+         :type       :native
+         :native     {:query (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (checkins-identifier))
+                      :template_tags {:checkin_date {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}}}
+         :parameters [{:type "date/range", :target ["dimension" ["template-tag" "checkin_date"]], :value "2015-04-01~2015-05-01"}]}))))
 
 ;; no parameter -- should give us a query with "WHERE 1 = 1"
 (datasets/expect-with-engines sql-parameters-engines
   [1000]
   (first-row
-    (qp/process-query
-      {:database      (data/id)
-       :type          :native
-       :native     {:query (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}};" (checkins-identifier))
-                    :template_tags {:checkin_date {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}}}
-       :parameters []})))
+    (format-rows-by [int]
+      (qp/process-query
+        {:database   (data/id)
+         :type       :native
+         :native     {:query (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (checkins-identifier))
+                      :template_tags {:checkin_date {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}}}
+         :parameters []}))))

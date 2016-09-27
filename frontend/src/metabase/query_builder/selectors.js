@@ -8,6 +8,7 @@ import { isCardDirty } from "metabase/lib/card";
 import * as DataGrid from "metabase/lib/data_grid";
 import Query from "metabase/lib/query";
 import { parseFieldTarget } from "metabase/lib/query_time";
+import { isPK } from "metabase/lib/types";
 import { applyParameters } from "metabase/meta/Card";
 
 export const uiControls                = state => state.qb.uiControls;
@@ -90,8 +91,7 @@ export const isObjectDetail = createSelector(
 	        let pkField;
 	        for (var i=0; i < data.cols.length; i++) {
 	            let coldef = data.cols[i];
-	            if (coldef.table_id === dataset_query.query.source_table &&
-	                    coldef.special_type === "id") {
+	            if (coldef.table_id === dataset_query.query.source_table && isPK(coldef.special_type)) {
 	                pkField = coldef.id;
 	            }
 	        }

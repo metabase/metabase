@@ -4,7 +4,8 @@
    should go in `metabase.query-processor.expand`."
   (:require [schema.core :as s]
             [metabase.models.field :as field]
-            [metabase.util :as u])
+            [metabase.util :as u]
+            [metabase.util.schema :as su])
   (:import clojure.lang.Keyword
            java.sql.Timestamp))
 
@@ -34,21 +35,15 @@
 
 ;; These are just used by the QueryExpander to record information about how joins should occur.
 
-(def IntGreaterThanZero
-  "Schema representing an `s/Int` than must also be greater than zero."
-  (s/constrained s/Int
-                 (partial < 0)
-                 "Integer greater than zero"))
-
-(s/defrecord JoinTableField [field-id   :- IntGreaterThanZero
-                             field-name :- s/Str])
+(s/defrecord JoinTableField [field-id   :- su/IntGreaterThanZero
+                             field-name :- su/NonBlankString])
 
 (s/defrecord JoinTable [source-field :- JoinTableField
                         pk-field     :- JoinTableField
-                        table-id     :- IntGreaterThanZero
-                        table-name   :- s/Str
-                        schema       :- (s/maybe s/Str)
-                        join-alias   :- s/Str])
+                        table-id     :- su/IntGreaterThanZero
+                        table-name   :- su/NonBlankString
+                        schema       :- (s/maybe su/NonBlankString)
+                        join-alias   :- su/NonBlankString])
 
 ;;; # ------------------------------------------------------------ PROTOCOLS ------------------------------------------------------------
 
@@ -61,19 +56,19 @@
 ;;; # ------------------------------------------------------------ "RESOLVED" TYPES: FIELD + VALUE ------------------------------------------------------------
 
 ;; Field is the expansion of a Field ID in the standard QL
-(s/defrecord Field [field-id           :- IntGreaterThanZero
-                    field-name         :- s/Str
-                    field-display-name :- s/Str
-                    base-type          :- (apply s/enum field/base-types)
-                    special-type       :- (s/maybe (apply s/enum field/special-types))
+(s/defrecord Field [field-id           :- su/IntGreaterThanZero
+                    field-name         :- su/NonBlankString
+                    field-display-name :- su/NonBlankString
+                    base-type          :- su/FieldType
+                    special-type       :- (s/maybe su/FieldType)
                     visibility-type    :- (apply s/enum field/visibility-types)
-                    table-id           :- IntGreaterThanZero
-                    schema-name        :- (s/maybe s/Str)
-                    table-name         :- (s/maybe s/Str) ; TODO - Why is this `maybe` ?
-                    position           :- (s/maybe s/Int) ; TODO - int >= 0
+                    table-id           :- su/IntGreaterThanZero
+                    schema-name        :- (s/maybe su/NonBlankString)
+                    table-name         :- (s/maybe su/NonBlankString) ; TODO - Why is this `maybe` ?
+                    position           :- (s/maybe su/IntGreaterThanZero)
                     fk-field-id        :- (s/maybe s/Int)
-                    description        :- (s/maybe s/Str)
-                    parent-id          :- (s/maybe IntGreaterThanZero)
+                    description        :- (s/maybe su/NonBlankString)
+                    parent-id          :- (s/maybe su/IntGreaterThanZero)
                     ;; Field once its resolved; FieldPlaceholder before that
                     parent             :- s/Any]
   clojure.lang.Named
@@ -116,11 +111,7 @@
   clojure.lang.Named
   (getName [_] (name field)))
 
-(def NonEmptyString
-  "Schema for a non-empty string."
-  (s/constrained s/Str seq "non-empty string")) ; TODO - should this be used elsewhere as well, for things like `Field`?
-
-(s/defrecord ExpressionRef [expression-name :- NonEmptyString]
+(s/defrecord ExpressionRef [expression-name :- su/NonBlankString]
   clojure.lang.Named
   (getName [_] expression-name)
   IField
@@ -130,7 +121,7 @@
 
 ;; Value is the expansion of a value within a QL clause
 ;; Information about the associated Field is included for convenience
-(s/defrecord Value [value   :- (s/maybe (s/cond-pre s/Bool s/Num s/Str))
+(s/defrecord Value [value   :- (s/maybe (s/cond-pre s/Bool s/Num su/NonBlankString))
                     field   :- (s/named (s/cond-pre Field ExpressionRef)   ; TODO - Value doesn't need the whole field, just the relevant type info / units
                                         "field or expression reference")])
 
@@ -162,8 +153,8 @@
 ;;; # ------------------------------------------------------------ PLACEHOLDER TYPES: FIELDPLACEHOLDER + VALUEPLACEHOLDER ------------------------------------------------------------
 
 ;; Replace Field IDs with these during first pass
-(s/defrecord FieldPlaceholder [field-id      :- IntGreaterThanZero
-                               fk-field-id   :- (s/maybe (s/constrained IntGreaterThanZero
+(s/defrecord FieldPlaceholder [field-id      :- su/IntGreaterThanZero
+                               fk-field-id   :- (s/maybe (s/constrained su/IntGreaterThanZero
                                                                         (fn [_] (or (assert-driver-supports :foreign-keys) true))
                                                                         "foreign-keys is not supported by this driver."))
                                datetime-unit :- (s/maybe (apply s/enum datetime-field-units))])
@@ -203,7 +194,7 @@
 
 (def LiteralDatetimeString
   "Schema for an MBQL datetime string literal, in ISO-8601 format."
-  (s/constrained s/Str u/date-string? "Valid ISO-8601 datetime string literal"))
+  (s/constrained su/NonBlankString u/date-string? "Valid ISO-8601 datetime string literal"))
 
 (def LiteralDatetime
   "Schema for an MBQL literal datetime value: and ISO-8601 string or `java.sql.Date`."
@@ -219,7 +210,7 @@
 
 (def AnyValue
   "Schema for anything that is a considered a valid value in MBQL - `nil`, a `Boolean`, `Number`, `String`, or relative datetime form."
-  (s/named (s/maybe (s/cond-pre s/Bool s/Str OrderableValue)) "Valid value (must be nil, boolean, number, string, or a relative-datetime form)"))
+  (s/named (s/maybe (s/cond-pre s/Bool su/NonBlankString OrderableValue)) "Valid value (must be nil, boolean, number, string, or a relative-datetime form)"))
 
 ;; Replace values with these during first pass over Query.
 ;; Include associated Field ID so appropriate the info can be found during Field resolution
@@ -316,8 +307,8 @@
 
 (def Page
   "Schema for the top-level `page` clause in a MBQL query."
-  (s/named {:page  IntGreaterThanZero
-            :items IntGreaterThanZero}
+  (s/named {:page  su/IntGreaterThanZero
+            :items su/IntGreaterThanZero}
            "Valid page clause"))
 
 (def Query
@@ -326,8 +317,8 @@
    (s/optional-key :breakout)    [FieldPlaceholderOrExpressionRef]
    (s/optional-key :fields)      [AnyField]
    (s/optional-key :filter)      Filter
-   (s/optional-key :limit)       IntGreaterThanZero
+   (s/optional-key :limit)       su/IntGreaterThanZero
    (s/optional-key :order-by)    [OrderBy]
    (s/optional-key :page)        Page
    (s/optional-key :expressions) {s/Keyword Expression}
-   :source-table                 IntGreaterThanZero})
+   :source-table                 su/IntGreaterThanZero})
