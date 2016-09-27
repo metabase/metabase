@@ -3,6 +3,8 @@
 # this ensures any failures along the way result in a CI failure
 set -eu
 
+export CIRCLE_COMMIT_MESSAGE="$(git log --format=oneline -n 1 $CIRCLE_SHA1)"
+
 install-crate() {
     sudo add-apt-repository ppa:crate/stable -y
     sudo apt-get update
@@ -29,22 +31,47 @@ stop-sauce-connect() {
     fi
 }
 
+is_master() {
+    [[ "$CIRCLE_BRANCH" == "master" ]]
+}
+is_enabled() {
+    is_master || [[ "$CIRCLE_COMMIT_MESSAGE" == *"[ci $1]"* ]]
+}
+is_engine_enabled() {
+    [[ "$ENGINES" == *"$1"* ]]
+}
+
+# default engines
+export ENGINES="h2"
+
 case $CIRCLE_NODE_INDEX in
-    0)  install-mongodb
-        ENGINES=h2,mongo,mysql,bigquery \
-            lein test
+    0)  if is_enabled "drivers"; then
+            export ENGINES="h2,mongo,mysql,bigquery";
+        fi
+        if is_engine_enabled "mongo"; then
+            install-mongodb;
+        fi
+        lein test
         ;;
-    1)  ENGINES=h2,sqlserver,oracle \
+    1)  if is_enabled "drivers"; then
+            export ENGINES="h2,sqlserver,oracle";
+        fi
         MB_DB_TYPE=postgres MB_DB_DBNAME=circle_test MB_DB_PORT=5432 MB_DB_USER=ubuntu MB_DB_HOST=localhost \
             lein test
         ;;
-    2)  install-crate
-        ENGINES=h2,postgres,sqlite,crate \
+    2)  if is_enabled "drivers"; then
+            export ENGINES="h2,postgres,sqlite,crate";
+        fi
+        if is_engine_enabled "crate"; then
+            install-crate;
+        fi
         MB_DB_TYPE=mysql MB_DB_DBNAME=circle_test MB_DB_PORT=3306 MB_DB_USER=ubuntu MB_DB_HOST=localhost \
             lein test
         ;;
-    3)  ENGINES=h2,redshift,druid \
-            lein test
+    3)  if is_enabled "drivers"; then
+            export ENGINES="h2,redshift,druid";
+        fi
+        lein test
         ;;
     4)  lein eastwood
         lein bikeshed
@@ -55,8 +82,11 @@ case $CIRCLE_NODE_INDEX in
         npm run test
         ;;
     6)  ./bin/build version frontend sample-dataset uberjar
-        USE_SAUCE=true \
-            npm run test-e2e
-        node_modules/.bin/babel-node ./bin/compare-screenshots
+        if is_enabled "e2e" || is_enabled "compare_screenshots"; then
+            USE_SAUCE=true npm run test-e2e
+        fi
+        if is_enabled "compare_screenshots"; then
+            node_modules/.bin/babel-node ./bin/compare-screenshots
+        fi
         ;;
 esac
