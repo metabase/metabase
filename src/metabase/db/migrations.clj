@@ -1,6 +1,7 @@
 (ns metabase.db.migrations
   "Clojure-land data migration definitions and fns for running them."
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as s]
+            [clojure.tools.logging :as log]
             (metabase [config :as config]
                       [db :as db]
                       [driver :as driver]
@@ -258,10 +259,17 @@
   (doseq [[_ t] old-base-type->new-type]
     (assert (isa? (keyword t) :type/*))))
 
-(defmigration migrate-base-types
+(defmigration migrate-field-types
   (doseq [[old-type new-type] old-special-type->new-type]
-    (db/update-where! 'Field {:special_type old-type}
+    (db/update-where! 'Field {:%lower.special_type (s/lower-case old-type)}
       :special_type new-type))
   (doseq [[old-type new-type] old-base-type->new-type]
-    (db/update-where! 'Field {:base_type old-type}
+    (db/update-where! 'Field {:%lower.base_type (s/lower-case old-type)}
       :base_type new-type)))
+
+;; if there were invalid field types in the database anywhere fix those so the new stricter validation logic doesn't blow up
+(defmigration fix-invalid-field-types
+  (db/update-where! 'Field {:base_type [:not-like "type/%"]}
+    :base_type "type/*")
+  (db/update-where! 'Field {:special_type [:not-like "type/%"]}
+    :special_type "type/*"))
