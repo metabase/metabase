@@ -16,7 +16,9 @@ describe("auth/login", () => {
     let server, sauceConnect, driver, sessionId;
 
     beforeAll(async () => {
-        ({ server, sauceConnect, driver } = await setup());
+        ({ server, sauceConnect, driver } = await setup({
+            name: "auth/login"
+        }));
     });
 
     it ("should start", async () => {

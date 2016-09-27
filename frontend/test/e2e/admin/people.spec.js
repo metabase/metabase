@@ -22,7 +22,9 @@ describe("admin/people", () => {
     let server, sauceConnect, driver;
 
     beforeAll(async () => {
-        ({ server, sauceConnect, driver } = await setup());
+        ({ server, sauceConnect, driver } = await setup({
+            name: "admin/people",
+        }));
     });
 
     it ("should start", async () => {

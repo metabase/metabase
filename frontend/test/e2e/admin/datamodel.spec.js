@@ -26,7 +26,9 @@ describe("admin/datamodel", () => {
     let server, sauceConnect, driver;
 
     beforeAll(async () => {
-        ({ server, sauceConnect, driver } = await setup());
+        ({ server, sauceConnect, driver } = await setup({
+            name: "admin/datamodel"
+        }));
     });
 
     it ("should start", async () => {

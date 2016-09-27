@@ -21,7 +21,9 @@ describe("query_builder", () => {
     let server, sauceConnect, driver;
 
     beforeAll(async () => {
-        ({ server, sauceConnect, driver } = await setup());
+        ({ server, sauceConnect, driver } = await setup({
+            name: "query_builder"
+        }));
     });
 
     it ("should start", async () => {

@@ -5,6 +5,7 @@ import { createDriver } from "./driver";
 export const DEFAULT_DB = "frontend/test/e2e/support/fixtures/metabase.db";
 
 export const setup = async ({
+    name,
     dbKey = DEFAULT_DB
 } = {}) => {
     const [server, sauceConnect] = await Promise.all([
@@ -12,7 +13,7 @@ export const setup = async ({
         USE_SAUCE ? startSauceConnect() : Promise.resolve()
     ]);
 
-    const driver = createDriver();
+    const driver = createDriver({ name: name });
 
     return {
         server,
@@ -26,9 +27,13 @@ export const cleanup = async ({
     sauceConnect,
     driver
 }) => {
-    await Promise.all([
-        server.stop(),
-        driver.quit(),
-        USE_SAUCE ? sauceConnect.close() : Promise.resolve()
-    ]);
+    try {
+        await Promise.all([
+            server.stop(),
+            driver.quit(),
+            USE_SAUCE ? sauceConnect.close() : Promise.resolve()
+        ]);
+    } catch (e) {
+        console.log("Error in cleanup()", e);
+    }
 };

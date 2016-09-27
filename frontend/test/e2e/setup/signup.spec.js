@@ -23,7 +23,10 @@ describe("setup/signup", () => {
         //TODO: think about aggregating every test suite into a bigger container suite
         // and only do initialize/cleanup once? plus we can also save on browser restart times.
         // an alternative optimization would be to try to run multiple test suites in parallel
-        ({ server, sauceConnect, driver } = await setup({dbKey: ''}));
+        ({ server, sauceConnect, driver } = await setup({
+            name: "setup/signup",
+            dbKey: ""
+        }));
     });
 
     it ("should start", async () => {
