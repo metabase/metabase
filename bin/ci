@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# this ensures any
+# this ensures any failures along the way result in a CI failure
 set -eu
 
 install-crate() {

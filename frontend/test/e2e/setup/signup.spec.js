@@ -41,7 +41,7 @@ describe("setup/signup", () => {
             await screenshot(driver, "screenshots/setup-welcome.png");
         });
 
-        it("should allow you to sign up and add db", async () => {
+        xit("should allow you to sign up and add db", async () => {
             await driver.get(`${server.host}/`);
             await waitForUrl(driver, `${server.host}/setup`);
             await waitForElementAndClick(driver, ".Button.Button--primary");
@@ -85,7 +85,7 @@ describe("setup/signup", () => {
             await screenshot(driver, "screenshots/setup-tutorial-main.png");
         });
 
-        it("should guide users through query builder tutorial", async () => {
+        xit("should guide users through query builder tutorial", async () => {
             await driver.get(`${server.host}/?new`);
             await waitForUrl(driver, `${server.host}/?new`);
 

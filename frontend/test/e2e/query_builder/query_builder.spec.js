@@ -30,7 +30,7 @@ describe("query_builder", () => {
 
     // TODO: lots of opportunities for refactoring out steps here
     describe("tables", () => {
-        it("should allow users to create pivot tables", async () => {
+        xit("should allow users to create pivot tables", async () => {
             await driver.get(`${server.host}/`);
             await loginMetabase(driver, "bob@metabase.com", "12341234");
             await waitForUrl(driver, `${server.host}/`);
@@ -74,7 +74,7 @@ describe("query_builder", () => {
     });
 
     describe("charts", () => {
-        it("should allow users to create line charts", async () => {
+        xit("should allow users to create line charts", async () => {
             await driver.get(`${server.host}/q`);
 
             // select orders table
@@ -123,7 +123,7 @@ describe("query_builder", () => {
             await waitForElementRemoved(driver, ".EditHeader");
         });
 
-        it("should allow users to create bar charts", async () => {
+        xit("should allow users to create bar charts", async () => {
             // load line chart
             await driver.get(`${server.host}/card/2`);
 
