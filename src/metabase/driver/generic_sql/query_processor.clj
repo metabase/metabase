@@ -285,10 +285,10 @@
 (defn- run-query
   "Run the query itself."
   [{sql :query, params :params, remark :remark} connection]
-  (println)
-  (println "Executing this (2): ")
-  (println "Driver Class: " (.getDriverClass (:datasource connection)))
-  (println sql)
+;;   (println)
+;;   (println "Executing this (2): ")
+;;   (println "Driver Class: " (.getDriverClass (:datasource connection)))
+;;   (println sql)
   (let [sql              (str "-- " remark "\n" (hx/unescape-dots sql))
         statement        (into [sql] params)
         [columns & rows] (jdbc/query connection statement {:identifiers identity, :as-arrays? true})]

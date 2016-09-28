@@ -45,7 +45,8 @@
           :drop-table-if-exists-sql  generic/drop-table-if-exists-cascade-sql
           :field-base-type->sql-type (u/drop-first-arg field-base-type->sql-type)
           :load-data!                generic/load-data-one-at-a-time-parallel!
-          :pk-sql-type               (constantly "AUTO_INCREMENT")
+          ;; :pk-sql-type               (constantly "AUTO_INCREMENT")
+          :pk-sql-type               (constantly "INTEGER")
           :qualified-name-components (u/drop-first-arg qualified-name-components)
           :execute-sql!              generic/sequentially-execute-sql!})
   i/IDatasetLoader
