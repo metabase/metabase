@@ -15015,27 +15015,6 @@
         }
       }
     },
-    "react-leaflet": {
-      "version": "0.12.2",
-      "dependencies": {
-        "lodash": {
-          "version": "4.15.0"
-        },
-        "warning": {
-          "version": "3.0.0",
-          "dependencies": {
-            "loose-envify": {
-              "version": "1.2.0",
-              "dependencies": {
-                "js-tokens": {
-                  "version": "1.0.3"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "react-redux": {
       "version": "4.4.5",
       "dependencies": {
@@ -15156,7 +15135,7 @@
           "version": "0.1.2"
         },
         "fbjs": {
-          "version": "0.8.4",
+          "version": "0.8.5",
           "dependencies": {
             "core-js": {
               "version": "1.2.7"
@@ -15179,7 +15158,7 @@
               "version": "7.1.1",
               "dependencies": {
                 "asap": {
-                  "version": "2.0.4"
+                  "version": "2.0.5"
                 }
               }
             },

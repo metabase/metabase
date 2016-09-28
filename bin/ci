@@ -99,6 +99,7 @@ case $CIRCLE_NODE_INDEX in
         ;;
     5)  run_step npm run lint
         run_step npm run test
+        run_step npm run flow
         ;;
     6)  run_step ./bin/build version frontend sample-dataset uberjar
         if is_enabled "e2e" || is_enabled "compare_screenshots"; then

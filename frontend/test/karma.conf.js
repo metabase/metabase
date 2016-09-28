@@ -28,6 +28,9 @@ module.exports = function(config) {
             resolve: webpackConfig.resolve,
             module: webpackConfig.module
         },
+        webpackMiddleware: {
+            stats: "errors-only",
+        },
         coverageReporter: {
             dir: '../coverage/',
             subdir: function(browser) {
