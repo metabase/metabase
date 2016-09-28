@@ -14,7 +14,7 @@ const SLACK_TOKEN = process.env["SLACK_TOKEN"];
 const SLACK_CHANNEL = "#ci-screenshots";
 
 const CIRCLE_PROJECT = "github/metabase/metabase";
-const CIRCLE_BRANCH = "new-e2e-test-setup";
+const CIRCLE_BRANCH = "master";
 
 const CIRCLE_SCREENSHOT_PATH = "/home/ubuntu/metabase/screenshots/";
 
