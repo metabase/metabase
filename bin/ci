@@ -35,7 +35,7 @@ is_master() {
     [[ "$CIRCLE_BRANCH" == "master" ]]
 }
 is_enabled() {
-    is_master || [[ "$CIRCLE_COMMIT_MESSAGE" == *"[ci $1]"* ]]
+    is_master || [[ "$CIRCLE_COMMIT_MESSAGE" == *"[ci $1]"* ]] || [[ "$CIRCLE_COMMIT_MESSAGE" == *"[ci all]"* ]]
 }
 is_engine_enabled() {
     [[ "$ENGINES" == *"$1"* ]]
