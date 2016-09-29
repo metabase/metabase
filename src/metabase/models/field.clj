@@ -26,19 +26,22 @@
 
 (i/defentity Field :metabase_field)
 
-(defn- assert-valid-special-type [{special-type :special_type}]
+(defn- check-valid-types [{base-type :base_type, special-type :special_type}]
+  (when base-type
+    (assert (isa? (keyword base-type) :type/*)
+      (str "Invalid base type: " base-type)))
   (when special-type
     (assert (isa? (keyword special-type) :type/*)
       (str "Invalid special type: " special-type))))
 
 (defn- pre-insert [field]
-  (assert-valid-special-type field)
+  (check-valid-types field)
   (let [defaults {:display_name (humanization/name->human-readable-name (:name field))}]
     (merge defaults field)))
 
 (defn- pre-update [field]
   (u/prog1 field
-    (assert-valid-special-type field)))
+    (check-valid-types field)))
 
 (defn- pre-cascade-delete [{:keys [id]}]
   (db/cascade-delete! Field :parent_id id)

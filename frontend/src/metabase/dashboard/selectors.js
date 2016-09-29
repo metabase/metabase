@@ -8,10 +8,8 @@ import { createSelector } from 'reselect';
 import * as Dashboard from "metabase/meta/Dashboard";
 import Metadata from "metabase/meta/metadata/Metadata";
 
-import Query from "metabase/lib/query";
-
 import type { CardObject } from "metabase/meta/types/Card";
-import type { ParameterMappingOption, ParameterObject } from "metabase/meta/types/Dashboard";
+import type { ParameterMappingOption, ParameterObject, ParameterMappingObject } from "metabase/meta/types/Dashboard";
 
 export const getDashboardId       = state => state.dashboard.dashboardId;
 export const getIsEditing         = state => state.dashboard.isEditing;
@@ -89,17 +87,13 @@ export const getMappingsByParameter = createSelector(
         let countsByParameter = {};
         let mappings = [];
         for (const dashcard of dashboard.ordered_cards) {
-            for (let mapping of (dashcard.parameter_mappings || [])) {
-                let values = null;
-                if (mapping.target[0] === "dimension") {
-                    let dimension = mapping.target[1];
-                    let field = metadata.field(Query.getFieldTargetId(dimension));
-                    values = field && field.values() ;
-                    if (values) {
-                        for (const value of values) {
-                            countsByParameter = updateIn(countsByParameter, [mapping.parameter_id, value], (count = 0) => count + 1)
-                        }
-                    }
+            const cards: Array<CardObject> = [dashcard.card].concat(dashcard.series);
+            for (let mapping: ParameterMappingObject of (dashcard.parameter_mappings || [])) {
+                let card = _.findWhere(cards, { id: mapping.card_id });
+                let field = Dashboard.getParameterMappingTargetField(metadata, card, mapping.target);
+                let values = field && field.values() || [];
+                for (const value of values) {
+                    countsByParameter = updateIn(countsByParameter, [mapping.parameter_id, value], (count = 0) => count + 1)
                 }
                 mapping = {
                     ...mapping,
