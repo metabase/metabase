@@ -8,15 +8,12 @@ node-0() {
     if is_engine_enabled "mongo"; then
         run_step install-mongodb;
     fi
-    run_step lein test2junit
+    run_step lein-test
 }
 node-1() {
     is_enabled "drivers" && export ENGINES="h2,sqlserver,oracle" || export ENGINES="h2"
-    if is_engine_enabled "mongo"; then
-        run_step install-mongodb;
-    fi
     MB_DB_TYPE=postgres MB_DB_DBNAME=circle_test MB_DB_PORT=5432 MB_DB_USER=ubuntu MB_DB_HOST=localhost \
-        run_step lein test2junit
+        run_step lein-test
 }
 node-2() {
     is_enabled "drivers" && export ENGINES="h2,postgres,sqlite,crate" || export ENGINES="h2"
@@ -24,11 +21,11 @@ node-2() {
         run_step install-crate
     fi
     MB_DB_TYPE=mysql MB_DB_DBNAME=circle_test MB_DB_PORT=3306 MB_DB_USER=ubuntu MB_DB_HOST=localhost \
-        run_step lein test2junit
+        run_step lein-test
 }
 node-3() {
     is_enabled "drivers" && export ENGINES="h2,redshift,druid" || export ENGINES="h2"
-    run_step lein test2junit
+    run_step lein-test
 }
 node-4() {
     run_step lein eastwood
@@ -70,6 +67,10 @@ install-mongodb() {
     sudo apt-get update
     sudo apt-get install -y mongodb-org
     sudo service mongod restart
+}
+
+lein-test() {
+    lein test
 }
 
 is_enabled() {
