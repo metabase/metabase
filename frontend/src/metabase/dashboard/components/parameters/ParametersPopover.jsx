@@ -25,17 +25,17 @@ export default class ParametersPopover extends Component {
         const { onClose, onAddParameter } = this.props;
         if (section == null) {
             return <ParameterOptionsSectionsPane sections={PARAMETER_SECTIONS} onSelectSection={(section) => {
-                let { options } = _.findWhere(PARAMETER_SECTIONS, { id: section.id });
-                if (options.length === 1) {
-                    onAddParameter(options[0]);
+                let parameterSection = _.findWhere(PARAMETER_SECTIONS, { id: section.id });
+                if (parameterSection && parameterSection.options.length === 1) {
+                    onAddParameter(parameterSection.options[0]);
                     onClose();
                 } else {
                     this.setState({ section: section.id });
                 }
             }} />
         } else {
-            let { options } = _.findWhere(PARAMETER_SECTIONS, { id: section });
-            return <ParameterOptionsPane options={options} onSelectOption={(option) => { onAddParameter(option); onClose(); } }/>
+            let parameterSection = _.findWhere(PARAMETER_SECTIONS, { id: section });
+            return <ParameterOptionsPane options={parameterSection && parameterSection.options} onSelectOption={(option) => { onAddParameter(option); onClose(); } }/>
         }
     }
 }
@@ -66,7 +66,7 @@ const ParameterOptionsPane = ({ options, onSelectOption }) =>
     <div className="pb2">
         <h3 className="p2">What kind of filter?</h3>
         <ul>
-            { options.map(option =>
+            { options && options.map(option =>
                 <ParameterOptionItem option={option} onClick={() => onSelectOption(option)} />
             )}
         </ul>
