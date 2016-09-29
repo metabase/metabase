@@ -28,12 +28,12 @@ node-3() {
     run_step lein-test
 }
 node-4() {
-    run_step lein eastwood
     run_step lein bikeshed
     run_step lein docstring-checker
     run_step ./bin/reflection-linter
 }
 node-5() {
+    run_step lein eastwood
     run_step npm run lint
     run_step npm run test
     run_step npm run flow
