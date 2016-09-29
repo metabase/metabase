@@ -8,8 +8,7 @@ declare class Object {
     static values<T>(object: { [key:string]: T }): Array<T>;
 }
 
-import * as Query from "./Query";
-import QueryLib from "metabase/lib/query";
+import Query from "metabase/lib/query";
 import _ from "underscore";
 
 export const STRUCTURED_QUERY_TEMPLATE: StructuredDatasetQueryObject = {
@@ -61,7 +60,7 @@ export function getQuery(card: CardObject): ?StructuredQueryObject {
 }
 
 export function getTemplateTags(card: ?CardObject): Array<TemplateTag> {
-    return card && card.dataset_query.native && card.dataset_query.native.template_tags ?
+    return card && card.dataset_query.type === "native" && card.dataset_query.native.template_tags ?
         Object.values(card.dataset_query.native.template_tags) :
         [];
 }
@@ -75,7 +74,7 @@ export function applyParameters(
     const datasetQuery = JSON.parse(JSON.stringify(card.dataset_query));
     // clean the query
     if (datasetQuery.type === "query") {
-        datasetQuery.query = QueryLib.cleanQuery(datasetQuery.query);
+        datasetQuery.query = Query.cleanQuery(datasetQuery.query);
     }
     datasetQuery.parameters = [];
     for (const parameter of parameters || []) {

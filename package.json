@@ -89,7 +89,7 @@
     "exports-loader": "^0.6.3",
     "extract-text-webpack-plugin": "^1.0.1",
     "file-loader": "^0.8.5",
-    "flow-bin": "^0.24.2",
+    "flow-bin": "^0.32.0",
     "flow-status-webpack-plugin": "^0.1.4",
     "fs-promise": "^0.5.0",
     "glob": "^5.0.15",

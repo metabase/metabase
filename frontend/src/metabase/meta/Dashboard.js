@@ -185,7 +185,7 @@ export function getParameterMappingTargetField(metadata: Metadata, card: CardObj
         let dimension = target[1];
         if (Array.isArray(dimension) && dimension[0] === "template-tag") {
             if (card.dataset_query.type === "native") {
-                let templateTag = card.dataset_query.native.template_tags[dimension[1]];
+                let templateTag = card.dataset_query.native.template_tags[String(dimension[1])];
                 if (templateTag && templateTag.type === "dimension") {
                     return metadata.field(Query.getFieldTargetId(templateTag.dimension));
                 }
