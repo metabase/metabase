@@ -71,7 +71,8 @@
                  [ring/ring-jetty-adapter "1.5.0"]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically
                  [stencil "0.5.0"]                                    ; Mustache templates for Clojure
-                 [swiss-arrows "1.0.0"]]                              ; 'Magic wand' macro -<>, etc.
+                 [swiss-arrows "1.0.0"]                               ; 'Magic wand' macro -<>, etc.
+                 [test2junit "1.2.2"]]                                ; Output test results in JUnit style for CI
   :repositories [["bintray" "https://dl.bintray.com/crate/crate"]]
   :plugins [[lein-environ "1.0.3"]                                    ; easy access to environment variables
             [lein-ring "0.9.7"                                        ; start the HTTP server with 'lein ring server'
@@ -82,6 +83,7 @@
   :jvm-opts ["-Djava.awt.headless=true"]                              ; prevent Java icon from randomly popping up in dock when running `lein ring server`
   :javac-options ["-target" "1.7", "-source" "1.7"]
   :uberjar-name "metabase.jar"
+  :test2junit-output-dir (str (or (System/getenv "CIRCLE_TEST_REPORTS") ".") "/test-report-backend")
   :ring {:handler metabase.core/app
          :init metabase.core/init!
          :destroy metabase.core/destroy}
@@ -109,7 +111,8 @@
                              [lein-expectations "0.0.8"]              ; run unit tests with 'lein expectations'
                              [lein-instant-cheatsheet "2.2.1"         ; use awesome instant cheatsheet created by yours truly w/ 'lein instant-cheatsheet'
                               :exclusions [org.clojure/clojure
-                                           org.clojure/tools.namespace]]]
+                                           org.clojure/tools.namespace]]
+                             [test2junit "1.2.2"]]
                    :env {:mb-run-mode "dev"}
                    :jvm-opts ["-Dlogfile.path=target/log"
                               "-Xms1024m"                             ; give JVM a decent heap size to start with

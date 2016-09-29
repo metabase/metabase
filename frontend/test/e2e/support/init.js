@@ -8,3 +8,10 @@ if (!global.jasmineRequire) {
     global.jasmineRequire = jasmineRequire;
 }
 require('jasmine-promises');
+
+var jasmineReporters = require('jasmine-reporters');
+var junitReporter = new jasmineReporters.JUnitXmlReporter({
+    savePath: (process.env["CIRCLE_TEST_REPORTS"] || ".") + "/test-report-e2e",
+    consolidateAll: false
+});
+jasmine.getEnv().addReporter(junitReporter);
