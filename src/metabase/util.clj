@@ -200,32 +200,34 @@
 
      (date-trunc :month).
      ;; -> #inst \"2015-11-01T00:00:00\""
-  (^java.sql.Timestamp [unit]
+  (^java.sql.Timestamp [unit timezone-id]
    (date-trunc unit (System/currentTimeMillis)))
-  (^java.sql.Timestamp [unit date]
-   (let [trunc-with-format (fn trunc-with-format
+  (^java.sql.Timestamp [unit date timezone-id]
+   (let [tz                (t/time-zone-for-id timezone-id)
+         with-zone-fmt     (fn [format-string] (time/with-zone (time/formatter format-string) tz))
+         trunc-with-format (fn trunc-with-format
                              ([format-string]
                               (trunc-with-format format-string date))
                              ([format-string d]
-                              (->Timestamp (format-date format-string d))))]
+                              (->Timestamp (format-date (with-zone-fmt format-string) d))))]
      (case unit
-       :minute  (trunc-with-format "yyyy-MM-dd'T'HH:mm:00+00:00")
-       :hour    (trunc-with-format "yyyy-MM-dd'T'HH:00:00+00:00")
-       :day     (trunc-with-format "yyyy-MM-dd+00:00")
+       :minute  (trunc-with-format "yyyy-MM-dd'T'HH:mm:00")
+       :hour    (trunc-with-format "yyyy-MM-dd'T'HH:00:00")
+       :day     (trunc-with-format "yyyy-MM-dd")
        :week    (let [day-of-week (date-extract :day-of-week date)
                       date        (relative-date :day (- (dec day-of-week)) date)]
-                  (trunc-with-format "yyyy-MM-dd+00:00" date))
-       :month   (trunc-with-format "yyyy-MM-01+00:00")
+                  (trunc-with-format "yyyy-MM-dd" date))
+       :month   (trunc-with-format "yyyy-MM-01")
        :quarter (let [year    (date-extract :year date)
                       quarter (date-extract :quarter-of-year date)]
-                  (->Timestamp (format "%d-%02d-01+00:00" year (- (* 3 quarter)
+                  (->Timestamp (format "%d-%02d-01" year (- (* 3 quarter)
                                                                   2))))))))
 
 (defn date-trunc-or-extract
   "Apply date bucketing with UNIT to DATE. DATE defaults to now."
-  ([unit]
+  ([unit timezone-id]
    (date-trunc-or-extract unit (System/currentTimeMillis)))
-  ([unit date]
+  ([unit date timezone-id]
    (cond
      (= unit :default) date
 
@@ -233,7 +235,7 @@
      (date-extract unit date)
 
      (contains? date-trunc-units unit)
-     (date-trunc unit date))))
+     (date-trunc unit date timezone-id))))
 
 (defn format-nanoseconds
   "Format a time interval in nanoseconds to something more readable (µs/ms/etc.)
