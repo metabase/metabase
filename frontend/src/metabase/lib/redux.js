@@ -8,7 +8,6 @@ import thunk from "redux-thunk";
 import createLogger from "redux-logger";
 
 import { createHistory } from 'history';
-import { createAngularHistory } from "./createAngularHistory";
 
 import { reduxReactRouter } from 'redux-router';
 
@@ -31,21 +30,6 @@ export const createStore = compose(
   reduxReactRouter({ createHistory }),
   window.devToolsExtension ? window.devToolsExtension() : f => f
 )(originalCreateStore);
-
-export const createStoreWithAngularScope = ($scope, $location, ...args) => {
-    let store = compose(
-        applyMiddleware(...middleware),
-        reduxReactRouter({ createHistory: createAngularHistory.bind(null, $scope, $location) }),
-        window.devToolsExtension ? window.devToolsExtension() : f => f
-    )(originalCreateStore)(...args);
-
-    // HACK: ugh, we have mismatched versions of redux-router and history.
-    // this allows hot reloading to work.
-    store.history.replace = ({ state, pathname, query }) =>
-        store.history.replaceState(state, pathname, query);
-
-    return store;
-}
 
 // HACK: just use our Angular resources for now
 export function AngularResourceProxy(serviceName, methods) {
@@ -108,11 +92,11 @@ export const cleanResource = (resource) => Object.keys(resource)
     .reduce((map, key) => Object.assign({}, map, {[key]: resource[key]}), {});
 
 export const fetchData = async ({
-    dispatch, 
-    getState, 
-    requestStatePath, 
-    existingStatePath, 
-    getData, 
+    dispatch,
+    getState,
+    requestStatePath,
+    existingStatePath,
+    getData,
     reload
 }) => {
     const existingData = i.getIn(getState(), existingStatePath);
@@ -137,11 +121,11 @@ export const fetchData = async ({
 }
 
 export const updateData = async ({
-    dispatch, 
-    getState, 
-    requestStatePath, 
+    dispatch,
+    getState,
+    requestStatePath,
     existingStatePath,
-    // specify any request paths that need to be invalidated after this update 
+    // specify any request paths that need to be invalidated after this update
     dependentRequestStatePaths,
     putData
 }) => {
