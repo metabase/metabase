@@ -4,6 +4,13 @@ import Base from "./Base";
 import Field from "./Field";
 import Database from "./Database";
 
+import type { TableId, Table as TableObject } from "metabase/meta/types/Table";
+import type { DatabaseId } from "metabase/meta/types/Database";
+import type { FieldId } from "metabase/meta/types/Field";
+
+type EntitiesTableObject = TableObject & {
+    fields: Array<FieldId>
+}
 
 export default class Table extends Base {
     static type = "tables";
@@ -11,9 +18,11 @@ export default class Table extends Base {
         fields: [Field]
     };
 
-    id: number;
+    _object: EntitiesTableObject;
+
+    id: TableId;
     display_name: string;
-    db_id: number;
+    db_id: DatabaseId;
 
     database() {
         return this._entity(Database, this.db_id);
