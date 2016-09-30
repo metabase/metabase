@@ -38,8 +38,16 @@ export default class Field extends Base {
     isDimension() { return isDimension(this._object); }
     isID()        { return isPK(this.special_type); }
 
-    values() {
-        return (this._object.values && this._object.values.values) || []
+    values(): Array<string> {
+        let values = this._object.values;
+        // https://github.com/metabase/metabase/issues/3417
+        if (Array.isArray(values)) {
+            return values;
+        } else if (values && Array.isArray(values.values)) {
+            return values.values;
+        } else {
+            return [];
+        }
     }
 
     icon() {
