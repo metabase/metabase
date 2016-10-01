@@ -173,7 +173,7 @@
                        (stringify format-string value))
                       ([format-string v]
                        {:___date (u/format-date format-string v)}))
-          extract   (u/rpartial u/date-extract value)]
+          extract   (u/rpartial u/date-extract value "UTC")]
       (case (or unit :default)
         :default         (u/->Date value)
         :minute          (stringify "yyyy-MM-dd'T'HH:mm:00")
@@ -184,11 +184,11 @@
         :day-of-week     (extract :day-of-week)
         :day-of-month    (extract :day-of-month)
         :day-of-year     (extract :day-of-year)
-        :week            (stringify "yyyy-MM-dd" (u/date-trunc :week value))
+        :week            (stringify "yyyy-MM-dd" (u/date-trunc :week value "UTC"))
         :week-of-year    (extract :week-of-year)
         :month           (stringify "yyyy-MM")
         :month-of-year   (extract :month)
-        :quarter         (stringify "yyyy-MM" (u/date-trunc :quarter value))
+        :quarter         (stringify "yyyy-MM" (u/date-trunc :quarter value "UTC"))
         :quarter-of-year (extract :quarter-of-year)
         :year            (extract :year))))
 

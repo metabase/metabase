@@ -141,7 +141,10 @@
      (.setTimeZone (TimeZone/getTimeZone "UTC"))))
   (^java.util.Calendar [date]
    (doto (->Calendar)
-     (.setTime (->Timestamp date)))))
+     (.setTime (->Timestamp date))))
+  (^java.util.Calendar [date timezone-id]
+   (doto (->Calendar date)
+     (.setTimeZone (TimeZone/getTimeZone timezone-id)))))
 
 (defn relative-date
   "Return a new `Timestamp` relative to the current time using a relative date UNIT.
@@ -172,10 +175,10 @@
   "Extract UNIT from DATE. DATE defaults to now.
 
      (date-extract :year) -> 2015"
-  ([unit]
-   (date-extract unit (System/currentTimeMillis)))
-  ([unit date]
-   (let [cal (->Calendar date)]
+  ([unit timezone-id]
+   (date-extract unit (System/currentTimeMillis) timezone-id))
+  ([unit date timezone-id]
+   (let [cal (->Calendar date timezone-id)]
      (case unit
        :minute-of-hour  (.get cal Calendar/MINUTE)
        :hour-of-day     (.get cal Calendar/HOUR_OF_DAY)
@@ -186,7 +189,7 @@
        ;; 1 = First week of year
        :week-of-year    (.get cal Calendar/WEEK_OF_YEAR)
        :month-of-year   (inc (.get cal Calendar/MONTH))
-       :quarter-of-year (let [month (date-extract :month-of-year date)]
+       :quarter-of-year (let [month (date-extract :month-of-year date timezone-id)]
                           (int (/ (+ 2 month)
                                   3)))
        :year            (.get cal Calendar/YEAR)))))
@@ -205,23 +208,27 @@
   (^java.sql.Timestamp [unit date timezone-id]
    (let [tz                (t/time-zone-for-id timezone-id)
          with-zone-fmt     (fn [format-string] (time/with-zone (time/formatter format-string) tz))
+         trunc-with-floor  (fn [date amount-ms]
+                             (let [orig-ms    (.getTime (->Timestamp date))
+                                   trunced-ms (-> orig-ms (/ amount-ms) (math/floor) (* amount-ms))]
+                                (new java.sql.Timestamp trunced-ms)))
          trunc-with-format (fn trunc-with-format
                              ([format-string]
                               (trunc-with-format format-string date))
                              ([format-string d]
                               (->Timestamp (format-date (with-zone-fmt format-string) d))))]
      (case unit
-       :minute  (trunc-with-format "yyyy-MM-dd'T'HH:mm:00")
-       :hour    (trunc-with-format "yyyy-MM-dd'T'HH:00:00")
-       :day     (trunc-with-format "yyyy-MM-dd")
-       :week    (let [day-of-week (date-extract :day-of-week date)
+       :minute  (trunc-with-floor date (* 60 1000)) ; For minute and hour truncation timezone should not be taken into account
+       :hour    (trunc-with-floor date (* 60 60 1000))
+       :day     (trunc-with-format "yyyy-MM-ddZZ")
+       :week    (let [day-of-week (date-extract :day-of-week date timezone-id)
                       date        (relative-date :day (- (dec day-of-week)) date)]
-                  (trunc-with-format "yyyy-MM-dd" date))
-       :month   (trunc-with-format "yyyy-MM-01")
-       :quarter (let [year    (date-extract :year date)
-                      quarter (date-extract :quarter-of-year date)]
-                  (->Timestamp (format "%d-%02d-01" year (- (* 3 quarter)
-                                                                  2))))))))
+                  (trunc-with-format "yyyy-MM-ddZZ" date))
+       :month   (trunc-with-format "yyyy-MM-01ZZ")
+       :quarter (let [year    (date-extract :year date timezone-id)
+                      quarter (date-extract :quarter-of-year date timezone-id)
+                      month   (- (* 3 quarter) 2)]
+                  (trunc-with-format (format "%d-%02d-01ZZ" year month)))))))
 
 (defn date-trunc-or-extract
   "Apply date bucketing with UNIT to DATE. DATE defaults to now."
@@ -232,7 +239,7 @@
      (= unit :default) date
 
      (contains? date-extract-units unit)
-     (date-extract unit date)
+     (date-extract unit date timezone-id)
 
      (contains? date-trunc-units unit)
      (date-trunc unit date timezone-id))))
