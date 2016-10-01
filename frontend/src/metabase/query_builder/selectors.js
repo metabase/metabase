@@ -3,6 +3,7 @@ import { createSelector } from "reselect";
 import _ from "underscore";
 
 import { getTemplateTags } from "metabase/meta/Card";
+import Table from "metabase/meta/metadata/Table";
 
 import { isCardDirty } from "metabase/lib/card";
 import * as DataGrid from "metabase/lib/data_grid";
@@ -47,6 +48,12 @@ export const tables = createSelector(
 
         return [];
     }
+);
+
+export const getTable = createSelector(
+	[tableMetadata],
+	(tableMetadata) =>
+		new Table(tableMetadata)
 );
 
 export const getSampleDatasetId = createSelector(

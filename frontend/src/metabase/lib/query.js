@@ -47,6 +47,80 @@ const mbqlCompare = (a, b) => mbqlCanonicalize(a) === mbqlCanonicalize(b)
 
 var Query = {
 
+    // REFACTOR ME
+    clone(query){
+        return JSON.parse(JSON.stringify(query))
+    },
+
+    // Make me
+    getUnderlyingTable(query){
+        return {name: "Fake Table", 
+                fields: [{id: 1, name: 'id', special_type: 'PK'}, 
+                         {id: 2, name: "name", special_type:"name"},
+                         {id: 3, name: 'user_id', special_type:"FK"}, 
+                         {id: 4, name: 'city', special_type:"city"}, 
+                         {id: 5, name: 'state', special_type:"state"}, 
+                         {id: 6, name: 'country', special_type:"country"}, 
+                         {id: 7, name: 'status', special_type:"category"}, 
+                         {id: 8, name: 'timestamp', base_type:"datetime"}, 
+                         ]}
+    },
+
+    filterBySegment(query, segment){
+        return {}
+    },
+
+    objectDetailFor(field, fieldValue){
+        return {}
+    },
+
+    isBrokenOutByTime(query){
+        // hard coded bullshit
+
+        return query.breakout && query.breakout[0] == "field-id" && query.breakout[1] == 8
+    },
+
+    getTimeExtract(query){
+        return  'Day of Week'
+    },
+
+    getAllTimeExtracts(){
+        return ['Hour of Day', 'Day of Week', 'Week of Year', "Month of Year", "Quarter of Year"]
+    },
+    changeTimeExtract(query, field, newTimeExtract){
+        return {}
+    },
+    getTimeGranularity(query){
+        return "Day"
+    },
+
+    getAllTimeGranularities(){
+        return ["Hour", "Day", "Week", "Month", "Quarter", "Year"]
+    },
+    changeTimeGranularity(query, field, newTimGranularity){
+        return {}
+    },
+    toURL(query){
+        return "/q/fake_url"
+    },
+    replaceAggregationWithMetric(query, metric){
+        return query
+    },
+
+    // Made!
+    replaceBreakout(query, field){
+        query.breakout = ["field-id", field.id]
+    },
+    getUnderlyingData(query){
+        var new_query = Query.clone(query)
+        // having to reach in and set "rows" manually is fugly
+        // TODO Refactor me
+        Query.updateAggregation(new_query, ["rows"])
+        Query.removeAllDimensions(new_query)
+        return new_query
+    },
+    // End Make Me
+
     isStructured(dataset_query) {
         return dataset_query && dataset_query.type === "query";
     },
@@ -198,6 +272,12 @@ var Query = {
                 delete query.order_by;
             }
         }
+    },
+
+    removeAllDimensions(query) {
+        // remove the field from the breakout clause
+        query.breakout = []
+        query.order_by = []
     },
 
     hasEmptyAggregation(query) {
