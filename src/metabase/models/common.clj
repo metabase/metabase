@@ -88,9 +88,3 @@
    "US/Pacific"
    "GMT"
    "UTC"])
-
-(def ^:const ^:deprecated ^Integer perms-readwrite
-  "Integer used to signify public read/write permissions.
-   This was part of the old permissions system, and hasn't been used in a long time.
-   Issue to remove it is here: https://github.com/metabase/metabase/issues/3408"
-  2)

@@ -252,17 +252,6 @@
           :object   (perms/object-path database-id)
           :group_id group-id)))))
 
-;; this is purely for development convenience. Partway through development of Permissions the magic group names were changed.
-;; TODO - this can be removed once permissions is finished and ready to ship. NOCOMMIT
-(defmigration fix-legacy-magic-group-names
-  (let [change-name (fn [old new]
-                      (when (and (db/exists? 'PermissionsGroup :name old)
-                                 (not (db/exists? 'PermissionsGroup :name new)))
-                        (db/update-where! 'PermissionsGroup {:name old}
-                          :name new)))]
-    (change-name "Admin" "Administrators")
-    (change-name "Default" "All Users")))
-
 
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    NEW TYPE SYSTEM                                                     |
