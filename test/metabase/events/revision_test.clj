@@ -18,8 +18,7 @@
 (defn- card-properties
   "Some default properties for `Cards` for use in tests in this namespace."
   []
-  {:public_perms           2
-   :display                "table"
+  {:display                "table"
    :dataset_query          {:database (id)
                             :type     "query"
                             :query    {:aggregation ["rows"]
@@ -38,13 +37,11 @@
    :id                     (:id card)
    :display                "table"
    :visualization_settings {}
-   :public_perms           (:public_perms card)
    :archived               false})
 
 (defn- dashboard->revision-object [dashboard]
   {:description  nil
-   :name         (:name dashboard)
-   :public_perms (:public_perms dashboard)})
+   :name         (:name dashboard)})
 
 
 ;; :card-create

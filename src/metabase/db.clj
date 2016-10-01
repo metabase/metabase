@@ -290,7 +290,7 @@
 
 (defmacro transaction
   "Execute all queries within the body in a single transaction."
-  {:arglists '([body] [options & body])}
+  {:arglists '([body] [options & body]), :style/indent 0}
   [& body]
   `(do-in-transaction (fn [] ~@body)))
 
@@ -432,7 +432,7 @@
    This number isn't *perfectly* accurate, only mostly; DB calls made directly to JDBC won't be logged."
   nil)
 
-(defn do-with-call-counting
+(defn -do-with-call-counting
   "Execute F with DB call counting enabled. F is passed a single argument, a function that can be used to retrieve the current call count.
    (It's probably more useful to use the macro form of this function, `with-call-counting`, instead.)"
   {:style/indent 0}
@@ -449,7 +449,37 @@
        (call-count))"
   {:style/indent 1}
   [[call-count-fn-binding] & body]
-  `(do-with-call-counting (fn [~call-count-fn-binding] ~@body)))
+  `(-do-with-call-counting (fn [~call-count-fn-binding] ~@body)))
+
+(defmacro debug-count-calls
+  "Print the number of DB calls executed inside BODY to `stdout`. Intended for use during REPL development."
+  [& body]
+  `(with-call-counting [call-count#]
+     (u/prog1 (do ~@body)
+       (println "DB Calls:" (call-count#)))))
+
+
+(defn- format-sql [sql]
+  (when sql
+    (loop [sql sql, [k & more] ["FROM" "WHERE" "LEFT JOIN" "INNER JOIN" "ORDER BY" "LIMIT"]]
+      (if-not k
+        sql
+        (recur (s/replace sql (re-pattern (format "\\s+%s\\s+" k)) (format "\n%s " k))
+               more)))))
+
+(def ^:dynamic ^:private *debug-print-queries* false)
+
+(defn -do-with-debug-print-queries
+  "Execute F with debug query logging enabled. Don't use this directly; prefer the `debug-print-queries` macro form instead."
+  [f]
+  (binding [*debug-print-queries* true]
+    (f)))
+
+(defmacro debug-print-queries
+  "Print the HoneySQL and SQL forms of any queries executed inside BODY to `stdout`. Intended for use during REPL development."
+  {:style/indent 0}
+  [& body]
+  `(-do-with-debug-print-queries (fn [] ~@body)))
 
 
 (defn- honeysql->sql
@@ -460,6 +490,9 @@
   ;; Not sure *why* but without setting this binding on *rare* occasion HoneySQL will unwantedly generate SQL for a subquery and wrap the query in parens like "(UPDATE ...)" which is invalid
   (u/prog1 (binding [hformat/*subquery?* false]
              (hsql/format honeysql-form, :quoting (quoting-style), :allow-dashed-names? true))
+    (when *debug-print-queries*
+      (println (u/pprint-to-str 'blue honeysql-form)
+               (u/format-color 'green "\n%s\n%s" (format-sql (first <>)) (rest <>))))
     (when-not *disable-db-logging*
       (log/debug (str "DB Call: " (first <>)))
       (when *call-count*
@@ -774,8 +807,9 @@
      (select 'Database :name [:not= nil] {:limit 2}) -> [...]"
   {:style/indent 1}
   [entity & options]
-  (let [fields (entity->fields entity)]
-    (simple-select entity (where+ {:select (or fields [:*])} options))))
+  (simple-select entity (where+ {:select (or (entity->fields entity)
+                                             [:*])}
+                                options)))
 
 (defn select-field
   "Select values of a single field for multiple objects. These are returned as a set if any matching fields were returned, otherwise `nil`.

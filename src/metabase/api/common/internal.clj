@@ -35,7 +35,7 @@
 (defn- args-form-flatten
   "A version of `flatten` that will actually flatten a form such as:
 
-    [id :as {{:keys [dataset_query description display name public_perms visualization_settings]} :body}]"
+    [id :as {{:keys [dataset_query description display name visualization_settings]} :body}]"
   [form]
   (cond
     (map? form) (args-form-flatten (mapcat (fn [[k v]]

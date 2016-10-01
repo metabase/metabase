@@ -6,6 +6,7 @@
             [metabase.api.common :refer :all]
             [metabase.db :as db]
             (metabase.models [hydrate :refer [hydrate]]
+                             [interface :as models]
                              [metric :refer [Metric], :as metric]
                              [revision :as revision]
                              [table :refer [Table]])))
@@ -18,7 +19,7 @@
    table_id   [Required Integer]
    definition [Required Dict]}
   (check-superuser)
-  (checkp #(db/exists? Table :id table_id) "table_id" "Table does not exist.")
+  (write-check Table table_id)
   (check-500 (metric/create-metric! table_id name description *current-user-id* definition)))
 
 
@@ -26,13 +27,14 @@
   "Fetch `Metric` with ID."
   [id]
   (check-superuser)
-  (check-404 (metric/retrieve-metric id)))
+  (read-check (metric/retrieve-metric id)))
+
 
 (defendpoint GET "/"
   "Fetch *all* `Metrics`."
   [id]
-  (-> (db/select Metric, :is_active true)
-      (hydrate :creator)))
+  (filter models/can-read? (-> (db/select Metric, :is_active true)
+                               (hydrate :creator))))
 
 
 (defendpoint PUT "/:id"
@@ -42,7 +44,7 @@
    revision_message [Required NonEmptyString]
    definition       [Required Dict]}
   (check-superuser)
-  (check-404 (metric/exists? id))
+  (write-check Metric id)
   (metric/update-metric!
     {:id                      id
      :name                    name
@@ -61,7 +63,7 @@
   [id :as {{:keys [important_field_ids]} :body}]
   {important_field_ids [Required ArrayOfIntegers]}
   (check-superuser)
-  (check-404 (metric/exists? id))
+  (write-check Metric id)
   (check (<= (count important_field_ids) 3)
     [400 "A Metric can have a maximum of 3 important fields."])
   (let [[fields-to-remove fields-to-add] (data/diff (set (db/select-field :field_id 'MetricImportantField :metric_id id))
@@ -82,7 +84,7 @@
   [id revision_message]
   {revision_message [Required NonEmptyString]}
   (check-superuser)
-  (check-404 (metric/exists? id))
+  (write-check Metric id)
   (metric/delete-metric! id *current-user-id* revision_message)
   {:success true})
 
@@ -91,7 +93,7 @@
   "Fetch `Revisions` for `Metric` with ID."
   [id]
   (check-superuser)
-  (check-404 (metric/exists? id))
+  (write-check Metric id)
   (revision/revisions+details Metric id))
 
 
@@ -100,7 +102,7 @@
   [id :as {{:keys [revision_id]} :body}]
   {revision_id [Required Integer]}
   (check-superuser)
-  (check-404 (metric/exists? id))
+  (write-check Metric id)
   (revision/revert!
     :entity      Metric
     :id          id
@@ -109,3 +111,5 @@
 
 
 (define-routes)
+
+[]

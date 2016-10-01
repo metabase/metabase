@@ -46,7 +46,7 @@ export default class DatabaseEditApp extends Component {
 
         return (
             <div className="wrapper">
-                <Breadcrumbs crumbs={[
+                <Breadcrumbs className="py4" crumbs={[
                     ["Databases", "/admin/databases"],
                     [database && database.id != null ? database.name : "Add Database"]
                 ]} />

@@ -5,6 +5,7 @@ import _ from "underscore";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
+import AdminEmptyText from "metabase/components/AdminEmptyText.jsx";
 import MetadataHeader from '../components/database/MetadataHeader.jsx';
 import MetadataTablePicker from '../components/database/MetadataTablePicker.jsx';
 import MetadataTable from '../components/database/MetadataTable.jsx';
@@ -93,7 +94,7 @@ export default class MetadataEditor extends Component {
         } else {
             content = (
                 <div style={{paddingTop: "10rem"}} className="full text-centered">
-                    <h2 className="text-grey-3">Select any table to see its schema and add or edit metadata.</h2>
+                    <AdminEmptyText message="Select any table to see its schema and add or edit metadata." />
                 </div>
             );
         }
