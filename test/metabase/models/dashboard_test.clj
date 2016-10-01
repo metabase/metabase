@@ -16,7 +16,6 @@
 (expect
   {:name         "Test Dashboard"
    :description  nil
-   :public_perms 0
    :cards        [{:sizeX   2
                    :sizeY   2
                    :row     nil
@@ -44,11 +43,9 @@
   (diff-dashboards-str
     {:name         "Diff Test"
      :description  nil
-     :public_perms 0
      :cards        []}
     {:name         "Diff Test Changed"
      :description  "foobar"
-     :public_perms 0
      :cards        []}))
 
 (expect
@@ -56,11 +53,9 @@
   (diff-dashboards-str
     {:name         "Diff Test"
      :description  nil
-     :public_perms 0
      :cards        []}
     {:name         "Diff Test"
      :description  nil
-     :public_perms 0
      :cards        [{:sizeX   2
                      :sizeY   2
                      :row     nil
@@ -74,7 +69,6 @@
   (diff-dashboards-str
     {:name         "Diff Test"
      :description  nil
-     :public_perms 0
      :cards        [{:sizeX   2
                      :sizeY   2
                      :row     nil
@@ -91,7 +85,6 @@
                      :series  []}]}
     {:name         "Diff Test"
      :description  nil
-     :public_perms 0
      :cards        [{:sizeX   2
                      :sizeY   2
                      :row     0
@@ -115,7 +108,6 @@
 (expect
   [{:name         "Test Dashboard"
     :description  nil
-    :public_perms 0
     :cards        [{:sizeX   2
                     :sizeY   2
                     :row     nil
@@ -125,11 +117,9 @@
                     :series  true}]}
    {:name         "Revert Test"
     :description  "something"
-    :public_perms 0
     :cards        []}
    {:name         "Test Dashboard"
     :description  nil
-    :public_perms 0
     :cards        [{:sizeX   2
                     :sizeY   2
                     :row     nil

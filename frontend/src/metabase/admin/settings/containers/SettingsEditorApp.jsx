@@ -3,7 +3,8 @@ import { Link } from "react-router";
 import { connect } from "react-redux";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
-import SettingsHeader from "../components/SettingsHeader.jsx";
+import AdminLayout from "metabase/components/AdminLayout.jsx";
+
 import SettingsSetting from "../components/SettingsSetting.jsx";
 import SettingsEmailForm from "../components/SettingsEmailForm.jsx";
 import SettingsSlackForm from "../components/SettingsSlackForm.jsx";
@@ -59,15 +60,15 @@ export default class SettingsEditorApp extends Component {
     }
 
     updateSetting(setting, value) {
-        this.refs.header.refs.status.setSaving();
+        this.refs.layout.setSaving();
         setting.value = value;
         this.props.updateSetting(setting).then(() => {
-            this.refs.header.refs.status.setSaved();
+            this.refs.layout.setSaved();
 
             let val = (setting.key === "report-timezone" || setting.key === "anon-tracking-enabled") ? setting.value : "success";
             MetabaseAnalytics.trackEvent("General Settings", setting.display_name, val);
         }, (error) => {
-            this.refs.header.refs.status.setSaveError(error.data);
+            this.refs.layout.setSaveError(error.data);
             MetabaseAnalytics.trackEvent("General Settings", setting.display_name, "error");
         });
     }
@@ -175,15 +176,13 @@ export default class SettingsEditorApp extends Component {
 
     render() {
         return (
-            <div className="MetadataEditor full-height flex flex-column flex-full p4">
-                <SettingsHeader ref="header" />
-                <div className="MetadataEditor-main flex flex-row flex-full mt2">
-                    {this.renderSettingsSections()}
-                    <div className="px2 flex-full">
-                        {this.renderSettingsPane()}
-                    </div>
-                </div>
-            </div>
-        );
+            <AdminLayout
+                ref="layout"
+                title="Settings"
+                sidebar={this.renderSettingsSections()}
+            >
+                {this.renderSettingsPane()}
+            </AdminLayout>
+        )
     }
 }

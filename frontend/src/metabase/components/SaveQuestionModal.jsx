@@ -88,8 +88,7 @@ export default class SaveQuestionModal extends Component {
                 // since description is optional, it can be null, so check for a description before trimming it
                 description: details.saveType === "overwrite" ?
                     originalCard.description :
-                    details.description ? details.description.trim() : null,
-                public_perms: 2
+                    details.description ? details.description.trim() : null
             };
 
             if (details.saveType === "create") {
@@ -141,7 +140,7 @@ export default class SaveQuestionModal extends Component {
                     errors={this.state.errors}>
                     <ul className="ml1">
                         <li className="flex align-center cursor-pointer mt2 mb1" onClick={(e) => this.onChange("saveType", "overwrite")}>
-                            <input className="Form-radio" type="radio" name="saveType" id="saveType-overwrite" value="overwrite" checked={this.state.details.saveType === "overwrite"} /> 
+                            <input className="Form-radio" type="radio" name="saveType" id="saveType-overwrite" value="overwrite" checked={this.state.details.saveType === "overwrite"} />
                             <label htmlFor="saveType-overwrite"></label>
                             <span className={details.saveType === 'overwrite' ? 'text-brand' : 'text-default'}>Replace original question, "{this.props.originalCard.name}"</span>
                         </li>
@@ -170,7 +169,7 @@ export default class SaveQuestionModal extends Component {
                             transitionEnterTimeout={500}
                             transitionLeaveTimeout={500}
                         >
-                            { details.saveType === "create" && 
+                            { details.saveType === "create" &&
                                 <div key="saveQuestionModalFields" className="saveQuestionModalFields">
                                     <FormField
                                         key="name"

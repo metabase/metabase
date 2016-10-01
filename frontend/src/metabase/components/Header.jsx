@@ -4,6 +4,7 @@ import ReactDOM from "react-dom";
 import Input from "metabase/components/Input.jsx";
 import HeaderModal from "metabase/components/HeaderModal.jsx";
 import TitleAndDescription from "metabase/components/TitleAndDescription.jsx";
+import EditBar from "metabase/components/EditBar.jsx";
 
 export default class Header extends Component {
     static defaultProps = {
@@ -42,14 +43,12 @@ export default class Header extends Component {
     renderEditHeader() {
         if (this.props.isEditing) {
             return (
-                <div className="EditHeader wrapper py1 flex align-center" ref="editHeader">
-                    <span className="EditHeader-title">{this.props.editingTitle}</span>
-                    <span className="EditHeader-subtitle mx1">{this.props.editingSubtitle}</span>
-                    <span className="flex-align-right">
-                        {this.props.editingButtons}
-                    </span>
-                </div>
-            );
+                <EditBar
+                    title={this.props.editingTitle}
+                    subtitle={this.props.editingSubtitle}
+                    buttons={this.props.editingButtons}
+                />
+            )
         }
     }
 

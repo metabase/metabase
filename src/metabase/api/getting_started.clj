@@ -3,7 +3,8 @@
             [medley.core :as m]
             [metabase.api.common :refer :all]
             [metabase.db :as db]
-            [metabase.models.setting :refer [defsetting]]))
+            (metabase.models [interface :as models]
+                             [setting :refer [defsetting]])))
 
 (defsetting getting-started-things-to-know
   "'Some things to know' text field for the Getting Started guide.")
@@ -18,15 +19,22 @@
 (defendpoint GET "/"
   "Fetch basic info for the Getting Started guide."
   []
-  {:things_to_know           (getting-started-things-to-know)
-   :contact                  {:name  (getting-started-contact-name)
-                              :email (getting-started-contact-email)}
-   :most_important_dashboard (db/select-one-id 'Dashboard :show_in_getting_started true)
-   :important_metrics        (map :id (db/select ['Metric :id]  :show_in_getting_started true, {:order-by [:name]}))
-   :important_tables         (map :id (db/select ['Table :id]   :show_in_getting_started true, {:order-by [:name]}))
-   :important_segments       (map :id (db/select ['Segment :id] :show_in_getting_started true, {:order-by [:name]}))
-   ;; A map of metric_id -> sequence of important field_ids
-   :metric_important_fields  (m/map-vals (partial map :field_id)
-                                         (group-by :metric_id (db/select ['MetricImportantField :field_id :metric_id])))})
+  (let [metric-ids  (map :id (filter models/can-read? (db/select ['Metric :table_id :id]     :show_in_getting_started true, {:order-by [:%lower.name]})))
+        table-ids   (map :id (filter models/can-read? (db/select ['Table :db_id :schema :id] :show_in_getting_started true, {:order-by [:%lower.name]})))
+        segment-ids (map :id (filter models/can-read? (db/select ['Segment :table_id :id]    :show_in_getting_started true, {:order-by [:%lower.name]})))]
+    {:things_to_know           (getting-started-things-to-know)
+     :contact                  {:name  (getting-started-contact-name)
+                                :email (getting-started-contact-email)}
+     :most_important_dashboard (when-let [dashboard (db/select-one ['Dashboard :id] :show_in_getting_started true)]
+                                 (when (models/can-read? dashboard)
+                                   (:id dashboard)))
+     :important_metrics        metric-ids
+     :important_tables         table-ids
+     :important_segments       segment-ids
+     ;; A map of metric_id -> sequence of important field_ids
+     :metric_important_fields  (when (seq metric-ids)
+                                 (m/map-vals (partial map :field_id)
+                                             (group-by :metric_id (db/select ['MetricImportantField :field_id :metric_id]
+                                                                    :metric_id [:in metric-ids]))))}))
 
 (define-routes)

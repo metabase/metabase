@@ -4,6 +4,8 @@ import Base from "./Base";
 import Field from "./Field";
 import Database from "./Database";
 
+import type { DatabaseId } from "../types/Database";
+import type { TableId, SchemaName } from "../types/Table";
 
 export default class Table extends Base {
     static type = "tables";
@@ -11,9 +13,10 @@ export default class Table extends Base {
         fields: [Field]
     };
 
-    id: number;
+    id: TableId;
+    schema: ?SchemaName;
+    db_id: DatabaseId;
     display_name: string;
-    db_id: number;
 
     database() {
         return this._entity(Database, this.db_id);

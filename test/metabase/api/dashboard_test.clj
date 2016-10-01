@@ -76,10 +76,10 @@
 (expect {:errors {:name "field is a required param."}}
   ((user->client :rasta) :post 400 "dashboard" {}))
 
-(expect {:errors {:parameters "Invalid value 'abc' for 'parameters': value must be an array."}}
-  ((user->client :crowberto) :post 400 "dashboard" {:name         "Test"
-                                                    :public_perms 0
-                                                    :parameters   "abc"}))
+(expect
+  {:errors {:parameters "Invalid value 'abc' for 'parameters': value must be an array."}}
+  ((user->client :crowberto) :post 400 "dashboard" {:name       "Test"
+                                                    :parameters "abc"}))
 
 (expect
   {:name                    "Test Create Dashboard"
@@ -89,12 +89,10 @@
    :points_of_interest      nil
    :creator_id              (user->id :rasta)
    :parameters              [{:hash "abc123", :name "test", :type "date"}]
-   :public_perms            0
    :updated_at              true
    :created_at              true}
-  (-> ((user->client :rasta) :post 200 "dashboard" {:name         "Test Create Dashboard"
-                                                    :public_perms 0
-                                                    :parameters   [{:hash "abc123", :name "test", :type "date"}]})
+  (-> ((user->client :rasta) :post 200 "dashboard" {:name       "Test Create Dashboard"
+                                                    :parameters [{:hash "abc123", :name "test", :type "date"}]})
       dashboard-response))
 
 
@@ -107,9 +105,6 @@
    :points_of_interest      nil
    :creator_id              (user->id :rasta)
    :creator                 (user-details (fetch-user :rasta))
-   :public_perms            0
-   :can_read                true
-   :can_write               true
    :updated_at              true
    :created_at              true
    :parameters              []
@@ -122,7 +117,6 @@
                               :parameter_mappings []
                               :card               {:name                   "Dashboard Test Card"
                                                    :description            nil
-                                                   :public_perms           0
                                                    :creator_id             (user->id :rasta)
                                                    :creator                (user-details (fetch-user :rasta))
                                                    :display                "table"
@@ -146,7 +140,6 @@
     :caveats                 nil
     :points_of_interest      nil
     :creator_id              (user->id :rasta)
-    :public_perms            0
     :updated_at              true
     :created_at              true
     :parameters              []}
@@ -156,7 +149,6 @@
     :caveats                 nil
     :points_of_interest      nil
     :creator_id              (user->id :rasta)
-    :public_perms            0
     :updated_at              true
     :created_at              true
     :parameters              []}
@@ -166,7 +158,6 @@
     :caveats                 nil
     :points_of_interest      nil
     :creator_id              (user->id :rasta)
-    :public_perms            0
     :updated_at              true
     :created_at              true
     :parameters              []}]
@@ -175,7 +166,6 @@
                               ((user->client :rasta) :put 200 (str "dashboard/" dashboard-id) {:name         "My Cool Dashboard"
                                                                                                :description  "Some awesome description"
                                                                                                ;; these things should fail to update
-                                                                                               :public_perms 2
                                                                                                :creator_id   (user->id :trashbird)})
                               (Dashboard dashboard-id)])))
 
@@ -358,7 +348,6 @@
                                 :model_id     dashboard-id
                                 :object       {:name         "b"
                                                :description  nil
-                                               :public_perms 0
                                                :cards        [{:sizeX   2
                                                                :sizeY   2
                                                                :row     nil
@@ -371,7 +360,6 @@
                                 :user_id  (user->id :crowberto)
                                 :object   {:name         "c"
                                            :description  "something"
-                                           :public_perms 0
                                            :cards        [{:sizeX   4
                                                            :sizeY   3
                                                            :row     0
@@ -431,7 +419,6 @@
                                                 :model_id     dashboard-id
                                                 :object       {:name         "a"
                                                                :description  nil
-                                                               :public_perms 0
                                                                :cards        []}
                                                 :is_creation  true}]
                   Revision  [_                 {:model        "Dashboard"
@@ -439,7 +426,6 @@
                                                 :user_id      (user->id :crowberto)
                                                 :object       {:name         "b"
                                                                :description  nil
-                                                               :public_perms 0
                                                                :cards        []}
                                                 :message      "updated"}]]
     [(dissoc ((user->client :crowberto) :post 200 (format "dashboard/%d/revert" dashboard-id) {:revision_id revision-id}) :id :timestamp)

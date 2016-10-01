@@ -15,6 +15,9 @@ import cx from "classnames";
 import _ from "underscore";
 import { getIn } from "icepick";
 
+const ERROR_MESSAGE_GENERIC = "There was a problem displaying this chart.";
+const ERROR_MESSAGE_PERMISSION = "Sorry, you don't have permission to see this card."
+
 export default class DashCard extends Component {
     constructor(props, context) {
         super(props, context);
@@ -90,19 +93,14 @@ export default class DashCard extends Component {
             .every(parameterId => parameterMap[parameterId]);
 
         const errors = series.map(s => s.error).filter(e => e);
-        const error = errors[0] || this.state.error;
 
-        let errorMessage;
-        if (error) {
-            if (error.data) {
-                errorMessage = error.data.message;
-            } else if (error.status === 503) {
-                errorMessage = "I'm sorry, the server timed out while asking your question."
-            } else if (typeof error === "string") {
-                errorMessage = error;
-            } else {
-                errorMessage = "Oh snap!  Something went wrong loading this card :sad:";
-            }
+        let errorMessage, errorIcon;
+        if (_.any(errors, e => e && e.status === 403)) {
+            errorMessage = ERROR_MESSAGE_PERMISSION;
+            errorIcon = "key";
+        } else if (errors.length > 0 || this.state.error) {
+            errorMessage = ERROR_MESSAGE_GENERIC;
+            errorIcon = "warning";
         }
 
         const CardVisualization = visualizations.get(series[0].card.display);
@@ -117,6 +115,7 @@ export default class DashCard extends Component {
                 <Visualization
                     className="flex-full"
                     error={errorMessage}
+                    errorIcon={errorIcon}
                     isSlow={isSlow}
                     expectedDuration={expectedDuration}
                     series={series}

@@ -15,8 +15,6 @@ import { assoc, getIn } from "icepick";
 import _ from "underscore";
 import cx from "classnames";
 
-const ERROR_MESSAGE_GENERIC = "There was a problem displaying this chart.";
-
 @ExplicitSize
 export default class Visualization extends Component {
     constructor(props, context) {
@@ -75,7 +73,7 @@ export default class Visualization extends Component {
     }
 
     render() {
-        const { series, actionButtons, className, isDashboard, width, isSlow, expectedDuration, replacementContent } = this.props;
+        const { series, actionButtons, className, isDashboard, width, errorIcon, isSlow, expectedDuration, replacementContent } = this.props;
         const CardVisualization = visualizations.get(series[0].card.display);
         const small = width < 330;
 
@@ -143,12 +141,12 @@ export default class Visualization extends Component {
                     </div>
                 : error ?
                     <div className="flex-full px1 pb1 text-centered text-slate-light flex flex-column layout-centered">
-                        <Tooltip tooltip={isDashboard ? ERROR_MESSAGE_GENERIC : error} isEnabled={small}>
-                            <Icon className="mb2" name="warning" size={50} />
+                        <Tooltip tooltip={error} isEnabled={small}>
+                            <Icon className="mb2" name={errorIcon || "warning"} size={50} />
                         </Tooltip>
                         { !small &&
                             <span className="h4 text-bold">
-                                { isDashboard ? ERROR_MESSAGE_GENERIC : error }
+                                {error}
                             </span>
                         }
                     </div>

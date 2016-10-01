@@ -74,9 +74,8 @@
    #{"card2"}
    #{"card2" "card1"}
    #{"card1" "card3"}]
-  (tu/with-temp* [Dashboard     [{dashboard-id :id} {:name         "Test Dashboard"
-                                                     :public_perms 0
-                                                     :creator_id   (user->id :rasta)}]
+  (tu/with-temp* [Dashboard     [{dashboard-id :id} {:name       "Test Dashboard"
+                                                     :creator_id (user->id :rasta)}]
                   Card          [{card-id :id}]
                   DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
                   Card          [{card-id-1 :id} {:name "card1"}]

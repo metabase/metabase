@@ -30,6 +30,10 @@
   "Is the current user a superuser?"
   false)
 
+(def ^:dynamic *current-user-permissions-set*
+  "Delay to the set of permissions granted to the current user."
+  (atom #{}))
+
 
 ;;; ## CONDITIONAL RESPONSE FUNCTIONS / MACROS
 
@@ -363,7 +367,7 @@
   [symb value :nillable]
   (checkp-with (complement s/blank?) symb value "value must be a non-empty string."))
 
-(defannotation PublicPerms
+(defannotation ^:deprecated PublicPerms
   "Param must be an integer and either `0` (no public permissions), `1` (public may read), or `2` (public may read and write)."
   [symb value :nillable]
   (annotation:Integer symb value)
@@ -435,19 +439,23 @@
        ~@api-routes ~@additional-routes)))
 
 (defn read-check
-  "Check whether we can read an existing OBJ, or ENTITY with ID."
+  "Check whether we can read an existing OBJ, or ENTITY with ID.
+   If the object doesn't exist, throw a 404; if we don't have proper permissions, throw a 403.
+   This will fetch the object if it was not already fetched, and returns OBJ if the check is successful."
   ([obj]
    (check-404 obj)
    (check-403 (models/can-read? obj))
    obj)
   ([entity id]
-   (check-403 (models/can-read? entity id))))
+   (read-check (entity id))))
 
 (defn write-check
-  "Check whether we can write an existing OBJ, or ENTITY with ID."
+  "Check whether we can write an existing OBJ, or ENTITY with ID.
+   If the object doesn't exist, throw a 404; if we don't have proper permissions, throw a 403.
+   This will fetch the object if it was not already fetched, and returns OBJ if the check is successful."
   ([obj]
    (check-404 obj)
    (check-403 (models/can-write? obj))
    obj)
   ([entity id]
-   (check-403 (models/can-write? entity id))))
+   (write-check (entity id))))

@@ -48,6 +48,23 @@ CoreServices.factory('Card', ['$resource', function($resource) {
                 cardId: '@cardId'
             }
         },
+        query: {
+            method: 'POST',
+            url: '/api/card/:cardID/query',
+            params: {
+                cardID: '@cardID'
+            },
+            then: function(resolve) {
+                // enable cancelling of the request using this technique:
+                // http://www.nesterovsky-bros.com/weblog/2015/02/02/CancelAngularjsResourceRequest.aspx
+                if (this.params) {
+                    this.timeout = this.params.timeout;
+                    delete this.params.timeout;
+                }
+                delete this.then;
+                resolve(this);
+            }
+        },
         isfavorite: {
             url: '/api/card/:cardId/favorite',
             method: 'GET',
@@ -439,7 +456,7 @@ CoreServices.factory('Metric', ['$resource', function($resource) {
         update_important_fields: {
             url: '/api/metric/:metricId/important_fields',
             method: 'PUT',
-            params: { 
+            params: {
                 metricId: '@metricId',
                 important_field_ids: '@important_field_ids'
             }
@@ -578,11 +595,70 @@ CoreServices.factory('Settings', ['$resource', function($resource) {
     });
 }]);
 
+CoreServices.factory('Permissions', ['$resource', function($resource) {
+    return $resource('/api/permissions', {}, {
+        groups: {
+            method: 'GET',
+            url: '/api/permissions/group',
+            isArray: true
+        },
+        groupDetails: {
+            method: 'GET',
+            url: '/api/permissions/group/:id',
+            params: {
+                id: '@id'
+            }
+        },
+        graph: {
+            method: 'GET',
+            url: '/api/permissions/graph'
+        },
+        updateGraph: {
+            method: 'PUT',
+            url: '/api/permissions/graph'
+        },
+        createGroup: {
+            method: 'POST',
+            url: '/api/permissions/group'
+        },
+        memberships: {
+            method: 'GET',
+            url: '/api/permissions/membership',
+        },
+        createMembership: {
+            method: 'POST',
+            url: '/api/permissions/membership',
+            isArray: true
+        },
+        deleteMembership: {
+            method: 'DELETE',
+            url: '/api/permissions/membership/:id',
+            params: {
+                id: '@id'
+            }
+        },
+        updateGroup: {
+            method: 'PUT',
+            url: '/api/permissions/group/:id',
+            params: {
+                id: '@id'
+            }
+        },
+        deleteGroup: {
+            method: 'DELETE',
+            url: '/api/permissions/group/:id',
+            params: {
+                id: '@id'
+            }
+        }
+    });
+}]);
+
 CoreServices.factory('GettingStarted', ['$resource', function($resource) {
     return $resource('/api/getting_started', {}, {
         get: {
             url: '/api/getting_started',
-            method: 'GET',
+            method: 'GET'
         }
     });
 }]);

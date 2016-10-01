@@ -298,7 +298,6 @@ describe("Reference utils.js", () => {
             filter = []
         }) => ({
             "name": null,
-            "public_perms": 0,
             "display": display,
             "visualization_settings": {},
             "dataset_query": {
