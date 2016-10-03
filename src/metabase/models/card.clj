@@ -5,7 +5,6 @@
             [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
             [metabase.db :as db]
             (metabase.models [card-label :refer [CardLabel]]
-                             [common :as common]
                              [dependency :as dependency]
                              [interface :as i]
                              [label :refer [Label]]
@@ -113,7 +112,7 @@
 
 
 (defn- pre-insert [{:keys [dataset_query], :as card}]
-  (u/prog1 (assoc card :public_perms common/perms-readwrite)
+  (u/prog1 card
     ;; for native queries we need to make sure the user saving the card has native query permissions for the DB
     ;; because users can always see native Cards and we don't want someone getting around their lack of permissions that way
     (when (and *current-user-id*
@@ -135,7 +134,6 @@
   (merge i/IEntityDefaults
          {:hydration-keys     (constantly [:card])
           :types              (constantly {:display :keyword, :query_type :keyword, :dataset_query :json, :visualization_settings :json, :description :clob})
-          :default-fields     (constantly [:archived :created_at :creator_id :database_id :dataset_query :description :display :id :name :query_type :table_id :updated_at :visualization_settings]) ; everything except :public_perms
           :timestamped?       (constantly true)
           :can-read?          (partial i/current-user-has-full-permissions? :read)
           :can-write?         (partial i/current-user-has-full-permissions? :write)

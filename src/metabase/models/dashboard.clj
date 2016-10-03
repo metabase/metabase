@@ -3,7 +3,6 @@
             (metabase [db :as db]
                       [events :as events])
             (metabase.models [card :as card]
-                             [common :as common]
                              [dashboard-card :refer [DashboardCard], :as dashboard-card]
                              [hydrate :refer [hydrate]]
                              [interface :as i]
@@ -37,8 +36,7 @@
   (db/cascade-delete! DashboardCard :dashboard_id (u/get-id dashboard)))
 
 (defn- pre-insert [dashboard]
-  (let [defaults {:parameters   []
-                  :public_perms common/perms-readwrite}]
+  (let [defaults {:parameters   []}]
     (merge defaults dashboard)))
 
 
@@ -49,7 +47,6 @@
   (merge i/IEntityDefaults
          {:timestamped?       (constantly true)
           :types              (constantly {:description :clob, :parameters :json})
-          :default-fields     (constantly [:caveats :created_at :creator_id :description :id :name :parameters :points_of_interest :show_in_getting_started :updated_at]) ; everything except :public_perms
           :can-read?          can-read?
           :can-write?         can-read?
           :pre-cascade-delete pre-cascade-delete

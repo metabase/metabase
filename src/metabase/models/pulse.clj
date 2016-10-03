@@ -5,7 +5,6 @@
             [metabase.db :as db]
             [metabase.events :as events]
             (metabase.models [card :refer [Card]]
-                             [common :refer [perms-readwrite]]
                              [hydrate :refer :all]
                              [interface :as i]
                              [pulse-card :refer [PulseCard]]
@@ -43,10 +42,6 @@
 
 (i/defentity Pulse :pulse)
 
-(defn- pre-insert [pulse]
-  (let [defaults {:public_perms perms-readwrite}]
-    (merge defaults pulse)))
-
 (defn- pre-cascade-delete [{:keys [id]}]
   (db/cascade-delete! PulseCard :pulse_id id)
   (db/cascade-delete! PulseChannel :pulse_id id))
@@ -55,13 +50,11 @@
   i/IEntity
   (merge i/IEntityDefaults
          {:hydration-keys     (constantly [:pulse])
-          :default-fields     (constantly [:created_at :creator_id :id :name :updated_at]) ; everything except :public_perms
           :timestamped?       (constantly true)
           :perms-objects-set  perms-objects-set
           ;; I'm not 100% sure this covers everything. If a user is subscribed to a pulse they're still allowed to know it exists, right?
           :can-read?          can-read?
           :can-write?         (partial i/current-user-has-full-permissions? :write)
-          :pre-insert         pre-insert
           :pre-cascade-delete pre-cascade-delete}))
 
 
