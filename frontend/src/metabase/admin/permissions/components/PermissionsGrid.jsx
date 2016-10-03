@@ -38,7 +38,7 @@ const HEADER_WIDTH = 170;
 
 const PERMISSIONS_UI = {
     "native": {
-        header: "Raw Queries"
+        header: "SQL Queries"
     },
     "schemas": {
         header: "Data Access"
