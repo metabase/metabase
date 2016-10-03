@@ -20,9 +20,7 @@ const PermissionsEditor = ({ grid, onUpdatePermission, onSave, onCancel, isDirty
                         <Confirm
                             title="Discard changes?"
                             action={onCancel}
-                            content={
-                                <div>No changes to permissions will be made.</div>
-                            }
+                            content="No changes to permissions will be made."
                         >
                             <button className="Button Button--borderless">
                                 Cancel
