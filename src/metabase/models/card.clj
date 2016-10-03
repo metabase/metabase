@@ -12,9 +12,8 @@
                              [revision :as revision]
                              [user :as user])
             [metabase.query :as q]
-            [metabase.query-processor.expand :as expand]
+            [metabase.query-processor :as qp]
             [metabase.query-processor.permissions :as qp-perms]
-            [metabase.query-processor.resolve :as resolve]
             [metabase.util :as u]))
 
 
@@ -41,7 +40,7 @@
 
 (defn- permissions-path-set:mbql [{database-id :database, :as query}]
   {:pre [(integer? database-id) (map? (:query query))]}
-  (let [{{:keys [source-table join-tables]} :query} (resolve/resolve (expand/expand query))]
+  (let [{{:keys [source-table join-tables]} :query} (qp/expand query)]
     (set (for [table (cons source-table join-tables)]
            (perms/object-path database-id
                               (:schema table)

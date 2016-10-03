@@ -526,7 +526,6 @@
 ;;
 ;; Post-processing then happens in order from bottom-to-top; i.e. POST-ANNOTATE gets to modify the results, then LIMIT, then CUMULATIVE-SUM, etc.
 
-
 (defn process-query
   "Process an MBQL structured or native query, and return the result."
   {:style/indent 0}
@@ -554,6 +553,14 @@
             pre-check-query-permissions
             guard-multiple-calls
             run-query) (assoc query :driver driver)))))
+
+
+(def ^{:arglists '([query])} expand
+  "Expand a QUERY the same way it would normally be done as part of query processing.
+   This is useful for things that need to look at an expanded query, such as permissions checking for Cards."
+  (comp expand-resolve
+        substitute-parameters
+        expand-macros))
 
 
 ;;; +----------------------------------------------------------------------------------------------------+
