@@ -37,10 +37,11 @@
 
 (defn- add-native-perms-info [dbs]
   (for [db dbs]
-    (assoc db :native_permissions (cond
-                                    (perms/set-has-full-permissions? @*current-user-permissions-set* (perms/native-readwrite-path (u/get-id db))) :readwrite
-                                    (perms/set-has-full-permissions? @*current-user-permissions-set* (perms/native-read-path (u/get-id db)))      :read
-                                    :else                                                                                                         :none))))
+    (let [user-has-perms? (fn [f] (perms/set-has-full-permissions? @*current-user-permissions-set* (f (u/get-id db))))]
+      (assoc db :native_permissions (cond
+                                      (user-has-perms? perms/native-readwrite-path) :readwrite
+                                      (user-has-perms? perms/native-read-path)      :read
+                                      :else                                         :none)))))
 
 (defn- dbs-list [include-tables?]
   (when-let [dbs (seq (filter models/can-read? (db/select Database {:order-by [:%lower.name]})))]
