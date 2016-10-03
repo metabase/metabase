@@ -37,6 +37,7 @@
     (db/select Label, :id [:in label-ids], {:order-by [:%lower.name]})
     []))
 
+
 ;;; ------------------------------------------------------------ Permissions Checking ------------------------------------------------------------
 
 (defn- permissions-path-set:mbql [{database-id :database, :as query}]

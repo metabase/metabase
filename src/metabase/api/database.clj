@@ -13,6 +13,7 @@
                              [field :refer [Field]]
                              [hydrate :refer [hydrate]]
                              [interface :as models]
+                             [permissions :as perms]
                              [table :refer [Table]])
             (metabase [sample-data :as sample-data]
                       [util :as u])))
@@ -34,11 +35,18 @@
     (for [db dbs]
       (assoc db :tables (get db-id->tables (:id db) [])))))
 
+(defn- add-native-perms-info [dbs]
+  (for [db dbs]
+    (assoc db :native_permissions (cond
+                                    (perms/set-has-full-permissions? @*current-user-permissions-set* (perms/native-readwrite-path (u/get-id db))) :readwrite
+                                    (perms/set-has-full-permissions? @*current-user-permissions-set* (perms/native-read-path (u/get-id db)))      :read
+                                    :else                                                                                                         :none))))
+
 (defn- dbs-list [include-tables?]
   (when-let [dbs (seq (filter models/can-read? (db/select Database {:order-by [:%lower.name]})))]
-    (if-not include-tables?
-      dbs
-      (add-tables dbs))))
+    (add-native-perms-info (if-not include-tables?
+                             dbs
+                             (add-tables dbs)))))
 
 (defendpoint GET "/"
   "Fetch all `Databases`."
