@@ -231,7 +231,6 @@
     :year            (extract:timeFormat "yyyy")))
 
 (defn- unit->granularity [unit]
-  (let [timeZone (get-timezone-id)]
   {:type     "period"
    :period   (case unit
                :minute  "PT1M"
@@ -241,7 +240,7 @@
                :month   "P1M"
                :quarter "P3M"
                :year    "P1Y")
-   :timeZone (get-timezone-id)}))
+   :timeZone (get-timezone-id)})
 
 (def ^:private ^:const units-that-need-post-processing-int-parsing
   "`extract:timeFormat` always returns a string; there are cases where we'd like to return an integer instead, such as `:day-of-month`.

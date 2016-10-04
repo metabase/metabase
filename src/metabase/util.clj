@@ -175,8 +175,10 @@
   "Extract UNIT from DATE. DATE defaults to now.
 
      (date-extract :year) -> 2015"
-  ([unit timezone-id]
-   (date-extract unit (System/currentTimeMillis) timezone-id))
+  ([unit]
+   (date-extract unit (System/currentTimeMillis) "UTC"))
+  ([unit date]
+   (date-extract unit date "UTC"))
   ([unit date timezone-id]
    (let [cal (->Calendar date timezone-id)]
      (case unit
@@ -203,15 +205,17 @@
 
      (date-trunc :month).
      ;; -> #inst \"2015-11-01T00:00:00\""
-  (^java.sql.Timestamp [unit timezone-id]
-   (date-trunc unit (System/currentTimeMillis)))
+  (^java.sql.Timestamp [unit]
+   (date-trunc unit (System/currentTimeMillis) "UTC"))
+  (^java.sql.Timestamp [unit date]
+   (date-trunc unit date "UTC"))
   (^java.sql.Timestamp [unit date timezone-id]
    (let [tz                (t/time-zone-for-id timezone-id)
          with-zone-fmt     (fn [format-string] (time/with-zone (time/formatter format-string) tz))
          trunc-with-floor  (fn [date amount-ms]
                              (let [orig-ms    (.getTime (->Timestamp date))
                                    trunced-ms (-> orig-ms (/ amount-ms) (math/floor) (* amount-ms))]
-                                (new java.sql.Timestamp trunced-ms)))
+                                (->Timestamp trunced-ms)))
          trunc-with-format (fn trunc-with-format
                              ([format-string]
                               (trunc-with-format format-string date))
@@ -232,8 +236,10 @@
 
 (defn date-trunc-or-extract
   "Apply date bucketing with UNIT to DATE. DATE defaults to now."
-  ([unit timezone-id]
-   (date-trunc-or-extract unit (System/currentTimeMillis)))
+  ([unit]
+   (date-trunc-or-extract unit (System/currentTimeMillis) "UTC"))
+  ([unit date]
+   (date-trunc-or-extract unit date "UTC"))
   ([unit date timezone-id]
    (cond
      (= unit :default) date
