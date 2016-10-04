@@ -137,6 +137,16 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, d
             dispatch(clearCardData(card.id, dashcard.id));
         }
 
+        // If the dataset_query was filtered then we don't have permisison to view this card, so
+        // shortcircuit and return a fake 403
+        if (!card.dataset_query) {
+            return {
+                dashcard_id: dashcard.id,
+                card_id: card.id,
+                result: { error: { status: 403 }}
+            };
+        }
+
         let result = null;
 
         // if we have a parameter, apply it to the card query before we execute
@@ -196,7 +206,8 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(dashId
         _.chain(result.ordered_cards)
             .map((dc) => [dc.card].concat(dc.series))
             .flatten()
-            .map(card => card.dataset_query && card.dataset_query.database)
+            .filter(card => card && card.dataset_query && card.dataset_query.database)
+            .map(card => card.dataset_query.database)
             .uniq()
             .each((dbId) => dispatch(fetchDatabaseMetadata(dbId)));
 

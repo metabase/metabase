@@ -37,15 +37,21 @@
    parameters [ArrayOfMaps]}
   (dashboard/create-dashboard! dashboard *current-user-id*))
 
+(defn- hide-unreadable-card
+  "Replace unreadable card with object containing only the id"
+  [card]
+  (if (models/can-read? card)
+    card
+    {:id (:id card)}))
 
 (defn- hide-unreadable-cards
-  "Remove the `:card` and `:series` entries from dashcards that they user isn't allowed to read."
+  "Replace the `:card` and `:series` entries from dashcards that they user isn't allowed to read with empty object."
   [dashboard]
   (update dashboard :ordered_cards (fn [dashcards]
                                      (vec (for [dashcard dashcards]
-                                            (if (models/can-read? dashcard)
-                                              dashcard
-                                              (dissoc dashcard :card :series)))))))
+                                            (assoc dashcard :card (hide-unreadable-card (:card dashcard))
+                                                            :series (for [card (:series dashcard)]
+                                                                      (hide-unreadable-card card))))))))
 
 (defendpoint GET "/:id"
   "Get `Dashboard` with ID."
