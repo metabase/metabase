@@ -18,7 +18,7 @@ import { isPK, isFK } from "metabase/lib/types";
 import Utils from "metabase/lib/utils";
 import { applyParameters } from "metabase/meta/Card";
 
-import { getParameters } from "./selectors";
+import { getParameters, getNativeDatabases } from "./selectors";
 
 const Metabase = new AngularResourceProxy("Metabase", ["db_list_with_tables", "db_fields", "dataset", "table_query_metadata"]);
 const CardAPI = new AngularResourceProxy("Card", ["query"]);
@@ -593,7 +593,17 @@ export const setQueryMode = createThunkAction(SET_QUERY_MODE, (type) => {
 
         // we are translating an empty query
         } else {
-            let newCard = startNewCard(type, card.dataset_query.database);
+            let databaseId = card.dataset_query.database;
+
+            // only carry over the database id if the user can write native queries
+            if (type === "native") {
+                let nativeDatabases = getNativeDatabases(getState());
+                if (!_.findWhere(nativeDatabases, { id: databaseId })) {
+                    databaseId = nativeDatabases.length > 0 ? nativeDatabases[0].id : null
+                }
+            }
+
+            let newCard = startNewCard(type, databaseId);
 
             dispatch(loadMetadataForCard(newCard));
 

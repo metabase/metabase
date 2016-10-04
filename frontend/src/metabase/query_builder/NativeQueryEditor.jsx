@@ -50,6 +50,7 @@ export default class NativeQueryEditor extends Component {
     static propTypes = {
         card: PropTypes.object.isRequired,
         databases: PropTypes.array.isRequired,
+        nativeDatabases: PropTypes.array.isRequired,
         query: PropTypes.object.isRequired,
         setQueryFn: PropTypes.func.isRequired,
         setDatabaseFn: PropTypes.func.isRequired,
@@ -200,13 +201,13 @@ export default class NativeQueryEditor extends Component {
 
         // we only render a db selector if there are actually multiple to choose from
         let dataSelectors = [];
-        if (this.state.showEditor && this.props.databases && (this.props.databases.length > 1 || modeInfo.requiresTable)) {
-            if (this.props.databases.length > 1) {
+        if (this.state.showEditor && this.props.nativeDatabases && (this.props.nativeDatabases.length > 1 || modeInfo.requiresTable)) {
+            if (this.props.nativeDatabases.length > 1) {
                 dataSelectors.push(
                     <div key="db_selector" className="GuiBuilder-section GuiBuilder-data flex align-center">
                         <span className="GuiBuilder-section-label Query-label">Database</span>
                         <DataSelector
-                            databases={this.props.databases}
+                            databases={this.props.nativeDatabases}
                             query={this.props.query}
                             setDatabaseFn={this.setDatabaseID}
                         />
@@ -214,7 +215,7 @@ export default class NativeQueryEditor extends Component {
                 )
             }
             if (modeInfo.requiresTable) {
-                let databases = this.props.databases,
+                let databases = this.props.nativeDatabases,
                     dbId      = this.props.query.database,
                     database  = databases ? _.findWhere(databases, { id: dbId }) : null,
                     tables    = database ? database.tables : [],

@@ -169,10 +169,12 @@ export default class QueryHeader extends Component {
     }
 
     getHeaderButtons() {
+        const { isNew, isDirty, isEditing, tableMetadata } = this.props;
+
         var buttonSections = [];
 
         // NEW card
-        if (this.props.isNew && this.props.isDirty) {
+        if (isNew && isDirty) {
             buttonSections.push([
                 <ModalWithTrigger
                     key="save"
@@ -194,8 +196,8 @@ export default class QueryHeader extends Component {
         }
 
         // persistence buttons on saved cards
-        if (!this.props.isNew) {
-            if (!this.props.isEditing) {
+        if (!isNew) {
+            if (!isEditing) {
                 if (this.state.recentlySaved) {
                     // existing card + not editing + recently saved = save confirmation
                     buttonSections.push([
@@ -273,7 +275,7 @@ export default class QueryHeader extends Component {
         }
 
         // add to dashboard
-        if (!this.props.isNew && !this.props.isEditing) {
+        if (!isNew && !isEditing) {
             // simply adding an existing saved card to a dashboard, so show the modal to do so
             buttonSections.push([
                 <Tooltip key="addtodash" tooltip="Add to dashboard">
@@ -282,7 +284,7 @@ export default class QueryHeader extends Component {
                     </span>
                 </Tooltip>
             ]);
-        } else if (this.props.isNew && this.props.isDirty) {
+        } else if (isNew && isDirty) {
             // this is a new card, so we need the user to save first then they can add to dash
             buttonSections.push([
                 <Tooltip key="addtodashsave" tooltip="Add to dashboard">
@@ -306,7 +308,7 @@ export default class QueryHeader extends Component {
         }
 
         // history icon on saved cards
-        if (!this.props.isNew) {
+        if (!isNew) {
             buttonSections.push([
                 <Tooltip key="history" tooltip="Revision history">
                     <ModalWithTrigger
@@ -332,10 +334,13 @@ export default class QueryHeader extends Component {
             <QueryModeButton
                 key="queryModeToggle"
                 mode={this.props.card.dataset_query.type}
-                allowNativeToQuery={this.props.isNew && !this.props.isDirty}
+                allowNativeToQuery={isNew && !isDirty}
+                allowQueryToNative={isNew && (!isDirty ||
+                    (tableMetadata && tableMetadata.db && tableMetadata.db.native_permissions === "write")
+                )}
                 nativeForm={this.props.result && this.props.result.data && this.props.result.data.native_form}
                 onSetMode={this.props.setQueryModeFn}
-                tableMetadata={this.props.tableMetadata}
+                tableMetadata={tableMetadata}
             />
         ]);
 

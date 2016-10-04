@@ -32,9 +32,9 @@ export const getDatabaseId = createSelector(
 );
 
 export const databases                 = state => state.qb.databases;
-export const tableMetadata             = state => state.qb.tableMetadata;
 export const tableForeignKeys          = state => state.qb.tableForeignKeys;
 export const tableForeignKeyReferences = state => state.qb.tableForeignKeyReferences;
+
 export const tables = createSelector(
 	[getDatabaseId, databases],
     (databaseId, databases) => {
@@ -48,6 +48,21 @@ export const tables = createSelector(
         return [];
     }
 );
+
+export const getNativeDatabases = createSelector(
+	databases,
+	(databases) =>
+		databases && databases.filter(db => db.native_permissions === "write")
+)
+
+export const tableMetadata = createSelector(
+	state => state.qb.tableMetadata,
+	databases,
+	(tableMetadata, databases) => tableMetadata && {
+		...tableMetadata,
+		db: _.findWhere(databases, { id: tableMetadata.db_id })
+	}
+)
 
 export const getSampleDatasetId = createSelector(
 	[databases],
