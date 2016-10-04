@@ -38,11 +38,22 @@
   (dashboard/create-dashboard! dashboard *current-user-id*))
 
 
+(defn- hide-unreadable-cards
+  "Remove the `:card` and `:series` entries from dashcards that they user isn't allowed to read."
+  [dashboard]
+  (update dashboard :ordered_cards (fn [dashcards]
+                                     (vec (for [dashcard dashcards]
+                                            (if (models/can-read? dashcard)
+                                              dashcard
+                                              (dissoc dashcard :card :series)))))))
+
 (defendpoint GET "/:id"
   "Get `Dashboard` with ID."
   [id]
-  (u/prog1 (read-check (-> (Dashboard id)
-                           (hydrate :creator [:ordered_cards [:card :creator] :series])))
+  (u/prog1 (-> (Dashboard id)
+               (hydrate :creator [:ordered_cards [:card :creator] :series])
+               read-check
+               hide-unreadable-cards)
     (events/publish-event :dashboard-read (assoc <> :actor_id *current-user-id*))))
 
 
