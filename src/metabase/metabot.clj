@@ -20,7 +20,7 @@
 (defsetting metabot-enabled
   "Enable Metabot, which lets you search for and view your saved questions directly via Slack."
   :type    :boolean
-  :default true)
+  :default false)
 
 ;;; # ------------------------------------------------------------ Metabot Command Handlers ------------------------------------------------------------
 

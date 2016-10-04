@@ -132,7 +132,8 @@ const SECTIONS = [
                 key: "metabot-enabled",
                 display_name: "Metabot",
                 type: "boolean",
-                defaultValue: true,
+                // TODO: why do we have "defaultValue" in addition to "default" in the backend?
+                defaultValue: false,
                 required: true,
                 autoFocus: false
             },
