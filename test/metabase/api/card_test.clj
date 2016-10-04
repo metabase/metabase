@@ -9,6 +9,8 @@
                              [card-label :refer [CardLabel]]
                              [database :refer [Database]]
                              [label :refer [Label]]
+                             [permissions :refer [Permissions], :as perms]
+                             [permissions-group :as perms-group]
                              [table :refer [Table]]
                              [view-log :refer [ViewLog]])
             [metabase.test.data :refer :all]
@@ -52,10 +54,10 @@
    false
    true]
   (with-temp* [Database [{database-id :id}]
-               Table    [{table-1-id :id} {:db_id database-id}]
-               Table    [{table-2-id :id} {:db_id database-id}]
-               Card     [{card-1-id :id} {:table_id table-1-id}]
-               Card     [{card-2-id :id} {:table_id table-2-id}]]
+               Table    [{table-1-id :id}  {:db_id database-id}]
+               Table    [{table-2-id :id}  {:db_id database-id}]
+               Card     [{card-1-id :id}   {:table_id table-1-id}]
+               Card     [{card-2-id :id}   {:table_id table-2-id}]]
     (let [card-returned? (fn [table-id card-id]
                            (contains? (set (for [card ((user->client :rasta) :get 200 "card", :f :table, :model_id table-id)]
                                              (:id card)))
@@ -141,15 +143,11 @@
                               :query    {:source-table table-id, :aggregation {:aggregation-type "count"}}}
      :display                "scalar"
      :visualization_settings {:global {:title nil}}
-     :public_perms           0
      :database_id            database-id ; these should be inferred automatically
      :table_id               table-id
      :query_type             "query"
      :archived               false}
     (dissoc ((user->client :rasta) :post 200 "card" {:name                   card-name
-                                                     :public_perms           0
-                                                     :can_read               true
-                                                     :can_write              true
                                                      :display                "scalar"
                                                      :dataset_query          {:database database-id
                                                                               :type     :query
@@ -166,8 +164,6 @@
                                                                 :query    {:source-table table-id, :aggregation {:aggregation-type :count}}}}]]
   (match-$ card
     {:description            nil
-     :can_read               true
-     :can_write              true
      :dashboard_count        0
      :name                   $
      :creator_id             (user->id :rasta)
@@ -186,7 +182,6 @@
      :id                     $
      :display                "table"
      :visualization_settings {}
-     :public_perms           0
      :created_at             $
      :database_id            database-id ; these should be inferred from the dataset_query
      :table_id               table-id
@@ -194,6 +189,19 @@
      :archived               false
      :labels                 []})
   ((user->client :rasta) :get 200 (str "card/" (:id card))))
+
+;; Check that a user without permissions isn't allowed to fetch the card
+(expect-with-temp [Database  [{database-id :id}]
+                   Table     [{table-id :id}   {:db_id database-id}]
+                   Card      [card             {:dataset_query {:database database-id
+                                                                :type     :query
+                                                                :query    {:source-table table-id, :aggregation {:aggregation-type :count}}}}]]
+  "You don't have permissions to do that."
+  (do
+    ;; revoke permissions for default group to this database
+    (perms/delete-related-permissions! (perms-group/all-users) (perms/object-path database-id))
+    ;; now a non-admin user shouldn't be able to fetch this card
+    ((user->client :rasta) :get 403 (str "card/" (:id card)))))
 
 ;; ## PUT /api/card/:id
 
@@ -246,10 +254,10 @@
 (defn- fave? [card]
   ((user->client :rasta) :get 200 (format "card/%d/favorite" (:id card))))
 
-(defn- fave [card]
+(defn- fave! [card]
   ((user->client :rasta) :post 200 (format "card/%d/favorite" (:id card))))
 
-(defn- unfave [card]
+(defn- unfave! [card]
   ((user->client :rasta) :delete 204 (format "card/%d/favorite" (:id card))))
 
 ;; ## GET /api/card/:id/favorite
@@ -266,7 +274,7 @@
    {:favorite true}]
   (with-temp-card [card]
     [(fave? card)
-     (do (fave card)
+     (do (fave! card)
          (fave? card))]))
 
 ;; DELETE /api/card/:id/favorite
@@ -277,9 +285,9 @@
    {:favorite false}]
   (with-temp-card [card]
     [(fave? card)
-     (do (fave card)
+     (do (fave! card)
          (fave? card))
-     (do (unfave card)
+     (do (unfave! card)
          (fave? card))]))
 
 

@@ -21,6 +21,7 @@ import { applyParameters } from "metabase/meta/Card";
 import { getParameters } from "./selectors";
 
 const Metabase = new AngularResourceProxy("Metabase", ["db_list_with_tables", "db_fields", "dataset", "table_query_metadata"]);
+const CardAPI = new AngularResourceProxy("Card", ["query"]);
 const User = new AngularResourceProxy("User", ["update_qbnewb"]);
 
 import { parse as urlParse } from "url";
@@ -765,15 +766,22 @@ export const runQuery = createThunkAction(RUN_QUERY, (card, shouldUpdateUrl = tr
         }
 
         let cancelQueryDeferred = angularPromise();
-        let startTime = new Date();
+        const startTime = new Date();
 
         // make our api call
-        Metabase.dataset({ timeout: cancelQueryDeferred.promise }, card.dataset_query, function (queryResult) {
+        function onQuerySuccess(queryResult) {
             dispatch(queryCompleted(card, queryResult));
+        }
 
-        }, function (error) {
+        function onQueryError(error) {
             dispatch(queryErrored(startTime, error));
-        });
+        }
+
+        if (card && card.id) {
+            CardAPI.query({ timeout: cancelQueryDeferred.promise }, { cardID: card.id, parameters: card.dataset_query.parameters }, onQuerySuccess, onQueryError);
+        } else {
+            Metabase.dataset({ timeout: cancelQueryDeferred.promise }, card.dataset_query, onQuerySuccess, onQueryError);
+        }
 
         MetabaseAnalytics.trackEvent("QueryBuilder", "Run Query", card.dataset_query.type);
 

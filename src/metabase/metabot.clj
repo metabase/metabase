@@ -10,9 +10,14 @@
                       [deferred :as d]
                       [stream :as s])
             [throttle.core :as throttle]
+            [metabase.api.common :refer [*current-user-permissions-set* read-check]]
             [metabase.db :as db]
             [metabase.integrations.slack :as slack]
-            [metabase.models.setting :refer [defsetting], :as setting]
+            (metabase.models [card :refer [Card]]
+                             [interface :as models]
+                             [permissions :refer [Permissions]]
+                             [permissions-group :as perms-group]
+                             [setting :refer [defsetting], :as setting])
             (metabase [pulse :as pulse]
                       [util :as u])
             [metabase.util.urls :as urls]))
@@ -21,6 +26,25 @@
   "Enable Metabot, which lets you search for and view your saved questions directly via Slack."
   :type    :boolean
   :default true)
+
+
+;;; ------------------------------------------------------------ Perms Checking ------------------------------------------------------------
+
+(defn- metabot-permissions
+  "Return the set of permissions granted to the MetaBot."
+  []
+  (db/select-field :object Permissions, :group_id (u/get-id (perms-group/metabot))))
+
+(defn- do-with-metabot-permissions [f]
+  (binding [*current-user-permissions-set* (delay (metabot-permissions))]
+    (f)))
+
+(defmacro ^:private with-metabot-permissions
+  "Execute BODY with MetaBot's permissions bound to `*current-user-permissions-set*`."
+  {:style/indent 0}
+  [& body]
+  `(do-with-metabot-permissions (fn [] ~@body)))
+
 
 ;;; # ------------------------------------------------------------ Metabot Command Handlers ------------------------------------------------------------
 
@@ -75,21 +99,23 @@
 (defn ^:metabot list
   "Implementation of the `metabot list cards` command."
   [& _]
-  (let [cards (db/select ['Card :id :name], {:order-by [[:id :desc]], :limit 20})]
+  (let [cards (with-metabot-permissions
+                (filterv models/can-read? (db/select [Card :id :name :dataset_query], {:order-by [[:id :desc]], :limit 20})))]
     (str "Here's your " (count cards) " most recent cards:\n" (format-cards cards))))
 
 (defn- card-with-name [card-name]
-  (first (u/prog1 (db/select ['Card :id :name], :%lower.name [:like (str \% (str/lower-case card-name) \%)])
+  (first (u/prog1 (db/select [Card :id :name], :%lower.name [:like (str \% (str/lower-case card-name) \%)])
            (when (> (count <>) 1)
              (throw (Exception. (str "Could you be a little more specific? I found these cards with names that matched:\n"
                                      (format-cards <>))))))))
 
 (defn- id-or-name->card [card-id-or-name]
   (cond
-    (integer? card-id-or-name)     (db/select-one ['Card :id :name], :id card-id-or-name)
+    (integer? card-id-or-name)     (db/select-one [Card :id :name], :id card-id-or-name)
     (or (string? card-id-or-name)
         (symbol? card-id-or-name)) (card-with-name card-id-or-name)
     :else                          (throw (Exception. (format "I don't know what Card `%s` is. Give me a Card ID or name." card-id-or-name)))))
+
 
 (defn ^:metabot show
   "Implementation of the `metabot show card <name-or-id>` command."
@@ -98,6 +124,8 @@
   ([card-id-or-name]
    (if-let [{card-id :id} (id-or-name->card card-id-or-name)]
      (do
+       (with-metabot-permissions
+         (read-check Card card-id))
        (do-async (let [attachments (pulse/create-and-upload-slack-attachments! [(pulse/execute-card card-id)])]
                    (slack/post-chat-message! *channel-id*
                                              nil

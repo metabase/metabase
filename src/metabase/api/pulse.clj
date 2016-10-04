@@ -9,6 +9,7 @@
             [metabase.integrations.slack :as slack]
             (metabase.models [card :refer [Card]]
                              [database :refer [Database]]
+                             [interface :as models]
                              [pulse :refer [Pulse retrieve-pulse] :as pulse]
                              [pulse-channel :refer [channel-types]])
             [metabase.query-processor :as qp]
@@ -20,8 +21,18 @@
 (defendpoint GET "/"
   "Fetch all `Pulses`"
   []
-  (pulse/retrieve-pulses))
+  (for [pulse (pulse/retrieve-pulses)
+        :let  [can-read?  (models/can-read? pulse)
+               can-write? (models/can-write? pulse)]
+        :when (or can-read?
+                  can-write?)]
+    (assoc pulse :read_only (not can-write?))))
 
+
+(defn- check-card-read-permissions [cards]
+  (doseq [{card-id :id} cards
+          :when         card-id] ; for some reason, without explanation, the code below makes it look as though card IDs may randomly be `nil`
+    (read-check Card card-id)))
 
 (defendpoint POST "/"
   "Create a new `Pulse`."
@@ -29,15 +40,15 @@
   {name     [Required NonEmptyString]
    cards    [Required ArrayOfMaps]
    channels [Required ArrayOfMaps]}
-  ;; prevent more than 5 cards
-  ;; limit channel types to :email and :slack
+  (check-card-read-permissions cards)
   (check-500 (pulse/create-pulse! name *current-user-id* (filter identity (map :id cards)) channels)))
 
 
 (defendpoint GET "/:id"
   "Fetch `Pulse` with ID."
   [id]
-  (check-404 (pulse/retrieve-pulse id)))
+  (read-check (pulse/retrieve-pulse id)))
+
 
 
 (defendpoint PUT "/:id"
@@ -46,9 +57,8 @@
   {name     [Required NonEmptyString]
    cards    [Required ArrayOfMaps]
    channels [Required ArrayOfMaps]}
-  (check-404 (db/exists? Pulse :id id))
-  ;; prevent more than 5 cards
-  ;; limit channel types to :email and :slack
+  (write-check Pulse id)
+  (check-card-read-permissions cards)
   (pulse/update-pulse! {:id       id
                         :name     name
                         :cards    (filter identity (map :id cards))
@@ -84,37 +94,34 @@
 (defendpoint GET "/preview_card/:id"
   "Get HTML rendering of a `Card` with ID."
   [id]
-  (let [card (Card id)]
-    (read-check Database (:database (:dataset_query card)))
-    (let [result (qp/dataset-query (:dataset_query card) {:executed-by *current-user-id*})]
-      {:status 200, :body (html [:html [:body {:style "margin: 0;"} (binding [render/*include-title* true
-                                                                              render/*include-buttons* true]
-                                                                      (render/render-pulse-card card result))]])})))
+  (let [card   (read-check Card id)
+        result (qp/dataset-query (:dataset_query card) {:executed-by *current-user-id*})]
+    {:status 200, :body (html [:html [:body {:style "margin: 0;"} (binding [render/*include-title* true
+                                                                            render/*include-buttons* true]
+                                                                    (render/render-pulse-card card result))]])}))
 
 (defendpoint GET "/preview_card_info/:id"
   "Get JSON object containing HTML rendering of a `Card` with ID and other information."
   [id]
-  (let [card (Card id)]
-    (read-check Database (:database (:dataset_query card)))
-    (let [result    (qp/dataset-query (:dataset_query card) {:executed-by *current-user-id*})
-          data      (:data result)
-          card-type (render/detect-pulse-card-type card data)
-          card-html (html (binding [render/*include-title* true]
-                            (render/render-pulse-card card result)))]
-      {:id              id
-       :pulse_card_type card-type
-       :pulse_card_html card-html
-       :row_count       (:row_count result)})))
+  (let [card      (read-check Card id)
+        result    (qp/dataset-query (:dataset_query card) {:executed-by *current-user-id*})
+        data      (:data result)
+        card-type (render/detect-pulse-card-type card data)
+        card-html (html (binding [render/*include-title* true]
+                          (render/render-pulse-card card result)))]
+    {:id              id
+     :pulse_card_type card-type
+     :pulse_card_html card-html
+     :row_count       (:row_count result)}))
 
 (defendpoint GET "/preview_card_png/:id"
   "Get PNG rendering of a `Card` with ID."
   [id]
-  (let [card (Card id)]
-    (read-check Database (:database (:dataset_query card)))
-    (let [result (qp/dataset-query (:dataset_query card) {:executed-by *current-user-id*})
-          ba   (binding [render/*include-title* true]
+  (let [card   (read-check Card id)
+        result (qp/dataset-query (:dataset_query card) {:executed-by *current-user-id*})
+        ba     (binding [render/*include-title* true]
                  (render/render-pulse-card-to-png card result))]
-      {:status 200, :headers {"Content-Type" "image/png"}, :body (new java.io.ByteArrayInputStream ba) })))
+    {:status 200, :headers {"Content-Type" "image/png"}, :body (new java.io.ByteArrayInputStream ba)}))
 
 (defendpoint POST "/test"
   "Test send an unsaved pulse"
@@ -122,6 +129,7 @@
   {name     [Required NonEmptyString]
    cards    [Required ArrayOfMaps]
    channels [Required ArrayOfMaps]}
+  (check-card-read-permissions cards)
   (p/send-pulse! body)
   {:ok true})
 

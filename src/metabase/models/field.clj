@@ -6,7 +6,8 @@
             metabase.types
             (metabase.models [field-values :refer [FieldValues]]
                              [humanization :as humanization]
-                             [interface :as i])
+                             [interface :as i]
+                             [permissions :as perms])
             [metabase.util :as u]))
 
 
@@ -26,24 +27,34 @@
 
 (i/defentity Field :metabase_field)
 
-(defn- assert-valid-special-type [{special-type :special_type}]
+(defn- check-valid-types [{base-type :base_type, special-type :special_type}]
+  (when base-type
+    (assert (isa? (keyword base-type) :type/*)
+      (str "Invalid base type: " base-type)))
   (when special-type
     (assert (isa? (keyword special-type) :type/*)
       (str "Invalid special type: " special-type))))
 
 (defn- pre-insert [field]
-  (assert-valid-special-type field)
+  (check-valid-types field)
   (let [defaults {:display_name (humanization/name->human-readable-name (:name field))}]
     (merge defaults field)))
 
 (defn- pre-update [field]
   (u/prog1 field
-    (assert-valid-special-type field)))
+    (check-valid-types field)))
 
 (defn- pre-cascade-delete [{:keys [id]}]
   (db/cascade-delete! Field :parent_id id)
   (db/cascade-delete! 'FieldValues :field_id id)
   (db/cascade-delete! 'MetricImportantField :field_id id))
+
+;; For the time being permissions to access a field are the same as permissions to access its parent table
+;; TODO - this can be memoized because a Table's `:db_id` and `:schema` are guaranteed to never change, as is a Field's `:table_id`
+(defn- perms-objects-set [{table-id :table_id} _]
+  {:pre [(integer? table-id)]}
+  (let [{schema :schema, database-id :db_id} (db/select-one ['Table :schema :db_id] :id table-id)]
+    #{(perms/object-path database-id schema table-id)}))
 
 (u/strict-extend (class Field)
   i/IEntity (merge i/IEntityDefaults
@@ -53,7 +64,8 @@
                                                      :visibility_type :keyword
                                                      :description     :clob})
                     :timestamped?       (constantly true)
-                    :can-read?          (constantly true)
+                    :perms-objects-set  perms-objects-set
+                    :can-read?          (partial i/current-user-has-full-permissions? :read)
                     :can-write?         i/superuser?
                     :pre-insert         pre-insert
                     :pre-update         pre-update
@@ -194,6 +206,7 @@
 
 ;;; ------------------------------------------------------------ Sync Util CRUD Fns ------------------------------------------------------------
 
+;; TODO - rename to `update-field-from-field-def!`
 (defn update-field!
   "Update an existing `Field` from the given FIELD-DEF."
   [{:keys [id], :as existing-field} {field-name :name, :keys [base-type special-type pk? parent-id]}]
@@ -215,7 +228,7 @@
         :special_type (:special_type <>)
         :parent_id    parent-id))))
 
-
+;; TODO - rename to `create-field-from-field-def!`
 (defn create-field!
   "Create a new `Field` from the given FIELD-DEF."
   [table-id {field-name :name, :keys [base-type special-type pk? parent-id raw-column-id]}]

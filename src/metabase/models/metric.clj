@@ -15,13 +15,19 @@
 (defn- pre-cascade-delete [{:keys [id]}]
   (db/cascade-delete! 'MetricImportantField :metric_id id))
 
+(defn- perms-objects-set [metric read-or-write]
+  (let [table (or (:table metric)
+                  (db/select-one ['Table :db_id :schema :id] :id (:table_id metric)))]
+    (i/perms-objects-set table read-or-write)))
+
 (u/strict-extend (class Metric)
   i/IEntity
   (merge i/IEntityDefaults
          {:types              (constantly {:definition :json, :description :clob})
           :timestamped?       (constantly true)
-          :can-read?          (constantly true)
-          :can-write?         i/superuser?
+          :perms-objects-set  perms-objects-set
+          :can-read?          (partial i/current-user-has-full-permissions? :read)
+          :can-write?         (partial i/current-user-has-full-permissions? :write)
           :pre-cascade-delete pre-cascade-delete}))
 
 

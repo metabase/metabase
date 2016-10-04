@@ -7,6 +7,7 @@
                              [card :refer [Card]]
                              [dashboard :refer [Dashboard]]
                              [hydrate :refer [hydrate]]
+                             [interface :as models]
                              [view-log :refer [ViewLog]])))
 
 (defn- dashcard-activity? [activity]
@@ -56,12 +57,13 @@
 (defendpoint GET "/"
   "Get recent activity."
   []
-  (-> (db/select Activity, {:order-by [[:timestamp :desc]], :limit 40})
-      (hydrate :user :table :database)
-      add-model-exists-info))
+  (filter models/can-read? (-> (db/select Activity, {:order-by [[:timestamp :desc]], :limit 40})
+                               (hydrate :user :table :database)
+                               add-model-exists-info)))
+
 
 (defendpoint GET "/recent_views"
-  "Get the list of 15 things the current user has been viewing most recently."
+  "Get the list of 10 things the current user has been viewing most recently."
   []
   ;; expected output of the query is a single row per unique model viewed by the current user
   ;; including a `:max_ts` which has the most recent view timestamp of the item and `:cnt` which has total views
@@ -72,10 +74,11 @@
                     :order-by [[:max_ts :desc]]
                     :limit    10})
         :let     [model-object (case (:model view-log)
-                                 "card"      (db/select-one [Card :id :name :description :display], :id (:model_id view-log))
-                                 "dashboard" (db/select-one [Dashboard :id :name :description],     :id (:model_id view-log))
+                                 "card"      (db/select-one [Card :id :name :description :display :dataset_query], :id (:model_id view-log))
+                                 "dashboard" (db/select-one [Dashboard :id :name :description],                    :id (:model_id view-log))
                                  nil)]
-        :when    model-object]
-    (assoc view-log :model_object model-object)))
+        :when    (and model-object
+                      (models/can-read? model-object))]
+    (assoc view-log :model_object (dissoc model-object :dataset_query))))
 
 (define-routes)

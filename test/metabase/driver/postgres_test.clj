@@ -169,6 +169,26 @@
       (tu/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "materialized_views_test")}]
         (driver/describe-database pg-driver database)))))
 
+;; Check that we properly fetch foreign tables.
+(expect-with-engine :postgres
+  {:tables #{{:schema "public", :name "foreign_table"} {:schema "public", :name "local_table"}}}
+  (do
+    (jdbc/execute! (sql/connection-details->spec pg-driver (i/database->connection-details pg-driver :server nil))
+                   ["DROP DATABASE IF EXISTS fdw_test;
+                     CREATE DATABASE fdw_test;"]
+                   {:transaction? false})
+    (let [details (i/database->connection-details pg-driver :db {:database-name "fdw_test", :short-lived? true})]
+      (jdbc/execute! (sql/connection-details->spec pg-driver details)
+                     [(str "CREATE EXTENSION IF NOT EXISTS postgres_fdw;
+                            CREATE SERVER foreign_server
+                                FOREIGN DATA WRAPPER postgres_fdw
+                                OPTIONS (host '" (:host details) "', port '" (:port details) "', dbname 'fdw_test');
+                            CREATE TABLE public.local_table (data text);
+                            CREATE FOREIGN TABLE foreign_table (data text)
+                                SERVER foreign_server
+                                OPTIONS (schema_name 'public', table_name 'local_table');")])
+      (tu/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "fdw_test")}]
+        (driver/describe-database pg-driver database)))))
 
 ;; timezone tests
 

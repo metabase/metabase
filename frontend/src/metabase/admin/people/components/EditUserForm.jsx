@@ -4,23 +4,35 @@ import ReactDOM from "react-dom";
 
 import FormField from "metabase/components/form/FormField.jsx";
 import FormLabel from "metabase/components/form/FormLabel.jsx";
+import GroupSelect from "../components/GroupSelect.jsx";
+import GroupSummary from "../components/GroupSummary.jsx";
 
 import MetabaseUtils from "metabase/lib/utils";
+import SelectButton from "metabase/components/SelectButton.jsx";
+import Toggle from "metabase/components/Toggle.jsx";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 
 import _ from "underscore";
 import cx from "classnames";
+
+import { isAdminGroup, canEditMembership } from "metabase/lib/groups";
 
 export default class EditUserForm extends Component {
 
     constructor(props, context) {
         super(props, context);
-        this.state = { formError: null, valid: false }
+        this.state = {
+            formError: null,
+            valid: false,
+            selectedGroups: {}
+        }
     }
 
     static propTypes = {
         buttonText: PropTypes.string,
         submitFn: PropTypes.func.isRequired,
-        user: PropTypes.object
+        user: PropTypes.object,
+        groups: PropTypes.array
     };
 
     validateForm() {
@@ -66,13 +78,15 @@ export default class EditUserForm extends Component {
             return;
         }
 
-        let user = (this.props.user) ? _.clone(this.props.user) : {};
-
-        user.first_name = ReactDOM.findDOMNode(this.refs.firstName).value;
-        user.last_name = ReactDOM.findDOMNode(this.refs.lastName).value;
-        user.email = email;
-
-        this.props.submitFn(user);
+        this.props.submitFn({
+            ...(this.props.user || {}),
+            first_name: ReactDOM.findDOMNode(this.refs.firstName).value,
+            last_name: ReactDOM.findDOMNode(this.refs.lastName).value,
+            email: email,
+            groups: this.props.groups && this.state.selectedGroups ?
+                Object.entries(this.state.selectedGroups).filter(([key, value]) => value).map(([key, value]) => parseInt(key, 10)) :
+                null
+        });
     }
 
     cancel() {
@@ -80,8 +94,10 @@ export default class EditUserForm extends Component {
     }
 
     render() {
-        const { buttonText, user } = this.props;
-        const { formError, valid } = this.state;
+        const { buttonText, user, groups } = this.props;
+        const { formError, valid, selectedGroups } = this.state;
+
+        const adminGroup = _.find(groups, isAdminGroup);
 
         return (
             <form onSubmit={this.formSubmitted.bind(this)} noValidate>
@@ -100,13 +116,45 @@ export default class EditUserForm extends Component {
                         <FormLabel title="Email address" fieldName="email" formError={formError} offset={false}></FormLabel>
                         <input ref="email" className="Form-input full" name="email" defaultValue={(user) ? user.email : null} placeholder="youlooknicetoday@email.com" required onChange={this.onChange.bind(this)} />
                     </FormField>
+
+                    { groups && groups.filter(g => canEditMembership(g) && !isAdminGroup(g)).length > 0 ?
+                        <FormField>
+                            <FormLabel title="Permission Groups" offset={false}></FormLabel>
+                            <PopoverWithTrigger
+                                triggerElement={
+                                    <SelectButton>
+                                        <GroupSummary groups={groups} selectedGroups={selectedGroups}/>
+                                    </SelectButton>
+                                }
+                            >
+                                <GroupSelect
+                                    groups={groups}
+                                    selectedGroups={selectedGroups}
+                                    onGroupChange={(group, selected) => {
+                                        this.setState({ selectedGroups: { ...selectedGroups, [group.id]: selected }})
+                                    }}
+                                />
+                            </PopoverWithTrigger>
+                        </FormField>
+                    : adminGroup ?
+                        <div className="flex align-center">
+                            <Toggle
+                                value={selectedGroups[adminGroup.id]}
+                                onChange={(isAdmin) => {
+                                    this.setState({ selectedGroups: isAdmin ? { [adminGroup.id]: true } : {} })
+                                }}
+                            />
+                            <span className="ml2">Make this user an admin</span>
+                        </div>
+                    : null }
                 </div>
 
                 <div className="Form-actions">
                     <button className={cx("Button", {"Button--primary": valid})} disabled={!valid}>
                         { buttonText ? buttonText : "Save Changes" }
                     </button>
-                    <span className="pl1">or<a className="link ml1 text-bold" href="" onClick={this.cancel.bind(this)}>Cancel</a></span>
+                    <span className="mx1">or</span>
+                    <a className="link text-bold" onClick={this.cancel.bind(this)}>Cancel</a>
                 </div>
             </form>
         );

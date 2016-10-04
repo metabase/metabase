@@ -5,11 +5,12 @@ import type Table from "./metadata/Table";
 import type Field from "./metadata/Field";
 import type { TemplateTag } from "./types/Query";
 import type { CardObject } from "./types/Card";
-import type { ParameterOption, ParameterObject, ParameterMappingOption, DimensionTarget, VariableTarget } from "./types/Dashboard";
+import type { ParameterOption, ParameterObject, ParameterMappingOption, ParameterMappingTarget, DimensionTarget, VariableTarget } from "./types/Dashboard";
 
 import { getTemplateTags } from "./Card";
 
 import { slugify, stripId } from "metabase/lib/formatting";
+import Query from "metabase/lib/query";
 
 import _ from "underscore";
 
@@ -177,6 +178,23 @@ export function getCardVariables(metadata: Metadata, card: CardObject, filter: T
         return variables;
     }
     return [];
+}
+
+export function getParameterMappingTargetField(metadata: Metadata, card: CardObject, target: ParameterMappingTarget): ?Field {
+    if (target[0] === "dimension") {
+        let dimension = target[1];
+        if (Array.isArray(dimension) && dimension[0] === "template-tag") {
+            if (card.dataset_query.type === "native") {
+                let templateTag = card.dataset_query.native.template_tags[dimension[1]];
+                if (templateTag && templateTag.type === "dimension") {
+                    return metadata.field(Query.getFieldTargetId(templateTag.dimension));
+                }
+            }
+        } else {
+            return metadata.field(Query.getFieldTargetId(dimension));
+        }
+    }
+    return null;
 }
 
 function fieldFilterForParameter(parameter: ParameterObject): FieldFilter {

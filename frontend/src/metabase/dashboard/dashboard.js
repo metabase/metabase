@@ -69,7 +69,7 @@ const DashboardApi = new AngularResourceProxy("Dashboard", [
     "list", "get", "create", "update", "delete", "reposition_cards", "addcard", "removecard"
 ]);
 const MetabaseApi = new AngularResourceProxy("Metabase", ["dataset", "dataset_duration", "db_metadata"]);
-const CardApi = new AngularResourceProxy("Card", ["list", "update", "delete"]);
+const CardApi = new AngularResourceProxy("Card", ["list", "update", "delete", "query"]);
 const RevisionApi = new AngularResourceProxy("Revision", ["list", "revert"]);
 
 // action creators
@@ -153,7 +153,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, d
             }
         }, DATASET_SLOW_TIMEOUT);
 
-        result = await fetchDataOrError(MetabaseApi.dataset(datasetQuery));
+        result = await fetchDataOrError(CardApi.query({cardID: card.id, parameters: datasetQuery.parameters}));
 
         clearTimeout(slowCardTimer);
         return { dashcard_id: dashcard.id, card_id: card.id, result };
@@ -238,8 +238,8 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
 
         // update the dashboard itself
         if (dashboard.isDirty) {
-            let { id, name, description, public_perms, parameters } = dashboard;
-            dashboard = await DashboardApi.update({ id, name, description, public_perms, parameters });
+            let { id, name, description, parameters } = dashboard;
+            dashboard = await DashboardApi.update({ id, name, description, parameters });
         }
 
         // reposition the cards
@@ -272,32 +272,30 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
 
 export const updateDashboard = createThunkAction(UPDATE_DASHBOARD, (dashboard) =>
     async (dispatch, getState) => {
-        const { 
-            id, 
-            name, 
-            description, 
-            public_perms, 
-            parameters, 
-            caveats, 
-            points_of_interest, 
-            show_in_getting_started 
+        const {
+            id,
+            name,
+            description,
+            parameters,
+            caveats,
+            points_of_interest,
+            show_in_getting_started
         } = dashboard;
 
-        const cleanDashboard = { 
-            id, 
-            name, 
-            description, 
-            public_perms, 
-            parameters, 
-            caveats, 
-            points_of_interest, 
-            show_in_getting_started 
+        const cleanDashboard = {
+            id,
+            name,
+            description,
+            parameters,
+            caveats,
+            points_of_interest,
+            show_in_getting_started
         };
 
         const updatedDashboard = await DashboardApi.update(cleanDashboard);
-        
+
         MetabaseAnalytics.trackEvent("Dashboard", "Update");
-        
+
         return updatedDashboard;
     }
 );

@@ -23,6 +23,7 @@ const Sidebar = ({
         <ul>
             <div className={S.breadcrumbs}>
                 <Breadcrumbs
+                    className="py4"
                     crumbs={breadcrumbs}
                     inSidebar={true}
                     placeholder="Data Reference"

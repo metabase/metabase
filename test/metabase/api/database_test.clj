@@ -163,6 +163,7 @@
                                      :id                 $
                                      :updated_at         $
                                      :name               "test-data"
+                                     :native_permissions "readwrite"
                                      :is_sample          false
                                      :is_full_sync       true
                                      :description        nil
@@ -175,6 +176,7 @@
                                  :id                 $
                                  :updated_at         $
                                  :name               $
+                                 :native_permissions "readwrite"
                                  :is_sample          false
                                  :is_full_sync       true
                                  :description        nil
@@ -195,6 +197,7 @@
                 :id                 $
                 :updated_at         $
                 :name               $
+                :native_permissions "readwrite"
                 :is_sample          false
                 :is_full_sync       true
                 :description        nil
@@ -211,6 +214,7 @@
                                        :id                 $
                                        :updated_at         $
                                        :name               "test-data"
+                                       :native_permissions "readwrite"
                                        :is_sample          false
                                        :is_full_sync       true
                                        :description        nil
@@ -385,3 +389,23 @@
         :display_name            "Venues"
         :raw_table_id            $})])
   ((user->client :rasta) :get 200 (format "database/%d/tables" (id))))
+
+
+
+;;; GET /api/database/:id/autocomplete_suggestions
+
+(expect
+  [["USERS" "Table"]
+   ["USER_ID" "CHECKINS :type/Integer :type/FK"]]
+  ((user->client :rasta) :get 200 (format "database/%d/autocomplete_suggestions" (id)) :prefix "u"))
+
+(expect
+  [["CATEGORIES" "Table"]
+   ["CHECKINS" "Table"]
+   ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]]
+  ((user->client :rasta) :get 200 (format "database/%d/autocomplete_suggestions" (id)) :prefix "c"))
+
+(expect
+  [["CATEGORIES" "Table"]
+   ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]]
+  ((user->client :rasta) :get 200 (format "database/%d/autocomplete_suggestions" (id)) :prefix "cat"))
