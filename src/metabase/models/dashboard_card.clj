@@ -3,12 +3,25 @@
             (metabase [db :as db]
                       [events :as events])
             (metabase.models  [card :refer [Card]]
-                              [hydrate :refer :all]
                               [dashboard-card-series :refer [DashboardCardSeries]]
+                              [hydrate :refer :all]
                               [interface :as i])
             [metabase.util :as u]))
 
 (i/defentity DashboardCard :report_dashboardcard)
+
+(declare series)
+
+(defn- perms-objects-set
+  "Return the set of permissions required to READ-OR-WRITE this `DashboardCard`.
+  If `:card` and `:series` are already hydrated this method doesn't need to make any DB calls."
+  [dashcard read-or-write]
+  (let [card   (or (:card dashcard)
+                   (db/select-one [Card :dataset_query] :id (u/get-id (:card_id dashcard))))
+        series (or (:series dashcard)
+                   (series dashcard))]
+    (apply set/union (i/perms-objects-set card read-or-write) (for [series-card series]
+                                                                (i/perms-objects-set series-card read-or-write)))))
 
 (defn- pre-insert [dashcard]
   (let [defaults {:sizeX              2
@@ -24,6 +37,9 @@
   (merge i/IEntityDefaults
          {:timestamped?       (constantly true)
           :types              (constantly {:parameter_mappings :json})
+          :perms-objects-set  perms-objects-set
+          :can-read?          (partial i/current-user-has-full-permissions? :read)
+          :can-write?         (partial i/current-user-has-full-permissions? :write)
           :pre-insert         pre-insert
           :pre-cascade-delete pre-cascade-delete
           :post-select        (u/rpartial set/rename-keys {:sizex :sizeX, :sizey :sizeY})}))

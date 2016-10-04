@@ -37,12 +37,28 @@
    parameters [ArrayOfMaps]}
   (dashboard/create-dashboard! dashboard *current-user-id*))
 
+(defn- hide-unreadable-card
+  "If CARD is unreadable, replace it with an object containing only its `:id`."
+  [card]
+  (if (models/can-read? card)
+    card
+    (select-keys card [:id])))
+
+(defn- hide-unreadable-cards
+  "Replace the `:card` and `:series` entries from dashcards that they user isn't allowed to read with empty objects."
+  [dashboard]
+  (update dashboard :ordered_cards (partial mapv (fn [dashcard]
+                                                   (-> dashcard
+                                                       (update :card hide-unreadable-card)
+                                                       (update :series (partial mapv hide-unreadable-card)))))))
 
 (defendpoint GET "/:id"
   "Get `Dashboard` with ID."
   [id]
-  (u/prog1 (read-check (-> (Dashboard id)
-                           (hydrate :creator [:ordered_cards [:card :creator] :series])))
+  (u/prog1 (-> (Dashboard id)
+               (hydrate :creator [:ordered_cards [:card :creator] :series])
+               read-check
+               hide-unreadable-cards)
     (events/publish-event :dashboard-read (assoc <> :actor_id *current-user-id*))))
 
 
