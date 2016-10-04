@@ -99,6 +99,8 @@ export default class Dashboard extends Component {
     }
 
     async loadDashboard(dashboardId) {
+        this.props.initialize();
+
         this.loadParams();
         const { addCardOnLoad, fetchDashboard, fetchCards, addCardToDashboard, onChangeLocation, location } = this.props;
 
