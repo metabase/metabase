@@ -59,8 +59,8 @@ export default class SaveQuestionModal extends Component {
 
         let valid = true;
 
-        // name is required
-        if (!details.name) {
+        // name is required for create
+        if (details.saveType === "create" && !details.name) {
             valid = false;
         }
 
