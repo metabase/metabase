@@ -106,12 +106,14 @@ export default class Visualization extends Component {
             noResults = getIn(series, [0, "data", "rows", "length"]) === 0;
         }
 
-        let extra;
-        if (!loading) {
-            extra = actionButtons;
-        } else if (isSlow) {
-            extra = <LoadingSpinner className={isSlow === "usually-slow" ? "text-gold" : "text-slate"} size={18} />
-        }
+        let extra = (
+            <span className="flex align-center">
+                {isSlow && !loading &&
+                    <LoadingSpinner size={18} className={cx("Visualization-slow-spinner", isSlow === "usually-slow" ? "text-gold" : "text-slate")}/>
+                }
+                {actionButtons}
+            </span>
+        );
 
         return (
             <div className={cx(className, "flex flex-column")}>
