@@ -38,20 +38,19 @@
   (dashboard/create-dashboard! dashboard *current-user-id*))
 
 (defn- hide-unreadable-card
-  "Replace unreadable card with object containing only the id"
+  "If CARD is unreadable, replace it with an object containing only its `:id`."
   [card]
   (if (models/can-read? card)
     card
-    {:id (:id card)}))
+    (select-keys card [:id])))
 
 (defn- hide-unreadable-cards
-  "Replace the `:card` and `:series` entries from dashcards that they user isn't allowed to read with empty object."
+  "Replace the `:card` and `:series` entries from dashcards that they user isn't allowed to read with empty objects."
   [dashboard]
-  (update dashboard :ordered_cards (fn [dashcards]
-                                     (vec (for [dashcard dashcards]
-                                            (assoc dashcard :card (hide-unreadable-card (:card dashcard))
-                                                            :series (for [card (:series dashcard)]
-                                                                      (hide-unreadable-card card))))))))
+  (update dashboard :ordered_cards (partial mapv (fn [dashcard]
+                                                   (-> dashcard
+                                                       (update :card hide-unreadable-card)
+                                                       (update :series (partial mapv hide-unreadable-card)))))))
 
 (defendpoint GET "/:id"
   "Get `Dashboard` with ID."
