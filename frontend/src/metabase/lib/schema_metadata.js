@@ -110,6 +110,8 @@ export const isMetric    = (col) => (col && col.source !== "breakout") && isSumm
 
 export const isNumericBaseType = (field) => isa(field && field.base_type, TYPE.Number);
 
+export const isLatLon = (col) => col.special_type === "latitude" || col.special_type === "longitude";
+
 // operator argument constructors:
 
 function freeformArgument(field, table) {

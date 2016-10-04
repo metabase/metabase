@@ -1,14 +1,26 @@
-/*global google*/
-
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
 import { hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 
 import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
+import categoryClusterIcon from "metabase/visualizations/lib/categoryClusterIcon";
 
 import _ from "underscore";
 import cx from "classnames";
+
+import L from "leaflet/dist/leaflet-src.js";
+import { PruneCluster, PruneClusterForLeaflet } from "imports?L=leaflet/dist/leaflet-src.js!exports?PruneCluster&PruneClusterForLeaflet!prunecluster/dist/PruneCluster.js";
+import "Leaflet.vector-markers";
+
+import "leaflet/dist/leaflet.css";
+import "Leaflet.vector-markers/dist/leaflet-vector-markers.css";
+import "PruneCluster/dist/LeafletStyleSheet.css"
+
+import tinycolor from "tinycolor2";
+import ColorHash from "color-hash";
+
+const ch = new ColorHash();
 
 export default class PinMap extends Component {
     static displayName = "Pin Map";
@@ -54,18 +66,23 @@ export default class PinMap extends Component {
         this.setState({ zoom });
     }
 
-    getLatLongIndexes() {
+    genMarker(color="#3090e9"){
+        return L.VectorMarkers.icon({ markerColor: color });
+    }
+
+    getIndexes() {
         const { settings, series: [{ data: { cols }}] } = this.props;
         return {
             latitudeIndex: _.findIndex(cols, (col) => col.name === settings["map.latitude_column"]),
-            longitudeIndex: _.findIndex(cols, (col) => col.name === settings["map.longitude_column"])
+            longitudeIndex: _.findIndex(cols, (col) => col.name === settings["map.longitude_column"]),
+            categoryIndex: _.findIndex(cols, (col) => col.name === settings["map.category_column"])
         };
     }
 
     getTileUrl = (coord, zoom) => {
         const [{ card: { dataset_query }, data: { cols }}] = this.props.series;
 
-        const { latitudeIndex, longitudeIndex } = this.getLatLongIndexes();
+        const { latitudeIndex, longitudeIndex } = this.getIndexes();
         const latitudeField = cols[latitudeIndex];
         const longitudeField = cols[longitudeIndex];
 
@@ -79,68 +96,73 @@ export default class PinMap extends Component {
             '?query=' + encodeURIComponent(JSON.stringify(dataset_query))
     }
 
+    genPopup(row, cols) {
+        let popup = document.createElement("div");
+        ReactDOM.render(<ObjectDetailTooltip row={row} cols={cols} />, popup);
+        return popup
+    }
     componentDidMount() {
-        if (typeof google === undefined) {
-            setTimeout(() => this.componentDidMount(), 500);
-            return;
-        }
-
         try {
             const element = ReactDOM.findDOMNode(this.refs.map);
             const { settings, series: [{ data }] } = this.props;
 
-            const mapOptions = {
-                zoom: settings["map.zoom"],
-                center: new google.maps.LatLng(
-                    settings["map.center_latitude"],
-                    settings["map.center_longitude"]
-                ),
-                mapTypeId: google.maps.MapTypeId.MAP,
-                scrollwheel: false
-            };
+            const { latitudeIndex, longitudeIndex, categoryIndex } = this.getIndexes();
 
-            const map = this.map = new google.maps.Map(element, mapOptions);
+            let centerLatitude = settings["map.center_latitude"] || average(_.pluck(data.rows, latitudeIndex));
+            let centerLongitude = settings["map.center_longitude"] || average(_.pluck(data.rows, longitudeIndex));
 
-            if (data.rows.length < 2000) {
-                let tooltip = new google.maps.InfoWindow();
-                let { latitudeIndex, longitudeIndex } = this.getLatLongIndexes();
-                for (let row of data.rows) {
-                    let marker = new google.maps.Marker({
-                        position: new google.maps.LatLng(row[latitudeIndex], row[longitudeIndex]),
-                        map: map,
-                        icon: "/app/img/pin.png"
-                    });
-                    marker.addListener("click", () => {
-                        let tooltipElement = document.createElement("div");
-                        ReactDOM.render(<ObjectDetailTooltip row={row} cols={data.cols} />, tooltipElement);
-                        tooltip.setContent(tooltipElement);
-                        tooltip.open(map, marker);
-                    });
-                }
-            } else {
-                map.overlayMapTypes.push(new google.maps.ImageMapType({
-                    getTileUrl: this.getTileUrl,
-                    tileSize: new google.maps.Size(256, 256)
-                }));
+            let map = L.map(element).setView([centerLatitude, centerLongitude], settings["map.zoom"]);
+
+            L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+                attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a>',
+                maxZoom: 18,
+            }).addTo(map);
+
+            let pruneCluster = new PruneClusterForLeaflet();
+
+            let catColorMap;
+            if (categoryIndex) {
+                catColorMap = genCatColorMap(_.union(_.pluck(data.rows, categoryIndex)));
+
+                pruneCluster.BuildLeafletClusterIcon = function(cluster) {
+                    L.Icon.MarkerCluster = categoryClusterIcon(catColorMap);
+
+                    let e = new L.Icon.MarkerCluster();
+                    e.stats = cluster.stats;
+                    e.population = cluster.population;
+                    return e;
+                };
             }
 
-            map.addListener("center_changed", () => {
+            map.addLayer(pruneCluster);
+
+            for (let row of data.rows) {
+                let marker = new PruneCluster.Marker(row[latitudeIndex], row[longitudeIndex]);
+
+                if (categoryIndex){
+                    let category = _.findWhere(catColorMap, {name: row[categoryIndex]})
+                    marker.data.icon = this.genMarker(category.color);
+                    marker.category = category.id;
+                } else {
+                    marker.data.icon = this.genMarker('#3090e9');
+                }
+
+                marker.data.popup = this.genPopup(row, data.cols);
+                pruneCluster.RegisterMarker(marker);
+            }
+
+            map.on('moveend', () => {
                 let center = map.getCenter();
-                this.onMapCenterChange(center.lat(), center.lng());
+                this.onMapCenterChange(center.lat, center.lng);
             });
 
-            map.addListener("zoom_changed", () => {
+            map.on('zoomend', () => {
                 this.onMapZoomChange(map.getZoom());
-            });
+            })
+
         } catch (err) {
             console.error(err);
             this.props.onRenderError(err.message || err);
-        }
-    }
-
-    componentDidUpdate() {
-        if (typeof google !== "undefined") {
-            google.maps.event.trigger(this.map, "resize");
         }
     }
 
@@ -159,6 +181,30 @@ export default class PinMap extends Component {
             </div>
         );
     }
+}
+
+const genColorCode = function(string){
+    let color;
+    let truthy = /^(?:yes|true|on|1|ok)$/i;
+    let falsy = /^(?:no|false|off|0|wrong)$/i;
+    if (_.isString(string)){
+        if (string.search(truthy) > -1){
+            color = "#c7f464"
+        } else if (string.search(falsy) > -1){
+            color = "#ea4444"
+        }
+    }
+    return color ? color : tinycolor(ch.hex(string)).monochromatic()[3].toHexString()
+}
+
+const genCatColorMap = function(cats){
+    return _.map(cats, (cat, index) => {
+        return {'name': cat, 'color': genColorCode(cat), 'id': index}
+    })
+}
+
+const average = function(list) {
+    return _.reduce(list, (memo, num) => {return memo + num}, 0) / list.length;
 }
 
 const ObjectDetailTooltip = ({ row, cols }) =>

@@ -10,7 +10,7 @@ import {
     DIMENSION_METRIC_METRIC
 } from "metabase/visualizations/lib/utils";
 
-import { isNumeric, isDate, isMetric, isDimension, hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
+import { isNumeric, isDate, isMetric, isDimension, isLatLon, hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 import Query from "metabase/lib/query";
 import { capitalize } from "metabase/lib/formatting";
 
@@ -568,6 +568,18 @@ const SETTINGS = {
         }),
         getHidden: (series, vizSettings) => vizSettings["map.type"] !== "pin"
     },
+    "map.category_column": {
+        title: "Category field",
+        widget: ChartSettingSelect,
+        getDefault: ([{ card, data: { cols }}]) => {
+            let otherCols = cols.filter(col => !isLatLon(col));
+            return otherCols.length === 1 ? otherCols[0].name : null;
+        },
+        getProps: ([{ card, data: { cols }}]) => ({
+            options: cols.filter(col => !isLatLon(col)).map(getOptionFromColumn)
+        }),
+        getHidden: (series, vizSettings) => vizSettings["map.type"] !== "pin"
+    },
     "map.region": {
         title: "Region map",
         widget: ChartSettingSelect,
@@ -613,13 +625,13 @@ const SETTINGS = {
     },
     // TODO: translate legacy settings
     "map.zoom": {
-        default: 9
+        default: 2
     },
     "map.center_latitude": {
-        default: 37.7577 //defaults to SF ;-)
+        // default: 37.7577 //defaults to SF ;-)
     },
     "map.center_longitude": {
-        default: -122.4376
+        // default: -122.4376
     }
 };
 
