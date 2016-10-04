@@ -39,7 +39,7 @@
   (for [db dbs]
     (let [user-has-perms? (fn [f] (perms/set-has-full-permissions? @*current-user-permissions-set* (f (u/get-id db))))]
       (assoc db :native_permissions (cond
-                                      (user-has-perms? perms/native-readwrite-path) :readwrite
+                                      (user-has-perms? perms/native-readwrite-path) :write
                                       (user-has-perms? perms/native-read-path)      :read
                                       :else                                         :none)))))
 
