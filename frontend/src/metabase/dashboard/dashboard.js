@@ -22,9 +22,10 @@ dashboard.define({
     ordered_cards: arrayOf(dashcard)
 });
 
-
-
 // action constants
+
+export const INITIALIZE = "metabase/dashboard/INITIALIZE";
+
 export const SET_EDITING_DASHBOARD = "metabase/dashboard/SET_EDITING_DASHBOARD";
 
 export const FETCH_CARDS = "metabase/dashboard/FETCH_CARDS";
@@ -74,6 +75,7 @@ const RevisionApi = new AngularResourceProxy("Revision", ["list", "revert"]);
 
 // action creators
 
+export const initialize = createAction(INITIALIZE);
 export const setEditingDashboard = createAction(SET_EDITING_DASHBOARD);
 
 export const markNewCardSeen = createAction(MARK_NEW_CARD_SEEN);
@@ -356,10 +358,12 @@ export const removeParameter = createThunkAction(REMOVE_PARAMETER, (parameterId)
 // reducers
 
 const dashboardId = handleActions({
+    [INITIALIZE]: { next: (state) => null },
     [SET_DASHBOARD_ID]: { next: (state, { payload }) => payload }
 }, null);
 
 const isEditing = handleActions({
+    [INITIALIZE]: { next: (state) => false },
     [SET_EDITING_DASHBOARD]: { next: (state, { payload }) => payload }
 }, false);
 
@@ -423,6 +427,8 @@ const revisions = handleActions({
 }, {});
 
 const dashcardData = handleActions({
+    // clear existing dashboard data when loading a dashboard
+    [INITIALIZE]: { next: (state) => ({}) },
     [FETCH_CARD_DATA]: { next: (state, { payload: { dashcard_id, card_id, result }}) =>
         i.assocIn(state, [dashcard_id, card_id], result)
     },
