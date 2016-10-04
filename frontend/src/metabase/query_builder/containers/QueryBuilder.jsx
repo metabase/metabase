@@ -9,15 +9,15 @@ import { loadTableAndForeignKeys } from "metabase/lib/table";
 import { isPK, isFK } from "metabase/lib/types";
 
 import NotFound from "metabase/components/NotFound.jsx";
-import QueryHeader from "../QueryHeader.jsx";
-import GuiQueryEditor from "../GuiQueryEditor.jsx";
-import NativeQueryEditor from "../NativeQueryEditor.jsx";
-import QueryVisualization from "../QueryVisualization.jsx";
-import DataReference from "../dataref/DataReference.jsx";
-import TagEditorSidebar from "../template_tags/TagEditorSidebar.jsx";
-import QueryBuilderTutorial from "../../tutorial/QueryBuilderTutorial.jsx";
-import SavedQuestionIntroModal from "../SavedQuestionIntroModal.jsx";
+import QueryBuilderTutorial from "metabase/tutorial/QueryBuilderTutorial.jsx";
 
+import QueryHeader from "../components/QueryHeader.jsx";
+import GuiQueryEditor from "../components/GuiQueryEditor.jsx";
+import NativeQueryEditor from "../components/NativeQueryEditor.jsx";
+import QueryVisualization from "../components/QueryVisualization.jsx";
+import DataReference from "../components/dataref/DataReference.jsx";
+import TagEditorSidebar from "../components/template_tags/TagEditorSidebar.jsx";
+import SavedQuestionIntroModal from "../components/SavedQuestionIntroModal.jsx";
 
 import {
     card,

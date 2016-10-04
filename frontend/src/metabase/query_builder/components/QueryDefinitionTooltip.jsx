@@ -2,7 +2,7 @@ import React, { Component, PropTypes } from "react";
 
 import FilterList from "./filters/FilterList.jsx";
 import AggregationWidget from "./AggregationWidget.jsx";
-import FieldSet from "../admin/datamodel/components/FieldSet.jsx";
+import FieldSet from "metabase/admin/datamodel/components/FieldSet.jsx";
 
 import Query from "metabase/lib/query";
 

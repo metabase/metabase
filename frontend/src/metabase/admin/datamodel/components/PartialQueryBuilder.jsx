@@ -1,6 +1,6 @@
 import React, { Component, PropTypes } from "react";
 
-import GuiQueryEditor from "metabase/query_builder/GuiQueryEditor.jsx";
+import GuiQueryEditor from "metabase/query_builder/components/GuiQueryEditor.jsx";
 
 import { serializeCardForUrl } from "metabase/lib/card";
 
