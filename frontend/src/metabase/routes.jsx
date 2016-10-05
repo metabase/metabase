@@ -1,6 +1,6 @@
 import React, { Component, PropTypes } from "react";
 
-import { Route, IndexRedirect, Redirect } from 'react-router';
+import { Route, Redirect, IndexRedirect, IndexRoute } from 'react-router';
 import { routerActions } from 'react-router-redux';
 import { UserAuthWrapper } from 'redux-auth-wrapper';
 
@@ -47,6 +47,12 @@ import ReferenceEntityList from "metabase/reference/containers/ReferenceEntityLi
 import ReferenceFieldsList from "metabase/reference/containers/ReferenceFieldsList.jsx";
 import ReferenceRevisionsList from "metabase/reference/containers/ReferenceRevisionsList.jsx";
 import ReferenceGettingStartedGuide from "metabase/reference/containers/ReferenceGettingStartedGuide.jsx";
+
+import getAdminPermissionsRoutes from "metabase/admin/permissions/routes.jsx";
+
+import PeopleListingApp from "metabase/admin/people/containers/PeopleListingApp.jsx";
+import GroupsListingApp from "metabase/admin/people/containers/GroupsListingApp.jsx";
+import GroupDetailApp from "metabase/admin/people/containers/GroupDetailApp.jsx";
 
 const MetabaseIsSetup = UserAuthWrapper({
     predicate: authData => !authData.hasSetupToken,
@@ -184,10 +190,19 @@ export const getRoutes = (store) =>
                     <Route path=":entity/:id/revisions" component={RevisionHistoryApp} />
                 </Route>
 
-                <Route path="people" component={AdminPeopleApp} />
+                {/* PEOPLE */}
+                <Route path="people" component={AdminPeopleApp}>
+                    <IndexRoute component={PeopleListingApp} />
+                    <Route path="groups">
+                        <IndexRoute component={GroupsListingApp} />
+                        <Route path=":groupId" component={GroupDetailApp} />
+                    </Route>
+                </Route>
 
                 <Route path="settings" component={SettingsEditorApp} />
                 <Route path="settings/:section" component={SettingsEditorApp} />
+
+                {getAdminPermissionsRoutes(store)}
             </Route>
 
             {/* MISC */}

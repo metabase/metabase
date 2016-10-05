@@ -13,12 +13,14 @@ import {
 } from "./utils";
 
 import {
+    dimensionIsTimeseries,
     minTimeseriesUnit,
     computeTimeseriesDataInverval,
     computeTimeseriesTicksInterval
 } from "./timeseries";
 
 import {
+    dimensionIsNumeric,
     computeNumericDataInverval
 } from "./numeric";
 
@@ -71,6 +73,9 @@ function applyChartTimeseriesXAxis(chart, settings, series, xValues, xDomain, xI
     // setup an x-axis where the dimension is a timeseries
     let dimensionColumn = series[0].data.cols[0];
 
+    // get the data's timezone offset from the first row
+    let dataOffset = parseTimestamp(series[0].data.rows[0][0]).utcOffset() / 60;
+
     // compute the data interval
     let dataInterval = xInterval;
     let tickInterval = dataInterval;
@@ -86,9 +91,10 @@ function applyChartTimeseriesXAxis(chart, settings, series, xValues, xDomain, xI
         }
 
         chart.xAxis().tickFormat(timestamp => {
-            // HACK: these dates are in the browser's timezone, change to UTC
-            let timestampUTC = moment(timestamp).format().replace(/[+-]\d+:\d+$/, "Z");
-            return formatValue(timestampUTC, { column: dimensionColumn })
+            // timestamp is a plain Date object which discards the timezone,
+            // so add it back in so it's formatted correctly
+            const timestampFixed = moment(timestamp).utcOffset(dataOffset).format();
+            return formatValue(timestampFixed, { column: dimensionColumn })
         });
 
         // Compute a sane interval to display based on the data granularity, domain, and chart width
@@ -99,8 +105,8 @@ function applyChartTimeseriesXAxis(chart, settings, series, xValues, xDomain, xI
     }
 
     // pad the domain slightly to prevent clipping
-    xDomain[0] = moment(xDomain[0]).subtract(dataInterval.count * 0.75, dataInterval.interval).toDate();
-    xDomain[1] = moment(xDomain[1]).add(dataInterval.count * 0.75, dataInterval.interval).toDate();
+    xDomain[0] = moment(xDomain[0]).subtract(dataInterval.count * 0.75, dataInterval.interval);
+    xDomain[1] = moment(xDomain[1]).add(dataInterval.count * 0.75, dataInterval.interval);
 
     // set the x scale
     chart.x(d3.time.scale.utc().domain(xDomain));//.nice(d3.time[dataInterval.interval]));
@@ -500,7 +506,15 @@ function lineAndBarOnRender(chart, settings, onGoalHover, isSplitAxis) {
         // add the label
         let goalLine = chart.selectAll(".goal .line")[0][0];
         if (goalLine) {
+
+            // stretch the goal line all the way across, use x axis as reference
+            let xAxisLine = chart.selectAll(".axis.x .domain")[0][0];
+            if (xAxisLine) {
+                goalLine.setAttribute("d", `M0,${goalLine.getBBox().y}L${xAxisLine.getBBox().width},${goalLine.getBBox().y}`)
+            }
+
             let { x, y, width } = goalLine.getBBox();
+
             const labelOnRight = !isSplitAxis;
             chart.selectAll(".goal .stack._0")
                 .append("text")
@@ -541,12 +555,12 @@ function lineAndBarOnRender(chart, settings, onGoalHover, isSplitAxis) {
         setDotStyle();
         enableDots();
         voronoiHover();
+        cleanupGoal(); // do this before hiding x-axis
         hideDisabledLabels();
         hideDisabledAxis();
         hideBadAxis();
         disableClickFiltering();
         fixStackZIndex();
-        cleanupGoal();
     });
 
     chart.render();
@@ -590,11 +604,27 @@ function fillMissingValues(datas, xValues, fillValue, getKey = (v) => v) {
     }
 }
 
+// Crossfilter calls toString on each moment object, which calls format(), which is very slow.
+// Replace toString with a function that just returns the unparsed ISO input date, since that works
+// just as well and is much faster
+let HACK_parseTimestamp = (value, unit) => {
+    let m = parseTimestamp(value, unit);
+    m.toString = moment_fast_toString
+    return m;
+}
+
+function moment_fast_toString() {
+    return this._i;
+}
+
 export default function lineAreaBar(element, { series, onHoverChange, onRender, chartType, isScalarSeries, settings }) {
     const colors = settings["graph.colors"];
 
     const isTimeseries = settings["graph.x_axis.scale"] === "timeseries";
     const isQuantitative = ["linear", "log", "pow"].indexOf(settings["graph.x_axis.scale"]) >= 0;
+
+    const isDimensionTimeseries = dimensionIsTimeseries(series[0].data);
+    const isDimensionNumeric = dimensionIsNumeric(series[0].data);
 
     if (series[0].data.cols.length < 2) {
         throw "This chart type requires at least 2 columns";
@@ -607,9 +637,9 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
     let datas = series.map((s, index) =>
         s.data.rows.map(row => [
             // don't parse as timestamp if we're going to display as a quantitative scale, e.x. years and Unix timestamps
-            (settings["graph.x_axis._is_timeseries"] && !isQuantitative) ?
-                parseTimestamp(row[0], s.data.cols[0].unit).toDate()
-            : settings["graph.x_axis._is_numeric"] ?
+            (isDimensionTimeseries && !isQuantitative) ?
+                HACK_parseTimestamp(row[0], s.data.cols[0].unit)
+            : isDimensionNumeric ?
                 row[0]
             :
                 String(row[0])
@@ -636,12 +666,12 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
         if (isTimeseries) {
             // replace xValues with
             xValues = d3.time[xInterval.interval]
-                .range(xDomain[0], moment(xDomain[1]).add(1, "ms").toDate(), xInterval.count);
+                .range(xDomain[0], moment(xDomain[1]).add(1, "ms"), xInterval.count);
             datas = fillMissingValues(
                 datas,
                 xValues,
                 settings["line.missing"] === "zero" ? 0 : null,
-                (m) => d3.round(m.getTime(), -1) // sometimes rounds up 1ms?
+                (m) => d3.round(m.toDate().getTime(), -1) // sometimes rounds up 1ms?
             );
         } if (isQuantitative) {
             xValues = d3.range(xDomain[0], xDomain[1] + xInterval, xInterval);

@@ -3,13 +3,10 @@ import { Link } from "react-router";
 import styles from "./Scalar.css";
 
 import Ellipsified from "metabase/components/Ellipsified.jsx";
-import BarChart from "./BarChart.jsx";
 
 import Urls from "metabase/lib/urls";
 import { formatValue } from "metabase/lib/formatting";
 import { TYPE } from "metabase/lib/types";
-import { isSameSeries } from "metabase/visualizations/lib/utils";
-import { getSettings } from "metabase/lib/visualization_settings";
 
 import cx from "classnames";
 import i from "icepick";
@@ -40,31 +37,10 @@ export default class Scalar extends Component {
         return false;
     }
 
-    constructor(props, context) {
-        super(props, context);
-        this.state = {
-            series: null,
-            isMultiseries: null
-        };
-    }
-
-    componentWillMount() {
-        this.transformSeries(this.props);
-    }
-
-    componentWillReceiveProps(newProps) {
-        if (isSameSeries(newProps.series, this.props.series)) {
-            return;
-        }
-        this.transformSeries(newProps);
-    }
-
-    transformSeries(newProps) {
-        let series = newProps.series;
-        let isMultiseries = false;
-        if (newProps.isMultiseries || newProps.series.length > 1) {
-            series = newProps.series.map(s => ({
-                card: { ...s.card, display: "bar" },
+    static transformSeries(series) {
+        if (series.length > 1) {
+            return series.map(s => ({
+                card: { ...s.card, display: "funnel" },
                 data: {
                     cols: [
                         { base_type: TYPE.Text, display_name: "Name", name: "dimension" },
@@ -74,30 +50,13 @@ export default class Scalar extends Component {
                     ]
                 }
             }));
-            isMultiseries = true;
+        } else {
+            return series;
         }
-        this.setState({
-            series,
-            isMultiseries
-        });
     }
 
     render() {
         let { card, data, className, actionButtons, gridSize, settings } = this.props;
-
-        if (this.state.isMultiseries) {
-            return (
-                <BarChart
-                    {...this.props}
-                    series={this.state.series}
-                    isScalarSeries={true}
-                    settings={{
-                        ...settings,
-                        ...getSettings(this.state.series)
-                    }}
-                />
-            );
-        }
 
         let isSmall = gridSize && gridSize.width < 4;
         const column = i.getIn(data, ["cols", 0]);
@@ -168,7 +127,7 @@ export default class Scalar extends Component {
                     {compactScalarValue}
                 </Ellipsified>
                 <Ellipsified className={styles.Title} tooltip={card.name}>
-                    <Link to={Urls.card(card.id)} className="no-decoration fullscreen-normal-text fullscreen-night-text">{card.name}</Link>
+                    <Link to={Urls.card(card.id)} className="no-decoration fullscreen-normal-text fullscreen-night-text">{settings["card.title"]}</Link>
                 </Ellipsified>
             </div>
         );

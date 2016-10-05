@@ -41,8 +41,7 @@ export default class CreateDashboardModal extends Component {
         // populate a new Dash object
         var newDash = {
             name: (name && name.length > 0) ? name : null,
-            description: (description && description.length > 0) ? description : null,
-            public_perms: 2 // public read/write
+            description: (description && description.length > 0) ? description : null
         };
 
         // create a new dashboard

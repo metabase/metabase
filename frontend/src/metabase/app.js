@@ -27,6 +27,10 @@ import { refreshSiteSettings } from "metabase/redux/settings";
 import { Router, browserHistory } from "react-router";
 import { syncHistoryWithStore } from 'react-router-redux'
 
+function getRootScope() {
+    return angular.element(document.body).injector().get("$rootScope");
+}
+
 function init() {
     const store = getStore(browserHistory);
     const routes = getRoutes(store);
@@ -55,12 +59,24 @@ function init() {
     });
 
     // $http interceptor received a 401 response
-    angular.element(document.body).injector().get("$rootScope").$on("event:auth-loginRequired", function() {
+    getRootScope().$on("event:auth-loginRequired", function() {
         store.dispatch(push("/auth/login"));
     });
 
+    // we shouldn't redirect these URLs because we want to handle them differently
+    let WHITELIST_FORBIDDEN_URLS = [
+        /api\/card\/\d+\/query$/,
+        /api\/database\/\d+\/metadata$/
+    ]
     // $http interceptor received a 403 response
-    angular.element(document.body).injector().get("$rootScope").$on("event:auth-forbidden", function() {
+    getRootScope().$on("event:auth-forbidden", function(event, data) {
+        if (data && data.config && data.config.url) {
+            for (const url of WHITELIST_FORBIDDEN_URLS) {
+                if (url.test(data.config.url)) {
+                    return;
+                }
+            }
+        }
         store.dispatch(push("/unauthorized"));
     });
 }

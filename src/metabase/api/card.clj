@@ -1,19 +1,26 @@
 (ns metabase.api.card
   (:require [clojure.data :as data]
             [compojure.core :refer [GET POST DELETE PUT]]
-            [metabase.api.common :refer :all]
+            (metabase.api [common :refer :all]
+                          [dataset :as dataset-api])
             (metabase [db :as db]
                       [events :as events])
             (metabase.models [hydrate :refer [hydrate]]
-                             [card :refer [Card] :as card]
+                             [card :refer [Card], :as card]
                              [card-favorite :refer [CardFavorite]]
                              [card-label :refer [CardLabel]]
                              [common :as common]
                              [database :refer [Database]]
+                             [interface :as models]
                              [label :refer [Label]]
+                             [permissions :as perms]
                              [table :refer [Table]]
                              [view-log :refer [ViewLog]])
-            [metabase.util :as u]))
+            (metabase [query-processor :as qp]
+                      [util :as u])))
+
+
+;;; ------------------------------------------------------------ Hydration ------------------------------------------------------------
 
 (defn- hydrate-labels
   "Efficiently hydrate the `Labels` for a large collection of `Cards`."
@@ -33,6 +40,9 @@
     (let [favorite-card-ids (set (db/select-field :card_id CardFavorite, :owner_id *current-user-id*, :card_id [:in (map :id cards)]))]
       (for [card cards]
         (assoc card :favorite (contains? favorite-card-ids (:id card)))))))
+
+
+;;; ------------------------------------------------------------ Filtered Fetch Fns ------------------------------------------------------------
 
 (defn- cards:all
   "Return all `Cards`."
@@ -122,6 +132,9 @@
       cards
       (filter (partial card-has-label? label) cards))))
 
+
+;;; ------------------------------------------------------------ /api/card & /api/card/:id endpoints ------------------------------------------------------------
+
 (defannotation CardFilterOption
   "Option must be a valid card filter option."
   [symb value :nillable]
@@ -140,51 +153,50 @@
     (case f
       :database (read-check Database model_id)
       :table    (read-check Database (db/select-one-field :db_id Table, :id model_id))))
-  (cards-for-filter-option f model_id label))
+  (->> (cards-for-filter-option f model_id label)
+       (filterv models/can-read?))) ; filterv because we want make sure all the filtering is done while current user perms set is still bound
+
 
 (defendpoint POST "/"
   "Create a new `Card`."
-  [:as {{:keys [dataset_query description display name public_perms visualization_settings]} :body}]
-  {name         [Required NonEmptyString]
-   public_perms [Required PublicPerms]
-   display      [Required NonEmptyString]}
+  [:as {{:keys [dataset_query description display name visualization_settings]} :body}]
+  {name                   [Required NonEmptyString]
+   display                [Required NonEmptyString]
+   visualization_settings [Required Dict]}
+  (check-403 (perms/set-has-full-permissions-for-set? @*current-user-permissions-set* (card/query-perms-set dataset_query :write)))
   (->> (db/insert! Card
          :creator_id             *current-user-id*
          :dataset_query          dataset_query
          :description            description
          :display                display
          :name                   name
-         :public_perms           public_perms
          :visualization_settings visualization_settings)
        (events/publish-event :card-create)))
+
 
 (defendpoint GET "/:id"
   "Get `Card` with ID."
   [id]
-  (->404 (Card id)
-         read-check
-         (hydrate :creator :can_read :can_write :dashboard_count :labels)
-         (assoc :actor_id *current-user-id*)
-         (->> (events/publish-event :card-read))
-         (dissoc :actor_id)))
+  (-> (read-check Card id)
+      (hydrate :creator :dashboard_count :labels)
+      (assoc :actor_id *current-user-id*)
+      (->> (events/publish-event :card-read))
+      (dissoc :actor_id)))
 
 
 (defendpoint PUT "/:id"
   "Update a `Card`."
-  [id :as {{:keys [dataset_query description display name public_perms visualization_settings archived], :as body} :body}]
+  [id :as {{:keys [dataset_query description display name visualization_settings archived], :as body} :body}]
   {name                   NonEmptyString
-   public_perms           PublicPerms
    display                NonEmptyString
    visualization_settings Dict
    archived               Boolean}
-  (let-404 [card (Card id)]
-    (write-check card)
+  (let [card (write-check Card id)]
     (db/update-non-nil-keys! Card id
       :dataset_query          dataset_query
       :description            description
       :display                display
       :name                   name
-      :public_perms           public_perms
       :visualization_settings visualization_settings
       :archived               archived)
     (let [event (cond
@@ -202,30 +214,36 @@
 (defendpoint DELETE "/:id"
   "Delete a `Card`."
   [id]
-  (write-check Card id)
-  (let-404 [card (Card id)]
-    (write-check card)
-    (u/prog1 (db/cascade-delete! Card,:id id)
+  (let [card (write-check Card id)]
+    (u/prog1 (db/cascade-delete! Card :id id)
       (events/publish-event :card-delete (assoc card :actor_id *current-user-id*)))))
 
 
-(defendpoint GET "/:id/favorite"
+;;; ------------------------------------------------------------ Favoriting ------------------------------------------------------------
+
+
+(defendpoint GET "/:card-id/favorite"
   "Has current user favorited this `Card`?"
-  [id]
-  {:favorite (boolean (when *current-user-id*
-                        (db/exists? CardFavorite :card_id id, :owner_id *current-user-id*)))})
+  [card-id]
+  (read-check Card card-id)
+  {:favorite (db/exists? CardFavorite :card_id card-id, :owner_id *current-user-id*)})
 
 (defendpoint POST "/:card-id/favorite"
   "Favorite a Card."
   [card-id]
+  (read-check Card card-id)
   (db/insert! CardFavorite :card_id card-id, :owner_id *current-user-id*))
 
 
 (defendpoint DELETE "/:card-id/favorite"
   "Unfavorite a Card."
   [card-id]
+  (read-check Card card-id)
   (let-404 [id (db/select-one-id CardFavorite :card_id card-id, :owner_id *current-user-id*)]
     (db/cascade-delete! CardFavorite, :id id)))
+
+
+;;; ------------------------------------------------------------ Editing Card Labels ------------------------------------------------------------
 
 
 (defendpoint POST "/:card-id/labels"
@@ -240,5 +258,21 @@
     (doseq [label-id labels-to-add]
       (db/insert! CardLabel :label_id label-id, :card_id card-id)))
   {:status :ok})
+
+
+;;; ------------------------------------------------------------ Running a Query ------------------------------------------------------------
+
+(defendpoint POST "/:card-id/query"
+  "Run the query associated with a Card."
+  [card-id :as {{:keys [parameters timeout]} :body}]
+  (let [card  (read-check Card card-id)
+        query (assoc (:dataset_query card)
+                :parameters  parameters
+                :constraints dataset-api/query-constraints)]
+    ;; Now run the query!
+    (let [options {:executed-by *current-user-id*
+                   :card-id     card-id}]
+      (qp/dataset-query query options))))
+
 
 (define-routes)

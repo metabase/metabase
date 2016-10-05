@@ -2,8 +2,10 @@
 import React, { Component, PropTypes } from "react";
 import { Link } from "react-router";
 import _ from "underscore";
+import { connect } from "react-redux";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import AdminPaneLayout from "metabase/components/AdminPaneLayout.jsx";
 import MetabaseSettings from "metabase/lib/settings";
 import MetabaseUtils from "metabase/lib/utils";
 import Modal from "metabase/components/Modal.jsx";
@@ -13,9 +15,9 @@ import UserAvatar from "metabase/components/UserAvatar.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 
-import EditUserForm from "./EditUserForm.jsx";
-import UserActionsSelect from "./UserActionsSelect.jsx";
-import UserRoleSelect from "./UserRoleSelect.jsx";
+import EditUserForm from "../components/EditUserForm.jsx";
+import UserActionsSelect from "../components/UserActionsSelect.jsx";
+import UserGroupSelect from "../components/UserGroupSelect.jsx";
 
 export const MODAL_ADD_PERSON = 'MODAL_ADD_PERSON';
 export const MODAL_EDIT_DETAILS = 'MODAL_EDIT_DETAILS';
@@ -27,8 +29,48 @@ export const MODAL_RESET_PASSWORD_EMAIL = 'MODAL_RESET_PASSWORD_EMAIL';
 export const MODAL_USER_ADDED_WITH_INVITE = 'MODAL_USER_ADDED_WITH_INVITE';
 export const MODAL_USER_ADDED_WITH_PASSWORD = 'MODAL_USER_ADDED_WITH_PASSWORD';
 
+import { getUsers, getModal, getGroups } from "../selectors";
+import {
+    createUser,
+    deleteUser,
+    fetchUsers,
+    resetPasswordManually,
+    resetPasswordViaEmail,
+    showModal,
+    updateUser,
+    resendInvite,
+    loadGroups,
+    loadMemberships,
+    createMembership,
+    deleteMembership,
+} from "../people";
 
-export default class AdminPeople extends Component {
+const mapStateToProps = (state, props) => {
+    return {
+        users: getUsers(state, props),
+        modal: getModal(state, props),
+        user: state.currentUser,
+        groups: getGroups(state, props)
+    }
+}
+
+const mapDispatchToProps = {
+    createUser,
+    deleteUser,
+    fetchUsers,
+    resetPasswordManually,
+    resetPasswordViaEmail,
+    showModal,
+    updateUser,
+    resendInvite,
+    loadGroups,
+    loadMemberships,
+    createMembership,
+    deleteMembership
+};
+
+@connect(mapStateToProps, mapDispatchToProps)
+export default class PeopleListingApp extends Component {
 
     constructor(props, context) {
         super(props, context);
@@ -39,40 +81,31 @@ export default class AdminPeople extends Component {
     static propTypes = {
         user: PropTypes.object.isRequired,
         users: PropTypes.object,
+        groups: PropTypes.array,
         modal: PropTypes.object,
         createUser: PropTypes.func.isRequired,
         deleteUser: PropTypes.func.isRequired,
         fetchUsers: PropTypes.func.isRequired,
-        grantAdmin: PropTypes.func.isRequired,
         resetPasswordManually: PropTypes.func.isRequired,
         resetPasswordViaEmail: PropTypes.func.isRequired,
-        revokeAdmin: PropTypes.func.isRequired,
         showModal: PropTypes.func.isRequired,
         updateUser: PropTypes.func.isRequired,
         resendInvite: PropTypes.func.isRequired,
+        loadGroups: PropTypes.func.isRequired,
+        loadMemberships: PropTypes.func.isRequired,
+        createMembership: PropTypes.func.isRequired,
+        deleteMembership: PropTypes.func.isRequired,
     };
 
     async componentDidMount() {
         try {
-            await this.props.fetchUsers();
+            await Promise.all([
+                this.props.fetchUsers(),
+                this.props.loadGroups(),
+                this.props.loadMemberships()
+            ]);
         } catch (error) {
             this.setState({ error });
-        }
-    }
-
-    onRoleChange(user, roleDef) {
-        if (roleDef.id === "user" && user.is_superuser) {
-            // check that this isn't the last admin in the system
-            let admins = _.pick(this.props.users, function(value, key, object) {
-                return value.is_superuser;
-            });
-
-            if (admins && _.keys(admins).length > 1) {
-                this.props.revokeAdmin(user);
-            }
-
-        } else if (roleDef.id === "admin" && !user.is_superuser) {
-            this.props.grantAdmin(user);
         }
     }
 
@@ -153,7 +186,8 @@ export default class AdminPeople extends Component {
                               closeFn={this.onCloseModal}>
                     <EditUserForm
                         buttonText="Add Person"
-                        submitFn={this.onAddPerson.bind(this)} />
+                        submitFn={this.onAddPerson.bind(this)}
+                        groups={this.props.groups}/>
                 </ModalContent>
             </Modal>
         );
@@ -195,7 +229,8 @@ export default class AdminPeople extends Component {
 
                         <div className="Form-actions">
                             <button className="Button Button--primary" onClick={this.onCloseModal}>Done</button>
-                            <span className="pl1">or<a className="link ml1 text-bold" href="" onClick={() => this.props.showModal({type: MODAL_ADD_PERSON})}>Add another person</a></span>
+                            <span className="mx1">or</span>
+                            <a className="link text-bold" onClick={() => this.props.showModal({type: MODAL_ADD_PERSON})}>Add another person</a>
                         </div>
                     </div>
                 </ModalContent>
@@ -216,7 +251,8 @@ export default class AdminPeople extends Component {
 
                         <div className="Form-actions">
                             <button className="Button Button--primary" onClick={this.onCloseModal}>Done</button>
-                            <span className="pl1">or<a className="link ml1 text-bold" href="" onClick={() => this.props.showModal({type: MODAL_ADD_PERSON})}>Add another person</a></span>
+                            <span className="mx1">or</span>
+                            <a className="link text-bold" onClick={() => this.props.showModal({type: MODAL_ADD_PERSON})}>Add another person</a>
                         </div>
                     </div>
                 </ModalContent>
@@ -352,7 +388,7 @@ export default class AdminPeople extends Component {
     }
 
     render() {
-        let { modal, users } = this.props;
+        let { modal, users, groups } = this.props;
         let { error } = this.state;
 
         users = _.values(users).sort((a, b) => (b.date_joined - a.date_joined));
@@ -360,14 +396,11 @@ export default class AdminPeople extends Component {
         return (
             <LoadingAndErrorWrapper loading={!users} error={error}>
             {() =>
-                <div className="wrapper">
-                    { modal ? this.renderModal(modal.type, modal.details) : null }
-
-                    <section className="PageHeader clearfix px2">
-                        <a data-metabase-event="People Admin;Add Person Modal" className="Button Button--primary float-right" href="#" onClick={() => this.props.showModal({type: MODAL_ADD_PERSON})}>Add person</a>
-                        <h2 className="PageTitle">People</h2>
-                    </section>
-
+                <AdminPaneLayout
+                    title="People"
+                    buttonText="Add person"
+                    buttonAction={() => this.props.showModal({type: MODAL_ADD_PERSON})}
+                >
                     <section className="pb4">
                         <table className="ContentTable">
                             <thead>
@@ -375,14 +408,14 @@ export default class AdminPeople extends Component {
                                     <th>Name</th>
                                     <th></th>
                                     <th>Email</th>
-                                    <th>Role</th>
-                                    <th>Last Seen</th>
+                                    <th>Groups</th>
+                                    <th>Last Login</th>
                                     <th></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 { users.map(user =>
-                                <tr>
+                                <tr key={user.id}>
                                     <td><span className="text-white inline-block"><UserAvatar background={(user.is_superuser) ? "bg-purple" : "bg-brand"} user={user} /></span> <span className="ml2 text-bold">{user.common_name}</span></td>
                                     <td>
                                       {user.google_auth ?
@@ -392,9 +425,12 @@ export default class AdminPeople extends Component {
                                     </td>
                                     <td>{user.email}</td>
                                     <td>
-                                        <UserRoleSelect
+                                        <UserGroupSelect
                                             user={user}
-                                            onChangeFn={this.onRoleChange.bind(this)} />
+                                            groups={groups}
+                                            createMembership={this.props.createMembership}
+                                            deleteMembership={this.props.deleteMembership}
+                                        />
                                     </td>
                                     <td>{ user.last_login ? user.last_login.fromNow() : "Never" }</td>
                                     <td className="text-right">
@@ -405,7 +441,8 @@ export default class AdminPeople extends Component {
                             </tbody>
                         </table>
                     </section>
-                </div>
+                    { modal ? this.renderModal(modal.type, modal.details) : null }
+                </AdminPaneLayout>
             }
             </LoadingAndErrorWrapper>
         );

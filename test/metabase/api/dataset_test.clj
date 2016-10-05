@@ -136,7 +136,6 @@
   ;; the second result is checking our QueryExection log to ensure it captured the right details
   [{:card   {:name                   "Dataset Test Card"
              :description            nil
-             :public_perms           0
              :creator                (user-details (fetch-user :rasta))
              :display                "table"
              :query_type             "query"

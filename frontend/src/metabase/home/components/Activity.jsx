@@ -159,11 +159,7 @@ export default class Activity extends Component {
                 if(item.model_exists) {
                     description.summary = (
                         <span>
-                            added the filter
-                            <Link to={Urls.tableRowsQuery(item.database_id, item.table_id, null, item.model_id)} data-metabase-event={"Activity Feed;Header Clicked;Segment -> "+item.topic} className="link text-dark">{item.details.name}</Link>
-                            to the
-                            <Link to={Urls.tableRowsQuery(item.database_id, item.table_id)} data-metabase-event={"Activity Feed;Header Clicked;Table -> "+item.topic} className="link text-dark">{item.table.display_name}</Link>
-                            table
+                            added the filter <Link to={Urls.tableRowsQuery(item.database_id, item.table_id, null, item.model_id)} data-metabase-event={"Activity Feed;Header Clicked;Segment -> "+item.topic} className="link text-dark">{item.details.name}</Link> to the <Link to={Urls.tableRowsQuery(item.database_id, item.table_id)} data-metabase-event={"Activity Feed;Header Clicked;Table -> "+item.topic} className="link text-dark">{item.table.display_name}</Link> table
                         </span>
                     );
                 } else {

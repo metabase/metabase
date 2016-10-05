@@ -10,14 +10,20 @@
 
 (i/defentity Segment :segment)
 
+(defn- perms-objects-set [segment read-or-write]
+  (let [table (or (:table segment)
+                  (db/select-one ['Table :db_id :schema :id] :id (:table_id segment)))]
+    (i/perms-objects-set table read-or-write)))
+
 (u/strict-extend (class Segment)
   i/IEntity
   (merge i/IEntityDefaults
-         {:types           (constantly {:definition :json, :description :clob})
-          :timestamped?    (constantly true)
-          :hydration-keys  (constantly [:segment])
-          :can-read?       (constantly true)
-          :can-write?      i/superuser?}))
+         {:types             (constantly {:definition :json, :description :clob})
+          :timestamped?      (constantly true)
+          :hydration-keys    (constantly [:segment])
+          :perms-objects-set perms-objects-set
+          :can-read?         (partial i/current-user-has-full-permissions? :read)
+          :can-write?        (partial i/current-user-has-full-permissions? :write)}))
 
 
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------
@@ -97,8 +103,8 @@
 
 (defn update-segment!
   "Update an existing `Segment`.
-
    Returns the updated `Segment` or throws an Exception."
+  {:style/indent 0}
   [{:keys [id name description caveats points_of_interest show_in_getting_started definition revision_message]} user-id]
   {:pre [(integer? id)
          (string? name)

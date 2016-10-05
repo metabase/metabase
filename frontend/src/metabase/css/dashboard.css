@@ -203,6 +203,16 @@
   pointer-events: all;
 }
 
+.Dash--editing .DashCard .Visualization-slow-spinner {
+    position: absolute;
+    right: -2px;
+    top: -2px;
+}
+.Dash--editing .DashCard:hover .Visualization-slow-spinner {
+    opacity: 0;
+    transition: opacity .15s linear;
+}
+
 .Dash--editing .DashCard.dragging .DashCard-actions,
 .Dash--editing .DashCard.resizing .DashCard-actions {
     opacity: 0;

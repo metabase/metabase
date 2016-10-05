@@ -45,7 +45,7 @@ class VisualizationError extends Component {
           } else {
               return <VisualizationErrorMessage
                         type="serverError"
-                        title="We\'re experiencing server issues"
+                        title="We're experiencing server issues"
                         message="Try refreshing the page after waiting a minute or two. If the problem persists we'd recommend you contact an admin."
                         action={<EmailAdmin />}
                     />

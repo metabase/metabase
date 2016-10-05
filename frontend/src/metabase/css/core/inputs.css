@@ -27,6 +27,7 @@
   box-shadow: none;
   outline: 0;
   border: none !important;
+  background: transparent;
 }
 
 .input:disabled {

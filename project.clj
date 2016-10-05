@@ -11,7 +11,7 @@
             "generate-sample-dataset" ["with-profile" "+generate-sample-dataset" "run"]
             "h2" ["with-profile" "+h2-shell" "run" "-url" "jdbc:h2:./metabase.db" "-user" "" "-password" "" "-driver" "org.h2.Driver"]}
   :dependencies [[org.clojure/clojure "1.8.0"]
-                 [org.clojure/core.async "0.2.385"]
+                 [org.clojure/core.async "0.2.391"]
                  [org.clojure/core.match "0.3.0-alpha4"]              ; optimized pattern matching library for Clojure
                  [org.clojure/core.memoize "0.5.9"]                   ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
                  [org.clojure/data.csv "0.1.3"]                       ; CSV parsing / generation
@@ -26,7 +26,7 @@
                  [amalloy/ring-gzip-middleware "0.1.3"]               ; Ring middleware to GZIP responses if client can handle it
                  [aleph "0.4.1"]                                      ; Async HTTP library; WebSockets
                  [cheshire "5.6.3"]                                   ; fast JSON encoding (used by Ring JSON middleware)
-                 [clj-http "3.1.0"                                    ; HTTP client
+                 [clj-http "3.3.0"                                    ; HTTP client
                   :exclusions [commons-codec
                                commons-io
                                slingshot]]
@@ -40,34 +40,33 @@
                                ring/ring-core]]
                  [com.draines/postal "2.0.1"]                         ; SMTP library
                  [com.google.apis/google-api-services-bigquery        ; Google BigQuery Java Client Library
-                  "v2-rev313-1.22.0"]
+                  "v2-rev324-1.22.0"]
                  [com.h2database/h2 "1.4.192"]                        ; embedded SQL database
                  [com.mattbertolini/liquibase-slf4j "2.0.0"]          ; Java Migrations lib
                  [com.mchange/c3p0 "0.9.5.2"]                         ; connection pooling library
-                 [com.novemberain/monger "3.0.2"]                     ; MongoDB Driver
+                 [com.novemberain/monger "3.1.0"]                     ; MongoDB Driver
                  [compojure "1.5.1"]                                  ; HTTP Routing library built on Ring
-                 [environ "1.0.3"]                                    ; easy environment management
+                 [environ "1.1.0"]                                    ; easy environment management
                  [hiccup "1.0.5"]                                     ; HTML templating
-                 [honeysql "0.7.0"]                                   ; Transform Clojure data structures to SQL
+                 [honeysql "0.8.1"]                                   ; Transform Clojure data structures to SQL
                  [log4j/log4j "1.2.17"                                ; logging framework
                   :exclusions [javax.mail/mail
                                javax.jms/jms
                                com.sun.jdmk/jmxtools
                                com.sun.jmx/jmxri]]
-                 [medley "0.8.2"]                                     ; lightweight lib of useful functions
+                 [medley "0.8.3"]                                     ; lightweight lib of useful functions
                  [metabase/throttle "1.0.1"]                          ; Tools for throttling access to API endpoints and other code pathways
                  [mysql/mysql-connector-java "5.1.39"]                ; MySQL JDBC driver (don't upgrade to 6.0+ yet -- that's Java 8 only)
                  [net.sf.cssbox/cssbox "4.12"                         ; HTML / CSS rendering
                   :exclusions [org.slf4j/slf4j-api]]
                  [net.sourceforge.jtds/jtds "1.3.1"]                  ; Open Source SQL Server driver
-                 [org.liquibase/liquibase-core "3.5.1"]               ; migration management (Java lib)
+                 [org.liquibase/liquibase-core "3.5.2"]               ; migration management (Java lib)
                  [org.slf4j/slf4j-log4j12 "1.7.21"]                   ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
                  [org.yaml/snakeyaml "1.17"]                          ; YAML parser (required by liquibase)
-                 [org.xerial/sqlite-jdbc "3.8.11.2"]                  ; SQLite driver
+                 [org.xerial/sqlite-jdbc "3.14.2.1"]                  ; SQLite driver
                  [postgresql "9.3-1102.jdbc41"]                       ; Postgres driver
-                 ;[org.clojars.prepor/vertica-jdbc "7.0.1-0"]          ; Vertica driver. This driver is getting a bit outdated...
-                 [io.crate/crate-jdbc "1.13.0"]                       ; Crate JDBC driver
-                 [io.crate/crate-client "0.55.2"]                     ; Crate Java client (used by Crate JDBC)
+                 [io.crate/crate-jdbc "1.13.1"]                       ; Crate JDBC driver
+                 [io.crate/crate-client "0.56.0"]                     ; Crate Java client (used by Crate JDBC)
                  [prismatic/schema "1.1.3"]                           ; Data schema declaration and validation library
                  [ring/ring-jetty-adapter "1.5.0"]                    ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically

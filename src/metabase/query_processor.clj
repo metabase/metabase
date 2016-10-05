@@ -6,6 +6,7 @@
             (schema [core :as s]
                     utils)
             [swiss.arrows :refer [<<-]]
+            [metabase.api.common :refer [*current-user-id*]]
             (metabase [config :as config]
                       [db :as db]
                       [driver :as driver])
@@ -17,6 +18,7 @@
                                       [interface :refer :all]
                                       [macros :as macros]
                                       [parameters :as params]
+                                      [permissions :as perms]
                                       [resolve :as resolve])
             [metabase.util :as u])
   (:import (schema.utils NamedError ValidationError)))
@@ -33,7 +35,7 @@
 
 ;;;  DYNAMIC VARS
 
-(def ^:dynamic *disable-qp-logging*
+(def ^:dynamic ^Boolean *disable-qp-logging*
   "Should we disable logging for the QP? (e.g., during sync we probably want to turn it off to keep logs less cluttered)."
   false)
 
@@ -419,6 +421,13 @@
 
 (defn- pre-log-query [qp] (comp qp log-query))
 
+(defn- pre-check-query-permissions [qp]
+  (fn [query]
+    (when *current-user-id*
+      (perms/check-query-permissions *current-user-id* query))
+    ;; TODO - what should we do if there is no *current-user-id* (for something like a pulse?)
+    (qp query)))
+
 ;; The following are just assertions that check the behavior of the QP. It doesn't make sense to run them on prod because at best they
 ;; just waste CPU cycles and at worst cause a query to fail when it would otherwise succeed.
 ;; TODO - Should we make these test only (as opposed to test / dev)? If so, it would be nice if they could be moved into test namespaces
@@ -517,7 +526,6 @@
 ;;
 ;; Post-processing then happens in order from bottom-to-top; i.e. POST-ANNOTATE gets to modify the results, then LIMIT, then CUMULATIVE-SUM, etc.
 
-
 (defn process-query
   "Process an MBQL structured or native query, and return the result."
   {:style/indent 0}
@@ -542,8 +550,17 @@
             limit
             post-check-results-format
             pre-log-query
+            pre-check-query-permissions
             guard-multiple-calls
             run-query) (assoc query :driver driver)))))
+
+
+(def ^{:arglists '([query])} expand
+  "Expand a QUERY the same way it would normally be done as part of query processing.
+   This is useful for things that need to look at an expanded query, such as permissions checking for Cards."
+  (comp expand-resolve
+        substitute-parameters
+        expand-macros))
 
 
 ;;; +----------------------------------------------------------------------------------------------------+
@@ -572,10 +589,11 @@
 
   Possible caller-options include:
 
-    :executed-by [int]  (user_id of caller)"
+    :executed-by [int]  (User ID of caller)
+    :card-id     [int]  (ID of Card associated with this execution)"
   {:arglists '([query options])}
-  [query {:keys [executed-by]}]
-  {:pre [(integer? executed-by)]}
+  [query {:keys [executed-by card-id]}]
+  {:pre [(integer? executed-by) (u/maybe? integer? card-id)]}
   (let [query-uuid      (str (java.util.UUID/randomUUID))
         query-hash      (hash query)
         query-execution {:uuid              query-uuid
@@ -595,6 +613,7 @@
                          :additional_info   ""
                          :start_time_millis (System/currentTimeMillis)}
         query           (assoc query :info {:executed-by executed-by
+                                            :card-id     card-id
                                             :uuid        query-uuid
                                             :query-hash  query-hash
                                             :query-type  (if (mbql-query? query) "MBQL" "native")})]

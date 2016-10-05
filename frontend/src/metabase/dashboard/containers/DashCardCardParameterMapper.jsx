@@ -19,7 +19,7 @@ import { getIn } from "icepick";
 
 import type { CardObject } from "metabase/meta/types/Card";
 import type { DashCardObject, ParameterId, ParameterObject, ParameterMappingOption, ParameterMappingTarget } from "metabase/meta/types/Dashboard";
-import type { DatabaseId } from "metabase/meta/types/base";
+import type { DatabaseId } from "metabase/meta/types/Database";
 
 const makeMapStateToProps = () => {
     const getParameterMappingOptions = makeGetParameterMappingOptions()

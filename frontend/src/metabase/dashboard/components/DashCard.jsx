@@ -1,7 +1,7 @@
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
-import visualizations from "metabase/visualizations";
+import visualizations, { getVisualizationRaw } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
@@ -14,6 +14,9 @@ import DashCardParameterMapper from "../components/parameters/DashCardParameterM
 import cx from "classnames";
 import _ from "underscore";
 import { getIn } from "icepick";
+
+const ERROR_MESSAGE_GENERIC = "There was a problem displaying this chart.";
+const ERROR_MESSAGE_PERMISSION = "Sorry, you don't have permission to see this card."
 
 export default class DashCard extends Component {
     constructor(props, context) {
@@ -69,7 +72,11 @@ export default class DashCard extends Component {
     render() {
         const { dashcard, dashcardData, cardDurations, parameterValues, isEditing, isEditingParameter, onAddSeries, onRemove } = this.props;
 
-        const cards = [dashcard.card].concat(dashcard.series || []);
+        const mainCard = {
+            ...dashcard.card,
+            visualization_settings: { ...dashcard.card.visualization_settings, ...dashcard.visualization_settings }
+        };
+        const cards = [mainCard].concat(dashcard.series || []);
         const series = cards
             .map(card => ({
                 ...getIn(dashcardData, [dashcard.id, card.id]),
@@ -90,22 +97,16 @@ export default class DashCard extends Component {
             .every(parameterId => parameterMap[parameterId]);
 
         const errors = series.map(s => s.error).filter(e => e);
-        const error = errors[0] || this.state.error;
 
-        let errorMessage;
-        if (error) {
-            if (error.data) {
-                errorMessage = error.data.message;
-            } else if (error.status === 503) {
-                errorMessage = "I'm sorry, the server timed out while asking your question."
-            } else if (typeof error === "string") {
-                errorMessage = error;
-            } else {
-                errorMessage = "Oh snap!  Something went wrong loading this card :sad:";
-            }
+        let errorMessage, errorIcon;
+        if (_.any(errors, e => e && e.status === 403)) {
+            errorMessage = ERROR_MESSAGE_PERMISSION;
+            errorIcon = "key";
+        } else if (errors.length > 0 || this.state.error) {
+            errorMessage = ERROR_MESSAGE_GENERIC;
+            errorIcon = "warning";
         }
 
-        const CardVisualization = visualizations.get(series[0].card.display);
         return (
             <div
                 className={"Card bordered rounded flex flex-column " + cx({
@@ -117,6 +118,7 @@ export default class DashCard extends Component {
                 <Visualization
                     className="flex-full"
                     error={errorMessage}
+                    errorIcon={errorIcon}
                     isSlow={isSlow}
                     expectedDuration={expectedDuration}
                     series={series}
@@ -126,9 +128,9 @@ export default class DashCard extends Component {
                     actionButtons={isEditing && !isEditingParameter ?
                         <DashCardActionButtons
                             series={series}
-                            visualization={CardVisualization}
                             onRemove={onRemove}
                             onAddSeries={onAddSeries}
+                            onUpdateVisualizationSettings={this.props.onUpdateVisualizationSettings}
                         /> : undefined
                     }
                     onUpdateVisualizationSetting={this.props.onUpdateVisualizationSetting}
@@ -139,13 +141,13 @@ export default class DashCard extends Component {
     }
 }
 
-const DashCardActionButtons = ({ series, visualization, onRemove, onAddSeries, onUpdateVisualizationSettings }) =>
+const DashCardActionButtons = ({ series, onRemove, onAddSeries, onUpdateVisualizationSettings }) =>
     <span className="DashCard-actions flex align-center">
-        { visualization.supportsSeries &&
+        { getVisualizationRaw(series).CardVisualization.supportsSeries &&
             <AddSeriesButton series={series} onAddSeries={onAddSeries} />
         }
         { onUpdateVisualizationSettings &&
-            <ChartSettingsButton series={series} onChange={onUpdateVisualizationSettings} />
+            <ChartSettingsButton series={series} onUpdateVisualizationSettings={onUpdateVisualizationSettings} />
         }
         <RemoveButton onRemove={onRemove} />
     </span>
@@ -159,6 +161,7 @@ const ChartSettingsButton = ({ series, onUpdateVisualizationSettings }) =>
         <ChartSettings
             series={series}
             onChange={onUpdateVisualizationSettings}
+            isDashboard
         />
     </ModalWithTrigger>
 

@@ -1,6 +1,6 @@
 /* @flow */
 
-import type { TableId } from "./base";
+import type { TableId } from "./Table";
 
 export type FieldId = number;
 export type SegmentId = number;
