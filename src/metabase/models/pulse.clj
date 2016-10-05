@@ -155,7 +155,7 @@
     (assert (zero? (count (get new-channels nil)))
       "Cannot have channels without a :channel_type attribute")
     ;; for each of our possible channel types call our handler function
-    (doseq [[channel-type _] pulse-channel/channel-types]
+    (doseq [[channel-type] pulse-channel/channel-types]
       (handle-channel channel-type))))
 
 
