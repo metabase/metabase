@@ -14,4 +14,3 @@ databaseChangeLog:
                     deferrable: false
                     initiallyDeferred: false
                     nullable: false
-                  defaultValue: '{}'
