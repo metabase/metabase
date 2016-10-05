@@ -39,8 +39,12 @@
 
 (defn- with-ops-group [f]
   (fn []
-    (tu/with-temp* [PermissionsGroup           [group {:name "Operations"}]
-                    PermissionsGroupMembership [_     {:group_id (u/get-id group), :user_id (test-users/user->id :lucky)}]]
+    (tu/with-temp* [PermissionsGroup [group {:name "Operations"}]]
+      ;; add lucky to Ops group
+      (db/insert! PermissionsGroupMembership
+        :group_id (u/get-id group)
+        :user_id  (test-users/user->id :lucky))
+      ;; cool, g2g <3
       (binding [*ops-group* group]
         (f)))))
 
