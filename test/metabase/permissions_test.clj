@@ -347,12 +347,13 @@
 (defn- expensive-venues-segment [segment-name table]
   (segment segment-name table (ql/query
                                 (ql/source-table (u/get-id table))
-                                (ql/filter (ql/= (u/get-id (field table :price)) "4")))))
+                                (ql/filter (ql/= (ql/field-id (u/get-id (field table :price)))
+                                                 4)))))
 
 (defn- todays-users-segment [segment-name table]
   (segment segment-name table (ql/query
                                 (ql/source-table (u/get-id table))
-                                (ql/filter (ql/= (u/get-id (field table :last_login))
+                                (ql/filter (ql/= (ql/field-id (u/get-id (field table :last_login)))
                                                  (ql/relative-datetime :current))))))
 
 (defn- with-segments [f]
@@ -521,7 +522,7 @@
   (not= ((test-users/user->client username) :get (str "card/" (u/get-id card)))
         "You don't have permissions to do that."))
 
-;; make API calls for all 8 at once since loading the test data is slow, etc.
+;; admin can fetch all 8 cards
 (expect-with-test-data true  (GET-card-id :crowberto *card:db1-count-of-venues*))
 (expect-with-test-data true  (GET-card-id :crowberto *card:db1-count-of-users*))
 (expect-with-test-data true  (GET-card-id :crowberto *card:db1-count-of-checkins*))
@@ -531,6 +532,7 @@
 (expect-with-test-data true  (GET-card-id :crowberto *card:db2-count-of-checkins*))
 (expect-with-test-data true  (GET-card-id :crowberto *card:db2-sql-count-of-users*))
 
+;; regular user can only fetch Cards for DB 1
 (expect-with-test-data true  (GET-card-id :rasta *card:db1-count-of-venues*))
 (expect-with-test-data true  (GET-card-id :rasta *card:db1-count-of-users*))
 (expect-with-test-data true  (GET-card-id :rasta *card:db1-count-of-checkins*))
@@ -540,6 +542,7 @@
 (expect-with-test-data false (GET-card-id :rasta *card:db2-count-of-checkins*))
 (expect-with-test-data false (GET-card-id :rasta *card:db2-sql-count-of-users*))
 
+;; ops user can fetch DB 1 cards of DB 2 Venues cards
 (expect-with-test-data true  (GET-card-id :lucky *card:db1-count-of-venues*))
 (expect-with-test-data true  (GET-card-id :lucky *card:db1-count-of-users*))
 (expect-with-test-data true  (GET-card-id :lucky *card:db1-count-of-checkins*))
