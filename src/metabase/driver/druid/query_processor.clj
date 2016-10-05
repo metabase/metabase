@@ -554,12 +554,12 @@
 
 (defmulti ^:private post-process query-type-dispatch-fn)
 
-(defmethod post-process ::select     [_ results] (->> results first :result :events (map :event)))
-(defmethod post-process ::total      [_ results] (map :result results))
-(defmethod post-process ::topN       [_ results] (-> results first :result))
-(defmethod post-process ::groupBy    [_ results] (map :event results))
+(defmethod post-process ::select  [_ results] (->> results first :result :events (map :event)))
+(defmethod post-process ::total   [_ results] (map :result results))
+(defmethod post-process ::topN    [_ results] (-> results first :result))
+(defmethod post-process ::groupBy [_ results] (map :event results))
 
-(defmethod post-process ::grouped-timeseries [_ results]
+(defmethod post-process ::timeseries [_ results]
   (for [event results]
     (conj {:timestamp (:timestamp event)} (:result event))))
 
