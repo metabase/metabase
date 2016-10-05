@@ -8,7 +8,6 @@ module.exports = function(config) {
         basePath: '../',
         files: [
             'test/metabase-bootstrap.js',
-            '../node_modules/angular-mocks/angular-mocks.js',
             'test/unit/**/*.spec.js'
         ],
         exclude: [

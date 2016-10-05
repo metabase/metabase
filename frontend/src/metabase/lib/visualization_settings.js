@@ -1,5 +1,4 @@
 import _  from "underscore";
-import crossfilter from "crossfilter";
 
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -45,17 +44,8 @@ function columnsAreValid(colNames, data, filter = () => true) {
     , true);
 }
 
-function getSeriesTitles([{ data: { rows, cols } }], vizSettings) {
-    const seriesDimension = vizSettings["graph.dimensions"][1];
-    if (seriesDimension != null) {
-        let seriesIndex = _.findIndex(cols, (col) => col.name === seriesDimension);
-        return crossfilter(rows).dimension(d => d[seriesIndex]).group().all().map(v => v.key);
-    } else {
-        return vizSettings["graph.metrics"].map(name => {
-            let col = _.findWhere(cols, { name });
-            return col && getFriendlyName(col);
-        });
-    }
+function getSeriesTitles(series, vizSettings) {
+    return series.map(s => s.card.name);
 }
 
 function getDefaultColumns(series) {
@@ -138,11 +128,20 @@ import { normal } from "metabase/lib/colors";
 const isAnyField = () => true;
 
 const SETTINGS = {
+    "card.title": {
+        title: "Title",
+        widget: ChartSettingInput,
+        getDefault: (series) => series.length === 1 ? series[0].card.name : null,
+        dashboard: true,
+        useRawSeries: true
+    },
     "graph._dimension_filter": {
-        getDefault: ([{ card }]) => card.display === "scatter" ? isAnyField : isDimension
+        getDefault: ([{ card }]) => card.display === "scatter" ? isAnyField : isDimension,
+        useRawSeries: true
     },
     "graph._metric_filter": {
-        getDefault: ([{ card }]) => card.display === "scatter" ? isNumeric : isMetric
+        getDefault: ([{ card }]) => card.display === "scatter" ? isNumeric : isMetric,
+        useRawSeries: true
     },
     "graph.dimensions": {
         section: "Data",
@@ -163,7 +162,9 @@ const SETTINGS = {
             };
         },
         readDependencies: ["graph._dimension_filter", "graph._metric_filter"],
-        writeDependencies: ["graph.metrics"]
+        writeDependencies: ["graph.metrics"],
+        dashboard: false,
+        useRawSeries: true
     },
     "graph.metrics": {
         section: "Data",
@@ -184,7 +185,9 @@ const SETTINGS = {
             };
         },
         readDependencies: ["graph._dimension_filter", "graph._metric_filter"],
-        writeDependencies: ["graph.dimensions"]
+        writeDependencies: ["graph.dimensions"],
+        dashboard: false,
+        useRawSeries: true
     },
     "scatter.bubble": {
         section: "Data",
@@ -201,7 +204,9 @@ const SETTINGS = {
                 onRemove: vizSettings["scatter.bubble"] ? () => onChange(null) : null
             };
         },
-        writeDependencies: ["graph.dimensions"]
+        writeDependencies: ["graph.dimensions"],
+        dashboard: false,
+        useRawSeries: true
     },
     "line.interpolate": {
         section: "Display",
@@ -310,7 +315,7 @@ const SETTINGS = {
     "graph.colors": {
         section: "Display",
         getTitle: ([{ card: { display } }]) =>
-            capitalize(display === "scatter" ? "bubble" : display) + " Colors",
+            capitalize(display === "scatter" ? "bubble" : display) + " colors",
         widget: ChartSettingColorsPicker,
         readDependencies: ["graph.dimensions", "graph.metrics"],
         getDefault: ([{ card, data }], vizSettings) => {
@@ -378,7 +383,8 @@ const SETTINGS = {
         section: "Axes",
         title: "Use a split y-axis when necessary",
         widget: ChartSettingToggle,
-        default: true
+        default: true,
+        getHidden: (series) => series.length < 2
     },
     "graph.x_axis.labels_enabled": {
         section: "Labels",
@@ -390,7 +396,10 @@ const SETTINGS = {
         section: "Labels",
         title: "X-axis label",
         widget: ChartSettingInput,
-        getHidden: (series, vizSettings) => vizSettings["graph.x_axis.labels_enabled"] === false
+        getHidden: (series, vizSettings) =>
+            vizSettings["graph.x_axis.labels_enabled"] === false,
+        getDefault: (series, vizSettings) =>
+            series.length === 1 ? getFriendlyName(series[0].data.cols[0]) : null
     },
     "graph.y_axis.labels_enabled": {
         section: "Labels",
@@ -402,7 +411,10 @@ const SETTINGS = {
         section: "Labels",
         title: "Y-axis label",
         widget: ChartSettingInput,
-        getHidden: (series, vizSettings) => vizSettings["graph.y_axis.labels_enabled"] === false
+        getHidden: (series, vizSettings) =>
+            vizSettings["graph.y_axis.labels_enabled"] === false,
+        getDefault: (series, vizSettings) =>
+            series.length === 1 ? getFriendlyName(series[0].data.cols[1]) : null
     },
     "pie.dimension": {
         section: "Data",
@@ -652,6 +664,10 @@ function getSetting(id, vizSettings, series) {
         getSetting(dependentId, vizSettings, series);
     }
 
+    if (settingDef.useRawSeries && series._raw) {
+        series = series._raw;
+    }
+
     try {
         if (settingDef.getValue) {
             return vizSettings[id] = settingDef.getValue(series, vizSettings);
@@ -678,7 +694,7 @@ function getSetting(id, vizSettings, series) {
 
 function getSettingIdsForSeries(series) {
     const [{ card }] = series;
-    const prefixes = SETTINGS_PREFIXES_BY_CHART_TYPE[card.display] || [];
+    const prefixes = (SETTINGS_PREFIXES_BY_CHART_TYPE[card.display] || []).concat("card.");
     return Object.keys(SETTINGS).filter(id => _.any(prefixes, (p) => id.startsWith(p)))
 }
 
@@ -700,6 +716,9 @@ function getSettingWidget(id, vizSettings, series, onChangeSettings) {
         }
         onChangeSettings(newSettings)
     }
+    if (settingDef.useRawSeries && series._raw) {
+        series = series._raw;
+    }
     return {
         ...settingDef,
         id: id,
@@ -715,9 +734,12 @@ function getSettingWidget(id, vizSettings, series, onChangeSettings) {
     };
 }
 
-export function getSettingsWidgets(series, onChangeSettings) {
+export function getSettingsWidgets(series, onChangeSettings, isDashboard = false) {
     const vizSettings = getSettings(series);
     return getSettingIdsForSeries(series).map(id =>
         getSettingWidget(id, vizSettings, series, onChangeSettings)
-    ).filter(widget => widget.widget && !widget.hidden);
+    ).filter(widget =>
+        widget.widget && !widget.hidden &&
+        (widget.dashboard === undefined || widget.dashboard === isDashboard)
+    );
 }
