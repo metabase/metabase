@@ -2,6 +2,7 @@ import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
 import { formatValue } from "metabase/lib/formatting";
+import { isNumeric } from "metabase/lib/schema_metadata";
 import Icon from "metabase/components/Icon.jsx";
 import IconBorder from "metabase/components/IconBorder.jsx";
 
@@ -12,7 +13,7 @@ const BORDER_RADIUS = 5;
 export default class Progress extends Component {
     static displayName = "Progress";
     static identifier = "progress";
-    static iconName = "number";
+    static iconName = "progress";
 
     static minSize = { width: 3, height: 3 };
 
@@ -21,6 +22,9 @@ export default class Progress extends Component {
     }
 
     static checkRenderable(cols, rows) {
+        if (!isNumeric(cols[0])) {
+            throw new Error("Progress visualization requires a number.");
+        }
     }
 
     componentDidMount() {

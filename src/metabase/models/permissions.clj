@@ -309,41 +309,46 @@
       (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" (u/get-id group-or-id) revoked))
       (db/cascade-delete! Permissions where))))
 
-(defn- revoke-permissions!
-  "Revoke permissions for Group with GROUP-ID to object with PATH-COMPONENTS."
-  [group-id & path-components]
-  (delete-related-permissions! group-id (apply object-path path-components)))
+(defn revoke-permissions!
+  "Revoke permissions for GROUP-OR-ID to object with PATH-COMPONENTS."
+  [group-or-id & path-components]
+  (delete-related-permissions! group-or-id (apply object-path path-components)))
 
-(defn- grant-permissions!
-  "Grant permissions to Group with GROUP-ID to an object."
-  ([group-id db-id schema & more]
-   (grant-permissions! group-id (apply object-path db-id schema more)))
-  ([group-id path]
+(defn grant-permissions!
+  "Grant permissions to GROUP-OR-ID to an object."
+  ([group-or-id db-id schema & more]
+   (grant-permissions! group-or-id (apply object-path db-id schema more)))
+  ([group-or-id path]
    (try
-     (log/debug (u/format-color 'green "Granting permissions for group %d: %s" group-id path))
+     (log/debug (u/format-color 'green "Granting permissions for group %d: %s" (u/get-id group-or-id) path))
      (db/insert! Permissions
-       :group_id group-id
+       :group_id (u/get-id group-or-id)
        :object   path)
      ;; on some occasions through weirdness we might accidentally try to insert a key that's already been inserted
      (catch Throwable e
        (log/error (u/format-color 'red "Failed to grant permissions: %s" (.getMessage e)))))))
 
+(defn revoke-native-permissions!
+  "Revoke all native query permissions for GROUP-OR-ID to database with DATABASE-ID."
+  [group-or-id database-id]
+  (delete-related-permissions! group-or-id (native-readwrite-path database-id)))
 
-(defn- revoke-native-permissions!     [group-id database-id] (delete-related-permissions! group-id (native-readwrite-path database-id)))
-(defn- grant-native-read-permissions! [group-id database-id] (grant-permissions!          group-id (native-read-path      database-id)))
+(defn grant-native-read-permissions!
+  "Grant native *read* permissions for GROUP-OR-ID for database with DATABASE-ID."
+  [group-or-id database-id]
+  (grant-permissions! group-or-id (native-read-path database-id)))
 
 (defn grant-native-readwrite-permissions!
-  "Grant full readwrite permissions for group with GROUP-ID to database with DATABASE-ID."
-  [group-id database-id]
-  {:pre [(integer? group-id) (integer? database-id)]}
-  (grant-permissions! group-id (native-readwrite-path database-id)))
+  "Grant full readwrite permissions for GROUP-OR-ID to database with DATABASE-ID."
+  [group-or-id database-id]
+  (grant-permissions! group-or-id (native-readwrite-path database-id)))
 
-(defn- revoke-db-schema-permissions!
+(defn revoke-db-schema-permissions!
   "Remove all permissions entires for a DB and any child objects.
    This does *not* revoke native permissions; use `revoke-native-permssions!` to do that."
-  [group-id database-id]
+  [group-or-id database-id]
   ;; TODO - if permissions for this DB are DB root entries like `/db/1/` won't this end up removing our native perms?
-  (delete-related-permissions! group-id (object-path database-id)
+  (delete-related-permissions! group-or-id (object-path database-id)
     [:not= :object (native-readwrite-path database-id)]
     [:not= :object (native-read-path database-id)]))
 
