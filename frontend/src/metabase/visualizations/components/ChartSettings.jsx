@@ -6,6 +6,7 @@ import _ from "underscore";
 import Visualization from "metabase/visualizations/components/Visualization.jsx"
 import { getSettingsWidgets } from "metabase/lib/visualization_settings";
 import MetabaseAnalytics from "metabase/lib/analytics";
+import { getVisualizationTransformed } from "metabase/visualizations";
 
 const ChartSettingsTab = ({name, active, onClick}) =>
   <a
@@ -71,32 +72,37 @@ class ChartSettings extends Component {
         this.props.onClose();
     }
 
-    getSeries() {
-        return assocIn(this.props.series, [0, "card", "visualization_settings"], this.state.settings);
+    getChartTypeName() {
+        let { CardVisualization } = getVisualizationTransformed(this.props.series);
+        switch (CardVisualization.identifier) {
+            case "table": return "table";
+            case "scalar": return "number";
+            case "funnel": return "funnel";
+            default: return "chart";
+        }
     }
-
-    getChartTypeName(){
-      switch(this.props.series[0].card.display){
-        case "table":
-          return "table";
-        case "scalar":
-          return "number";
-        default:
-          return "chart";
-      }
-    }
-
 
     render () {
-        const { onClose } = this.props;
+        let { series, onClose, isDashboard } = this.props;
 
-        const series = this.getSeries();
+        series = assocIn(series, [0, "card", "visualization_settings"], this.state.settings);
+
+        const transformed = getVisualizationTransformed(series);
+        series = transformed.series;
 
         const tabs = {};
-        for (let widget of getSettingsWidgets(series, this.onChangeSettings)) {
+        for (let widget of getSettingsWidgets(series, this.onChangeSettings, isDashboard)) {
             tabs[widget.section] = tabs[widget.section] || [];
             tabs[widget.section].push(widget);
         }
+
+        // Move settings from the "undefined" section in the first tab
+        if (tabs["undefined"] && Object.values(tabs).length > 1) {
+            let extra = tabs["undefined"];
+            delete tabs["undefined"];
+            Object.values(tabs)[0].unshift(...extra);
+        }
+
         const tabNames = Object.keys(tabs);
         const currentTab = this.state.currentTab || tabNames[0];
         const widgets = tabs[currentTab];
@@ -118,7 +124,8 @@ class ChartSettings extends Component {
                       <Visualization
                           className="spread"
                           series={series}
-                          isEditing={true}
+                          isEditing
+                          isDashboard
                           onUpdateVisualizationSetting={this.onUpdateVisualizationSetting}
                       />
                   </div>

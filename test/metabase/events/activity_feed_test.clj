@@ -37,7 +37,7 @@
    :model_id    (:id card)
    :database_id nil
    :table_id    nil
-   :details     {:name "My Cool Card", :description nil, :public_perms 0}}
+   :details     {:name "My Cool Card", :description nil}}
   (with-temp-activities
     (process-activity-event {:topic :card-create, :item card})
     (db/select-one [Activity :topic :user_id :model :model_id :database_id :table_id :details]
@@ -53,7 +53,7 @@
    :model_id    (:id card)
    :database_id nil
    :table_id    nil
-   :details     {:name "My Cool Card", :description nil, :public_perms 0}}
+   :details     {:name "My Cool Card", :description nil}}
   (with-temp-activities
     (process-activity-event {:topic :card-update, :item card})
     (db/select-one [Activity :topic :user_id :model :model_id :database_id :table_id :details]
@@ -69,7 +69,7 @@
    :model_id    (:id card)
    :database_id nil
    :table_id    nil
-   :details     {:name "My Cool Card", :description nil, :public_perms 0}}
+   :details     {:name "My Cool Card", :description nil}}
   (with-temp-activities
     (process-activity-event {:topic :card-delete, :item card})
     (db/select-one [Activity :topic :user_id :model :model_id :database_id :table_id :details]
@@ -85,7 +85,7 @@
    :model_id    (:id dashboard)
    :database_id nil
    :table_id    nil
-   :details     {:name "My Cool Dashboard", :description nil, :public_perms 0}}
+   :details     {:name "My Cool Dashboard", :description nil}}
   (with-temp-activities
     (process-activity-event {:topic :dashboard-create, :item dashboard})
     (db/select-one [Activity :topic :user_id :model :model_id :database_id :table_id :details]
@@ -101,7 +101,7 @@
    :model_id    (:id dashboard)
    :database_id nil
    :table_id    nil
-   :details     {:name "My Cool Dashboard", :description nil, :public_perms 0}}
+   :details     {:name "My Cool Dashboard", :description nil}}
   (with-temp-activities
     (process-activity-event {:topic :dashboard-delete, :item dashboard})
     (db/select-one [Activity :topic :user_id :model :model_id :database_id :table_id :details]
@@ -121,10 +121,8 @@
    :table_id    nil
    :details     {:name         "My Cool Dashboard"
                  :description  nil
-                 :public_perms 0
                  :dashcards    [{:description  (:description card)
                                  :name         (:name card)
-                                 :public_perms (:public_perms card)
                                  :id           (:id dashcard)
                                  :card_id      (:id card)}]}}
   (with-temp-activities
@@ -149,10 +147,8 @@
    :table_id    nil
    :details     {:name         "My Cool Dashboard"
                  :description  nil
-                 :public_perms 0
                  :dashcards    [{:description  (:description card)
                                  :name         (:name card)
-                                 :public_perms (:public_perms card)
                                  :id           (:id dashcard)
                                  :card_id      (:id card)}]}}
   (with-temp-activities
@@ -244,8 +240,7 @@
    :model_id    (:id pulse)
    :database_id nil
    :table_id    nil
-   :details     {:name         (:name pulse)
-                 :public_perms 2}}
+   :details     {:name (:name pulse)}}
   (with-temp-activities
     (process-activity-event {:topic :pulse-create, :item pulse})
     (db/select-one [Activity :topic :user_id :model :model_id :database_id :table_id :details]
@@ -261,8 +256,7 @@
    :model_id    (:id pulse)
    :database_id nil
    :table_id    nil
-   :details     {:name         (:name pulse)
-                 :public_perms 2}}
+   :details     {:name (:name pulse)}}
   (with-temp-activities
     (process-activity-event {:topic :pulse-delete, :item pulse})
     (db/select-one [Activity :topic :user_id :model :model_id :database_id :table_id :details]

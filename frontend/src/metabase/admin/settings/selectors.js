@@ -132,7 +132,8 @@ const SECTIONS = [
                 key: "metabot-enabled",
                 display_name: "Metabot",
                 type: "boolean",
-                defaultValue: "true",
+                // TODO: why do we have "defaultValue" in addition to "default" in the backend?
+                defaultValue: false,
                 required: true,
                 autoFocus: false
             },
@@ -183,14 +184,17 @@ export const getSections = createSelector(
             let sectionSettings = section.settings.map(function(setting) {
                 const apiSetting = settingsByKey[setting.key][0];
                 if (apiSetting) {
-                    apiSetting.placeholder = apiSetting.default;
-                    return _.extend(apiSetting, setting);
+                    return {
+                        placeholder: apiSetting.default,
+                        ...apiSetting,
+                        ...setting
+                    };
                 }
             });
-
-            let updatedSection = _.clone(section);
-            updatedSection.settings = sectionSettings;
-            return updatedSection;
+            return {
+                ...section,
+                settings: sectionSettings
+            };
         });
     }
 );

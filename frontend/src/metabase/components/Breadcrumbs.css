@@ -1,6 +1,5 @@
 :root {
     --breadcrumbs-color: #BFC1C2;
-    --breadcrumbs-padding: 2.075em;
     --breadcrumb-page-color: #636060;
     --breadcrumb-divider-spacing: 0.75em;
     /* taken from Sidebar.css, should probably factor them out into variables */
@@ -11,8 +10,6 @@
 :local(.breadcrumbs) {
     display: flex;
     align-items: center;
-    padding-top: var(--breadcrumbs-padding);
-    padding-bottom: var(--breadcrumbs-padding);
     color: var(--breadcrumbs-color);
 }
 

@@ -9,7 +9,6 @@ const Card = new AngularResourceProxy("Card", ["get"]);
 export function createCard(name = null) {
     return {
         name: name,
-        public_perms: 0,
         display: "table",
         visualization_settings: {},
         dataset_query: {}

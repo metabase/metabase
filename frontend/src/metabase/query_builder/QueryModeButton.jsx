@@ -21,16 +21,17 @@ export default class QueryModeButton extends Component {
     static propTypes = {
         mode: PropTypes.string.isRequired,
         allowNativeToQuery: PropTypes.bool,
+        allowQueryToNative: PropTypes.bool,
         nativeForm: PropTypes.object,
         onSetMode: PropTypes.func.isRequired
     };
 
     static defaultProps = {
-        allowNativeToQuery: false
+        allowNativeToQuery: false,
     }
 
     render() {
-        const { allowNativeToQuery, mode, nativeForm, onSetMode, tableMetadata } = this.props;
+        const { allowQueryToNative, allowNativeToQuery, mode, nativeForm, onSetMode, tableMetadata } = this.props;
 
         // determine the type to switch to based on the type
         var targetType = (mode === "query") ? "native" : "query";
@@ -41,7 +42,7 @@ export default class QueryModeButton extends Component {
         // maybe switch up the icon based on mode?
         let onClick = null;
         let tooltip = "Not Supported";
-        if (mode === "query") {
+        if (mode === "query" && allowQueryToNative) {
             onClick = nativeForm ? () => this.setState({isOpen: true}) : () => onSetMode("native");
             tooltip = nativeForm ? `View the ${nativeQueryName}` : `Switch to ${nativeQueryName}`;
         } else if (mode === "native" && allowNativeToQuery) {

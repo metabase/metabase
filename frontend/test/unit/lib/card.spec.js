@@ -12,7 +12,6 @@ describe('card', () => {
         it("should return a new card", () => {
             expect(createCard()).toEqual({
                 name: null,
-                public_perms: 0,
                 display: "table",
                 visualization_settings: {},
                 dataset_query: {},
@@ -22,7 +21,6 @@ describe('card', () => {
         it("should set the name if supplied", () => {
             expect(createCard("something")).toEqual({
                 name: "something",
-                public_perms: 0,
                 display: "table",
                 visualization_settings: {},
                 dataset_query: {},

@@ -4,13 +4,13 @@
             (cheshire factory
                       [generate :refer [add-encoder encode-str encode-nil]])
             monger.json ; Monger provides custom JSON encoders for Cheshire if you load this namespace -- see http://clojuremongodb.info/articles/integration.html
-            [metabase.api.common :refer [*current-user* *current-user-id* *is-superuser?*]]
+            [metabase.api.common :refer [*current-user* *current-user-id* *is-superuser?* *current-user-permissions-set*]]
             (metabase [config :as config]
                       [db :as db])
             (metabase.models [interface :as models]
                              [session :refer [Session]]
                              [setting :refer [defsetting]]
-                             [user :refer [User]])
+                             [user :refer [User], :as user])
             [metabase.util :as u])
   (:import com.fasterxml.jackson.core.JsonGenerator))
 
@@ -88,16 +88,19 @@
   (vec (concat [User :is_active :google_auth] (models/default-fields User))))
 
 (defn bind-current-user
-  "Middleware that binds `metabase.api.common/*current-user*` and `*current-user-id*`
+  "Middleware that binds `metabase.api.common/*current-user*`, `*current-user-id*`, `*is-superuser?*`, and `*current-user-permissions-set*`.
 
-   *  `*current-user-id*` int ID or nil of user associated with request
-   *  `*current-user*`    delay that returns current user (or nil) from DB"
+   *  `*current-user-id*`             int ID or nil of user associated with request
+   *  `*current-user*`                delay that returns current user (or nil) from DB
+   *  `*is-superuser?*`               Boolean stating whether current user is a superuser.
+   *  `current-user-permissions-set*` delay that returns the set of permissions granted to the current user from DB"
   [handler]
   (fn [request]
     (if-let [current-user-id (:metabase-user-id request)]
-      (binding [*current-user-id* current-user-id
-                *is-superuser?*   (:is-superuser? request)
-                *current-user*    (delay (db/select-one current-user-fields, :id current-user-id))]
+      (binding [*current-user-id*              current-user-id
+                *is-superuser?*                (:is-superuser? request)
+                *current-user*                 (delay (db/select-one current-user-fields, :id current-user-id))
+                *current-user-permissions-set* (delay (user/permissions-set current-user-id))]
         (handler request))
       (handler request))))
 

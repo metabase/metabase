@@ -6,7 +6,7 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 
 import ChartSettings from "metabase/visualizations/components/ChartSettings.jsx";
 
-import visualizations from "metabase/visualizations";
+import visualizations, { getVisualizationRaw } from "metabase/visualizations";
 
 import cx from "classnames";
 
@@ -31,12 +31,12 @@ export default class VisualizationSettings extends React.Component {
 
     renderChartTypePicker() {
         let { result, card } = this.props;
-        let visualization = visualizations.get(card.display);
+        let { CardVisualization } = getVisualizationRaw([{ card, data: result.data }]);
 
         var triggerElement = (
             <span className="px2 py1 text-bold cursor-pointer text-default flex align-center">
-                <Icon name={visualization.iconName} size={12} />
-                {visualization.displayName}
+                <Icon name={CardVisualization.iconName} size={12} />
+                {CardVisualization.displayName}
                 <Icon className="ml1" name="chevrondown" size={8} />
             </span>
         );
@@ -58,7 +58,8 @@ export default class VisualizationSettings extends React.Component {
                                 key={index}
                                 className={cx('p2 flex align-center cursor-pointer bg-brand-hover text-white-hover', {
                                     'ChartType--selected': vizType === card.display,
-                                    'ChartType--notSensible': !(result && result.data && viz.isSensible(result.data.cols, result.data.rows))
+                                    'ChartType--notSensible': !(result && result.data && viz.isSensible(result.data.cols, result.data.rows)),
+                                    'hide': viz.hidden
                                 })}
                                 onClick={this.setDisplay.bind(null, vizType)}
                             >
@@ -69,21 +70,6 @@ export default class VisualizationSettings extends React.Component {
                     </ul>
                 </PopoverWithTrigger>
             </div>
-        );
-    }
-
-    renderVisualizationSettings() {
-        let { card } = this.props;
-        let visualization = visualizations.get(card.display);
-        return (
-            visualization.settings && visualization.settings.map((VisualizationSetting, index) =>
-                <VisualizationSetting
-                    key={index}
-                    settings={card.visualization_settings}
-                    onUpdateVisualizationSetting={this.props.onUpdateVisualizationSetting}
-                    onUpdateVisualizationSettings={this.props.onUpdateVisualizationSettings}
-                />
-            )
         );
     }
 
@@ -102,7 +88,6 @@ export default class VisualizationSettings extends React.Component {
                             onChange={this.props.onUpdateVisualizationSettings}
                         />
                     </ModalWithTrigger>
-                    {this.renderVisualizationSettings()}
                 </div>
             );
         } else {

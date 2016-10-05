@@ -88,13 +88,3 @@
    "US/Pacific"
    "GMT"
    "UTC"])
-
-(def ^:const perms-none      "Integer used to signify neither permission to read nor to write." 0)
-(def ^:const perms-read      "Integer used to signify public read permissions."                 1)
-(def ^:const perms-readwrite "Integer used to signify public read/write permissions."           2)
-
-(def ^:const permissions
-  "Sequence of maps describing each permissions level."
-  [{:id perms-none,      :name "None"},
-   {:id perms-read,      :name "Read Only"},
-   {:id perms-readwrite, :name "Read & Write"}])

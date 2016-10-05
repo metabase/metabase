@@ -25,11 +25,16 @@ export default class Icon extends Component {
         }
 
         const props = { ...icon.attrs, ...this.props };
+        for (const prop of ["width", "height", "size", "scale"]) {
+            if (typeof props[prop] === "string") {
+                props[prop] = parseInt(props[prop], 10);
+            }
+        }
         if (props.size != null) {
             props.width = props.size;
             props.height = props.size;
         }
-        if (props.scale != null) {
+        if (props.scale != null && props.width != null && props.height != null) {
             props.width *= props.scale;
             props.height *= props.scale;
         }
