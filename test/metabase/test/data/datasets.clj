@@ -49,8 +49,9 @@
 ;; # Helper Macros
 
 (def ^:private ^:const default-engine
-  (if (contains? test-engines :h2) :h2
-      (first test-engines)))
+  (if (contains? test-engines :h2)
+    :h2
+    (first test-engines)))
 
 (def ^:dynamic *engine*
   "Keyword name of the engine that we're currently testing against. Defaults to `:h2`."

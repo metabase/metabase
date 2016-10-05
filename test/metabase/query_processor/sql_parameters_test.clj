@@ -7,7 +7,7 @@
             [metabase.models.table :as table]
             [metabase.query-processor :as qp]
             [metabase.query-processor.sql-parameters :refer :all]
-            [metabase.query-processor-test :refer [engines-that-support first-row format-rows-by]]
+            [metabase.query-processor-test.util :refer [engines-that-support first-row format-rows-by]]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
             [metabase.test.data.generic-sql :as generic-sql]

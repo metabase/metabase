@@ -3,15 +3,13 @@
    There architecture is different enough that we can't test them along with our 'normal' DBs in `query-procesor-test`."
   (:require [expectations :refer :all]
             [metabase.query-processor.expand :as ql]
-            [metabase.query-processor-test :refer [format-rows-by rows first-row]]
+            [metabase.query-processor.interface :as qpi]
+            [metabase.query-processor-test.util :refer :all]
             [metabase.test.data :as data]
             (metabase.test.data [dataset-definitions :as defs]
                                 [datasets :as datasets]
                                 [interface :as i])
             [metabase.util :as u]))
-
-(def ^:private ^:const event-based-dbs
-  #{:druid})
 
 (def ^:private flattened-db-def
   "The normal test-data DB definition as a flattened, single-table DB definition.
@@ -22,7 +20,7 @@
 (defn- load-event-based-db-data!
   {:expectations-options :before-run}
   []
-  (doseq [engine event-based-dbs]
+  (doseq [engine timeseries-engines]
     (datasets/with-engine-when-testing engine
       (data/do-with-temp-db @flattened-db-def (constantly nil)))))
 
@@ -36,19 +34,19 @@
   [& body]
   `(do-with-flattened-dbdef (fn [] ~@body)))
 
-(defmacro ^:private expect-with-timeseries-dbs
+#_(defmacro ^:private expect-with-timeseries-dbs
   {:style/indent 0}
   [expected actual]
-  `(datasets/expect-with-engines event-based-dbs
+  `(datasets/expect-with-engines timeseries-engines
      (with-flattened-dbdef ~expected)
      (with-flattened-dbdef ~actual)))
 
-(defn- data [results]
-  (when-let [data (or (:data results)
-                      (println (u/pprint-to-str results)))]
-    (-> data
-        (select-keys [:columns :rows])
-        (update :rows vec))))
+;; NOCOMMIT
+(defmacro ^:private expect-with-timeseries-dbs
+  {:style/indent 0}
+  [& _]
+  nil)
+
 
 ;;; # Tests
 
@@ -709,3 +707,87 @@
   (rows (data/run-query checkins
           (ql/aggregation (ql/max $venue_latitude))
           (ql/breakout $venue_price))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------------+
+;;; |                                                     EXPRESSIONS                                                      |
+;;; +----------------------------------------------------------------------------------------------------------------------+
+
+(defn- sort-by-id [results]
+  (sort-by (comp #(Integer/parseInt %) first)
+           results))
+
+;; Do a basic query including an expression
+(datasets/expect-with-engines (timeseries-engines-that-support :expressions)
+  [["1" "The Misfit Restaurant + Bar" "2" 4.0 "2014-04-07T07:00:00.000Z"]
+   ["2" "Bludso's BBQ"                "2" 4.0 "2014-09-18T07:00:00.000Z"]
+   ["3" "Philippe the Original"       "1" 3.0 "2014-09-15T07:00:00.000Z"]
+   ["4" "Wurstküche"                  "2" 4.0 "2014-03-11T07:00:00.000Z"]
+   ["5" "Hotel Biron"                 "3" 5.0 "2013-05-05T07:00:00.000Z"]]
+  (->> (rows (data/run-query checkins
+               (ql/fields $id $venue_name $venue_price)
+               (ql/expressions {:my-cool-new-field (ql/+ $venue_price 2)})))
+       sort-by-id
+       (take 5)))
+
+;; Make sure FLOATING POINT division is done
+(datasets/expect-with-engines (timeseries-engines-that-support :expressions)
+  [["1" "The Misfit Restaurant + Bar" "2" 1.0 "2014-04-07T07:00:00.000Z"]
+   ["2" "Bludso's BBQ"                "2" 1.0 "2014-09-18T07:00:00.000Z"]
+   ["3" "Philippe the Original"       "1" 0.5 "2014-09-15T07:00:00.000Z"]] ; 1 / 2 should be 0.5, not 0
+  (->> (rows (data/run-query checkins
+               (ql/fields $id $venue_name $venue_price)
+               (ql/expressions {:my-cool-new-field (ql// $venue_price 2)})))
+       sort-by-id
+       (take 3)))
+
+;; Can we do NESTED EXPRESSIONS ?
+(datasets/expect-with-engines (timeseries-engines-that-support :expressions)
+   [[1 "Red Medicine"           4 10.0646 -165.374 3 3.0]
+    [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 2.0]
+    [3 "The Apple Pan"         11 34.0406 -118.428 2 2.0]]
+   (->> (rows (data/run-query checkins
+                (ql/expressions {:wow (ql/- (ql/* $venue_price 2) (ql/+ $venue_price 0))})))
+        sort-by-id
+        (take 3)))
+
+;; Can we have MULTIPLE EXPRESSIONS?
+(datasets/expect-with-engines (timeseries-engines-that-support :expressions)
+  [["1" "The Misfit Restaurant + Bar" "2" 4.0 11.0 "2014-04-07T07:00:00.000Z"]
+   ["2" "Bludso's BBQ"                "2" 4.0 12.0 "2014-09-18T07:00:00.000Z"]
+   ["3" "Philippe the Original"       "1" 3.0 13.0 "2014-09-15T07:00:00.000Z"]]
+  (->> (rows (data/run-query checkins
+               (ql/fields $id $venue_name $venue_price)
+               (ql/expressions {:my-cool-new-field-1 (ql/+ $venue_price 2)
+                                :my-cool-new-field-2 (ql/+ $id 10)})))
+       sort-by-id
+       (take 3)))
+
+;; Can we refer to expressions inside a FIELDS clause?
+#_(datasets/expect-with-engines (timeseries-engines-that-support :expressions)
+  [[4] [4] [5]]
+  (rows (data/run-query checkins
+          (ql/expressions {:x (ql/+ $venue_price $id)})
+          (ql/fields (ql/expression :x))
+          (ql/limit 3)
+          (ql/order-by (ql/asc $id)))))
+
+;; Can we refer to expressions inside an ORDER BY clause?
+#_(datasets/expect-with-engines (timeseries-engines-that-support :expressions)
+  [[100 "Mohawk Bend"         46 34.0777 -118.265 2 #_102.0 102.5]
+   [99  "Golden Road Brewing" 10 34.1505 -118.274 2 101.0]
+   [98  "Lucky Baldwin's Pub"  7 34.1454 -118.149 2 100.0]]
+  (format-rows-by [int str int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int float]
+    (rows (data/run-query checkins
+            (ql/expressions {:x (ql/+ $venue_price $id)})
+            (ql/limit 3)
+            (ql/order-by (ql/desc (ql/expression :x)))))))
+
+;; Can we AGGREGATE + BREAKOUT by an EXPRESSION?
+#_(datasets/expect-with-engines (timeseries-engines-that-support :expressions)
+  [[2 22] [4 59] [6 13] [8 6]]
+  (format-rows-by [int int]
+    (rows (data/run-query checkins
+            (ql/expressions {:x (ql/* $venue_price 2.0)})
+            (ql/aggregation (ql/count))
+            (ql/breakout (ql/expression :x))))))

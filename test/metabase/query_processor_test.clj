@@ -8,37 +8,18 @@
                       [driver :as driver])
             (metabase.models [field :refer [Field]]
                              [table :refer [Table]])
-            [metabase.query-processor :refer :all]
+            [metabase.query-processor :refer :all, :as qp]
             (metabase.query-processor [expand :as ql]
                                       [interface :as qpi])
+            [metabase.query-processor-test.util :refer :all]
             [metabase.test.data :refer :all]
             (metabase.test.data [dataset-definitions :as defs]
                                 [datasets :as datasets :refer [*driver* *engine*]]
                                 [interface :refer [create-database-definition], :as i])
             [metabase.test.util :as tu]
-            [metabase.query-processor :as qp]
             [metabase.util :as u]))
 
 ;;; ------------------------------------------------------------ Helper Fns + Macros ------------------------------------------------------------
-
-;; Event-Based DBs aren't tested here, but in `event-query-processor-test` instead.
-(def ^:private ^:const timeseries-engines #{:druid})
-
-;; TODO - Since this is used in other test namespaces it might make sense to move it somewhere more general
-(def ^:const non-timeseries-engines
-  "Set of engines for non-timeseries DBs (i.e., every driver except `:druid`)."
-  (set/difference datasets/all-valid-engines timeseries-engines))
-
-;; TODO - this should be moved somewhere more general as well
-(defn engines-that-support
-  "Set of engines that support a given FEATURE."
-  [feature]
-  (set (for [engine non-timeseries-engines
-             :when  (contains? (driver/features (driver/engine->driver engine)) feature)]
-         engine)))
-
-(defn- engines-that-dont-support [feature]
-  (set/difference non-timeseries-engines (engines-that-support feature)))
 
 (defmacro ^:private expect-with-non-timeseries-dbs
   {:style/indent 0}
@@ -261,46 +242,7 @@
   [m]
   (update-in m [:data :native_form] boolean))
 
-(defn format-rows-by
-  "Format the values in result ROWS with the fns at the corresponding indecies in FORMAT-FNS.
-   ROWS can be a sequence or any of the common map formats we expect in QP tests.
-
-     (format-rows-by [int str double] [[1 1 1]]) -> [[1 \"1\" 1.0]]
-
-   By default, does't call fns on `nil` values; pass a truthy value as optional param FORMAT-NIL-VALUES? to override this behavior."
-  {:style/indent 1}
-  ([format-fns rows]
-   (format-rows-by format-fns (not :format-nil-values?) rows))
-  ([format-fns format-nil-values? rows]
-   (cond
-     (= (:status rows) :failed) (throw (ex-info (:error rows) rows))
-
-     (:data rows) (update-in rows [:data :rows] (partial format-rows-by format-fns))
-     (:rows rows) (update    rows :rows         (partial format-rows-by format-fns))
-     :else        (vec (for [row rows]
-                         (vec (for [[f v] (partition 2 (interleave format-fns row))]
-                                (when (or v format-nil-values?)
-                                  (try (f v)
-                                       (catch Throwable e
-                                         (printf "(%s %s) failed: %s" f v (.getMessage e))
-                                         (throw e)))))))))))
-
 (def ^:private formatted-venues-rows (partial format-rows-by [int str int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int]))
-
-
-(defn rows
-  "Return the result rows from query results, or throw an Exception if they're missing."
-  {:style/indent 0}
-  [results]
-  (vec (or (-> results :data :rows)
-           (println (u/pprint-to-str 'red results))
-           (throw (Exception. "Error!")))))
-
-(defn first-row
-  "Return the first row in the results of a query, or throw an Exception if they're missing."
-  {:style/indent 0}
-  [results]
-  (first (rows results)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------------+
@@ -408,7 +350,8 @@
   (->> (run-query categories
          (ql/page {:page 1, :items 5})
          (ql/order-by (ql/asc $id)))
-       rows (format-rows-by [int str])))
+       rows
+       (format-rows-by [int str])))
 
 ;; get the second page
 (expect-with-non-timeseries-dbs
@@ -420,7 +363,8 @@
   (->> (run-query categories
          (ql/page {:page 2, :items 5})
          (ql/order-by (ql/asc $id)))
-       rows (format-rows-by [int str])))
+       rows
+       (format-rows-by [int str])))
 
 
 ;;; ------------------------------------------------------------ "ORDER_BY" CLAUSE ------------------------------------------------------------
@@ -442,7 +386,8 @@
                       (ql/desc $user_id)
                       (ql/asc $id))
          (ql/limit 10))
-       rows (format-rows-by [int int int])))
+       rows
+       (format-rows-by [int int int])))
 
 
 ;;; ------------------------------------------------------------ "FILTER" CLAUSE ------------------------------------------------------------
@@ -480,7 +425,8 @@
          (run-query places
            (ql/aggregation (ql/count))
            (ql/filter (ql/= $liked false))))
-       rows (format-rows-by [int])))
+       rows
+       (format-rows-by [int])))
 
 (defn- ->bool [x] ; SQLite returns 0/1 for false/true;
   (condp = x      ; Redshift returns nil/true.
@@ -499,7 +445,8 @@
          (run-query places
            (ql/filter (ql/= $liked true))
            (ql/order-by (ql/asc $id))))
-       rows (format-rows-by [int str ->bool] :format-nil-values)))
+       rows
+       (format-rows-by [int str ->bool] :format-nil-values)))
 
 ;;; filter != false
 (expect-with-non-timeseries-dbs
@@ -509,7 +456,8 @@
          (run-query places
            (ql/filter (ql/!= $liked false))
            (ql/order-by (ql/asc $id))))
-       rows (format-rows-by [int str ->bool] :format-nil-values)))
+       rows
+       (format-rows-by [int str ->bool] :format-nil-values)))
 
 ;;; filter != true
 (expect-with-non-timeseries-dbs
@@ -518,7 +466,8 @@
          (run-query places
            (ql/filter (ql/!= $liked true))
            (ql/order-by (ql/asc $id))))
-       rows (format-rows-by [int str ->bool] :format-nil-values)))
+       rows
+       (format-rows-by [int str ->bool] :format-nil-values)))
 
 
 ;;; FILTER -- "BETWEEN", single subclause (neither "AND" nor "OR")
@@ -1095,7 +1044,8 @@
            (ql/aggregation (ql/count))
            (ql/breakout $timestamp)
            (ql/limit 10)))
-       rows (format-rows-by [identity int])))
+       rows
+       (format-rows-by [identity int])))
 
 
 ;; +------------------------------------------------------------------------------------------------------------------------+
@@ -1121,7 +1071,8 @@
            (ql/breakout $city_id->cities.name)
            (ql/order-by (ql/desc (ql/aggregate-field 0)))
            (ql/limit 10)))
-       rows (format-rows-by [str int])))
+       rows
+       (format-rows-by [str int])))
 
 
 ;; Number of Tupac sightings in the Expa office
@@ -1133,7 +1084,8 @@
          (run-query sightings
            (ql/aggregation (ql/count))
            (ql/filter (ql/= $category_id->categories.id 8))))
-       rows (format-rows-by [int])))
+       rows
+       (format-rows-by [int])))
 
 
 ;; THE 10 MOST RECENT TUPAC SIGHTINGS (!)
@@ -1155,7 +1107,8 @@
            (ql/fields $id $category_id->categories.name)
            (ql/order-by (ql/desc $timestamp))
            (ql/limit 10)))
-       rows (format-rows-by [int str])))
+       rows
+       (format-rows-by [int str])))
 
 
 ;; 1. Check that we can order by Foreign Keys
@@ -1181,7 +1134,8 @@
                         (ql/desc $category_id->categories.name)
                         (ql/asc $id))
            (ql/limit 10)))
-       rows (map butlast) (map reverse) (format-rows-by [int int int]))) ; drop timestamps. reverse ordering to make the results columns order match order_by
+       rows
+       (map butlast) (map reverse) (format-rows-by [int int int]))) ; drop timestamps. reverse ordering to make the results columns order match order_by
 
 
 ;; Check that trying to use a Foreign Key fails for Mongo
@@ -1218,7 +1172,8 @@
            (ql/filter (ql/= $tips.venue.name "Kyle's Low-Carb Grill"))
            (ql/order-by (ql/asc $id))
            (ql/limit 10)))
-       rows (mapv (fn [[id _ _ _ {venue-name :name}]] [id venue-name]))))
+       rows
+       (mapv (fn [[id _ _ _ {venue-name :name}]] [id venue-name]))))
 
 ;;; Nested Field in ORDER
 ;; Let's get all the tips Kyle posted on Twitter sorted by tip.venue.name
@@ -1332,7 +1287,8 @@
            (ql/aggregation (ql/count))
            (ql/breakout $tips.source.mayor)
            (ql/order-by (ql/asc (ql/aggregate-field 0)))))
-       rows (format-rows-by [identity int])))
+       rows
+       (format-rows-by [identity int])))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------------+
@@ -1380,7 +1336,8 @@
          (ql/filter (ql/and (ql/!= $price 3)
                             (ql/or (ql/= $price 1)
                                    (ql/= $price 2)))))
-       rows (format-rows-by [int])))
+       rows
+       (format-rows-by [int])))
 
 
 ;;; ------------------------------------------------------------ = / != with multiple values ------------------------------------------------------------
@@ -1390,14 +1347,16 @@
   (->> (run-query venues
          (ql/aggregation (ql/count))
          (ql/filter (ql/= $price 1 2)))
-       rows (format-rows-by [int])))
+       rows
+       (format-rows-by [int])))
 
 (expect-with-non-timeseries-dbs
   [[19]]
   (->> (run-query venues
          (ql/aggregation (ql/count))
          (ql/filter (ql/!= $price 1 2)))
-       rows (format-rows-by [int])))
+       rows
+       (format-rows-by [int])))
 
 
 ;; +-------------------------------------------------------------------------------------------------------------+
@@ -1418,7 +1377,8 @@
            (ql/aggregation (ql/count))
            (ql/breakout (ql/datetime-field $timestamp unit))
            (ql/limit 10)))
-       rows (format-rows-by [->long-if-number int])))
+       rows
+       (format-rows-by [->long-if-number int])))
 
 (expect-with-non-timeseries-dbs
   (cond
