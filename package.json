@@ -32,7 +32,7 @@
     "isomorphic-fetch": "^2.2.1",
     "js-cookie": "^2.1.2",
     "leaflet": "^0.7.7",
-    "moment": "^2.12.0",
+    "moment": "2.14.1",
     "node-libs-browser": "^0.5.3",
     "normalizr": "^2.0.0",
     "number-to-locale-string": "^1.0.1",
