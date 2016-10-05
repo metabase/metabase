@@ -43,6 +43,7 @@ export const ADD_CARD_TO_DASH = "metabase/dashboard/ADD_CARD_TO_DASH";
 export const REMOVE_CARD_FROM_DASH = "metabase/dashboard/REMOVE_CARD_FROM_DASH";
 export const SET_DASHCARD_ATTRIBUTES = "metabase/dashboard/SET_DASHCARD_ATTRIBUTES";
 export const SET_DASHCARD_VISUALIZATION_SETTING = "metabase/dashboard/SET_DASHCARD_VISUALIZATION_SETTING";
+export const SET_DASHCARD_VISUALIZATION_SETTINGS = "metabase/dashboard/SET_DASHCARD_VISUALIZATION_SETTINGS";
 export const UPDATE_DASHCARD_ID = "metabase/dashboard/UPDATE_DASHCARD_ID"
 export const SAVE_DASHCARD = "metabase/dashboard/SAVE_DASHCARD";
 
@@ -238,7 +239,15 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
                     let result = await DashboardApi.addcard({ dashId, cardId: dc.card_id });
                     dispatch(updateDashcardId(dc.id, result.id));
                     // mark isAdded because addcard doesn't record the position
-                    return { ...result, col: dc.col, row: dc.row, sizeX: dc.sizeX, sizeY: dc.sizeY, series: dc.series, parameter_mappings: dc.parameter_mappings, isAdded: true }
+                    return {
+                        ...result,
+                        col: dc.col, row: dc.row,
+                        sizeX: dc.sizeX, sizeY: dc.sizeY,
+                        series: dc.series,
+                        parameter_mappings: dc.parameter_mappings,
+                        visualization_settings: dc.visualization_settings,
+                        isAdded: true
+                    }
                 } else {
                     return dc;
                 }
@@ -257,9 +266,9 @@ export const saveDashboard = createThunkAction(SAVE_DASHBOARD, function(dashId) 
 
         // reposition the cards
         if (_.some(updatedDashcards, (dc) => dc.isDirty || dc.isAdded)) {
-            let cards = updatedDashcards.map(({ id, card_id, row, col, sizeX, sizeY, series, parameter_mappings }) =>
+            let cards = updatedDashcards.map(({ id, card_id, row, col, sizeX, sizeY, series, parameter_mappings, visualization_settings }) =>
                 ({
-                    id, card_id, row, col, sizeX, sizeY, series,
+                    id, card_id, row, col, sizeX, sizeY, series, visualization_settings,
                     parameter_mappings: parameter_mappings && parameter_mappings.filter(mapping =>
                         // filter out mappings for deleted paramters
                         _.findWhere(dashboard.parameters, { id: mapping.parameter_id }) &&
@@ -342,6 +351,7 @@ export const revertToRevision = createThunkAction(REVERT_TO_REVISION, function({
 });
 
 export const setDashCardVisualizationSetting = createAction(SET_DASHCARD_VISUALIZATION_SETTING);
+export const setDashCardVisualizationSettings = createAction(SET_DASHCARD_VISUALIZATION_SETTINGS);
 
 export const setEditingParameterId = createAction(SET_EDITING_PARAMETER_ID);
 export const setParameterMapping = createThunkAction(SET_PARAMETER_MAPPING, (parameter_id, dashcard_id, card_id, target) =>
@@ -411,8 +421,15 @@ const dashcards = handleActions({
     [SET_DASHCARD_VISUALIZATION_SETTING]: {
         next: (state, { payload: { id, key, value } }) =>
             i.chain(state)
-                .assocIn([id, "card", "visualization_settings", key], value)
-                .assocIn([id, "card", "isDirty"], true)
+                .assocIn([id, "visualization_settings", key], value)
+                .assocIn([id, "isDirty"], true)
+                .value()
+    },
+    [SET_DASHCARD_VISUALIZATION_SETTINGS]: {
+        next: (state, { payload: { id, settings } }) =>
+            i.chain(state)
+                .assocIn([id, "visualization_settings"], settings)
+                .assocIn([id, "isDirty"], true)
                 .value()
     },
     [ADD_CARD_TO_DASH]: (state, { payload: dashcard }) => ({

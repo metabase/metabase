@@ -87,10 +87,11 @@
    parameter_mappings [ArrayOfMaps]}
   (write-check Dashboard id)
   (read-check Card cardId)
-  (let [defaults       {:dashboard_id id
-                        :card_id      cardId
-                        :creator_id   *current-user-id*
-                        :series       (or series [])}
+  (let [defaults       {:dashboard_id           id
+                        :card_id                cardId
+                        :visualization_settings {}
+                        :creator_id             *current-user-id*
+                        :series                 (or series [])}
         dashboard-card (-> (merge dashboard-card defaults)
                            (update :series #(filter identity (map :id %))))]
     (let-500 [result (create-dashboard-card! dashboard-card)]

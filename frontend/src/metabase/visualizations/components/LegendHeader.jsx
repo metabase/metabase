@@ -30,7 +30,8 @@ export default class LegendHeader extends Component {
     };
 
     static defaultProps = {
-        series: []
+        series: [],
+        settings: {}
     };
 
     componentDidMount() {

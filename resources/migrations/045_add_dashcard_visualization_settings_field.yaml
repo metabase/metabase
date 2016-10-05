@@ -1,0 +1,16 @@
+databaseChangeLog:
+  - changeSet:
+      id: 45
+      author: tlrobinson
+      changes:
+        - addColumn:
+            tableName: report_dashboardcard
+            columns:
+              - column:
+                  name: visualization_settings
+                  type: text
+                  constraints:
+                    nullable: true
+                    deferrable: false
+                    initiallyDeferred: false
+                    nullable: false
