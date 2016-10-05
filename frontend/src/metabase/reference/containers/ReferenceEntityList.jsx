@@ -60,7 +60,7 @@ const createListItem = (entity, index, section) =>
                 `/card/${entity.id}`
             }
             icon={section.type === 'questions' ?
-                (visualizations.get(entity.display)||{}).iconName :
+                visualizations.get(entity.display).iconName :
                 section.icon
             }
         />

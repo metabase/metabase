@@ -1,7 +1,7 @@
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
-import visualizations from "metabase/visualizations";
+import visualizations, { getVisualizationRaw } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
@@ -72,7 +72,11 @@ export default class DashCard extends Component {
     render() {
         const { dashcard, dashcardData, cardDurations, parameterValues, isEditing, isEditingParameter, onAddSeries, onRemove } = this.props;
 
-        const cards = [dashcard.card].concat(dashcard.series || []);
+        const mainCard = {
+            ...dashcard.card,
+            visualization_settings: { ...dashcard.card.visualization_settings, ...dashcard.visualization_settings }
+        };
+        const cards = [mainCard].concat(dashcard.series || []);
         const series = cards
             .map(card => ({
                 ...getIn(dashcardData, [dashcard.id, card.id]),
@@ -103,7 +107,6 @@ export default class DashCard extends Component {
             errorIcon = "warning";
         }
 
-        const CardVisualization = visualizations.get(series[0].card.display);
         return (
             <div
                 className={"Card bordered rounded flex flex-column " + cx({
@@ -125,9 +128,9 @@ export default class DashCard extends Component {
                     actionButtons={isEditing && !isEditingParameter ?
                         <DashCardActionButtons
                             series={series}
-                            visualization={CardVisualization}
                             onRemove={onRemove}
                             onAddSeries={onAddSeries}
+                            onUpdateVisualizationSettings={this.props.onUpdateVisualizationSettings}
                         /> : undefined
                     }
                     onUpdateVisualizationSetting={this.props.onUpdateVisualizationSetting}
@@ -138,13 +141,13 @@ export default class DashCard extends Component {
     }
 }
 
-const DashCardActionButtons = ({ series, visualization, onRemove, onAddSeries, onUpdateVisualizationSettings }) =>
+const DashCardActionButtons = ({ series, onRemove, onAddSeries, onUpdateVisualizationSettings }) =>
     <span className="DashCard-actions flex align-center">
-        { visualization.supportsSeries &&
+        { getVisualizationRaw(series).CardVisualization.supportsSeries &&
             <AddSeriesButton series={series} onAddSeries={onAddSeries} />
         }
         { onUpdateVisualizationSettings &&
-            <ChartSettingsButton series={series} onChange={onUpdateVisualizationSettings} />
+            <ChartSettingsButton series={series} onUpdateVisualizationSettings={onUpdateVisualizationSettings} />
         }
         <RemoveButton onRemove={onRemove} />
     </span>
@@ -158,6 +161,7 @@ const ChartSettingsButton = ({ series, onUpdateVisualizationSettings }) =>
         <ChartSettings
             series={series}
             onChange={onUpdateVisualizationSettings}
+            isDashboard
         />
     </ModalWithTrigger>
 

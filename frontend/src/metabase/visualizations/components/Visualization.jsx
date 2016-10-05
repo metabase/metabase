@@ -8,8 +8,9 @@ import Tooltip from "metabase/components/Tooltip.jsx";
 
 import { duration } from "metabase/lib/formatting";
 
-import visualizations from "metabase/visualizations";
+import { getVisualizationTransformed } from "metabase/visualizations";
 import { getSettings } from "metabase/lib/visualization_settings";
+import { isSameSeries } from "metabase/visualizations/lib/utils";
 
 import { assoc, getIn } from "icepick";
 import _ from "underscore";
@@ -47,9 +48,24 @@ export default class Visualization extends Component {
         onUpdateVisualizationSetting: (...args) => console.warn("onUpdateVisualizationSetting", args)
     };
 
-    componentWillReceiveProps() {
-        // clear the error so we can try to render again
-        this.setState({ error: null });
+    componentWillMount() {
+        this.transform(this.props);
+    }
+
+    componentWillReceiveProps(newProps) {
+        if (isSameSeries(newProps.series, this.props.series)) {
+            // clear the error so we can try to render again
+            this.setState({ error: null });
+        } else {
+            this.transform(newProps);
+        }
+    }
+
+    transform(newProps) {
+        this.setState({
+            error: null,
+            ...getVisualizationTransformed(newProps.series)
+        });
     }
 
     onHoverChange(hovered) {
@@ -73,8 +89,8 @@ export default class Visualization extends Component {
     }
 
     render() {
-        const { series, actionButtons, className, isDashboard, width, errorIcon, isSlow, expectedDuration, replacementContent } = this.props;
-        const CardVisualization = visualizations.get(series[0].card.display);
+        const { actionButtons, className, isDashboard, width, errorIcon, isSlow, expectedDuration, replacementContent } = this.props;
+        const { series, CardVisualization } = this.state;
         const small = width < 330;
 
         let error = this.props.error || this.state.error;
@@ -106,19 +122,21 @@ export default class Visualization extends Component {
             noResults = getIn(series, [0, "data", "rows", "length"]) === 0;
         }
 
-        let extra;
-        if (!loading) {
-            extra = actionButtons;
-        } else if (isSlow) {
-            extra = <LoadingSpinner className={isSlow === "usually-slow" ? "text-gold" : "text-slate"} size={18} />
-        }
+        let extra = (
+            <span className="flex align-center">
+                {isSlow && !loading &&
+                    <LoadingSpinner size={18} className={cx("Visualization-slow-spinner", isSlow === "usually-slow" ? "text-gold" : "text-slate")}/>
+                }
+                {actionButtons}
+            </span>
+        );
 
         return (
             <div className={cx(className, "flex flex-column")}>
-                { isDashboard && (loading || error || !CardVisualization.noHeader) || replacementContent ?
+                { isDashboard && (settings["card.title"] || extra) && (loading || error || !CardVisualization.noHeader) || replacementContent ?
                     <div className="p1 flex-no-shrink">
                         <LegendHeader
-                            series={series}
+                            series={[{ card: { name: settings["card.title"] }}]}
                             actionButtons={extra}
                             settings={settings}
                         />

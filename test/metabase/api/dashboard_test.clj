@@ -108,23 +108,24 @@
    :updated_at              true
    :created_at              true
    :parameters              []
-   :ordered_cards           [{:sizeX              2
-                              :sizeY              2
-                              :col                nil
-                              :row                nil
-                              :updated_at         true
-                              :created_at         true
-                              :parameter_mappings []
-                              :card               {:name                   "Dashboard Test Card"
-                                                   :description            nil
-                                                   :creator_id             (user->id :rasta)
-                                                   :creator                (user-details (fetch-user :rasta))
-                                                   :display                "table"
-                                                   :query_type             nil
-                                                   :dataset_query          {}
-                                                   :visualization_settings {}
-                                                   :archived               false}
-                              :series              []}]}
+   :ordered_cards           [{:sizeX                  2
+                              :sizeY                  2
+                              :col                    nil
+                              :row                    nil
+                              :updated_at             true
+                              :created_at             true
+                              :parameter_mappings     []
+                              :visualization_settings {}
+                              :card                   {:name                   "Dashboard Test Card"
+                                                       :description            nil
+                                                       :creator_id             (user->id :rasta)
+                                                       :creator                (user-details (fetch-user :rasta))
+                                                       :display                "table"
+                                                       :query_type             nil
+                                                       :dataset_query          {}
+                                                       :visualization_settings {}
+                                                       :archived               false}
+                              :series                 []}]}
   ;; fetch a dashboard WITH a dashboard card on it
   (tu/with-temp* [Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
                   Card          [{card-id :id}      {:name "Dashboard Test Card"}]
@@ -183,45 +184,49 @@
 ;; ## POST /api/dashboard/:id/cards
 ;; simple creation with no additional series
 (expect
-  [{:sizeX              2
-    :sizeY              2
-    :col                4
-    :row                4
-    :series             []
-    :parameter_mappings [{:card-id 123, :hash "abc", :target "foo"}]
-    :created_at         true
-    :updated_at         true}
-   [{:sizeX              2
-     :sizeY              2
-     :col                4
-     :row                4
-     :parameter_mappings [{:card-id 123, :hash "abc", :target "foo"}]}]]
+  [{:sizeX                  2
+    :sizeY                  2
+    :col                    4
+    :row                    4
+    :series                 []
+    :parameter_mappings     [{:card-id 123, :hash "abc", :target "foo"}]
+    :visualization_settings {}
+    :created_at             true
+    :updated_at             true}
+   [{:sizeX                  2
+     :sizeY                  2
+     :col                    4
+     :row                    4
+     :parameter_mappings     [{:card-id 123, :hash "abc", :target "foo"}]
+     :visualization_settings {}}]]
   (tu/with-temp* [Dashboard [{dashboard-id :id}]
                   Card      [{card-id :id}]]
-    [(-> ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dashboard-id) {:cardId             card-id
-                                                                                      :row                4
-                                                                                      :col                4
-                                                                                      :parameter_mappings [{:card-id 123, :hash "abc", :target "foo"}]})
+    [(-> ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dashboard-id) {:cardId                 card-id
+                                                                                      :row                    4
+                                                                                      :col                    4
+                                                                                      :parameter_mappings     [{:card-id 123, :hash "abc", :target "foo"}]
+                                                                                      :visualization_settings {}})
          (dissoc :id :dashboard_id :card_id)
          (update :created_at #(not (nil? %)))
          (update :updated_at #(not (nil? %))))
      (map (partial into {})
-          (db/select [DashboardCard :sizeX :sizeY :col :row :parameter_mappings], :dashboard_id dashboard-id))]))
+          (db/select [DashboardCard :sizeX :sizeY :col :row :parameter_mappings :visualization_settings], :dashboard_id dashboard-id))]))
 
 ;; new dashboard card w/ additional series
 (expect
-  [{:sizeX              2
-    :sizeY              2
-    :col                4
-    :row                4
-    :parameter_mappings []
-    :series             [{:name                   "Series Card"
-                          :description            nil
-                          :display                "table"
-                          :dataset_query          {}
-                          :visualization_settings {}}]
-    :created_at         true
-    :updated_at         true}
+  [{:sizeX                  2
+    :sizeY                  2
+    :col                    4
+    :row                    4
+    :parameter_mappings     []
+    :visualization_settings {}
+    :series                 [{:name                   "Series Card"
+                              :description            nil
+                              :display                "table"
+                              :dataset_query          {}
+                              :visualization_settings {}}]
+    :created_at             true
+    :updated_at             true}
    [{:sizeX 2
      :sizeY 2
      :col   4
@@ -260,43 +265,47 @@
 
 ;; ## PUT /api/dashboard/:id/cards
 (expect
-  [[{:sizeX              2
-     :sizeY              2
-     :col                nil
-     :row                nil
-     :series             []
-     :parameter_mappings []
-     :created_at         true
-     :updated_at         true}
-    {:sizeX              2
-     :sizeY              2
-     :col                nil
-     :row                nil
-     :parameter_mappings []
-     :series             []
-     :created_at         true
-     :updated_at         true}]
+  [[{:sizeX                  2
+     :sizeY                  2
+     :col                    nil
+     :row                    nil
+     :series                 []
+     :parameter_mappings     []
+     :visualization_settings {}
+     :created_at             true
+     :updated_at             true}
+    {:sizeX                  2
+     :sizeY                  2
+     :col                    nil
+     :row                    nil
+     :parameter_mappings     []
+     :visualization_settings {}
+     :series                 []
+     :created_at             true
+     :updated_at             true}]
    {:status "ok"}
-   [{:sizeX              4
-     :sizeY              2
-     :col                0
-     :row                0
-     :parameter_mappings []
-     :series             [{:name                   "Series Card"
-                           :description            nil
-                           :display                :table
-                           :dataset_query          {}
-                           :visualization_settings {}}]
-     :created_at         true
-     :updated_at         true}
-    {:sizeX              1
-     :sizeY              1
-     :col                1
-     :row                3
-     :parameter_mappings []
-     :series             []
-     :created_at         true
-     :updated_at         true}]]
+   [{:sizeX                  4
+     :sizeY                  2
+     :col                    0
+     :row                    0
+     :parameter_mappings     []
+     :visualization_settings {}
+     :series                 [{:name                   "Series Card"
+                               :description            nil
+                               :display                :table
+                               :dataset_query          {}
+                               :visualization_settings {}}]
+     :created_at             true
+     :updated_at             true}
+    {:sizeX                  1
+     :sizeY                  1
+     :col                    1
+     :row                    3
+     :parameter_mappings     []
+     :visualization_settings {}
+     :series                 []
+     :created_at             true
+     :updated_at             true}]]
   ;; fetch a dashboard WITH a dashboard card on it
   (tu/with-temp* [Dashboard     [{dashboard-id :id}]
                   Card          [{card-id :id}]

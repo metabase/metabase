@@ -163,7 +163,7 @@
                                      :id                 $
                                      :updated_at         $
                                      :name               "test-data"
-                                     :native_permissions "readwrite"
+                                     :native_permissions "write"
                                      :is_sample          false
                                      :is_full_sync       true
                                      :description        nil
@@ -176,7 +176,7 @@
                                  :id                 $
                                  :updated_at         $
                                  :name               $
-                                 :native_permissions "readwrite"
+                                 :native_permissions "write"
                                  :is_sample          false
                                  :is_full_sync       true
                                  :description        nil
@@ -197,7 +197,7 @@
                 :id                 $
                 :updated_at         $
                 :name               $
-                :native_permissions "readwrite"
+                :native_permissions "write"
                 :is_sample          false
                 :is_full_sync       true
                 :description        nil
@@ -214,7 +214,7 @@
                                        :id                 $
                                        :updated_at         $
                                        :name               "test-data"
-                                       :native_permissions "readwrite"
+                                       :native_permissions "write"
                                        :is_sample          false
                                        :is_full_sync       true
                                        :description        nil

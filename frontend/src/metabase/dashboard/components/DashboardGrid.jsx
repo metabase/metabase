@@ -8,7 +8,7 @@ import Modal from "metabase/components/Modal.jsx";
 import RemoveFromDashboardModal from "./RemoveFromDashboardModal.jsx";
 import AddSeriesModal from "./AddSeriesModal.jsx";
 
-import visualizations from "metabase/visualizations";
+import { getVisualizationRaw } from "metabase/visualizations";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 import {
@@ -90,9 +90,9 @@ export default class DashboardGrid extends Component {
     }
 
     getLayoutForDashCard(dashcard) {
-        let Viz = visualizations.get(dashcard.card.display);
+        let { CardVisualization } = getVisualizationRaw([{ card: dashcard.card }]);
         let initialSize = DEFAULT_CARD_SIZE;
-        let minSize = Viz.minSize || DEFAULT_CARD_SIZE;
+        let minSize = CardVisualization.minSize || DEFAULT_CARD_SIZE;
         return ({
             i: String(dashcard.id),
             x: dashcard.col || 0,
@@ -199,6 +199,13 @@ export default class DashboardGrid extends Component {
         });
     }
 
+    onUpdateVisualizationSettings(dc, settings) {
+        this.props.setDashCardVisualizationSettings({
+            id: dc.id,
+            settings: settings
+        });
+    }
+
     renderDashCard(dc, isMobile) {
         return (
             <DashCard
@@ -215,6 +222,7 @@ export default class DashboardGrid extends Component {
                 onRemove={this.onDashCardRemove.bind(this, dc)}
                 onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
                 onUpdateVisualizationSetting={this.onUpdateVisualizationSetting.bind(this, dc)}
+                onUpdateVisualizationSettings={this.onUpdateVisualizationSettings.bind(this, dc)}
             />
         )
     }

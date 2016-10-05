@@ -194,12 +194,12 @@
 ;; don't try to make this a ^:const map -- extract:timeFormat looks up timezone info at query time
 (defn- unit->extraction-fn [unit]
   (case unit
-    :default         (extract:timeFormat "yyyy-MM-dd'T'HH:mm:ssZ")
-    :minute          (extract:timeFormat "yyyy-MM-dd'T'HH:mm:00Z")
+    :default         (extract:timeFormat "yyyy-MM-dd'T'HH:mm:ssZZ")
+    :minute          (extract:timeFormat "yyyy-MM-dd'T'HH:mm:00ZZ")
     :minute-of-hour  (extract:timeFormat "mm")
-    :hour            (extract:timeFormat "yyyy-MM-dd'T'HH:00:00Z")
+    :hour            (extract:timeFormat "yyyy-MM-dd'T'HH:00:00ZZ")
     :hour-of-day     (extract:timeFormat "HH")
-    :day             (extract:timeFormat "yyyy-MM-ddZ")
+    :day             (extract:timeFormat "yyyy-MM-ddZZ")
     :day-of-week     (extract:js "function (timestamp) {"
                                  "  var date = new Date(timestamp);"
                                  "  return date.getDay() + 1;"

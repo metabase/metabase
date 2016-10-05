@@ -42,6 +42,29 @@ export function createQuery(type = "query", databaseId, tableId) {
     return dataset_query;
 }
 
+
+const METRIC_NAME_BY_AGGREGATION = {
+    "count": "count",
+    "cum_count": "count",
+    "sum": "sum",
+    "cum_sum": "sum",
+    "distinct": "count",
+    "avg": "avg",
+    "min": "min",
+    "max": "max",
+}
+
+const METRIC_TYPE_BY_AGGREGATION = {
+    "count": TYPE.Integer,
+    "cum_count": TYPE.Integer,
+    "sum": TYPE.Float,
+    "cum_sum": TYPE.Float,
+    "distinct": TYPE.Integer,
+    "avg": TYPE.Float,
+    "min": TYPE.Float,
+    "max": TYPE.Float,
+}
+
 const mbqlCanonicalize = (a) => typeof a === "string" ? a.toLowerCase().replace(/_/g, "-") : a;
 const mbqlCompare = (a, b) => mbqlCanonicalize(a) === mbqlCanonicalize(b)
 
@@ -719,13 +742,17 @@ var Query = {
 
     getQueryColumns(tableMetadata, query) {
         let columns = Query.getBreakouts(query).map(b => Query.getQueryColumn(tableMetadata, b));
-        if (Query.getAggregationType(query) === "rows") {
+        const aggregation = Query.getAggregationType(query);
+        if (aggregation === "rows") {
             if (columns.length === 0) {
                 return null;
             }
         } else {
-            // NOTE: incomplete (missing name etc), count/distinct are actually TYPE.Integer, but close enough for now
-            columns.push({ base_type: TYPE.Float, special_type: TYPE.Number });
+            columns.push({
+                name: METRIC_NAME_BY_AGGREGATION[aggregation],
+                base_type: METRIC_TYPE_BY_AGGREGATION[aggregation],
+                special_type: TYPE.Number
+            });
         }
         return columns;
     }
