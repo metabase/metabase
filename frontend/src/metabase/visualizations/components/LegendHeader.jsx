@@ -30,7 +30,8 @@ export default class LegendHeader extends Component {
     };
 
     static defaultProps = {
-        series: []
+        series: [],
+        settings: {}
     };
 
     componentDidMount() {
@@ -74,7 +75,7 @@ export default class LegendHeader extends Component {
                         />
                 ])}
                 { actionButtons &&
-                    <span className="flex-no-shrink flex-align-right">
+                    <span className="flex-no-shrink flex-align-right relative">
                         {actionButtons}
                     </span>
                 }

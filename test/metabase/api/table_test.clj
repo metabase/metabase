@@ -5,8 +5,11 @@
                       [driver :as driver]
                       [http-client :as http]
                       [middleware :as middleware])
-            (metabase.models [field :refer [Field]]
-                             [table :refer [Table]])
+            (metabase.models [database :refer [Database]]
+                             [field :refer [Field]]
+                             [table :refer [Table]]
+                             [permissions :as perms]
+                             [permissions-group :as perms-group])
             [metabase.test.data :refer :all]
             (metabase.test.data [dataset-definitions :as defs]
                                 [datasets :as datasets]
@@ -110,6 +113,14 @@
             :raw_table_id $
             :created_at   $}))
   ((user->client :rasta) :get 200 (format "table/%d" (id :venues))))
+
+;; GET /api/table/:id should return a 403 for a user that doesn't have read permissions for the table
+(tu/expect-with-temp [Database [{database-id :id}]
+                      Table    [{table-id :id}    {:db_id database-id}]]
+  "You don't have permissions to do that."
+  (do
+    (perms/delete-related-permissions! (perms-group/all-users) (perms/object-path database-id))
+    ((user->client :rasta) :get 403 (str "table/" table-id))))
 
 ;; ## GET /api/table/:id/fields
 (expect

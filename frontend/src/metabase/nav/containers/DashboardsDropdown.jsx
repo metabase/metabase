@@ -114,14 +114,13 @@ export default class DashboardsDropdown extends Component {
         return (
             <div>
                 { modalOpen ? this.renderCreateDashboardModal() : null }
+                <div className={cx('NavDropdown inline-block cursor-pointer', { 'open': dropdownOpen })}>
+                    <span onClick={this.toggleDropdown}>
+                        {children}
+                    </span>
 
-                <OnClickOutsideWrapper handleDismissal={this.closeDropdown}>
-                    <div className={cx('NavDropdown inline-block cursor-pointer', { 'open': dropdownOpen })}>
-                        <span onClick={this.toggleDropdown}>
-                            {children}
-                        </span>
-
-                        { dropdownOpen ?
+                    { dropdownOpen ?
+                        <OnClickOutsideWrapper handleDismissal={this.closeDropdown}>
                             <div className="NavDropdown-content DashboardList NavDropdown-content--dashboards">
                                 { dashboards.length === 0 ?
                                     <div className="NavDropdown-content-layer text-white text-centered">
@@ -154,9 +153,9 @@ export default class DashboardsDropdown extends Component {
                                     </ul>
                                 }
                             </div>
-                        : null }
-                    </div>
-                </OnClickOutsideWrapper>
+                        </OnClickOutsideWrapper>
+                    : null }
+                </div>
             </div>
         );
     }

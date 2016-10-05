@@ -34,9 +34,11 @@ export default class PulseListItem extends Component {
                         <h2 className="mb1">{pulse.name}</h2>
                         <span>Pulse by <span className="text-bold">{pulse.creator && pulse.creator.common_name}</span></span>
                     </div>
-                    <div className="flex-align-right">
-                        <Link to={"/pulse/" + pulse.id} className="PulseEditButton PulseButton Button no-decoration text-bold">Edit</Link>
-                    </div>
+                    { !pulse.read_only &&
+                        <div className="flex-align-right">
+                            <Link to={"/pulse/" + pulse.id} className="PulseEditButton PulseButton Button no-decoration text-bold">Edit</Link>
+                        </div>
+                    }
                 </div>
                 <ol className="mb2 px4 flex flex-wrap">
                     { pulse.cards.map((card, index) =>

@@ -18,9 +18,10 @@ import { isPK, isFK } from "metabase/lib/types";
 import Utils from "metabase/lib/utils";
 import { applyParameters } from "metabase/meta/Card";
 
-import { getParameters } from "./selectors";
+import { getParameters, getNativeDatabases } from "./selectors";
 
 const Metabase = new AngularResourceProxy("Metabase", ["db_list_with_tables", "db_fields", "dataset", "table_query_metadata"]);
+const CardAPI = new AngularResourceProxy("Card", ["query"]);
 const User = new AngularResourceProxy("User", ["update_qbnewb"]);
 
 import { parse as urlParse } from "url";
@@ -592,7 +593,17 @@ export const setQueryMode = createThunkAction(SET_QUERY_MODE, (type) => {
 
         // we are translating an empty query
         } else {
-            let newCard = startNewCard(type, card.dataset_query.database);
+            let databaseId = card.dataset_query.database;
+
+            // only carry over the database id if the user can write native queries
+            if (type === "native") {
+                let nativeDatabases = getNativeDatabases(getState());
+                if (!_.findWhere(nativeDatabases, { id: databaseId })) {
+                    databaseId = nativeDatabases.length > 0 ? nativeDatabases[0].id : null
+                }
+            }
+
+            let newCard = startNewCard(type, databaseId);
 
             dispatch(loadMetadataForCard(newCard));
 
@@ -765,15 +776,22 @@ export const runQuery = createThunkAction(RUN_QUERY, (card, shouldUpdateUrl = tr
         }
 
         let cancelQueryDeferred = angularPromise();
-        let startTime = new Date();
+        const startTime = new Date();
 
         // make our api call
-        Metabase.dataset({ timeout: cancelQueryDeferred.promise }, card.dataset_query, function (queryResult) {
+        function onQuerySuccess(queryResult) {
             dispatch(queryCompleted(card, queryResult));
+        }
 
-        }, function (error) {
+        function onQueryError(error) {
             dispatch(queryErrored(startTime, error));
-        });
+        }
+
+        if (card && card.id) {
+            CardAPI.query({ timeout: cancelQueryDeferred.promise }, { cardID: card.id, parameters: card.dataset_query.parameters }, onQuerySuccess, onQueryError);
+        } else {
+            Metabase.dataset({ timeout: cancelQueryDeferred.promise }, card.dataset_query, onQuerySuccess, onQueryError);
+        }
 
         MetabaseAnalytics.trackEvent("QueryBuilder", "Run Query", card.dataset_query.type);
 

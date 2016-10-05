@@ -1,15 +1,5 @@
 import { TYPE } from "metabase/lib/types";
 
-export const user_roles = [{
-    'id': 'user',
-    'name': 'User',
-    'description': 'Can do everything except access the Admin Panel.'
-}, {
-    'id': 'admin',
-    'name': 'Admin',
-    'description': "Can access the Admin Panel to add or remove users and modify database settings."
-}];
-
 export const field_special_types = [{
     'id': TYPE.PK,
     'name': 'Entity Key',

@@ -98,7 +98,7 @@ export default class DatabaseList extends Component {
                     { !hasSampleDataset ?
                         <div className="pt4">
                             <span className={cx("p2 text-italic", {"border-top": databases && databases.length > 0})}>
-                                <a className="text-grey-2 text-brand-hover no-decoration" href="" onClick={() => this.props.addSampleDataset()}>Bring the sample dataset back</a>
+                                <a className="text-grey-2 text-brand-hover no-decoration" onClick={() => this.props.addSampleDataset()}>Bring the sample dataset back</a>
                             </span>
                         </div>
                     : null }

@@ -112,6 +112,10 @@
     white-space: pre;
 }
 
+.text-monospace {
+    font-family: Monaco, monospace;
+}
+
 .text-measure {
     max-width: 620px;
 }

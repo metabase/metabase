@@ -9,7 +9,7 @@ import CheckBox from "metabase/components/CheckBox.jsx";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import Query from "metabase/lib/query";
 
-import visualizations from "metabase/visualizations";
+import { getVisualizationRaw } from "metabase/visualizations";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -76,7 +76,7 @@ export default class AddSeriesModal extends Component {
 
     async onCardChange(card, e) {
         const { dashcard, dashcardData } = this.props;
-        let CardVisualization = visualizations.get(dashcard.card.display);
+        let { CardVisualization } = getVisualizationRaw([{ card: dashcard.card }]);
         try {
             if (e.target.checked) {
                 if (getIn(dashcardData, [dashcard.id, card.id]) === undefined) {
@@ -142,7 +142,7 @@ export default class AddSeriesModal extends Component {
             data: getIn(dashcardData, [dashcard.id, dashcard.card.id, "data"])
         };
 
-        const CardVisualization = visualizations.get(dashcard.card.display);
+        let { CardVisualization } = getVisualizationRaw([{ card: dashcard.card }]);
 
         return cards.filter(card => {
             try {
@@ -152,7 +152,7 @@ export default class AddSeriesModal extends Component {
                 }
                 if (card.dataset_query.type === "query") {
                     if (!CardVisualization.seriesAreCompatible(initialSeries,
-                        { card: card, data: { cols: getQueryColumns(card, databases) } }
+                        { card: card, data: { cols: getQueryColumns(card, databases), rows: [] } }
                     )) {
                         return false;
                     }

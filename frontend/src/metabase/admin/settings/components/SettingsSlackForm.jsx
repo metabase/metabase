@@ -35,7 +35,7 @@ export default class SettingsSlackForm extends Component {
         // this gives us an opportunity to load up our formData with any existing values for elements
         let formData = {};
         this.props.elements.forEach(function(element) {
-            formData[element.key] = element.value || element.defaultValue;
+            formData[element.key] = element.value == null ? element.defaultValue : element.value;
         });
 
         this.setState({formData});
@@ -158,21 +158,21 @@ export default class SettingsSlackForm extends Component {
 
         let settings = elements.map((element, index) => {
             // merge together data from a couple places to provide a complete view of the Element state
-            let errorMessage = (formErrors && formErrors.elements) ? formErrors.elements[element.key] : validationErrors[element.key],
-                value = formData[element.key] || element.defaultValue;
+            let errorMessage = (formErrors && formErrors.elements) ? formErrors.elements[element.key] : validationErrors[element.key];
+            let value = formData[element.key] == null ? element.defaultValue : formData[element.key];
 
             if (element.key === "slack-token") {
                 return (
                     <SettingsEmailFormElement
                         key={element.key}
-                        element={_.extend(element, {value, errorMessage, fireOnChange: true })}
+                        element={{ ...element, value, errorMessage, fireOnChange: true }}
                         handleChangeEvent={this.handleChangeEvent.bind(this)} />
                 );
             } else if (element.key === "metabot-enabled") {
                 return (
                     <SettingsSetting
                         key={element.key}
-                        setting={_.extend(element, {value, errorMessage })}
+                        setting={{ ...element, value, errorMessage }}
                         updateSetting={(setting, value) => this.handleChangeEvent(setting, value)}
                         disabled={!this.state.formData["slack-token"]}
                     />

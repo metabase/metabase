@@ -2,7 +2,6 @@ import React, { PropTypes } from 'react';
 import pure from "recompose/pure";
 
 import Icon from "metabase/components/Icon.jsx";
-import IconBorder from "metabase/components/IconBorder.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 
 const TitleAndDescription = ({ title, description }) =>
@@ -10,9 +9,7 @@ const TitleAndDescription = ({ title, description }) =>
         <h2 className="mr1">{title}</h2>
         { description &&
             <Tooltip tooltip={description} maxWidth={'22em'}>
-                <IconBorder>
-                    <Icon name='info'/>
-                </IconBorder>
+                <Icon name='info'/>
             </Tooltip>
         }
     </div>;

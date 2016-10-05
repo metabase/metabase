@@ -43,7 +43,7 @@
 
 :local(.fieldActualName) {
     composes: fieldNameTitle;
-    font-family: Monaco, monospace;
+    composes: text-monospace from "style";
 }
 
 :local(.fieldForeignKey) {

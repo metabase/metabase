@@ -1,6 +1,6 @@
 /* @flow */
 
-import type { DatabaseId } from "./base";
+import type { DatabaseId } from "./Database";
 import type { StructuredQueryObject, NativeQueryObject } from "./Query";
 import type { ParameterInstance } from "./Dashboard";
 

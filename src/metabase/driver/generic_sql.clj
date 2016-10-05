@@ -318,7 +318,7 @@
   (let [all-schemas (set (map :table_schem (jdbc/result-set-seq (.getSchemas metadata))))
         schemas     (set/difference all-schemas (excluded-schemas driver))]
     (set (for [schema     schemas
-               table-name (mapv :table_name (jdbc/result-set-seq (.getTables metadata nil schema "%" (into-array String ["TABLE", "VIEW"]))))] ; tablePattern "%" = match all tables
+               table-name (mapv :table_name (jdbc/result-set-seq (.getTables metadata nil schema "%" (into-array String ["TABLE", "VIEW", "FOREIGN TABLE"]))))] ; tablePattern "%" = match all tables
            {:name   table-name
             :schema schema}))))
 
@@ -327,7 +327,7 @@
    Fetch *all* Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
   [driver, ^DatabaseMetaData metadata]
   (set (for [table (filter #(not (contains? (excluded-schemas driver) (:table_schem %)))
-                           (jdbc/result-set-seq (.getTables metadata nil nil "%" (into-array String ["TABLE", "VIEW"]))))] ; tablePattern "%" = match all tables
+                           (jdbc/result-set-seq (.getTables metadata nil nil "%" (into-array String ["TABLE", "VIEW", "FOREIGN TABLE"]))))] ; tablePattern "%" = match all tables
          {:name   (:table_name table)
           :schema (:table_schem table)})))
 
