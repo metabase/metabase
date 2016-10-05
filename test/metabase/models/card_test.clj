@@ -119,5 +119,5 @@
 ;; invalid/legacy card should return perms for something that doesn't exist so no one gets to see it
 (expect
   #{"/db/0/"}
-  (query-perms-set (mbql {:filter [:WOW 100 200]}
-                         :read)))
+  (query-perms-set (mbql {:filter [:WOW 100 200]})
+                   :read))
