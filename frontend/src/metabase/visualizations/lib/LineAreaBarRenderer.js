@@ -73,8 +73,8 @@ function applyChartTimeseriesXAxis(chart, settings, series, xValues, xDomain, xI
     // setup an x-axis where the dimension is a timeseries
     let dimensionColumn = series[0].data.cols[0];
 
+    // get the data's timezone offset from the first row
     let dataOffset = parseTimestamp(series[0].data.rows[0][0]).utcOffset() / 60;
-    let browserOffset = moment().utcOffset() / 60;
 
     // compute the data interval
     let dataInterval = xInterval;
@@ -91,12 +91,9 @@ function applyChartTimeseriesXAxis(chart, settings, series, xValues, xDomain, xI
         }
 
         chart.xAxis().tickFormat(timestamp => {
-            let timestampFixed;
-            if (dataOffset === 0) {
-                timestampFixed = moment(timestamp).add(-browserOffset, "hour").utcOffset(dataOffset).format();
-            } else {
-                timestampFixed = moment(timestamp).utcOffset(dataOffset).format();
-            }
+            // timestamp is a plain Date object which discards the timezone,
+            // so add it back in so it's formatted correctly
+            const timestampFixed = moment(timestamp).utcOffset(dataOffset).format();
             return formatValue(timestampFixed, { column: dimensionColumn })
         });
 
