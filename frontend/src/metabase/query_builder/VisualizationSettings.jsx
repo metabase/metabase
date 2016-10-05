@@ -45,8 +45,10 @@ export default class VisualizationSettings extends React.Component {
             <div className="relative">
                 <span className="GuiBuilder-section-label Query-label">Visualization</span>
                 <PopoverWithTrigger
+                    id="VisualizationPopover"
                     ref="displayPopover"
                     className="ChartType-popover"
+                    triggerId="VisualizationTrigger"
                     triggerElement={triggerElement}
                     triggerClasses="flex align-center"
                 >

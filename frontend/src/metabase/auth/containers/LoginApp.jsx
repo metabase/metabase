@@ -57,7 +57,7 @@ export default class LoginApp extends Component {
 
         this.validateForm();
 
-        const { loginGoogle } = this.props;
+        const { loginGoogle, location } = this.props;
 
         let ssoLoginButton = findDOMNode(this.refs.ssoLoginButton);
 
@@ -74,7 +74,7 @@ export default class LoginApp extends Component {
                       cookiepolicy: 'single_host_origin',
                   });
                   auth2.attachClickHandler(ssoLoginButton, {},
-                      (googleUser) => loginGoogle(googleUser),
+                      (googleUser) => loginGoogle(googleUser, location.query.redirect),
                       (error) => console.error('There was an error logging in', error)
                   );
                 })
@@ -96,10 +96,10 @@ export default class LoginApp extends Component {
     formSubmitted(e) {
         e.preventDefault();
 
-        let { login } = this.props;
+        let { login, location } = this.props;
         let { credentials } = this.state;
 
-        login(credentials);
+        login(credentials, location.query.redirect);
     }
 
     render() {

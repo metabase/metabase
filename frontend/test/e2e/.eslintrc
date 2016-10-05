@@ -1,0 +1,6 @@
+{
+    "env": {
+        "jasmine": true,
+        "node": true
+    }
+}

@@ -50,6 +50,7 @@ export default class BreakoutWidget extends Component {
         if (this.state.isOpen) {
             return (
                 <Popover
+                    id="BreakoutPopover"
                     ref="popover"
                     className="FieldPopover"
                     onClose={this.close}
@@ -89,7 +90,7 @@ export default class BreakoutWidget extends Component {
             );
         } else if (addButton && fieldOptions && fieldOptions.count > 0) {
             return (
-                <div onClick={this.open}>
+                <div id="BreakoutWidget" onClick={this.open}>
                     {addButton}
                     {this.renderPopover()}
                 </div>

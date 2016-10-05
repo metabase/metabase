@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+
+# this ensures any failures along the way result in a CI failure
+set -eu
+
+install-crate() {
+    sudo add-apt-repository ppa:crate/stable -y
+    sudo apt-get update
+    sudo apt-get install -y crate
+    # ulimit setting refused Crate service to start on CircleCI container - so comment it
+    sudo sed -i '/MAX_LOCKED_MEMORY/s/^/#/' /etc/init/crate.conf
+    sudo service crate restart
+}
+
+install-mongodb() {
+    sudo apt-get purge mongodb-org*
+    sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
+    echo "deb http://repo.mongodb.org/apt/ubuntu precise/mongodb-org/3.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.0.list
+    sudo apt-get update
+    sudo apt-get install -y mongodb-org
+    sudo service mongod restart
+}
+
+stop-sauce-connect() {
+    if [ $(uname) == "Darwin" ]; then
+        killall sc
+    else
+        killall --wait sc
+    fi
+}
+
+case $CIRCLE_NODE_INDEX in
+    0)  install-mongodb
+        ENGINES=h2,mongo,mysql,bigquery \
+            lein test
+        ;;
+    1)  ENGINES=h2,sqlserver,oracle \
+        MB_DB_TYPE=postgres MB_DB_DBNAME=circle_test MB_DB_PORT=5432 MB_DB_USER=ubuntu MB_DB_HOST=localhost \
+            lein test
+        ;;
+    2)  install-crate
+        ENGINES=h2,postgres,sqlite,crate \
+        MB_DB_TYPE=mysql MB_DB_DBNAME=circle_test MB_DB_PORT=3306 MB_DB_USER=ubuntu MB_DB_HOST=localhost \
+            lein test
+        ;;
+    3)  ENGINES=h2,redshift,druid \
+            lein test
+        ;;
+    4)  lein eastwood
+        lein bikeshed
+        lein docstring-checker
+        ./bin/reflection-linter
+        ;;
+    5)  npm run lint
+        npm run test
+        ;;
+    6)  ./bin/build version frontend sample-dataset uberjar
+        USE_SAUCE=true \
+            npm run test-e2e
+        node_modules/.bin/babel-node ./bin/compare-screenshots
+        ;;
+esac

@@ -40,4 +40,5 @@ bin/release/aws-eb/metabase-aws-eb.zip
 /reset-password-artifacts
 /.env
 /npm-debug.log
+/screenshots
 /plugins
