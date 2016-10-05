@@ -41,11 +41,16 @@
 
 (defn- permissions-path-set:mbql [{database-id :database, :as query}]
   {:pre [(integer? database-id) (map? (:query query))]}
-  (let [{{:keys [source-table join-tables]} :query} (qp/expand query)]
-    (set (for [table (cons source-table join-tables)]
-           (perms/object-path database-id
-                              (:schema table)
-                              (or (:id table) (:table-id table)))))))
+  (try (let [{{:keys [source-table join-tables]} :query} (qp/expand query)]
+         (set (for [table (cons source-table join-tables)]
+                (perms/object-path database-id
+                                   (:schema table)
+                                   (or (:id table) (:table-id table))))))
+       ;; if for some reason we can't expand the Card (i.e. it's an invalid legacy card)
+       ;; just return a set of permissions that means no one will ever get to see it
+       (catch Throwable e
+         (log/warn "Error getting permissions for card:" e)
+         #{"/db/0/"}))) ; DB 0 will never exist
 
 (defn- permissions-path-set:native [read-or-write {database-id :database}]
   #{((case read-or-write
