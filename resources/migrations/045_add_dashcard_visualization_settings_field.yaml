@@ -9,8 +9,8 @@ databaseChangeLog:
               - column:
                   name: visualization_settings
                   type: text
-                  constraints:
-                    nullable: true
-                    deferrable: false
-                    initiallyDeferred: false
-                    nullable: false
+        - addNotNullConstraint:
+            tableName: report_dashboardcard
+            columnName: visualization_settings
+            columnDataType: text
+            defaultNullValue: '{}'
