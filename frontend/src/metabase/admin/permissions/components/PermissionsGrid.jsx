@@ -281,15 +281,12 @@ const PermissionsGrid = ({ className, grid, onUpdatePermission }) => {
     return (
         <FixedHeaderGrid
             className={className}
-
             rowsCount={grid.entities.length}
             columnsCount={grid.groups.length}
-
             columnWidth={CELL_WIDTH}
             rowHeight={CELL_HEIGHT}
             columnHeaderHeight={HEADER_HEIGHT}
             rowHeaderWidth={HEADER_WIDTH}
-
             renderCell={({ columnIndex, rowIndex }) =>
                 <PermissionsCell
                     group={grid.groups[columnIndex]}

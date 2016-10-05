@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from 'react';
+import cx from "classnames";
 
 class EditBar extends Component {
     static propTypes = {
@@ -8,14 +9,29 @@ class EditBar extends Component {
             PropTypes.element,
             PropTypes.array
         ]).isRequired,
+        admin: PropTypes.bool
+    }
+
+    static defaultProps = {
+        admin: false
     }
 
     render () {
-        const { title, subtitle, buttons } = this.props;
+        const { admin, buttons, subtitle, title } = this.props;
         return (
-            <div className="EditHeader wrapper py1 flex align-center" ref="editHeader">
+            <div
+                className={cx(
+                    'EditHeader wrapper py1 flex align-center',
+                    { 'EditHeader--admin' : admin }
+                )}
+                ref="editHeader"
+            >
                 <span className="EditHeader-title">{title}</span>
-                { subtitle && <span className="EditHeader-subtitle mx1">{subtitle}</span> }
+                { subtitle && (
+                    <span className="EditHeader-subtitle mx1">
+                        {subtitle}
+                    </span>
+                )}
                 <span className="flex-align-right">
                     {buttons}
                 </span>

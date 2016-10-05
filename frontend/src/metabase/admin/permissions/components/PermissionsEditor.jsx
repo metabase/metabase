@@ -15,6 +15,7 @@ const PermissionsEditor = ({ grid, onUpdatePermission, onSave, onCancel, isDirty
         <div className="flex-full flex flex-column">
             { isDirty &&
                 <EditBar
+                    admin
                     title="You've made changes to permissions."
                     buttons={[
                         <Confirm

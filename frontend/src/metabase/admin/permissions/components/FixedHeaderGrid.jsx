@@ -13,21 +13,16 @@ const SCROLLBAR_SIZE = 50;
 
 const FixedHeaderGrid = ({
     className,
-
     rowsCount,
     columnsCount,
     renderCell,
     columnWidth,
     rowHeight,
-
     renderColumnHeader,
     columnHeaderHeight,
-
     rowHeaderWidth,
     renderRowHeader,
-
     renderCorner,
-
     paddingBottom = 25
 }) =>
     <div className={cx(className, S.fixedHeaderGrid, "relative")}>
