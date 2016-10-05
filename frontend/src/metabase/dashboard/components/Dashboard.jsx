@@ -68,12 +68,7 @@ export default class Dashboard extends Component {
 
     componentDidUpdate() {
         this.updateParams();
-
-        if (this.state.isFullscreen) {
-            document.querySelector(".Nav").classList.add("hide");
-        } else {
-            document.querySelector(".Nav").classList.remove("hide");
-        }
+        this._showNav(!this.state.isFullscreen);
     }
 
     componentWillReceiveProps(nextProps) {
@@ -91,14 +86,25 @@ export default class Dashboard extends Component {
     }
 
     componentWillUnmount() {
-        document.querySelector(".Nav").classList.remove("hide");
+        this._showNav(true);
         this._clearRefreshInterval();
         if (screenfull.enabled) {
             document.removeEventListener(screenfull.raw.fullscreenchange, this.fullScreenChanged);
         }
     }
 
+    _showNav(show) {
+        const nav = document.querySelector(".Nav");
+        if (show && nav) {
+            nav.classList.remove("hide");
+        } else if (!show && nav) {
+            nav.classList.add("hide");
+        }
+    }
+
     async loadDashboard(dashboardId) {
+        this.props.initialize();
+
         this.loadParams();
         const { addCardOnLoad, fetchDashboard, fetchCards, addCardToDashboard, onChangeLocation, location } = this.props;
 

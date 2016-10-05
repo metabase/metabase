@@ -1,13 +1,18 @@
 (ns metabase.models.table
-  (:require [metabase.db :as db]
+  (:require [metabase.api.common :refer [*current-user-permissions-set*]]
+            [metabase.db :as db]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]]
                              [field-values :refer [FieldValues]]
                              [humanization :as humanization]
                              [interface :as i]
                              [metric :refer [Metric retrieve-metrics]]
+                             [permissions :refer [Permissions], :as perms]
                              [segment :refer [Segment retrieve-segments]])
             [metabase.util :as u]))
+
+
+;;; ------------------------------------------------------------ Constants + Entity ------------------------------------------------------------
 
 (def ^:const entity-types
   "Valid values for `Table.entity_type` (field may also be `nil`)."
@@ -18,29 +23,35 @@
   #{:hidden :technical :cruft})
 
 
-;;; ------------------------------------------------------------ Entity ------------------------------------------------------------
-
 (i/defentity Table :metabase_table)
+
+
+;;; ------------------------------------------------------------ Lifecycle ------------------------------------------------------------
 
 (defn- pre-insert [table]
   (let [defaults {:display_name (humanization/name->human-readable-name (:name table))}]
     (merge defaults table)))
 
-(defn- pre-cascade-delete [{:keys [id]}]
-  (db/cascade-delete! Segment :table_id id)
-  (db/cascade-delete! Metric :table_id id)
-  (db/cascade-delete! Field :table_id id)
-  (db/cascade-delete! 'Card :table_id id))
+(defn- pre-cascade-delete [{:keys [db_id schema id]}]
+  (db/cascade-delete! Segment     :table_id id)
+  (db/cascade-delete! Metric      :table_id id)
+  (db/cascade-delete! Field       :table_id id)
+  (db/cascade-delete! 'Card       :table_id id)
+  (db/cascade-delete! Permissions :object [:like (str (perms/object-path db_id schema id) "%")]))
+
+(defn- perms-objects-set [table _]
+  #{(perms/object-path (:db_id table) (:schema table) (:id table))})
 
 (u/strict-extend (class Table)
   i/IEntity (merge i/IEntityDefaults
                    {:hydration-keys     (constantly [:table])
                     :types              (constantly {:entity_type :keyword, :visibility_type :keyword, :description :clob})
                     :timestamped?       (constantly true)
-                    :can-read?          (constantly true)
+                    :can-read?          (partial i/current-user-has-full-permissions? :read)
                     :can-write?         i/superuser?
                     :pre-insert         pre-insert
-                    :pre-cascade-delete pre-cascade-delete}))
+                    :pre-cascade-delete pre-cascade-delete
+                    :perms-objects-set  perms-objects-set}))
 
 
 ;;; ------------------------------------------------------------ Hydration ------------------------------------------------------------

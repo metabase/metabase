@@ -13,6 +13,7 @@
                           [label :as label]
                           [metric :as metric]
                           [notify :as notify]
+                          [permissions :as permissions]
                           [pulse :as pulse]
                           [revision :as revision]
                           [segment :as segment]
@@ -50,6 +51,7 @@
   (context "/label"           [] (+auth label/routes))
   (context "/metric"          [] (+auth metric/routes))
   (context "/notify"          [] (+apikey notify/routes))
+  (context "/permissions"     [] (+auth permissions/routes))
   (context "/pulse"           [] (+auth pulse/routes))
   (context "/revision"        [] (+auth revision/routes))
   (context "/segment"         [] (+auth segment/routes))

@@ -37,6 +37,7 @@ import {
     getDatabaseFields,
     getSampleDatasetId,
     getFullDatasetQuery,
+    getNativeDatabases,
 } from "../selectors";
 
 import * as actions from "../actions";
@@ -78,6 +79,7 @@ const mapStateToProps = (state, props) => {
         query:                     state.qb.card && state.qb.card.dataset_query,  // TODO: EOL, redundant
         parameterValues:           parameterValues(state),
         databases:                 databases(state),
+        nativeDatabases:           getNativeDatabases(state),
         tables:                    tables(state),
         tableMetadata:             tableMetadata(state),
         tableForeignKeys:          tableForeignKeys(state),

@@ -31,6 +31,8 @@
     color: var(--default-font-color);
 }
 
+.text-danger { color: #EEA5A5; }
+
 /* brand */
 .text-brand, :local(.text-brand),
 .text-brand-hover:hover, :local(.text-brand-hover):hover {
@@ -116,13 +118,8 @@
     color: var(--orange-color);
 }
 
-.text-slate {
-    color: var(--slate-color);
-}
-
-.text-slate-light {
-    color: var(--slate-light-color);
-}
+.text-slate { color: var(--slate-color); }
+.text-slate-light { color: var(--slate-light-color); }
 
 .bg-gold { background-color: var(--gold-color); }
 .bg-purple { background-color: var(--purple-color); }
@@ -150,6 +147,9 @@
 .bg-grey-2 { background-color: var(--grey-2) }
 .bg-grey-3 { background-color: var(--grey-3) }
 .bg-grey-4 { background-color: var(--grey-4) }
+
+.bg-slate { background-color: var(--slate-color); }
+.bg-slate-light { background-color: var(--slate-light-color); }
 
 .text-dark, :local(.text-dark) {
     color: var(--dark-color);

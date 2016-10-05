@@ -4,8 +4,9 @@
             [metabase.api.common :refer :all]
             [metabase.db :as db]
             (metabase.models [hydrate :refer [hydrate]]
+                             [interface :as models]
                              [revision :as revision]
-                             [segment :refer [Segment] :as segment]
+                             [segment :refer [Segment], :as segment]
                              [table :refer [Table]])))
 
 
@@ -16,7 +17,7 @@
    table_id   [Required Integer]
    definition [Required Dict]}
   (check-superuser)
-  (checkp #(db/exists? Table :id table_id) "table_id" "Table does not exist.")
+  (write-check Table table_id)
   (check-500 (segment/create-segment! table_id name description *current-user-id* definition)))
 
 
@@ -24,13 +25,14 @@
   "Fetch `Segment` with ID."
   [id]
   (check-superuser)
-  (check-404 (segment/retrieve-segment id)))
+  (read-check (segment/retrieve-segment id)))
 
+;; TODO - Why do we require superuser status for GET /api/segment/:id but not GET /api/segment?
 (defendpoint GET "/"
   "Fetch *all* `Segments`."
   []
-  (-> (db/select Segment, :is_active true)
-      (hydrate :creator)))
+  (filter models/can-read? (-> (db/select Segment, :is_active true)
+                               (hydrate :creator))))
 
 
 (defendpoint PUT "/:id"
@@ -40,7 +42,7 @@
    revision_message [Required NonEmptyString]
    definition       [Required Dict]}
   (check-superuser)
-  (check-404 (segment/exists? id))
+  (write-check Segment id)
   (segment/update-segment!
     {:id                      id
      :name                    name
@@ -58,7 +60,7 @@
   [id revision_message]
   {revision_message [Required NonEmptyString]}
   (check-superuser)
-  (check-404 (segment/exists? id))
+  (write-check Segment id)
   (segment/delete-segment! id *current-user-id* revision_message)
   {:success true})
 
@@ -67,7 +69,7 @@
   "Fetch `Revisions` for `Segment` with ID."
   [id]
   (check-superuser)
-  (check-404 (segment/exists? id))
+  (read-check Segment id)
   (revision/revisions+details Segment id))
 
 
@@ -76,7 +78,7 @@
   [id :as {{:keys [revision_id]} :body}]
   {revision_id [Required Integer]}
   (check-superuser)
-  (check-404 (segment/exists? id))
+  (write-check Segment id)
   (revision/revert!
     :entity      Segment
     :id          id

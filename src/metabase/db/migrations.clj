@@ -1,6 +1,7 @@
 (ns metabase.db.migrations
   "Clojure-land data migration definitions and fns for running them."
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as s]
+            [clojure.tools.logging :as log]
             (metabase [config :as config]
                       [db :as db]
                       [driver :as driver]
@@ -12,26 +13,28 @@
                              [database :refer [Database]]
                              [field :refer [Field]]
                              [interface :refer [defentity]]
+                             [permissions :refer [Permissions], :as perms]
+                             [permissions-group :as perm-group]
+                             [permissions-group-membership :refer [PermissionsGroupMembership], :as perm-membership]
                              [raw-column :refer [RawColumn]]
                              [raw-table :refer [RawTable]]
                              [table :refer [Table] :as table]
-                             [setting :as setting])
+                             [setting :as setting]
+                             [user :refer [User]])
             [metabase.util :as u]))
 
 ;;; # Migration Helpers
 
 (defentity ^:private DataMigrations :data_migrations)
 
-(defn- migration-ran? [migration-name]
-  (db/exists? DataMigrations :id (name migration-name)))
-
 (defn- run-migration-if-needed!
   "Run migration defined by MIGRATION-VAR if needed.
+   RAN-MIGRATIONS is a set of migrations names that have already been ran.
 
-     (run-migration-if-needed! #'set-card-database-and-table-ids)"
-  [migration-var]
+     (run-migration-if-needed! #{\"migrate-base-types\"} #'set-card-database-and-table-ids)"
+  [ran-migrations migration-var]
   (let [migration-name (name (:name (meta migration-var)))]
-    (when-not (migration-ran? migration-name)
+    (when-not (contains? ran-migrations migration-name)
       (log/info (format "Running data migration '%s'..." migration-name))
       (@migration-var)
       (db/insert! DataMigrations
@@ -46,12 +49,14 @@
   `(do (defn- ~migration-name [] ~@body)
        (swap! data-migrations conj #'~migration-name)))
 
+;; TODO - shouldn't this be called `run-all!`?
 (defn run-all
   "Run all data migrations defined by `defmigration`."
   []
   (log/info "Running all necessary data migrations, this may take a minute.")
-  (doseq [migration @data-migrations]
-    (run-migration-if-needed! migration))
+  (let [ran-migrations (db/select-ids DataMigrations)]
+    (doseq [migration @data-migrations]
+      (run-migration-if-needed! ran-migrations migration)))
   (log/info "Finished running data migrations."))
 
 
@@ -161,6 +166,7 @@
 
 ;; populate RawTable and RawColumn information
 ;; NOTE: we only handle active Tables/Fields and we skip any FK relationships (they can safely populate later)
+;; TODO - this function is way to big and hard to read -- See https://github.com/metabase/metabase/wiki/Metabase-Clojure-Style-Guide#break-up-larger-functions
 (defmigration create-raw-tables
   (when (zero? (db/select-one-count RawTable))
     (binding [db/*disable-db-logging* true]
@@ -212,26 +218,64 @@
                                (swap! processed-fields conj column-name)))))))))))))))))
 
 
-;;; New type system
+;; Add users to default permissions groups. This will cause the groups to be created if needed as well.
+(defmigration add-users-to-default-permissions-groups
+  (let [{all-users-group-id :id} (perm-group/all-users)
+        {admin-group-id :id}     (perm-group/admin)]
+    (binding [perm-membership/*allow-changing-all-users-group-members* true]
+      (doseq [{user-id :id, superuser? :is_superuser} (db/select [User :id :is_superuser])]
+        (db/insert! PermissionsGroupMembership
+          :user_id  user-id
+          :group_id all-users-group-id)
+        (when superuser?
+          (db/insert! PermissionsGroupMembership
+            :user_id  user-id
+            :group_id admin-group-id))))))
+
+;; admin group has a single entry that lets it access to everything
+(defmigration add-admin-group-root-entry
+  (binding [perms/*allow-admin-permissions-changes* true
+            perms/*allow-root-entries* true]
+    (u/ignore-exceptions
+      (db/insert! Permissions
+        :group_id (:id (perm-group/admin))
+        :object   "/"))))
+
+;; add existing databases to default permissions groups. default and metabot groups have entries for each individual DB
+(defmigration add-databases-to-magic-permissions-groups
+  (let [db-ids (db/select-ids Database)]
+    (doseq [{group-id :id} [(perm-group/all-users)
+                            (perm-group/metabot)]
+            database-id    db-ids]
+      (u/ignore-exceptions
+        (db/insert! Permissions
+          :object   (perms/object-path database-id)
+          :group_id group-id)))))
+
+
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                                    NEW TYPE SYSTEM                                                     |
+;;; +------------------------------------------------------------------------------------------------------------------------+
+
 (def ^:private ^:const old-special-type->new-type
-  {"avatar"                 "type/AvatarURL"
-   "category"               "type/Category"
-   "city"                   "type/City"
-   "country"                "type/Country"
-   "desc"                   "type/Description"
-   "fk"                     "type/FK"
-   "id"                     "type/PK"
-   "image"                  "type/ImageURL"
-   "json"                   "type/SerializedJSON"
-   "latitude"               "type/Latitude"
-   "longitude"              "type/Longitude"
-   "name"                   "type/Name"
-   "number"                 "type/Number"
-   "state"                  "type/State"
-   "timestamp_milliseconds" "type/UNIXTimestampMilliseconds"
-   "timestamp_seconds"      "type/UNIXTimestampSeconds"
-   "url"                    "type/URL"
-   "zip_code"               "type/ZipCode"})
+    {"avatar"                 "type/AvatarURL"
+     "category"               "type/Category"
+     "city"                   "type/City"
+     "country"                "type/Country"
+     "desc"                   "type/Description"
+     "fk"                     "type/FK"
+     "id"                     "type/PK"
+     "image"                  "type/ImageURL"
+     "json"                   "type/SerializedJSON"
+     "latitude"               "type/Latitude"
+     "longitude"              "type/Longitude"
+     "name"                   "type/Name"
+     "number"                 "type/Number"
+     "state"                  "type/State"
+     "timestamp_milliseconds" "type/UNIXTimestampMilliseconds"
+     "timestamp_seconds"      "type/UNIXTimestampSeconds"
+     "url"                    "type/URL"
+     "zip_code"               "type/ZipCode"})
 
 ;; make sure the new types are all valid
 (when-not config/is-prod?
@@ -258,10 +302,28 @@
   (doseq [[_ t] old-base-type->new-type]
     (assert (isa? (keyword t) :type/*))))
 
-(defmigration migrate-base-types
+;; migrate all of the old base + special types to the new ones.
+;; This also takes care of any types that are already correct other than the fact that they're missing :type/ in the front.
+;; This was a bug that existed for a bit in 0.20.0-SNAPSHOT but has since been corrected
+(defmigration migrate-field-types
   (doseq [[old-type new-type] old-special-type->new-type]
-    (db/update-where! 'Field {:special_type old-type}
+    ;; migrate things like :timestamp_milliseconds -> :type/UNIXTimestampMilliseconds
+    (db/update-where! 'Field {:%lower.special_type (s/lower-case old-type)}
+      :special_type new-type)
+    ;; migrate things like :UNIXTimestampMilliseconds -> :type/UNIXTimestampMilliseconds
+    (db/update-where! 'Field {:special_type (name (keyword new-type))}
       :special_type new-type))
   (doseq [[old-type new-type] old-base-type->new-type]
-    (db/update-where! 'Field {:base_type old-type}
+    ;; migrate things like :DateTimeField -> :type/DateTime
+    (db/update-where! 'Field {:%lower.base_type (s/lower-case old-type)}
+      :base_type new-type)
+    ;; migrate things like :DateTime -> :type/DateTime
+    (db/update-where! 'Field {:base_type (name (keyword new-type))}
       :base_type new-type)))
+
+;; if there were invalid field types in the database anywhere fix those so the new stricter validation logic doesn't blow up
+(defmigration fix-invalid-field-types
+  (db/update-where! 'Field {:base_type [:not-like "type/%"]}
+    :base_type "type/*")
+  (db/update-where! 'Field {:special_type [:not-like "type/%"]}
+    :special_type nil))

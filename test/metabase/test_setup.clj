@@ -76,7 +76,7 @@
   (let [start-jetty! (future (core/start-jetty!))]
 
     (try
-      (log/info "Setting up test DB and running migrations...")
+      (log/info (format "Setting up %s test DB and running migrations..." (name (db/db-type))))
       (db/setup-db! :auto-migrate true)
       (setting/set! :site-name "Metabase Test")
       (core/initialization-complete!)

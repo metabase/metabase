@@ -181,12 +181,12 @@ export default class SettingsEmailForm extends Component {
 
         let settings = elements.map((element, index) => {
             // merge together data from a couple places to provide a complete view of the Element state
-            let errorMessage = (formErrors && formErrors.elements) ? formErrors.elements[element.key] : validationErrors[element.key],
-                value = formData[element.key] || element.defaultValue;
+            let errorMessage = (formErrors && formErrors.elements) ? formErrors.elements[element.key] : validationErrors[element.key];
+            let value = formData[element.key] == null ? element.defaultValue : formData[element.key];
 
             return <SettingsEmailFormElement
                         key={element.key}
-                        element={_.extend(element, {value, errorMessage })}
+                        element={{ ...element, value, errorMessage }}
                         handleChangeEvent={this.handleChangeEvent.bind(this)} />
         });
 
