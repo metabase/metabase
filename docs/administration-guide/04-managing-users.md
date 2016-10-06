@@ -30,5 +30,6 @@ Right now, the only role a user can have is either User or Admin. The only diffe
 To change a user’s role, just click on it to open a dropdown and make your selection.
 
 ---
-## Next: custom segments and metrics
-Learn how to define custom segments and commonly referenced metrics in the [next section](05-segments-and-metrics.md).
+
+## Next: setting data permissions
+Find out how to create user groups and define what data they can access in the [next section](05-setting-permissions.md).
