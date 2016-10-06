@@ -1,11 +1,4 @@
-import path from "path";
 
-// FIXME: there are probably better places to put this
-import specReporter from "jasmine-spec-reporter";
-jasmine.getEnv().addReporter(new specReporter);
-
-import { isReady } from "../support/start-server";
-import { setup, cleanup } from "../support/setup";
 import { By, until } from "selenium-webdriver";
 
 import {
@@ -17,30 +10,20 @@ import {
     waitForElementAndSendKeys,
     waitForUrl,
     screenshot,
-    loginMetabase
+    loginMetabase,
+    ensureLoggedIn,
+    describeE2E
 } from "../support/utils";
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 600000;
 
-describe("admin/datamodel", () => {
-    let server, sauceConnect, driver;
-
-    beforeAll(async () => {
-        ({ server, sauceConnect, driver } = await setup({
-            name: "admin/datamodel"
-        }));
-    });
-
-    it ("should start", async () => {
-        expect(await isReady(server.host)).toEqual(true);
-    });
+describeE2E("admin/datamodel", ({ server, driver }) => {
+    beforeEach(() =>
+        ensureLoggedIn(server, driver, "bob@metabase.com", "12341234")
+    );
 
     describe("data model editor", () => {
         it("should allow admin to edit data model", async () => {
-            await driver.get(`${server.host}/`);
-            await loginMetabase(driver, "bob@metabase.com", "12341234");
-            await waitForUrl(driver, `${server.host}/`);
-
             await driver.get(`${server.host}/admin/datamodel/database`);
 
             // hide orders table
@@ -67,8 +50,7 @@ describe("admin/datamodel", () => {
         });
 
         it("should allow admin to create segments and metrics", async () => {
-            // not resetting state for now to save time since tests are run linearly
-            // might want to reinitialize every test if we ever start running tests in parallel
+            await driver.get(`${server.host}/admin/datamodel/database/1/table/2`);
 
             // add a segment
             await waitForElementAndClick(driver, "#SegmentsList a.text-brand");
@@ -101,9 +83,5 @@ describe("admin/datamodel", () => {
 
             expect(await waitForElementText(driver, "#MetricsList tr:first-child td:first-child")).toEqual("User count");
         });
-    });
-
-    afterAll(async () => {
-        await cleanup({ server, sauceConnect, driver });
     });
 });

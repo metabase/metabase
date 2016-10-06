@@ -1,42 +1,28 @@
-import path from "path";
 
-import { isReady } from "../support/start-server";
-import { setup, cleanup } from "../support/setup";
 import { By, until } from "selenium-webdriver";
 
 import {
     waitForElement,
+    waitForElementText,
     waitForElementRemoved,
     findElement,
     waitForElementAndClick,
     waitForElementAndSendKeys,
     waitForUrl,
     screenshot,
-    loginMetabase
+    loginMetabase,
+    describeE2E
 } from "../support/utils";
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
 
-describe("query_builder", () => {
-    let server, sauceConnect, driver;
-
-    beforeAll(async () => {
-        ({ server, sauceConnect, driver } = await setup({
-            name: "query_builder"
-        }));
+describeE2E("query_builder", ({ server, driver }) => {
+    beforeEach(async () => {
+        await ensureLoggedIn(server, driver, "bob@metabase.com", "12341234");
     });
 
-    it ("should start", async () => {
-        expect(await isReady(server.host)).toEqual(true);
-    });
-
-    // TODO: lots of opportunities for refactoring out steps here
     describe("tables", () => {
         xit("should allow users to create pivot tables", async () => {
-            await driver.get(`${server.host}/`);
-            await loginMetabase(driver, "bob@metabase.com", "12341234");
-            await waitForUrl(driver, `${server.host}/`);
-
             await driver.get(`${server.host}/q`);
 
             await screenshot(driver, "screenshots/qb-initial.png");
@@ -164,9 +150,5 @@ describe("query_builder", () => {
             await waitForElementAndClick(driver, ".EditHeader .Button.Button--primary");
             await waitForElementRemoved(driver, ".EditHeader");
         });
-    });
-
-    afterAll(async () => {
-        await cleanup({ server, sauceConnect, driver });
     });
 });

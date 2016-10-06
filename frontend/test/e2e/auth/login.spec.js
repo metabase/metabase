@@ -1,29 +1,23 @@
-import { isReady } from "../support/start-server";
-import { setup, cleanup } from "../support/setup";
+
 import { By, until } from "selenium-webdriver";
 
 import {
+    waitForElement,
+    waitForElementText,
+    waitForElementRemoved,
+    findElement,
+    waitForElementAndClick,
+    waitForElementAndSendKeys,
     waitForUrl,
     screenshot,
-    loginMetabase
+    loginMetabase,
+    describeE2E
 } from "../support/utils";
-
-import { delay } from '../../../src/metabase/lib/promise';
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
 
-describe("auth/login", () => {
-    let server, sauceConnect, driver, sessionId;
-
-    beforeAll(async () => {
-        ({ server, sauceConnect, driver } = await setup({
-            name: "auth/login"
-        }));
-    });
-
-    it ("should start", async () => {
-        expect(await isReady(server.host)).toEqual(true);
-    });
+describeE2E("auth/login", ({ server, driver }) => {
+    let sessionId;
 
     describe("has no cookie", () => {
         beforeEach(async () => {
@@ -72,9 +66,5 @@ describe("auth/login", () => {
             await waitForUrl(driver, `${server.host}/q#eyJuYW1lIjpudWxsLCJkYXRhc2V0X3F1ZXJ5Ijp7ImRhdGFiYXNlIjoxLCJ0eXBlIjoibmF0aXZlIiwibmF0aXZlIjp7InF1ZXJ5Ijoic2VsZWN0ICdvaCBoYWkgZ3Vpc2Ug8J-QsScifSwicGFyYW1ldGVycyI6W119LCJkaXNwbGF5Ijoic2NhbGFyIiwidmlzdWFsaXphdGlvbl9zZXR0aW5ncyI6e319`);
             await screenshot(driver, "screenshots/qb.png");
         });
-    });
-
-    afterAll(async () => {
-        await cleanup({ server, sauceConnect, driver });
     });
 });

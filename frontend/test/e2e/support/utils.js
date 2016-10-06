@@ -7,47 +7,62 @@ const DEFAULT_TIMEOUT = 5000;
 
 const delay = (timeout = 0) => new Promise((resolve) => setTimeout(resolve, timeout));
 
-export const findElement = (driver, selector) =>
+const log = (message) => {
+    // console.log(message);
+};
+
+export const findElement = (driver, selector) => {
     // consider looking into a better test reporter
     // default jasmine reporter leaves much to be desired
-    console.log(`\nlooking for element: ${selector}`) ||
-    driver.findElement(By.css(selector));
+    log(`looking for element: ${selector}`);
+    return driver.findElement(By.css(selector));
+};
 
-export const waitForElement = async (driver, selector, timeout = DEFAULT_TIMEOUT) =>
-    console.log(`\nwaiting for element: ${selector}`) ||
-    await driver.wait(until.elementLocated(By.css(selector)), timeout);
+export const waitForElement = (driver, selector, timeout = DEFAULT_TIMEOUT) => {
+    log(`waiting for element: ${selector}`);
+    if (typeof selector === "string") {
+        selector = By.css(selector);
+    }
+    return driver.wait(until.elementLocated(selector), timeout);
+};
 
-export const waitForElementRemoved = async (driver, selector, timeout = DEFAULT_TIMEOUT) => {
-    console.log(`\nwaiting for element to be removed: ${selector}`);
+export const waitForElementRemoved = (driver, selector, timeout = DEFAULT_TIMEOUT) => {
+    log(`waiting for element to be removed: ${selector}`);
     // workaround for not being able to catch NoSuchElementError from findElement
     const element = driver.findElements(By.css(selector))[0];
     if (!element) {
         return;
     }
-    await driver.wait(until.stalenessOf(element), timeout);
+    return driver.wait(until.stalenessOf(element), timeout);
 };
 
-export const waitForElementText = async (driver, selector, text, timeout = DEFAULT_TIMEOUT) => {
-    console.log(`\nwaiting for element text${text ? ` to equal ${text}` : ''}: ${selector}`);
-    const element = await waitForElement(driver, selector, timeout);
-    const elementText = await element.getText();
-
-    if (!text || text === elementText) {
-        return elementText;
+export const waitForElementText = async (driver, selector, expectedText, timeout = DEFAULT_TIMEOUT) => {
+    if (!expectedText) {
+        log(`waiting for element text: ${selector}`);
+        return await waitForElement(driver, selector, timeout).getText();
+    } else {
+        log(`waiting for element text to equal ${expectedText}: ${selector}`);
+        try {
+            // Need the wait condition to findElement rather than once at start in case elements are added/removed
+            await driver.wait(async () =>
+                (await driver.findElement(By.css(selector)).getText()) === expectedText
+            , timeout);
+        } catch (e) {
+            log(`element text for ${selector} was: ${await driver.findElement(By.css(selector)).getText()}`)
+            throw e;
+        }
     }
-
-    await driver.wait(until.elementTextIs(element, text), timeout);
-    return text;
 };
 
-export const clickElement = async (driver, selector) =>
-    console.log(`\nclicking on element: ${selector}`) ||
-    await findElement(driver, selector).click();
+export const clickElement = (driver, selector) => {
+    log(`clicking on element: ${selector}`)
+    return findElement(driver, selector).click();
+};
 
 // waits for element to appear before clicking to avoid clicking too early
 // prefer this over calling click() on element directly
 export const waitForElementAndClick = async (driver, selector, timeout = DEFAULT_TIMEOUT) => {
-    console.log(`\nwaiting for element to click: ${selector}`);
+    log(`waiting to click: ${selector}`);
     const element = await waitForElement(driver, selector, timeout);
     // webdriver complains about stale element this way
     // await Promise.all(
@@ -63,14 +78,14 @@ export const waitForElementAndClick = async (driver, selector, timeout = DEFAULT
 };
 
 export const waitForElementAndSendKeys = async (driver, selector, keys, timeout = DEFAULT_TIMEOUT) => {
-    console.log(`\nwaiting for element to send ${keys}: ${selector}`);
+    log(`waiting for element to send ${keys}: ${selector}`);
     const element = await waitForElement(driver, selector, timeout);
     await element.clear();
     return await element.sendKeys(keys);
 };
 
 export const waitForUrl = (driver, url, timeout = DEFAULT_TIMEOUT) => {
-    console.log(`\nwaiting for url: ${url}`);
+    log(`waiting for url: ${url}`);
     return driver.wait(async () => await driver.getCurrentUrl() === url, timeout);
 };
 
@@ -87,7 +102,7 @@ const screenshotToHideSelectors = {
 };
 
 export const screenshot = async (driver, filename) => {
-    console.log(`\ntaking screenshot: ${filename}`);
+    log(`taking screenshot: ${filename}`);
     const dir = path.dirname(filename);
     if (dir && !(await fs.exists(dir))){
         await fs.mkdir(dir);
@@ -112,10 +127,93 @@ export const screenshot = async (driver, filename) => {
     await fs.writeFile(filename, image, 'base64');
 };
 
-export const loginMetabase = async (driver, username, password) => {
+export const screenshotFailures = async (driver) => {
+    let result = jasmine.getEnv().currentSpecResult;
+    if (result && result.failedExpectations.length > 0) {
+        await screenshot(driver, "screenshots/failures/" + result.fullName.toLowerCase().replace(/[^a-z0-9_]/g, "_"));
+    }
+}
+
+export const getJson = async (driver, url) => {
+    await driver.get(url);
+    try {
+        let source = await driver.getPageSource();
+        console.log("source", source)
+        return JSON.parse(source);
+    } catch (e) {
+        return null;
+    }
+}
+
+export const checkLoggedIn = async (server, driver, email) => {
+    let currentUser = await getJson(driver, `${server.host}/api/user/current`);
+    return currentUser && currentUser.email === email;
+}
+
+export const ensureLoggedIn = async (server, driver, email, password) => {
+    if (await checkLoggedIn(server, driver, email)) {
+        console.log("already logged in");
+        return;
+    }
+    console.log("logging in");
+    await driver.manage().deleteAllCookies();
+    await driver.get(`${server.host}/`);
+    await loginMetabase(driver, email, password);
+    await waitForUrl(driver, `${server.host}/`);
+}
+
+export const loginMetabase = async (driver, email, password) => {
     await driver.wait(until.elementLocated(By.css("[name=email]")));
-    await driver.findElement(By.css("[name=email]")).sendKeys(username);
+    await driver.findElement(By.css("[name=email]")).sendKeys(email);
     await driver.findElement(By.css("[name=password]")).sendKeys(password);
     await driver.manage().timeouts().implicitlyWait(1000);
     await driver.findElement(By.css(".Button.Button--primary")).click();
 };
+
+import { BackendResource, isReady } from "./backend";
+import { WebdriverResource } from "./webdriver";
+import { SauceConnectResource } from "./sauce";
+
+
+export const describeE2E = (name, options, describeCallback) => {
+    if (typeof options === "function") {
+        describeCallback = options;
+        options = {};
+    }
+
+    options = { name, ...options };
+
+    let server = BackendResource.get({ dbKey: options.dbKey });
+    let driver = WebdriverResource.get();
+    let sauce = SauceConnectResource.get();
+
+    describe(name, () => {
+        beforeAll(async () => {
+            await Promise.all([
+                BackendResource.start(server),
+                WebdriverResource.start(driver),
+                SauceConnectResource.start(sauce),
+            ]);
+            await driver.manage().deleteAllCookies();
+        });
+
+        it ("should start", async () => {
+            expect(await isReady(server.host)).toEqual(true);
+            driver.getCapabilities().set("")
+        });
+
+        describeCallback({ server, driver });
+
+        afterEach(() =>
+            screenshotFailures(driver)
+        );
+
+        afterAll(async () => {
+            await Promise.all([
+                BackendResource.stop(server),
+                WebdriverResource.stop(driver),
+                SauceConnectResource.stop(sauce),
+            ]);
+        });
+    });
+}
