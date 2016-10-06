@@ -8,7 +8,7 @@ import LabelIcon from "metabase/components/LabelIcon.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
 import cx from 'classnames';
-import { pure } from "recompose";
+import pure from "recompose/pure";
 
 const Sidebar = ({ sections, labels, labelsLoading, labelsError, style, className }) =>
     <div className={cx(S.sidebar, className)} style={style}>

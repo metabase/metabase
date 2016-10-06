@@ -8,7 +8,7 @@ import Breadcrumbs from "./Breadcrumbs.jsx";
 import LabelIcon from "./LabelIcon.jsx";
 
 import cx from 'classnames';
-import { pure } from "recompose";
+import pure from "recompose/pure";
 
 const Sidebar = ({
     sections,
