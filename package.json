@@ -134,7 +134,7 @@
     "test-e2e-sauce": "USE_SAUCE=true npm run test-e2e",
     "build": "webpack",
     "build-watch": "webpack --watch",
-    "build-hot": "NODE_ENV=hot webpack && NODE_ENV=hot webpack-dev-server --hot --inline --content-base frontend",
+    "build-hot": "NODE_ENV=hot webpack && NODE_ENV=hot webpack-dev-server",
     "shrinkwrap": "npm prune && npm shrinkwrap --dev && ./bin/clean-shrinkwrap",
     "start": "npm run build && lein ring server",
     "storybook": "start-storybook -p 9001"
