@@ -23,9 +23,8 @@ export default class Funnel extends Component {
     }
 
     static checkRenderable(cols, rows) {
-        if (!isNumeric(cols[0])) {
-            throw new Error("Funnel visualization requires a number.");
-        }
+        // leaving this blank for now since it should be difficult to get into an invalid state
+        // TODO: we should really change checkRenderable to take the entire `series` object
     }
 
     static transformSeries(series) {
