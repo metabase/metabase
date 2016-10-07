@@ -1,4 +1,5 @@
 import "metabase/vendor";
+import "metabase/css/index.css";
 
 window.MetabaseBootstrap = {
     timezones: [
