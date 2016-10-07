@@ -114,6 +114,7 @@ export default class FilterWidget extends Component {
         if (this.state.isOpen) {
             return (
                 <Popover
+                    id="FilterPopover"
                     ref="filterPopover"
                     className="FilterPopover"
                     isInitiallyOpen={this.props.filter[1] === null}

@@ -12,6 +12,7 @@ export default class QuestionSavedModal extends Component {
     render() {
         return (
             <ModalContent
+                id="QuestionSavedModal"
                 title="Saved! Add this to a dashboard?"
                 closeFn={this.props.closeFn}
                 className="Modal-content Modal-content--small NewForm"

@@ -60,7 +60,7 @@ export default class AggregationWidget extends Component {
 
         let selectedAggregation = getAggregator(AggregationClause.getOperator(aggregation));
         return (
-            <div onClick={this.open} className="Query-section Query-section-aggregation cursor-pointer">
+            <div id="Query-section-aggregation" onClick={this.open} className="Query-section Query-section-aggregation cursor-pointer">
                 <span className="View-section-aggregation QueryOption py1 pl1">{selectedAggregation ? selectedAggregation.name.replace(" of ...", "") : "Choose an aggregation"}</span>
                 {aggregation.length > 1 &&
                     <div className="View-section-aggregation flex align-center">
@@ -84,7 +84,7 @@ export default class AggregationWidget extends Component {
 
         let selectedMetric = _.findWhere(tableMetadata.metrics, { id: metricId });
         return (
-            <div onClick={this.open} className="Query-section Query-section-aggregation cursor-pointer">
+            <div id="Query-section-aggregation" onClick={this.open} className="Query-section Query-section-aggregation cursor-pointer">
                 <span className="View-section-aggregation QueryOption p1">{selectedMetric ? selectedMetric.name.replace(" of ...", "") : "Choose an aggregation"}</span>
             </div>
         );
@@ -96,6 +96,7 @@ export default class AggregationWidget extends Component {
         if (this.state.isOpen) {
             return (
                 <Popover
+                    id="AggregationPopover"
                     ref="aggregationPopover"
                     className="FilterPopover"
                     isInitiallyOpen={true}
