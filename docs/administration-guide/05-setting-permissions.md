@@ -20,9 +20,9 @@ You’ll notice that you already have two default groups: Administrators and All
 
 You’ll also see that you’re a member of the **Administrators** group — that’s why you were able to go to the Admin Panel in the first place. So, to make someone an admin of Metabase you just need to add them to this group. Metabase admins can log into the Admin Panel and make changes there, and they always have unrestricted access to all data that you have in your Metabase instance. So be careful who you add to the Administrator group!
 
-The **All Users** group is another special one. Every Metabase user is always a  member of this group, though they can also be a member of as many other groups as you want. We recommend using the All Users group as a way to set default access levels for new Metabase users. If you have Google Auth enabled, new users who join that way will be automatically added to the All Users group.
+The **All Users** group is another special one. Every Metabase user is always a  member of this group, though they can also be a member of as many other groups as you want. We recommend using the All Users group as a way to set default access levels for new Metabase users. If you have [Google single sign-on](09-single-sign-on.md) enabled, new users who join that way will be automatically added to the All Users group.
 
-If you’ve set up the Slack integration and enabled Metabot, you’ll also see a special **Metabot** group, which will allow you to restrict which questions your users will be able to access in Slack via Metabot.
+If you’ve set up the [Slack integration](08-setting-up-slack.md) and enabled [Metabot](../users-guide/10-metabot.md), you’ll also see a special **Metabot** group, which will allow you to restrict which questions your users will be able to access in Slack via Metabot.
 
 #### Managing groups
 
