@@ -21,11 +21,15 @@ module.exports = function(config) {
         ],
         reporters: [
             'progress',
-            'coverage'
+            'coverage',
+            'junit'
         ],
         webpack: {
             resolve: webpackConfig.resolve,
             module: webpackConfig.module
+        },
+        webpackMiddleware: {
+            stats: "errors-only",
         },
         coverageReporter: {
             dir: '../coverage/',
@@ -37,6 +41,9 @@ module.exports = function(config) {
                 { type: 'text-summary', file: 'text-summary.txt' },
                 { type: 'html' }
             ]
+        },
+        junitReporter: {
+            outputDir: (process.env["CIRCLE_TEST_REPORTS"] || "..") + "/test-report-frontend"
         },
         port: 9876,
         colors: true,

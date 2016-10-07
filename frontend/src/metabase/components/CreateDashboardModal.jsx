@@ -85,6 +85,7 @@ export default class CreateDashboardModal extends Component {
 
         return (
             <ModalContent
+                id="CreateDashboardModal"
                 title="Create Dashboard"
                 closeFn={this.props.closeFn}
             >

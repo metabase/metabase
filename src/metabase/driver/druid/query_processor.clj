@@ -36,6 +36,8 @@
    (`:settings` is merged in from the outer query as well so we can access timezone info)."
   nil)
 
+(defn- get-timezone-id [] (or (get-in *query* [:settings :report-timezone]) "UTC"))
+
 (defn- query-type-dispatch-fn [query-type & _] query-type)
 
 (defprotocol ^:private IRValue
@@ -51,8 +53,8 @@
   Field                 (->rvalue [this] (:field-name this))
   DateTimeField         (->rvalue [this] (->rvalue (:field this)))
   Value                 (->rvalue [this] (:value this))
-  DateTimeValue         (->rvalue [{{unit :unit} :field, value :value}] (u/date->iso-8601 (u/date-trunc-or-extract unit value)))
-  RelativeDateTimeValue (->rvalue [{:keys [unit amount]}] (u/date->iso-8601 (u/date-trunc-or-extract unit (u/relative-date unit amount)))))
+  DateTimeValue         (->rvalue [{{unit :unit} :field, value :value}] (u/date->iso-8601 (u/date-trunc-or-extract unit value (get-timezone-id))))
+  RelativeDateTimeValue (->rvalue [{:keys [unit amount]}] (u/date->iso-8601 (u/date-trunc-or-extract unit (u/relative-date unit amount) (get-timezone-id)))))
 
 (defprotocol ^:private IDimensionOrMetric
   (^:private dimension-or-metric? [this]
@@ -238,8 +240,7 @@
                :month   "P1M"
                :quarter "P3M"
                :year    "P1Y")
-   :timeZone (or (get-in *query* [:settings :report-timezone])
-                 "UTC")})
+   :timeZone (get-timezone-id)})
 
 (def ^:private ^:const units-that-need-post-processing-int-parsing
   "`extract:timeFormat` always returns a string; there are cases where we'd like to return an integer instead, such as `:day-of-month`.
@@ -554,12 +555,12 @@
 
 (defmulti ^:private post-process query-type-dispatch-fn)
 
-(defmethod post-process ::select     [_ results] (->> results first :result :events (map :event)))
-(defmethod post-process ::total      [_ results] (map :result results))
-(defmethod post-process ::topN       [_ results] (-> results first :result))
-(defmethod post-process ::groupBy    [_ results] (map :event results))
+(defmethod post-process ::select  [_ results] (->> results first :result :events (map :event)))
+(defmethod post-process ::total   [_ results] (map :result results))
+(defmethod post-process ::topN    [_ results] (-> results first :result))
+(defmethod post-process ::groupBy [_ results] (map :event results))
 
-(defmethod post-process ::grouped-timeseries [_ results]
+(defmethod post-process ::timeseries [_ results]
   (for [event results]
     (conj {:timestamp (:timestamp event)} (:result event))))
 

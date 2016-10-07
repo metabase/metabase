@@ -22,9 +22,9 @@ If you exit the Admin Panel and try asking a new question, then click on the but
 
 ### Creating a Metric
 
-A custom metric is an easy way to refer to a computed number that you reference often. This could be something like **revenue**, which you could arrive at by viewing the Sum of your Order’s Subtotal column, and applying any required filters — but it’s a pain to have to do this every time you want to do something with revenue. 
+A custom metric is an easy way to refer to a computed number that you reference often. This could be something like **revenue**, which you could arrive at by viewing the Sum of your Order’s Subtotal column, and applying any required filters — but it’s a pain to have to do this every time you want to do something with revenue.
 
-So, you create a custom metric in a very similar way to how you create segments: start by clicking on the **Add a Metric** link from a table’s detail view in the Admin Panel. 
+So, you create a custom metric in a very similar way to how you create segments: start by clicking on the **Add a Metric** link from a table’s detail view in the Admin Panel.
 ![Add metric](images/AddMetric.png)
 
 Here your presented with a slightly different version of the query builder, which only lets you select filters and aggregations. Filters are optional: a metric only requires an aggregation on a field. Note that you can use segments in the definition of metrics — pretty cool, right? Go ahead and select your filters, if any, and choose your aggregation. Give your metric a name and a description, and click **Save changes** when you’re done. Just like with segments, you can use the **Preview** button to see how your metric looks in the query builder before you save it.
@@ -33,7 +33,7 @@ Here your presented with a slightly different version of the query builder, whic
 Your new metric will now be available from the View dropdown in the query builder, under **Common Metrics**.
 ![Metric in dropdown](images/Metric.png)
 
-### Editing and Retiring Segments and Metrics 
+### Editing and Retiring Segments and Metrics
 You can edit and retire segments and metrics from the Data Model screen in the Admin Panel. Select the table with the segment or metric you’re looking for, and click the ellipsis (…) icon to the right of that segment or metric.
 ![Segment Actions](images/SegmentActions.png)
 
@@ -45,5 +45,6 @@ Retiring a segment or metric will make it no longer selectable from the query bu
 Lastly, you can also view the revision history for each segment and metric from the actions list.
 
 ---
+
 ## Next: configuring Metabase
 There are a few other settings you configure in Metabase. [Learn how](06-configuration-settings.md).

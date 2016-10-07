@@ -34,7 +34,7 @@ export default class OperatorSelector extends Component {
         }
 
         return (
-            <div className="border-bottom p1">
+            <div id="OperatorSelector" className="border-bottom p1">
                 { visibleOperators.map(o =>
                     <button
                         key={o.name}
