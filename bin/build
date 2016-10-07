@@ -21,12 +21,12 @@ npm-install() {
 
 frontend() {
     echo "Running 'webpack -p' to assemble and minify frontend assets..." &&
-    ./node_modules/.bin/webpack -p
+    ./node_modules/.bin/webpack -p --bail
 }
 
 frontend-fast() {
     echo "Running 'webpack' to assemble and minify frontend assets..." &&
-    ./node_modules/.bin/webpack --devtool eval
+    ./node_modules/.bin/webpack --devtool eval --bail
 }
 
 sample-dataset() {
