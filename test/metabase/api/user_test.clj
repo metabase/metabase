@@ -272,3 +272,18 @@
 ;; Check that non-superusers are denied access to resending invites
 (expect "You don't have permissions to do that."
   ((user->client :rasta) :post 403 (format "user/%d/send_invite" (user->id :crowberto))))
+
+
+;; test that when disabling Google auth if a user gets disabled and reënabled they are no longer Google Auth (Bug #3323)
+(expect
+  {:is_active true, :google_auth false}
+  (tu/with-temporary-setting-values [google-auth-client-id "ABCDEFG"]
+    (tu/with-temp User [user {:google_auth true}]
+      (db/update! User (u/get-id user)
+        :is_active false)
+      (tu/with-temporary-setting-values [google-auth-client-id nil]
+        ((user->client :crowberto) :post 200 "user"
+         {:first_name "Cam"
+          :last_name  "Era"
+          :email      (:email user)})
+        (db/select-one [User :is_active :google_auth] :id (u/get-id user))))))

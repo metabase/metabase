@@ -88,5 +88,6 @@ You can also delete a database from the database list: hover over the row with t
 **Caution: Deleting a database is irreversible!  All saved questions and dashboard cards based on the database will be deleted as well!**
 
 ---
+
 ## Next: enabling features that send email
 Metabase can send emails for certain features, like email invites, but first you need to [set up an email account](02-setting-up-email.md).

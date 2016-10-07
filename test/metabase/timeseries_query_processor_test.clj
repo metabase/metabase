@@ -388,11 +388,11 @@
 ;;; date bucketing - default (day)
 (expect-with-timeseries-dbs
   {:columns ["timestamp" "count"]
-   :rows    [["2013-01-03+0000" 1]
-             ["2013-01-10+0000" 1]
-             ["2013-01-19+0000" 1]
-             ["2013-01-22+0000" 1]
-             ["2013-01-23+0000" 1]]}
+   :rows    [["2013-01-03+00:00" 1]
+             ["2013-01-10+00:00" 1]
+             ["2013-01-19+00:00" 1]
+             ["2013-01-22+00:00" 1]
+             ["2013-01-23+00:00" 1]]}
   (data (data/run-query checkins
           (ql/aggregation (ql/count))
           (ql/breakout $timestamp)
@@ -401,11 +401,11 @@
 ;;; date bucketing - minute
 (expect-with-timeseries-dbs
   {:columns ["timestamp" "count"]
-   :rows    [["2013-01-03T08:00:00+0000" 1]
-             ["2013-01-10T08:00:00+0000" 1]
-             ["2013-01-19T08:00:00+0000" 1]
-             ["2013-01-22T08:00:00+0000" 1]
-             ["2013-01-23T08:00:00+0000" 1]]}
+   :rows    [["2013-01-03T08:00:00+00:00" 1]
+             ["2013-01-10T08:00:00+00:00" 1]
+             ["2013-01-19T08:00:00+00:00" 1]
+             ["2013-01-22T08:00:00+00:00" 1]
+             ["2013-01-23T08:00:00+00:00" 1]]}
   (data (data/run-query checkins
           (ql/aggregation (ql/count))
           (ql/breakout (ql/datetime-field $timestamp :minute))
@@ -423,11 +423,11 @@
 ;;; date bucketing - hour
 (expect-with-timeseries-dbs
   {:columns ["timestamp" "count"]
-   :rows    [["2013-01-03T08:00:00+0000" 1]
-             ["2013-01-10T08:00:00+0000" 1]
-             ["2013-01-19T08:00:00+0000" 1]
-             ["2013-01-22T08:00:00+0000" 1]
-             ["2013-01-23T08:00:00+0000" 1]]}
+   :rows    [["2013-01-03T08:00:00+00:00" 1]
+             ["2013-01-10T08:00:00+00:00" 1]
+             ["2013-01-19T08:00:00+00:00" 1]
+             ["2013-01-22T08:00:00+00:00" 1]
+             ["2013-01-23T08:00:00+00:00" 1]]}
   (data (data/run-query checkins
           (ql/aggregation (ql/count))
           (ql/breakout (ql/datetime-field $timestamp :hour))
@@ -459,11 +459,11 @@
 ;;; date bucketing - day
 (expect-with-timeseries-dbs
   {:columns ["timestamp" "count"]
-   :rows    [["2013-01-03+0000" 1]
-             ["2013-01-10+0000" 1]
-             ["2013-01-19+0000" 1]
-             ["2013-01-22+0000" 1]
-             ["2013-01-23+0000" 1]]}
+   :rows    [["2013-01-03+00:00" 1]
+             ["2013-01-10+00:00" 1]
+             ["2013-01-19+00:00" 1]
+             ["2013-01-22+00:00" 1]
+             ["2013-01-23+00:00" 1]]}
   (data (data/run-query checkins
           (ql/aggregation (ql/count))
           (ql/breakout (ql/datetime-field $timestamp :day))

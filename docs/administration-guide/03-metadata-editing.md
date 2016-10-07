@@ -4,7 +4,7 @@
 ### What is metadata?
 Metadata is data about other data. It's information that tells you about the data found in your database. For example, we could label a field that looks like just a bunch of numbers with the label “latitude,” which would give that field additional meaning and context.
 
-Metabase allows you to optionally annotate the data in your database, which provides Metabase with an understanding of what the data actually means and allows it to more intelligently process and display it for you. 
+Metabase allows you to optionally annotate the data in your database, which provides Metabase with an understanding of what the data actually means and allows it to more intelligently process and display it for you.
 
 ### Editing your database’s metadata
 All of these settings are editable via the **Metadata** page within the **Admin Panel**. To get there, click the dropdown in the top right of Metabase that shows your initials, and select **Admin Panel**. Then click on **Data Model** from the top menu.
@@ -13,10 +13,10 @@ In the column on the left, you can choose which database to view, and then selec
 
 You can edit metadata for two things: tables and fields.
 
-### Metadata for tables 
+### Metadata for tables
 Tables can either be set to **Queryable** or **Hidden**. Queryable tables can be selected from the question builder, and all of the data in the table can be displayed (unless certain fields are excluded — more on that below).
 
-Hidden tables can’t be selected from the query builder, and their data can’t be accessed. 
+Hidden tables can’t be selected from the query builder, and their data can’t be accessed.
 
 You can also change the name and description of your tables here. Note that the underlying database won’t be affected — this will only change the name of the table while you’re viewing it within Metabase. Add descriptions to tables to let people know type of data a table contains and how it can be used. Descriptions are displayed in the data model reference panel in Metabase, which you can view by clicking the book icon in the top right of a new or saved question page.
 
@@ -25,7 +25,7 @@ If you ever want to see the original underlying schema for a given table, just c
 
 ### Metadata for fields
 
-A field is a representation of either a column (when using a SQL based database, like PostgreSQL) or a field in a document (when using a document- or JSON-based database like MongoDB). Metabase automatically attempts to classify your fields and assign them a type. If Metabase misclassified any fields, you can correct that here. 
+A field is a representation of either a column (when using a SQL based database, like PostgreSQL) or a field in a document (when using a document- or JSON-based database like MongoDB). Metabase automatically attempts to classify your fields and assign them a type. If Metabase misclassified any fields, you can correct that here.
 
 There are several pieces of metadata you can edit per field: name, description, visibility, type, and details:
 
@@ -82,8 +82,7 @@ This is also where you set mark special fields in a table:
 * Entity Name — different from the entity key, this is the field whose heading represents what each row in the table *is*. For example, in a Users table, the User column might be the entity name.
 * Foreign Key — this is a field in this table that uniquely identifies a *row* in another table. In other words, this is a field that, almost always, points to the primary key of another table. For example, in a Products table, you might have a Customer ID field that points to a Customers table, where Customer ID is the primary key.
 
- 
-
 ---
+
 ## Next: managing users
 Let’s learn how to add, remove, and edit users in the [managing users section](04-managing-users.md).

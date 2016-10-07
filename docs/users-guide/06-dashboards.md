@@ -1,5 +1,5 @@
 ## Dashboards
----
+
 ### What is a dashboard?
 A **dashboard** is a collection of saved questions that you want to refer back to and view regularly. It displays groups of questions and their corresponding answers.
 
@@ -9,7 +9,7 @@ Have a few key performance indicators that you want to be able to easily check? 
 
 You can make as many dashboards as you want. Go nuts.
 
-### How to Create a Dashboard
+### How to create a dashboard
 Once you have a question saved, you can create a dashboard. Click the **Dashboards** dropdown at the top of the screen, then **Create a new dashboard**. Give your new dashboard a name and a description, then click **Create**, and you’ll be taken to your shiny new dashboard. You can always get to your dashboards from the dropdown at the very top of the screen.
 
 ![Create Dashboard](images/dashboards/DashboardCreate.png)
@@ -71,7 +71,7 @@ To configure a dashboard using its URL, you can add the following optional keywo
 
 The part that says `refresh=60` sets the dashboard to automatically refresh every 60 seconds, `fullscreen` sets it to fullscreen mode, and `night` sets it to night mode (night mode only works when using fullscreen). Use an `&` in between keywords, and make sure there's a hash `#` after the dashboard's ID number.
 
-## Tips on Creating Helpful Dashboards
+## Tips on creating helpful dashboards
 To make a really helpful dashboard, you need to first decide what you want the dashboard to tell about your data. What questions will give you insight into what you want to know? It helps to think of a topic or theme for your dashboard — something like “customer satisfaction,” or “second quarter sales goals,” for example.
 
 Once you’ve decided what kinds of questions your dashboard is going to answer, create and save your individual questions from the question builder and save them. Next you can add your saved questions to your dashboard and arrange them in a way that makes it easy to scan and understand.

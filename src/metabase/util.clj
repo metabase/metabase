@@ -127,12 +127,14 @@
              (try (->Timestamp s)
                   (catch Throwable e)))))
 
+
 (defn ->Date
   "Coerece DATE to a `java.util.Date`."
   (^java.util.Date []
    (java.util.Date.))
   (^java.util.Date [date]
    (java.util.Date. (.getTime (->Timestamp date)))))
+
 
 (defn ->Calendar
   "Coerce DATE to a `java.util.Calendar`."
@@ -141,7 +143,11 @@
      (.setTimeZone (TimeZone/getTimeZone "UTC"))))
   (^java.util.Calendar [date]
    (doto (->Calendar)
-     (.setTime (->Timestamp date)))))
+     (.setTime (->Timestamp date))))
+  (^java.util.Calendar [date, ^String timezone-id]
+   (doto (->Calendar date)
+     (.setTimeZone (TimeZone/getTimeZone timezone-id)))))
+
 
 (defn relative-date
   "Return a new `Timestamp` relative to the current time using a relative date UNIT.
@@ -173,9 +179,11 @@
 
      (date-extract :year) -> 2015"
   ([unit]
-   (date-extract unit (System/currentTimeMillis)))
+   (date-extract unit (System/currentTimeMillis) "UTC"))
   ([unit date]
-   (let [cal (->Calendar date)]
+   (date-extract unit date "UTC"))
+  ([unit date timezone-id]
+   (let [cal (->Calendar date timezone-id)]
      (case unit
        :minute-of-hour  (.get cal Calendar/MINUTE)
        :hour-of-day     (.get cal Calendar/HOUR_OF_DAY)
@@ -186,7 +194,7 @@
        ;; 1 = First week of year
        :week-of-year    (.get cal Calendar/WEEK_OF_YEAR)
        :month-of-year   (inc (.get cal Calendar/MONTH))
-       :quarter-of-year (let [month (date-extract :month-of-year date)]
+       :quarter-of-year (let [month (date-extract :month-of-year date timezone-id)]
                           (int (/ (+ 2 month)
                                   3)))
        :year            (.get cal Calendar/YEAR)))))
@@ -195,45 +203,61 @@
 (def ^:private ^:const date-trunc-units
   #{:minute :hour :day :week :month :quarter})
 
+(defn- trunc-with-format [format-string date timezone-id]
+  (->Timestamp (format-date (time/with-zone (time/formatter format-string)
+                              (t/time-zone-for-id timezone-id))
+                            date)))
+
+(defn- trunc-with-floor [date amount-ms]
+  (->Timestamp (* (math/floor (/ (.getTime (->Timestamp date))
+                                 amount-ms))
+                  amount-ms)))
+
+(defn- ->first-day-of-week [date timezone-id]
+  (let [day-of-week (date-extract :day-of-week date timezone-id)]
+    (relative-date :day (- (dec day-of-week)) date)))
+
+(defn- format-string-for-quarter ^String [date timezone-id]
+  (let [year    (date-extract :year date timezone-id)
+        quarter (date-extract :quarter-of-year date timezone-id)
+        month   (- (* 3 quarter) 2)]
+    (format "%d-%02d-01ZZ" year month)))
+
 (defn date-trunc
   "Truncate DATE to UNIT. DATE defaults to now.
 
      (date-trunc :month).
      ;; -> #inst \"2015-11-01T00:00:00\""
   (^java.sql.Timestamp [unit]
-   (date-trunc unit (System/currentTimeMillis)))
+   (date-trunc unit (System/currentTimeMillis) "UTC"))
   (^java.sql.Timestamp [unit date]
-   (let [trunc-with-format (fn trunc-with-format
-                             ([format-string]
-                              (trunc-with-format format-string date))
-                             ([format-string d]
-                              (->Timestamp (format-date format-string d))))]
-     (case unit
-       :minute  (trunc-with-format "yyyy-MM-dd'T'HH:mm:00+00:00")
-       :hour    (trunc-with-format "yyyy-MM-dd'T'HH:00:00+00:00")
-       :day     (trunc-with-format "yyyy-MM-dd+00:00")
-       :week    (let [day-of-week (date-extract :day-of-week date)
-                      date        (relative-date :day (- (dec day-of-week)) date)]
-                  (trunc-with-format "yyyy-MM-dd+00:00" date))
-       :month   (trunc-with-format "yyyy-MM-01+00:00")
-       :quarter (let [year    (date-extract :year date)
-                      quarter (date-extract :quarter-of-year date)]
-                  (->Timestamp (format "%d-%02d-01+00:00" year (- (* 3 quarter)
-                                                                  2))))))))
+   (date-trunc unit date "UTC"))
+  (^java.sql.Timestamp [unit date timezone-id]
+   (case unit
+     ;; For minute and hour truncation timezone should not be taken into account
+     :minute  (trunc-with-floor date (* 60 1000))
+     :hour    (trunc-with-floor date (* 60 60 1000))
+     :day     (trunc-with-format "yyyy-MM-ddZZ" date timezone-id)
+     :week    (trunc-with-format "yyyy-MM-ddZZ" (->first-day-of-week date timezone-id) timezone-id)
+     :month   (trunc-with-format "yyyy-MM-01ZZ" date timezone-id)
+     :quarter (trunc-with-format (format-string-for-quarter date timezone-id) date timezone-id))))
+
 
 (defn date-trunc-or-extract
   "Apply date bucketing with UNIT to DATE. DATE defaults to now."
   ([unit]
-   (date-trunc-or-extract unit (System/currentTimeMillis)))
+   (date-trunc-or-extract unit (System/currentTimeMillis) "UTC"))
   ([unit date]
+   (date-trunc-or-extract unit date "UTC"))
+  ([unit date timezone-id]
    (cond
      (= unit :default) date
 
      (contains? date-extract-units unit)
-     (date-extract unit date)
+     (date-extract unit date timezone-id)
 
      (contains? date-trunc-units unit)
-     (date-trunc unit date))))
+     (date-trunc unit date timezone-id))))
 
 (defn format-nanoseconds
   "Format a time interval in nanoseconds to something more readable (µs/ms/etc.)

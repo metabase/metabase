@@ -77,7 +77,7 @@
   (throttle/check (forgot-password-throttlers :ip-address) remote-address)
   (throttle/check (forgot-password-throttlers :email)      email)
   ;; Don't leak whether the account doesn't exist, just pretend everything is ok
-  (when-let [{user-id :id, google-auth? :google_auth} (db/select-one ['User :id :google_auth] :email email)]
+  (when-let [{user-id :id, google-auth? :google_auth} (db/select-one ['User :id :google_auth] :email email, :is_active true)]
     (let [reset-token        (set-user-password-reset-token! user-id)
           password-reset-url (str (public-settings/site-url request) "/auth/reset_password/" reset-token)]
       (email/send-password-reset-email email google-auth? server-name password-reset-url)
@@ -93,7 +93,7 @@
   [^String token]
   (when-let [[_ user-id] (re-matches #"(^\d+)_.+$" token)]
     (let [user-id (Integer/parseInt user-id)]
-      (when-let [{:keys [reset_token reset_triggered], :as user} (db/select-one [User :id :last_login :reset_triggered :reset_token], :id user-id)]
+      (when-let [{:keys [reset_token reset_triggered], :as user} (db/select-one [User :id :last_login :reset_triggered :reset_token], :id user-id, :is_active true)]
         ;; Make sure the plaintext token matches up with the hashed one for this user
         (when (u/ignore-exceptions
                 (creds/bcrypt-verify token reset_token))
@@ -134,7 +134,7 @@
 ;; or `metabase.integrations.auth.google` if we decide to add more 3rd-party SSO options
 
 (defsetting google-auth-client-id
-  "Client ID for Google Auth SSO.")
+  "Client ID for Google Auth SSO. If this is set, Google Auth is considered to be enabled.")
 
 (defsetting google-auth-auto-create-accounts-domain
   "When set, allow users to sign up on their own if their Google account email address is from this domain.")
@@ -148,8 +148,7 @@
         (throw (ex-info "Email is not verified." {:status-code 400}))))))
 
 ;; TODO - are these general enough to move to `metabase.util`?
-(defn- email->domain   "ABC" ^String
-  [email]
+(defn- email->domain ^String [email]
   (last (re-find #"^.*@(.*$)" email)))
 
 (defn- email-in-domain? ^Boolean [email domain]
