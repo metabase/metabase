@@ -5,7 +5,6 @@ import BarChart from "./BarChart.jsx";
 
 import { formatValue } from "metabase/lib/formatting";
 import { getSettings } from "metabase/lib/visualization_settings";
-import { isNumeric } from "metabase/lib/schema_metadata";
 import i from "icepick";
 
 export default class Funnel extends Component {
