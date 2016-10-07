@@ -2,7 +2,7 @@
 import React, { Component, PropTypes } from "react";
 
 import S from "../components/List.css";
-import { pure } from "recompose";
+import pure from "recompose/pure";
 
 import EntityItem from "../containers/EntityItem.jsx";
 

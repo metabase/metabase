@@ -322,10 +322,6 @@
     width: 200px;
 }
 
-.UserRolePopover .ColumnarSelector-column {
-    min-height: 180px;
-}
-
 .UserActionsSelect {
     padding-top: 1em;
     min-width: 180px;

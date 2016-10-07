@@ -20,6 +20,7 @@ export default class Popover extends Component {
     }
 
     static propTypes = {
+        id: PropTypes.string,
         isOpen: PropTypes.bool,
         hasArrow: PropTypes.bool,
         // target: PropTypes.oneOfType([PropTypes.func, PropTypes.node]),
@@ -86,7 +87,7 @@ export default class Popover extends Component {
     _popoverComponent() {
         return (
             <OnClickOutsideWrapper handleDismissal={this.handleDismissal}>
-                <div className={cx("PopoverBody", { "PopoverBody--withArrow": this.props.hasArrow }, this.props.className)}>
+                <div id={this.props.id} className={cx("PopoverBody", { "PopoverBody--withArrow": this.props.hasArrow }, this.props.className)}>
                     { typeof this.props.children === "function" ?
                         this.props.children()
                     :

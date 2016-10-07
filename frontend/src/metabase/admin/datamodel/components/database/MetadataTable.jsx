@@ -61,7 +61,7 @@ export default class MetadataTable extends Component {
         var subTypes;
         if (this.props.tableMetadata.visibility_type) {
             subTypes = (
-                <span className="border-left mx2">
+                <span id="VisibilitySubTypes" className="border-left mx2">
                     <span className="mx2 text-uppercase text-grey-3">Why Hide?</span>
                     {this.renderVisibilityType("Technical Data", "technical")}
                     {this.renderVisibilityType("Irrelevant/Cruft", "cruft")}
@@ -69,7 +69,7 @@ export default class MetadataTable extends Component {
             );
         }
         return (
-            <span>
+            <span id="VisibilityTypes">
                 {this.renderVisibilityType("Queryable", null)}
                 {this.renderVisibilityType("Hidden", "hidden", true)}
                 {subTypes}

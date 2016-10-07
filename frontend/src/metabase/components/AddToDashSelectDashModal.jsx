@@ -54,6 +54,7 @@ export default class AddToDashSelectDashModal extends Component {
         } else {
             return (
                 <ModalContent
+                    id="AddToDashSelectDashModal"
                     title="Add Question to Dashboard"
                     closeFn={this.props.closeFn}
                 >

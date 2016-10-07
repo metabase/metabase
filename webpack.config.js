@@ -220,8 +220,15 @@ if (NODE_ENV === "hot") {
     // disable ExtractTextPlugin
     config.module.loaders[config.module.loaders.length - 1].loader = "style-loader!css-loader?" + JSON.stringify(CSS_CONFIG) + "!postcss-loader"
 
+    config.devServer = {
+        hot: true,
+        inline: true,
+        contentBase: "frontend"
+    };
+
     config.plugins.unshift(
-        new webpack.NoErrorsPlugin()
+        new webpack.NoErrorsPlugin(),
+        new webpack.HotModuleReplacementPlugin()
     );
 }
 
@@ -244,6 +251,13 @@ if (process.env.ENABLE_FLOW) {
 if (NODE_ENV === "hot" || isWatching) {
     // enable "cheap" source maps in hot or watch mode since re-build speed overhead is < 1 second
     config.devtool = "eval-cheap-module-source-map";
+
+    // works with breakpoints
+    // config.devtool = "inline-source-map"
+
+    // helps with source maps
+    config.output.devtoolModuleFilenameTemplate = '[absolute-resource-path]';
+    config.output.pathinfo = true;
 } else if (NODE_ENV === "production") {
     config.devtool = "source-map";
 }

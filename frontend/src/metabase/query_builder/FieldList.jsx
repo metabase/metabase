@@ -90,7 +90,7 @@ export default class FieldList extends Component {
         let { field, enableTimeGrouping } = this.props;
 
         return (
-            <div className="flex align-center">
+            <div className="Field-extra flex align-center">
                 { item.segment &&
                     this.renderSegmentTooltip(item.segment)
                 }
@@ -99,6 +99,7 @@ export default class FieldList extends Component {
                 }
                 { item.field && enableTimeGrouping && isDate(item.field) &&
                     <PopoverWithTrigger
+                        id="TimeGroupingPopover"
                         className={this.props.className}
                         hasArrow={false}
                         triggerElement={this.renderTimeGroupingTrigger(field)}
