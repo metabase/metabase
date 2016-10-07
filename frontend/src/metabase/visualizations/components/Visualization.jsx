@@ -1,3 +1,5 @@
+/* eslint "react/prop-types": "warn" */
+
 import React, { Component, PropTypes } from "react";
 
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
@@ -36,8 +38,30 @@ export default class Visualization extends Component {
     static propTypes = {
         series: PropTypes.array.isRequired,
 
+        className: PropTypes.string,
+
         isDashboard: PropTypes.bool,
         isEditing: PropTypes.bool,
+
+        actionButtons: PropTypes.node,
+
+        // errors
+        error: PropTypes.string,
+        errorIcon: PropTypes.string,
+
+        // slow card warnings
+        isSlow: PropTypes.bool,
+        expectedDuration: PropTypes.number,
+
+        // injected by ExplicitSize
+        width: PropTypes.number,
+        height: PropTypes.number,
+
+        // settings overrides from settings panel
+        settings: PropTypes.object,
+
+        // used for showing content in place of visualization, e.x. dashcard filter mapping
+        replacementContent: PropTypes.node,
 
         // used by TableInteractive
         setSortFn: PropTypes.func,
