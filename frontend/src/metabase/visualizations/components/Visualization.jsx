@@ -145,7 +145,13 @@ export default class Visualization extends Component {
                 { isDashboard && (settings["card.title"] || extra) && (loading || error || !CardVisualization.noHeader) || replacementContent ?
                     <div className="p1 flex-no-shrink">
                         <LegendHeader
-                            series={[{ card: { name: settings["card.title"] }}]}
+                            series={
+                                settings["card.title"] ?
+                                    // if we have a card title set, use it
+                                    [{ card: { name: settings["card.title"] }}] :
+                                    // otherwise use the original series
+                                    series
+                            }
                             actionButtons={extra}
                             settings={settings}
                         />
