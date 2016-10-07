@@ -51,12 +51,18 @@ export const BackendResource = createSharedResource("BackendResource", {
                     MB_DB_FILE: server.dbFile,
                     MB_JETTY_PORT: server.port
                 },
+                stdio: "inherit"
             });
         }
-        while (!(await isReady(server.host))) {
-            console.log("waiting", server.host)
-            await delay(500);
+        if (!(await isReady(server.host))) {
+            process.stdout.write("Waiting for backend (host=" + server.host + " dbKey=" + server.dbKey + ")");
+            while (!(await isReady(server.host))) {
+                process.stdout.write(".");
+                await delay(500);
+            }
+            process.stdout.write("\n");
         }
+        console.log("Backend ready (host=" + server.host + " dbKey=" + server.dbKey + ")");
     },
     async stop(server) {
         if (server.process) {

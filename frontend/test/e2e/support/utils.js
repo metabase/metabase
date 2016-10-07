@@ -3,12 +3,12 @@ import path from "path";
 
 import { By, until } from "selenium-webdriver";
 
-const DEFAULT_TIMEOUT = 5000;
+const DEFAULT_TIMEOUT = 50000;
 
 const delay = (timeout = 0) => new Promise((resolve) => setTimeout(resolve, timeout));
 
 const log = (message) => {
-    // console.log(message);
+    console.log(message);
 };
 
 export const findElement = (driver, selector) => {
@@ -28,12 +28,9 @@ export const waitForElement = (driver, selector, timeout = DEFAULT_TIMEOUT) => {
 
 export const waitForElementRemoved = (driver, selector, timeout = DEFAULT_TIMEOUT) => {
     log(`waiting for element to be removed: ${selector}`);
-    // workaround for not being able to catch NoSuchElementError from findElement
-    const element = driver.findElements(By.css(selector))[0];
-    if (!element) {
-        return;
-    }
-    return driver.wait(until.stalenessOf(element), timeout);
+    return driver.wait(() =>
+        driver.findElements(By.css(selector)).then(elements => elements.length === 0)
+    , timeout);
 };
 
 export const waitForElementText = async (driver, selector, expectedText, timeout = DEFAULT_TIMEOUT) => {
@@ -63,18 +60,15 @@ export const clickElement = (driver, selector) => {
 // prefer this over calling click() on element directly
 export const waitForElementAndClick = async (driver, selector, timeout = DEFAULT_TIMEOUT) => {
     log(`waiting to click: ${selector}`);
-    const element = await waitForElement(driver, selector, timeout);
-    // webdriver complains about stale element this way
-    // await Promise.all(
-    //     driver.wait(until.elementIsVisible(element)),
-    //     driver.wait(until.elementIsEnabled(element))
-    // );
-    const element2 = await driver.wait(until.elementIsVisible(element), timeout);
-    const element3 = await driver.wait(until.elementIsEnabled(element2), timeout);
+    let element = await waitForElement(driver, selector, timeout);
 
-    // queues click behind existing calls, might help with brittleness?
-    await delay();
-    return await element3.click();
+    element = await driver.wait(until.elementIsVisible(element), timeout);
+    element = await driver.wait(until.elementIsEnabled(element), timeout);
+
+    // help with brittleness
+    await driver.sleep(100);
+
+    return await element.click();
 };
 
 export const waitForElementAndSendKeys = async (driver, selector, keys, timeout = DEFAULT_TIMEOUT) => {
@@ -138,7 +132,6 @@ export const getJson = async (driver, url) => {
     await driver.get(url);
     try {
         let source = await driver.getPageSource();
-        console.log("source", source)
         return JSON.parse(source);
     } catch (e) {
         return null;
@@ -174,7 +167,6 @@ import { BackendResource, isReady } from "./backend";
 import { WebdriverResource } from "./webdriver";
 import { SauceConnectResource } from "./sauce";
 
-
 export const describeE2E = (name, options, describeCallback) => {
     if (typeof options === "function") {
         describeCallback = options;
@@ -184,36 +176,69 @@ export const describeE2E = (name, options, describeCallback) => {
     options = { name, ...options };
 
     let server = BackendResource.get({ dbKey: options.dbKey });
-    let driver = WebdriverResource.get();
+    let webdriver = WebdriverResource.get();
     let sauce = SauceConnectResource.get();
 
-    describe(name, () => {
+    describe(name, jasmineMultipleSetupTeardown(() => {
         beforeAll(async () => {
             await Promise.all([
                 BackendResource.start(server),
-                WebdriverResource.start(driver),
-                SauceConnectResource.start(sauce),
+                SauceConnectResource.start(sauce).then(()=>
+                    WebdriverResource.start(webdriver)),
             ]);
-            await driver.manage().deleteAllCookies();
+            await webdriver.driver.manage().deleteAllCookies();
+            await webdriver.driver.manage().timeouts().implicitlyWait(100);
+
+            global.driver = webdriver.driver;
+            global.server = server;
         });
 
         it ("should start", async () => {
             expect(await isReady(server.host)).toEqual(true);
-            driver.getCapabilities().set("")
         });
 
-        describeCallback({ server, driver });
+        describeCallback();
 
-        afterEach(() =>
-            screenshotFailures(driver)
-        );
+        afterEach(async () => {
+            await screenshotFailures(webdriver.driver)
+        });
 
         afterAll(async () => {
+            delete global.driver;
+            delete global.server;
+
             await Promise.all([
                 BackendResource.stop(server),
-                WebdriverResource.stop(driver),
+                WebdriverResource.stop(webdriver),
                 SauceConnectResource.stop(sauce),
             ]);
         });
-    });
+    }));
+}
+
+// normally Jasmine only supports a single setup/teardown handler
+// this monkey patches it to support multiple
+function jasmineMultipleSetupTeardown(fn) {
+    return function(...args) {
+        // temporarily replace beforeAll etc with versions that can be called multiple times
+        const handlers = { beforeAll: [], beforeEach: [], afterEach: [], afterAll: [] }
+        const originals = {};
+
+        Object.keys(handlers).map((name) => {
+            originals[name] = global[name];
+            global[name] = (fn) => handlers[name].push(fn);
+        });
+
+        fn.apply(this, args);
+
+        // restore and register actual handler
+        Object.keys(handlers).map((name) => {
+            global[name] = originals[name];
+            global[name](async () => {
+                for (const handler of handlers[name]) {
+                    await handler();
+                }
+            });
+        });
+    }
 }

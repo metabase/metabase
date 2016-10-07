@@ -16,7 +16,7 @@ import {
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
 
-describeE2E("admin/people", ({ server, driver }) => {
+describeE2E("admin/people", () => {
     describe("user management", () => {
         it("should allow admin to create new users", async () => {
             const email = "testy" + Math.round(Math.random()*10000) + "@metabase.com";

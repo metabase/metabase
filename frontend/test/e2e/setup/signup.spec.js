@@ -17,7 +17,7 @@ import {
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
 
-describeE2E("setup/signup", { dbKey: "" }, ({ server, driver }) => {
+describeE2E("setup/signup", { dbKey: "" }, () => {
     describe("onboarding", () => {
         it("should take you to the welcome page", async () => {
             await driver.get(`${server.host}/`);

@@ -11,18 +11,19 @@ import {
     waitForUrl,
     screenshot,
     loginMetabase,
-    describeE2E
+    describeE2E,
+    ensureLoggedIn
 } from "../support/utils";
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
 
-describeE2E("query_builder", ({ server, driver }) => {
+describeE2E("query_builder", () => {
     beforeEach(async () => {
         await ensureLoggedIn(server, driver, "bob@metabase.com", "12341234");
     });
 
     describe("tables", () => {
-        xit("should allow users to create pivot tables", async () => {
+        it("should allow users to create pivot tables", async () => {
             await driver.get(`${server.host}/q`);
 
             await screenshot(driver, "screenshots/qb-initial.png");

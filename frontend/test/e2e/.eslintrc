@@ -2,5 +2,9 @@
     "env": {
         "jasmine": true,
         "node": true
+    },
+    "globals": {
+        "driver": true,
+        "server": true
     }
 }

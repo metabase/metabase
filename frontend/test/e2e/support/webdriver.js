@@ -29,21 +29,30 @@ export const WebdriverResource = createSharedResource("WebdriverResource", {
     },
     create(options) {
         let config = getConfig(options);
-        let builder = new Builder();
-        if (config.capabilities) {
-            builder.withCapabilities(config.capabilities);
-        }
-        if (config.server) {
-            builder.usingServer(config.server);
-        }
-        if (config.browser) {
-            builder.forBrowser(config.browser);
-        }
-        return builder.build();
+        return {
+            config
+        };
     },
-    async start(driver) {
+    async start(webdriver) {
+        if (!webdriver.driver) {
+            let builder = new Builder();
+            if (webdriver.config.capabilities) {
+                builder.withCapabilities(webdriver.config.capabilities);
+            }
+            if (webdriver.config.server) {
+                builder.usingServer(webdriver.config.server);
+            }
+            if (webdriver.config.browser) {
+                builder.forBrowser(webdriver.config.browser);
+            }
+            webdriver.driver = builder.build();
+        }
     },
-    async stop(driver) {
-        await driver.quit();
+    async stop(webdriver) {
+        if (webdriver.driver) {
+            const driver = webdriver.driver;
+            delete webdriver.driver;
+            await driver.quit();
+        }
     }
 });

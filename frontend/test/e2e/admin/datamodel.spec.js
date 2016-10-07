@@ -17,7 +17,7 @@ import {
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 600000;
 
-describeE2E("admin/datamodel", ({ server, driver }) => {
+describeE2E("admin/datamodel", () => {
     beforeEach(() =>
         ensureLoggedIn(server, driver, "bob@metabase.com", "12341234")
     );
@@ -32,6 +32,9 @@ describeE2E("admin/datamodel", ({ server, driver }) => {
 
             await waitForElementAndClick(driver, "#VisibilityTypes span:nth-child(2)");
             await waitForElementAndClick(driver, "#VisibilitySubTypes span:nth-child(3)");
+
+            // unhide
+            await waitForElementAndClick(driver, "#VisibilityTypes span:first-child");
 
             // hide fields from people table
             await waitForElementAndClick(driver, ".AdminList-items li:nth-child(3)");
