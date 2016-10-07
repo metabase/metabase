@@ -16,6 +16,9 @@ import { assoc, getIn } from "icepick";
 import _ from "underscore";
 import cx from "classnames";
 
+export const ERROR_MESSAGE_GENERIC = "There was a problem displaying this chart.";
+export const ERROR_MESSAGE_PERMISSION = "Sorry, you don't have permission to see this card."
+
 @ExplicitSize
 export default class Visualization extends Component {
     constructor(props, context) {
@@ -118,6 +121,12 @@ export default class Visualization extends Component {
                 }
             }
         }
+
+        // if on dashoard, and error didn't come from props replace it with the generic error message
+        if (isDashboard && error && this.props.error !== error) {
+            error = ERROR_MESSAGE_GENERIC;
+        }
+
         if (!error) {
             noResults = getIn(series, [0, "data", "rows", "length"]) === 0;
         }
