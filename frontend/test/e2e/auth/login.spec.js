@@ -40,7 +40,7 @@ describeE2E("auth/login", () => {
             sessionId = sessionCookie.value;
         });
 
-        xit ("should redirect you after logging in", async () => {
+        it ("should redirect you after logging in", async () => {
             await driver.get(`${server.host}/questions`);
             await waitForUrl(driver, `${server.host}/auth/login?redirect=%2Fquestions`);
             await loginMetabase(driver, "bob@metabase.com", "12341234");

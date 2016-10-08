@@ -149,8 +149,8 @@ export const ensureLoggedIn = async (server, driver, email, password) => {
         return;
     }
     console.log("logging in");
-    await driver.manage().deleteAllCookies();
     await driver.get(`${server.host}/`);
+    await driver.manage().deleteAllCookies();
     await loginMetabase(driver, email, password);
     await waitForUrl(driver, `${server.host}/`);
 }
@@ -186,11 +186,13 @@ export const describeE2E = (name, options, describeCallback) => {
                 SauceConnectResource.start(sauce).then(()=>
                     WebdriverResource.start(webdriver)),
             ]);
-            await webdriver.driver.manage().deleteAllCookies();
-            await webdriver.driver.manage().timeouts().implicitlyWait(100);
 
             global.driver = webdriver.driver;
             global.server = server;
+
+            await driver.get(`${server.host}/`);
+            await driver.manage().deleteAllCookies();
+            await driver.manage().timeouts().implicitlyWait(100);
         });
 
         it ("should start", async () => {
