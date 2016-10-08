@@ -476,6 +476,7 @@ const cardDurations = handleActions({
 }, {});
 
 const parameterValues = handleActions({
+    [INITIALIZE]: { next: () => ({}) },
     [SET_PARAMETER_VALUE]: { next: (state, { payload: { id, value }}) => i.assoc(state, id, value) },
     [REMOVE_PARAMETER]: { next: (state, { payload: { id }}) => i.dissoc(state, id) }
 }, {});
