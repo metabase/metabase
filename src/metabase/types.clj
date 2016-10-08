@@ -72,7 +72,7 @@
 (derive :type/State :type/Address)
 (derive :type/Country :type/Address)
 (derive :type/Name :type/Address)
-(derive :type/Zip :type/Address)
+(derive :type/ZipCode :type/Address)
 
 
 ;;; Legacy Special Types. These will hopefully be going away in the future when we add columns like `:is_pk` and `:cardinality`
