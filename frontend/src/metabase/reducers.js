@@ -11,7 +11,7 @@ import requests from "metabase/redux/requests";
 import settings from "metabase/admin/settings/settings";
 import people from "metabase/admin/people/people";
 import databases from "metabase/admin/databases/database";
-import datamodel from "metabase/admin/datamodel/metadata";
+import datamodel from "metabase/admin/datamodel/datamodel";
 import permissions from "metabase/admin/permissions/permissions";
 
 /* dashboards */

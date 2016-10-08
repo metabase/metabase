@@ -4,7 +4,6 @@ import { handleActions, combineReducers, AngularResourceProxy, createAction, cre
 import { push } from "react-router-redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import { augmentTable } from "metabase/lib/table";
 import { loadTableAndForeignKeys } from "metabase/lib/table";
 import { isFK } from "metabase/lib/types";
 
