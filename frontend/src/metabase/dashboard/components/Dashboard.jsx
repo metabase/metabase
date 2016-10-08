@@ -304,6 +304,7 @@ export default class Dashboard extends Component {
 
         let parameters = dashboard && dashboard.parameters && dashboard.parameters.map(parameter =>
             <ParameterWidget
+                key={parameter.id}
                 className="ml1"
                 isEditing={isEditing}
                 isFullscreen={isFullscreen}
