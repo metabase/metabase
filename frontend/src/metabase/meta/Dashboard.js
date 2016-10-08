@@ -199,7 +199,7 @@ export function getParameterMappingTargetField(metadata: Metadata, card: CardObj
 }
 
 function fieldFilterForParameter(parameter: ParameterObject): FieldFilter {
-    const [type, subtype] = parameter.type.split("/");
+    const [type] = parameter.type.split("/");
     switch (type) {
         case "date":        return (field: Field) => field.isDate();
         case "id":          return (field: Field) => field.isID();
