@@ -4,7 +4,7 @@ import moment from "moment";
 import Humanize from "humanize";
 import React from "react";
 
-import { isDate } from "metabase/lib/schema_metadata";
+import { isDate, isNumber } from "metabase/lib/schema_metadata";
 import { parseTimestamp } from "metabase/lib/time";
 
 const PRECISION_NUMBER_FORMATTER      = d3.format(".2r");
@@ -89,7 +89,7 @@ export function formatValue(value, options = {}) {
     let column = options.column;
     options = {
         jsx: false,
-        comma: column && column.special_type === "number",
+        comma: isNumber(column),
         ...options
     };
     if (value == undefined) {
