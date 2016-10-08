@@ -113,6 +113,8 @@ export const isNumericBaseType = (field) => isa(field && field.base_type, TYPE.N
 // ZipCode, ID, etc derive from Number but should not be formatted as numbers
 export const isNumber = (field) => (field.special_type == null || field.special_type === TYPE.Number);
 
+export const isCoordinate = (field) => isa(field && field.special_type, TYPE.Coordinate);
+
 // operator argument constructors:
 
 function freeformArgument(field, table) {

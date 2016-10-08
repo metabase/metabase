@@ -4,7 +4,7 @@ import moment from "moment";
 import Humanize from "humanize";
 import React from "react";
 
-import { isDate, isNumber } from "metabase/lib/schema_metadata";
+import { isDate, isNumber, isCoordinate } from "metabase/lib/schema_metadata";
 import { parseTimestamp } from "metabase/lib/time";
 
 const PRECISION_NUMBER_FORMATTER      = d3.format(".2r");
@@ -101,7 +101,7 @@ export function formatValue(value, options = {}) {
     } else if (typeof value === "string") {
         return value;
     } else if (typeof value === "number") {
-        if (column && (column.special_type === "latitude" || column.special_type === "longitude")) {
+        if (isCoordinate(column)) {
             return DECIMAL_DEGREES_FORMATTER(value);
         } else {
             return formatNumber(value, options);
