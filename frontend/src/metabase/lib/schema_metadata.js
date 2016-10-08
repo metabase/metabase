@@ -110,6 +110,9 @@ export const isMetric    = (col) => (col && col.source !== "breakout") && isSumm
 
 export const isNumericBaseType = (field) => isa(field && field.base_type, TYPE.Number);
 
+// ZipCode, ID, etc derive from Number but should not be formatted as numbers
+export const isNumber = (field) => (field.special_type == null || field.special_type === TYPE.Number);
+
 // operator argument constructors:
 
 function freeformArgument(field, table) {
