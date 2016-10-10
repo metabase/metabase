@@ -465,3 +465,7 @@ export const typeToBgClass = {
     segment: 'bg-purple',
     table: 'bg-purple'
 };
+
+// little utility function to determin if we 'has' things, useful
+// for 
+export const has = (entity) => entity && entity.length > 0;

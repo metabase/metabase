@@ -22,7 +22,7 @@ import {
 const referenceSections = {
     [`/reference/guide`]: {
         id: `/reference/guide`,
-        name: "Understanding our data",
+        name: "Start here",
         breadcrumb: "Guide",
         fetch: {
             fetchGuide: [],

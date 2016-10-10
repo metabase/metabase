@@ -7,10 +7,6 @@ import { reduxForm } from "redux-form";
 import i from "icepick";
 import cx from "classnames";
 
-import {
-    getQuestionUrl
-} from '../utils';
-
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
@@ -54,6 +50,8 @@ import {
 } from '../selectors';
 
 import {
+    getQuestionUrl,
+    has,
     isGuideEmpty,
     tryUpdateGuide
 } from '../utils';
@@ -218,6 +216,7 @@ export default class ReferenceGettingStartedGuide extends Component {
         const getSelectedIdTypePairs = fields => fields
             .map(field => [field.id.value, field.type.value])
             .filter(idTypePair => idTypePair[0] !== null);
+
 
         return (
             <form className="full relative py4" style={style} onSubmit={onSubmit}>
@@ -457,7 +456,15 @@ export default class ReferenceGettingStartedGuide extends Component {
                             startEditing={startEditing}
                             isSuperuser={user && user.is_superuser}
                         />
+
                         <div className="wrapper wrapper--trim">
+                            { !guide && user && user.is_superuser && (
+                                <AdminInstructions>
+                                    <h2>Help your team get started with your data.</h2>
+                                    Use 
+                                </AdminInstructions>
+                            )}
+
                             { guide.most_important_dashboard !== null && [
                                 <div className="my2">
                                     <SectionHeader key={'dashboardTitle'}>
@@ -472,7 +479,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                 </div>
                             ]}
                             {
-                                metrics && (
+                               has(metrics) && (
                                     <div className="my4 pt4">
                                         <SectionHeader trim={guide.important_metrics.length === 0}>
                                             { guide.important_metrics && guide.important_metrics.length > 0 ? 'Numbers that we pay attention to' : 'Metrics' }
@@ -516,14 +523,10 @@ export default class ReferenceGettingStartedGuide extends Component {
                             }
 
                             <div className="mt4 pt4">
-                                <SectionHeader trim={!
-                                    (!guide.important_segments && !guide.importany_segments.length > 0) && (!guide.important_tables && !guide.important_tables.length > 0)}>
-                                    Segments and tables
+                                <SectionHeader trim={(!has(guide.important_segments) && !has(guide.important_tables))}>
+                                    { has(segments) ? 'Segments and tables' : 'Tables' }
                                 </SectionHeader>
-                                { (
-                                    (guide.important_segments && guide.important_segments.length > 0) ||
-                                    (guide.important_tables && guide.important_tables.length > 0)
-                                   ) ? [
+                                { has(guide.important_segments) || has(guide.important_tables) ? [
                                         <div className="mt2">
                                             { guide.important_segments.map((segmentId) =>
                                                 <GuideDetail
@@ -545,15 +548,26 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     ] : (
                                         <div>
                                             <GuideText>
-                                                Segments and tables are the building blocks of your company's data. Tables are collections of the raw information while segments are specific slices with specific meanings, like <b>"Recent orders."</b>
+                                                { has(segments) ? (
+                                                    <span>
+                                                        Segments and tables are the building blocks of your company's data. Tables are collections of the raw information while segments are specific slices with specific meanings, like <b>"Recent orders."</b>
+                                                    </span>
+                                                ) : "Tables are the building blocks of your company's data."
+                                                }
                                             </GuideText>
                                             <div>
-                                                { segments && (
+                                                { has(segments) && (
                                                     <Link className="Button Button--purple mr2" to={'/reference/segments'}>
                                                         See all segments
                                                     </Link>
                                                 )}
-                                                <Link className="text-purple text-bold no-decoration text-underline-hover" to={'/reference/databases'}>
+                                                <Link
+                                                    className={cx(
+                                                        { 'text-purple text-bold no-decoration text-underline-hover' : has(segments) },
+                                                        { 'Button Button--purple' : !has(segments) }
+                                                    )}
+                                                    to={'/reference/databases'}
+                                                >
                                                     See all tables
                                                 </Link>
                                             </div>
