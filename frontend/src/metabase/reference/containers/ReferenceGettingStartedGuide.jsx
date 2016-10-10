@@ -537,9 +537,11 @@ export default class ReferenceGettingStartedGuide extends Component {
                                         </div>,
                                         <div key={'segmentSeeAll'}>
                                             <div>
-                                                <Link className="Button Button--purple mr2" to={'/reference/segments'}>
-                                                    See all segments
-                                                </Link>
+                                                { segments && (
+                                                    <Link className="Button Button--purple mr2" to={'/reference/segments'}>
+                                                        See all segments
+                                                    </Link>
+                                                )}
                                                 <Link className="text-purple text-bold no-decoration text-underline-hover" to={'/reference/databases'}>
                                                     See all tables
                                                 </Link>
@@ -556,7 +558,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                         <p className="text-paragraph text-measure" key={'thingsToKnowDetails'}>
                                             { guide.things_to_know || `Nothing to know yet`}
                                         </p>,
-                                        <Link className="link text-bold" to={'/reference/databases'} key={'thingsToKnowSeeAll'}>
+                                        <Link className="Button Button--primary text-bold" to={'/reference/databases'} key={'thingsToKnowSeeAll'}>
                                             Explore our data
                                         </Link>
                                     ]}
