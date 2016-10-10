@@ -5,7 +5,6 @@ import BarChart from "./BarChart.jsx";
 
 import { formatValue } from "metabase/lib/formatting";
 import { getSettings } from "metabase/lib/visualization_settings";
-import { isNumeric } from "metabase/lib/schema_metadata";
 import i from "icepick";
 
 export default class Funnel extends Component {
@@ -23,9 +22,8 @@ export default class Funnel extends Component {
     }
 
     static checkRenderable(cols, rows) {
-        if (!isNumeric(cols[0])) {
-            throw new Error("Funnel visualization requires a number.");
-        }
+        // leaving this blank for now since it should be difficult to get into an invalid state
+        // TODO: we should really change checkRenderable to take the entire `series` object
     }
 
     static transformSeries(series) {
