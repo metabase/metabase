@@ -7,6 +7,7 @@ import Ellipsified from "metabase/components/Ellipsified.jsx";
 import Urls from "metabase/lib/urls";
 import { formatValue } from "metabase/lib/formatting";
 import { TYPE } from "metabase/lib/types";
+import { isNumber } from "metabase/lib/schema_metadata";
 
 import cx from "classnames";
 import i from "icepick";
@@ -69,7 +70,7 @@ export default class Scalar extends Component {
         let compactScalarValue, fullScalarValue;
 
         // TODO: some or all of these options should be part of formatValue
-        if (typeof scalarValue === "number" && (column.special_type == null || column.special_type === "number")) {
+        if (typeof scalarValue === "number" && isNumber(column)) {
             let number = scalarValue;
 
             // scale
