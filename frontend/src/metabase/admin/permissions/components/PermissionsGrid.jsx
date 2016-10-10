@@ -260,7 +260,7 @@ const EntityRowHeader = ({ entity, type }) =>
             <Icon name={type} className="absolute" style={{ left: -28 }} />
             <h4>{entity.name}</h4>
         </div>
-        { type !== 'database' && entity.subtitle &&
+        { entity.subtitle &&
             <span className="mt1 h5 text-monospace text-normal text-grey-2 text-uppercase">{entity.subtitle}</span>
         }
         { entity.link &&
