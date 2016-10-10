@@ -50,7 +50,6 @@ window.MetabaseBootstrap = {
         "type/UNIXTimestampSeconds":      ["type/UNIXTimestamp"],
         "type/URL":                       ["type/Text"],
         "type/UUID":                      ["type/Text"],
-        "type/Zip":                       ["type/Address"],
-        "type/ZipCode":                   ["type/Integer"]
+        "type/ZipCode":                   ["type/Integer", "type/Address"]
     }
 };

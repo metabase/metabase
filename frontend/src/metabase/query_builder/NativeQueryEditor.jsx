@@ -199,9 +199,9 @@ export default class NativeQueryEditor extends Component {
 
         let modeInfo = getModeInfo(this.props.query, this.props.databases);
 
-        // we only render a db selector if there are actually multiple to choose from
         let dataSelectors = [];
-        if (this.state.showEditor && this.props.nativeDatabases && (this.props.nativeDatabases.length > 1 || modeInfo.requiresTable)) {
+        if (this.state.showEditor && this.props.nativeDatabases) {
+            // we only render a db selector if there are actually multiple to choose from
             if (this.props.nativeDatabases.length > 1) {
                 dataSelectors.push(
                     <div key="db_selector" className="GuiBuilder-section GuiBuilder-data flex align-center">
@@ -213,6 +213,10 @@ export default class NativeQueryEditor extends Component {
                         />
                     </div>
                 )
+            } else {
+                dataSelectors.push(
+                    <span className="p2 text-bold text-grey">{this.props.nativeDatabases[0].name}</span>
+                );
             }
             if (modeInfo.requiresTable) {
                 let databases = this.props.nativeDatabases,
