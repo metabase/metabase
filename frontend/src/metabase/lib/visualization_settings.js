@@ -9,7 +9,7 @@ import {
     DIMENSION_METRIC_METRIC
 } from "metabase/visualizations/lib/utils";
 
-import { isNumeric, isDate, isMetric, isDimension, hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
+import { isNumeric, isDate, isMetric, isDimension, isLatitude, isLongitude, hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 import Query from "metabase/lib/query";
 import { capitalize } from "metabase/lib/formatting";
 
@@ -564,7 +564,7 @@ const SETTINGS = {
         title: "Latitude field",
         widget: ChartSettingSelect,
         getDefault: ([{ card, data: { cols }}]) =>
-            (_.findWhere(cols, { special_type: "latitude" }) || {}).name,
+            (_.find(cols, isLatitude) || {}).name,
         getProps: ([{ card, data: { cols }}]) => ({
             options: cols.filter(isNumeric).map(getOptionFromColumn)
         }),
@@ -574,7 +574,7 @@ const SETTINGS = {
         title: "Longitude field",
         widget: ChartSettingSelect,
         getDefault: ([{ card, data: { cols }}]) =>
-            (_.findWhere(cols, { special_type: "longitude" }) || {}).name,
+            (_.find(cols, isLongitude) || {}).name,
         getProps: ([{ card, data: { cols }}]) => ({
             options: cols.filter(isNumeric).map(getOptionFromColumn)
         }),
