@@ -111,7 +111,7 @@ export const isMetric    = (col) => (col && col.source !== "breakout") && isSumm
 export const isNumericBaseType = (field) => isa(field && field.base_type, TYPE.Number);
 
 // ZipCode, ID, etc derive from Number but should not be formatted as numbers
-export const isNumber = (field) => (field.special_type == null || field.special_type === TYPE.Number);
+export const isNumber = (field) => field && isNumericBaseType(field) && (field.special_type == null || field.special_type === TYPE.Number);
 
 export const isCoordinate = (field) => isa(field && field.special_type, TYPE.Coordinate);
 export const isLatitude = (field) => isa(field && field.special_type, TYPE.Latitude);
@@ -472,7 +472,7 @@ export function addValidOperatorsToFields(table) {
     for (let field of table.fields) {
         field.valid_operators = getOperators(field, table);
     }
-    table.aggregation_options = getAggregators(table);
+    table.aggregation_options = getAggregatorsWithFields(table);
     table.breakout_options = getBreakouts(table.fields);
     return table;
 }
