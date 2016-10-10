@@ -83,6 +83,10 @@ export const getParameterTarget = createSelector(
 export const getMappingsByParameter = createSelector(
     [getMetadata, getDashboardComplete],
     (metadata, dashboard) => {
+        if (!dashboard) {
+            return {};
+        }
+
         let mappingsByParameter = {};
         let countsByParameter = {};
         let mappings = [];
