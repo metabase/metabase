@@ -61,7 +61,6 @@ const GuideDetailEditor = ({
             <div className="py2">
                 { entities ?
                     <Select 
-                        className={selectClasses}
                         value={entities[formField.id.value]}
                         options={Object.values(entities)}
                         disabledOptionIds={selectedIds}
