@@ -18,7 +18,7 @@ If you click on a section, it'll expand and let you select the items that you wa
 
 To remove an item you've added, just click the X icon in the top-right of the item. When you're all done adding things to your guide, click the `Save` button in the blue bar at the top of the screen. To make edits to your guide, simply click the `Edit` link in the top-right of the guide. Once you click `Save`, you'll see your brand new Getting Started Guide!
 
-1[Finished Guide](images/gsg/finished-guide.png)
+![Finished Guide](images/gsg/finished-guide.png)
 
 Clicking on the title of an item you've included in your guide will take you to the item itself. Clicking on `Learn more` will take you to a more detailed entry about that item so you can explore it and related items in more detail.
 
