@@ -2,7 +2,7 @@
 
 import React, { Component, PropTypes } from "react";
 
-import { Grid, AutoSizer, ScrollSync } from 'react-virtualized'
+import { Grid, ScrollSync } from 'react-virtualized'
 import 'react-virtualized/styles.css';
 import S from "./FixedHeaderGrid.css";
 
