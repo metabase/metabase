@@ -14,7 +14,6 @@ import CreateDashboardModal from 'metabase/components/CreateDashboardModal.jsx';
 import Modal from 'metabase/components/Modal.jsx';
 
 import EditHeader from "metabase/reference/components/EditHeader.jsx";
-import GuideEmptyState from "metabase/reference/components/GuideEmptyState.jsx";
 import GuideHeader from "metabase/reference/components/GuideHeader.jsx";
 import GuideEditSection from "metabase/reference/components/GuideEditSection.jsx";
 import GuideDetail from "metabase/reference/components/GuideDetail.jsx";
@@ -458,10 +457,18 @@ export default class ReferenceGettingStartedGuide extends Component {
                         />
 
                         <div className="wrapper wrapper--trim">
-                            { !guide && user && user.is_superuser && (
+                            { (!guide || isGuideEmpty(guide)) && user && user.is_superuser && (
                                 <AdminInstructions>
-                                    <h2>Help your team get started with your data.</h2>
-                                    Use 
+                                    <h2 className="py2">Help your team get started with your data.</h2>
+                                    <GuideText>
+                                        Show your team what’s most important by choosing your top dashboard, metrics, and segments.
+                                    </GuideText>
+                                    <button
+                                        className="Button Button--primary"
+                                        onClick={startEditing}
+                                    >
+                                        Get started
+                                    </button>
                                 </AdminInstructions>
                             )}
 
@@ -617,15 +624,13 @@ export default class ReferenceGettingStartedGuide extends Component {
     }
 }
 
-const GuideText = ({ children }) =>
+const GuideText = ({ children }) => // eslint-disable-line react/prop-types
     <p className="text-paragraph text-measure">{children}</p>
 
 const AdminInstructions = ({ children }) => // eslint-disable-line react/prop-types
-    <div
-        className="bordered border-brand rounded p3 text-brand"
-        onClick={() => console.log('lets edit') }
-    >
-    {children}</div>
+    <div className="bordered border-brand rounded p3 text-brand text-measure text-centered bg-light-blue">
+        {children}
+    </div>
 
 const SectionHeader = ({ trim, children }) => // eslint-disable-line react/prop-types
     <h2 className={cx('text-dark text-measure', {  "mb0" : trim }, { "mb4" : !trim })}>{children}</h2> 
