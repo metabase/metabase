@@ -472,7 +472,7 @@ export function addValidOperatorsToFields(table) {
     for (let field of table.fields) {
         field.valid_operators = getOperators(field, table);
     }
-    table.aggregation_options = getAggregators(table);
+    table.aggregation_options = getAggregatorsWithFields(table);
     table.breakout_options = getBreakouts(table.fields);
     return table;
 }
