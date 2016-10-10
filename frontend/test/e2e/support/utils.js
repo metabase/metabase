@@ -72,7 +72,7 @@ export const waitForElementAndClick = async (driver, selector, timeout = DEFAULT
 };
 
 export const waitForElementAndSendKeys = async (driver, selector, keys, timeout = DEFAULT_TIMEOUT) => {
-    log(`waiting for element to send ${keys}: ${selector}`);
+    log(`waiting for element to send "${keys}": ${selector}`);
     const element = await waitForElement(driver, selector, timeout);
     await element.clear();
     return await element.sendKeys(keys);
@@ -149,6 +149,7 @@ export const ensureLoggedIn = async (server, driver, email, password) => {
         return;
     }
     console.log("logging in");
+    await driver.get(`${server.host}/`);
     await driver.manage().deleteAllCookies();
     await driver.get(`${server.host}/`);
     await loginMetabase(driver, email, password);
@@ -186,11 +187,13 @@ export const describeE2E = (name, options, describeCallback) => {
                 SauceConnectResource.start(sauce).then(()=>
                     WebdriverResource.start(webdriver)),
             ]);
-            await webdriver.driver.manage().deleteAllCookies();
-            await webdriver.driver.manage().timeouts().implicitlyWait(100);
 
             global.driver = webdriver.driver;
             global.server = server;
+
+            await driver.get(`${server.host}/`);
+            await driver.manage().deleteAllCookies();
+            await driver.manage().timeouts().implicitlyWait(100);
         });
 
         it ("should start", async () => {
@@ -224,12 +227,33 @@ function jasmineMultipleSetupTeardown(fn) {
         const handlers = { beforeAll: [], beforeEach: [], afterEach: [], afterAll: [] }
         const originals = {};
 
+        // hook the global "describe" so we know if we're in an inner describe call,
+        // since we only want to grab the top-level setup/teardown handlers
+        let originalDescribe = global.describe;
+        let innerDescribe = false;
+        global.describe = (...args) => {
+            innerDescribe = true;
+            try {
+                return originalDescribe.apply(this, args);
+            } finally {
+                innerDescribe = false;
+            }
+        }
+
         Object.keys(handlers).map((name) => {
             originals[name] = global[name];
-            global[name] = (fn) => handlers[name].push(fn);
+            global[name] = (fn) => {
+                if (innerDescribe) {
+                    return originals[name](fn);
+                } else {
+                    return handlers[name].push(fn);
+                }
+            };
         });
 
         fn.apply(this, args);
+
+        global.describe = originalDescribe;
 
         // restore and register actual handler
         Object.keys(handlers).map((name) => {
