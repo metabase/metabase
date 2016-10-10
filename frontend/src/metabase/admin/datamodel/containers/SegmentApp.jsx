@@ -7,7 +7,7 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 import SegmentForm from "./SegmentForm.jsx";
 
 import { segmentEditSelectors } from "../selectors";
-import * as actions from "../metadata";
+import * as actions from "../datamodel";
 import { clearRequestState } from "metabase/redux/requests";
 
 const mapDispatchToProps = {

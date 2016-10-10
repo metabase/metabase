@@ -17,7 +17,7 @@ import {
     getEditingDatabaseWithTableMetadataStrengths,
     getEditingTable
 } from "../selectors";
-import * as metadataActions from "../metadata";
+import * as metadataActions from "../datamodel";
 
 const mapStateToProps = (state, props) => {
     return {

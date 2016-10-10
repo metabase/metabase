@@ -659,6 +659,7 @@ function getSetting(id, vizSettings, series) {
 
     const settingDef = SETTINGS[id];
     const [{ card }] = series;
+    const visualization_settings = card.visualization_settings || {};
 
     for (let dependentId of settingDef.readDependencies || []) {
         getSetting(dependentId, vizSettings, series);
@@ -673,9 +674,9 @@ function getSetting(id, vizSettings, series) {
             return vizSettings[id] = settingDef.getValue(series, vizSettings);
         }
 
-        if (card.visualization_settings[id] !== undefined) {
+        if (visualization_settings[id] !== undefined) {
             if (!settingDef.isValid || settingDef.isValid(series, vizSettings)) {
-                return vizSettings[id] = card.visualization_settings[id];
+                return vizSettings[id] = visualization_settings[id];
             }
         }
 

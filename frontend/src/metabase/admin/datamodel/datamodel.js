@@ -4,7 +4,6 @@ import { handleActions, combineReducers, AngularResourceProxy, createAction, cre
 import { push } from "react-router-redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import { augmentTable } from "metabase/lib/table";
 import { loadTableAndForeignKeys } from "metabase/lib/table";
 import { isFK } from "metabase/lib/types";
 
@@ -19,15 +18,8 @@ const Metabase = new AngularResourceProxy("Metabase", ["dataset"]);
 const Revisions = new AngularResourceProxy("Revisions", ["get"]);
 
 
-async function loadDatabaseMetadata(databaseId) {
-    let databaseMetadata = await MetabaseApi.db_metadata({ 'dbId': databaseId });
-
-    databaseMetadata.tables = await Promise.all(databaseMetadata.tables.map(async (table) => {
-        table = await augmentTable(table);
-        return table;
-    }));
-
-    return databaseMetadata;
+function loadDatabaseMetadata(databaseId) {
+    return MetabaseApi.db_metadata({ 'dbId': databaseId });
 }
 
 // initializeMetadata
