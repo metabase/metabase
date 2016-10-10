@@ -5410,6 +5410,25 @@
                           }
                         }
                       }
+                    },
+                    "babel-plugin-transform-object-rest-spread": {
+                      "version": "6.16.0",
+                      "dependencies": {
+                        "babel-plugin-syntax-object-rest-spread": {
+                          "version": "6.13.0"
+                        },
+                        "babel-runtime": {
+                          "version": "6.11.6",
+                          "dependencies": {
+                            "core-js": {
+                              "version": "2.4.1"
+                            },
+                            "regenerator-runtime": {
+                              "version": "0.9.5"
+                            }
+                          }
+                        }
+                      }
                     }
                   }
                 }
@@ -11992,18 +12011,21 @@
       "version": "1.1.0"
     },
     "react-virtualized": {
-      "version": "6.3.2",
+      "version": "8.0.12",
       "dependencies": {
-        "dom-helpers": {
-          "version": "2.4.0"
-        },
-        "raf": {
-          "version": "3.3.0",
+        "babel-runtime": {
+          "version": "6.11.6",
           "dependencies": {
-            "performance-now": {
-              "version": "0.2.0"
+            "core-js": {
+              "version": "2.4.1"
+            },
+            "regenerator-runtime": {
+              "version": "0.9.5"
             }
           }
+        },
+        "dom-helpers": {
+          "version": "2.4.0"
         }
       }
     },
