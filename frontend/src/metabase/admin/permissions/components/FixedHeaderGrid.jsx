@@ -23,11 +23,11 @@ const FixedHeaderGrid = ({
     rowHeaderWidth,
     renderRowHeader,
     renderCorner,
+    width,
+    height,
     paddingBottom = 25
 }) =>
     <div className={cx(className, S.fixedHeaderGrid, "relative")}>
-        <AutoSizer>
-        {({ height, width }) =>
             <ScrollSync>
                 {({ clientHeight, clientWidth, onScroll, scrollHeight, scrollLeft, scrollTop, scrollWidth }) =>
                     <div>
@@ -94,7 +94,6 @@ const FixedHeaderGrid = ({
                 }
             </ScrollSync>
         }
-        </AutoSizer>
     </div>
 
 export default FixedHeaderGrid;
