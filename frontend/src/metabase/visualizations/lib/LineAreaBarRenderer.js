@@ -261,6 +261,8 @@ function applyChartTooltips(chart, series, onHoverChange) {
     chart.on("renderlet.tooltips", function(chart) {
         chart.selectAll(".bar, .dot, .area, .line, .bubble, g.pie-slice, g.features")
             .on("mousemove", function(d, i) {
+                const isSingleSeriesBar = this.classList.contains("bar") && series.length === 1;
+
                 let data;
                 if (Array.isArray(d.key)) { // scatter
                     data = d.key.map((value, index) => (
@@ -274,7 +276,8 @@ function applyChartTooltips(chart, series, onHoverChange) {
                 }
 
                 onHoverChange && onHoverChange({
-                    index: determineSeriesIndexFromElement(this),
+                    // for single series bar charts, fade the series and highlght the hovered element with CSS
+                    index: isSingleSeriesBar ? -1 : determineSeriesIndexFromElement(this),
                     element: this,
                     d: d,
                     data: data && _.uniq(data, (d) => d.col)
