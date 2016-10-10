@@ -227,6 +227,8 @@ function jasmineMultipleSetupTeardown(fn) {
         const handlers = { beforeAll: [], beforeEach: [], afterEach: [], afterAll: [] }
         const originals = {};
 
+        // hook the global "describe" so we know if we're in an inner describe call,
+        // since we only want to grab the top-level setup/teardown handlers
         let originalDescribe = global.describe;
         let innerDescribe = false;
         global.describe = (...args) => {
