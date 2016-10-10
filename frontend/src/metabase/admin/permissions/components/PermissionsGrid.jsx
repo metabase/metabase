@@ -281,13 +281,13 @@ const PermissionsGrid = ({ className, grid, onUpdatePermission }) => {
     );
     return (
         <AutoSizer>
-            {({ height, width }) => 
+            {({ height, width }) =>
                 <FixedHeaderGrid
                     height={height}
                     width={width}
                     className={className}
-                    rowsCount={grid.entities.length}
-                    columnsCount={grid.groups.length}
+                    rowCount={grid.entities.length}
+                    columnCount={grid.groups.length}
                     columnWidth={Math.max(CELL_WIDTH, (width - HEADER_WIDTH) / grid.groups.length)}
                     rowHeight={CELL_HEIGHT}
                     columnHeaderHeight={HEADER_HEIGHT}

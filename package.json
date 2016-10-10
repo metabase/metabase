@@ -50,7 +50,7 @@
     "react-router": "^2.6.0",
     "react-router-redux": "^4.0.5",
     "react-sortable": "^1.0.1",
-    "react-virtualized": "^6.1.2",
+    "react-virtualized": "^8.0.12",
     "recompose": "^0.20.2",
     "redux": "^3.5.2",
     "redux-actions": "^0.9.1",
