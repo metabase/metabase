@@ -332,12 +332,12 @@
 }
 
 /* disable dc default behavior */
-.dc-chart rect.bar:hover {
-  fill-opacity: 1 !important;
+.Card-outer .dc-chart rect.bar:hover {
+  fill-opacity: 1;
 }
 /* highlight single series bar */
-.mute-0 .dc-chart rect.bar:hover {
-  opacity: 1 !important;
+.mute-0 .Card-outer .dc-chart rect.bar:hover {
+  opacity: 1;
 }
 
 .enable-dots .dc-tooltip circle.dot {
