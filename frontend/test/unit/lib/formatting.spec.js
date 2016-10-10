@@ -24,15 +24,18 @@ describe('formatting', () => {
     });
 
     describe("formatValue", () => {
+        it("should format numbers with null column", () => {
+            expect(formatValue(12345)).toEqual("12345");
+        });
         it("should format numbers with commas", () => {
-            expect(formatValue(12345, { column: { special_type: TYPE.Number }})).toEqual("12,345");
+            expect(formatValue(12345, { column: { base_type: TYPE.Number, special_type: TYPE.Number }})).toEqual("12,345");
         });
         it("should format zip codes without commas", () => {
-            expect(formatValue(12345, { column: { special_type: TYPE.ZipCode }})).toEqual("12345");
+            expect(formatValue(12345, { column: { base_type: TYPE.Number, special_type: TYPE.ZipCode }})).toEqual("12345");
         });
         it("should format latitude and longitude columns correctly", () => {
-            expect(formatValue(37.7749, { column: { special_type: TYPE.Latitude }})).toEqual("37.77490000");
-            expect(formatValue(-122.4194, { column: { special_type: TYPE.Longitude }})).toEqual("-122.41940000");
+            expect(formatValue(37.7749, { column: { base_type: TYPE.Number, special_type: TYPE.Latitude }})).toEqual("37.77490000");
+            expect(formatValue(-122.4194, { column: { base_type: TYPE.Number, special_type: TYPE.Longitude }})).toEqual("-122.41940000");
         });
     });
 });
