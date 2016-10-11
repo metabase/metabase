@@ -5,10 +5,7 @@ import { connect } from 'react-redux';
 import { push } from 'react-router-redux';
 import { reduxForm } from "redux-form";
 import i from "icepick";
-
-import {
-    getQuestionUrl
-} from '../utils';
+import cx from "classnames";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
@@ -17,7 +14,6 @@ import CreateDashboardModal from 'metabase/components/CreateDashboardModal.jsx';
 import Modal from 'metabase/components/Modal.jsx';
 
 import EditHeader from "metabase/reference/components/EditHeader.jsx";
-import GuideEmptyState from "metabase/reference/components/GuideEmptyState.jsx";
 import GuideHeader from "metabase/reference/components/GuideHeader.jsx";
 import GuideEditSection from "metabase/reference/components/GuideEditSection.jsx";
 import GuideDetail from "metabase/reference/components/GuideDetail.jsx";
@@ -53,6 +49,8 @@ import {
 } from '../selectors';
 
 import {
+    getQuestionUrl,
+    has,
     isGuideEmpty,
     tryUpdateGuide
 } from '../utils';
@@ -217,6 +215,7 @@ export default class ReferenceGettingStartedGuide extends Component {
         const getSelectedIdTypePairs = fields => fields
             .map(field => [field.id.value, field.type.value])
             .filter(idTypePair => idTypePair[0] !== null);
+
 
         return (
             <form className="full relative py4" style={style} onSubmit={onSubmit}>
@@ -451,73 +450,90 @@ export default class ReferenceGettingStartedGuide extends Component {
                             </div>
                         </GuideEditSection>
                     </div> :
-                    !guide || isGuideEmpty(guide) ?
-                        <GuideEmptyState
-                            isSuperuser={user && user.is_superuser}
+                    <div>
+                        <GuideHeader
                             startEditing={startEditing}
-                        /> :
-                        <div>
-                            <GuideHeader
-                                startEditing={startEditing}
-                                isSuperuser={user && user.is_superuser}
-                            />
-                            <div className="wrapper wrapper--trim">
-                                { guide.most_important_dashboard !== null && [
-                                    <div className="my2">
-                                        <SectionHeader key={'dashboardTitle'}>
-                                            Our most important dashboard
-                                        </SectionHeader>
-                                        <GuideDetail
-                                            key={'dashboardDetail'}
-                                            type="dashboard"
-                                            entity={dashboards[guide.most_important_dashboard]}
-                                            tables={tables}
-                                        />
-                                    </div>
-                                ]}
-                                <div className="my4">
-                                    { guide.important_metrics && guide.important_metrics.length > 0 && [
-                                        <div className="my2">
-                                            <SectionHeader key={'metricsTitle'}>
-                                                Numbers that we pay attention to
-                                            </SectionHeader>
-                                            { guide.important_metrics.map((metricId) =>
-                                                <GuideDetail
-                                                    key={metricId}
-                                                    type="metric"
-                                                    entity={metrics[metricId]}
-                                                    tables={tables}
-                                                    exploreLinks={guide.metric_important_fields[metricId] &&
-                                                        guide.metric_important_fields[metricId]
-                                                            .map(fieldId => metadataFields[fieldId])
-                                                            .map(field => ({
-                                                                name: field.display_name || field.name,
-                                                                url: getQuestionUrl({
-                                                                    dbId: tables[field.table_id] && tables[field.table_id].db_id,
-                                                                    tableId: field.table_id,
-                                                                    fieldId: field.id,
-                                                                    metricId
-                                                                })
-                                                            }))
-                                                    }
-                                                />
-                                            )}
-                                            <div>
-                                                <Link className="Button Button--primary" to={'/reference/metrics'}>
-                                                    See all metrics
-                                                </Link>
-                                            </div>
-                                        </div>
-                                    ]}
-                                </div>
+                            isSuperuser={user && user.is_superuser}
+                        />
 
-                                <div className="mt4">
-                                    { ((guide.important_segments && guide.important_segments.length > 0) ||
-                                        (guide.important_tables && guide.important_tables.length > 0)) && [
+                        <div className="wrapper wrapper--trim">
+                            { (!guide || isGuideEmpty(guide)) && user && user.is_superuser && (
+                                <AdminInstructions>
+                                    <h2 className="py2">Help your team get started with your data.</h2>
+                                    <GuideText>
+                                        Show your team what’s most important by choosing your top dashboard, metrics, and segments.
+                                    </GuideText>
+                                    <button
+                                        className="Button Button--primary"
+                                        onClick={startEditing}
+                                    >
+                                        Get started
+                                    </button>
+                                </AdminInstructions>
+                            )}
+
+                            { guide.most_important_dashboard !== null && [
+                                <div className="my2">
+                                    <SectionHeader key={'dashboardTitle'}>
+                                        Our most important dashboard
+                                    </SectionHeader>
+                                    <GuideDetail
+                                        key={'dashboardDetail'}
+                                        type="dashboard"
+                                        entity={dashboards[guide.most_important_dashboard]}
+                                        tables={tables}
+                                    />
+                                </div>
+                            ]}
+                            { Object.keys(metrics) > 0  && (
+                                    <div className="my4 pt4">
+                                        <SectionHeader trim={guide.important_metrics.length === 0}>
+                                            { guide.important_metrics && guide.important_metrics.length > 0 ? 'Numbers that we pay attention to' : 'Metrics' }
+                                        </SectionHeader>
+                                        { (guide.important_metrics && guide.important_metrics.length > 0) ? [
+                                            <div className="my2">
+                                                { guide.important_metrics.map((metricId) =>
+                                                    <GuideDetail
+                                                        key={metricId}
+                                                        type="metric"
+                                                        entity={metrics[metricId]}
+                                                        tables={tables}
+                                                        exploreLinks={guide.metric_important_fields[metricId] &&
+                                                            guide.metric_important_fields[metricId]
+                                                                .map(fieldId => metadataFields[fieldId])
+                                                                .map(field => ({
+                                                                    name: field.display_name || field.name,
+                                                                    url: getQuestionUrl({
+                                                                        dbId: tables[field.table_id] && tables[field.table_id].db_id,
+                                                                        tableId: field.table_id,
+                                                                        fieldId: field.id,
+                                                                        metricId
+                                                                    })
+                                                                }))
+                                                        }
+                                                    />
+                                                )}
+                                            </div>
+                                        ] :
+                                            <GuideText>
+                                                Metrics are important numbers your company cares about. They often represent a core indicator of how the business is performing.
+                                            </GuideText>
+                                        }
+                                        <div className="mt4">
+                                            <Link className="Button Button--primary" to={'/reference/metrics'}>
+                                                See all metrics
+                                            </Link>
+                                        </div>
+                                    </div>
+                                )
+                            }
+
+                            <div className="mt4 pt4">
+                                <SectionHeader trim={(!has(guide.important_segments) && !has(guide.important_tables))}>
+                                    { Object.keys(segments) > 0 ? 'Segments and tables' : 'Tables' }
+                                </SectionHeader>
+                                { has(guide.important_segments) || has(guide.important_tables) ? [
                                         <div className="mt2">
-                                            <SectionHeader key={'segmentTitle'}>
-                                                Segments and tables
-                                            </SectionHeader>
                                             { guide.important_segments.map((segmentId) =>
                                                 <GuideDetail
                                                     key={segmentId}
@@ -534,57 +550,72 @@ export default class ReferenceGettingStartedGuide extends Component {
                                                     tables={tables}
                                                 />
                                             )}
-                                        </div>,
-                                        <div key={'segmentSeeAll'}>
+                                        </div>
+                                    ] : (
+                                        <div>
+                                            <GuideText>
+                                                { Object.keys(segments) > 0 ? (
+                                                    <span>
+                                                        Segments and tables are the building blocks of your company's data. Tables are collections of the raw information while segments are specific slices with specific meanings, like <b>"Recent orders."</b>
+                                                    </span>
+                                                ) : "Tables are the building blocks of your company's data."
+                                                }
+                                            </GuideText>
                                             <div>
-                                                { segments && (
+                                                { Object.keys(segments) > 0 && (
                                                     <Link className="Button Button--purple mr2" to={'/reference/segments'}>
                                                         See all segments
                                                     </Link>
                                                 )}
-                                                <Link className="text-purple text-bold no-decoration text-underline-hover" to={'/reference/databases'}>
+                                                <Link
+                                                    className={cx(
+                                                        { 'text-purple text-bold no-decoration text-underline-hover' : Object.keys(segments) > 0 },
+                                                        { 'Button Button--purple' : Object.keys(segments) === 0 }
+                                                    )}
+                                                    to={'/reference/databases'}
+                                                >
                                                     See all tables
                                                 </Link>
                                             </div>
                                         </div>
-                                    ]}
-                                </div>
+                                    )
+                                }
+                            </div>
 
-                                <div className="mt4">
-                                    { guide.things_to_know && [
-                                        <SectionHeader key={'thingsToKnowTitle'}>
-                                            Other things to know about our data
-                                        </SectionHeader>,
-                                        <p className="text-paragraph text-measure" key={'thingsToKnowDetails'}>
-                                            { guide.things_to_know || `Nothing to know yet`}
-                                        </p>,
-                                        <Link className="Button Button--primary text-bold" to={'/reference/databases'} key={'thingsToKnowSeeAll'}>
-                                            Explore our data
-                                        </Link>
-                                    ]}
-                                </div>
+                            <div className="mt4 pt4">
+                                <SectionHeader trim={!guide.things_to_know}>
+                                    { guide.things_to_know ? 'Other things to know about our data' : 'Find out more' }
+                                </SectionHeader>
+                                <GuideText>
+                                    { guide.things_to_know ? guide.things_to_know : "A good way to get to know your data is by spending a bit of time exploring the different tables and other info avaliable to you. It may take a while, but you'll start to recognize names and meanings over time."
+                                    }
+                                </GuideText>
+                                <Link className="Button link text-bold" to={'/reference/databases'}>
+                                    Explore our data
+                                </Link>
+                            </div>
 
-                                <div className="mt4">
-                                    { guide.contact && (guide.contact.name || guide.contact.email) && [
-                                        <SectionHeader key={'contactTitle'}>
-                                            Have questions?
-                                        </SectionHeader>,
-                                        <div className="mb4 pb4" key={'contactDetails'}>
-                                                { guide.contact.name &&
-                                                    <span className="text-dark mr3">
-                                                        {`Contact ${guide.contact.name}`}
-                                                    </span>
-                                                }
-                                                { guide.contact.email &&
-                                                    <a className="text-brand text-bold no-decoration" href={`mailto:${guide.contact.email}`}>
-                                                        {guide.contact.email}
-                                                    </a>
-                                                }
-                                        </div>
-                                    ]}
-                                </div>
+                            <div className="mt4">
+                                { guide.contact && (guide.contact.name || guide.contact.email) && [
+                                    <SectionHeader key={'contactTitle'}>
+                                        Have questions?
+                                    </SectionHeader>,
+                                    <div className="mb4 pb4" key={'contactDetails'}>
+                                            { guide.contact.name &&
+                                                <span className="text-dark mr3">
+                                                    {`Contact ${guide.contact.name}`}
+                                                </span>
+                                            }
+                                            { guide.contact.email &&
+                                                <a className="text-brand text-bold no-decoration" href={`mailto:${guide.contact.email}`}>
+                                                    {guide.contact.email}
+                                                </a>
+                                            }
+                                    </div>
+                                ]}
                             </div>
                         </div>
+                    </div>
                 }
                 </LoadingAndErrorWrapper>
             </form>
@@ -592,5 +623,13 @@ export default class ReferenceGettingStartedGuide extends Component {
     }
 }
 
-const SectionHeader = ({ children }) => // eslint-disable-line react/prop-types
-    <h2 className="text-dark text-measure mb4">{children}</h2> 
+const GuideText = ({ children }) => // eslint-disable-line react/prop-types
+    <p className="text-paragraph text-measure">{children}</p>
+
+const AdminInstructions = ({ children }) => // eslint-disable-line react/prop-types
+    <div className="bordered border-brand rounded p3 text-brand text-measure text-centered bg-light-blue">
+        {children}
+    </div>
+
+const SectionHeader = ({ trim, children }) => // eslint-disable-line react/prop-types
+    <h2 className={cx('text-dark text-measure', {  "mb0" : trim }, { "mb4" : !trim })}>{children}</h2> 
