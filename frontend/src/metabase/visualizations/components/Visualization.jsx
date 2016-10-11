@@ -1,3 +1,5 @@
+/* eslint "react/prop-types": "warn" */
+
 import React, { Component, PropTypes } from "react";
 
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
@@ -16,6 +18,9 @@ import { assoc, getIn } from "icepick";
 import _ from "underscore";
 import cx from "classnames";
 
+export const ERROR_MESSAGE_GENERIC = "There was a problem displaying this chart.";
+export const ERROR_MESSAGE_PERMISSION = "Sorry, you don't have permission to see this card."
+
 @ExplicitSize
 export default class Visualization extends Component {
     constructor(props, context) {
@@ -33,8 +38,30 @@ export default class Visualization extends Component {
     static propTypes = {
         series: PropTypes.array.isRequired,
 
+        className: PropTypes.string,
+
         isDashboard: PropTypes.bool,
         isEditing: PropTypes.bool,
+
+        actionButtons: PropTypes.node,
+
+        // errors
+        error: PropTypes.string,
+        errorIcon: PropTypes.string,
+
+        // slow card warnings
+        isSlow: PropTypes.bool,
+        expectedDuration: PropTypes.number,
+
+        // injected by ExplicitSize
+        width: PropTypes.number,
+        height: PropTypes.number,
+
+        // settings overrides from settings panel
+        settings: PropTypes.object,
+
+        // used for showing content in place of visualization, e.x. dashcard filter mapping
+        replacementContent: PropTypes.node,
 
         // used by TableInteractive
         setSortFn: PropTypes.func,
@@ -118,6 +145,12 @@ export default class Visualization extends Component {
                 }
             }
         }
+
+        // if on dashoard, and error didn't come from props replace it with the generic error message
+        if (isDashboard && error && this.props.error !== error) {
+            error = ERROR_MESSAGE_GENERIC;
+        }
+
         if (!error) {
             noResults = getIn(series, [0, "data", "rows", "length"]) === 0;
         }
@@ -136,7 +169,13 @@ export default class Visualization extends Component {
                 { isDashboard && (settings["card.title"] || extra) && (loading || error || !CardVisualization.noHeader) || replacementContent ?
                     <div className="p1 flex-no-shrink">
                         <LegendHeader
-                            series={[{ card: { name: settings["card.title"] }}]}
+                            series={
+                                settings["card.title"] ?
+                                    // if we have a card title set, use it
+                                    [{ card: { name: settings["card.title"] }}] :
+                                    // otherwise use the original series
+                                    series
+                            }
                             actionButtons={extra}
                             settings={settings}
                         />

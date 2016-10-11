@@ -32,9 +32,8 @@
      :important_tables         table-ids
      :important_segments       segment-ids
      ;; A map of metric_id -> sequence of important field_ids
-     :metric_important_fields  (when (seq metric-ids)
-                                 (m/map-vals (partial map :field_id)
-                                             (group-by :metric_id (db/select ['MetricImportantField :field_id :metric_id]
-                                                                    :metric_id [:in metric-ids]))))}))
+     :metric_important_fields  (m/map-vals (partial map :field_id)
+                                           (group-by :metric_id (db/select ['MetricImportantField :field_id :metric_id]
+                                                                 :metric_id [:in metric-ids])))}))
 
 (define-routes)

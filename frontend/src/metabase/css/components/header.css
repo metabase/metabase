@@ -38,7 +38,12 @@
     background-color: #6CAFED;
 }
 
+.EditHeader.EditHeader--admin {
+    background-color: #8C95A2;
+}
+
 .EditHeader-title {
+    font-weight: 700;
     color: white;
 }
 
@@ -63,4 +68,12 @@
 .EditHeader .Button:hover {
     color: white;
     background-color: var(--brand-color);
+}
+
+.EditHeader.EditHeader--admin .Button {
+    color: white;
+}
+
+.EditHeader.EditHeader--admin .Button.Button--primary {
+    color: var(--brand-color);
 }

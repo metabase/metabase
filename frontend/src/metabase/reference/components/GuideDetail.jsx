@@ -84,7 +84,7 @@ const GuideDetail = ({
 
             { exploreLinks && exploreLinks.length > 0 && [
                 <div className="mt2">
-                    <ContextHeading key="detailLabel">Explore this metric</ContextHeading>,
+                    <ContextHeading key="detailLabel">Explore this metric</ContextHeading>
                     <div key="detailLinks">
                         <Link className="text-brand inline-block mr2 link text-bold" to={link}>View this metric</Link>
                         { exploreLinks.map(link =>

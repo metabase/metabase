@@ -2,7 +2,7 @@ import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
 import visualizations, { getVisualizationRaw } from "metabase/visualizations";
-import Visualization from "metabase/visualizations/components/Visualization.jsx";
+import Visualization, { ERROR_MESSAGE_GENERIC, ERROR_MESSAGE_PERMISSION } from "metabase/visualizations/components/Visualization.jsx";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import ChartSettings from "metabase/visualizations/components/ChartSettings.jsx";
@@ -14,9 +14,6 @@ import DashCardParameterMapper from "../components/parameters/DashCardParameterM
 import cx from "classnames";
 import _ from "underscore";
 import { getIn } from "icepick";
-
-const ERROR_MESSAGE_GENERIC = "There was a problem displaying this chart.";
-const ERROR_MESSAGE_PERMISSION = "Sorry, you don't have permission to see this card."
 
 export default class DashCard extends Component {
     constructor(props, context) {

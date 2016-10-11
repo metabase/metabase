@@ -7,7 +7,7 @@ import Popover from "metabase/components/Popover.jsx";
 
 import Query from "metabase/lib/query";
 import { AggregationClause } from "metabase/lib/query";
-import { getAggregator, getAggregatorsWithFields } from "metabase/lib/schema_metadata";
+import { getAggregator } from "metabase/lib/schema_metadata";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -30,17 +30,6 @@ export default class AggregationWidget extends Component {
         customFields: PropTypes.object,
         updateAggregation: PropTypes.func.isRequired
     };
-
-
-    componentWillMount() {
-        this.componentWillReceiveProps(this.props);
-    }
-
-    componentWillReceiveProps(newProps) {
-        this.setState({
-            availableAggregations: getAggregatorsWithFields(newProps.tableMetadata)
-        });
-    }
 
     setAggregation(aggregation) {
         this.props.updateAggregation(aggregation);
@@ -104,7 +93,7 @@ export default class AggregationWidget extends Component {
                 >
                     <AggregationPopover
                         aggregation={aggregation}
-                        availableAggregations={this.state.availableAggregations}
+                        availableAggregations={tableMetadata.aggregation_options}
                         tableMetadata={tableMetadata}
                         customFields={this.props.customFields}
                         onCommitAggregation={this.setAggregation}
