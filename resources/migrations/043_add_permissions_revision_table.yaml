@@ -2,6 +2,8 @@ databaseChangeLog:
   - changeSet:
       id: 43
       author: camsaul
+      validCheckSum: 7:b20750a949504e93efced32877a4488f
+      validCheckSum: 7:dbc18c8ca697fc335869f0ed0eb5f4cb
       changes:
         - createTable:
             tableName: permissions_revision
