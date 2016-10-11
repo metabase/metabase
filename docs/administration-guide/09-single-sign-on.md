@@ -23,3 +23,9 @@ If you’ve added your Google client id to your Metabase settings you can also l
 To enable this, check the box on the Single Sign-On Admin Settings page and specify the email domain you want to allow. For example if you work at WidgetCo you could enter widgetco.com in the field to let anyone with a company email sign up on their own.
 
 Note: Metabase accounts created with Single Sign-On do not have passwords and must use Google to sign in to Metabase.
+
+
+---
+
+## Next: Creating a Getting Started Guide
+Learn how to easily [make a Getting Started Guide](10-getting-started-guide.md) for your team.

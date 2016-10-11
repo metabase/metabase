@@ -485,8 +485,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     />
                                 </div>
                             ]}
-                            {
-                               has(metrics) && (
+                            { has(metrics) && (
                                     <div className="my4 pt4">
                                         <SectionHeader trim={guide.important_metrics.length === 0}>
                                             { guide.important_metrics && guide.important_metrics.length > 0 ? 'Numbers that we pay attention to' : 'Metrics' }

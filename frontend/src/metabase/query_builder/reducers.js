@@ -37,13 +37,6 @@ import {
     SET_CURRENT_STATE
 } from "./actions";
 
-
-// TODO: once we are using the global redux store we can get this from there
-export const user = handleActions({
-    [CLOSE_QB_NEWB_MODAL]: { next: (state, { payload }) => ({...state, is_qbnewb: false}) }
-}, null);
-
-
 // various ui state options
 export const uiControls = handleActions({
     [INITIALIZE_QB]: { next: (state, { payload }) => ({ ...state, ...payload.uiControls }) },

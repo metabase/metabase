@@ -8,7 +8,7 @@ import UseForButton from "./UseForButton.jsx";
 import Query from "metabase/lib/query";
 import { createCard } from "metabase/lib/card";
 import { createQuery } from "metabase/lib/query";
-import { isDimension } from "metabase/lib/schema_metadata";
+import { isDimension, isSummable } from "metabase/lib/schema_metadata";
 import inflection from 'inflection';
 
 import _ from "underscore";
@@ -124,7 +124,7 @@ export default class FieldPane extends Component {
             }
         }
 
-        if (field.special_type === "number") {
+        if (isSummable(field)) {
             usefulQuestions.push(<QueryButton icon="illustration-icon-scalar" text={"Sum of all values of " + fieldName} onClick={this.setQuerySum} />);
         }
         usefulQuestions.push(<QueryButton icon="illustration-icon-table" text={"All distinct values of " + fieldName} onClick={this.setQueryDistinct} />);
