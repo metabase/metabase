@@ -80,7 +80,7 @@ class BrowserSelect extends Component {
                 ref="popover"
                 className={className}
                 triggerElement={
-                    <div className={"flex align-center px2 py1 " + (!value ? " text-grey-3" : "")}>
+                    <div className={"flex align-center " + (!value ? " text-grey-3" : "")}>
                         <span className="mr1">{selectedName}</span>
                         <Icon className="flex-align-right" name="chevrondown" size={12} />
                     </div>
