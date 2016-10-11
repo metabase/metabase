@@ -60,6 +60,7 @@ export const loadMemberships = createAction(LOAD_MEMBERSHIPS, async () =>
 export const createMembership = createAction(CREATE_MEMBERSHIP, async ({ userId, groupId }) => {
     // pull the membership_id from the list of all memberships of the group
     let groupMemberships = await PermissionsApi.createMembership({ user_id: userId, group_id: groupId });
+    MetabaseAnalytics.trackEvent("People Groups", "Membership Added");
     return {
         user_id: userId,
         group_id: groupId,
@@ -68,6 +69,7 @@ export const createMembership = createAction(CREATE_MEMBERSHIP, async ({ userId,
 });
 export const deleteMembership = createAction(DELETE_MEMBERSHIP, async ({ membershipId }) => {
     await PermissionsApi.deleteMembership({ id: membershipId });
+    MetabaseAnalytics.trackEvent("People Groups", "Membership Deleted");
     return membershipId;
 });
 
