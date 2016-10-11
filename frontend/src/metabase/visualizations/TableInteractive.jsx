@@ -293,7 +293,7 @@ export default class TableInteractive extends Component {
                     ref="table"
                     rowHeight={35}
                     rowGetter={this.rowGetter}
-                    rowCount={this.props.data.rows.length}
+                    rowsCount={this.props.data.rows.length}
                     width={this.state.width}
                     height={this.state.height}
                     headerHeight={50}
