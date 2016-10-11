@@ -112,7 +112,8 @@
     white-space: pre;
 }
 
-.text-monospace {
+.text-monospace,
+:local(.text-monospace) {
     font-family: Monaco, monospace;
 }
 
