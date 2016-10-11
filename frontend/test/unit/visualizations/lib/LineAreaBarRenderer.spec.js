@@ -4,10 +4,7 @@ import { formatValue } from "metabase/lib/formatting";
 
 import d3 from "d3";
 
-const Column = (col = {}) => ({ name: "x", display_name: "x", ...col })
-const DateTimeColumn = (col = {}) => Column({ "base_type" : "type/DateTime", "special_type" : null, ...col })
-const NumberColumn = (col = {}) => Column({ "base_type" : "type/Integer", "special_type" : "type/Number", ...col })
-
+import { DateTimeColumn, NumberColumn } from "../../support/visualizations";
 
 let formatTz = (offset) => (offset < 0 ? "-" : "+") + d3.format("02d")(Math.abs(offset)) + ":00"
 

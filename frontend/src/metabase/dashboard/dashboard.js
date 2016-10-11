@@ -115,7 +115,7 @@ export const addCardToDashboard = function({ dashId, cardId }) {
             ...getPositionForNewDashCard(existingCards)
         };
         dispatch(createAction(ADD_CARD_TO_DASH)(dashcard));
-        dispatch(fetchCardData(card, dashcard));
+        dispatch(fetchCardData(card, dashcard, { reload: true, clear: true }));
     };
 }
 
@@ -134,12 +134,8 @@ export async function fetchDataOrError(dataPromise) {
     }
 }
 
-export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, dashcard, clearExisting = false) {
+export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, dashcard, { reload, clear } = {}) {
     return async function(dispatch, getState) {
-        if (clearExisting) {
-            dispatch(clearCardData(card.id, dashcard.id));
-        }
-
         // If the dataset_query was filtered then we don't have permisison to view this card, so
         // shortcircuit and return a fake 403
         if (!card.dataset_query) {
@@ -150,26 +146,49 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, d
             };
         }
 
-        let result = null;
+        const { dashboardId, dashboards, parameterValues, dashcardData } = getState().dashboard;
+        const dashboard = dashboards[dashboardId];
 
         // if we have a parameter, apply it to the card query before we execute
-        let { dashboardId } = getState().dashboard;
-        let { dashboards, parameterValues } = getState().dashboard;
-
-        let dashboard = dashboards[dashboardId];
-
         const datasetQuery = applyParameters(card, dashboard.parameters, parameterValues, dashcard && dashcard.parameter_mappings);
 
+        if (!reload) {
+            // if reload not set, check to see if the last result has the same query dict and return that
+            const lastResult = i.getIn(dashcardData, [dashcard.id, card.id]);
+            // "constraints" is added by the backend, remove it when comparing
+            if (lastResult && angular.equals(_.omit(lastResult.json_query, "constraints"), datasetQuery)) {
+                return {
+                    dashcard_id: dashcard.id,
+                    card_id: card.id,
+                    result: lastResult
+                };
+            }
+        }
+
+        if (clear) {
+            // clears the card data to indicate the card is reloading
+            dispatch(clearCardData(card.id, dashcard.id));
+        }
+
+        let result = null;
+
+        // start a timer that will fetch the expected card duration if the query takes too long
         let slowCardTimer = setTimeout(() => {
             if (result === null) {
                 dispatch(fetchCardDuration(card, datasetQuery));
             }
         }, DATASET_SLOW_TIMEOUT);
 
+        // make the actual request
         result = await fetchDataOrError(CardApi.query({cardID: card.id, parameters: datasetQuery.parameters}));
 
         clearTimeout(slowCardTimer);
-        return { dashcard_id: dashcard.id, card_id: card.id, result };
+
+        return {
+            dashcard_id: dashcard.id,
+            card_id: card.id,
+            result: result
+        };
     };
 });
 
@@ -476,6 +495,7 @@ const cardDurations = handleActions({
 }, {});
 
 const parameterValues = handleActions({
+    [INITIALIZE]: { next: () => ({}) }, // reset values
     [SET_PARAMETER_VALUE]: { next: (state, { payload: { id, value }}) => i.assoc(state, id, value) },
     [REMOVE_PARAMETER]: { next: (state, { payload: { id }}) => i.dissoc(state, id) }
 }, {});

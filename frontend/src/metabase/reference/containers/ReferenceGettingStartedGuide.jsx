@@ -501,8 +501,8 @@ export default class ReferenceGettingStartedGuide extends Component {
                                                             }))
                                                     }
                                                 />
-                                            )} ,
-                                            <div key={'metricsSeeAll'}>
+                                            )}
+                                            <div>
                                                 <Link className="Button Button--primary" to={'/reference/metrics'}>
                                                     See all metrics
                                                 </Link>

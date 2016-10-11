@@ -7,7 +7,7 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 import MetricForm from "./MetricForm.jsx";
 
 import { metricEditSelectors } from "../selectors";
-import * as actions from "../metadata";
+import * as actions from "../datamodel";
 import { clearRequestState } from "metabase/redux/requests";
 
 const mapDispatchToProps = {

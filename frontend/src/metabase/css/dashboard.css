@@ -331,8 +331,13 @@
   display: none;
 }
 
-.dc-chart rect.bar:hover {
+/* disable dc default behavior */
+.Card-outer .dc-chart rect.bar:hover {
   fill-opacity: 1;
+}
+/* highlight single series bar */
+.mute-0 .Card-outer .dc-chart rect.bar:hover {
+  opacity: 1;
 }
 
 .enable-dots .dc-tooltip circle.dot {
@@ -392,6 +397,12 @@
 .mute-3 svg > g > .chart-body .stack._3 .line,
 .mute-4 svg > g > .chart-body .stack._4 .line,
 .mute-5 svg > g > .chart-body .stack._5 .line,
+.mute-0 svg > g > .chart-body .stack._0 .bar,
+.mute-1 svg > g > .chart-body .stack._1 .bar,
+.mute-2 svg > g > .chart-body .stack._2 .bar,
+.mute-3 svg > g > .chart-body .stack._3 .bar,
+.mute-4 svg > g > .chart-body .stack._4 .bar,
+.mute-5 svg > g > .chart-body .stack._5 .bar,
 .mute-0 svg > g > .chart-body .dc-tooltip._0 .dot,
 .mute-1 svg > g > .chart-body .dc-tooltip._1 .dot,
 .mute-2 svg > g > .chart-body .dc-tooltip._2 .dot,

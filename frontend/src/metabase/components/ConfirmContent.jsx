@@ -7,7 +7,7 @@ const ConfirmContent = ({ title, content, onClose, onAction, message = "Are you 
         title={title}
         closeFn={onClose}
     >
-        {content}
+        <div className="mx4">{content}</div>
 
         <div className="Form-inputs mb4">
             <p>{message}</p>

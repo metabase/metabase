@@ -13,6 +13,7 @@ Are you in charge of managing Metabase for your organization? Then you're in the
 * [Configuring settings](07-configuration-settings.md)
 * [Setting up Slack integration](08-setting-up-slack.md)
 * [Enabling single sign-on with Google](09-single-sign-on.md)
+* [Creating a Getting Started Guide for your team](10-getting-started-guide.md)
 
 First things first, you'll need to install Metabase. If you haven’t done that yet, our [Installation Guide](../operations-guide/start.md#installing-and-running-metabase) will help you through the process.
 

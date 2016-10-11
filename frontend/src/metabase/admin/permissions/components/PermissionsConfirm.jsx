@@ -26,7 +26,7 @@ const TableAccessChange = ({ tables, verb, color }) => {
 
 
 const PermissionsConfirm = ({ diff }) =>
-    <div className="mx4">
+    <div>
         {Object.values(diff.groups).map(group =>
             Object.values(group.databases).map(database =>
                 <div>
