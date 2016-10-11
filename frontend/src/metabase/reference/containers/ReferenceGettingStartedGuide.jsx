@@ -562,15 +562,15 @@ export default class ReferenceGettingStartedGuide extends Component {
                                                 }
                                             </GuideText>
                                             <div>
-                                                { has(segments) && (
+                                                { Object.keys(segments) > 0 && (
                                                     <Link className="Button Button--purple mr2" to={'/reference/segments'}>
                                                         See all segments
                                                     </Link>
                                                 )}
                                                 <Link
                                                     className={cx(
-                                                        { 'text-purple text-bold no-decoration text-underline-hover' : has(segments) },
-                                                        { 'Button Button--purple' : !has(segments) }
+                                                        { 'text-purple text-bold no-decoration text-underline-hover' : Object.keys(segments) > 0 },
+                                                        { 'Button Button--purple' : Object.keys(segments) === 0 }
                                                     )}
                                                     to={'/reference/databases'}
                                                 >
@@ -590,7 +590,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     { guide.things_to_know ? guide.things_to_know : "A good way to get to know your data is by spending a bit of time exploring the different tables and other info avaliable to you. It may take a while, but you'll start to recognize names and meanings over time."
                                     }
                                 </GuideText>
-                                <Link className="link text-bold" to={'/reference/databases'}>
+                                <Link className="Button link text-bold" to={'/reference/databases'}>
                                     Explore our data
                                 </Link>
                             </div>
