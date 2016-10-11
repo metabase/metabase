@@ -13,6 +13,8 @@ import {
     getQuestionUrl
 } from "./utils";
 
+import _ from "underscore";
+
 // there might be a better way to organize sections
 // it feels like I'm duplicating a lot of routing logic here
 //TODO: refactor to use different container components for each section
@@ -22,7 +24,7 @@ import {
 const referenceSections = {
     [`/reference/guide`]: {
         id: `/reference/guide`,
-        name: "Understanding our data",
+        name: "Start here",
         breadcrumb: "Guide",
         fetch: {
             fetchGuide: [],
@@ -47,7 +49,10 @@ const referenceSections = {
         },
         breadcrumb: "Metrics",
         // mapping of propname to args of dispatch function
-        fetch: {fetchMetrics: []},
+        fetch: {
+            fetchMetrics: [],
+            fetchSegments: []
+        },
         get: 'getMetrics',
         icon: "ruler"
     },
@@ -63,7 +68,10 @@ const referenceSections = {
             adminLink: "http://www.metabase.com/docs/latest/administration-guide/05-segments-and-metrics.html"
         },
         breadcrumb: "Segments",
-        fetch: {fetchSegments: []},
+        fetch: {
+            fetchMetrics: [],
+            fetchSegments: []
+        },
         get: 'getSegments',
         icon: "segment"
     },
@@ -79,7 +87,11 @@ const referenceSections = {
             adminLink: "/admin/databases/create"
         },
         breadcrumb: "Databases",
-        fetch: {fetchDatabases: []},
+        fetch: {
+            fetchMetrics: [],
+            fetchSegments: [],
+            fetchDatabases: []
+        },
         get: 'getDatabases',
         icon: "database",
         itemIcon: "database"
@@ -557,11 +569,15 @@ export const getForeignKeys = createSelector(
 )
 
 export const getSections = createSelector(
-    [getSectionId, getMetric, getSegment, getDatabase, getTable, getField, getFieldBySegment, getTableBySegment, getTableByMetric, getUser, getReferenceSections],
-    (sectionId, metric, segment, database, table, field, fieldBySegment, tableBySegment, tableByMetric, user, referenceSections) => {
+    [getSectionId, getMetric, getSegment, getDatabase, getTable, getField, getFieldBySegment, getTableBySegment, getTableByMetric, getUser, getReferenceSections, getSegments, getMetrics],
+    (sectionId, metric, segment, database, table, field, fieldBySegment, tableBySegment, tableByMetric, user, referenceSections, segments, metrics) => {
         // can be simplified if we had a single map of all sections
         if (referenceSections[sectionId]) {
-            return referenceSections;
+            // filter out segments or metrics if we're not on that particular section and there are none
+            return _.omit(referenceSections,
+                Object.keys(metrics).length === 0 && sectionId !== "/reference/metrics" && "/reference/metrics",
+                Object.keys(segments).length === 0 && sectionId !== "/reference/segments"  && "/reference/segments",
+            );
         }
 
         const metricSections = getMetricSections(metric, tableByMetric, user);
