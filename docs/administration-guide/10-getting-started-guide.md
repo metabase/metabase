@@ -4,7 +4,7 @@ In most places we’ve worked, there’s typically an email or a Google doc that
 
 To get started, click on the `Guide` link in the main nav. You'll see a screen like this:
 
-*** (updated blank guide image goes here) ***
+![Blank guide](images/gsg/blank-guide.png)
 
 Before you've even created your guide, this page gives you some links that you can use to explore the data you have in Metabase. But for now, click the button to begin making your guide. Now you'll see a list of sections that you can include in your guide:
 
