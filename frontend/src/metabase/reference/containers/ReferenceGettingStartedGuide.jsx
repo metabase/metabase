@@ -485,7 +485,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     />
                                 </div>
                             ]}
-                            { has(metrics) && (
+                            { Object.keys(metrics) > 0  && (
                                     <div className="my4 pt4">
                                         <SectionHeader trim={guide.important_metrics.length === 0}>
                                             { guide.important_metrics && guide.important_metrics.length > 0 ? 'Numbers that we pay attention to' : 'Metrics' }
@@ -530,7 +530,7 @@ export default class ReferenceGettingStartedGuide extends Component {
 
                             <div className="mt4 pt4">
                                 <SectionHeader trim={(!has(guide.important_segments) && !has(guide.important_tables))}>
-                                    { has(segments) ? 'Segments and tables' : 'Tables' }
+                                    { Object.keys(segments) > 0 ? 'Segments and tables' : 'Tables' }
                                 </SectionHeader>
                                 { has(guide.important_segments) || has(guide.important_tables) ? [
                                         <div className="mt2">
@@ -554,7 +554,7 @@ export default class ReferenceGettingStartedGuide extends Component {
                                     ] : (
                                         <div>
                                             <GuideText>
-                                                { has(segments) ? (
+                                                { Object.keys(segments) > 0 ? (
                                                     <span>
                                                         Segments and tables are the building blocks of your company's data. Tables are collections of the raw information while segments are specific slices with specific meanings, like <b>"Recent orders."</b>
                                                     </span>
