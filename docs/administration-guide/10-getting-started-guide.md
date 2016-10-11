@@ -4,13 +4,13 @@ In most places we’ve worked, there’s typically an email or a Google doc that
 
 To get started, click on the `Guide` link in the main nav. You'll see a screen like this:
 
-![Blank guide](images/gsg/blank-guide.png)
+*** (updated blank guide image goes here) ***
 
-Before you've even created your guide, this page gives you some links on the left that you can use to explore the data you have in Metabase. But for now, click the blue button to begin making your guide. Now you'll see a list of sections that you can include in your guide:
+Before you've even created your guide, this page gives you some links that you can use to explore the data you have in Metabase. But for now, click the button to begin making your guide. Now you'll see a list of sections that you can include in your guide:
 
 ![Sections](images/gsg/sections.png)
 
-You can highlight your company's most important dashboard, [metrics](06-segments-and-metrics.md) that you commonly refer to (and the dimensions by which they're most often grouped), and tables and [segments](06-segments-and-metrics.md) that are useful or interesting. There's also a place to write a little bit more about "gotchas" or caveats in your data that your users should know about before they start exploring things and drawing conclusions. Lastly, you can optionally include an email address for your users to contact in case they're still confused about things.
+You can highlight your company's most important dashboard, [metrics](06-segments-and-metrics.md) that you commonly refer to (and the dimensions by which they're most often grouped), and tables and [segments](06-segments-and-metrics.md) that are useful or interesting. There's also a place to write a little bit more about "gotchas" or caveats with your data that your users should know about before they start exploring things and drawing conclusions. Lastly, you can optionally include an email address for your users to contact in case they're still confused about things.
 
 If you click on a section, it'll expand and let you select the items that you want to include in that section:
 
@@ -21,5 +21,3 @@ To remove an item you've added, just click the X icon in the top-right of the it
 ![Finished Guide](images/gsg/finished-guide.png)
 
 Clicking on the title of an item you've included in your guide will take you to the item itself. Clicking on `Learn more` will take you to a more detailed entry about that item so you can explore it and related items in more detail.
-
-NOTE: You'll also notice that the left navigation bar is gone now — that's because the links that it contained are now contextualized within the guide itself.
