@@ -466,6 +466,6 @@ export const typeToBgClass = {
     table: 'bg-purple'
 };
 
-// little utility function to determin if we 'has' things, useful
-// for 
+// little utility function to determine if we 'has' things, useful
+// for handling entity empty states
 export const has = (entity) => entity && entity.length > 0;
