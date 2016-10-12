@@ -29,7 +29,8 @@ function getModeInfo(query, databases) {
               engine === 'sqlserver'                   ? 'ace/mode/sqlserver' :
                                                          'ace/mode/sql',
         description: engine === 'druid' || engine === 'mongo' ? 'JSON' : 'SQL',
-        requiresTable: engine === 'mongo'
+        requiresTable: engine === 'mongo',
+        database: database
     };
 }
 
@@ -85,6 +86,8 @@ export default class NativeQueryEditor extends Component {
     }
 
     componentDidUpdate() {
+        const { modeInfo } = this.state;
+
         let editor = ace.edit("id_sql");
         if (editor.getValue() !== this.props.query.native.query) {
             // This is a weird hack, but the purpose is to avoid an infinite loop caused by the fact that calling editor.setValue()
@@ -96,12 +99,15 @@ export default class NativeQueryEditor extends Component {
             this.localUpdate = false;
         }
 
-        if (this.state.modeInfo && editor.getSession().$modeId !== this.state.modeInfo.mode) {
-            console.log('Setting ACE Editor mode to:', this.state.modeInfo.mode);
-            editor.getSession().setMode(this.state.modeInfo.mode);
-            // monkey patch the mode to add our bracket/paren/braces-matching behavior
-            if (!editor.getSession().$mode.$behaviour) {
-                editor.getSession().$mode.$behaviour = new SQLBehaviour();
+        if (modeInfo) {
+            editor.setReadOnly(modeInfo.database.native_permissions !== "write");
+            if (editor.getSession().$modeId !== modeInfo.mode) {
+                console.log('Setting ACE Editor mode to:', modeInfo.mode);
+                editor.getSession().setMode(modeInfo.mode);
+                // monkey patch the mode to add our bracket/paren/braces-matching behavior
+                if (!editor.getSession().$mode.$behaviour) {
+                    editor.getSession().$mode.$behaviour = new SQLBehaviour();
+                }
             }
         }
     }
@@ -213,9 +219,9 @@ export default class NativeQueryEditor extends Component {
                         />
                     </div>
                 )
-            } else {
+            } else if (modeInfo.database) {
                 dataSelectors.push(
-                    <span className="p2 text-bold text-grey">{this.props.nativeDatabases[0].name}</span>
+                    <span className="p2 text-bold text-grey">{modeInfo.database.name}</span>
                 );
             }
             if (modeInfo.requiresTable) {
@@ -250,20 +256,21 @@ export default class NativeQueryEditor extends Component {
         }
 
         let editorClasses, toggleEditorText, toggleEditorIcon;
+        const hasWritePermission = modeInfo.database && modeInfo.database.native_permissions === "write";
         if (this.state.showEditor) {
             editorClasses = "";
-            toggleEditorText = "Hide Editor";
+            toggleEditorText = hasWritePermission ? "Hide Editor" : "Hide Query";
             toggleEditorIcon = "contract";
         } else {
             editorClasses = "hide";
-            toggleEditorText = "Open Editor";
+            toggleEditorText = hasWritePermission ? "Open Editor" : "Show Query";
             toggleEditorIcon = "expand";
         }
 
         return (
             <div className="wrapper">
                 <div className="NativeQueryEditor bordered rounded shadowed">
-                    <div className="flex">
+                    <div className="flex align-center" style={{ minHeight: 50 }}>
                         {dataSelectors}
                         { parameters.map(parameter =>
                             <div key={parameter.id} className="pl2 GuiBuilder-section GuiBuilder-data flex align-center">
