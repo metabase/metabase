@@ -79,7 +79,8 @@
   :main ^:skip-aot metabase.core
   :manifest {"Liquibase-Package" "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"}
   :target-path "target/%s"
-  :jvm-opts ["-Djava.awt.headless=true"]                              ; prevent Java icon from randomly popping up in dock when running `lein ring server`
+  :jvm-opts ["-server"                                                ; Run JVM in server mode as opposed to client -- see http://stackoverflow.com/questions/198577/real-differences-between-java-server-and-java-client for a good explanation of this
+             "-Djava.awt.headless=true"]                              ; prevent Java icon from randomly popping up in dock when running `lein ring server`
   :javac-options ["-target" "1.7", "-source" "1.7"]
   :uberjar-name "metabase.jar"
   :ring {:handler metabase.core/app
@@ -114,7 +115,7 @@
                    :jvm-opts ["-Dlogfile.path=target/log"
                               "-Xms1024m"                             ; give JVM a decent heap size to start with
                               "-Xmx2048m"                             ; hard limit of 2GB so we stop hitting the 4GB container limit on CircleCI
-                              "-server"                               ; Run JVM in server mode as opposed to client -- see http://stackoverflow.com/questions/198577/real-differences-between-java-server-and-java-client for a good explanation of this
+                              "-Xverify:none"                         ; disable bytecode verification when running in dev so it starts slightly faster
                               "-XX:+CMSClassUnloadingEnabled"         ; let Clojure's dynamically generated temporary classes be GC'ed from PermGen
                               "-XX:+UseConcMarkSweepGC"]              ; Concurrent Mark Sweep GC needs to be used for Class Unloading (above)
                    :aot [metabase.logger]}                            ; Log appender class needs to be compiled for log4j to use it
@@ -127,12 +128,11 @@
                                        "-Dmb.db.in.memory=true"
                                        "-Dmb.jetty.join=false"
                                        "-Dmb.jetty.port=3010"
-                                       "-Dmb.api.key=test-api-key"
-                                       "-Xverify:none"]}              ; disable bytecode verification when running tests so they start slightly faster
+                                       "-Dmb.api.key=test-api-key"]}
              :uberjar {:aot :all
                        :jvm-opts ["-Dclojure.compiler.elide-meta=[:doc :added :file :line]" ; strip out metadata for faster load / smaller uberjar size
                                   "-Dmanifold.disable-jvm8-primitives=true"]}               ; disable Manifold Java 8 primitives (see https://github.com/ztellman/manifold#java-8-extensions)
-             :generate-sample-dataset {:dependencies [[faker "0.2.2"]                   ; Fake data generator -- port of Perl/Ruby
+             :generate-sample-dataset {:dependencies [[faker "0.2.2"]                   ; Fake data generator -- port of Perl/Ruby library
                                                       [incanter/incanter-core "1.9.1"]] ; Satistical functions like normal distibutions}})
                                        :source-paths ["sample_dataset"]
                                        :main ^:skip-aot metabase.sample-dataset.generate}
