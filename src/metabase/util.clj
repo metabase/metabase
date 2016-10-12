@@ -712,3 +712,11 @@
     (map? object-or-id)     (recur (:id object-or-id))
     (integer? object-or-id) object-or-id
     :else                   (throw (Exception. (str "Not something with an ID: " object-or-id)))))
+
+(defmacro profile
+  "Like `clojure.core/time`, but lets you specify a message that gets printed with the total time, and formats the time nicely using `format-nanoseconds`."
+  {:style/indent 1}
+  [message & body]
+  `(let [start-time# (System/nanoTime)]
+     (prog1 (do ~@body)
+       (println (format-color '~'green "%s took %s" ~message (format-nanoseconds (- (System/nanoTime) start-time#)))))))

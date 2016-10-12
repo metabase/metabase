@@ -222,9 +222,7 @@
   []
   ;; override env var that would normally make Jetty block forever
   (intern 'environ.core 'env (assoc environ.core/env :mb-jetty-join "false"))
-  (let [start-ns (System/nanoTime)]
-    (start-normally)
-    (println (u/format-color 'green "start-normally took %s." (u/format-nanoseconds (- (System/nanoTime) start-ns))))))
+  (u/profile "start-normally" (start-normally)))
 
 (defn ^:command help
   "Show this help message listing valid Metabase commands."
