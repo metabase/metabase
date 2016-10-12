@@ -21,6 +21,11 @@
            javax.xml.bind.DatatypeConverter
            org.joda.time.format.DateTimeFormatter))
 
+;; This is the very first log message that will get printed.
+;; It's here because this is one of the very first namespaces that gets loaded, and the first that has access to the logger
+;; It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
+(log/info "Loading Metabase...")
+
 ;; Set the default width for pprinting to 200 instead of 72. The default width is too narrow and wastes a lot of space for pprinting huge things like expanded queries
 (intern 'clojure.pprint '*print-right-margin* 200)
 
