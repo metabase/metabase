@@ -204,12 +204,12 @@
 
 ;;; ---------------------------------------- Special Commands ----------------------------------------
 
-(defn- ^:command migrate
+(defn ^:command migrate
   "Run database migrations. Valid options for DIRECTION are `up`, `force`, `down-one`, `print`, or `release-locks`."
   [direction]
   (db/migrate! @db/db-connection-details (keyword direction)))
 
-(defn- ^:command load-from-h2
+(defn ^:command load-from-h2
   "Transfer data from existing H2 database to the newly created MySQL or Postgres DB specified by env vars."
   ([]
    (load-from-h2 nil))
@@ -217,7 +217,7 @@
    (require 'metabase.cmd.load-from-h2)
    ((resolve 'metabase.cmd.load-from-h2/load-from-h2!) h2-connection-string)))
 
-(defn- ^:command profile
+(defn ^:command profile
   "Start Metabase the usual way and exit. Useful for profiling Metabase launch time."
   []
   ;; override env var that would normally make Jetty block forever
@@ -226,7 +226,7 @@
     (start-normally)
     (println (u/format-color 'green "start-normally took %s." (u/format-nanoseconds (- (System/nanoTime) start-ns))))))
 
-(defn- ^:command help
+(defn ^:command help
   "Show this help message listing valid Metabase commands."
   []
   (println "Valid commands are:")
