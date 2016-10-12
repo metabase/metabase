@@ -10,7 +10,8 @@
                       [coerce :as coerce]
                       [format :as time])
             colorize.core
-            [metabase.config :as config])
+            [metabase.config :as config]
+            metabase.logger)             ; make sure this is loaded since we use clojure.tools.logging here
   (:import clojure.lang.Keyword
            (java.net Socket
                      InetSocketAddress
