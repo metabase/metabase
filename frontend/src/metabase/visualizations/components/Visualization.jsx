@@ -14,7 +14,7 @@ import { getVisualizationTransformed } from "metabase/visualizations";
 import { getSettings } from "metabase/lib/visualization_settings";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 
-import { assoc, getIn } from "icepick";
+import { assoc, getIn, setIn } from "icepick";
 import _ from "underscore";
 import cx from "classnames";
 
@@ -172,7 +172,7 @@ export default class Visualization extends Component {
                             series={
                                 settings["card.title"] ?
                                     // if we have a card title set, use it
-                                    [{ card: { name: settings["card.title"] }}] :
+                                    setIn(series, [0, "card", "name"], settings["card.title"]) :
                                     // otherwise use the original series
                                     series
                             }

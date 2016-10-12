@@ -5,6 +5,7 @@ import _ from "underscore";
 import cx from "classnames";
 
 import { AngularResourceProxy } from "metabase/lib/redux";
+import MetabaseAnalytics from "metabase/lib/analytics";
 
 import Icon from "metabase/components/Icon.jsx";
 import Input from "metabase/components/Input.jsx";
@@ -191,7 +192,9 @@ export default class GroupsListing extends Component {
         });
     }
 
+    // TODO: move this to Redux
     onAddGroupCreateButtonClicked() {
+        MetabaseAnalytics.trackEvent("People Groups", "Group Added");
         PermissionsAPI.createGroup({name: this.state.text}).then((function(newGroup) {
             const groups = this.state.groups || this.props.groups || [];
             const newGroups = sortGroups(_.union(groups, [newGroup]));
@@ -244,6 +247,7 @@ export default class GroupsListing extends Component {
         });
     }
 
+    // TODO: move this to Redux
     onEditGroupDoneClicked() {
         const groups = this.state.groups || this.props.groups || [];
         const originalGroup = _.findWhere(groups, {id: this.state.groupBeingEdited.id});
@@ -258,6 +262,7 @@ export default class GroupsListing extends Component {
         }
 
         // ok, fire off API call to change the group
+        MetabaseAnalytics.trackEvent("People Groups", "Group Updated");
         PermissionsAPI.updateGroup({id: group.id, name: group.name}).then((function (newGroup) {
             // now replace the original group with the new group and update state
             let newGroups = _.reject(groups, (g) => g.id === group.id);
@@ -274,8 +279,10 @@ export default class GroupsListing extends Component {
         });
     }
 
+    // TODO: move this to Redux
     onDeleteGroupClicked(group) {
         const groups = this.state.groups || this.props.groups || [];
+        MetabaseAnalytics.trackEvent("People Groups", "Group Deleted");
         PermissionsAPI.deleteGroup({id: group.id}).then((function () {
             const newGroups = sortGroups(_.reject(groups, (g) => g.id === group.id));
             this.setState({
