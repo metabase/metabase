@@ -9,6 +9,7 @@
             "check-reflection-warnings" ["with-profile" "+reflection-warnings" "check"]
             "test" ["with-profile" "+expectations" "expectations"]
             "generate-sample-dataset" ["with-profile" "+generate-sample-dataset" "run"]
+            "profile" ["with-profile" "+profile" "run" "profile"]
             "h2" ["with-profile" "+h2-shell" "run" "-url" "jdbc:h2:./metabase.db" "-user" "" "-password" "" "-driver" "org.h2.Driver"]}
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/core.async "0.2.391"]
@@ -72,7 +73,7 @@
                  [ring/ring-json "0.4.0"]                             ; Ring middleware for reading/writing JSON automatically
                  [stencil "0.5.0"]                                    ; Mustache templates for Clojure
                  [swiss-arrows "1.0.0"]]                              ; 'Magic wand' macro -<>, etc.
-  :repositories [["bintray" "https://dl.bintray.com/crate/crate"]]
+  :repositories [["bintray" "https://dl.bintray.com/crate/crate"]]    ; Repo for Crate JDBC driver
   :plugins [[lein-environ "1.0.3"]                                    ; easy access to environment variables
             [lein-ring "0.9.7"                                        ; start the HTTP server with 'lein ring server'
              :exclusions [org.clojure/clojure]]]                      ; TODO - should this be a dev dependency ?
@@ -129,13 +130,18 @@
                                        "-Dmb.jetty.join=false"
                                        "-Dmb.jetty.port=3010"
                                        "-Dmb.api.key=test-api-key"]}
+             ;; build the uberjar with `lein uberjar`
              :uberjar {:aot :all
                        :jvm-opts ["-Dclojure.compiler.elide-meta=[:doc :added :file :line]" ; strip out metadata for faster load / smaller uberjar size
                                   "-Dmanifold.disable-jvm8-primitives=true"]}               ; disable Manifold Java 8 primitives (see https://github.com/ztellman/manifold#java-8-extensions)
+             ;; generate sample dataset with `lein generate-sample-dataset`
              :generate-sample-dataset {:dependencies [[faker "0.2.2"]                   ; Fake data generator -- port of Perl/Ruby library
                                                       [incanter/incanter-core "1.9.1"]] ; Satistical functions like normal distibutions}})
                                        :source-paths ["sample_dataset"]
                                        :main ^:skip-aot metabase.sample-dataset.generate}
+             ;; Profile Metabase start time with `lein profile`
+             :profile {:jvm-opts ["-XX:+CITime"                       ; print time spent in JIT compiler
+                                  "-XX:+PrintGC"]}                    ; print a message when garbage collection takes place
              ;; Run reset password from source: MB_DB_PATH=/path/to/metabase.db lein with-profile reset-password run email@address.com
              ;; Create the reset password JAR:  lein with-profile reset-password jar
              ;;                                   -> ./reset-password-artifacts/reset-password/reset-password.jar
@@ -147,4 +153,5 @@
                               ;; Exclude everything except for reset-password specific code in the created jar
                               :jar-exclusions [#"^(?!metabase/reset_password).*$"]
                               :target-path "reset-password-artifacts/%s"} ; different than ./target because otherwise lein uberjar will delete our artifacts and vice versa
-             :h2-shell {:main org.h2.tools.Shell}}) ; get the H2 shell with 'lein h2'
+             ;; get the H2 shell with 'lein h2'
+             :h2-shell {:main org.h2.tools.Shell}})
