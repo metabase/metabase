@@ -1,7 +1,9 @@
 ;; -*- comment-column: 35; -*-
 (ns metabase.core
   (:gen-class)
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as s]
+            [clojure.tools.logging :as log]
+            environ.core
             [ring.adapter.jetty :as ring-jetty]
             (ring.middleware [cookies :refer [wrap-cookies]]
                              [gzip :refer [wrap-gzip]]
@@ -183,8 +185,7 @@
     (reset! jetty-instance nil)))
 
 
-;;; ## ---------------------------------------- App Main ----------------------------------------
-
+;;; ## ---------------------------------------- Normal Start ----------------------------------------
 
 (defn- start-normally []
   (log/info "Starting Metabase in STANDALONE mode")
@@ -201,29 +202,62 @@
       (log/error "Metabase Initialization FAILED: " (.getMessage e))
       (System/exit 1))))
 
-(def ^:private cmd->fn
-  {:migrate      (fn [direction]
-                   (db/migrate! @db/db-connection-details (keyword direction)))
-   :load-from-h2 (fn [& [h2-connection-string-or-nil]]
-                   (require 'metabase.cmd.load-from-h2)
-                   ((resolve 'metabase.cmd.load-from-h2/load-from-h2!) h2-connection-string-or-nil))})
+;;; ---------------------------------------- Special Commands ----------------------------------------
+
+(defn- ^:command migrate
+  "Run database migrations. Valid options for DIRECTION are `up`, `force`, `down-one`, `print`, or `release-locks`."
+  [direction]
+  (db/migrate! @db/db-connection-details (keyword direction)))
+
+(defn- ^:command load-from-h2
+  "Transfer data from existing H2 database to the newly created MySQL or Postgres DB specified by env vars."
+  ([]
+   (load-from-h2 nil))
+  ([h2-connection-string]
+   (require 'metabase.cmd.load-from-h2)
+   ((resolve 'metabase.cmd.load-from-h2/load-from-h2!) h2-connection-string)))
+
+(defn- ^:command profile
+  "Start Metabase the usual way and exit. Useful for profiling Metabase launch time."
+  []
+  ;; override env var that would normally make Jetty block forever
+  (intern 'environ.core 'env (assoc environ.core/env :mb-jetty-join "false"))
+  (let [start-ns (System/nanoTime)]
+    (start-normally)
+    (println (u/format-color 'green "start-normally took %s." (u/format-nanoseconds (- (System/nanoTime) start-ns))))))
+
+(defn- ^:command help
+  "Show this help message listing valid Metabase commands."
+  []
+  (println "Valid commands are:")
+  (doseq [[symb varr] (sort (ns-interns 'metabase.core))
+          :when       (:command (meta varr))]
+    (println symb (s/join " " (:arglists (meta varr))))
+    (println "\t" (:doc (meta varr)))))
+
+(defn- cmd->fn [command-name]
+  (or (when (seq command-name)
+        (when-let [varr (ns-resolve 'metabase.core (symbol command-name))]
+          (when (:command (meta varr))
+            @varr)))
+      (do (println (u/format-color 'red "Unrecognized command: %s" command-name))
+          (help)
+          (System/exit 1))))
 
 (defn- run-cmd [cmd & args]
-  (let [f (or (cmd->fn cmd)
-              (do (println (u/format-color 'red "Unrecognized command: %s" (name cmd)))
-                  (println "Valid commands are:\n" (u/pprint-to-str (map name (keys cmd->fn))))
-                  (System/exit 1)))]
-    (try (apply f args)
-         (catch Throwable e
-           (.printStackTrace e)
-           (println (u/format-color 'red "Command failed with exception: %s" (.getMessage e)))
-           (System/exit 1)))
-    (println "Success.")
-    (System/exit 0)))
+  (try (apply (cmd->fn cmd) args)
+       (System/exit 0)
+       (catch Throwable e
+         (.printStackTrace e)
+         (println (u/format-color 'red "Command failed with exception: %s" (.getMessage e)))
+         (System/exit 1))))
+
+
+;;; ---------------------------------------- App Entry Point ----------------------------------------
 
 (defn -main
   "Launch Metabase in standalone mode."
   [& [cmd & args]]
   (if cmd
-    (apply run-cmd (keyword cmd) args) ; run a command like `java -jar metabase.jar migrate release-locks` or `lein run migrate release-locks`
-    (start-normally)))                 ; with no command line args just start Metabase normally
+    (apply run-cmd cmd args) ; run a command like `java -jar metabase.jar migrate release-locks` or `lein run migrate release-locks`
+    (start-normally)))       ; with no command line args just start Metabase normally
