@@ -185,13 +185,17 @@
                (.rollback (jdbc/get-connection nested-transaction-connection))
                (log/error (u/format-color 'red "[ERROR] %s" (.getMessage e)))))))))
 
+(def ^{:arglists '([])} ^DatabaseFactory database-factory
+  "Return an instance of the Liquibase `DatabaseFactory`. This is done on a background thread at launch because otherwise it adds 2 seconds to startup time."
+  (partial deref (future (DatabaseFactory/getInstance))))
+
 (defn- conn->liquibase
   "Get a `Liquibase` object from JDBC CONN."
   (^Liquibase []
    (conn->liquibase (jdbc-details)))
   (^Liquibase [conn]
    (let [^JdbcConnection liquibase-conn (JdbcConnection. (jdbc/get-connection conn))
-         ^Database       database       (.findCorrectDatabaseImplementation (DatabaseFactory/getInstance) liquibase-conn)]
+         ^Database       database       (.findCorrectDatabaseImplementation (database-factory) liquibase-conn)]
      (Liquibase. changelog-file (ClassLoaderResourceAccessor.) database))))
 
 (defn migrate!
