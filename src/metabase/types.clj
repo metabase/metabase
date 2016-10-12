@@ -71,7 +71,6 @@
 (derive :type/City :type/Address)
 (derive :type/State :type/Address)
 (derive :type/Country :type/Address)
-(derive :type/Name :type/Address)
 (derive :type/ZipCode :type/Address)
 
 
