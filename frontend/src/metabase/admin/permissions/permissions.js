@@ -1,6 +1,7 @@
 import { createAction, createThunkAction, handleActions, combineReducers, AngularResourceProxy } from "metabase/lib/redux";
 
 import { canEditPermissions } from "metabase/lib/groups";
+import MetabaseAnalytics from "metabase/lib/analytics";
 
 const MetadataApi = new AngularResourceProxy("Metabase", ["db_list_with_tables"]);
 const PermissionsApi = new AngularResourceProxy("Permissions", ["groups", "graph", "updateGraph"]);
@@ -41,6 +42,7 @@ export const updatePermission = createThunkAction(UPDATE_PERMISSION, ({ groupId,
 const SAVE_PERMISSIONS = "metabase/admin/permissions/SAVE_PERMISSIONS";
 export const savePermissions = createThunkAction(SAVE_PERMISSIONS, () =>
     async (dispatch, getState) => {
+        MetabaseAnalytics.trackEvent("Permissions", "save");
         const { permissions, revision } = getState().permissions;
         let result = await PermissionsApi.updateGraph({
             revision: revision,
