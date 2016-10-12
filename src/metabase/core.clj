@@ -246,11 +246,11 @@
 
 (defn- run-cmd [cmd & args]
   (try (apply (cmd->fn cmd) args)
-       (System/exit 0)
        (catch Throwable e
          (.printStackTrace e)
          (println (u/format-color 'red "Command failed with exception: %s" (.getMessage e)))
-         (System/exit 1))))
+         (System/exit 1)))
+  (System/exit 0))
 
 
 ;;; ---------------------------------------- App Entry Point ----------------------------------------
