@@ -77,7 +77,7 @@ describeE2E("admin/datamodel", () => {
             await waitForElementAndClick(driver, "#MetricsList a.text-brand");
 
             await waitForElementAndClick(driver, "#Query-section-aggregation");
-            await waitForElementAndClick(driver, "#AggregationPopover .List-item:nth-child(2)>a");
+            await waitForElementAndClick(driver, "#AggregationPopover .List-item:nth-child(1)>a");
 
             await waitForElementAndSendKeys(driver, "input[name='name']", 'User count');
             await waitForElementAndSendKeys(driver, "textarea[name='description']", 'Total number of users');
