@@ -6,6 +6,7 @@ import cx from "classnames";
 
 import { AngularResourceProxy } from "metabase/lib/redux";
 import MetabaseAnalytics from "metabase/lib/analytics";
+import { isDefaultGroup, isAdminGroup } from "metabase/lib/groups";
 
 import Icon from "metabase/components/Icon.jsx";
 import Input from "metabase/components/Input.jsx";
@@ -116,7 +117,7 @@ const COLORS = ['bg-error', 'bg-purple', 'bg-brand', 'bg-gold', 'bg-green'];
 function GroupRow({ group, groupBeingEdited, index, showGroupDetail, showAddGroupRow, onEditGroupClicked, onDeleteGroupClicked,
                     onEditGroupTextChange, onEditGroupCancelClicked, onEditGroupDoneClicked }) {
     const color  = COLORS[(index % COLORS.length)];
-    const showActionsButton = group.name !== "Default" && group.name !== "Admin";
+    const showActionsButton = !isDefaultGroup(group) && !isAdminGroup(group);
     const editing = groupBeingEdited && groupBeingEdited.id === group.id;
 
     return editing ? (
