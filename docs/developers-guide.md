@@ -20,7 +20,8 @@ We don't like getting sued, so before merging any pull request, we'll need each 
 These are the set of tools which are required in order to complete any build of the Metabase code.  Follow the links to download and install them on your own before continuing.
 
 1. [Oracle JDK 8 (http://www.oracle.com/technetwork/java/javase/downloads/index.html)](http://www.oracle.com/technetwork/java/javase/downloads/index.html)
-2. [Node.js for npm (http://nodejs.org/)](http://nodejs.org/)
+2. [Node.js (http://nodejs.org/)](http://nodejs.org/)
+3. [Yarn package manager for Node.js](https://yarnpkg.com/)
 3. [Leiningen (http://leiningen.org/)](http://leiningen.org/)
 
 
@@ -58,7 +59,7 @@ Metabase depends on lots of other 3rd party libraries to run, so as you are deve
 # clojure dependencies
 $ lein deps
 # javascript dependencies
-$ npm install
+$ yarn
 ```
 
 ### Development server (quick start)
@@ -81,7 +82,7 @@ We use these technologies for our FE build process to allow us to use modules, e
 - babel
 - cssnext
 
-Frontend tasks are managed by `npm`. All available tasks can be found in `package.json` under *scripts*.
+Frontend tasks are executed using `npm run`. All available tasks can be found in `package.json` under *scripts*.
 
 To build the frontend client without watching for changes, you can use:
 
@@ -103,26 +104,17 @@ There is also an option to reload changes on save without hot reloading if you p
 $ npm run build-watch
 ```
 
-#### Adding packages
-
-If you add/change/remove an npm package, you need to run
-
-```sh
-$ npm run shrinkwrap
-```
-
-Like much of the NPM ecosystem, this only works at 3:12pm on the 3rd tuesday after the anniversary of the 3rd Roman emperor after Octavius.  
-
 #### Unit Tests / Linting
 
 Run unit tests with
 
     npm run test             # Karma
-    npm run test-e2e         # Protractor
+    npm run test-e2e         # Selenium Webdriver
 
-Run the linters with
+Run the linters and type checker with
 
     npm run lint
+    npm run flow
 
 
 ## Backend development
