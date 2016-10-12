@@ -21,6 +21,11 @@
            javax.xml.bind.DatatypeConverter
            org.joda.time.format.DateTimeFormatter))
 
+;; This is the very first log message that will get printed.
+;; It's here because this is one of the very first namespaces that gets loaded, and the first that has access to the logger
+;; It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
+(log/info "Loading Metabase...")
+
 ;; Set the default width for pprinting to 200 instead of 72. The default width is too narrow and wastes a lot of space for pprinting huge things like expanded queries
 (intern 'clojure.pprint '*print-right-margin* 200)
 
@@ -707,3 +712,11 @@
     (map? object-or-id)     (recur (:id object-or-id))
     (integer? object-or-id) object-or-id
     :else                   (throw (Exception. (str "Not something with an ID: " object-or-id)))))
+
+(defmacro profile
+  "Like `clojure.core/time`, but lets you specify a message that gets printed with the total time, and formats the time nicely using `format-nanoseconds`."
+  {:style/indent 1}
+  [message & body]
+  `(let [start-time# (System/nanoTime)]
+     (prog1 (do ~@body)
+       (println (format-color '~'green "%s took %s" ~message (format-nanoseconds (- (System/nanoTime) start-time#)))))))
