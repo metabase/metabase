@@ -169,7 +169,7 @@ export default class QueryHeader extends Component {
     }
 
     getHeaderButtons() {
-        const { isNew, isDirty, isEditing, tableMetadata } = this.props;
+        const { isNew, isDirty, isEditing, tableMetadata, databases } = this.props;
 
         var buttonSections = [];
 
@@ -335,9 +335,12 @@ export default class QueryHeader extends Component {
                 key="queryModeToggle"
                 mode={this.props.card.dataset_query.type}
                 allowNativeToQuery={isNew && !isDirty}
-                allowQueryToNative={isNew && (!isDirty ||
-                    (tableMetadata && tableMetadata.db && tableMetadata.db.native_permissions === "write")
-                )}
+                allowQueryToNative={tableMetadata ?
+                    // if a table is selected, only enable if user has native write permissions for THAT database
+                    tableMetadata.db && tableMetadata.db.native_permissions === "write" :
+                    // if no table is selected, only enable if user has native write permissions for ANY database
+                    _.any(databases, (db) => db.native_permissions === "write")
+                }
                 nativeForm={this.props.result && this.props.result.data && this.props.result.data.native_form}
                 onSetMode={this.props.setQueryModeFn}
                 tableMetadata={tableMetadata}
