@@ -230,7 +230,26 @@
   (doseq [[symb varr] (sort (ns-interns 'metabase.core))
           :when       (:command (meta varr))]
     (println symb (s/join " " (:arglists (meta varr))))
-    (println "\t" (:doc (meta varr)))))
+    (println "\t" (:doc (meta varr))))
+  (println "\nSome other commands you might find useful:\n")
+  (println "java -cp metabase.jar org.h2.tools.Shell -url jdbc:h2:/path/to/metabase.db")
+  (println "\tOpen an SQL shell for the Metabase H2 DB"))
+
+(defn ^:command version
+  "Print version information about Metabase and the current system."
+  []
+  (println "Metabase version:" config/mb-version-info)
+  (println "\nOS:"
+           (System/getProperty "os.name")
+           (System/getProperty "os.version")
+           (System/getProperty "os.arch"))
+  (println "\nJava version:"
+           (System/getProperty "java.vm.name")
+           (System/getProperty "java.version"))
+  (println "\nCountry:" (System/getProperty "user.country"))
+  (println "System timezone:" (System/getProperty "user.timezone"))
+  (println "Language:" (System/getProperty "user.language"))
+  (println "File encoding:" (System/getProperty "file.encoding")))
 
 (defn- cmd->fn [command-name]
   (or (when (seq command-name)
