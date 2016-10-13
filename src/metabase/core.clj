@@ -121,7 +121,7 @@
   (log/info "Metabase Initialization COMPLETE"))
 
 
-;;; ## ---------------------------------------- Normal Start ----------------------------------------
+;;; ---------------------------------------- Jetty Startup ----------------------------------------
 
 (def ^:private jetty-instance (promise))
 
@@ -130,6 +130,7 @@
     (try
       (u/thread-safe-require 'metabase.handler)
       (deliver jetty-instance ((resolve 'metabase.handler/start-jetty!)))
+      (log/info "Jetty server is ready.")
       (catch Throwable e
         (deliver jetty-instance e)))))
 
@@ -143,7 +144,8 @@
         (= instance :timeout)          (throw (Exception. "Jetty server failed to start after 5 seconds."))
         :else                          (.join ^Server instance)))))
 
-(set! *warn-on-reflection* true)
+
+;;; ---------------------------------------- Normal Start ----------------------------------------
 
 (defn- start-normally []
   (log/info "Starting Metabase in STANDALONE mode")

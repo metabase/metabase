@@ -114,7 +114,7 @@
                                            org.clojure/tools.namespace]]]
                    :env {:mb-run-mode "dev"}
                    :jvm-opts ["-Dlogfile.path=target/log"
-                              "-Xms1024m"                             ; give JVM a decent heap size to start with
+                              "-Xms2048m"                             ; give JVM a decent heap size to start with
                               "-Xmx2048m"                             ; hard limit of 2GB so we stop hitting the 4GB container limit on CircleCI
                               "-Xverify:none"                         ; disable bytecode verification when running in dev so it starts slightly faster
                               "-XX:+CMSClassUnloadingEnabled"         ; let Clojure's dynamically generated temporary classes be GC'ed from PermGen

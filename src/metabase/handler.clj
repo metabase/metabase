@@ -36,22 +36,22 @@
       wrap-gzip))                        ; GZIP response if client can handle it
 
 
-(def ^:private ^:const jetty-config
-  (m/filter-vals (complement nil?)
-                 (merge {:port          (config/config-int :mb-jetty-port)
-                         :host          (config/config-str :mb-jetty-host)
-                         :max-threads   (config/config-int :mb-jetty-maxthreads)
-                         :min-threads   (config/config-int :mb-jetty-minthreads)
-                         :max-queued    (config/config-int :mb-jetty-maxqueued)
-                         :max-idle-time (config/config-int :mb-jetty-maxidletime)
-                         :daemon?       (config/config-bool :mb-jetty-daemon)}
-                        (when (config/config-bool :mb-jetty-ssl)
-                          {:ssl?           true
-                           :ssl-port       (config/config-int :mb-jetty-ssl-port)
-                           :keystore       (config/config-str :mb-jetty-ssl-keystore)
-                           :key-password   (config/config-str :mb-jetty-ssl-keystore-password)
-                           :truststore     (config/config-str :mb-jetty-ssl-truststore)
-                           :trust-password (config/config-str :mb-jetty-ssl-truststore-password)}))))
+(def ^:private jetty-config
+  (delay (m/filter-vals (complement nil?)
+                        (merge {:port          (config/config-int :mb-jetty-port)
+                                :host          (config/config-str :mb-jetty-host)
+                                :max-threads   (config/config-int :mb-jetty-maxthreads)
+                                :min-threads   (config/config-int :mb-jetty-minthreads)
+                                :max-queued    (config/config-int :mb-jetty-maxqueued)
+                                :max-idle-time (config/config-int :mb-jetty-maxidletime)
+                                :daemon?       (config/config-bool :mb-jetty-daemon)}
+                               (when (config/config-bool :mb-jetty-ssl)
+                                 {:ssl?           true
+                                  :ssl-port       (config/config-int :mb-jetty-ssl-port)
+                                  :keystore       (config/config-str :mb-jetty-ssl-keystore)
+                                  :key-password   (config/config-str :mb-jetty-ssl-keystore-password)
+                                  :truststore     (config/config-str :mb-jetty-ssl-truststore)
+                                  :trust-password (config/config-str :mb-jetty-ssl-truststore-password)})))))
 
 
 (def ^:private jetty-instance
@@ -62,9 +62,10 @@
   ^Server []
   (when-not @jetty-instance
     (log/info "Launching Embedded Jetty Webserver with config:\n" (u/pprint-to-str (m/filter-keys #(not (re-matches #".*password.*" (str %)))
-                                                                                                  jetty-config)))
+                                                                                                  @jetty-config)))
     ;; NOTE: we always start jetty w/ join=false so we can start the server first then do init in the background
-    (u/prog1 (ring-jetty/run-jetty handler (assoc jetty-config :join? false))
+    (u/prog1 (ring-jetty/run-jetty handler (assoc @jetty-config :join? false))
+      (.setStopAtShutdown <> true)
       (reset! jetty-instance <>))))
 
 (defn stop-jetty!

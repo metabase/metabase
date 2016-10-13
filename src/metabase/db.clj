@@ -16,7 +16,8 @@
             [metabase.models.interface :as models]
             [metabase.util :as u]
             metabase.util.honeysql-extensions) ; this needs to be loaded so the `:h2` quoting style gets added
-  (:import java.sql.Connection
+  (:import java.util.jar.JarFile
+           java.sql.Connection
            com.mchange.v2.c3p0.ComboPooledDataSource))
 
 
@@ -101,21 +102,37 @@
 ;;; |                                                        MIGRATE!                                                        |
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 
+(defn- migrations-files-count:jar
+  "Get the number of migration files inside the uberjar. (`io/resource` doesn't work here; this approach adapted from [this StackOverflow answer](http://stackoverflow.com/a/20073154/1198455).)"
+  ^Integer []
+  ;; get path to the jar -- see this SO answer http://stackoverflow.com/a/320595/1198455
+  (let [jar-path (s/replace (-> ComboPooledDataSource .getProtectionDomain .getCodeSource .getLocation .getPath) #"%20" " ")
+        entries  (.entries (JarFile. jar-path))
+        n        (atom 0)]
+    (while (.hasMoreElements entries)
+      (let [entry-name (.getName (.nextElement entries))]
+        (when (and (.startsWith entry-name "migrations/")
+                   (not= entry-name "migrations/"))       ; skip the directory itself
+          (swap! n inc))))
+    @n))
+
 (defn- migrations-files-count
   "Return the number of files in the `resources/migrations` directory."
-  []
-  (count (.list (io/as-file (io/resource "migrations")))))
+  ^Integer []
+  ;; unfortunately io/as-file doesn't seem to work for directories inside a JAR. Try it for local dev but fall back to hacky Java interop method if that fails
+  (try (count (.list (io/as-file (io/resource "migrations"))))
+       (catch Throwable _
+         (migrations-files-count:jar))))
 
 (declare quote-fn)
 
 (defn- migrations-entries-count
   "Return the number of rows in the Liquibase `databasechangelog` table."
-  []
-  (try
-    (:count (first (jdbc/query (jdbc-details) [(format "SELECT COUNT(*) FROM %s;" ((quote-fn) "databasechangelog"))])))
-    ;; and Exception will get thrown if there is no databasechangelog table yet
-    (catch java.sql.SQLException _
-      0)))
+  ^Integer []
+  ;; an Exception will get thrown if there is no databasechangelog table yet
+  (or (u/ignore-exceptions
+        (:count (first (jdbc/query (jdbc-details) [(format "SELECT COUNT(*) AS count FROM %s;" ((quote-fn) "databasechangelog"))]))))
+      0))
 
 (defn- ^Boolean has-unran-migration-files?
   "`true` if there are more files in the migrations directory than there are entries in the `databasechangelog` table."
