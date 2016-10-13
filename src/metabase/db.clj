@@ -31,11 +31,11 @@
   ;; see http://h2database.com/html/features.html for explanation of options
   (delay (if (config/config-bool :mb-db-in-memory)
            ;; In-memory (i.e. test) DB
-           "mem:metabase;DB_CLOSE_DELAY=-1"
+           "mem:metabase;DB_CLOSE_DELAY=-1;MULTI_THREADED=TRUE"
            ;; File-based DB
            (let [db-file-name (config/config-str :mb-db-file)
                  db-file      (io/file db-file-name)
-                 options      ";AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1"]
+                 options      ";AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1;MULTI_THREADED=TRUE"]
              (apply str "file:" (if (.isAbsolute db-file)
                                   ;; when an absolute path is given for the db file then don't mess with it
                                   [db-file-name options]
