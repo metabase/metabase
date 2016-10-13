@@ -71,7 +71,7 @@ export default class LineAreaBarChart extends Component {
     }
 
     static transformSeries(series) {
-        let newSeries = [].concat(...series.map(transformSingleSeries));
+        let newSeries = [].concat(...series.map((s) => transformSingleSeries(s, series)));
         if (_.isEqual(series, newSeries) || newSeries.length === 0) {
             return series;
         } else {
@@ -214,7 +214,7 @@ function getColumnsFromNames(cols, names) {
     return names.map(name => _.findWhere(cols, { name }));
 }
 
-function transformSingleSeries(s) {
+function transformSingleSeries(s, series) {
     const { card, data } = s;
 
     // HACK: prevents cards from being transformed too many times
@@ -248,7 +248,13 @@ function transformSingleSeries(s) {
         ).all().map(o => ({
             card: {
                 ...card,
-                name: o.key,
+                // if multiseries include the card title as well as the breakout value
+                name: [
+                    // show series title if it's multiseries
+                    series.length > 1 && card.name,
+                    // always show grouping value
+                    o.key
+                ].filter(n => n).join(": "),
                 _transformed: true,
             },
             data: {
@@ -264,7 +270,12 @@ function transformSingleSeries(s) {
             return {
                 card: {
                     ...card,
-                    name: getFriendlyName(col),
+                    name: [
+                        // show series title if it's multiseries
+                        series.length > 1 && card.name,
+                        // show column name if there are multiple metrics
+                        metricIndexes.length > 1 && getFriendlyName(col)
+                    ].filter(n => n).join(": "),
                     _transformed: true,
                 },
                 data: {
