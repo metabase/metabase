@@ -91,6 +91,11 @@ install-vertica() {
     sleep 60
 }
 
+install-presto() {
+    docker run --detach --publish 8080:8080 wiill/presto-mb-ci
+    sleep 10
+}
+
 lein-test() {
     lein test
 }
