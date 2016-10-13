@@ -59,7 +59,7 @@
 
 (defn start-jetty!
   "Start the embedded Jetty web server. Returns the Jetty instance."
-  ^Server []
+  ^org.eclipse.jetty.server.Server []
   (when-not @jetty-instance
     (log/info "Launching Embedded Jetty Webserver with config:\n" (u/pprint-to-str (m/filter-keys #(not (re-matches #".*password.*" (str %)))
                                                                                                   @jetty-config)))

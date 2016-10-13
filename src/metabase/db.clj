@@ -16,8 +16,9 @@
             [metabase.models.interface :as models]
             [metabase.util :as u]
             metabase.util.honeysql-extensions) ; this needs to be loaded so the `:h2` quoting style gets added
-  (:import java.util.jar.JarFile
+  (:import (java.util.jar JarFile JarFile$JarEntryIterator JarFile$JarFileEntry)
            java.sql.Connection
+           clojure.lang.Atom
            com.mchange.v2.c3p0.ComboPooledDataSource))
 
 
@@ -106,11 +107,12 @@
   "Get the number of migration files inside the uberjar. (`io/resource` doesn't work here; this approach adapted from [this StackOverflow answer](http://stackoverflow.com/a/20073154/1198455).)"
   ^Integer []
   ;; get path to the jar -- see this SO answer http://stackoverflow.com/a/320595/1198455
-  (let [jar-path (s/replace (-> ComboPooledDataSource .getProtectionDomain .getCodeSource .getLocation .getPath) #"%20" " ")
-        entries  (.entries (JarFile. jar-path))
-        n        (atom 0)]
+  (let [^String                   jar-path (s/replace (-> ComboPooledDataSource .getProtectionDomain .getCodeSource .getLocation .getPath) #"%20" " ")
+        ^JarFile$JarEntryIterator entries  (.entries (JarFile. jar-path))
+        ^Atom                     n        (atom 0)]
     (while (.hasMoreElements entries)
-      (let [entry-name (.getName (.nextElement entries))]
+      (let [^JarFile$JarFileEntry entry      (.nextElement entries)
+            ^String               entry-name (.getName entry)]
         (when (and (.startsWith entry-name "migrations/")
                    (not= entry-name "migrations/"))       ; skip the directory itself
           (swap! n inc))))
