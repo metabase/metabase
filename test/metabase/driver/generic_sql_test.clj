@@ -9,7 +9,8 @@
             [metabase.test.data :refer :all]
             (metabase.test.data [dataset-definitions :as defs]
                                 [datasets :as datasets])
-            [metabase.test.util :refer [resolve-private-vars]])
+            [metabase.test.util :refer [resolve-private-vars]]
+            [metabase.util :as u])
   (:import metabase.driver.h2.H2Driver))
 
 (def ^:private users-table      (delay (Table :name "USERS")))
@@ -21,7 +22,7 @@
                     :let   [driver (driver/engine->driver engine)]
                     :when  (not= engine :bigquery)                                       ; bigquery doesn't use the generic sql implementations of things like `field-avg-length`
                     :when  (extends? ISQLDriver (class driver))]
-                (do (require (symbol (str "metabase.test.data." (name engine))) :reload) ; otherwise it gets all snippy if you try to do `lein test metabase.driver.generic-sql-test`
+                (do (u/thread-safe-require (symbol (str "metabase.test.data." (name engine))) :reload) ; otherwise it gets all snippy if you try to do `lein test metabase.driver.generic-sql-test`
                     engine)))))
 
 

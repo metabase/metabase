@@ -7,7 +7,8 @@
             [expectations :refer :all]
             (metabase [core :as core]
                       [db :as db]
-                      [driver :as driver])
+                      [driver :as driver]
+                      [handler :as handler])
             (metabase.models [setting :as setting]
                              [table :refer [Table]])
             [metabase.test.data :as data]
@@ -73,7 +74,7 @@
   []
   ;; We can shave about a second from unit test launch time by doing the various setup stages in on different threads
   ;; Start Jetty in the BG so if test setup fails we have an easier time debugging it -- it's trickier to debug things on a BG thread
-  (let [start-jetty! (future (core/start-jetty!))]
+  (let [start-jetty! (future (handler/start-jetty!))]
 
     (try
       (log/info (format "Setting up %s test DB and running migrations..." (name (db/db-type))))
@@ -86,7 +87,7 @@
       (doseq [engine (keys (driver/available-drivers))
               :let   [driver-test-ns (symbol (str "metabase.test.data." (name engine)))]]
         (u/ignore-exceptions
-          (require driver-test-ns :reload)))
+          (u/thread-safe-require driver-test-ns :reload)))
 
       ;; If test setup fails exit right away
       (catch Throwable e
@@ -100,4 +101,4 @@
   {:expectations-options :after-run}
   []
   (log/info "Shutting down Metabase unit test runner")
-  (core/stop-jetty!))
+  (handler/stop-jetty!))

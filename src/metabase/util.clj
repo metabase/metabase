@@ -720,3 +720,12 @@
   `(let [start-time# (System/nanoTime)]
      (prog1 (do ~@body)
        (println (format-color '~'green "%s took %s" ~message (format-nanoseconds (- (System/nanoTime) start-time#)))))))
+
+
+(def ^:private thread-safe-require-lock (Object.))
+
+(defn thread-safe-require
+  "Thread-safe version of `require`. (This has very little performance impact, so prefer it to using `require` everywhere)."
+  [& args]
+  (locking thread-safe-require-lock
+    (apply require args)))

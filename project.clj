@@ -84,7 +84,7 @@
              "-Djava.awt.headless=true"]                              ; prevent Java icon from randomly popping up in dock when running `lein ring server`
   :javac-options ["-target" "1.7", "-source" "1.7"]
   :uberjar-name "metabase.jar"
-  :ring {:handler metabase.core/app
+  :ring {:handler metabase.handler/handler
          :init metabase.core/init!
          :destroy metabase.core/destroy}
   :eastwood {:exclude-namespaces [:test-paths

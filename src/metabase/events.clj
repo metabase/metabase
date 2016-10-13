@@ -29,7 +29,7 @@
   (when-not config/is-test?
     (doseq [ns-symb (ns-find/find-namespaces (classpath/classpath))
             :when (re-find #"^metabase\.events\." (name ns-symb))]
-      (require ns-symb)
+      (u/thread-safe-require ns-symb)
       ;; look for `events-init` function in the namespace and call it if it exists
       (when-let [init-fn (ns-resolve ns-symb 'events-init)]
         (log/info "Starting events listener:" (u/format-color 'blue ns-symb) "👂")

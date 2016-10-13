@@ -198,6 +198,7 @@
          ^Database       database       (.findCorrectDatabaseImplementation (database-factory) liquibase-conn)]
      (Liquibase. changelog-file (ClassLoaderResourceAccessor.) database))))
 
+
 (defn migrate!
   "Migrate the database (this can also be ran via command line like `java -jar metabase.jar migrate up` or `lein run migrate up`):
 
@@ -239,6 +240,31 @@
          ;; This should already be happening as a result of `db-set-rollback-only!` but running it twice won't hurt so better safe than sorry
          (.rollback (jdbc/get-connection conn))
          (throw e))))))
+
+
+(defn- migrations-files-count
+  "Return the number of files in the `resources/migrations` directory."
+  []
+  (count (.list (io/as-file (io/resource "migrations")))))
+
+(declare quote-fn)
+
+(defn- migrations-entries-count
+  "Return the number of rows in the Liquibase `databasechangelog` table."
+  []
+  (try
+    (:count (first (jdbc/query (jdbc-details) [(format "SELECT COUNT(*) FROM %s;" ((quote-fn) "databasechangelog"))])))
+    ;; and Exception will get thrown if there is no databasechangelog table yet
+    (catch java.sql.SQLException _
+      0)))
+
+(defn- ^Boolean has-unran-migration-files?
+  "`true` if there are more files in the migrations directory than there are entries in the `databasechangelog` table.
+   Differs from `has-unran-migrations?` because this doesn't need to load Liquibase to determine this information;
+   this can shave a few seconds off of the launch time because loading Liquibase is a bit slow :D"
+  []
+  (> (migrations-files-count)
+     (migrations-entries-count)))
 
 
 ;;; +------------------------------------------------------------------------------------------------------------------------+
@@ -333,11 +359,31 @@
   [engine details]
   {:pre [(keyword? engine) (map? details)]}
   (log/info (u/format-color 'cyan "Verifying %s Database Connection ..." (name engine)))
+  (u/thread-safe-require 'metabase.driver)
   (assert (binding [*allow-potentailly-unsafe-connections* true]
-            (require 'metabase.driver)
             ((resolve 'metabase.driver/can-connect-with-details?) engine details))
     (format "Unable to connect to Metabase %s DB." (name engine)))
   (log/info "Verify Database Connection ... ✅"))
+
+(defn- print-migrations-and-quit!
+  "If we are not doing auto migrations then print out migration SQL for user to run manually.
+   Then throw an exception to short circuit the setup process and make it clear we can't proceed."
+  [db-details]
+  (let [sql (migrate! db-details :print)]
+    (log/info (str "Database Upgrade Required\n\n"
+                   "NOTICE: Your database requires updates to work with this version of Metabase.  "
+                   "Please execute the following sql commands on your database before proceeding.\n\n"
+                   sql
+                   "\n\n"
+                   "Once your database is updated try running the application again.\n"))
+    (throw (java.lang.Exception. "Database requires manual upgrade."))))
+
+(defn- run-data-migrations!
+  "Do any custom code-based migrations once the DB structure is up to date."
+  []
+  (future
+    (u/thread-safe-require 'metabase.db.migrations)
+    ((resolve 'metabase.db.migrations/run-all))))
 
 (defn setup-db!
   "Do general preparation of database by validating that we can connect.
@@ -352,26 +398,17 @@
 
   ;; Run through our DB migration process and make sure DB is fully prepared
   (if auto-migrate
-    (migrate! db-details :up)
-    ;; if we are not doing auto migrations then print out migration sql for user to run manually
-    ;; then throw an exception to short circuit the setup process and make it clear we can't proceed
-    (let [sql (migrate! db-details :print)]
-      (log/info (str "Database Upgrade Required\n\n"
-                     "NOTICE: Your database requires updates to work with this version of Metabase.  "
-                     "Please execute the following sql commands on your database before proceeding.\n\n"
-                     sql
-                     "\n\n"
-                     "Once your database is updated try running the application again.\n"))
-      (throw (java.lang.Exception. "Database requires manual upgrade."))))
+    (when (has-unran-migration-files?)
+      (migrate! db-details :up))
+    (print-migrations-and-quit! db-details))
   (log/info "Database Migrations Current ... ✅")
 
-  ;; Establish our 'default' DB Connection
+  ;; Create our DB connection pool
   (create-connection-pool! (jdbc-details db-details))
 
-  ;; Do any custom code-based migrations now that the db structure is up to date
-  ;; NOTE: we use dynamic resolution to prevent circular dependencies
-  (require 'metabase.db.migrations)
-  ((resolve 'metabase.db.migrations/run-all)))
+  ;; now run data migrations <3
+  (run-data-migrations!))
+
 
 (defn setup-db-if-needed!
   "Call `setup-db!` if DB is not already setup; otherwise this does nothing."
@@ -406,7 +443,7 @@
   (let [entity-ns (entity-symb->ns symb)]
     @(try (ns-resolve entity-ns symb)
           (catch Throwable _
-            (require entity-ns)
+            (u/thread-safe-require entity-ns)
             (ns-resolve entity-ns symb)))))
 
 (defn resolve-entity

@@ -3,50 +3,19 @@
   (:gen-class)
   (:require [clojure.string :as s]
             [clojure.tools.logging :as log]
-            environ.core
-            [ring.adapter.jetty :as ring-jetty]
-            (ring.middleware [cookies :refer [wrap-cookies]]
-                             [gzip :refer [wrap-gzip]]
-                             [json :refer [wrap-json-response
-                                           wrap-json-body]]
-                             [keyword-params :refer [wrap-keyword-params]]
-                             [params :refer [wrap-params]]
-                             [session :refer [wrap-session]])
-            [medley.core :as m]
             (metabase [config :as config]
                       [db :as db]
                       [driver :as driver]
                       [events :as events]
-                      [logger :as logger]
+                      logger
                       [metabot :as metabot]
-                      [middleware :as mb-middleware]
                       [plugins :as plugins]
-                      [routes :as routes]
                       [sample-data :as sample-data]
                       [setup :as setup]
                       [task :as task]
                       [util :as u])
-            [metabase.models.user :refer [User]]))
-
-;;; CONFIG
-
-(def ^:private app
-  "The primary entry point to the Ring HTTP server."
-  (-> routes/routes
-      mb-middleware/log-api-call
-      mb-middleware/add-security-headers ; Add HTTP headers to API responses to prevent them from being cached
-      (wrap-json-body                    ; extracts json POST body and makes it avaliable on request
-        {:keywords? true})
-      wrap-json-response                 ; middleware to automatically serialize suitable objects as JSON in responses
-      wrap-keyword-params                ; converts string keys in :params to keyword keys
-      wrap-params                        ; parses GET and POST params as :query-params/:form-params and both as :params
-      mb-middleware/bind-current-user    ; Binds *current-user* and *current-user-id* if :metabase-user-id is non-nil
-      mb-middleware/wrap-current-user-id ; looks for :metabase-session-id and sets :metabase-user-id if Session ID is valid
-      mb-middleware/wrap-api-key         ; looks for a Metabase API Key on the request and assocs as :metabase-api-key
-      mb-middleware/wrap-session-id      ; looks for a Metabase Session ID and assoc as :metabase-session-id
-      wrap-cookies                       ; Parses cookies in the request map and assocs as :cookies
-      wrap-session                       ; reads in current HTTP session and sets :session/key
-      wrap-gzip))                        ; GZIP response if client can handle it
+            [metabase.models.user :refer [User]])
+  (:import org.eclipse.jetty.server.Server))
 
 
 ;;; ## ---------------------------------------- LIFECYCLE ----------------------------------------
@@ -69,7 +38,7 @@
   []
   (reset! metabase-initialization-progress 1.0))
 
-(defn- -init-create-setup-token
+(defn- create-setup-token!
   "Create and set a new setup token and log it."
   []
   (let [setup-token (setup/create-token!)                    ; we need this here to create the initial token
@@ -89,45 +58,54 @@
   (task/stop-scheduler!)
   (log/info "Metabase Shutdown COMPLETE"))
 
+
+(defn- do-background-initialization!
+  "Run tasks that don't need to be completed before Metabase starts up on a background thread."
+  []
+  (future
+    (try
+      ;; load any plugins and then load up all of our Database drivers (on a background thread)
+      ;; this can be done on a background thread because we only need the driver for the application DB (H2/Postgres/MySQL)
+      ;; but that gets automatically loaded anyway
+      (plugins/load-plugins!)
+      (driver/find-and-load-drivers!)
+
+      ;; Bootstrap the event system. Do this on a background thread thread because it takes a couple seconds to launch
+      (events/initialize-events!)
+
+      ;; start the task scheduler
+      (task/start-scheduler!)
+
+      ;; start the metabot thread
+      (metabot/start-metabot!)
+
+      (catch Throwable e
+        (log/error "Background initialization failed:" e)
+        (System/exit 1)))))
+
+
 (defn init!
   "General application initialization function which should be run once at application startup."
   []
   (log/info (format "Starting Metabase version %s ..." config/mb-version-string))
   (log/info (format "System timezone is '%s' ..." (System/getProperty "user.timezone")))
-  (reset! metabase-initialization-progress 0.1)
 
   ;; First of all, lets register a shutdown hook that will tidy things up for us on app exit
   (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable destroy!))
   (reset! metabase-initialization-progress 0.2)
 
-  ;; load any plugins as needed
-  (plugins/load-plugins!)
-  (reset! metabase-initialization-progress 0.3)
-
-  ;; Load up all of our Database drivers, which are used for app db work
-  (driver/find-and-load-drivers!)
-  (reset! metabase-initialization-progress 0.4)
-
-  ;; startup database.  validates connection & runs any necessary migrations
+  ;; startup database. Validates connection & runs any necessary migrations
   (db/setup-db! :auto-migrate (config/config-bool :mb-db-automigrate))
-  (reset! metabase-initialization-progress 0.5)
+  (reset! metabase-initialization-progress 0.8)
 
-  ;; run a very quick check to see if we are doing a first time installation
-  ;; the test we are using is if there is at least 1 User in the database
+  (do-background-initialization!)
+
+  ;; run a very quick check to see if we are doing a first time installation (there are no Users in the DB)
   (let [new-install (not (db/exists? User))]
-
-    ;; Bootstrap the event system
-    (events/initialize-events!)
-    (reset! metabase-initialization-progress 0.7)
-
-    ;; Now start the task runner
-    (task/start-scheduler!)
-    (reset! metabase-initialization-progress 0.8)
-
     (when new-install
       (log/info "Looks like this is a new installation ... preparing setup wizard")
       ;; create setup token
-      (-init-create-setup-token)
+      (create-setup-token!)
       ;; publish install event
       (events/publish-event :install {}))
     (reset! metabase-initialization-progress 0.9)
@@ -137,69 +115,48 @@
       ;; add the sample dataset DB for fresh installs
       (sample-data/add-sample-dataset!)
       ;; otherwise update if appropriate
-      (sample-data/update-sample-dataset-if-needed!))
-
-    ;; start the metabot thread
-    (metabot/start-metabot!))
+      (sample-data/update-sample-dataset-if-needed!)))
 
   (initialization-complete!)
   (log/info "Metabase Initialization COMPLETE"))
 
 
-;;; ## ---------------------------------------- Jetty (Web) Server ----------------------------------------
-
-
-(def ^:private jetty-instance
-  (atom nil))
-
-(defn start-jetty!
-  "Start the embedded Jetty web server."
-  []
-  (when-not @jetty-instance
-    (let [jetty-ssl-config (m/filter-vals identity {:ssl-port       (config/config-int :mb-jetty-ssl-port)
-                                                    :keystore       (config/config-str :mb-jetty-ssl-keystore)
-                                                    :key-password   (config/config-str :mb-jetty-ssl-keystore-password)
-                                                    :truststore     (config/config-str :mb-jetty-ssl-truststore)
-                                                    :trust-password (config/config-str :mb-jetty-ssl-truststore-password)})
-          jetty-config     (cond-> (m/filter-vals identity {:port          (config/config-int :mb-jetty-port)
-                                                            :host          (config/config-str :mb-jetty-host)
-                                                            :max-threads   (config/config-int :mb-jetty-maxthreads)
-                                                            :min-threads   (config/config-int :mb-jetty-minthreads)
-                                                            :max-queued    (config/config-int :mb-jetty-maxqueued)
-                                                            :max-idle-time (config/config-int :mb-jetty-maxidletime)})
-                             (config/config-str :mb-jetty-daemon) (assoc :daemon? (config/config-bool :mb-jetty-daemon))
-                             (config/config-str :mb-jetty-ssl)    (-> (assoc :ssl? true)
-                                                                      (merge jetty-ssl-config)))]
-      (log/info "Launching Embedded Jetty Webserver with config:\n" (with-out-str (clojure.pprint/pprint (m/filter-keys (fn [k] (not (re-matches #".*password.*" (str k)))) jetty-config))))
-      ;; NOTE: we always start jetty w/ join=false so we can start the server first then do init in the background
-      (->> (ring-jetty/run-jetty app (assoc jetty-config :join? false))
-           (reset! jetty-instance)))))
-
-(defn stop-jetty!
-  "Stop the embedded Jetty web server."
-  []
-  (when @jetty-instance
-    (log/info "Shutting Down Embedded Jetty Webserver")
-    (.stop ^org.eclipse.jetty.server.Server @jetty-instance)
-    (reset! jetty-instance nil)))
-
-
 ;;; ## ---------------------------------------- Normal Start ----------------------------------------
+
+(def ^:private jetty-instance (promise))
+
+(defn- start-jetty! []
+  (future
+    (try
+      (u/thread-safe-require 'metabase.handler)
+      (deliver jetty-instance ((resolve 'metabase.handler/start-jetty!)))
+      (catch Throwable e
+        (deliver jetty-instance e)))))
+
+(defn- join-jetty-server!
+  "Block forever while Jetty does its thing, or throw an Exception if Jetty startup failed."
+  []
+  (when (config/config-bool :mb-jetty-join)
+    (let [instance (deref jetty-instance 5000 :timeout)]
+      (cond
+        (instance? Throwable instance) (throw instance)
+        (= instance :timeout)          (throw (Exception. "Jetty server failed to start after 5 seconds."))
+        :else                          (.join ^Server instance)))))
+
+(set! *warn-on-reflection* true)
 
 (defn- start-normally []
   (log/info "Starting Metabase in STANDALONE mode")
   (try
-    ;; launch embedded webserver async
     (start-jetty!)
-    ;; run our initialization process
     (init!)
-    ;; Ok, now block forever while Jetty does its thing
-    (when (config/config-bool :mb-jetty-join)
-      (.join ^org.eclipse.jetty.server.Server @jetty-instance))
+    (join-jetty-server!)
+    ;; handle any errors starting up :'(
     (catch Throwable e
       (.printStackTrace e)
       (log/error "Metabase Initialization FAILED: " (.getMessage e))
       (System/exit 1))))
+
 
 ;;; ---------------------------------------- Special Commands ----------------------------------------
 
@@ -213,15 +170,16 @@
   ([]
    (load-from-h2 nil))
   ([h2-connection-string]
-   (require 'metabase.cmd.load-from-h2)
+   (u/thread-safe-require 'metabase.cmd.load-from-h2)
    ((resolve 'metabase.cmd.load-from-h2/load-from-h2!) h2-connection-string)))
 
 (defn ^:command profile
   "Start Metabase the usual way and exit. Useful for profiling Metabase launch time."
   []
   ;; override env var that would normally make Jetty block forever
+  (u/thread-safe-require 'environ.core)
   (intern 'environ.core 'env (assoc environ.core/env :mb-jetty-join "false"))
-  (u/profile "start-normally" (start-normally)))
+  (start-normally))
 
 (defn ^:command help
   "Show this help message listing valid Metabase commands."

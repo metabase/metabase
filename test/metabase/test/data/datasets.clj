@@ -8,7 +8,8 @@
             (metabase [config :as config]
                       [driver :as driver]
                       [plugins :as plugins])
-            [metabase.test.data.interface :as i]))
+            [metabase.test.data.interface :as i]
+            [metabase.util :as u]))
 
 ;; When running tests, we need to make sure plugins (i.e., the Oracle JDBC driver) are loaded because otherwise the Oracle driver won't show up in the list of valid drivers below
 (plugins/load-plugins!)
@@ -61,7 +62,7 @@
   [engine]
   (try (i/engine (driver/engine->driver engine))
        (catch IllegalArgumentException _
-         (require (symbol (str "metabase.test.data." (name engine))) :reload)))
+         (u/thread-safe-require (symbol (str "metabase.test.data." (name engine))) :reload)))
   (driver/engine->driver engine))
 
 (def ^:dynamic *driver*
@@ -133,4 +134,4 @@
 (doseq [[engine _] (driver/available-drivers)]
   (let [driver-test-namespace (symbol (str "metabase.test.data." (name engine)))]
     (when (find-ns driver-test-namespace)
-      (require driver-test-namespace))))
+      (u/thread-safe-require driver-test-namespace))))

@@ -96,7 +96,7 @@
   {:with-temp-defaults (constantly {})})
 
 (defn- rasta-id []
-  (require 'metabase.test.data.users)
+  (u/thread-safe-require 'metabase.test.data.users)
   ((resolve 'metabase.test.data.users/user->id) :rasta))
 
 (u/strict-extend (class Card)
@@ -264,7 +264,7 @@
   {:pre [(namespace-or-symbol? source-namespace)
          (namespace-or-symbol? target-namespace)
          (every? symbol? symbols)]}
-  (require source-namespace)
+  (u/thread-safe-require source-namespace)
   (doseq [symb symbols
           :let [varr (or (ns-resolve source-namespace symb)
                          (throw (Exception. (str source-namespace "/" symb " doesn't exist!"))))]]

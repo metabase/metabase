@@ -152,7 +152,7 @@
    This is built pulling the `hydration-keys` set from all of our entities."
   (delay (for [ns-symb (ns-find/find-namespaces (classpath/classpath))               ; Seems to work fine without this but better safe than sorry IMO
                :when   (re-matches #"^metabase\.models\.[a-z0-9]+$" (name ns-symb))]
-           (require ns-symb))
+           (u/thread-safe-require ns-symb))
          (into {} (for [ns       (all-ns)
                         [_ varr] (ns-publics ns)
                         :let     [entity (var-get varr)]

@@ -392,7 +392,7 @@
 (defn ISQLDriverDefaultsMixin
   "Default implementations for methods in `ISQLDriver`."
   []
-  (require 'metabase.driver.generic-sql.query-processor)
+  (u/thread-safe-require 'metabase.driver.generic-sql.query-processor)
   {:active-tables        fast-active-tables
    :apply-aggregation    (resolve 'metabase.driver.generic-sql.query-processor/apply-aggregation) ; don't resolve the vars yet so during interactive dev if the
    :apply-breakout       (resolve 'metabase.driver.generic-sql.query-processor/apply-breakout) ; underlying impl changes we won't have to reload all the drivers
@@ -416,7 +416,7 @@
 (defn IDriverSQLDefaultsMixin
   "Default implementations of methods in `IDriver` for SQL drivers."
   []
-  (require 'metabase.driver.generic-sql.query-processor)
+  (u/thread-safe-require 'metabase.driver.generic-sql.query-processor)
   (merge driver/IDriverDefaultsMixin
          {:analyze-table           analyze-table
           :can-connect?            can-connect?

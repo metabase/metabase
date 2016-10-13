@@ -94,7 +94,7 @@
          (when config/is-test?
            {:excluded-schemas (memoize
                                (fn [_]
-                                 (require 'metabase.test.data.redshift)
+                                 (u/thread-safe-require 'metabase.test.data.redshift)
                                  (let [session-schema-number @(resolve 'metabase.test.data.redshift/session-schema-number)]
                                    (set (conj (for [i (range 240)
                                                     :when (not= i session-schema-number)]

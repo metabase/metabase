@@ -274,7 +274,7 @@
   []
   (doseq [ns-symb (ns-find/find-namespaces (classpath/classpath))
           :when   (re-matches #"^metabase\.driver\.[a-z0-9_]+$" (name ns-symb))]
-    (require ns-symb)))
+    (u/thread-safe-require ns-symb)))
 
 (defn is-engine?
   "Is ENGINE a valid driver name?"
@@ -327,7 +327,7 @@
   {:pre [engine]}
   (or ((keyword engine) @registered-drivers)
       (let [namespce (symbol (format "metabase.driver.%s" (name engine)))]
-        (u/ignore-exceptions (require namespce))
+        (u/ignore-exceptions (u/thread-safe-require namespce))
         ((keyword engine) @registered-drivers))))
 
 
@@ -356,8 +356,7 @@
 
      (can-connect-with-details? :postgres {:host \"localhost\", :port 5432, ...})"
   [engine details-map & [rethrow-exceptions]]
-  {:pre [(keyword? engine)
-         (map? details-map)]}
+  {:pre [(keyword? engine) (map? details-map)]}
   (let [driver (engine->driver engine)]
     (try
       (u/with-timeout can-connect-timeout-ms
