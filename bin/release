@@ -29,8 +29,8 @@ fi
 
 # ensure AWS is configured
 if [ -z ${AWS_DEFAULT_PROFILE+x} ]; then
-    echo "Ensure AWS_DEFAULT_PROFILE is set.";
-    exit 1
+    echo "Setting AWS Profile to 'default'.";
+    AWS_DEFAULT_PROFILE=default
 fi
 
 # ensure we have access to the keystore
@@ -69,36 +69,41 @@ if ! [ -d "metabase" ]; then
     git clone git@github.com:metabase/metabase.git
 fi
 
+echo "fetching"
 cd metabase
 git fetch
 
-# checkout the correct branch
-git co -b "$BRANCH" "origin/$BRANCH"
+echo "checkout the correct branch : $BRANCH from origin/$BRANCH"
+git co "$BRANCH"
 
-# ensure the version is correct
+echo "ensure the version is correct"
 sed -i '' s/^VERSION.*/VERSION=\"v$VERSION\"/ bin/version
 git commit -m "v$VERSION" bin/version || true
 
-# tag it
+echo "delete old tags"
+git push --delete origin "v$VERSION" || true
+git tag --delete "v$VERSION" || true
+
+echo "taging it"
 git tag -a "v$VERSION" -m "v$VERSION"
 git push --follow-tags -u origin "$BRANCH"
 
-# build it
+echo "build it"
 bin/build
 
-# sign it
+echo "signing jar"
 jarsigner -tsa "http://timestamp.digicert.com" -keystore "$KEYSTORE_PATH" "target/uberjar/metabase.jar" server
 
-# verify it
+echo "verifing jar"
 jarsigner -verify "target/uberjar/metabase.jar"
 
-# s3 it
+echo "uploading to s3"
 aws s3 cp "target/uberjar/metabase.jar" "s3://downloads.metabase.com/v$VERSION/metabase.jar"
 
-# docker it
+echo "build docker image + publish"
 bin/docker/build_image.sh release "v$VERSION" --publish
 
-# elastic beanstalk it
+echo "create elastic beanstalk artifacts"
 bin/aws-eb-docker/release-eb-version.sh "v$VERSION"
 
 # mac it
@@ -109,16 +114,16 @@ bin/aws-eb-docker/release-eb-version.sh "v$VERSION"
 # echo "ok"
 
 cd ..
-
-# heroku it
+    
+echo "pulling down metabase-deploy"
 if ! [ -d "metabase-deploy" ]; then
+    echo "cant find ... cloning"
     git clone git@github.com:metabase/metabase-deploy.git
 fi
 
+echo "pulling"
 cd metabase-deploy
-git fetch
-git co "origin/master"
+git pull
 
+echo "release heroku artifacts"
 bin/release-heroku "v$VERSION"
-
-# technologic
