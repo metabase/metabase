@@ -5,6 +5,7 @@ import { createSelector } from 'reselect';
 import { push } from "react-router-redux";
 
 import Metadata from "metabase/meta/metadata/Metadata";
+import MetabaseAnalytics from "metabase/lib/analytics";
 
 import type { DatabaseId } from "metabase/meta/types/Database";
 import type { SchemaName } from "metabase/meta/types/Table";
@@ -92,6 +93,7 @@ export const getTablesPermissionsGrid = createSelector(
                         return getFieldsPermission(permissions, groupId, entityId);
                     },
                     updater(groupId, entityId, value) {
+                        MetabaseAnalytics.trackEvent("Permissions", "fields", value);
                         return updateFieldsPermission(permissions, groupId, entityId, value, metadata);
                     },
                     confirm(groupId, entityId, value) {
@@ -143,6 +145,7 @@ export const getSchemasPermissionsGrid = createSelector(
                         return getTablesPermission(permissions, groupId, entityId);
                     },
                     updater(groupId, entityId, value) {
+                        MetabaseAnalytics.trackEvent("Permissions", "tables", value);
                         return updateTablesPermission(permissions, groupId, entityId, value, metadata);
                     },
                     postAction(groupId, { databaseId, schemaName }, value) {
@@ -192,6 +195,7 @@ export const getDatabasesPermissionsGrid = createSelector(
                         return getSchemasPermission(permissions, groupId, entityId);
                     },
                     updater(groupId, entityId, value) {
+                        MetabaseAnalytics.trackEvent("Permissions", "schemas", value);
                         return updateSchemasPermission(permissions, groupId, entityId, value, metadata)
                     },
                     postAction(groupId, { databaseId }, value) {
@@ -220,6 +224,7 @@ export const getDatabasesPermissionsGrid = createSelector(
                         return getNativePermission(permissions, groupId, entityId);
                     },
                     updater(groupId, entityId, value) {
+                        MetabaseAnalytics.trackEvent("Permissions", "native", value);
                         return updateNativePermission(permissions, groupId, entityId, value, metadata);
                     },
                     confirm(groupId, entityId, value) {
@@ -242,7 +247,6 @@ export const getDatabasesPermissionsGrid = createSelector(
                         databaseId: database.id
                     },
                     name: database.name,
-                    subtitle: database.details.dbname,
                     link:
                         schemas.length === 0 || (schemas.length === 1 && schemas[0] === "") ?
                             { name: "View tables", url: `/admin/permissions/databases/${database.id}/tables` }

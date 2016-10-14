@@ -110,7 +110,7 @@ export default class GuiQueryEditor extends Component {
     }
 
     renderAdd(text, onClick, targetRefName) {
-        let className = "text-grey-2 text-bold flex align-center text-grey-4-hover cursor-pointer no-decoration transition-color";
+        let className = "AddButton text-grey-2 text-bold flex align-center text-grey-4-hover cursor-pointer no-decoration transition-color";
         if (onClick) {
             return (
                 <a className={className} onClick={onClick}>
@@ -173,10 +173,12 @@ export default class GuiQueryEditor extends Component {
                     {filterList}
                 </div>
                 <div className="mx2">
-                    <PopoverWithTrigger ref="filterPopover"
-                                        triggerElement={addFilterButton}
-                                        triggerClasses="flex align-center"
-                                        getTarget={() => this.refs.addFilterTarget}
+                    <PopoverWithTrigger
+                        id="FilterPopover"
+                        ref="filterPopover"
+                        triggerElement={addFilterButton}
+                        triggerClasses="flex align-center"
+                        getTarget={() => this.refs.addFilterTarget}
                     >
                         <FilterPopover
                             isNew={true}
@@ -364,7 +366,7 @@ export default class GuiQueryEditor extends Component {
                     {this.renderViewSection()}
                     <div className="flex-full"></div>
                     {this.props.children}
-                    <ExtendedOptions 
+                    <ExtendedOptions
                         {...this.props}
                         setQuery={(query) => this.setQuery(query)}
                     />

@@ -10,7 +10,7 @@ const GroupOption = ({ group, selectedGroups = {}, onGroupChange }) => {
     const disabled = !canEditMembership(group);
     const selected = isDefaultGroup(group) || selectedGroups[group.id];
     return (
-        <div className={cx("flex align-center p1 px2", { "cursor-pointer": !disabled })} onClick={() => !disabled && onGroupChange(group, !selected) }>
+        <div className={cx("GroupOption flex align-center p1 px2", { "cursor-pointer": !disabled })} onClick={() => !disabled && onGroupChange(group, !selected) }>
             <span className={cx("pr1", getGroupColor(group), { disabled })}>
                 <CheckBox checked={selected} borderColor="currentColor" size={18} />
             </span>
@@ -22,7 +22,7 @@ const GroupOption = ({ group, selectedGroups = {}, onGroupChange }) => {
 const GroupSelect = ({ groups, selectedGroups, onGroupChange }) => {
     const other = groups.filter(g => !isAdminGroup(g) && !isDefaultGroup(g));
     return (
-        <div className="UserRolePopover py1">
+        <div className="GroupSelect py1">
             <GroupOption group={_.find(groups, isAdminGroup)} selectedGroups={selectedGroups} onGroupChange={onGroupChange} />
             <GroupOption group={_.find(groups, isDefaultGroup)} selectedGroups={selectedGroups} onGroupChange={onGroupChange} />
             { other.length > 0 &&

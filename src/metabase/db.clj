@@ -156,8 +156,11 @@
    Running `.update` directly doesn't seem to work as we'd expect; it ends up commiting the changes made and they can't be rolled back at
    the end of the transaction block. Converting the migration to SQL string and running that via `jdbc/execute!` seems to do the trick."
   [conn, ^Liquibase liquibase]
+  (log/info "Checking if Database has unran migrations...")
   (when (has-unran-migrations? liquibase)
+    (log/info "Database has unran migrations. Waiting for migration lock to be cleared...")
     (wait-for-migration-lock-to-be-cleared liquibase)
+    (log/info "Migration lock is cleared. Running migrations...")
     (doseq [line (migrations-lines liquibase)]
       (jdbc/execute! conn [line]))))
 
@@ -214,8 +217,10 @@
      ;; Disable auto-commit. This should already be off but set it just to be safe
      (.setAutoCommit (jdbc/get-connection conn) false)
      ;; Set up liquibase and let it do its thing
+     (log/info "Setting up Liquibase...")
      (try
        (let [liquibase (conn->liquibase conn)]
+         (log/info "Liquibase is ready.")
          (case direction
            :up            (migrate-up-if-needed! conn liquibase)
            :force         (force-migrate-up-if-needed! conn liquibase)
@@ -339,6 +344,7 @@
   (reset! setup-db-has-been-called? true)
 
   (verify-db-connection (:type db-details) db-details)
+  (log/info "Running Database Migrations...")
 
   ;; Run through our DB migration process and make sure DB is fully prepared
   (if auto-migrate

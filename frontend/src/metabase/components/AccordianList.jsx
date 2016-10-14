@@ -34,6 +34,7 @@ export default class AccordianList extends Component {
     }
 
     static propTypes = {
+        id: PropTypes.string,
         sections: PropTypes.array.isRequired,
         searchable: PropTypes.bool,
         initiallyOpenSection: PropTypes.number,
@@ -153,7 +154,7 @@ export default class AccordianList extends Component {
     }
 
     render() {
-        const { searchable, searchPlaceholder, sections, showItemArrows, alwaysTogglable, alwaysExpanded, hideSingleSectionTitle, style } = this.props;
+        const { id, searchable, searchPlaceholder, sections, showItemArrows, alwaysTogglable, alwaysExpanded, hideSingleSectionTitle, style } = this.props;
         const { searchText } = this.state;
 
         const openSection = this.getOpenSection();
@@ -161,7 +162,7 @@ export default class AccordianList extends Component {
             alwaysExpanded || openSection === sectionIndex;
 
         return (
-            <div className={this.props.className} style={{ width: '300px', ...style }}>
+            <div id={id} className={this.props.className} style={{ width: '300px', ...style }}>
                 {sections.map((section, sectionIndex) =>
                     <section key={sectionIndex} className={cx("List-section", { "List-section--open": sectionIsOpen(sectionIndex) })}>
                         { section.name && alwaysExpanded ?

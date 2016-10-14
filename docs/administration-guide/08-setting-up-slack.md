@@ -23,5 +23,7 @@ Now give the Bot user a helpful name (we suggest `Metabot`) and click the `Add b
 
 Paste the value into the text box for `Slack API Token` and click the button to save your changes.  That's it!  Metabase will automatically run a quick test to check that the API token is working properly and if not you'll get an error message.
 
+---
+
 ## Next: Single Sign-On
 Learn how to [configure Single Sign-On](08-single-sign-on.md) to let users sign in or sign up with just a click.

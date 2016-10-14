@@ -16,7 +16,7 @@ const SessionApi = new AngularResourceProxy("Session", ["create", "createWithGoo
 
 
 // login
-export const login = createThunkAction("AUTH_LOGIN", function(credentials) {
+export const login = createThunkAction("AUTH_LOGIN", function(credentials, redirectUrl) {
     return async function(dispatch, getState) {
 
         if (!MetabaseUtils.validEmail(credentials.email)) {
@@ -32,7 +32,7 @@ export const login = createThunkAction("AUTH_LOGIN", function(credentials) {
             MetabaseAnalytics.trackEvent('Auth', 'Login');
             // TODO: redirect after login (carry user to intended destination)
             await dispatch(refreshCurrentUser());
-            dispatch(push("/"));
+            dispatch(push(redirectUrl || "/"));
 
         } catch (error) {
             return error;
@@ -42,7 +42,7 @@ export const login = createThunkAction("AUTH_LOGIN", function(credentials) {
 
 
 // login Google
-export const loginGoogle = createThunkAction("AUTH_LOGIN_GOOGLE", function(googleUser) {
+export const loginGoogle = createThunkAction("AUTH_LOGIN_GOOGLE", function(googleUser, redirectUrl) {
     return async function(dispatch, getState) {
         try {
             let newSession = await SessionApi.createWithGoogleAuth({
@@ -56,7 +56,7 @@ export const loginGoogle = createThunkAction("AUTH_LOGIN_GOOGLE", function(googl
 
             // TODO: redirect after login (carry user to intended destination)
             await dispatch(refreshCurrentUser());
-            dispatch(push("/"));
+            dispatch(push(redirectUrl || "/"));
 
         } catch (error) {
             clearGoogleAuthCredentials();

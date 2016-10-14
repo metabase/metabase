@@ -6,6 +6,7 @@ import Icon from "metabase/components/Icon"
 
 import {
     getQuestionUrl,
+    has,
     typeToBgClass,
     typeToLinkClass,
 } from "../utils";
@@ -82,11 +83,11 @@ const GuideDetail = ({
                 </ContextContent>
             </div>
 
-            { exploreLinks && exploreLinks.length > 0 && [
+            { has(exploreLinks) && [
                 <div className="mt2">
-                    <ContextHeading key="detailLabel">Explore this metric</ContextHeading>,
+                    <ContextHeading key="detailLabel">Explore this metric</ContextHeading>
                     <div key="detailLinks">
-                        <Link className="text-brand inline-block mr2 link text-bold" to={link}>View this metric</Link>
+                        <h4 className="inline-block mr2 link text-bold">View this metric</h4>
                         { exploreLinks.map(link =>
                             <Link
                                 className="inline-block text-bold text-brand mr2 link"

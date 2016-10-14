@@ -7,7 +7,7 @@ Metabot helps add context to conversations you’re having in Slack by letting y
 ### Connecting to Slack.
 To use Metabot with Slack you’ll first need to connect Metabase to your Slack with an API token.
 
-See [Setting up Slack](http://www.metabase.com/docs/v0.15.1/administration-guide/07-setting-up-slack) for more information.
+See [Setting up Slack](http://www.metabase.com/docs/latest/administration-guide/07-setting-up-slack) for more information.
 
 
 ### What can Metabot do?

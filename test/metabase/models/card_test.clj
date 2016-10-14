@@ -6,6 +6,7 @@
                              [dashboard-card :refer [DashboardCard]]
                              [interface :as models]
                              [permissions :as perms])
+            [metabase.query-processor.expand :as ql]
             [metabase.test.data :refer [id]]
             [metabase.test.data.users :refer :all]
             [metabase.test.util :refer [random-name with-temp]]))
@@ -75,3 +76,48 @@
   (with-temp Card [card {:dataset_query {:database (id), :type "native"}}]
     (binding [*current-user-permissions-set* (delay #{(perms/native-readwrite-path (id))})]
       (models/can-write? card))))
+
+
+;;; check permissions sets for queries
+;; native read
+(defn- native [query]
+  {:database 1
+   :type     :native
+   :native   {:query query}})
+
+(expect
+  #{"/db/1/native/read/"}
+  (query-perms-set (native "SELECT count(*) FROM toucan_sightings;") :read))
+
+;; native write
+(expect
+  #{"/db/1/native/"}
+  (query-perms-set (native "SELECT count(*) FROM toucan_sightings;") :write))
+
+
+(defn- mbql [query]
+  {:database (id)
+   :type     :query
+   :query    query})
+
+;; MBQL w/o JOIN
+(expect
+  #{(perms/object-path (id) "PUBLIC" (id :venues))}
+  (query-perms-set (mbql (ql/query
+                           (ql/source-table (id :venues))))
+                   :read))
+
+;; MBQL w/ JOIN
+(expect
+  #{(perms/object-path (id) "PUBLIC" (id :checkins))
+    (perms/object-path (id) "PUBLIC" (id :venues))}
+  (query-perms-set (mbql (ql/query
+                           (ql/source-table (id :checkins))
+                           (ql/order-by (ql/asc (ql/fk-> (id :checkins :venue_id) (id :venues :name))))))
+                   :read))
+
+;; invalid/legacy card should return perms for something that doesn't exist so no one gets to see it
+(expect
+  #{"/db/0/"}
+  (query-perms-set (mbql {:filter [:WOW 100 200]})
+                   :read))

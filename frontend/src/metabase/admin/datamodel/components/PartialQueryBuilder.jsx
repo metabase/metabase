@@ -62,7 +62,7 @@ export default class PartialQueryBuilder extends Component {
                 }
             }
         };
-        let previewUrl = "/q/" + serializeCardForUrl(previewCard);
+        let previewUrl = "/q#" + serializeCardForUrl(previewCard);
 
         return (
             <div className="py1">

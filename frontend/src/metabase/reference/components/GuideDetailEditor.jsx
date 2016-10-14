@@ -61,7 +61,6 @@ const GuideDetailEditor = ({
             <div className="py2">
                 { entities ?
                     <Select 
-                        className={selectClasses}
                         value={entities[formField.id.value]}
                         options={Object.values(entities)}
                         disabledOptionIds={selectedIds}
@@ -179,10 +178,7 @@ const GuideDetailEditor = ({
                         Which 2-3 fields do you usually group this metric by?
                     </EditLabel>
                     <Select
-                        className={cx(selectClasses, 'inline-block')}
-                        key="metricFieldsSelect"
-                        triggerClasses={cx('px2', S.guideDetailEditorSelect)}
-                        options={fieldsByMetric} 
+                        options={fieldsByMetric}
                         optionNameFn={option => option.display_name || option.name}
                         placeholder="Select..."
                         values={formField.important_fields.value || []}

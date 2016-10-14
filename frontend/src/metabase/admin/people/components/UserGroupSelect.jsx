@@ -60,7 +60,6 @@ export default class UserGroupSelect extends Component {
         return (
             <PopoverWithTrigger
                 ref="popover"
-                className="UserRolePopover block"
                 triggerElement={
                     <div className="flex align-center">
                         <span className="mr1 text-grey-4">

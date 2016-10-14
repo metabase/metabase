@@ -2,10 +2,12 @@ databaseChangeLog:
   - changeSet:
       id: 43
       author: camsaul
+      validCheckSum: 7:b20750a949504e93efced32877a4488f
+      validCheckSum: 7:dbc18c8ca697fc335869f0ed0eb5f4cb
       changes:
         - createTable:
             tableName: permissions_revision
-            remarks: 'This is used to keep track of changes made to permissions via the admin panel, primarily for auditing purposes. Changes are batched, and a new entry is added for every batch.'
+            remarks: 'Used to keep track of changes made to permissions.'
             columns:
               - column:
                   name: id
@@ -17,13 +19,13 @@ databaseChangeLog:
               - column:
                   name: before
                   type: text
-                  remarks: 'Serialized JSON of relvant sections of the permissions graph changed as part of this revision, with their values *before* the changes.'
+                  remarks: 'Serialized JSON of the permissions before the changes.'
                   constraints:
                     nullable: false
               - column:
                   name: after
                   type: text
-                  remarks: 'Serialized JSON of relvant sections of the permissions graph changed as part of this revision, with their values *after* the changes.'
+                  remarks: 'Serialized JSON of the permissions after the changes.'
                   constraints:
                     nullable: false
               - column:

@@ -12,6 +12,7 @@ import { getTemplateTags } from "./Card";
 
 import { slugify, stripId } from "metabase/lib/formatting";
 import Query from "metabase/lib/query";
+import { TYPE, isa } from "metabase/lib/types";
 
 import _ from "underscore";
 
@@ -216,12 +217,17 @@ export function getParameterMappingTargetField(metadata: Metadata, card: Card, t
 }
 
 function fieldFilterForParameter(parameter: Parameter): FieldFilter {
-    const [type, subtype] = parameter.type.split("/");
+    const [type] = parameter.type.split("/");
     switch (type) {
         case "date":        return (field: Field) => field.isDate();
-        case "location":    return (field: Field) => field.special_type === subtype;
         case "id":          return (field: Field) => field.isID();
         case "category":    return (field: Field) => field.isCategory();
+    }
+    switch (parameter.type) {
+        case "location/city":     return (field: Field) => isa(field.special_type, TYPE.City);
+        case "location/state":    return (field: Field) => isa(field.special_type, TYPE.State);
+        case "location/zip_code": return (field: Field) => isa(field.special_type, TYPE.ZipCode);
+        case "location/country":  return (field: Field) => isa(field.special_type, TYPE.Country);
     }
     return (field: Field) => false;
 }

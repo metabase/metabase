@@ -98,6 +98,10 @@ export const getParameterTarget = createSelector(
 export const getMappingsByParameter = createSelector(
     [getMetadata, getDashboardComplete],
     (metadata, dashboard) => {
+        if (!dashboard) {
+            return {};
+        }
+
         let mappingsByParameter: MappingsByParameter = {};
         let mappings: Array<AugmentedParameterMapping> = [];
         let countsByParameter = {};
