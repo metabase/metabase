@@ -257,7 +257,7 @@
   [^Keyword engine, driver-instance]
   {:pre [(keyword? engine) (map? driver-instance)]}
   (swap! registered-drivers assoc engine driver-instance)
-  (log/debug (format "Registered driver %s 🚚" (u/format-color 'blue engine))))
+  (log/debug (format "Registered driver %s %s" (u/format-color 'blue engine) (u/format-emoji "🚚"))))
 
 (defn available-drivers
   "Info about available drivers."
