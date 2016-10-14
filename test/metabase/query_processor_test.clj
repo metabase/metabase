@@ -1434,7 +1434,7 @@
      ["2015-06-02 08:20:00" 1]
      ["2015-06-02 11:11:00" 1]]
 
-    (contains? #{:redshift :sqlserver :bigquery :mongo :postgres :h2 :oracle} *engine*)
+    (contains? #{:redshift :sqlserver :bigquery :mongo :postgres :vertica :h2 :oracle} *engine*)
     [["2015-06-01T10:31:00.000Z" 1]
      ["2015-06-01T16:06:00.000Z" 1]
      ["2015-06-01T17:23:00.000Z" 1]
@@ -1643,7 +1643,7 @@
     (contains? #{:sqlserver :sqlite :crate :oracle} *engine*)
     [[23 54] [24 46] [25 39] [26 61]]
 
-    (contains? #{:mongo :redshift :bigquery :postgres :h2} *engine*)
+    (contains? #{:mongo :redshift :bigquery :postgres :vertica :h2} *engine*)
     [[23 46] [24 47] [25 40] [26 60] [27 7]]
 
     :else

@@ -221,6 +221,10 @@
                                         (hsql/format hsql-form
                                           :quoting             (sql/quote-style driver)
                                           :allow-dashed-names? true)))]
+;;     (println)
+;;     (println "Exectue this (3) on " (:classname spec) ":")
+;;     (println (first sql+args))
+;;     (println)
     (try (jdbc/execute! spec sql+args)
          (catch java.sql.SQLException e
            (println (u/format-color 'red "INSERT FAILED: \n%s\n" sql+args))
@@ -251,6 +255,10 @@
                (not (s/blank? (s/replace sql #";" ""))))
       ;; Remove excess semicolons, otherwise snippy DBs like Oracle will barf
       (let [sql (s/replace sql #";+" ";")]
+;;         (println)
+;;         (println "Execute this:")
+;;         (println sql)
+;;         (println)
         (try
           (jdbc/execute! (database->spec driver context dbdef) [sql] {:transaction? false, :multi? true})
           (catch java.sql.SQLException e

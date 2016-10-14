@@ -161,7 +161,7 @@
   (let [field (formatted field)]
     (case          filter-type
       :between     [:between field (formatted (:min-val filter)) (formatted (:max-val filter))]
-      :starts-with [:like    field (formatted (update value :value (fn [s] (str    s \%)))) ]
+      :starts-with [:like    field (formatted (update value :value (fn [s] (str    s \%))))]
       :contains    [:like    field (formatted (update value :value (fn [s] (str \% s \%))))]
       :ends-with   [:like    field (formatted (update value :value (fn [s] (str \% s))))]
       :>           [:>       field (formatted value)]
@@ -285,6 +285,10 @@
 (defn- run-query
   "Run the query itself."
   [{sql :query, params :params, remark :remark} connection]
+;;   (println)
+;;   (println "Executing this (2): ")
+;;   (println "Driver Class: " (.getDriverClass (:datasource connection)))
+;;   (println sql)
   (let [sql              (str "-- " remark "\n" (hx/unescape-dots sql))
         statement        (into [sql] params)
         [columns & rows] (jdbc/query connection statement {:identifiers identity, :as-arrays? true})]
