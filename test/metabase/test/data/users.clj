@@ -1,5 +1,6 @@
 (ns metabase.test.data.users
   "Code related to creating / managing fake `Users` for testing purposes."
+  ;; TODO - maybe this namespace should just be `metabase.test.users`.
   (:require [medley.core :as m]
             (metabase [db :as db]
                       [http-client :as http])
