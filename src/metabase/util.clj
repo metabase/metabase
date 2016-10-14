@@ -478,7 +478,8 @@
      ~@body
      ~'<>))
 
-(def ^String ^{:style/indent 2} format-color
+(def ^String ^{:style/indent 2, :arglists '([color-symb x] [color-symb format-str & args])}
+  format-color
   "Like `format`, but uses a function in `colorize.core` to colorize the output.
    COLOR-SYMB should be a quoted symbol like `green`, `red`, `yellow`, `blue`,
    `cyan`, `magenta`, etc. See the entire list of avaliable colors

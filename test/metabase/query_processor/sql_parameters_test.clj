@@ -364,3 +364,16 @@
          :native     {:query (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (checkins-identifier))
                       :template_tags {:checkin_date {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}}}
          :parameters []}))))
+
+;; test that relative dates work correctly. It should be enough to try just one type of relative date here,
+;; since handling them gets delegated to the functions in `metabase.query-processor.parameters`, which is fully-tested :D
+(datasets/expect-with-engines sql-parameters-engines
+  [0]
+  (first-row
+    (format-rows-by [int]
+      (qp/process-query
+        {:database   (data/id)
+         :type       :native
+         :native     {:query (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (checkins-identifier))
+                      :template_tags {:checkin_date {:name "checkin_date", :display_name "Checkin Date", :type "dimension", :dimension ["field-id" (data/id :checkins :date)]}}}
+         :parameters [{:type "date/relative", :target ["dimension" ["template-tag" "checkin_date"]], :value "thismonth"}]}))))
