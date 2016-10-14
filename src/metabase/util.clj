@@ -16,7 +16,7 @@
            (java.net Socket
                      InetSocketAddress
                      InetAddress)
-           java.sql.Timestamp
+           (java.sql SQLException Timestamp)
            (java.util Calendar TimeZone)
            javax.xml.bind.DatatypeConverter
            org.joda.time.format.DateTimeFormatter))
@@ -560,7 +560,7 @@
      (fn [& args]
        (try
          (apply f args)
-         (catch java.sql.SQLException e
+         (catch SQLException e
            (log/error (format-color 'red "%s\n%s\n%s"
                                     exception-message
                                     (with-out-str (jdbc/print-sql-exception-chain e))

@@ -112,7 +112,7 @@
          (integer? user-id)
          (string? revision_message)]}
   ;; update the segment itself
-  (db/update! Segment id
+  (db/update-non-nil-keys! Segment id
     :name                    name
     :description             description
     :caveats                 caveats
