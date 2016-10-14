@@ -1,18 +1,13 @@
 import React, { Component, PropTypes } from "react";
 
 import Modal from "metabase/components/Modal.jsx";
-import ModalContent from "metabase/components/ModalContent.jsx";
 
 const Alert = ({ message, onClose }) =>
-    <Modal isOpen={!!message}>
-        <ModalContent
-            title={message}
-            closeFn={onClose}
-        >
-            <div className="Form-actions">
-                <button className="Button Button--primary" onClick={onClose}>Ok</button>
-            </div>
-        </ModalContent>
+    <Modal className="Modal Modal--small" isOpen={!!message}>
+        <div className="flex flex-column layout-centered p4">
+            <h3 className="mb4">{message}</h3>
+            <button className="Button Button--primary" onClick={onClose}>Ok</button>
+        </div>
     </Modal>
 
 export default Alert;
