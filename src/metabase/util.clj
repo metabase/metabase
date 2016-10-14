@@ -472,12 +472,11 @@
      ~@body
      ~'<>))
 
-(defn format-emoji
-  "Returns the string passed in if emojis in logs are enabled, an empty string otherwise."
-  [format-string]
+(def ^String ^{:arglists '([emoji-string])} format-emoji
+  "Returns the EMOJI-STRING passed in if emoji in logs are enabled, otherwise always returns an empty string."
   (if (config/config-bool :mb-emoji-in-logs)
-      format-string
-      ""))
+    identity
+    (constantly "")))
 
 (def ^String ^{:style/indent 2} format-color
   "Like `format`, but uses a function in `colorize.core` to colorize the output.
