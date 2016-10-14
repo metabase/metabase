@@ -13,8 +13,8 @@ export const idsToObjectMap = (ids, objects) => ids
     // .reduce((map, object) => i.assoc(map, object.id, object), {});
 
 const filterUntouchedFields = (fields, entity = {}) => Object.keys(fields)
-    .filter(key => 
-        fields[key] !== undefined && 
+    .filter(key =>
+        fields[key] !== undefined &&
         entity[key] !== fields[key]
     )
     .reduce((map, key) => ({ ...map, [key]: fields[key] }), {});
@@ -355,13 +355,10 @@ export const buildBreadcrumbs = (section) => getParentSections(section)
 export const databaseToForeignKeys = (database) => database && database.tables_lookup ?
     Object.values(database.tables_lookup)
         // ignore tables without primary key
-        .filter(table => table && table.fields_lookup &&
-            Object.values(table.fields_lookup)
-                .find(field => isPK(field.special_type))
-        )
+        .filter(table => table && table.fields.find(field => isPK(field.special_type)))
         .map(table => ({
             table: table,
-            field: table && table.fields_lookup && Object.values(table.fields_lookup)
+            field: table && table.fields
                 .find(field => isPK(field.special_type))
         }))
         .map(({ table, field }) => ({

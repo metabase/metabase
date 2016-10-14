@@ -152,39 +152,39 @@ describe("Reference utils.js", () => {
                         id: 1,
                         display_name: 'foo',
                         schema: 'PUBLIC',
-                        fields_lookup: {
-                            1: {
+                        fields: [
+                            {
                                 id: 1,
                                 special_type: TYPE.PK,
                                 display_name: 'bar',
                                 description: 'foobar'
                             }
-                        }
+                        ]
                     },
                     2: {
                         id: 2,
                         display_name: 'bar',
                         schema: 'public',
-                        fields_lookup: {
-                            2: {
+                        fields: [
+                            {
                                 id: 2,
                                 special_type: TYPE.PK,
                                 display_name: 'foo',
                                 description: 'barfoo'
                             }
-                        }
+                        ]
                     },
                     3: {
                         id: 3,
                         display_name: 'boo',
                         schema: 'TEST',
-                        fields_lookup: {
-                            3: {
+                        fields: [
+                            {
                                 id: 3,
                                 display_name: 'boo',
                                 description: 'booboo'
                             }
-                        }
+                        ]
                     }
                 }
             };
