@@ -100,7 +100,7 @@ export default class NativeQueryEditor extends Component {
             console.log('Setting ACE Editor mode to:', this.state.modeInfo.mode);
             editor.getSession().setMode(this.state.modeInfo.mode);
             // monkey patch the mode to add our bracket/paren/braces-matching behavior
-            if (!editor.getSession().$mode.$behaviour) {
+            if (this.state.modeInfo.mode.indexOf("sql") >= 0) {
                 editor.getSession().$mode.$behaviour = new SQLBehaviour();
             }
         }
