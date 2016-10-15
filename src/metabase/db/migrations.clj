@@ -218,6 +218,10 @@
                                (swap! processed-fields conj column-name)))))))))))))))))
 
 
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                                     PERMISSIONS v1                                                     |
+;;; +------------------------------------------------------------------------------------------------------------------------+
+
 ;; Add users to default permissions groups. This will cause the groups to be created if needed as well.
 (defmigration add-users-to-default-permissions-groups
   (let [{all-users-group-id :id} (perm-group/all-users)
