@@ -30,8 +30,8 @@
 (expect
   {:sizeX                  2
    :sizeY                  2
-   :col                    nil
-   :row                    nil
+   :col                    0
+   :row                    0
    :parameter_mappings     [{:foo "bar"}]
    :visualization_settings {}
    :series                 []}
@@ -45,8 +45,8 @@
 (expect
   {:sizeX                  2
    :sizeY                  2
-   :col                    nil
-   :row                    nil
+   :col                    0
+   :row                    0
    :parameter_mappings     []
    :visualization_settings {}
    :series                 [{:name                   "Additional Series Card 1"
@@ -144,8 +144,8 @@
 (expect
   [{:sizeX                  2
     :sizeY                  2
-    :col                    nil
-    :row                    nil
+    :col                    0
+    :row                    0
     :parameter_mappings     [{:foo "bar"}]
     :visualization_settings {}
     :series                 []}

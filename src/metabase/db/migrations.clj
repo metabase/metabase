@@ -60,13 +60,15 @@
   (log/info "Finished running data migrations."))
 
 
-;;; # Migration Definitions
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                                       MIGRATIONS                                                       |
+;;; +------------------------------------------------------------------------------------------------------------------------+
 
 ;; Upgrade for the `Card` model when `:database_id`, `:table_id`, and `:query_type` were added and needed populating.
 ;;
 ;; This reads through all saved cards, extracts the JSON from the `:dataset_query`, and tries to populate
 ;; the values for `:database_id`, `:table_id`, and `:query_type` if possible.
-(defmigration set-card-database-and-table-ids
+(defmigration ^{:author "agilliland", :added "0.12.0"} set-card-database-and-table-ids
   ;; only execute when `:database_id` column on all cards is `nil`
   (when (zero? (db/select-one-count Card
                  :database_id [:not= nil]))
@@ -79,14 +81,14 @@
 ;; Set the `:ssl` key in `details` to `false` for all existing MongoDB `Databases`.
 ;; UI was automatically setting `:ssl` to `true` for every database added as part of the auto-SSL detection.
 ;; Since Mongo did *not* support SSL, all existing Mongo DBs should actually have this key set to `false`.
-(defmigration set-mongodb-databases-ssl-false
+(defmigration ^{:author "camsaul", :added "0.13.0"} set-mongodb-databases-ssl-false
   (doseq [{:keys [id details]} (db/select [Database :id :details], :engine "mongo")]
     (db/update! Database id, :details (assoc details :ssl false))))
 
 
 ;; Set default values for :schema in existing tables now that we've added the column
 ;; That way sync won't get confused next time around
-(defmigration set-default-schemas
+(defmigration ^{:author "camsaul", :added "0.13.0"} set-default-schemas
   (doseq [[engine default-schema] [["postgres" "public"]
                                    ["h2"       "PUBLIC"]]]
     (when-let [db-ids (db/select-ids Database :engine engine)]
@@ -96,7 +98,7 @@
 
 
 ;; Populate the initial value for the `:admin-email` setting for anyone who hasn't done it yet
-(defmigration set-admin-email
+(defmigration ^{:author "agilliland", :added "0.13.0"} set-admin-email
   (when-not (setting/get :admin-email)
     (when-let [email (db/select-one-field :email 'User
                        :is_superuser true
@@ -105,14 +107,14 @@
 
 
 ;; Remove old `database-sync` activity feed entries
-(defmigration remove-database-sync-activity-entries
+(defmigration ^{:author "agilliland", :added "0.13.0"} remove-database-sync-activity-entries
   (when-not (contains? activity-feed-topics :database-sync-begin)
     (db/delete! Activity :topic "database-sync")))
 
 
 ;; Migrate dashboards to the new grid
 ;; NOTE: this scales the dashboards by 4x in the Y-scale and 3x in the X-scale
-(defmigration update-dashboards-to-new-grid
+(defmigration ^{:author "agilliland",:added "0.16.0"} update-dashboards-to-new-grid
   (doseq [{:keys [id row col sizeX sizeY]} (db/select DashboardCard)]
     (db/update! DashboardCard id
       :row   (when row (* row 4))
@@ -122,7 +124,7 @@
 
 
 ;; migrate data to new visibility_type column on field
-(defmigration migrate-field-visibility-type
+(defmigration ^{:author "agilliland",:added "0.16.0"} migrate-field-visibility-type
   (when-not (zero? (db/select-one-count Field :visibility_type "unset"))
     ;; start by marking all inactive fields as :retired
     (db/update-where! Field {:visibility_type "unset"
@@ -139,35 +141,10 @@
       :visibility_type "normal")))
 
 
-;; deal with dashboard cards which have NULL `:row` or `:col` values
-(defmigration fix-dashboard-cards-without-positions
-  (when-let [bad-dashboard-ids (db/select-field :dashboard_id DashboardCard {:where [:or [:= :row nil]
-                                                                                         [:= :col nil]]})]
-    (log/info "Looks like we need to fix unpositioned cards in these dashboards:" bad-dashboard-ids)
-    ;; we are going to take the easy way out, which is to put bad-cards at the bottom of the dashboard
-    (doseq [dash-to-fix bad-dashboard-ids]
-      (let [max-row   (or (:max (db/select-one [DashboardCard [:%max.row :max]] :dashboard_id dash-to-fix))
-                          0)
-            max-size  (or (:size (db/select-one [DashboardCard [:%max.sizeY :size]] :dashboard_id dash-to-fix, :row max-row))
-                          0)
-            max-y     (+ max-row max-size)
-            bad-cards (db/select [DashboardCard :id :sizeY]
-                        {:where [:and [:= :dashboard_id dash-to-fix]
-                                      [:or [:= :row nil]
-                                           [:= :col nil]]]})]
-        (loop [[bad-card & more] bad-cards
-               row-target        max-y]
-          (db/update! DashboardCard bad-card
-            :row row-target
-            :col 0)
-          (when more
-            (recur more (+ row-target (:sizeY bad-card)))))))))
-
-
 ;; populate RawTable and RawColumn information
 ;; NOTE: we only handle active Tables/Fields and we skip any FK relationships (they can safely populate later)
 ;; TODO - this function is way to big and hard to read -- See https://github.com/metabase/metabase/wiki/Metabase-Clojure-Style-Guide#break-up-larger-functions
-(defmigration create-raw-tables
+(defmigration ^{:author "agilliland",:added "0.17.0"} create-raw-tables
   (when (zero? (db/select-one-count RawTable))
     (binding [db/*disable-db-logging* true]
       (db/transaction
@@ -223,7 +200,7 @@
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 
 ;; Add users to default permissions groups. This will cause the groups to be created if needed as well.
-(defmigration add-users-to-default-permissions-groups
+(defmigration ^{:author "camsaul", :added "0.20.0"} add-users-to-default-permissions-groups
   (let [{all-users-group-id :id} (perm-group/all-users)
         {admin-group-id :id}     (perm-group/admin)]
     (binding [perm-membership/*allow-changing-all-users-group-members* true]
@@ -237,7 +214,7 @@
             :group_id admin-group-id))))))
 
 ;; admin group has a single entry that lets it access to everything
-(defmigration add-admin-group-root-entry
+(defmigration ^{:author "camsaul", :added "0.20.0"} add-admin-group-root-entry
   (binding [perms/*allow-admin-permissions-changes* true
             perms/*allow-root-entries* true]
     (u/ignore-exceptions
@@ -246,7 +223,7 @@
         :object   "/"))))
 
 ;; add existing databases to default permissions groups. default and metabot groups have entries for each individual DB
-(defmigration add-databases-to-magic-permissions-groups
+(defmigration ^{:author "camsaul", :added "0.20.0"} add-databases-to-magic-permissions-groups
   (let [db-ids (db/select-ids Database)]
     (doseq [{group-id :id} [(perm-group/all-users)
                             (perm-group/metabot)]
@@ -309,7 +286,7 @@
 ;; migrate all of the old base + special types to the new ones.
 ;; This also takes care of any types that are already correct other than the fact that they're missing :type/ in the front.
 ;; This was a bug that existed for a bit in 0.20.0-SNAPSHOT but has since been corrected
-(defmigration migrate-field-types
+(defmigration ^{:author "camsaul", :added "0.20.0"} migrate-field-types
   (doseq [[old-type new-type] old-special-type->new-type]
     ;; migrate things like :timestamp_milliseconds -> :type/UNIXTimestampMilliseconds
     (db/update-where! 'Field {:%lower.special_type (s/lower-case old-type)}
@@ -326,7 +303,7 @@
       :base_type new-type)))
 
 ;; if there were invalid field types in the database anywhere fix those so the new stricter validation logic doesn't blow up
-(defmigration fix-invalid-field-types
+(defmigration ^{:author "camsaul", :added "0.20.0"} fix-invalid-field-types
   (db/update-where! 'Field {:base_type [:not-like "type/%"]}
     :base_type "type/*")
   (db/update-where! 'Field {:special_type [:not-like "type/%"]}
