@@ -185,13 +185,17 @@
                (.rollback (jdbc/get-connection nested-transaction-connection))
                (log/error (u/format-color 'red "[ERROR] %s" (.getMessage e)))))))))
 
+(def ^{:arglists '([])} ^DatabaseFactory database-factory
+  "Return an instance of the Liquibase `DatabaseFactory`. This is done on a background thread at launch because otherwise it adds 2 seconds to startup time."
+  (partial deref (future (DatabaseFactory/getInstance))))
+
 (defn- conn->liquibase
   "Get a `Liquibase` object from JDBC CONN."
   (^Liquibase []
    (conn->liquibase (jdbc-details)))
   (^Liquibase [conn]
    (let [^JdbcConnection liquibase-conn (JdbcConnection. (jdbc/get-connection conn))
-         ^Database       database       (.findCorrectDatabaseImplementation (DatabaseFactory/getInstance) liquibase-conn)]
+         ^Database       database       (.findCorrectDatabaseImplementation (database-factory) liquibase-conn)]
      (Liquibase. changelog-file (ClassLoaderResourceAccessor.) database))))
 
 (defn migrate!
@@ -335,6 +339,13 @@
     (format "Unable to connect to Metabase %s DB." (name engine)))
   (log/info "Verify Database Connection ... ✅"))
 
+
+(def ^:dynamic ^Boolean *disable-data-migrations*
+  "Should we skip running data migrations when setting up the DB? (Default is `false`).
+   There are certain places where we don't want to do this; for example, none of the migrations should be ran when Metabase is launched via `load-from-h2`.
+   That's because they will end up doing things like creating duplicate entries for the \"magic\" groups and permissions entries. "
+  false)
+
 (defn setup-db!
   "Do general preparation of database by validating that we can connect.
    Caller can specify if we should run any pending database migrations."
@@ -364,10 +375,10 @@
   ;; Establish our 'default' DB Connection
   (create-connection-pool! (jdbc-details db-details))
 
-  ;; Do any custom code-based migrations now that the db structure is up to date
-  ;; NOTE: we use dynamic resolution to prevent circular dependencies
-  (require 'metabase.db.migrations)
-  ((resolve 'metabase.db.migrations/run-all)))
+  ;; Do any custom code-based migrations now that the db structure is up to date.
+  (when-not *disable-data-migrations*
+    (require 'metabase.db.migrations)
+    ((resolve 'metabase.db.migrations/run-all))))
 
 (defn setup-db-if-needed!
   "Call `setup-db!` if DB is not already setup; otherwise this does nothing."
