@@ -16,7 +16,8 @@ export default class AddToDashSelectDashModal extends Component {
         this.loadDashboardList();
 
         this.state = {
-            dashboards: null
+            dashboards: null,
+            shouldCreateDashboard: false
         };
     }
 
@@ -49,7 +50,7 @@ export default class AddToDashSelectDashModal extends Component {
     render() {
         if (!this.state.dashboards) {
             return null;
-        } else if (this.state.dashboards.length === 0) {
+        } else if (this.state.dashboards.length === 0 || this.state.shouldCreateDashboard === true) {
             return <CreateDashboardModal createDashboardFn={this.createDashboard} closeFn={this.props.closeFn} />
         } else {
             return (
@@ -62,6 +63,13 @@ export default class AddToDashSelectDashModal extends Component {
                         items={this.state.dashboards}
                         onClickItemFn={this.addToDashboard}
                     />
+                    <button
+                        className="Button Button--primary"
+                        onClick={() => this.setState({shouldCreateDashboard: true})}
+                    >
+                        Or Create A New Dashboard
+                    </button>
+
                 </ModalContent>
             );
         }
