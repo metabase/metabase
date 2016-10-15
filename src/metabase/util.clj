@@ -472,6 +472,12 @@
      ~@body
      ~'<>))
 
+(def ^String ^{:arglists '([emoji-string])} emoji
+  "Returns the EMOJI-STRING passed in if emoji in logs are enabled, otherwise always returns an empty string."
+  (if (config/config-bool :mb-emoji-in-logs)
+    identity
+    (constantly "")))
+
 (def ^String ^{:style/indent 2} format-color
   "Like `format`, but uses a function in `colorize.core` to colorize the output.
    COLOR-SYMB should be a quoted symbol like `green`, `red`, `yellow`, `blue`,
@@ -530,7 +536,7 @@
         (str "["
              (s/join (repeat filleds "*"))
              (s/join (repeat blanks "·"))
-             (format "] %s  %3.0f%%" (percent-done->emoji percent-done) (* percent-done 100.0)))))))
+             (format "] %s  %3.0f%%" (emoji (percent-done->emoji percent-done)) (* percent-done 100.0)))))))
 
 (defn filtered-stacktrace
   "Get the stack trace associated with E and return it as a vector with non-metabase frames filtered out."

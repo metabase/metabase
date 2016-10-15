@@ -22,7 +22,7 @@
   []
   (doseq [ns-symb (ns-find/find-namespaces (classpath/classpath))
           :when   (re-find #"^metabase\.task\." (name ns-symb))]
-    (log/info "Loading tasks namespace:" (u/format-color 'blue ns-symb) "📆")
+    (log/info "Loading tasks namespace:" (u/format-color 'blue ns-symb) (u/emoji "📆"))
     (require ns-symb)
     ;; look for `task-init` function in the namespace and call it if it exists
     (when-let [init-fn (ns-resolve ns-symb 'task-init)]

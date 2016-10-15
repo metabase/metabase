@@ -333,7 +333,7 @@
             (require 'metabase.driver)
             ((resolve 'metabase.driver/can-connect-with-details?) engine details))
     (format "Unable to connect to Metabase %s DB." (name engine)))
-  (log/info "Verify Database Connection ... ✅"))
+  (log/info "Verify Database Connection ... " (u/emoji "✅")))
 
 (defn setup-db!
   "Do general preparation of database by validating that we can connect.
@@ -359,7 +359,7 @@
                      "\n\n"
                      "Once your database is updated try running the application again.\n"))
       (throw (java.lang.Exception. "Database requires manual upgrade."))))
-  (log/info "Database Migrations Current ... ✅")
+  (log/info "Database Migrations Current ... " (u/emoji "✅"))
 
   ;; Establish our 'default' DB Connection
   (create-connection-pool! (jdbc-details db-details))
