@@ -134,3 +134,6 @@
    2 {:id 2, :name "Lucky"}}
   (key-by :id [{:id 1, :name "Rasta"}
                {:id 2, :name "Lucky"}]))
+
+;;; ## tests for EMOJI
+(expect "🔌" (emoji "🔌"))
