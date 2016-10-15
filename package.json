@@ -137,6 +137,7 @@
     "build-watch": "webpack --watch",
     "build-hot": "NODE_ENV=hot webpack && NODE_ENV=hot webpack-dev-server",
     "start": "npm run build && lein ring server",
-    "storybook": "start-storybook -p 9001"
+    "storybook": "start-storybook -p 9001",
+    "preinstall": "echo '\\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\\033[0m'; exit 1"
   }
 }
