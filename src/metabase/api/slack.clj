@@ -9,10 +9,11 @@
 (defendpoint PUT "/settings"
   "Update Slack related settings. You must be a superuser to do this."
   [:as {{slack-token :slack-token, metabot-enabled :metabot-enabled, :as slack-settings} :body}]
-  {metabot-enabled [Required]}
+  {slack-token     [NonEmptyString]
+   metabot-enabled [Required]}
   (check-superuser)
-  (if (not slack-token)
-    (setting/set-many! { :slack-token nil, :metabot-enabled false })
+  (if-not slack-token
+    (setting/set-many! {:slack-token nil, :metabot-enabled false})
     (try
       ;; just check that channels.list doesn't throw an exception (a.k.a. that the token works)
       (when-not config/is-test?
@@ -20,7 +21,6 @@
       (setting/set-many! slack-settings)
       {:ok true}
       (catch clojure.lang.ExceptionInfo info
-        {:status 400, :body (ex-data info)})))
-  )
+        {:status 400, :body (ex-data info)}))))
 
 (define-routes)
