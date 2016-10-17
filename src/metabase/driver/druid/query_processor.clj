@@ -443,15 +443,15 @@
                                                      {:dimension (->rvalue field)
                                                       :direction direction}))))
 
-(defmethod handle-order-by ::grouped-timeseries [_ {{ag-type :aggregation-type} :aggregation, [breakout-field] :breakout, [{field :field, direction :direction}] :order-by} druid-query]
-  (let [field             (->rvalue field)
-        breakout-field    (->rvalue breakout-field)
-        sort-by-breakout? (= field breakout-field)]
-    (if (and sort-by-breakout?
-             (= direction :descending))
-      (assoc druid-query :descending true)
-      druid-query)))
+(defn sort-by-timestamp [field direction druid-query]
+  (assoc druid-query :descending (and (= (->rvalue field) "timestamp")
+                                      (= direction :descending))))
 
+(defmethod handle-order-by ::grouped-timeseries [_ {[{field :field, direction :direction}] :order-by} druid-query]
+  (sort-by-timestamp field direction druid-query))
+
+(defmethod handle-order-by ::select [_ {[{field :field, direction :direction}] :order-by} druid-query]
+  (sort-by-timestamp field direction druid-query))
 
 ;;; ### handle-fields
 
