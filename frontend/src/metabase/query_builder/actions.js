@@ -453,7 +453,11 @@ export const setCardAndRun = createThunkAction(SET_CARD_AND_RUN, (runCard, shoul
 export const SET_QUERY = "SET_QUERY";
 export const setQuery = createThunkAction(SET_QUERY, (dataset_query, run = false) => {
     return (dispatch, getState) => {
-        const { qb: { card, uiControls } } = getState();
+        const { qb: { card, uiControls, databases } } = getState();
+
+        const databaseId = card.dataset_query.database;
+        const database = _.findWhere(databases, { id: databaseId });
+        const supportsNativeParameters = database && _.contains(database.features, "native-parameters");
 
         let updatedCard = JSON.parse(JSON.stringify(card)),
             openTemplateTagsEditor = uiControls.isShowingTemplateTagsEditor;
@@ -468,7 +472,7 @@ export const setQuery = createThunkAction(SET_QUERY, (dataset_query, run = false
         updatedCard.dataset_query = JSON.parse(JSON.stringify(dataset_query));
 
         // special handling for NATIVE cards to automatically detect parameters ... {{varname}}
-        if (Query.isNative(dataset_query) && !_.isEmpty(dataset_query.native.query)) {
+        if (Query.isNative(dataset_query) && !_.isEmpty(dataset_query.native.query) && supportsNativeParameters) {
             let tags = [];
 
             // look for variable usage in the query (like '{{varname}}').  we only allow alphanumeric characters for the variable name

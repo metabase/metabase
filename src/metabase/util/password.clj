@@ -46,7 +46,7 @@
                  (when (>= (occurances char-type) min-count)
                    (recur more)))))))
 
-(def ^:const active-password-complexity
+(def active-password-complexity
   "The currently configured description of the password complexity rules being enforced"
   (merge (complexity->char-type->min (config/config-kw :mb-password-complexity))
          ;; Setting MB_PASSWORD_LENGTH overrides the default :total for a given password complexity class

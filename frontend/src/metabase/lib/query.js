@@ -523,11 +523,11 @@ var Query = {
     // gets the table and field definitions from from a raw, fk->, or datetime_field field
     getFieldTarget: function(field, tableDef, path = []) {
         if (Query.isRegularField(field)) {
-            return { table: tableDef, field: tableDef.fields_lookup && tableDef.fields_lookup[field], path };
+            return { table: tableDef, field: Table.getField(tableDef, field), path };
         } else if (Query.isLocalField(field)) {
             return Query.getFieldTarget(field[1], tableDef, path);
         } else if (Query.isForeignKeyField(field)) {
-            let fkFieldDef = tableDef.fields_lookup && tableDef.fields_lookup[field[1]];
+            let fkFieldDef = Table.getField(tableDef, field[1]);
             let targetTableDef = fkFieldDef && fkFieldDef.target.table;
             return Query.getFieldTarget(field[2], targetTableDef, path.concat(fkFieldDef));
         } else if (Query.isDatetimeField(field)) {
@@ -599,12 +599,12 @@ var Query = {
     getFieldName(tableMetadata, field, options) {
         try {
             if (Query.isRegularField(field)) {
-                let fieldDef = tableMetadata.fields_lookup && tableMetadata.fields_lookup[field];
+                let fieldDef = Table.getField(tableMetadata, field);
                 if (fieldDef) {
                     return fieldDef.display_name.replace(/\s+id\s*$/i, "");
                 }
             } else if (Query.isForeignKeyField(field)) {
-                let fkFieldDef = tableMetadata.fields_lookup && tableMetadata.fields_lookup[field[1]];
+                let fkFieldDef = Table.getField(tableMetadata, field[1]);
                 let targetTableDef = fkFieldDef && fkFieldDef.target.table;
                 return [Query.getFieldName(tableMetadata, field[1], options), " → ", Query.getFieldName(targetTableDef, field[2], options)];
             } else if (Query.isDatetimeField(field)) {
@@ -844,6 +844,19 @@ export const BreakoutClause = {
             return breakout;
         } else {
             return breakout;
+        }
+    }
+}
+
+const Table = {
+    getField(table, fieldId) {
+        if (table) {
+            // sometimes we populate fields_lookup, sometimes we don't :(
+            if (table.fields_lookup) {
+                return table.fields_lookup[fieldId];
+            } else {
+                return _.findWhere(table.fields, { id: fieldId });
+            }
         }
     }
 }

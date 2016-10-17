@@ -10,7 +10,8 @@
                              [table :refer [Table]])
             [metabase.test.data.users :refer :all]
             [metabase.test.data :refer :all]
-            [metabase.test.util :as tu]))
+            [metabase.test.util :as tu]
+            [metabase.util :as u]))
 
 ;; ## Helper Fns
 
@@ -358,10 +359,19 @@
 
 
 ;;; GET /api/segement/
-
 (tu/expect-with-temp [Segment [segment-1]
                       Segment [segment-2]
                       Segment [_          {:is_active false}]] ; inactive segments shouldn't show up
   (tu/mappify (hydrate [segment-1
                         segment-2] :creator))
   ((user->client :rasta) :get 200 "segment/"))
+
+
+;;; PUT /api/segment/id. Can I update a segment's name without specifying `:points_of_interest` and `:show_in_getting_started`?
+(tu/expect-with-temp [Segment [segment]]
+  :ok
+  (do ((user->client :crowberto) :put 200 (str "segment/" (u/get-id segment))
+       {:name             "Cool name"
+        :revision_message "WOW HOW COOL"
+        :definition       {}})
+      :ok))

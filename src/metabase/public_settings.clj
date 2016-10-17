@@ -65,7 +65,7 @@
 
 
 (defn public-settings
-  "Return a simple map of key/value pairs which represent the public settings for the front-end application."
+  "Return a simple map of key/value pairs which represent the public settings (`MetabaseBootstrap`) for the front-end application."
   []
   {:ga_code               "UA-60817802-1"
    :password_complexity   password/active-password-complexity

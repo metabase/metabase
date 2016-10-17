@@ -339,6 +339,13 @@
     (format "Unable to connect to Metabase %s DB." (name engine)))
   (log/info "Verify Database Connection ... ✅"))
 
+
+(def ^:dynamic ^Boolean *disable-data-migrations*
+  "Should we skip running data migrations when setting up the DB? (Default is `false`).
+   There are certain places where we don't want to do this; for example, none of the migrations should be ran when Metabase is launched via `load-from-h2`.
+   That's because they will end up doing things like creating duplicate entries for the \"magic\" groups and permissions entries. "
+  false)
+
 (defn setup-db!
   "Do general preparation of database by validating that we can connect.
    Caller can specify if we should run any pending database migrations."
@@ -368,10 +375,10 @@
   ;; Establish our 'default' DB Connection
   (create-connection-pool! (jdbc-details db-details))
 
-  ;; Do any custom code-based migrations now that the db structure is up to date
-  ;; NOTE: we use dynamic resolution to prevent circular dependencies
-  (require 'metabase.db.migrations)
-  ((resolve 'metabase.db.migrations/run-all)))
+  ;; Do any custom code-based migrations now that the db structure is up to date.
+  (when-not *disable-data-migrations*
+    (require 'metabase.db.migrations)
+    ((resolve 'metabase.db.migrations/run-all))))
 
 (defn setup-db-if-needed!
   "Call `setup-db!` if DB is not already setup; otherwise this does nothing."

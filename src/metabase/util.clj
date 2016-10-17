@@ -1,11 +1,13 @@
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
   (:require [clojure.data :as data]
-            [clojure.java.jdbc :as jdbc]
+            (clojure.java [classpath :as classpath]
+                          [jdbc :as jdbc])
             [clojure.math.numeric-tower :as math]
             (clojure [pprint :refer [pprint]]
                      [string :as s])
             [clojure.tools.logging :as log]
+            [clojure.tools.namespace.find :as ns-find]
             (clj-time [core :as t]
                       [coerce :as coerce]
                       [format :as time])
@@ -16,7 +18,7 @@
            (java.net Socket
                      InetSocketAddress
                      InetAddress)
-           java.sql.Timestamp
+           (java.sql SQLException Timestamp)
            (java.util Calendar TimeZone)
            javax.xml.bind.DatatypeConverter
            org.joda.time.format.DateTimeFormatter))
@@ -478,7 +480,8 @@
      ~@body
      ~'<>))
 
-(def ^String ^{:style/indent 2} format-color
+(def ^String ^{:style/indent 2, :arglists '([color-symb x] [color-symb format-str & args])}
+  format-color
   "Like `format`, but uses a function in `colorize.core` to colorize the output.
    COLOR-SYMB should be a quoted symbol like `green`, `red`, `yellow`, `blue`,
    `cyan`, `magenta`, etc. See the entire list of avaliable colors
@@ -560,7 +563,7 @@
      (fn [& args]
        (try
          (apply f args)
-         (catch java.sql.SQLException e
+         (catch SQLException e
            (log/error (format-color 'red "%s\n%s\n%s"
                                     exception-message
                                     (with-out-str (jdbc/print-sql-exception-chain e))
@@ -714,9 +717,25 @@
     :else                   (throw (Exception. (str "Not something with an ID: " object-or-id)))))
 
 (defmacro profile
-  "Like `clojure.core/time`, but lets you specify a message that gets printed with the total time, and formats the time nicely using `format-nanoseconds`."
+  "Like `clojure.core/time`, but lets you specify a MESSAGE that gets printed with the total time,
+   and formats the time nicely using `format-nanoseconds`."
   {:style/indent 1}
-  [message & body]
-  `(let [start-time# (System/nanoTime)]
-     (prog1 (do ~@body)
-       (println (format-color '~'green "%s took %s" ~message (format-nanoseconds (- (System/nanoTime) start-time#)))))))
+  ([form]
+   `(profile ~(str form) ~form))
+  ([message & body]
+   `(let [start-time# (System/nanoTime)]
+      (prog1 (do ~@body)
+        (println (format-color '~'green "%s took %s" ~message (format-nanoseconds (- (System/nanoTime) start-time#))))))))
+
+(def metabase-namespace-symbols
+  "Delay to a vector of symbols of all Metabase namespaces, excluding test namespaces.
+   This is intended for use by various routines that load related namespaces, such as task and events initialization.
+   Using `ns-find/find-namespaces` is fairly slow, and can take as much as half a second to iterate over the thousand or so
+   namespaces that are part of the Metabase project; use this instead for a massive performance increase."
+  ;; Actually we can go ahead and start doing this in the background once the app launches while other stuff is loading, so use a future here
+  ;; This would be faster when running the *JAR* if we just did it at compile-time and made it ^:const, but that would inhibit the "plugin system"
+  ;; from loading "plugin" namespaces at launch if they're on the classpath
+  (future (vec (for [ns-symb (ns-find/find-namespaces (classpath/classpath))
+                     :when   (and (.startsWith (name ns-symb) "metabase.")
+                                  (not (.contains (name ns-symb) "test")))]
+                 ns-symb))))

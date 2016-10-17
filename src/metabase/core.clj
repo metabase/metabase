@@ -214,7 +214,8 @@
    (load-from-h2 nil))
   ([h2-connection-string]
    (require 'metabase.cmd.load-from-h2)
-   ((resolve 'metabase.cmd.load-from-h2/load-from-h2!) h2-connection-string)))
+   (binding [db/*disable-data-migrations* true]
+     ((resolve 'metabase.cmd.load-from-h2/load-from-h2!) h2-connection-string))))
 
 (defn ^:command profile
   "Start Metabase the usual way and exit. Useful for profiling Metabase launch time."
