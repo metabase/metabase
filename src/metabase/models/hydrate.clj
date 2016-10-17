@@ -362,22 +362,21 @@
 
   You can hydrate several keys at one time:
 
-    (hydrate {:a (delay 1) :b (delay 2)} :a :b)
-      -> {:a 1 :b 2}
+    (hydrate {...} :a :b)
+      -> {:a 1, :b 2}
 
 
   ** Nested Hydration **
 
   You can do recursive hydration by listing keys inside a vector:
 
-    (hydrate {:a (delay {:b (delay 1)})} [:a :b])
+    (hydrate {...} [:a :b])
       -> {:a {:b 1}}
 
   The first key in a vector will be hydrated normally, and any subsequent keys
   will be hydrated *inside* the corresponding values for that key.
 
-    (hydrate {:a (delay {:b (delay {:c (delay 1)})
-                         :e (delay 2)})}
+    (hydrate {...}
              [:a [:b :c] :e])
       -> {:a {:b {:c 1} :e 2}}"
   [results k & ks]
