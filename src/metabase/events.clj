@@ -9,10 +9,8 @@
    once when the application goes through normal startup procedures.  Inside this function you can do any work
    needed and add your events subscribers to the bus as usual via `start-event-listener`."
   (:require [clojure.core.async :as async]
-            [clojure.java.classpath :as classpath]
             [clojure.string :as s]
             [clojure.tools.logging :as log]
-            [clojure.tools.namespace.find :as ns-find]
             (metabase [config :as config]
                       [util :as u])))
 
@@ -27,8 +25,8 @@
   "Search Classpath for namespaces that start with `metabase.events.`, and call their `events-init` function if it exists."
   []
   (when-not config/is-test?
-    (doseq [ns-symb (ns-find/find-namespaces (classpath/classpath))
-            :when (re-find #"^metabase\.events\." (name ns-symb))]
+    (doseq [ns-symb @u/metabase-namespace-symbols
+            :when   (.startsWith (name ns-symb) "metabase.events.")]
       (require ns-symb)
       ;; look for `events-init` function in the namespace and call it if it exists
       (when-let [init-fn (ns-resolve ns-symb 'events-init)]
