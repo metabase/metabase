@@ -1,8 +1,6 @@
 (ns metabase.models.hydrate
   "Functions for deserializing and hydrating fields in objects fetched from the DB."
-  (:require [clojure.java.classpath :as classpath]
-            [clojure.tools.namespace.find :as ns-find]
-            [medley.core :as m]
+  (:require [medley.core :as m]
             [metabase.db :as db]
             [metabase.models.interface :as i]
             [metabase.util :as u]))
@@ -150,7 +148,7 @@
    e.g. `:user -> User`.
 
    This is built pulling the `hydration-keys` set from all of our entities."
-  (delay (for [ns-symb (ns-find/find-namespaces (classpath/classpath))               ; Seems to work fine without this but better safe than sorry IMO
+  (delay (for [ns-symb @u/metabase-namespace-symbols
                :when   (re-matches #"^metabase\.models\.[a-z0-9]+$" (name ns-symb))]
            (require ns-symb))
          (into {} (for [ns       (all-ns)
