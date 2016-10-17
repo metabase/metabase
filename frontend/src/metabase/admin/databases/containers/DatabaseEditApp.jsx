@@ -1,3 +1,4 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 import { connect } from "react-redux";
 
@@ -13,32 +14,48 @@ import {
     getEditingDatabase,
     getFormState
 } from "../selectors";
-import * as databaseActions from "../database";
+
+import {
+    reset,
+    initializeDatabase,
+    saveDatabase,
+    syncDatabase,
+    deleteDatabase,
+    selectEngine
+} from "../database";
 
 
-const mapStateToProps = (state, props) => {
-    return {
-        databaseId:       props.params.databaseId,
-        database:         getEditingDatabase(state),
-        formState:        getFormState(state)
-    }
-}
+const mapStateToProps = (state, props) => ({
+    database:  getEditingDatabase(state, props),
+    formState: getFormState(state, props)
+});
 
 const mapDispatchToProps = {
-    ...databaseActions,
-}
+    reset,
+    initializeDatabase,
+    saveDatabase,
+    syncDatabase,
+    deleteDatabase,
+    selectEngine
+};
 
 @connect(mapStateToProps, mapDispatchToProps)
 export default class DatabaseEditApp extends Component {
     static propTypes = {
         database: PropTypes.object,
+        formState: PropTypes.object.isRequired,
+        params: PropTypes.object.isRequired,
+        reset: PropTypes.func.isRequired,
+        initializeDatabase: PropTypes.func.isRequired,
         syncDatabase: PropTypes.func.isRequired,
         deleteDatabase: PropTypes.func.isRequired,
-        saveDatabase: PropTypes.func.isRequired
+        saveDatabase: PropTypes.func.isRequired,
+        selectEngine: PropTypes.func.isRequired,
     };
 
-    componentWillMount() {
-        this.props.initializeDatabase(this.props.databaseId);
+    async componentWillMount() {
+        await this.props.reset();
+        await this.props.initializeDatabase(this.props.params.databaseId);
     }
 
     render() {
@@ -69,8 +86,8 @@ export default class DatabaseEditApp extends Component {
                     { database && database.id != null &&
                         <div className="Grid-cell Cell--1of3">
                             <div className="Actions  bordered rounded shadowed">
-                                <h3>Actions</h3>
                                 <div className="Actions-group">
+                                    <label className="Actions-groupLabel block text-bold">Actions</label>
                                     <ActionButton
                                         actionFn={() => this.props.syncDatabase(database.id)}
                                         className="Button"
@@ -82,7 +99,7 @@ export default class DatabaseEditApp extends Component {
                                 </div>
 
                                 <div className="Actions-group Actions--dangerZone">
-                                    <label className="Actions-groupLabel block">Danger Zone:</label>
+                                    <label className="Actions-groupLabel block text-bold">Danger Zone:</label>
                                     <ModalWithTrigger
                                         ref="deleteDatabaseModal"
                                         triggerClasses="Button Button--danger"

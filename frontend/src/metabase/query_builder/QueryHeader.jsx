@@ -169,7 +169,8 @@ export default class QueryHeader extends Component {
     }
 
     getHeaderButtons() {
-        const { isNew, isDirty, isEditing, tableMetadata, databases } = this.props;
+        const { card ,isNew, isDirty, isEditing, tableMetadata, databases } = this.props;
+        const database = _.findWhere(databases, { id: card && card.dataset_query && card.dataset_query.database });
 
         var buttonSections = [];
 
@@ -260,7 +261,7 @@ export default class QueryHeader extends Component {
         }
 
         // parameters
-        if (Query.isNative(this.props.query)) {
+        if (Query.isNative(this.props.query) && database && _.contains(database.features, "native-parameters")) {
             const parametersButtonClasses = cx('transition-color', {
                 'text-brand': this.props.uiControls.isShowingTemplateTagsEditor,
                 'text-brand-hover': !this.props.uiControls.isShowingTemplateTagsEditor

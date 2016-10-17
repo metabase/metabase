@@ -11,6 +11,7 @@ import { isDefaultGroup, isAdminGroup } from "metabase/lib/groups";
 import Icon from "metabase/components/Icon.jsx";
 import Input from "metabase/components/Input.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
+import Alert from "metabase/components/Alert.jsx";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import UserAvatar from "metabase/components/UserAvatar.jsx";
@@ -51,7 +52,7 @@ function AddGroupRow({ text, onCancelClicked, onCreateClicked, onTextChange }) {
 
 // ------------------------------------------------------------ Groups Table: editing ------------------------------------------------------------
 
-function DeleteGroupModal({ group, onConfirm, onClose }) {
+function DeleteGroupModal({ group, onConfirm = () => {} , onClose = () => {} }) {
     return (
         <ModalContent title="Remove this group?" closeFn={onClose}>
             <p className="px4 pb4">
@@ -59,10 +60,10 @@ function DeleteGroupModal({ group, onConfirm, onClose }) {
                 This can't be undone.
             </p>
             <div className="Form-actions">
-                <button className="Button Button--danger" onClick={onConfirm.bind(null, group)}>
+                <button className="Button Button--danger" onClick={() => { onClose(); onConfirm(group); }}>
                     Yes
                 </button>
-                <button className="Button Button--primary ml1" onClick={onClose}>
+                <button className="Button ml1" onClick={onClose}>
                     No
                 </button>
             </div>
@@ -183,8 +184,13 @@ export default class GroupsListing extends Component {
             text: "",
             showAddGroupRow: false,
             groups: null,
-            groupBeingEdited: null
+            groupBeingEdited: null,
+            alertMessage: null,
         };
+    }
+
+    alert(alertMessage) {
+        this.setState({ alertMessage });
     }
 
     onAddGroupCanceled() {
@@ -196,7 +202,7 @@ export default class GroupsListing extends Component {
     // TODO: move this to Redux
     onAddGroupCreateButtonClicked() {
         MetabaseAnalytics.trackEvent("People Groups", "Group Added");
-        PermissionsAPI.createGroup({name: this.state.text}).then((function(newGroup) {
+        PermissionsAPI.createGroup({name: this.state.text}).then((newGroup) => {
             const groups = this.state.groups || this.props.groups || [];
             const newGroups = sortGroups(_.union(groups, [newGroup]));
 
@@ -205,9 +211,9 @@ export default class GroupsListing extends Component {
                 showAddGroupRow: false,
                 text: ""
             });
-        }).bind(this), function(error) {
+        }, (error) => {
             console.error('Error creating group:', error);
-            if (error.data && typeof error.data === "string") alert(error.data);
+            if (error.data && typeof error.data === "string") this.alert(error.data);
         });
     }
 
@@ -264,7 +270,7 @@ export default class GroupsListing extends Component {
 
         // ok, fire off API call to change the group
         MetabaseAnalytics.trackEvent("People Groups", "Group Updated");
-        PermissionsAPI.updateGroup({id: group.id, name: group.name}).then((function (newGroup) {
+        PermissionsAPI.updateGroup({id: group.id, name: group.name}).then((newGroup) => {
             // now replace the original group with the new group and update state
             let newGroups = _.reject(groups, (g) => g.id === group.id);
             newGroups = sortGroups(_.union(newGroups, [newGroup]));
@@ -274,28 +280,29 @@ export default class GroupsListing extends Component {
                 groupBeingEdited: null
             });
 
-        }).bind(this), function(error) {
+        }, (error) => {
             console.error("Error updating group name:", error);
-            if (error.data && typeof error.data === "string") alert(error.data);
+            if (error.data && typeof error.data === "string") this.alert(error.data);
         });
     }
 
     // TODO: move this to Redux
-    onDeleteGroupClicked(group) {
+    async onDeleteGroupClicked(group) {
         const groups = this.state.groups || this.props.groups || [];
         MetabaseAnalytics.trackEvent("People Groups", "Group Deleted");
-        PermissionsAPI.deleteGroup({id: group.id}).then((function () {
+        PermissionsAPI.deleteGroup({id: group.id}).then(() => {
             const newGroups = sortGroups(_.reject(groups, (g) => g.id === group.id));
             this.setState({
                 groups: newGroups
             });
-        }).bind(this), function(error) {
+        }, (error) => {
             console.error("Error deleting group: ", error);
-            if (error.data && typeof error.data === "string") alert(error.data);
+            if (error.data && typeof error.data === "string") this.alert(error.data);
         });
     }
 
     render() {
+        const { alertMessage } = this.state;
         let { groups } = this.props;
         groups = this.state.groups || groups || [];
 
@@ -320,6 +327,7 @@ export default class GroupsListing extends Component {
                     onEditGroupDoneClicked={this.onEditGroupDoneClicked.bind(this)}
                     onDeleteGroupClicked={this.onDeleteGroupClicked.bind(this)}
                 />
+                <Alert message={alertMessage} onClose={() => this.setState({ alertMessage: null })} />
             </AdminPaneLayout>
         );
     }

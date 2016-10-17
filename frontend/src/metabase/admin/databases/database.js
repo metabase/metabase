@@ -7,16 +7,25 @@ import { push } from "react-router-redux";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
+const RESET = "metabase/admin/databases/RESET";
+const SELECT_ENGINE = "metabase/admin/databases/SELECT_ENGINE";
+const FETCH_DATABASES = "metabase/admin/databases/FETCH_DATABASES";
+const INITIALIZE_DATABASE = "metabase/admin/databases/INITIALIZE_DATABASE";
+const ADD_SAMPLE_DATASET = "metabase/admin/databases/ADD_SAMPLE_DATASET";
+const SAVE_DATABASE = "metabase/admin/databases/SAVE_DATABASE";
+const DELETE_DATABASE = "metabase/admin/databases/DELETE_DATABASE";
+const SYNC_DATABASE = "metabase/admin/databases/SYNC_DATABASE";
 
 // resource wrappers
 const MetabaseApi = new AngularResourceProxy("Metabase", ["db_list", "db_get", "db_add_sample_dataset", "db_create", "db_update", "db_delete", "db_sync_metadata"]);
 
+export const reset = createAction(RESET);
 
 // selectEngine (uiControl)
-export const selectEngine = createAction("SELECT_ENGINE");
+export const selectEngine = createAction(SELECT_ENGINE);
 
 // fetchDatabases
-export const fetchDatabases = createThunkAction("FETCH_DATABASES", function() {
+export const fetchDatabases = createThunkAction(FETCH_DATABASES, function() {
     return async function(dispatch, getState) {
         try {
             return await MetabaseApi.db_list();
@@ -27,7 +36,7 @@ export const fetchDatabases = createThunkAction("FETCH_DATABASES", function() {
 });
 
 // initializeDatabase
-export const initializeDatabase = createThunkAction("INITIALIZE_DATABASE", function(databaseId) {
+export const initializeDatabase = createThunkAction(INITIALIZE_DATABASE, function(databaseId) {
     return async function(dispatch, getState) {
         if (databaseId) {
             try {
@@ -52,7 +61,7 @@ export const initializeDatabase = createThunkAction("INITIALIZE_DATABASE", funct
 
 
 // addSampleDataset
-export const addSampleDataset = createThunkAction("ADD_SAMPLE_DATASET", function() {
+export const addSampleDataset = createThunkAction(ADD_SAMPLE_DATASET, function() {
     return async function(dispatch, getState) {
         try {
             let sampleDataset = await MetabaseApi.db_add_sample_dataset();
@@ -66,7 +75,7 @@ export const addSampleDataset = createThunkAction("ADD_SAMPLE_DATASET", function
 });
 
 // saveDatabase
-export const saveDatabase = createThunkAction("SAVE_DATABASE", function(database, details) {
+export const saveDatabase = createThunkAction(SAVE_DATABASE, function(database, details) {
     return async function(dispatch, getState) {
         let savedDatabase, formState;
 
@@ -103,7 +112,7 @@ export const saveDatabase = createThunkAction("SAVE_DATABASE", function(database
 });
 
 // deleteDatabase
-export const deleteDatabase = createThunkAction("DELETE_DATABASE", function(databaseId, redirect=false) {
+export const deleteDatabase = createThunkAction(DELETE_DATABASE, function(databaseId, redirect=false) {
     return async function(dispatch, getState) {
         try {
             await MetabaseApi.db_delete({"dbId": databaseId});
@@ -119,7 +128,7 @@ export const deleteDatabase = createThunkAction("DELETE_DATABASE", function(data
 });
 
 // syncDatabase
-export const syncDatabase = createThunkAction("SYNC_DATABASE", function(databaseId) {
+export const syncDatabase = createThunkAction(SYNC_DATABASE, function(databaseId) {
     return function(dispatch, getState) {
         try {
             let call = MetabaseApi.db_sync_metadata({"dbId": databaseId});
@@ -135,21 +144,24 @@ export const syncDatabase = createThunkAction("SYNC_DATABASE", function(database
 // reducers
 
 const databases = handleActions({
-    ["FETCH_DATABASES"]: { next: (state, { payload }) => payload },
-    ["ADD_SAMPLE_DATASET"]: { next: (state, { payload }) => payload ? [...state, payload] : state },
-    ["DELETE_DATABASE"]: { next: (state, { payload }) => payload ? _.reject(state, (d) => d.id === payload) : state }
+    [FETCH_DATABASES]: { next: (state, { payload }) => payload },
+    [ADD_SAMPLE_DATASET]: { next: (state, { payload }) => payload ? [...state, payload] : state },
+    [DELETE_DATABASE]: { next: (state, { payload }) => payload ? _.reject(state, (d) => d.id === payload) : state }
 }, null);
 
 const editingDatabase = handleActions({
-    ["INITIALIZE_DATABASE"]: { next: (state, { payload }) => payload },
-    ["SAVE_DATABASE"]: { next: (state, { payload }) => payload.database || state },
-    ["DELETE_DATABASE"]: { next: (state, { payload }) => null },
-    ["SELECT_ENGINE"]: { next: (state, { payload }) => ({...state, engine: payload }) }
+    [RESET]: { next: () => null },
+    [INITIALIZE_DATABASE]: { next: (state, { payload }) => payload },
+    [SAVE_DATABASE]: { next: (state, { payload }) => payload.database || state },
+    [DELETE_DATABASE]: { next: (state, { payload }) => null },
+    [SELECT_ENGINE]: { next: (state, { payload }) => ({...state, engine: payload }) }
 }, null);
 
+const DEFAULT_FORM_STATE = { formSuccess: null, formError: null };
 const formState = handleActions({
-    ["SAVE_DATABASE"]: { next: (state, { payload }) => payload.formState }
-}, { formSuccess: null, formError: null });
+    [RESET]: { next: () => DEFAULT_FORM_STATE },
+    [SAVE_DATABASE]: { next: (state, { payload }) => payload.formState }
+}, DEFAULT_FORM_STATE);
 
 export default combineReducers({
     databases,

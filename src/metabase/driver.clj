@@ -1,8 +1,6 @@
 (ns metabase.driver
-  (:require [clojure.java.classpath :as classpath]
-            [clojure.math.numeric-tower :as math]
+  (:require [clojure.math.numeric-tower :as math]
             [clojure.tools.logging :as log]
-            [clojure.tools.namespace.find :as ns-find]
             [medley.core :as m]
             (metabase [config :as config]
                       [db :as db])
@@ -272,7 +270,7 @@
   "Search Classpath for namespaces that start with `metabase.driver.`, then `require` them and look for the `driver-init`
    function which provides a uniform way for Driver initialization to be done."
   []
-  (doseq [ns-symb (ns-find/find-namespaces (classpath/classpath))
+  (doseq [ns-symb @u/metabase-namespace-symbols
           :when   (re-matches #"^metabase\.driver\.[a-z0-9_]+$" (name ns-symb))]
     (require ns-symb)))
 

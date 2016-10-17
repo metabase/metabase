@@ -7,9 +7,7 @@
    `task-init` function which accepts zero arguments.  This function is dynamically resolved and called
    exactly once when the application goes through normal startup procedures.  Inside this function you
    can do any work needed and add your task to the scheduler as usual via `schedule-task!`."
-  (:require [clojure.java.classpath :as classpath]
-            [clojure.tools.logging :as log]
-            [clojure.tools.namespace.find :as ns-find]
+  (:require [clojure.tools.logging :as log]
             [clojurewerkz.quartzite.scheduler :as qs]
             [metabase.util :as u]))
 
@@ -20,8 +18,8 @@
 (defn- find-and-load-tasks!
   "Search Classpath for namespaces that start with `metabase.tasks.`, then `require` them so initialization can happen."
   []
-  (doseq [ns-symb (ns-find/find-namespaces (classpath/classpath))
-          :when   (re-find #"^metabase\.task\." (name ns-symb))]
+  (doseq [ns-symb @u/metabase-namespace-symbols
+          :when   (.startsWith (name ns-symb) "metabase.task.")]
     (log/info "Loading tasks namespace:" (u/format-color 'blue ns-symb) "📆")
     (require ns-symb)
     ;; look for `task-init` function in the namespace and call it if it exists

@@ -12,7 +12,8 @@ export default class SettingsSetting extends Component {
         setting: PropTypes.object.isRequired,
         updateSetting: PropTypes.func.isRequired,
         handleChangeEvent: PropTypes.func.isRequired,
-        autoFocus: PropTypes.bool
+        autoFocus: PropTypes.bool,
+        disabled: PropTypes.bool,
     };
 
     renderStringInput(setting, type="text") {
