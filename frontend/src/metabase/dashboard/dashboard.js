@@ -1,3 +1,5 @@
+/* @flow weak */
+
 import i from "icepick";
 import _ from "underscore";
 import moment from "moment";
@@ -10,6 +12,9 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
 import { applyParameters } from "metabase/meta/Card";
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
+
+import type { DashboardObject, DashCardObject, DashCardId } from "metabase/meta/types/Dashboard";
+import type { CardObject, CardId } from "metabase/meta/types/Card";
 
 const DATASET_SLOW_TIMEOUT   = 15 * 1000;
 const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
@@ -102,17 +107,21 @@ export const deleteCard = createThunkAction(DELETE_CARD, function(cardId) {
     };
 });
 
-export const addCardToDashboard = function({ dashId, cardId }) {
+export const addCardToDashboard = function({ dashId, cardId }: { dashId: DashCardId, cardId: CardId }) {
     return function(dispatch, getState) {
         const { dashboards, dashcards, cards } = getState().dashboard;
-        const existingCards = dashboards[dashId].ordered_cards.map(id => dashcards[id]).filter(dc => !dc.isRemoved);
-        const card = cards[cardId];
-        const dashcard = {
+        const dashboard: DashboardObject = dashboards[dashId];
+        const existingCards: Array<DashCardObject> = dashboard.ordered_cards.map(id => dashcards[id]).filter(dc => !dc.isRemoved);
+        const card: CardObject = cards[cardId];
+        const dashcard: DashCardObject = {
             id: Math.random(), // temporary id
             dashboard_id: dashId,
             card_id: card.id,
             card: card,
-            ...getPositionForNewDashCard(existingCards)
+            series: [],
+            ...getPositionForNewDashCard(existingCards),
+            parameter_mappings: [],
+            visualization_settings: {}
         };
         dispatch(createAction(ADD_CARD_TO_DASH)(dashcard));
         dispatch(fetchCardData(card, dashcard, { reload: true, clear: true }));
