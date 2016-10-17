@@ -113,7 +113,7 @@ export default class NativeQueryEditor extends Component {
             if (editor.getSession().$modeId !== modeInfo.mode) {
                 editor.getSession().setMode(modeInfo.mode);
                 // monkey patch the mode to add our bracket/paren/braces-matching behavior
-                if (!editor.getSession().$mode.$behaviour) {
+                if (this.state.modeInfo.mode.indexOf("sql") >= 0) {
                     editor.getSession().$mode.$behaviour = new SQLBehaviour();
                 }
             }
