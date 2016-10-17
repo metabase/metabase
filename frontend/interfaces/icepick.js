@@ -6,7 +6,3 @@ declare module icepick {
     declare function setIn<O:Object, K:Key, V:Value>(object: O, path: Array<K>, value: V): O;
     declare function updateIn<O:Object, K:Key, V:Value>(object: O, path: Array<K>, callback: ((value: V) => V)): O;
 }
-
-declare module underscore {
-    declare function findWhere<T>(list: Array<T>, properties: {}): T;
-}
