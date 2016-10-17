@@ -107,7 +107,8 @@ If for any reason you want to use an H2 database file in a separate location fro
 
 
 #### [Postgres](http://www.postgresql.org/)
-For production installations of Metabase we recommend that users replace the H2 database with a more robust option such as Postgres.  This offers a greater degree of performance and reliability when Metabase is running with many users.
+
+**For production installations of Metabase we recommend that users replace the H2 database with a more robust option such as Postgres.** This offers a greater degree of performance and reliability when Metabase is running with many users.
 
 You can change the application database to use Postgres using a few simple environment variables. For example:
 
