@@ -2,6 +2,7 @@
   "Preprocessor that does simple transformations to all incoming queries, simplifing the driver-specific implementations."
   (:require [clojure.walk :as walk]
             [clojure.tools.logging :as log]
+            [cheshire.core :refer :all]
             [medley.core :as m]
             (schema [core :as s]
                     utils)
@@ -11,7 +12,8 @@
                       [db :as db]
                       [driver :as driver])
             [metabase.models.database :as database]
-            (metabase.models [field :refer [Field]]
+            (metabase.models [card-cache :refer [CardCache]]
+                             [field :refer [Field]]
                              [query-execution :refer [QueryExecution]])
             (metabase.query-processor [annotate :as annotate]
                                       [expand :as expand]
@@ -21,7 +23,8 @@
                                       [permissions :as perms]
                                       [resolve :as resolve])
             [metabase.util :as u])
-  (:import (schema.utils NamedError ValidationError)))
+  (:import (schema.utils NamedError ValidationError)
+           (java.util Date)))
 
 ;;; CONSTANTS
 
@@ -563,6 +566,38 @@
         expand-macros))
 
 
+;;; +-------------------------------------------------------------------------------------------------------+
+;;; |                                           CARD CACHE                                                  |
+;;; +-------------------------------------------------------------------------------------------------------+
+
+(defn- check-cache-params
+  "Validate if cache related params are valid"
+  [card-id use-cache cache-max-age]
+  (let [use-cache?  (not (nil? use-cache))
+        card-id? (and (not (nil? card-id)) (integer? card-id))
+        cache-max-age? (and (not (nil? cache-max-age)) (integer? cache-max-age) (> cache-max-age 0))]
+    (or (not card-id?) (and use-cache? cache-max-age?))))
+
+(defn- time-diff
+  ""
+  [time]
+  (when-not (nil? time) (int (/ (- (.getTime (new Date)) (.getTime time)) 1000))))
+
+(defn- fetch-from-cache
+  ""
+  [query-id query-hash max-age]
+  (let [cached (CardCache :card_id query-id :query_hash query-hash)
+        time-diff (time-diff (:updated_at cached))]
+    (when (and (some? cached) (<= time-diff max-age)) (log/info "cached result") (:result cached))))
+
+(defn- update-cache
+  ""
+  [card-id query-hash result]
+  (let [cached (CardCache :card_id card-id :query_hash query-hash)]
+    (if (nil? cached)
+      (db/insert! CardCache {:card_id card-id :query_hash query-hash :result result})
+      (db/update! CardCache (:id cached) {:result result}))))
+
 ;;; +----------------------------------------------------------------------------------------------------+
 ;;; |                                     DATASET-QUERY PUBLIC API                                       |
 ;;; +----------------------------------------------------------------------------------------------------+
@@ -589,11 +624,13 @@
 
   Possible caller-options include:
 
-    :executed-by [int]  (User ID of caller)
-    :card-id     [int]  (ID of Card associated with this execution)"
+    :executed-by    [int]     (User ID of caller)
+    :card-id        [int]     (ID of Card associated with this execution)
+    :use-cache      [boolean] (flag to indicate if result could be fetched from cache)
+    :cache-max-age  [int]     (max age in seconds for a valid cache)"
   {:arglists '([query options])}
-  [query {:keys [executed-by card-id]}]
-  {:pre [(integer? executed-by) (u/maybe? integer? card-id)]}
+  [query {:keys [executed-by card-id use-cache cache-max-age]}]
+  {:pre [(integer? executed-by) (u/maybe? integer? card-id) (check-cache-params card-id use-cache cache-max-age)]}
   (let [query-uuid      (str (java.util.UUID/randomUUID))
         query-hash      (hash query)
         query-execution {:uuid              query-uuid
@@ -618,9 +655,13 @@
                                             :query-hash  query-hash
                                             :query-type  (if (mbql-query? query) "MBQL" "native")})]
     (try
-      (let [result (process-query query)]
+      (let [from-cache (when (boolean use-cache) (fetch-from-cache card-id query-hash cache-max-age))
+            result (if (nil? from-cache) (process-query query) from-cache)]
         (assert-valid-query-result result)
-        (query-complete query-execution result))
+        (when (nil? from-cache)
+          (query-complete query-execution result)
+          (when use-cache (update-cache card-id query-hash result)))
+        result)
       (catch Throwable e
         (log/error (u/format-color 'red "Query failure: %s\n%s" (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e))))
         (query-fail query-execution (.getMessage e))))))

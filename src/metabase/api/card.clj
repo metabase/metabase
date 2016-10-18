@@ -170,7 +170,9 @@
          :description            description
          :display                display
          :name                   name
-         :visualization_settings visualization_settings)
+         :visualization_settings visualization_settings
+         :cache_result true
+         :cache_max_age 120)
        (events/publish-event :card-create)))
 
 
@@ -271,7 +273,9 @@
                 :constraints dataset-api/query-constraints)]
     ;; Now run the query!
     (let [options {:executed-by *current-user-id*
-                   :card-id     card-id}]
+                   :card-id     card-id
+                   :use-cache (:cache_result card)
+                   :cache-max-age (:cache_max_age card)}]
       (qp/dataset-query query options))))
 
 

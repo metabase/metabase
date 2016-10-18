@@ -1,0 +1,67 @@
+databaseChangeLog:
+  - changeSet:
+      id: 46
+      author: felipegasparini
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: cache_result
+                  type: boolean
+                  constraints:
+                    nullable: false
+              - column:
+                  name: cache_max_age
+                  type: int
+                  constraints:
+                    nullable: false
+        - createTable:
+            tableName: report_card_cache
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: card_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    references: report_card(id)
+                    foreignKeyName: fk_report_card_cache_ref_report_card
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: query_hash
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: result
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: datetime
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: datetime
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: report_card_cache
+            indexName: idx_report_card_cache_card_id_query_hash
+            columns:
+                column:
+                  name: card_id
+                column:
+                  name: query_hash
+
+
