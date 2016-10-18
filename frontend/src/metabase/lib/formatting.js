@@ -15,7 +15,20 @@ const DECIMAL_DEGREES_FORMATTER       = d3.format(".08f");
 export function formatNumber(number, options = {}) {
     options = { comma: true, ...options};
     if (options.compact) {
-        return Humanize.compactInteger(number, 1);
+        if (number === 0) {
+            // 0 => 0
+            return "0"
+        } else if (number >= -0.01 && number <= 0.01) {
+            // 0.01 => ~0
+            return "~ 0";
+        } else if (number > -1 && number < 1) {
+            // 0.1 => 0.1
+            return PRECISION_NUMBER_FORMATTER(number).replace(/\.?0+$/, "");
+        } else {
+            // 1 => 1
+            // 1000 => 1K
+            return Humanize.compactInteger(number, 1);
+        }
     } else if (number > -1 && number < 1) {
         // numbers between 1 and -1 round to 2 significant digits with extra 0s stripped off
         return PRECISION_NUMBER_FORMATTER(number).replace(/\.?0+$/, "");
