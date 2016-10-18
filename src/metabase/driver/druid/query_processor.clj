@@ -443,8 +443,8 @@
                                                      {:dimension (->rvalue field)
                                                       :direction direction}))))
 
-(defn sort-by-timestamp [field direction druid-query]
-  (assoc druid-query :descending (and (= (->rvalue field) "timestamp")
+(defn- sort-by-timestamp [field direction druid-query]
+  (assoc druid-query :descending (and (instance? DateTimeField field)
                                       (= direction :descending))))
 
 (defmethod handle-order-by ::grouped-timeseries [_ {[{field :field, direction :direction}] :order-by} druid-query]
