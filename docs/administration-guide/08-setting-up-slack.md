@@ -23,7 +23,7 @@ Now give the Bot user a helpful name (we suggest `Metabot`) and click the `Add b
 
 Paste the value into the text box for `Slack API Token` and click the button to save your changes.  
 
-Now go to slack and create a new channel named `metabase_files`. Due to the slack api, we need this to attach graphs to pulses and Metabot answers.
+Now go to Slack and create a new channel named `metabase_files`. Due to the Slack api, we'll need this to attach graphs to pulses and Metabot answers.
 
 That's it!  Metabase will automatically run a quick test to check that the API token is working properly and if not you'll get an error message.
 
