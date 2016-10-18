@@ -83,7 +83,7 @@ describe("Visualization", () => {
             it("should render dashboard multiseries titles", () => {
                 let viz = renderVisualization({ series: [LineCard("Foo"), LineCard("Bar")], isDashboard: true });
                 expect(getTitles(viz)).toEqual([
-                    ["Foo_col1", "Bar_col1"]
+                    ["Foo_name", "Bar_name"]
                 ]);
             });
             it("should render dashboard multiseries titles and chart setting title", () => {
@@ -93,13 +93,13 @@ describe("Visualization", () => {
                 ], isDashboard: true });
                 expect(getTitles(viz)).toEqual([
                     ["Foo_title"],
-                    ["Foo_col1", "Bar_col1"]
+                    ["Foo_name", "Bar_name"]
                 ]);
             });
-            it("should render multiple breakout multiseries titles", () => {
+            it("should render multiple breakout multiseries titles (with both card titles and breakout values)", () => {
                 let viz = renderVisualization({ series: [MultiseriesLineCard("Foo"), MultiseriesLineCard("Bar")], isDashboard: true });
                 expect(getTitles(viz)).toEqual([
-                    ["Foo_cat1", "Foo_cat2", "Bar_cat1", "Bar_cat2"]
+                    ["Foo_name: Foo_cat1", "Foo_name: Foo_cat2", "Bar_name: Bar_cat1", "Bar_name: Bar_cat2"]
                 ]);
             });
         });

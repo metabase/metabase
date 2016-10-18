@@ -1,5 +1,5 @@
 (ns metabase.query-processor.sql-parameters
-  "Param substitution for *SQL* drivers."
+  "Param substitution for *SQL* queries."
   (:require [clojure.string :as s]
             [honeysql.core :as hsql]
             [metabase.db :as db]
@@ -27,7 +27,7 @@
 (defrecord ^:private NumberValue [value])
 
 (defn- dimension-value->sql [dimension-type value]
-  (if (contains? #{"date/range" "date/month-year" "date/quarter-year"} dimension-type)
+  (if (contains? #{"date/range" "date/month-year" "date/quarter-year" "date/relative"} dimension-type)
     (->sql (map->DateRange ((resolve 'metabase.query-processor.parameters/date->range) value *timezone*))) ; TODO - get timezone from query dict
     (str "= " (->sql value))))
 

@@ -10,6 +10,7 @@ import Icon from "metabase/components/Icon.jsx";
 import Popover from "metabase/components/Popover.jsx";
 import UserAvatar from "metabase/components/UserAvatar.jsx";
 import AdminEmptyText from "metabase/components/AdminEmptyText.jsx";
+import Alert from "metabase/components/Alert.jsx";
 
 import AdminContentTable from "metabase/components/AdminContentTable.jsx";
 import AdminPaneLayout from "metabase/components/AdminPaneLayout.jsx";
@@ -166,7 +167,12 @@ export default class GroupDetail extends Component {
             text: "",
             selectedUsers: [],
             members: null,
+            alertMessage: null
         };
+    }
+
+    alert(alertMessage) {
+        this.setState({ alertMessage });
     }
 
     onAddUsersClicked() {
@@ -195,10 +201,7 @@ export default class GroupDetail extends Component {
                 this.setState({ members });
             }));
         } catch (error) {
-            console.error("Error adding user:", error);
-            if (error.data && typeof error.data === "string") {
-                alert(error.data);
-            }
+            this.alert(error && typeof error.data ? error.data : error);
         }
     }
 
@@ -228,9 +231,7 @@ export default class GroupDetail extends Component {
             this.setState({ members: newMembers });
         } catch (error) {
             console.error("Error deleting PermissionsMembership:", error);
-            if (error.data && typeof error.data === "string") {
-                alert(error.data);
-            }
+            this.alert(error && typeof error.data ? error.data : error);
         }
     }
 
@@ -244,7 +245,7 @@ export default class GroupDetail extends Component {
         // users = array of all users for purposes of adding new users to group
         // [group.]members = array of users currently in the group
         let { group, users } = this.props;
-        const { text, selectedUsers, addUserVisible } = this.state;
+        const { text, selectedUsers, addUserVisible, alertMessage } = this.state;
         const members = this.getMembers();
 
         group = group || {};
@@ -277,6 +278,7 @@ export default class GroupDetail extends Component {
                     onRemoveUserFromSelection={this.onRemoveUserFromSelection.bind(this)}
                     onRemoveUserClicked={this.onRemoveUserClicked.bind(this)}
                 />
+                <Alert message={alertMessage} onClose={() => this.setState({ alertMessage: null })} />
             </AdminPaneLayout>
         );
     }

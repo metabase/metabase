@@ -147,3 +147,22 @@ export const updateData = async ({
         return existingData;
     }
 }
+
+// for filtering non-DOM props from redux-form field objects
+// https://github.com/erikras/redux-form/issues/1441
+export const formDomOnlyProps = ({
+    initialValue,
+    autofill,
+    onUpdate,
+    valid,
+    invalid,
+    dirty,
+    pristine,
+    active,
+    touched,
+    visited,
+    autofilled,
+    error,
+    defaultValue,
+    ...domProps
+}) => domProps

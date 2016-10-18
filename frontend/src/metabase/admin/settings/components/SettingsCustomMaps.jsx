@@ -251,15 +251,15 @@ const EditMap = ({ map, onMapChange, originalMap, geoJson, geoJsonLoading, geoJs
                 <div>
                     <SettingContainer description="Which property specifies the region’s identifier?">
                         <GeoJsonPropertySelect
-                            value={map.region_name}
-                            onChange={(value) => onMapChange({ ...map, "region_name": value })}
+                            value={map.region_key}
+                            onChange={(value) => onMapChange({ ...map, "region_key": value })}
                             geoJson={geoJson}
                         />
                     </SettingContainer>
                     <SettingContainer description="Which property specifies the region’s display name?">
                         <GeoJsonPropertySelect
-                            value={map.region_key}
-                            onChange={(value) => onMapChange({ ...map, "region_key": value })}
+                            value={map.region_name}
+                            onChange={(value) => onMapChange({ ...map, "region_name": value })}
                             geoJson={geoJson}
                         />
                     </SettingContainer>

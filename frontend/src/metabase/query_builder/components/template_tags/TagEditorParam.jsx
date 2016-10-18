@@ -125,7 +125,7 @@ export default class TagEditorParam extends Component {
                             placeholder="Select…"
                         >
                             {databaseFields && databaseFields.map(field =>
-                                <Option value={field.id} name={field.name}>
+                                <Option key={field.id} value={field.id} name={field.name}>
                                     <div className="cursor-pointer">
                                         <div className="h6 text-bold text-uppercase text-grey-2">{dabaseHasSchemas && (field.schema + " > ")}{field.table_name}</div>
                                         <div className="h4 text-bold text-default">{field.name}</div>

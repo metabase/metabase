@@ -110,8 +110,8 @@
    :parameters              []
    :ordered_cards           [{:sizeX                  2
                               :sizeY                  2
-                              :col                    nil
-                              :row                    nil
+                              :col                    0
+                              :row                    0
                               :updated_at             true
                               :created_at             true
                               :parameter_mappings     []
@@ -267,8 +267,8 @@
 (expect
   [[{:sizeX                  2
      :sizeY                  2
-     :col                    nil
-     :row                    nil
+     :col                    0
+     :row                    0
      :series                 []
      :parameter_mappings     []
      :visualization_settings {}
@@ -276,8 +276,8 @@
      :updated_at             true}
     {:sizeX                  2
      :sizeY                  2
-     :col                    nil
-     :row                    nil
+     :col                    0
+     :row                    0
      :parameter_mappings     []
      :visualization_settings {}
      :series                 []
@@ -340,10 +340,10 @@
                       (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
     :diff         {:before {:name        "b"
                             :description nil
-                            :cards       [{:series nil, :col nil, :row nil, :sizeY 2, :sizeX 2}]}
+                            :cards       [{:series nil, :sizeY 2, :sizeX 2}]}
                    :after  {:name        "c"
                             :description "something"
-                            :cards       [{:series [8 9], :col 0, :row 0, :sizeY 3, :sizeX 4}]}}
+                            :cards       [{:series [8 9], :sizeY 3, :sizeX 4}]}}
     :description  "renamed it from \"b\" to \"c\", added a description, rearranged the cards and added some series to card 123."}
    {:is_reversion false
     :is_creation  true
@@ -359,8 +359,8 @@
                                                :description  nil
                                                :cards        [{:sizeX   2
                                                                :sizeY   2
-                                                               :row     nil
-                                                               :col     nil
+                                                               :row     0
+                                                               :col     0
                                                                :card_id 123
                                                                :series  []}]}
                                 :is_creation  true}]

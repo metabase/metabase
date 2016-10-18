@@ -1,11 +1,13 @@
 /* @flow */
 
-import type { Card, CardId } from "./Card";
+import type { Card, CardId, VisualizationSettings } from "./Card";
+
 import type { ConcreteField } from "./Query";
 
+export type DashboardId = number;
 
 export type Dashboard = {
-    id: number,
+    id: DashboardId,
     ordered_cards: Array<DashCard>,
     // incomplete
     parameters: Array<Parameter>
@@ -14,10 +16,23 @@ export type Dashboard = {
 export type DashCardId = number;
 
 export type DashCard = {
-    id: number,
+    id: DashCardId,
+
+    card_id: CardId,
+    dashboard_id: DashboardId,
+
+    card: Card,
     series: Array<Card>,
+
     // incomplete
-    parameter_mappings: Array<ParameterMapping>;
+
+    parameter_mappings: Array<ParameterMapping>,
+    visualization_settings: VisualizationSettings,
+
+    col: number,
+    row: number,
+    sizeY: number,
+    sizeX: number
 };
 
 export type ParameterId = string;

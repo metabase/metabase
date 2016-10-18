@@ -85,7 +85,7 @@ export default class Column extends Component {
         return (
             <li className="mt1 mb3">
                 <div>
-                    <Input style={{minWidth: 420}} className="AdminInput TableEditor-field-name float-left bordered inline-block rounded text-bold" type="text" value={this.props.field.display_name} onBlurChange={this.onNameChange}/>
+                    <Input style={{minWidth: 420}} className="AdminInput TableEditor-field-name float-left bordered inline-block rounded text-bold" type="text" value={this.props.field.display_name || ""} onBlurChange={this.onNameChange}/>
                     <div className="clearfix">
                         <div className="flex flex-full">
                             <div className="flex-full px1">
@@ -111,7 +111,7 @@ export default class Column extends Component {
                     </div>
                 </div>
                 <div className="MetadataTable-title flex flex-column flex-full bordered rounded mt1 mr1">
-                    <Input className="AdminInput TableEditor-field-description" type="text" value={this.props.field.description} onBlurChange={this.onDescriptionChange} placeholder="No column description yet" />
+                    <Input className="AdminInput TableEditor-field-description" type="text" value={this.props.field.description || ""} onBlurChange={this.onDescriptionChange} placeholder="No column description yet" />
                 </div>
             </li>
         )

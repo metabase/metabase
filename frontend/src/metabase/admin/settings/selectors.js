@@ -125,7 +125,7 @@ const SECTIONS = [
                 description: "",
                 placeholder: "Enter the token you received from Slack",
                 type: "string",
-                required: true,
+                required: false,
                 autoFocus: true
             },
             {

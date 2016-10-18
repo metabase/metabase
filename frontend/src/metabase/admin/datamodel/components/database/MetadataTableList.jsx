@@ -13,7 +13,7 @@ export default class MetadataTableList extends Component {
         super(props, context);
 
         this.state = {
-            searchText: null,
+            searchText: "",
             searchRegex: null
         };
 

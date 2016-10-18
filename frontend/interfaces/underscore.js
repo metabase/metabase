@@ -45,6 +45,8 @@ declare module "underscore" {
   declare function uniq<T>(a: T[], isSorted?: boolean, iteratee?: (val: T) => boolean): T[];
 
   declare function values<T>(o: {[key: any]: T}): T[];
+  declare function omit<T>(o: {[key: any]: T}, ...properties: string[]): T;
+
   declare function flatten(a: Array<any>): Array<any>;
 
   // TODO: improve this
