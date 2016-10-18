@@ -133,8 +133,8 @@
                                               :card_id                card_id
                                               :sizeX                  sizeX
                                               :sizeY                  sizeY
-                                              :row                    row
-                                              :col                    col
+                                              :row                    (or row 0)
+                                              :col                    (or col 0)
                                               :parameter_mappings     (or parameter_mappings [])
                                               :visualization_settings (or visualization_settings {}))]
         ;; add series to the DashboardCard
