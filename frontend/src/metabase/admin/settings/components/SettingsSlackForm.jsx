@@ -211,7 +211,7 @@ export default class SettingsSlackForm extends Component {
                         </a>
                     </div>
                     <div className="py2">
-                        Once you're there, give it a name and click <strong>"Add bot integration"</strong>. Then copy and paste the Bot API Token into the field below.
+                        Once you're there, give it a name and click <strong>"Add bot integration"</strong>. Then copy and paste the Bot API Token into the field below. Once you are done, create a "metabase_files" channel in Slack. Metabase needs this to upload graphs.
 
                     </div>
                 </div>
