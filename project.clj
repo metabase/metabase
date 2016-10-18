@@ -40,6 +40,8 @@
                                net.sourceforge.nekohtml/nekohtml
                                ring/ring-core]]
                  [com.draines/postal "2.0.1"]                         ; SMTP library
+                 [com.google.apis/google-api-services-analytics       ; Google Analytics Java Client Library
+                  "v3-rev135-1.22.0"]
                  [com.google.apis/google-api-services-bigquery        ; Google BigQuery Java Client Library
                   "v2-rev324-1.22.0"]
                  [com.h2database/h2 "1.4.192"]                        ; embedded SQL database
