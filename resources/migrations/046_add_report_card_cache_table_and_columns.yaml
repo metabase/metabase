@@ -58,6 +58,7 @@ databaseChangeLog:
         - createIndex:
             tableName: report_card_cache
             indexName: idx_report_card_cache_card_id_query_hash
+            unique: true
             columns:
                 column:
                   name: card_id
