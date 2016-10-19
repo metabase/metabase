@@ -12,7 +12,7 @@
                       [db :as db]
                       [driver :as driver])
             [metabase.models.database :as database]
-            (metabase.models [card-cache :refer [CardCache]]
+            (metabase.models [card-cache :as card-cache]
                              [field :refer [Field]]
                              [query-execution :refer [QueryExecution]])
             (metabase.query-processor [annotate :as annotate]
@@ -23,8 +23,7 @@
                                       [permissions :as perms]
                                       [resolve :as resolve])
             [metabase.util :as u])
-  (:import (schema.utils NamedError ValidationError)
-           (java.util Date)))
+  (:import (schema.utils NamedError ValidationError)))
 
 ;;; CONSTANTS
 
@@ -565,39 +564,6 @@
         substitute-parameters
         expand-macros))
 
-
-;;; +-------------------------------------------------------------------------------------------------------+
-;;; |                                           CARD CACHE                                                  |
-;;; +-------------------------------------------------------------------------------------------------------+
-
-(defn- check-cache-params
-  "Validate if cache related params are valid"
-  [card-id use-cache cache-max-age]
-  (let [use-cache?  (not (nil? use-cache))
-        card-id? (and (not (nil? card-id)) (integer? card-id))
-        cache-max-age? (and (not (nil? cache-max-age)) (integer? cache-max-age) (> cache-max-age 0))]
-    (or (not card-id?) (and use-cache? cache-max-age?))))
-
-(defn- time-diff
-  ""
-  [time]
-  (when-not (nil? time) (int (/ (- (.getTime (new Date)) (.getTime time)) 1000))))
-
-(defn- fetch-from-cache
-  ""
-  [query-id query-hash max-age]
-  (let [cached (CardCache :card_id query-id :query_hash query-hash)
-        time-diff (time-diff (:updated_at cached))]
-    (when (and (some? cached) (<= time-diff max-age)) (log/info "cached result") (:result cached))))
-
-(defn- update-cache
-  ""
-  [card-id query-hash result]
-  (let [cached (CardCache :card_id card-id :query_hash query-hash)]
-    (if (nil? cached)
-      (db/insert! CardCache {:card_id card-id :query_hash query-hash :result result})
-      (db/update! CardCache (:id cached) {:result result}))))
-
 ;;; +----------------------------------------------------------------------------------------------------+
 ;;; |                                     DATASET-QUERY PUBLIC API                                       |
 ;;; +----------------------------------------------------------------------------------------------------+
@@ -610,6 +576,14 @@
   (when (= :failed (:status query-result))
     (log/error (u/pprint-to-str 'red query-result))
     (throw (Exception. (str (get query-result :error "general error"))))))
+
+(defn- check-cache-params
+  "Validate if cache related params are valid"
+  [card-id use-cache cache-max-age]
+  (let [use-cache?  (not (nil? use-cache))
+        card-id? (and (not (nil? card-id)) (integer? card-id))
+        cache-max-age? (and (not (nil? cache-max-age)) (integer? cache-max-age) (> cache-max-age 0))]
+    (or (not card-id?) (and use-cache? cache-max-age?))))
 
 (defn dataset-query
   "Process and run a json based dataset query and return results.
@@ -655,12 +629,16 @@
                                             :query-hash  query-hash
                                             :query-type  (if (mbql-query? query) "MBQL" "native")})]
     (try
-      (let [from-cache (when (boolean use-cache) (fetch-from-cache card-id query-hash cache-max-age))
-            result (if (nil? from-cache) (process-query query) from-cache)]
+      (let [from-cache (when (boolean use-cache)
+                         (card-cache/fetch-from-cache card-id query-hash cache-max-age))
+            result (if (some? from-cache)
+                     from-cache
+                     (process-query query))]
         (assert-valid-query-result result)
         (when (nil? from-cache)
           (query-complete query-execution result)
-          (when use-cache (update-cache card-id query-hash result)))
+          (when use-cache
+            (card-cache/update-cache! card-id query-hash result)))
         result)
       (catch Throwable e
         (log/error (u/format-color 'red "Query failure: %s\n%s" (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e))))
