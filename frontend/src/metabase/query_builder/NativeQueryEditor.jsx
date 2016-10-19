@@ -2,6 +2,9 @@
 /* eslint "react/prop-types": "warn" */
 
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
+
+import "./NativeQueryEditor.css";
 
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 
@@ -29,7 +32,8 @@ function getModeInfo(query, databases) {
               engine === 'sqlserver'                   ? 'ace/mode/sqlserver' :
                                                          'ace/mode/sql',
         description: engine === 'druid' || engine === 'mongo' ? 'JSON' : 'SQL',
-        requiresTable: engine === 'mongo'
+        requiresTable: engine === 'mongo',
+        database: database
     };
 }
 
@@ -38,13 +42,18 @@ export default class NativeQueryEditor extends Component {
     constructor(props, context) {
         super(props, context);
 
+        this.state = {
+            showEditor: true,//this.props.isOpen,
+            modeInfo: getModeInfo(props.query, props.databases)
+        };
+
         this.localUpdate = false;
 
         _.bindAll(this, 'toggleEditor', 'setDatabaseID', 'setTableID');
 
         // Ace sometimes fires mutliple "change" events in rapid succession
         // e.x. https://github.com/metabase/metabase/issues/2801
-        this.onChange = _.debounce(this.onChange.bind(this), 1)
+        this.onChange = _.debounce(this.onChange.bind(this), 1);
     }
 
     static propTypes = {
@@ -65,13 +74,6 @@ export default class NativeQueryEditor extends Component {
         isOpen: false
     }
 
-    componentWillMount() {
-        this.setState({
-            showEditor: this.props.isOpen,
-            modeInfo: getModeInfo(this.props.query, this.props.databases)
-        });
-    }
-
     componentDidMount() {
         this.loadAceEditor();
     }
@@ -85,7 +87,10 @@ export default class NativeQueryEditor extends Component {
     }
 
     componentDidUpdate() {
-        let editor = ace.edit("id_sql");
+        const { modeInfo } = this.state;
+
+        let editorElement = ReactDOM.findDOMNode(this.refs.editor);
+        let editor = ace.edit(editorElement);
         if (editor.getValue() !== this.props.query.native.query) {
             // This is a weird hack, but the purpose is to avoid an infinite loop caused by the fact that calling editor.setValue()
             // will trigger the editor 'change' event, update the query, and cause another rendering loop which we don't want, so
@@ -96,18 +101,28 @@ export default class NativeQueryEditor extends Component {
             this.localUpdate = false;
         }
 
-        if (this.state.modeInfo && editor.getSession().$modeId !== this.state.modeInfo.mode) {
-            console.log('Setting ACE Editor mode to:', this.state.modeInfo.mode);
-            editor.getSession().setMode(this.state.modeInfo.mode);
-            // monkey patch the mode to add our bracket/paren/braces-matching behavior
-            if (!editor.getSession().$mode.$behaviour) {
-                editor.getSession().$mode.$behaviour = new SQLBehaviour();
+        if (modeInfo) {
+            if (modeInfo.database.native_permissions !== "write") {
+                editor.setReadOnly(true);
+                editorElement.classList.add("read-only");
+            } else {
+                editor.setReadOnly(false);
+                editorElement.classList.remove("read-only");
+
+            }
+            if (editor.getSession().$modeId !== modeInfo.mode) {
+                editor.getSession().setMode(modeInfo.mode);
+                // monkey patch the mode to add our bracket/paren/braces-matching behavior
+                if (this.state.modeInfo.mode.indexOf("sql") >= 0) {
+                    editor.getSession().$mode.$behaviour = new SQLBehaviour();
+                }
             }
         }
     }
 
     loadAceEditor() {
-        let editor = ace.edit("id_sql");
+        let editorElement = ReactDOM.findDOMNode(this.refs.editor);
+        let editor = ace.edit(editorElement);
 
         // listen to onChange events
         editor.getSession().on('change', this.onChange);
@@ -213,9 +228,9 @@ export default class NativeQueryEditor extends Component {
                         />
                     </div>
                 )
-            } else {
+            } else if (modeInfo.database) {
                 dataSelectors.push(
-                    <span className="p2 text-bold text-grey">{this.props.nativeDatabases[0].name}</span>
+                    <span key="db" className="p2 text-bold text-grey">{modeInfo.database.name}</span>
                 );
             }
             if (modeInfo.requiresTable) {
@@ -250,20 +265,21 @@ export default class NativeQueryEditor extends Component {
         }
 
         let editorClasses, toggleEditorText, toggleEditorIcon;
+        const hasWritePermission = modeInfo.database && modeInfo.database.native_permissions === "write";
         if (this.state.showEditor) {
             editorClasses = "";
-            toggleEditorText = "Hide Editor";
+            toggleEditorText = hasWritePermission ? "Hide Editor" : "Hide Query";
             toggleEditorIcon = "contract";
         } else {
             editorClasses = "hide";
-            toggleEditorText = "Open Editor";
+            toggleEditorText = hasWritePermission ? "Open Editor" : "Show Query";
             toggleEditorIcon = "expand";
         }
 
         return (
             <div className="wrapper">
                 <div className="NativeQueryEditor bordered rounded shadowed">
-                    <div className="flex">
+                    <div className="flex align-center" style={{ minHeight: 50 }}>
                         {dataSelectors}
                         { parameters.map(parameter =>
                             <div key={parameter.id} className="pl2 GuiBuilder-section GuiBuilder-data flex align-center">
@@ -284,7 +300,7 @@ export default class NativeQueryEditor extends Component {
                         </a>
                     </div>
                     <div className={"border-top " + editorClasses}>
-                        <div id="id_sql"></div>
+                        <div id="id_sql" ref="editor"></div>
                     </div>
                 </div>
             </div>

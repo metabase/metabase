@@ -37,7 +37,7 @@ window.MetabaseBootstrap = {
         "type/Integer":                   ["type/Number"],
         "type/Latitude":                  ["type/Coordinate"],
         "type/Longitude":                 ["type/Coordinate"],
-        "type/Name":                      ["type/Category", "type/Address", "type/Text"],
+        "type/Name":                      ["type/Category", "type/Text"],
         "type/Number":                    ["type/*"],
         "type/PK":                        ["type/Special"],
         "type/SerializedJSON":            ["type/Text", "type/Collection"],
