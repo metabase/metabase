@@ -22,7 +22,6 @@
             [metabase.db :as db]
             (metabase.models [activity :refer [Activity]]
                              [card :refer [Card]]
-                             [card-cache :refer [CardCache]]
                              [card-favorite :refer [CardFavorite]]
                              [card-label :refer [CardLabel]]
                              [dashboard :refer [Dashboard]]
@@ -96,8 +95,7 @@
    PermissionsGroup
    PermissionsGroupMembership
    Permissions
-   PermissionsRevision
-   CardCache])
+   PermissionsRevision])
 
 
 (defn- h2-details [h2-connection-string-or-nil]
