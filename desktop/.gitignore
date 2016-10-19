@@ -1,0 +1,7 @@
+/node_modules
+/init.html
+/metabase.jar
+/*.h2.db
+/*.mv.db
+/*.lock.db
+/*.trace.db

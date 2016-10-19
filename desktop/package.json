@@ -1,0 +1,15 @@
+{
+  "name": "metabase",
+  "version": "0.0.0",
+  "main": "main.js",
+  "dependencies": {
+    "request-promise": "^3.0.0"
+  },
+  "devDependencies": {
+    "electron-packager": "^7.0.3",
+    "electron-prebuilt": "^1.2.1"
+  },
+  "scripts": {
+    "start": "NODE_ENV=development electron main.js"
+  }
+}
