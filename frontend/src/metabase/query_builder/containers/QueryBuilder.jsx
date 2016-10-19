@@ -38,6 +38,7 @@ import {
     getSampleDatasetId,
     getFullDatasetQuery,
     getNativeDatabases,
+    getIsRunnable,
 } from "../selectors";
 
 import * as actions from "../actions";
@@ -98,6 +99,8 @@ const mapStateToProps = (state, props) => {
         isShowingTutorial:         state.qb.uiControls.isShowingTutorial,
         isEditing:                 state.qb.uiControls.isEditing,
         isRunning:                 state.qb.uiControls.isRunning,
+        isRunnable:                getIsRunnable(state),
+
         cardApi:                   cardApi,
         dashboardApi:              dashboardApi,
         revisionApi:               revisionApi,
@@ -122,8 +125,6 @@ export default class QueryBuilder extends Component {
     constructor(props, context) {
         super(props, context);
 
-        _.bindAll(this, "handleResize");
-
         // TODO: React tells us that forceUpdate() is not the best thing to use, so ideally we can find a different way to trigger this
         this.forceUpdateDebounced = _.debounce(this.forceUpdate.bind(this), 400);
     }
@@ -133,7 +134,8 @@ export default class QueryBuilder extends Component {
     }
 
     componentDidMount() {
-        window.addEventListener('resize', this.handleResize);
+        window.addEventListener("resize", this.handleResize);
+        document.addEventListener("keydown", this.handleKeyDown);
     }
 
     componentWillReceiveProps(nextProps) {
@@ -161,16 +163,24 @@ export default class QueryBuilder extends Component {
     }
 
     componentWillUnmount() {
-        window.removeEventListener('resize', this.handleResize);
+        window.removeEventListener("resize", this.handleResize);
+        document.addEventListener("keydown", this.handleKeyDown);
     }
 
     // When the window is resized we need to re-render, mainly so that our visualization pane updates
     // Debounce the function to improve resizing performance.
-    handleResize(e) {
+    handleResize = (e) => {
         this.forceUpdateDebounced();
         let viz = ReactDOM.findDOMNode(this.refs.viz);
         if (viz) {
             viz.style.opacity = 0.2;
+        }
+    }
+
+    handleKeyDown = (e) => {
+        const ENTER_KEY = 13;
+        if (e.keyCode === ENTER_KEY && e.metaKey && this.props.isRunnable) {
+            this.props.runQueryFn();
         }
     }
 
