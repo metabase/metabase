@@ -168,7 +168,7 @@
   {:pre [(string? pulse-name)
          (integer? creator-id)
          (sequential? card-ids)
-         (> (count card-ids) 0)
+         (seq card-ids)
          (every? integer? card-ids)
          (coll? channels)
          (every? map? channels)]}

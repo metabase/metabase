@@ -3,17 +3,18 @@
             [metabase.api.common :refer :all]
             [metabase.api.common.internal :refer :all]
             [metabase.test.data :refer :all]
-            [metabase.test.util :refer :all]))
+            [metabase.test.util :refer :all]
+            [metabase.util.schema :as su]))
 
 
 ;;; TESTS FOR CHECK (ETC)
 
-(def four-oh-four
+(def ^:private four-oh-four
   "The expected format of a 404 response."
   {:status 404
    :body "Not found."})
 
-(defn my-mock-api-fn [_]
+(defn ^:private my-mock-api-fn [_]
   (catch-api-exceptions
    (check-404 @*current-user*)
    {:status 200
@@ -64,9 +65,10 @@
             (- 100))))
 
 
-(defmacro expect-expansion
+(defmacro ^:private expect-expansion
   "Helper to test that a macro expands the way we expect;
    Automatically calls `macroexpand-1` on MACRO."
+  {:style/indent 0}
   [expected-expansion macro]
   `(let [actual-expansion# (macroexpand-1 '~macro)]
      (expect '~expected-expansion
@@ -111,18 +113,8 @@
       (GET ["/:id" :id "#[0-9]+"] [id]
         (metabase.api.common.internal/catch-api-exceptions
           (metabase.api.common.internal/auto-parse [id]
-            (metabase.api.common.internal/let-annotated-args
-             {id Required}
-             (clojure.core/-> (do (->404 (sel :one Card :id id)))
-                              metabase.api.common.internal/wrap-response-if-needed))))))
+            (metabase.api.common.internal/validate-param 'id id su/IntGreaterThanZero)
+            (metabase.api.common.internal/wrap-response-if-needed (do (->404 (select-one Card :id id))))))))
     (defendpoint GET "/:id" [id]
-      {id Required}
-      (->404 (sel :one Card :id id)))))
-
-
-;;; ------------------------------------------------------------ ANNOTATION TESTS ------------------------------------------------------------
-
-(expect true  (annotation:Boolean 'archived true))
-(expect false (annotation:Boolean 'archived false))
-(expect nil   (annotation:Boolean 'archived nil))
-(expect clojure.lang.ExceptionInfo (annotation:Boolean 'archived 1))
+      {id su/IntGreaterThanZero}
+      (->404 (select-one Card :id id)))))

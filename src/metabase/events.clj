@@ -53,6 +53,7 @@
    Expects a map as input and the map must have a `:topic` key."
   (async/pub events-channel :topic))
 
+;; TODO - this should be named `publish-event!`
 (defn publish-event
   "Publish an item into the events stream.
   Returns the published item to allow for chaining."
