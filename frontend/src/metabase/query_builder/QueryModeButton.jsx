@@ -21,16 +21,17 @@ export default class QueryModeButton extends Component {
     static propTypes = {
         mode: PropTypes.string.isRequired,
         allowNativeToQuery: PropTypes.bool,
+        allowQueryToNative: PropTypes.bool,
         nativeForm: PropTypes.object,
         onSetMode: PropTypes.func.isRequired
     };
 
     static defaultProps = {
-        allowNativeToQuery: false
+        allowNativeToQuery: false,
     }
 
     render() {
-        const { allowNativeToQuery, mode, nativeForm, onSetMode, tableMetadata } = this.props;
+        const { allowQueryToNative, allowNativeToQuery, mode, nativeForm, onSetMode, tableMetadata } = this.props;
 
         // determine the type to switch to based on the type
         var targetType = (mode === "query") ? "native" : "query";
@@ -41,7 +42,7 @@ export default class QueryModeButton extends Component {
         // maybe switch up the icon based on mode?
         let onClick = null;
         let tooltip = "Not Supported";
-        if (mode === "query") {
+        if (mode === "query" && allowQueryToNative) {
             onClick = nativeForm ? () => this.setState({isOpen: true}) : () => onSetMode("native");
             tooltip = nativeForm ? `View the ${nativeQueryName}` : `Switch to ${nativeQueryName}`;
         } else if (mode === "native" && allowNativeToQuery) {
@@ -53,7 +54,7 @@ export default class QueryModeButton extends Component {
             <div>
                 <Tooltip tooltip={tooltip}>
                     <span data-metabase-event={"QueryBuilder;Toggle Mode"} className={cx("cursor-pointer", {"text-brand-hover": onClick, "text-grey-1": !onClick})} onClick={onClick}>
-                        <Icon name="sql" width="16px" height="16px" />
+                        <Icon name="sql" size={16} />
                     </span>
                 </Tooltip>
 
@@ -61,7 +62,7 @@ export default class QueryModeButton extends Component {
                     <div className="p4">
                         <div className="mb3 flex flex-row flex-full align-center justify-between">
                             <h2>{capitalize(nativeQueryName)} for this question</h2>
-                            <span className="cursor-pointer" onClick={() => this.setState({isOpen: false})}><Icon name="close" width="16px" height="16px" /></span>
+                            <span className="cursor-pointer" onClick={() => this.setState({isOpen: false})}><Icon name="close" size={16} /></span>
                         </div>
 
                         <pre className="mb3 p2 sql-code">

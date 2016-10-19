@@ -2,7 +2,7 @@
 import React, { Component, PropTypes } from "react";
 
 import DetailPane from "./DetailPane.jsx";
-import QueryButton from "./QueryButton.jsx";
+import QueryButton from "metabase/components/QueryButton.jsx";
 import UseForButton from "./UseForButton.jsx";
 import QueryDefinition from "./QueryDefinition.jsx";
 
@@ -27,14 +27,14 @@ export default class SegmentPane extends Component {
     static propTypes = {
         segment: PropTypes.object.isRequired,
         query: PropTypes.object,
-        loadTableFn: PropTypes.func.isRequired,
+        loadTableAndForeignKeysFn: PropTypes.func.isRequired,
         runQueryFn: PropTypes.func.isRequired,
         setQueryFn: PropTypes.func.isRequired,
         setCardAndRun: PropTypes.func.isRequired
     };
 
     componentWillMount() {
-        this.props.loadTableFn(this.props.segment.table_id).then((result) => {
+        this.props.loadTableAndForeignKeysFn(this.props.segment.table_id).then((result) => {
             this.setState({
                 table: result.table,
                 tableForeignKeys: result.foreignKeys
@@ -101,7 +101,12 @@ export default class SegmentPane extends Component {
                 useForCurrentQuestion={useForCurrentQuestion}
                 usefulQuestions={usefulQuestions}
                 error={error}
-                extra={table && <QueryDefinition objectType="Segment" object={segment} tableMetadata={table} />}
+                extra={table &&
+                    <div>
+                        <p className="text-bold">Segment Definition</p>
+                        <QueryDefinition object={segment} tableMetadata={table} />
+                    </div>
+                }
             />
         );
     }

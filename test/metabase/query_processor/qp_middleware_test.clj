@@ -4,9 +4,9 @@
             [metabase.driver :as driver]
             [metabase.query-processor :refer :all]
             [metabase.models.setting :as setting]
-            [metabase.test.util :refer [resolve-private-fns]]))
+            [metabase.test.util :refer [resolve-private-vars]]))
 
-(resolve-private-fns metabase.query-processor
+(resolve-private-vars metabase.query-processor
   wrap-catch-exceptions post-add-row-count-and-status post-format-rows pre-add-settings)
 
 
@@ -45,14 +45,12 @@
   (let [original-tz (setting/get :report-timezone)
         response1   ((pre-add-settings identity) {:driver (TestDriver.)})]
     ;; make sure that if the timezone is an empty string we skip it in settings
-    (setting/set :report-timezone "")
+    (setting/set! :report-timezone "")
     (let [response2 ((pre-add-settings identity) {:driver (TestDriver.)})]
       ;; if the timezone is something valid it should show up in the query settings
-      (setting/set :report-timezone "US/Mountain")
+      (setting/set! :report-timezone "US/Mountain")
       (let [response3 ((pre-add-settings identity) {:driver (TestDriver.)})]
-        (if original-tz
-          (setting/set :report-timezone original-tz)
-          (setting/delete :report-timezone))
+        (setting/set! :report-timezone original-tz)
         [(dissoc response1 :driver)
          (dissoc response2 :driver)
          (dissoc response3 :driver)]))))

@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import { Link } from "react-router";
 
 import MetricItem from "./MetricItem.jsx";
 
@@ -15,10 +16,10 @@ export default class MetricsList extends Component {
         tableMetadata.metrics = tableMetadata.metrics.filter((mtrc) => mtrc.is_active === true);
 
         return (
-            <div className="my3">
+            <div id="MetricsList" className="my3">
                 <div className="flex mb1">
                     <h2 className="px1 text-green">Metrics</h2>
-                    <a data-metabase-event="Data Model;Add Metric Page" className="flex-align-right float-right text-bold text-brand no-decoration" href={"/admin/datamodel/metric/create?table="+tableMetadata.id}>+ Add a Metric</a>
+                    <Link to={"/admin/datamodel/metric/create?table="+tableMetadata.id} data-metabase-event="Data Model;Add Metric Page" className="flex-align-right float-right text-bold text-brand no-decoration">+ Add a Metric</Link>
                 </div>
                 <table className="AdminTable">
                     <thead>

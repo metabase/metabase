@@ -1,8 +1,6 @@
 (ns metabase.driver
-  (:require [clojure.java.classpath :as classpath]
-            [clojure.math.numeric-tower :as math]
+  (:require [clojure.math.numeric-tower :as math]
             [clojure.tools.logging :as log]
-            [clojure.tools.namespace.find :as ns-find]
             [medley.core :as m]
             (metabase [config :as config]
                       [db :as db])
@@ -136,7 +134,7 @@
   *  `:standard-deviation-aggregations` - Does this driver support [standard deviation aggregations](https://github.com/metabase/metabase/wiki/Query-Language-'98#stddev-aggregation)?
   *  `:expressions` - Does this driver support [expressions](https://github.com/metabase/metabase/wiki/Query-Language-'98#expressions) (e.g. adding the values of 2 columns together)?
   *  `:dynamic-schema` -  Does this Database have no fixed definitions of schemas? (e.g. Mongo)
-  *  `:native-parameters` - The driver supports parameter substitution on native queries.")
+  *  `:native-parameters` - Does the driver support parameter substitution on native queries?")
 
   (field-values-lazy-seq ^clojure.lang.Sequential [this, ^FieldInstance field]
     "Return a lazy sequence of all values of FIELD.
@@ -221,12 +219,13 @@
                                  (filter identity)
                                  (take max-sync-lazy-seq-results))
         field-values-count (count field-values)]
-    (if (= field-values-count 0) 0
-        (int (math/round (/ (->> field-values
-                                 (map str)
-                                 (map count)
-                                 (reduce +))
-                            field-values-count))))))
+    (if (zero? field-values-count)
+      0
+      (int (math/round (/ (->> field-values
+                               (map str)
+                               (map count)
+                               (reduce +))
+                          field-values-count))))))
 
 
 (def IDriverDefaultsMixin
@@ -271,7 +270,7 @@
   "Search Classpath for namespaces that start with `metabase.driver.`, then `require` them and look for the `driver-init`
    function which provides a uniform way for Driver initialization to be done."
   []
-  (doseq [ns-symb (ns-find/find-namespaces (classpath/classpath))
+  (doseq [ns-symb @u/metabase-namespace-symbols
           :when   (re-matches #"^metabase\.driver\.[a-z0-9_]+$" (name ns-symb))]
     (require ns-symb)))
 
@@ -286,30 +285,31 @@
   (contains? (features driver) feature))
 
 (defn class->base-type
-  "Return the `Field.base_type` that corresponds to a given class returned by the DB."
+  "Return the `Field.base_type` that corresponds to a given class returned by the DB.
+   This is used to infer the types of results that come back from native queries."
   [klass]
-  (or ({Boolean                         :BooleanField
-        Double                          :FloatField
-        Float                           :FloatField
-        Integer                         :IntegerField
-        Long                            :IntegerField
-        String                          :TextField
-        java.math.BigDecimal            :DecimalField
-        java.math.BigInteger            :BigIntegerField
-        java.sql.Date                   :DateField
-        java.sql.Timestamp              :DateTimeField
-        java.util.Date                  :DateTimeField
-        java.util.UUID                  :TextField
-        clojure.lang.PersistentArrayMap :DictionaryField
-        clojure.lang.PersistentHashMap  :DictionaryField
-        clojure.lang.PersistentVector   :ArrayField
-        org.postgresql.util.PGobject    :UnknownField} klass)
-      (condp isa? klass
-        clojure.lang.IPersistentMap     :DictionaryField
-        clojure.lang.IPersistentVector  :ArrayField
-        nil)
-      (do (log/warn (format "Don't know how to map class '%s' to a Field base_type, falling back to :UnknownField." klass))
-          :UnknownField)))
+  (or (some (fn [[mapped-class mapped-type]]
+              (when (isa? klass mapped-class)
+                mapped-type))
+            [[Boolean                        :type/Boolean]
+             [Double                         :type/Float]
+             [Float                          :type/Float]
+             [Integer                        :type/Integer]
+             [Long                           :type/Integer]
+             [java.math.BigDecimal           :type/Decimal]
+             [java.math.BigInteger           :type/BigInteger]
+             [Number                         :type/Number]
+             [String                         :type/Text]
+             [java.sql.Date                  :type/Date]
+             [java.sql.Timestamp             :type/DateTime]
+             [java.util.Date                 :type/DateTime]
+             [java.util.UUID                 :type/Text]       ; shouldn't this be :type/UUID ?
+             [clojure.lang.IPersistentMap    :type/Dictionary]
+             [clojure.lang.IPersistentVector :type/Array]
+             [org.bson.types.ObjectId        :type/MongoBSONID]
+             [org.postgresql.util.PGobject   :type/*]])
+      (log/warn (format "Don't know how to map class '%s' to a Field base_type, falling back to :type/*." klass))
+      :type/*))
 
 ;; ## Driver Lookup
 
@@ -337,6 +337,7 @@
    This loads the corresponding driver if needed."
   (let [db-id->engine (memoize (fn [db-id] (db/select-one-field :engine Database, :id db-id)))]
     (fn [db-id]
+      {:pre [db-id]}
       (engine->driver (db-id->engine db-id)))))
 
 

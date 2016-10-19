@@ -1,6 +1,4 @@
-(ns metabase.models.common
-  (:require [clojure.string :as s]
-            [metabase.util.infer-spaces :refer [infer-spaces]]))
+(ns metabase.models.common)
 
 (def ^:const timezones
   "The different timezones supported by Metabase.
@@ -90,30 +88,3 @@
    "US/Pacific"
    "GMT"
    "UTC"])
-
-(def ^:const perms-none      "Integer used to signify neither permission to read nor to write." 0)
-(def ^:const perms-read      "Integer used to signify public read permissions."                 1)
-(def ^:const perms-readwrite "Integer used to signify public read/write permissions."           2)
-
-(def ^:const permissions
-  "Sequence of maps describing each permissions level."
-  [{:id perms-none,      :name "None"},
-   {:id perms-read,      :name "Read Only"},
-   {:id perms-readwrite, :name "Read & Write"}])
-
-
-
-(defn name->human-readable-name
-  "Convert a string NAME of some object like a `Table` or `Field` to one more friendly to humans.
-
-    (name->human-readable-name \"admin_users\") -> \"Admin Users\""
-  [^String n]
-  (when (seq n)
-    (->> (s/split n #"[-_\s]+|(?<=[a-z])(?=[A-Z])") ; explode string on spaces, underscores, hyphens, and camelCase
-         (filter (complement s/blank?))             ; remove blanks
-         (map infer-spaces)                         ; infer spaces
-         (flatten)                                  ; flatten arrays returned by infer-spaces
-         (map s/capitalize)                         ; capitalize
-         (dedupe)                                   ; remove adjacent duplicates
-         (map #(if (= % "Id") "ID" %))              ; special case "ID"
-         (s/join " "))))                            ; convert back to a single string

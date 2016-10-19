@@ -8,8 +8,9 @@ import Icon from "metabase/components/Icon.jsx";
 import AccordianList from "metabase/components/AccordianList.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 
+import { fetchDatabaseMetadata } from "metabase/redux/metadata";
+
 import { getEditingParameter, getParameterTarget, makeGetParameterMappingOptions, getMappingsByParameter } from "../selectors";
-import { fetchDatabaseMetadata } from "../metadata";
 import { setParameterMapping } from "../dashboard";
 
 import _ from "underscore";
@@ -18,16 +19,16 @@ import { getIn } from "icepick";
 
 import type { CardObject } from "metabase/meta/types/Card";
 import type { DashCardObject, ParameterId, ParameterObject, ParameterMappingOption, ParameterMappingTarget } from "metabase/meta/types/Dashboard";
-import type { DatabaseId } from "metabase/meta/types/base";
+import type { DatabaseId } from "metabase/meta/types/Database";
 
 const makeMapStateToProps = () => {
     const getParameterMappingOptions = makeGetParameterMappingOptions()
     const mapStateToProps = (state, props) => ({
-        parameter:           getEditingParameter(state),
+        parameter:           getEditingParameter(state, props),
         mappingOptions:      getParameterMappingOptions(state, props),
         mappingOptionSections: _.groupBy(getParameterMappingOptions(state, props), "sectionName"),
         target:              getParameterTarget(state, props),
-        mappingsByParameter: getMappingsByParameter(state)
+        mappingsByParameter: getMappingsByParameter(state, props)
     });
     return mapStateToProps;
 }
@@ -100,28 +101,32 @@ export default class DashCardCardParameterMapper extends Component {
                     triggerClasses={cx({ "disabled": disabled })}
                     triggerElement={
                         <Tooltip tooltip={tooltipText} verticalAttachments={["bottom", "top"]}>
-                            <button
+                            {/* using div instead of button due to
+                                https://bugzilla.mozilla.org/show_bug.cgi?id=984869
+                                and click event on close button not propagating in FF
+                            */}
+                            <div
                                 className={cx(S.button, {
                                     [S.mapped]: !!selected,
                                     [S.warn]: noOverlap,
                                     [S.disabled]: disabled
                                 })}
                             >
-                                <span className="mr1">
+                                <span className="text-centered mr1">
                                 { disabled ?
                                     "No valid fields"
                                 : selected ?
                                     selected.name
                                 :
-                                    "Select..."
+                                    "Select…"
                                 }
                                 </span>
                                 { selected ?
-                                    <Icon className="flex-align-right" name="close" width={16} height={16} onClick={(e) => { this.onChange(null); e.stopPropagation(); }}/>
+                                    <Icon className="flex-align-right" name="close" size={16} onClick={(e) => { this.onChange(null); e.stopPropagation(); }}/>
                                 : !disabled ?
-                                    <Icon className="flex-align-right" name="chevrondown" width={16} height={16} />
+                                    <Icon className="flex-align-right" name="chevrondown" size={16} />
                                 : null }
-                            </button>
+                            </div>
                         </Tooltip>
                     }
                 >
@@ -131,7 +136,7 @@ export default class DashCardCardParameterMapper extends Component {
                         sections={sections}
                         onChange={this.onChange}
                         itemIsSelected={(item) => _.isEqual(item.target, target)}
-                        renderItemIcon={(item) => <Icon name={item.icon || "unknown"} width={18} height={18} />}
+                        renderItemIcon={(item) => <Icon name={item.icon || "unknown"} size={18} />}
                         alwaysExpanded={true}
                         hideSingleSectionTitle={!hasFkOption}
                     />

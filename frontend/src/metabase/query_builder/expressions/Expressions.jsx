@@ -40,7 +40,7 @@ export default class Expressions extends Component {
 
                     <a data-metabase-event={"QueryBuilder;Show Add Custom Field"} className="text-grey-2 text-bold flex align-center text-grey-4-hover cursor-pointer no-decoration transition-color" onClick={() => onAddExpression()}>
                         <IconBorder borderRadius="3px">
-                            <Icon name="add" width="14px" height="14px" />
+                            <Icon name="add" size={14} />
                         </IconBorder>
                         <span className="ml1">Add a custom field</span>
                     </a>

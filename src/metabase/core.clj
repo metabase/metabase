@@ -3,6 +3,7 @@
   (:gen-class)
   (:require [clojure.string :as s]
             [clojure.tools.logging :as log]
+            environ.core
             [ring.adapter.jetty :as ring-jetty]
             (ring.middleware [cookies :refer [wrap-cookies]]
                              [gzip :refer [wrap-gzip]]
@@ -19,43 +20,20 @@
                       [logger :as logger]
                       [metabot :as metabot]
                       [middleware :as mb-middleware]
+                      [plugins :as plugins]
                       [routes :as routes]
                       [sample-data :as sample-data]
                       [setup :as setup]
                       [task :as task]
                       [util :as u])
-            (metabase.models [setting :refer [defsetting]]
-                             [user :refer [User]])))
+            [metabase.models.user :refer [User]]))
 
-;; ## CONFIG
+;;; CONFIG
 
-(defsetting site-name "The name used for this instance of Metabase." "Metabase")
-
-(defsetting -site-url "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\"")
-
-(defsetting admin-email "The email address users should be referred to if they encounter a problem.")
-
-(defsetting anon-tracking-enabled "Enable the collection of anonymous usage data in order to help Metabase improve." "true")
-
-(defn site-url
-  "Fetch the site base URL that should be used for password reset emails, etc.
-   This strips off any trailing slashes that may have been added.
-
-   The first time this function is called, we'll set the value of the setting `-site-url` with the value of
-   the ORIGIN header (falling back to HOST if needed, i.e. for unit tests) of some API request.
-   Subsequently, the site URL can only be changed via the admin page."
-  {:arglists '([request])}
-  [{{:strs [origin host]} :headers}]
-  {:pre  [(or origin host)]
-   :post [(string? %)]}
-  (or (some-> (-site-url)
-              (s/replace #"/$" "")) ; strip off trailing slash if one was included
-      (-site-url (or origin host))))
-
-(def app
-  "The primary entry point to the HTTP server"
+(def ^:private app
+  "The primary entry point to the Ring HTTP server."
   (-> routes/routes
-      (mb-middleware/log-api-call)
+      mb-middleware/log-api-call
       mb-middleware/add-security-headers ; Add HTTP headers to API responses to prevent them from being cached
       (wrap-json-body                    ; extracts json POST body and makes it avaliable on request
         {:keywords? true})
@@ -94,7 +72,7 @@
 (defn- -init-create-setup-token
   "Create and set a new setup token and log it."
   []
-  (let [setup-token (setup/token-create)                    ; we need this here to create the initial token
+  (let [setup-token (setup/create-token!)                    ; we need this here to create the initial token
         hostname    (or (config/config-str :mb-jetty-host) "localhost")
         port        (config/config-int :mb-jetty-port)
         setup-url   (str "http://"
@@ -104,7 +82,7 @@
     (log/info (u/format-color 'green "Please use the following url to setup your Metabase installation:\n\n%s\n\n"
                               setup-url))))
 
-(defn destroy
+(defn- destroy!
   "General application shutdown function which should be called once at application shuddown."
   []
   (log/info "Metabase Shutting Down ...")
@@ -119,7 +97,11 @@
   (reset! metabase-initialization-progress 0.1)
 
   ;; First of all, lets register a shutdown hook that will tidy things up for us on app exit
-  (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable destroy))
+  (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable destroy!))
+  (reset! metabase-initialization-progress 0.2)
+
+  ;; load any plugins as needed
+  (plugins/load-plugins!)
   (reset! metabase-initialization-progress 0.3)
 
   ;; Load up all of our Database drivers, which are used for app db work
@@ -127,7 +109,7 @@
   (reset! metabase-initialization-progress 0.4)
 
   ;; startup database.  validates connection & runs any necessary migrations
-  (db/setup-db :auto-migrate (config/config-bool :mb-db-automigrate))
+  (db/setup-db! :auto-migrate (config/config-bool :mb-db-automigrate))
   (reset! metabase-initialization-progress 0.5)
 
   ;; run a very quick check to see if we are doing a first time installation
@@ -202,8 +184,7 @@
     (reset! jetty-instance nil)))
 
 
-;;; ## ---------------------------------------- App Main ----------------------------------------
-
+;;; ## ---------------------------------------- Normal Start ----------------------------------------
 
 (defn- start-normally []
   (log/info "Starting Metabase in STANDALONE mode")
@@ -220,29 +201,80 @@
       (log/error "Metabase Initialization FAILED: " (.getMessage e))
       (System/exit 1))))
 
-(def ^:private cmd->fn
-  {:migrate      (fn [direction]
-                   (db/migrate @db/db-connection-details (keyword direction)))
-   :load-from-h2 (fn [& [h2-connection-string-or-nil]]
-                   (require 'metabase.cmd.load-from-h2)
-                   ((resolve 'metabase.cmd.load-from-h2/load-from-h2) h2-connection-string-or-nil))})
+;;; ---------------------------------------- Special Commands ----------------------------------------
+
+(defn ^:command migrate
+  "Run database migrations. Valid options for DIRECTION are `up`, `force`, `down-one`, `print`, or `release-locks`."
+  [direction]
+  (db/migrate! @db/db-connection-details (keyword direction)))
+
+(defn ^:command load-from-h2
+  "Transfer data from existing H2 database to the newly created MySQL or Postgres DB specified by env vars."
+  ([]
+   (load-from-h2 nil))
+  ([h2-connection-string]
+   (require 'metabase.cmd.load-from-h2)
+   (binding [db/*disable-data-migrations* true]
+     ((resolve 'metabase.cmd.load-from-h2/load-from-h2!) h2-connection-string))))
+
+(defn ^:command profile
+  "Start Metabase the usual way and exit. Useful for profiling Metabase launch time."
+  []
+  ;; override env var that would normally make Jetty block forever
+  (intern 'environ.core 'env (assoc environ.core/env :mb-jetty-join "false"))
+  (u/profile "start-normally" (start-normally)))
+
+(defn ^:command help
+  "Show this help message listing valid Metabase commands."
+  []
+  (println "Valid commands are:")
+  (doseq [[symb varr] (sort (ns-interns 'metabase.core))
+          :when       (:command (meta varr))]
+    (println symb (s/join " " (:arglists (meta varr))))
+    (println "\t" (:doc (meta varr))))
+  (println "\nSome other commands you might find useful:\n")
+  (println "java -cp metabase.jar org.h2.tools.Shell -url jdbc:h2:/path/to/metabase.db")
+  (println "\tOpen an SQL shell for the Metabase H2 DB"))
+
+(defn ^:command version
+  "Print version information about Metabase and the current system."
+  []
+  (println "Metabase version:" config/mb-version-info)
+  (println "\nOS:"
+           (System/getProperty "os.name")
+           (System/getProperty "os.version")
+           (System/getProperty "os.arch"))
+  (println "\nJava version:"
+           (System/getProperty "java.vm.name")
+           (System/getProperty "java.version"))
+  (println "\nCountry:" (System/getProperty "user.country"))
+  (println "System timezone:" (System/getProperty "user.timezone"))
+  (println "Language:" (System/getProperty "user.language"))
+  (println "File encoding:" (System/getProperty "file.encoding")))
+
+(defn- cmd->fn [command-name]
+  (or (when (seq command-name)
+        (when-let [varr (ns-resolve 'metabase.core (symbol command-name))]
+          (when (:command (meta varr))
+            @varr)))
+      (do (println (u/format-color 'red "Unrecognized command: %s" command-name))
+          (help)
+          (System/exit 1))))
 
 (defn- run-cmd [cmd & args]
-  (let [f (or (cmd->fn cmd)
-              (do (println (u/format-color 'red "Unrecognized command: %s" (name cmd)))
-                  (println "Valid commands are:\n" (u/pprint-to-str (map name (keys cmd->fn))))
-                  (System/exit 1)))]
-    (try (apply f args)
-         (catch Throwable e
-           (.printStackTrace e)
-           (println (u/format-color 'red "Command failed with exception: %s" (.getMessage e)))
-           (System/exit 1)))
-    (println "Success.")
-    (System/exit 0)))
+  (try (apply (cmd->fn cmd) args)
+       (catch Throwable e
+         (.printStackTrace e)
+         (println (u/format-color 'red "Command failed with exception: %s" (.getMessage e)))
+         (System/exit 1)))
+  (System/exit 0))
+
+
+;;; ---------------------------------------- App Entry Point ----------------------------------------
 
 (defn -main
   "Launch Metabase in standalone mode."
   [& [cmd & args]]
   (if cmd
-    (apply run-cmd (keyword cmd) args) ; run a command like `java -jar metabase.jar migrate release-locks` or `lein run migrate release-locks`
-    (start-normally)))                 ; with no command line args just start Metabase normally
+    (apply run-cmd cmd args) ; run a command like `java -jar metabase.jar migrate release-locks` or `lein run migrate release-locks`
+    (start-normally)))       ; with no command line args just start Metabase normally

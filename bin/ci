@@ -1,0 +1,131 @@
+#!/usr/bin/env bash
+
+# this ensures any failures along the way result in a CI failure
+set -eu
+
+node-0() {
+    is_enabled "drivers" && export ENGINES="h2,mongo,mysql,bigquery" || export ENGINES="h2"
+    if is_engine_enabled "mongo"; then
+        run_step install-mongodb;
+    fi
+    run_step lein-test
+}
+node-1() {
+    is_enabled "drivers" && export ENGINES="h2,sqlserver,oracle" || export ENGINES="h2"
+    MB_DB_TYPE=postgres MB_DB_DBNAME=circle_test MB_DB_PORT=5432 MB_DB_USER=ubuntu MB_DB_HOST=localhost \
+        run_step lein-test
+}
+node-2() {
+    is_enabled "drivers" && export ENGINES="h2,postgres,sqlite,crate" || export ENGINES="h2"
+    if is_engine_enabled "crate"; then
+        run_step install-crate
+    fi
+    MB_DB_TYPE=mysql MB_DB_DBNAME=circle_test MB_DB_PORT=3306 MB_DB_USER=ubuntu MB_DB_HOST=localhost \
+        run_step lein-test
+}
+node-3() {
+    is_enabled "drivers" && export ENGINES="h2,redshift,druid" || export ENGINES="h2"
+    run_step lein-test
+}
+node-4() {
+    run_step lein bikeshed
+    run_step lein docstring-checker
+    run_step ./bin/reflection-linter
+}
+node-5() {
+    run_step lein eastwood
+    run_step npm run lint
+    run_step npm run test
+    run_step npm run flow
+}
+node-6() {
+    if is_enabled "jar" || is_enabled "e2e" || is_enabled "screenshots"; then
+        run_step ./bin/build version frontend sample-dataset uberjar
+    fi
+    if is_enabled "e2e" || is_enabled "compare_screenshots"; then
+        USE_SAUCE=true \
+            run_step npm run test-e2e
+    fi
+    if is_enabled "screenshots"; then
+        run_step node_modules/.bin/babel-node ./bin/compare-screenshots
+    fi
+}
+
+
+install-crate() {
+    sudo add-apt-repository ppa:crate/stable -y
+    sudo apt-get update
+    sudo apt-get install -y crate
+    # ulimit setting refused Crate service to start on CircleCI container - so comment it
+    sudo sed -i '/MAX_LOCKED_MEMORY/s/^/#/' /etc/init/crate.conf
+    sudo service crate restart
+}
+
+install-mongodb() {
+    sudo apt-get purge mongodb-org*
+    sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
+    echo "deb http://repo.mongodb.org/apt/ubuntu precise/mongodb-org/3.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.0.list
+    sudo apt-get update
+    sudo apt-get install -y mongodb-org
+    sudo service mongod restart
+}
+
+lein-test() {
+    lein test
+}
+
+if [ -z ${CIRCLE_BRANCH_REGEX+x} ]; then
+    CIRCLE_BRANCH_REGEX='^master|release-.+$'
+fi
+
+is_enabled() {
+    (echo "$CIRCLE_BRANCH" | grep -qE "$CIRCLE_BRANCH_REGEX") ||
+    [[ "$CIRCLE_COMMIT_MESSAGE" == *"[ci $1]"* ]] ||
+    [[ "$CIRCLE_COMMIT_MESSAGE" == *"[ci all]"* ]]
+}
+
+is_engine_enabled() {
+    [[ "$ENGINES" == *"$1"* ]]
+}
+
+# print a summary on exit
+summary=""
+
+# records the time and exit code of each step
+run_step() {
+    status=0
+    start=$(date +%s)
+    "$@" || status=$?
+    elapsed=$(expr $(date +%s) - $start || true)
+    summary="${summary}status=$status time=$elapsed command=$@\n"
+    return $status
+}
+
+summary() {
+    echo -e "========================================"
+    echo -en "$summary"
+    echo -e "========================================"
+}
+
+trap summary EXIT
+
+if [ -z ${CIRCLE_SHA1+x} ]; then
+    export CIRCLE_SHA1="$(git rev-parse HEAD)"
+fi
+
+if [ -z ${CIRCLE_BRANCH+x} ]; then
+    export CIRCLE_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+fi
+
+export CIRCLE_COMMIT_MESSAGE="$(git log --format=oneline -n 1 $CIRCLE_SHA1)"
+
+if [ -z ${CIRCLE_NODE_INDEX+x} ]; then
+    # If CIRCLE_NODE_INDEX isn't set, read node numbers from the args
+    # Useful for testing locally.
+    for i in "$@"; do
+        node-$i
+    done
+else
+    # Normal mode on CircleCI
+    node-$CIRCLE_NODE_INDEX
+fi

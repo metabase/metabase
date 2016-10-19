@@ -44,12 +44,12 @@
     align-items: center;
 }
 
-.ColumnarSelector-row:hover {
+.ColumnarSelector-row:not(.ColumnarSelector-row--disabled):hover {
     background-color: var(--brand-color) !important;
     color: white !important;
 }
 
-.ColumnarSelector-row:hover .ColumnarSelector-description {
+.ColumnarSelector-row:not(.ColumnarSelector-row--disabled):hover .ColumnarSelector-description {
     color: rgba(255,255,255,0.50);
 }
 
@@ -58,6 +58,10 @@
     background: white;
     border-top: var(--border-size) var(--border-style) var(--border-color);
     border-bottom: var(--border-size) var(--border-style) var(--border-color);
+}
+
+.ColumnarSelector-row--disabled {
+    color: var(--grey-3);
 }
 
 .ColumnarSelector-row .Icon-check {

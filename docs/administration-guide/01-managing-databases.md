@@ -14,10 +14,13 @@ Now you’ll see a list of your databases. To connect another database to Metaba
 * [Google BigQuery](databases/bigquery.md)
 * H2
 * MongoDB (version 3.0 or higher)
-* MySQL
+* MySQL (version 4.1 or higher)
 * Postgres
 * SQLite
 * SQL Server
+* Driud
+* Crate
+* [Oracle](databases/oracle.md)
 
 To add a database, you'll need its connection information.
 
@@ -85,5 +88,6 @@ You can also delete a database from the database list: hover over the row with t
 **Caution: Deleting a database is irreversible!  All saved questions and dashboard cards based on the database will be deleted as well!**
 
 ---
+
 ## Next: enabling features that send email
 Metabase can send emails for certain features, like email invites, but first you need to [set up an email account](02-setting-up-email.md).

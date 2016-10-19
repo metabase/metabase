@@ -58,3 +58,19 @@
 .scroll-show.scroll--light::-webkit-scrollbar-thumb:vertical:active {
     background-color: #C7D9E4;
 }
+
+.scroll-hide {
+    -ms-overflow-style: none;  /* IE 10+ */
+    overflow: -moz-scrollbars-none;  /* Firefox */
+}
+.scroll-hide::-webkit-scrollbar {
+    display: none; /* Safari and Chrome */
+}
+
+.scroll-hide-all * {
+    -ms-overflow-style: none;  /* IE 10+ */
+    overflow: -moz-scrollbars-none;  /* Firefox */
+}
+.scroll-hide-all *::-webkit-scrollbar {
+    display: none; /* Safari and Chrome */
+}

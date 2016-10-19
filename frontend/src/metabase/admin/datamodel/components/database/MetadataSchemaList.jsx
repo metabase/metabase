@@ -12,7 +12,7 @@ export default class MetadataSchemaList extends Component {
         super(props, context);
 
         this.state = {
-            searchText: null,
+            searchText: "",
             searchRegex: null
         };
 
@@ -34,7 +34,7 @@ export default class MetadataSchemaList extends Component {
         return (
             <div className="MetadataEditor-table-list AdminList flex-no-shrink">
                 <div className="AdminList-search">
-                    <Icon name="search" width="16" height="16"/>
+                    <Icon name="search" size={16}/>
                     <input
                         className="AdminInput pl4 border-bottom"
                         type="text"
@@ -47,7 +47,7 @@ export default class MetadataSchemaList extends Component {
                     <li className="AdminList-section">{filteredSchemas.length} {inflect("schema", filteredSchemas.length)}</li>
                     {filteredSchemas.map(schema =>
                         <li key={schema.name}>
-                            <a href="#" className={cx("AdminList-item flex align-center no-decoration", { selected: selectedSchema && selectedSchema.name === schema.name })} onClick={() => this.props.onChangeSchema(schema)}>
+                            <a className={cx("AdminList-item flex align-center no-decoration", { selected: selectedSchema && selectedSchema.name === schema.name })} onClick={() => this.props.onChangeSchema(schema)}>
                                 {schema.name}
                             </a>
                         </li>

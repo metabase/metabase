@@ -1,15 +1,17 @@
 import React, { Component, PropTypes } from "react";
+import { Link } from "react-router";
 import styles from "./Scalar.css";
 
 import Ellipsified from "metabase/components/Ellipsified.jsx";
-import BarChart from "./BarChart.jsx";
 
 import Urls from "metabase/lib/urls";
 import { formatValue } from "metabase/lib/formatting";
-import { isSameSeries } from "metabase/visualizations/lib/utils";
+import { TYPE } from "metabase/lib/types";
+import { isNumber } from "metabase/lib/schema_metadata";
 
 import cx from "classnames";
 import i from "icepick";
+import d3 from "d3";
 
 export default class Scalar extends Component {
     static displayName = "Number";
@@ -36,74 +38,88 @@ export default class Scalar extends Component {
         return false;
     }
 
-    constructor(props, context) {
-        super(props, context);
-        this.state = {
-            series: null,
-            isMultiseries: null
-        };
-    }
-
-    componentWillMount() {
-        this.transformSeries(this.props);
-    }
-
-    componentWillReceiveProps(newProps) {
-        if (isSameSeries(newProps.series, this.props.series)) {
-            return;
-        }
-        this.transformSeries(newProps);
-    }
-
-    transformSeries(newProps) {
-        let series = newProps.series;
-        let isMultiseries = false;
-        if (newProps.isMultiseries || newProps.series.length > 1) {
-            series = newProps.series.map(s => ({
-                card: { ...s.card, display: "bar" },
+    static transformSeries(series) {
+        if (series.length > 1) {
+            return series.map(s => ({
+                card: { ...s.card, display: "funnel" },
                 data: {
                     cols: [
-                        { base_type: "TextField", display_name: "Name" },
-                        { ...s.data.cols[0], display_name: "Value" }],
+                        { base_type: TYPE.Text, display_name: "Name", name: "dimension" },
+                        { ...s.data.cols[0], display_name: "Value", name: "metric" }],
                     rows: [
                         [s.card.name, s.data.rows[0][0]]
                     ]
                 }
             }));
-            isMultiseries = true;
+        } else {
+            return series;
         }
-        this.setState({
-            series,
-            isMultiseries
-        });
     }
 
     render() {
-        let { card, data, isDashboard, className, onAddSeries, actionButtons, hovered, onHoverChange, gridSize } = this.props;
-
-        if (this.state.isMultiseries) {
-            return (
-                <BarChart
-                    className={className}
-                    isDashboard={isDashboard}
-                    onAddSeries={onAddSeries}
-                    actionButtons={actionButtons}
-                    series={this.state.series}
-                    isScalarSeries={true}
-                    hovered={hovered}
-                    onHoverChange={onHoverChange}
-                    allowSplitAxis={false}
-                />
-            );
-        }
+        let { card, data, className, actionButtons, gridSize, settings } = this.props;
 
         let isSmall = gridSize && gridSize.width < 4;
+        const column = i.getIn(data, ["cols", 0]);
 
         let scalarValue = i.getIn(data, ["rows", 0, 0]);
-        let compactScalarValue = scalarValue == undefined ? "" :
-            formatValue(scalarValue, { column: i.getIn(data, ["cols", 0]), compact: isSmall });
-        let fullScalarValue = scalarValue == undefined ? "" :
-            formatValue(scalarValue, { column: i.getIn(data, ["cols", 0]), compact: false });
+        if (scalarValue == null) {
+            scalarValue = "";
+        }
+
+        let compactScalarValue, fullScalarValue;
+
+        // TODO: some or all of these options should be part of formatValue
+        if (typeof scalarValue === "number" && isNumber(column)) {
+            let number = scalarValue;
+
+            // scale
+            const scale =  parseFloat(settings["scalar.scale"]);
+            if (!isNaN(scale)) {
+                number *= scale;
+            }
+
+            const localeStringOptions = {};
+
+            // decimals
+            let decimals = parseFloat(settings["scalar.decimals"]);
+            if (!isNaN(decimals)) {
+                number = d3.round(number, decimals);
+                localeStringOptions.minimumFractionDigits = decimals;
+            }
+
+            // currency
+            if (settings["scalar.currency"] != null) {
+                localeStringOptions.style = "currency";
+                localeStringOptions.currency = settings["scalar.currency"];
+            }
+
+            try {
+                // format with separators and correct number of decimals
+                if (settings["scalar.locale"]) {
+                    number = number.toLocaleString(settings["scalar.locale"], localeStringOptions);
+                } else {
+                    // HACK: no locales that don't thousands separators?
+                    number = number.toLocaleString("en", localeStringOptions).replace(/,/g, "");
+                }
+            } catch (e) {
+                console.warn("error formatting scalar", e);
+            }
+            fullScalarValue = formatValue(number, { column: column });
+        } else {
+            fullScalarValue = formatValue(scalarValue, { column: column });
+        }
+
+        compactScalarValue = isSmall ? formatValue(scalarValue, { column: column, compact: true }) : fullScalarValue
+
+        if (settings["scalar.prefix"]) {
+            compactScalarValue = settings["scalar.prefix"] + compactScalarValue;
+            fullScalarValue = settings["scalar.prefix"] + fullScalarValue;
+        }
+        if (settings["scalar.suffix"]) {
+            compactScalarValue = compactScalarValue + settings["scalar.suffix"];
+            fullScalarValue = fullScalarValue + settings["scalar.suffix"];
+        }
 
         return (
             <div className={cx(className, styles.Scalar, styles[isSmall ? "small" : "large"])}>
@@ -112,7 +128,7 @@ export default class Scalar extends Component {
                     {compactScalarValue}
                 </Ellipsified>
                 <Ellipsified className={styles.Title} tooltip={card.name}>
-                    <a className="no-decoration fullscreen-normal-text fullscreen-night-text" href={Urls.card(card.id)}>{card.name}</a>
+                    <Link to={Urls.card(card.id)} className="no-decoration fullscreen-normal-text fullscreen-night-text">{settings["card.title"]}</Link>
                 </Ellipsified>
             </div>
         );

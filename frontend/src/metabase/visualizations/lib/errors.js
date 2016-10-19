@@ -20,3 +20,10 @@ export class LatitudeLongitudeError {
         this.message = "Bummer. We can't actually do a pin map for this data because we require both a latitude and longitude column.";
     }
 }
+
+export class ChartSettingsError {
+    constructor(message, section) {
+        this.message = message || "Please configure this chart in the chart settings";
+        this.section = section;
+    }
+}

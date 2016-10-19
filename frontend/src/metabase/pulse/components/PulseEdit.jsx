@@ -1,4 +1,6 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
+import { Link } from "react-router";
 
 import PulseEditName from "./PulseEditName.jsx";
 import PulseEditCards from "./PulseEditCards.jsx";
@@ -11,15 +13,6 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm.jsx";
 
-import {
-    setEditingPulse,
-    updateEditingPulse,
-    saveEditingPulse,
-    deletePulse,
-    fetchCards,
-    fetchUsers,
-    fetchPulseFormInput
-} from "../actions";
 
 import { pulseIsValid, cleanPulse } from "metabase/lib/pulse";
 
@@ -35,23 +28,32 @@ export default class PulseEdit extends Component {
     }
 
     static propTypes = {
-        pulses: PropTypes.object,
-        pulseId: PropTypes.number
+        pulse: PropTypes.object.isRequired,
+        pulseId: PropTypes.number,
+        formInput: PropTypes.object.isRequired,
+        setEditingPulse: PropTypes.func.isRequired,
+        fetchCards: PropTypes.func.isRequired,
+        fetchUsers: PropTypes.func.isRequired,
+        fetchPulseFormInput: PropTypes.func.isRequired,
+        updateEditingPulse: PropTypes.func.isRequired,
+        saveEditingPulse: PropTypes.func.isRequired,
+        deletePulse: PropTypes.func.isRequired,
+        onChangeLocation: PropTypes.func.isRequired
     };
 
     componentDidMount() {
-        this.props.dispatch(setEditingPulse(this.props.pulseId));
-        this.props.dispatch(fetchCards());
-        this.props.dispatch(fetchUsers());
-        this.props.dispatch(fetchPulseFormInput());
+        this.props.setEditingPulse(this.props.pulseId);
+        this.props.fetchCards();
+        this.props.fetchUsers();
+        this.props.fetchPulseFormInput();
 
         MetabaseAnalytics.trackEvent((this.props.pulseId) ? "PulseEdit" : "PulseCreate", "Start");
     }
 
     async save() {
         let pulse = cleanPulse(this.props.pulse,  this.props.formInput.channels);
-        await this.props.dispatch(updateEditingPulse(pulse))
-        await this.props.dispatch(saveEditingPulse());
+        await this.props.updateEditingPulse(pulse);
+        await this.props.saveEditingPulse();
 
         MetabaseAnalytics.trackEvent((this.props.pulseId) ? "PulseEdit" : "PulseCreate", "Complete", this.props.pulse.cards.length);
 
@@ -59,7 +61,7 @@ export default class PulseEdit extends Component {
     }
 
     async delete() {
-        await this.props.dispatch(deletePulse(this.props.pulse.id));
+        await this.props.deletePulse(this.props.pulse.id);
 
         MetabaseAnalytics.trackEvent("PulseDelete", "Complete");
 
@@ -67,7 +69,7 @@ export default class PulseEdit extends Component {
     }
 
     setPulse(pulse) {
-        this.props.dispatch(updateEditingPulse(pulse));
+        this.props.updateEditingPulse(pulse);
     }
 
     isValid() {
@@ -148,7 +150,7 @@ export default class PulseEdit extends Component {
                         failedText="Save failed"
                         successText="Saved"
                     />
-                    <a className="text-bold flex-align-right no-decoration text-brand-hover" href="/pulse">Cancel</a>
+                    <Link to="/pulse" className="text-bold flex-align-right no-decoration text-brand-hover">Cancel</Link>
                 </div>
             </div>
         );

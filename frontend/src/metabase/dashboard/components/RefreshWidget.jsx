@@ -55,9 +55,7 @@ const RefreshOptionList = ({ children }) =>
 
 const RefreshOption = ({ name, period, selected, onClick }) =>
     <li className={cx(styles.option, styles[period == null ? "off" : "on"], { [styles.selected]: selected })} onClick={onClick}>
-        <Icon name="check" width={14} height={14} />
+        <Icon name="check" size={14} />
         <span className={styles.name}>{ name.split(" ")[0] }</span>
         <span className={styles.nameSuffix}> { name.split(" ")[1] }</span>
     </li>
-
-export default RefreshWidget;

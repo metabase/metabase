@@ -3,8 +3,10 @@
   (:require [compojure.core :refer [defroutes GET PUT POST DELETE]]
             [metabase.api.common :refer :all]
             [metabase.db :as db]
-            (metabase.models [revision :as revision]
-                             [segment :refer [Segment] :as segment]
+            (metabase.models [hydrate :refer [hydrate]]
+                             [interface :as models]
+                             [revision :as revision]
+                             [segment :refer [Segment], :as segment]
                              [table :refer [Table]])))
 
 
@@ -15,31 +17,41 @@
    table_id   [Required Integer]
    definition [Required Dict]}
   (check-superuser)
-  (checkp #(db/exists? Table :id table_id) "table_id" "Table does not exist.")
-  (check-500 (segment/create-segment table_id name description *current-user-id* definition)))
+  (write-check Table table_id)
+  (check-500 (segment/create-segment! table_id name description *current-user-id* definition)))
 
 
 (defendpoint GET "/:id"
   "Fetch `Segment` with ID."
   [id]
   (check-superuser)
-  (check-404 (segment/retrieve-segment id)))
+  (read-check (segment/retrieve-segment id)))
+
+;; TODO - Why do we require superuser status for GET /api/segment/:id but not GET /api/segment?
+(defendpoint GET "/"
+  "Fetch *all* `Segments`."
+  []
+  (filter models/can-read? (-> (db/select Segment, :is_active true)
+                               (hydrate :creator))))
 
 
 (defendpoint PUT "/:id"
   "Update a `Segment` with ID."
-  [id :as {{:keys [name description definition revision_message]} :body}]
+  [id :as {{:keys [name description caveats points_of_interest show_in_getting_started definition revision_message]} :body}]
   {name             [Required NonEmptyString]
    revision_message [Required NonEmptyString]
    definition       [Required Dict]}
   (check-superuser)
-  (check-404 (segment/exists-segment? id))
-  (segment/update-segment
-    {:id               id
-     :name             name
-     :description      description
-     :definition       definition
-     :revision_message revision_message}
+  (write-check Segment id)
+  (segment/update-segment!
+    {:id                      id
+     :name                    name
+     :description             description
+     :caveats                 caveats
+     :points_of_interest      points_of_interest
+     :show_in_getting_started show_in_getting_started
+     :definition              definition
+     :revision_message        revision_message}
     *current-user-id*))
 
 
@@ -48,8 +60,8 @@
   [id revision_message]
   {revision_message [Required NonEmptyString]}
   (check-superuser)
-  (check-404 (segment/exists-segment? id))
-  (segment/delete-segment id *current-user-id* revision_message)
+  (write-check Segment id)
+  (segment/delete-segment! id *current-user-id* revision_message)
   {:success true})
 
 
@@ -57,7 +69,7 @@
   "Fetch `Revisions` for `Segment` with ID."
   [id]
   (check-superuser)
-  (check-404 (segment/exists-segment? id))
+  (read-check Segment id)
   (revision/revisions+details Segment id))
 
 
@@ -66,8 +78,8 @@
   [id :as {{:keys [revision_id]} :body}]
   {revision_id [Required Integer]}
   (check-superuser)
-  (check-404 (segment/exists-segment? id))
-  (revision/revert
+  (write-check Segment id)
+  (revision/revert!
     :entity      Segment
     :id          id
     :user-id     *current-user-id*

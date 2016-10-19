@@ -3,13 +3,14 @@
   (:require [clojure.tools.logging :as log]
             (cheshire factory
                       [generate :refer [add-encoder encode-str encode-nil]])
-            [metabase.api.common :refer [*current-user* *current-user-id*]]
-            [metabase.config :as config]
-            [metabase.db :as db]
+            monger.json ; Monger provides custom JSON encoders for Cheshire if you load this namespace -- see http://clojuremongodb.info/articles/integration.html
+            [metabase.api.common :refer [*current-user* *current-user-id* *is-superuser?* *current-user-permissions-set*]]
+            (metabase [config :as config]
+                      [db :as db])
             (metabase.models [interface :as models]
                              [session :refer [Session]]
                              [setting :refer [defsetting]]
-                             [user :refer [User]])
+                             [user :refer [User], :as user])
             [metabase.util :as u])
   (:import com.fasterxml.jackson.core.JsonGenerator))
 
@@ -32,9 +33,9 @@
 
 ;;; # ------------------------------------------------------------ AUTH & SESSION MANAGEMENT ------------------------------------------------------------
 
-(def ^:private ^:const metabase-session-cookie "metabase.SESSION_ID")
-(def ^:private ^:const metabase-session-header "x-metabase-session")
-(def ^:private ^:const metabase-api-key-header "x-metabase-apikey")
+(def ^:private ^:const ^String metabase-session-cookie "metabase.SESSION_ID")
+(def ^:private ^:const ^String metabase-session-header "x-metabase-session")
+(def ^:private ^:const ^String metabase-api-key-header "x-metabase-apikey")
 
 (def ^:const response-unauthentic "Generic `401 (Unauthenticated)` Ring response map." {:status 401, :body "Unauthenticated"})
 (def ^:const response-forbidden   "Generic `403 (Forbidden)` Ring response map."       {:status 403, :body "Forbidden"})
@@ -46,28 +47,33 @@
    We first check the request :cookies for `metabase.SESSION_ID`, then if no cookie is found we look in the
    http headers for `X-METABASE-SESSION`.  If neither is found then then no keyword is bound to the request."
   [handler]
-  (fn [{:keys [cookies headers] :as request}]
-    (if-let [session-id (or (get-in cookies [metabase-session-cookie :value]) (headers metabase-session-header))]
-      ;; alternatively we could always associate the keyword and just let it be nil if there is no value
-      (handler (assoc request :metabase-session-id session-id))
-      (handler request))))
+  (comp handler (fn [{:keys [cookies headers] :as request}]
+                  (if-let [session-id (or (get-in cookies [metabase-session-cookie :value])
+                                          (headers metabase-session-header))]
+                    (assoc request :metabase-session-id session-id)
+                    request))))
 
+
+(defn- add-current-user-id [{:keys [metabase-session-id] :as request}]
+  (or (when (and metabase-session-id ((resolve 'metabase.core/initialized?)))
+        (when-let [session (db/select-one [Session :created_at :user_id (db/qualify User :is_superuser)]
+                             (db/join [Session :user_id] [User :id])
+                             (db/qualify User :is_active) true
+                             (db/qualify Session :id) metabase-session-id)]
+          (let [session-age-ms (- (System/currentTimeMillis) (or (when-let [^java.util.Date created-at (:created_at session)]
+                                                                   (.getTime created-at))
+                                                                 0))]
+            ;; If the session exists and is not expired (max-session-age > session-age) then validation is good
+            (when (and session (> (config/config-int :max-session-age) (quot session-age-ms 60000)))
+              (assoc request
+                :metabase-user-id (:user_id session)
+                :is-superuser?    (:is_superuser session))))))
+      request))
 
 (defn wrap-current-user-id
   "Add `:metabase-user-id` to the request if a valid session token was passed."
   [handler]
-  (fn [{:keys [metabase-session-id] :as request}]
-    ;; TODO - what kind of validations can we do on the sessionid to make sure it's safe to handle?  str?  alphanumeric?
-    (handler (or (when (and metabase-session-id ((resolve 'metabase.core/initialized?)))
-                   (when-let [session (db/select-one [Session :created_at :user_id]
-                                        (db/join [Session :user_id] [User :id])
-                                        (db/qualify User :is_active) true
-                                        (db/qualify Session :id) metabase-session-id)]
-                     (let [session-age-ms (- (System/currentTimeMillis) (.getTime ^java.util.Date (get session :created_at (u/->Date 0))))]
-                       ;; If the session exists and is not expired (max-session-age > session-age) then validation is good
-                       (when (and session (> (config/config-int :max-session-age) (quot session-age-ms 60000)))
-                         (assoc request :metabase-user-id (:user_id session))))))
-                 request))))
+  (comp handler add-current-user-id))
 
 
 (defn enforce-authentication
@@ -78,18 +84,23 @@
       (handler request)
       response-unauthentic)))
 
-(defn bind-current-user
-  "Middleware that binds `metabase.api.common/*current-user*` and `*current-user-id*`
+(def ^:private current-user-fields
+  (vec (concat [User :is_active :google_auth] (models/default-fields User))))
 
-   *  `*current-user-id*` int ID or nil of user associated with request
-   *  `*current-user*`    delay that returns current user (or nil) from DB"
+(defn bind-current-user
+  "Middleware that binds `metabase.api.common/*current-user*`, `*current-user-id*`, `*is-superuser?*`, and `*current-user-permissions-set*`.
+
+   *  `*current-user-id*`             int ID or nil of user associated with request
+   *  `*current-user*`                delay that returns current user (or nil) from DB
+   *  `*is-superuser?*`               Boolean stating whether current user is a superuser.
+   *  `current-user-permissions-set*` delay that returns the set of permissions granted to the current user from DB"
   [handler]
   (fn [request]
     (if-let [current-user-id (:metabase-user-id request)]
-      (binding [*current-user-id* current-user-id
-                *current-user*    (delay (db/select-one (vec (concat [User :is_active :is_staff]
-                                                                     (models/default-fields User)))
-                                           :id current-user-id))]
+      (binding [*current-user-id*              current-user-id
+                *is-superuser?*                (:is-superuser? request)
+                *current-user*                 (delay (db/select-one current-user-fields, :id current-user-id))
+                *current-user-permissions-set* (delay (user/permissions-set current-user-id))]
         (handler request))
       (handler request))))
 
@@ -98,10 +109,10 @@
   "Middleware that sets the `:metabase-api-key` keyword on the request if a valid API Key can be found.
    We check the request headers for `X-METABASE-APIKEY` and if it's not found then then no keyword is bound to the request."
   [handler]
-  (fn [{:keys [headers] :as request}]
-    (if-let [api-key (headers metabase-api-key-header)]
-      (handler (assoc request :metabase-api-key api-key))
-      (handler request))))
+  (comp handler (fn [{:keys [headers] :as request}]
+                  (if-let [api-key (headers metabase-api-key-header)]
+                    (assoc request :metabase-api-key api-key)
+                    request))))
 
 
 (defn enforce-api-key
@@ -141,6 +152,7 @@
                                                                     "'unsafe-eval'"
                                                                     "'self'"
                                                                     "https://maps.google.com"
+                                                                    "https://apis.google.com"
                                                                     "https://www.google-analytics.com" ; Safari requires the protocol
                                                                     "https://*.googleapis.com"
                                                                     "*.gstatic.com"
@@ -148,6 +160,7 @@
                                                                     "*.intercom.io"
                                                                     (when config/is-dev?
                                                                       "localhost:8080")]
+                                                      :frame-src   ["https://accounts.google.com"] ; TODO - double check that we actually need this for Google Auth
                                                       :style-src   ["'unsafe-inline'"
                                                                     "'self'"
                                                                     "fonts.googleapis.com"]
@@ -170,21 +183,20 @@
   "Base-64 encoded public key for this site's SSL certificate. Specify this to enable HTTP Public Key Pinning.
    See http://mzl.la/1EnfqBf for more information.") ; TODO - it would be nice if we could make this a proper link in the UI; consider enabling markdown parsing
 
-;(defn- public-key-pins-header []
-;  (when-let [k (ssl-certificate-public-key)]
-;    {"Public-Key-Pins" (format "pin-sha256=\"base64==%s\"; max-age=31536000" k)}))
+#_(defn- public-key-pins-header []
+  (when-let [k (ssl-certificate-public-key)]
+    {"Public-Key-Pins" (format "pin-sha256=\"base64==%s\"; max-age=31536000" k)}))
 
 (defn- api-security-headers [] ; don't need to include all the nonsense we include with index.html
   (merge (cache-prevention-headers)
          strict-transport-security-header
-         ;(public-key-pins-header)
-         ))
+         #_(public-key-pins-header)))
 
 (defn- index-page-security-headers []
   (merge (cache-prevention-headers)
          strict-transport-security-header
          content-security-policy-header
-         ;(public-key-pins-header)
+         #_(public-key-pins-header)
          {"X-Frame-Options"                   "DENY"          ; Tell browsers not to render our site as an iframe (prevent clickjacking)
           "X-XSS-Protection"                  "1; mode=block" ; Tell browser to block suspected XSS attacks
           "X-Permitted-Cross-Domain-Policies" "none"          ; Prevent Flash / PDF files from including content from site.
@@ -235,7 +247,7 @@
 
 ;;; # ------------------------------------------------------------ LOGGING ------------------------------------------------------------
 
-(defn- log-response [{:keys [uri request-method]} {:keys [status body]} elapsed-time]
+(defn- log-response [{:keys [uri request-method]} {:keys [status body]} elapsed-time db-call-count]
   (let [log-error #(log/error %) ; these are macros so we can't pass by value :sad:
         log-debug #(log/debug %)
         log-warn  #(log/warn  %)
@@ -244,7 +256,7 @@
                                 (=  status 403) [true  'red   log-warn]
                                 (>= status 400) [true  'red   log-debug]
                                 :else           [false 'green log-debug])]
-    (log-fn (str (u/format-color color "%s %s %d (%s)" (.toUpperCase (name request-method)) uri status elapsed-time)
+    (log-fn (str (u/format-color color "%s %s %d (%s) (%d DB calls)" (.toUpperCase (name request-method)) uri status elapsed-time db-call-count)
                  ;; only print body on error so we don't pollute our environment by over-logging
                  (when (and error?
                             (or (string? body) (coll? body)))
@@ -253,9 +265,12 @@
 (defn log-api-call
   "Middleware to log `:request` and/or `:response` by passing corresponding OPTIONS."
   [handler & options]
-  (fn [request]
-    (if-not (api-call? request)
+  (fn [{:keys [uri], :as request}]
+    (if (or (not (api-call? request))
+            (= uri "/api/health")     ; don't log calls to /health or /util/logs because they clutter up
+            (= uri "/api/util/logs")) ; the logs (especially the window in admin) with useless lines
       (handler request)
       (let [start-time (System/nanoTime)]
-        (u/prog1 (handler request)
-          (log-response request <> (u/format-nanoseconds (- (System/nanoTime) start-time))))))))
+        (db/with-call-counting [call-count]
+          (u/prog1 (handler request)
+            (log-response request <> (u/format-nanoseconds (- (System/nanoTime) start-time)) (call-count))))))))

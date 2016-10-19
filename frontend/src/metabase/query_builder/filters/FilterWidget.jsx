@@ -114,6 +114,7 @@ export default class FilterWidget extends Component {
         if (this.state.isOpen) {
             return (
                 <Popover
+                    id="FilterPopover"
                     ref="filterPopover"
                     className="FilterPopover"
                     isInitiallyOpen={this.props.filter[1] === null}
@@ -144,7 +145,7 @@ export default class FilterWidget extends Component {
                 </div>
                 { this.props.removeFilter &&
                     <a className="text-grey-2 no-decoration px1 flex align-center" onClick={this.removeFilter}>
-                        <Icon name='close' width="14px" height="14px" />
+                        <Icon name='close' size={14} />
                     </a>
                 }
             </div>

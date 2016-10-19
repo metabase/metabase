@@ -10,14 +10,20 @@
 
 (i/defentity Segment :segment)
 
+(defn- perms-objects-set [segment read-or-write]
+  (let [table (or (:table segment)
+                  (db/select-one ['Table :db_id :schema :id] :id (:table_id segment)))]
+    (i/perms-objects-set table read-or-write)))
+
 (u/strict-extend (class Segment)
   i/IEntity
   (merge i/IEntityDefaults
-         {:types           (constantly {:definition :json, :description :clob})
-          :timestamped?    (constantly true)
-          :hydration-keys  (constantly [:segment])
-          :can-read?       (constantly true)
-          :can-write?      i/superuser?}))
+         {:types             (constantly {:definition :json, :description :clob})
+          :timestamped?      (constantly true)
+          :hydration-keys    (constantly [:segment])
+          :perms-objects-set perms-objects-set
+          :can-read?         (partial i/current-user-has-full-permissions? :read)
+          :can-write?        (partial i/current-user-has-full-permissions? :write)}))
 
 
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------
@@ -51,7 +57,7 @@
 
 ;; ## Persistence Functions
 
-(defn create-segment
+(defn create-segment!
   "Create a new `Segment`.
 
    Returns the newly created `Segment` or throws an Exception."
@@ -70,15 +76,14 @@
     (-> (events/publish-event :segment-create segment)
         (hydrate :creator))))
 
-(defn exists-segment?
-  "Predicate function which checks for a given `Segment` with ID.
-   Returns true if `Segment` exists and is active, false otherwise."
-  [id]
+(defn exists?
+  "Does an *active* `Segment` with ID exist?"
+  ^Boolean [id]
   {:pre [(integer? id)]}
   (db/exists? Segment, :id id, :is_active true))
 
 (defn retrieve-segment
-  "Fetch a single `Segment` by its ID value."
+  "Fetch a single `Segment` by its ID value. Hydrates the Segment's `:creator`."
   [id]
   {:pre [(integer? id)]}
   (-> (Segment id)
@@ -96,11 +101,11 @@
          (db/select Segment, :table_id table-id, :is_active (= :active state), {:order-by [[:name :asc]]}))
        (hydrate :creator))))
 
-(defn update-segment
+(defn update-segment!
   "Update an existing `Segment`.
-
    Returns the updated `Segment` or throws an Exception."
-  [{:keys [id name description definition revision_message]} user-id]
+  {:style/indent 0}
+  [{:keys [id name description caveats points_of_interest show_in_getting_started definition revision_message]} user-id]
   {:pre [(integer? id)
          (string? name)
          (map? definition)
@@ -108,13 +113,19 @@
          (string? revision_message)]}
   ;; update the segment itself
   (db/update! Segment id
-    :name        name
-    :description description
-    :definition  definition)
+    (merge
+     {:name        name
+      :description description
+      :caveats     caveats
+      :definition  definition}
+     (when (seq points_of_interest)
+       {:points_of_interest points_of_interest})
+     (when (not (nil? show_in_getting_started))
+       {:show_in_getting_started show_in_getting_started})))
   (u/prog1 (retrieve-segment id)
     (events/publish-event :segment-update (assoc <> :actor_id user-id, :revision_message revision_message))))
 
-(defn delete-segment
+(defn delete-segment!
   "Delete a `Segment`.
 
    This does a soft delete and simply marks the `Segment` as deleted but does not actually remove the

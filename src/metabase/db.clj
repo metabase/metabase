@@ -1,6 +1,7 @@
 (ns metabase.db
   "Database definition and helper functions for interacting with the database."
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require (clojure.java [io :as io]
+                          [jdbc :as jdbc])
             [clojure.tools.logging :as log]
             (clojure [set :as set]
                      [string :as s]
@@ -8,23 +9,25 @@
             (honeysql [core :as hsql]
                       [format :as hformat]
                       [helpers :as h])
-            (korma [core :as k]
-                   [db :as kdb])
             [medley.core :as m]
             [ring.util.codec :as codec]
             [metabase.config :as config]
+            [metabase.db.spec :as dbspec]
             [metabase.models.interface :as models]
             [metabase.util :as u]
             metabase.util.honeysql-extensions) ; this needs to be loaded so the `:h2` quoting style gets added
   (:import java.io.StringWriter
            java.sql.Connection
+           com.mchange.v2.c3p0.ComboPooledDataSource
            liquibase.Liquibase
            (liquibase.database DatabaseFactory Database)
            liquibase.database.jvm.JdbcConnection
-           liquibase.exception.DatabaseException
            liquibase.resource.ClassLoaderResourceAccessor))
 
-;; ## DB FILE, JDBC/KORMA DEFINITONS
+
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                              DB FILE & CONNECTION DETAILS                                              |
+;;; +------------------------------------------------------------------------------------------------------------------------+
 
 (def db-file
   "Path to our H2 DB file from env var or app config."
@@ -34,20 +37,15 @@
            "mem:metabase;DB_CLOSE_DELAY=-1"
            ;; File-based DB
            (let [db-file-name (config/config-str :mb-db-file)
-                 db-file      (clojure.java.io/file db-file-name)
-                 options      ";AUTO_SERVER=TRUE;MV_STORE=FALSE;DB_CLOSE_DELAY=-1"]
+                 db-file      (io/file db-file-name)
+                 options      ";AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1"]
              (apply str "file:" (if (.isAbsolute db-file)
                                   ;; when an absolute path is given for the db file then don't mess with it
                                   [db-file-name options]
                                   ;; if we don't have an absolute path then make sure we start from "user.dir"
                                   [(System/getProperty "user.dir") "/" db-file-name options]))))))
 
-(defn- db-type
-  "The type of backing DB used to run Metabase. `:h2`, `:mysql`, or `:postgres`."
-  ^clojure.lang.Keyword []
-  (config/config-kw :mb-db-type))
-
-(defn parse-connection-string
+(defn- parse-connection-string
   "Parse a DB connection URI like `postgres://cam@localhost.com:5432/cams_cool_db?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory` and return a broken-out map."
   [uri]
   (when-let [[_ protocol user pass host port db query] (re-matches #"^([^:/@]+)://(?:([^:/@]+)(?::([^:@]+))?@)?([^:@]+)(?::(\d+))?/([^/?]+)(?:\?(.*))?$" uri)]
@@ -61,11 +59,20 @@
                    codec/form-decode
                    walk/keywordize-keys))))
 
+(def ^:private connection-string-details
+  (delay (when-let [uri (config/config-str :mb-db-connection-uri)]
+           (parse-connection-string uri))))
+
+(defn db-type
+  "The type of backing DB used to run Metabase. `:h2`, `:mysql`, or `:postgres`."
+  ^clojure.lang.Keyword []
+  (or (:type @connection-string-details)
+      (config/config-kw :mb-db-type)))
+
 (def db-connection-details
   "Connection details that can be used when pretending the Metabase DB is itself a `Database`
    (e.g., to use the Generic SQL driver functions on the Metabase DB itself)."
-  (delay (or (when-let [uri (config/config-str :mb-db-connection-uri)]
-               (parse-connection-string uri))
+  (delay (or @connection-string-details
              (case (db-type)
                :h2       {:type     :h2                               ; TODO - we probably don't need to specifc `:type` here since we can just call (db-type)
                           :db       @db-file}
@@ -83,51 +90,224 @@
                           :password (config/config-str :mb-db-pass)}))))
 
 (defn jdbc-details
-  "Takes our own MB details map and formats them properly for connection details for Korma / JDBC."
-  [db-details]
-  {:pre [(map? db-details)]}
-  ;; TODO: it's probably a good idea to put some more validation here and be really strict about what's in `db-details`
-  (case (:type db-details)
-    :h2       (kdb/h2       (assoc db-details :naming {:keys   s/lower-case
-                                                       :fields s/upper-case}))
-    :mysql    (kdb/mysql    (assoc db-details :db (:dbname db-details)))
-    :postgres (kdb/postgres (assoc db-details :db (:dbname db-details)))))
+  "Takes our own MB details map and formats them properly for connection details for JDBC."
+  ([]
+   (jdbc-details @db-connection-details))
+  ([db-details]
+   {:pre [(map? db-details)]}
+   ;; TODO: it's probably a good idea to put some more validation here and be really strict about what's in `db-details`
+   (case (:type db-details)
+     :h2       (dbspec/h2       db-details)
+     :mysql    (dbspec/mysql    (assoc db-details :db (:dbname db-details)))
+     :postgres (dbspec/postgres (assoc db-details :db (:dbname db-details))))))
 
 
-;; ## MIGRATE
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                                        MIGRATE                                                         |
+;;; +------------------------------------------------------------------------------------------------------------------------+
 
-(def ^:private ^:const changelog-file
-  "migrations/liquibase.json")
+(def ^:private ^:const ^String changelog-file "liquibase.yaml")
 
-(defn migrate
-  "Migrate the database:
+(defn- migrations-sql
+  "Return a string of SQL containing the DDL statements needed to perform unran LIQUIBASE migrations."
+  ^String [^Liquibase liquibase]
+  (let [writer (StringWriter.)]
+    (.update liquibase "" writer)
+    (.toString writer)))
+
+(defn- migrations-lines
+  "Return a sequnce of DDL statements that should be used to perform migrations for LIQUIBASE.
+
+   MySQL gets snippy if we try to run the entire DB migration as one single string; it seems to only like it if we run one statement at a time;
+   Liquibase puts each DDL statement on its own line automatically so just split by lines and filter out blank / comment lines. Even though this
+   is not neccesary for H2 or Postgres go ahead and do it anyway because it keeps the code simple and doesn't make a significant performance difference."
+  [^Liquibase liquibase]
+  (for [line  (s/split-lines (migrations-sql liquibase))
+        :when (not (or (s/blank? line)
+                       (re-find #"^--" line)))]
+    line))
+
+(defn- has-unran-migrations?
+  "Does LIQUIBASE have migration change sets that haven't been ran yet?
+
+   It's a good idea to Check to make sure there's actually something to do before running `(migrate :up)` because `migrations-sql` will
+   always contain SQL to create and release migration locks, which is both slightly dangerous and a waste of time when we won't be using them."
+  ^Boolean [^Liquibase liquibase]
+  (boolean (seq (.listUnrunChangeSets liquibase nil))))
+
+(defn- has-migration-lock?
+  "Is a migration lock in place for LIQUIBASE?"
+  ^Boolean [^Liquibase liquibase]
+  (boolean (seq (.listLocks liquibase))))
+
+(defn- wait-for-migration-lock-to-be-cleared
+  "Check and make sure the database isn't locked. If it is, sleep for 2 seconds and then retry several times.
+   There's a chance the lock will end up clearing up so we can run migrations normally."
+  [^Liquibase liquibase]
+  (u/auto-retry 5
+    (when (has-migration-lock? liquibase)
+      (Thread/sleep 2000)
+      (throw (Exception. "Database has migration lock; cannot run migrations. You can force-release these locks by running `java -jar metabase.jar migrate release-locks`.")))))
+
+(defn- migrate-up-if-needed!
+  "Run any unran LIQUIBASE migrations, if needed.
+
+   This creates SQL for the migrations to be performed, then executes each DDL statement.
+   Running `.update` directly doesn't seem to work as we'd expect; it ends up commiting the changes made and they can't be rolled back at
+   the end of the transaction block. Converting the migration to SQL string and running that via `jdbc/execute!` seems to do the trick."
+  [conn, ^Liquibase liquibase]
+  (log/info "Checking if Database has unran migrations...")
+  (when (has-unran-migrations? liquibase)
+    (log/info "Database has unran migrations. Waiting for migration lock to be cleared...")
+    (wait-for-migration-lock-to-be-cleared liquibase)
+    (log/info "Migration lock is cleared. Running migrations...")
+    (doseq [line (migrations-lines liquibase)]
+      (jdbc/execute! conn [line]))))
+
+(defn- force-migrate-up-if-needed!
+  "Force migrating up. This does two things differently from `migrate-up-if-needed!`:
+
+   1.  This doesn't check to make sure the DB locks are cleared
+   2.  Any DDL statements that fail are ignored
+
+   It can be used to fix situations where the database got into a weird state, as was common before the fixes made in #3295.
+
+   Each DDL statement is ran inside a nested transaction; that way if the nested transaction fails we can roll it back without rolling back the entirety of changes
+   that were made. (If a single statement in a transaction fails you can't do anything futher until you clear the error state by doing something like calling `.rollback`.)"
+  [conn, ^Liquibase liquibase]
+  (when (has-unran-migrations? liquibase)
+    (doseq [line (migrations-lines liquibase)]
+      (log/info line)
+      (jdbc/with-db-transaction [nested-transaction-connection conn]
+        (try (jdbc/execute! nested-transaction-connection [line])
+             (log/info (u/format-color 'green "[SUCCESS]"))
+             (catch Throwable e
+               (.rollback (jdbc/get-connection nested-transaction-connection))
+               (log/error (u/format-color 'red "[ERROR] %s" (.getMessage e)))))))))
+
+(def ^{:arglists '([])} ^DatabaseFactory database-factory
+  "Return an instance of the Liquibase `DatabaseFactory`. This is done on a background thread at launch because otherwise it adds 2 seconds to startup time."
+  (partial deref (future (DatabaseFactory/getInstance))))
+
+(defn- conn->liquibase
+  "Get a `Liquibase` object from JDBC CONN."
+  (^Liquibase []
+   (conn->liquibase (jdbc-details)))
+  (^Liquibase [conn]
+   (let [^JdbcConnection liquibase-conn (JdbcConnection. (jdbc/get-connection conn))
+         ^Database       database       (.findCorrectDatabaseImplementation (database-factory) liquibase-conn)]
+     (Liquibase. changelog-file (ClassLoaderResourceAccessor.) database))))
+
+(defn migrate!
+  "Migrate the database (this can also be ran via command line like `java -jar metabase.jar migrate up` or `lein run migrate up`):
 
    *  `:up`            - Migrate up
-   *  `:down`          - Rollback *all* migrations
+   *  `:force`         - Force migrate up, ignoring locks and any DDL statements that fail.
    *  `:down-one`      - Rollback a single migration
    *  `:print`         - Just print the SQL for running the migrations, don't actually run them.
    *  `:release-locks` - Manually release migration locks left by an earlier failed migration.
-                         (This shouldn't be necessary now that we run migrations inside a transaction,
-                         but is available just in case)."
-  [db-details direction]
-  (try
-    (jdbc/with-db-transaction [conn (jdbc-details db-details)]
-      (let [^Database database (-> (DatabaseFactory/getInstance)
-                                   (.findCorrectDatabaseImplementation (JdbcConnection. (jdbc/get-connection conn))))
-            ^Liquibase liquibase (Liquibase. changelog-file (ClassLoaderResourceAccessor.) database)]
-        (case direction
-          :up            (.update liquibase "")
-          :down          (.rollback liquibase 10000 "")
-          :down-one      (.rollback liquibase 1 "")
-          :print         (let [writer (StringWriter.)]
-                           (.update liquibase "" writer)
-                           (.toString writer))
-          :release-locks (.forceReleaseLocks liquibase))))
-    (catch Throwable e
-      (throw (DatabaseException. e)))))
+                         (This shouldn't be necessary now that we run migrations inside a transaction, but is available just in case).
+
+   Note that this only performs *schema migrations*, not data migrations. Data migrations are handled separately by `metabase.db.migrations/run-all`.
+   (`setup-db!`, below, calls both this function and `run-all`)."
+  ([]
+   (migrate! :up))
+  ([direction]
+   (migrate! @db-connection-details direction))
+  ([db-details direction]
+   (jdbc/with-db-transaction [conn (jdbc-details db-details)]
+     ;; Tell transaction to automatically `.rollback` instead of `.commit` when the transaction finishes
+     (jdbc/db-set-rollback-only! conn)
+     ;; Disable auto-commit. This should already be off but set it just to be safe
+     (.setAutoCommit (jdbc/get-connection conn) false)
+     ;; Set up liquibase and let it do its thing
+     (log/info "Setting up Liquibase...")
+     (try
+       (let [liquibase (conn->liquibase conn)]
+         (log/info "Liquibase is ready.")
+         (case direction
+           :up            (migrate-up-if-needed! conn liquibase)
+           :force         (force-migrate-up-if-needed! conn liquibase)
+           :down-one      (.rollback liquibase 1 "")
+           :print         (println (migrations-sql liquibase))
+           :release-locks (.forceReleaseLocks liquibase)))
+       ;; Migrations were successful; disable rollback-only so `.commit` will be called instead of `.rollback`
+       (jdbc/db-unset-rollback-only! conn)
+       :done
+       ;; If for any reason any part of the migrations fail then rollback all changes
+       (catch Throwable e
+         ;; This should already be happening as a result of `db-set-rollback-only!` but running it twice won't hurt so better safe than sorry
+         (.rollback (jdbc/get-connection conn))
+         (throw e))))))
 
 
-;; ## SETUP-DB
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                          CONNECTION POOLS & TRANSACTION STUFF                                          |
+;;; +------------------------------------------------------------------------------------------------------------------------+
+
+(defn connection-pool
+  "Create a C3P0 connection pool for the given database SPEC."
+  [{:keys [subprotocol subname classname minimum-pool-size idle-connection-test-period excess-timeout]
+    :or   {minimum-pool-size           3
+           idle-connection-test-period 0
+           excess-timeout              (* 30 60)}
+    :as   spec}]
+  {:datasource (doto (ComboPooledDataSource.)
+                 (.setDriverClass                  classname)
+                 (.setJdbcUrl                      (str "jdbc:" subprotocol ":" subname))
+                 (.setMaxIdleTimeExcessConnections excess-timeout)
+                 (.setMaxIdleTime                  (* 3 60 60))
+                 (.setInitialPoolSize              3)
+                 (.setMinPoolSize                  minimum-pool-size)
+                 (.setMaxPoolSize                  15)
+                 (.setIdleConnectionTestPeriod     idle-connection-test-period)
+                 (.setTestConnectionOnCheckin      false)
+                 (.setTestConnectionOnCheckout     false)
+                 (.setPreferredTestQuery           nil)
+                 (.setProperties                   (u/prog1 (java.util.Properties.)
+                                                     (doseq [[k v] (dissoc spec :make-pool? :classname :subprotocol :subname :naming :delimiters :alias-delimiter
+                                                                                :excess-timeout :minimum-pool-size :idle-connection-test-period)]
+                                                       (.setProperty <> (name k) (str v))))))})
+
+(def ^:private db-connection-pool
+  (atom nil))
+
+(defn- create-connection-pool!
+  [spec]
+  (reset! db-connection-pool (connection-pool spec)))
+
+(def ^:private ^:dynamic *transaction-connection*
+  "Transaction connection to the *Metabase* backing DB connection pool. Used internally by `transaction`."
+  nil)
+
+(declare setup-db-if-needed!)
+
+(defn- db-connection
+  "Get a JDBC connection spec for the Metabase DB."
+  []
+  (setup-db-if-needed!)
+  (or *transaction-connection*
+      @db-connection-pool
+      (throw (Exception. "DB is not setup."))))
+
+(defn do-in-transaction
+  "Execute F inside a DB transaction. Prefer macro form `transaction` to using this directly."
+  [f]
+  (jdbc/with-db-transaction [conn (db-connection)]
+    (binding [*transaction-connection* conn]
+      (f))))
+
+(defmacro transaction
+  "Execute all queries within the body in a single transaction."
+  {:arglists '([body] [options & body]), :style/indent 0}
+  [& body]
+  `(do-in-transaction (fn [] ~@body)))
+
+
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                                       DB SETUP                                                         |
+;;; +------------------------------------------------------------------------------------------------------------------------+
+
 
 (def ^:private setup-db-has-been-called?
   (atom false))
@@ -152,14 +332,21 @@
   "Test connection to database with DETAILS and throw an exception if we have any troubles connecting."
   [engine details]
   {:pre [(keyword? engine) (map? details)]}
-  (log/info (u/format-color 'cyan "Verifying Database Connection ..."))
+  (log/info (u/format-color 'cyan "Verifying %s Database Connection ..." (name engine)))
   (assert (binding [*allow-potentailly-unsafe-connections* true]
             (require 'metabase.driver)
             ((resolve 'metabase.driver/can-connect-with-details?) engine details))
-    "Unable to connect to Metabase DB.")
-  (log/info (str "Verify Database Connection ... ✅")))
+    (format "Unable to connect to Metabase %s DB." (name engine)))
+  (log/info "Verify Database Connection ... ✅"))
 
-(defn setup-db
+
+(def ^:dynamic ^Boolean *disable-data-migrations*
+  "Should we skip running data migrations when setting up the DB? (Default is `false`).
+   There are certain places where we don't want to do this; for example, none of the migrations should be ran when Metabase is launched via `load-from-h2`.
+   That's because they will end up doing things like creating duplicate entries for the \"magic\" groups and permissions entries. "
+  false)
+
+(defn setup-db!
   "Do general preparation of database by validating that we can connect.
    Caller can specify if we should run any pending database migrations."
   [& {:keys [db-details auto-migrate]
@@ -168,13 +355,14 @@
   (reset! setup-db-has-been-called? true)
 
   (verify-db-connection (:type db-details) db-details)
+  (log/info "Running Database Migrations...")
 
   ;; Run through our DB migration process and make sure DB is fully prepared
   (if auto-migrate
-    (migrate db-details :up)
+    (migrate! db-details :up)
     ;; if we are not doing auto migrations then print out migration sql for user to run manually
     ;; then throw an exception to short circuit the setup process and make it clear we can't proceed
-    (let [sql (migrate db-details :print)]
+    (let [sql (migrate! db-details :print)]
       (log/info (str "Database Upgrade Required\n\n"
                      "NOTICE: Your database requires updates to work with this version of Metabase.  "
                      "Please execute the following sql commands on your database before proceeding.\n\n"
@@ -184,19 +372,19 @@
       (throw (java.lang.Exception. "Database requires manual upgrade."))))
   (log/info "Database Migrations Current ... ✅")
 
-  ;; Establish our 'default' Korma DB Connection
-  (kdb/default-connection (kdb/create-db (jdbc-details db-details)))
+  ;; Establish our 'default' DB Connection
+  (create-connection-pool! (jdbc-details db-details))
 
-  ;; Do any custom code-based migrations now that the db structure is up to date
-  ;; NOTE: we use dynamic resolution to prevent circular dependencies
-  (require 'metabase.db.migrations)
-  ((resolve 'metabase.db.migrations/run-all)))
+  ;; Do any custom code-based migrations now that the db structure is up to date.
+  (when-not *disable-data-migrations*
+    (require 'metabase.db.migrations)
+    ((resolve 'metabase.db.migrations/run-all))))
 
-(defn setup-db-if-needed
-  "Call `setup-db` if DB is not already setup; otherwise no-op."
+(defn setup-db-if-needed!
+  "Call `setup-db!` if DB is not already setup; otherwise this does nothing."
   [& args]
   (when-not @setup-db-has-been-called?
-    (apply setup-db args)))
+    (apply setup-db! args)))
 
 
 ;;; +------------------------------------------------------------------------------------------------------------------------+
@@ -240,14 +428,7 @@
     (:metabase.models.interface/entity entity) entity
     (vector? entity)                           (resolve-entity (first entity))
     (symbol? entity)                           (resolve-entity-from-symbol entity)
-    :else                                      (throw (Exception. (str "Invalid entity:" entity)))))
-
-(defn- db-connection
-  "Get a JDBC connection spec for the Metabase DB."
-  []
-  (setup-db-if-needed)
-  (or korma.db/*current-conn*
-      (korma.db/get-connection (or korma.db/*current-db* @korma.db/_default))))
+    :else                                      (throw (Exception. (str "Invalid entity: " entity)))))
 
 (defn- quoting-style
   "Style of `:quoting` that should be passed to HoneySQL `format`."
@@ -262,6 +443,62 @@
   []
   ((quoting-style) @(resolve 'honeysql.format/quote-fns)))
 
+
+(def ^:private ^:dynamic *call-count*
+  "Atom used as a counter for DB calls when enabled.
+   This number isn't *perfectly* accurate, only mostly; DB calls made directly to JDBC won't be logged."
+  nil)
+
+(defn -do-with-call-counting
+  "Execute F with DB call counting enabled. F is passed a single argument, a function that can be used to retrieve the current call count.
+   (It's probably more useful to use the macro form of this function, `with-call-counting`, instead.)"
+  {:style/indent 0}
+  [f]
+  (binding [*call-count* (atom 0)]
+    (f (partial deref *call-count*))))
+
+(defmacro with-call-counting
+  "Execute BODY and track the number of DB calls made inside it. CALL-COUNT-FN-BINDING is bound to a zero-arity function that can be used to fetch the current
+   DB call count.
+
+     (db/with-call-counting [call-count]
+       ...
+       (call-count))"
+  {:style/indent 1}
+  [[call-count-fn-binding] & body]
+  `(-do-with-call-counting (fn [~call-count-fn-binding] ~@body)))
+
+(defmacro debug-count-calls
+  "Print the number of DB calls executed inside BODY to `stdout`. Intended for use during REPL development."
+  [& body]
+  `(with-call-counting [call-count#]
+     (u/prog1 (do ~@body)
+       (println "DB Calls:" (call-count#)))))
+
+
+(defn- format-sql [sql]
+  (when sql
+    (loop [sql sql, [k & more] ["FROM" "WHERE" "LEFT JOIN" "INNER JOIN" "ORDER BY" "LIMIT"]]
+      (if-not k
+        sql
+        (recur (s/replace sql (re-pattern (format "\\s+%s\\s+" k)) (format "\n%s " k))
+               more)))))
+
+(def ^:dynamic ^:private *debug-print-queries* false)
+
+(defn -do-with-debug-print-queries
+  "Execute F with debug query logging enabled. Don't use this directly; prefer the `debug-print-queries` macro form instead."
+  [f]
+  (binding [*debug-print-queries* true]
+    (f)))
+
+(defmacro debug-print-queries
+  "Print the HoneySQL and SQL forms of any queries executed inside BODY to `stdout`. Intended for use during REPL development."
+  {:style/indent 0}
+  [& body]
+  `(-do-with-debug-print-queries (fn [] ~@body)))
+
+
 (defn- honeysql->sql
   "Compile HONEYSQL-FORM to SQL.
   This returns a vector with the SQL string as its first item and prepared statement params as the remaining items."
@@ -270,16 +507,23 @@
   ;; Not sure *why* but without setting this binding on *rare* occasion HoneySQL will unwantedly generate SQL for a subquery and wrap the query in parens like "(UPDATE ...)" which is invalid
   (u/prog1 (binding [hformat/*subquery?* false]
              (hsql/format honeysql-form, :quoting (quoting-style), :allow-dashed-names? true))
+    (when *debug-print-queries*
+      (println (u/pprint-to-str 'blue honeysql-form)
+               (u/format-color 'green "\n%s\n%s" (format-sql (first <>)) (rest <>))))
     (when-not *disable-db-logging*
-      (log/debug (str "DB Call: " (first <>))))))
+      (log/debug (str "DB Call: " (first <>)))
+      (when *call-count*
+        (swap! *call-count* inc)))))
 
 (defn query
   "Compile HONEYSQL-FROM and call `jdbc/query` against the Metabase database.
    Options are passed along to `jdbc/query`."
-  [honeysql-form & options]
-  (apply jdbc/query (db-connection) (honeysql->sql honeysql-form) options))
+  [honeysql-form & {:as options}]
+  (jdbc/query (db-connection) (honeysql->sql honeysql-form) options))
 
 
+;; TODO - wouldn't it be *pretty cool* if we just made entities implement the honeysql.format/ToSql protocol so we didn't need this function?
+;;        That would however mean we would have to make sure the entities are resolved first
 (defn entity->table-name
   "Get the keyword table name associated with an ENTITY, which can be anything that can be passed to `resolve-entity`.
 
@@ -354,8 +598,8 @@
 (defn execute!
   "Compile HONEYSQL-FORM and call `jdbc/execute!` against the Metabase DB.
    OPTIONS are passed directly to `jdbc/execute!` and can be things like `:multi?` (default `false`) or `:transaction?` (default `true`)."
-  [honeysql-form & options]
-  (apply jdbc/execute! (db-connection) (honeysql->sql honeysql-form) options))
+  [honeysql-form & {:as options}]
+  (jdbc/execute! (db-connection) (honeysql->sql honeysql-form) options))
 
 (defn- where
   "Generate a HoneySQL `where` form using key-value args.
@@ -473,7 +717,7 @@
     :mysql    :generated_key
     :h2       (keyword "scope_identity()")))
 
-(defn simple-insert-many!
+(defn- simple-insert-many!
   "Do a simple JDBC `insert!` of multiple objects into the database.
    Normally you should use `insert-many!` instead, which calls the entity's `pre-insert` method on the ROW-MAPS;
    `simple-insert-many!` is offered for cases where you'd like to specifically avoid this behavior.
@@ -486,11 +730,12 @@
   {:pre [(sequential? row-maps) (every? map? row-maps)]}
   (when (seq row-maps)
     (let [entity (resolve-entity entity)]
-      (map (insert-id-key) (apply jdbc/insert! (db-connection) (entity->table-name entity) (concat row-maps [:entities (quote-fn)]))))))
+      (map (insert-id-key) (jdbc/insert-multi! (db-connection) (entity->table-name entity) row-maps {:entities (quote-fn)})))))
 
 (defn insert-many!
   "Insert several new rows into the Database. Resolves ENTITY, and calls `pre-insert` on each of the ROW-MAPS.
    Returns a sequence of the IDs of the newly created objects.
+   Note: this *does not* call `post-insert` on newly created objects. If you need `post-insert` behavior, use `insert!` instead.
 
      (db/insert-many! 'Label [{:name \"Toucan Friendly\"}
                               {:name \"Bird Approved\"}]) -> [38 39]"
@@ -500,11 +745,9 @@
     (simple-insert-many! entity (for [row-map row-maps]
                                   (models/do-pre-insert entity row-map)))))
 
-(defn simple-insert!
-  "Do a simple JDBC `insert!` of a single object.
-   Normally you should use `insert!` instead, which calls the entity's `pre-insert` method on ROW-MAP;
-   `simple-insert!` is offered for cases where you'd like to specifically avoid this behavior.
-   Returns the ID of the inserted object.
+(defn- simple-insert!
+  "Do a simple JDBC `insert` of a single object.
+   This is similar to `insert!` but returns the ID of the newly created object rather than the object itself, and does not call `post-insert`.
 
      (db/simple-insert! 'Label :name \"Toucan Friendly\") -> 1
 
@@ -517,8 +760,8 @@
    (simple-insert! entity (apply array-map k v more))))
 
 (defn insert!
-  "Insert a new object into the Database. Resolves ENTITY, and calls its `pre-insert` method on ROW-MAP to prepare it before insertion;
-   after insert, it fetches and returns the newly created object.
+  "Insert a new object into the Database. Resolves ENTITY, calls its `pre-insert` method on ROW-MAP to prepare it before insertion;
+   after insert, it fetches and the newly created object, passes it to `post-insert`, and returns the results.
    For flexibility, `insert!` can handle either a single map or individual kwargs:
 
      (db/insert! Label {:name \"Toucan Unfriendly\"})
@@ -528,7 +771,7 @@
    {:pre [(map? row-map) (every? keyword? (keys row-map))]}
    (let [entity (resolve-entity entity)]
      (when-let [id (simple-insert! entity (models/do-pre-insert entity row-map))]
-       (entity id))))
+       (models/post-insert (entity id)))))
   ([entity k v & more]
    (insert! entity (apply array-map k v more))))
 
@@ -565,6 +808,7 @@
   (let [entity (resolve-entity entity)]
     (apply select-one-field :id entity options)))
 
+;; TODO - maybe rename this `count`? e.g. `db/count` instead of `db/select-one-count`
 (defn select-one-count
   "Select the count of objects matching some condition.
 
@@ -580,8 +824,9 @@
      (select 'Database :name [:not= nil] {:limit 2}) -> [...]"
   {:style/indent 1}
   [entity & options]
-  (let [fields (entity->fields entity)]
-    (simple-select entity (where+ {:select (or fields [:*])} options))))
+  (simple-select entity (where+ {:select (or (entity->fields entity)
+                                             [:*])}
+                                options)))
 
 (defn select-field
   "Select values of a single field for multiple objects. These are returned as a set if any matching fields were returned, otherwise `nil`.
@@ -634,6 +879,7 @@
   "Easy way to see if something exists in the DB.
     (db/exists? User :id 100)
    NOTE: This only works for objects that have an `:id` field."
+  {:style/indent 1}
   ^Boolean [entity & kvs]
   (boolean (select-one entity (apply where (h/select {} :id) kvs))))
 
@@ -668,3 +914,22 @@
   [[source-entity fk] [dest-entity pk]]
   {:left-join [(entity->table-name dest-entity) [:= (qualify source-entity fk)
                                                     (qualify dest-entity pk)]]})
+
+
+(defn isa
+  "Convenience for generating an HoneySQL `IN` clause for a keyword and all of its descendents.
+   Intended for use with the type hierarchy in `metabase.types`.
+
+     (db/select Field :special_type (db/isa :type/URL))
+      ->
+     (db/select Field :special_type [:in #{\"type/URL\" \"type/ImageURL\" \"type/AvatarURL\"}])
+
+   Also accepts optional EXPR for use directly in a HoneySQL `where`:
+
+     (db/select Field {:where (db/isa :special_type :type/URL)})
+     ->
+     (db/select Field {:where [:in :special_type #{\"type/URL\" \"type/ImageURL\" \"type/AvatarURL\"}]})"
+  ([type-keyword]
+   [:in (set (map u/keyword->qualified-name (cons type-keyword (descendants type-keyword))))])
+  ([expr type-keyword]
+   [:in expr (last (isa type-keyword))]))

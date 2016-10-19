@@ -58,13 +58,13 @@
     (format-dependencies (retrieve-dependencies Mock 4))))
 
 
-;; update-dependencies
+;; update-dependencies!
 
 ;; we skip over values which aren't integers
 (expect
   #{}
   (do
-    (update-dependencies Mock 2 {:test ["a" "b" "c"]})
+    (update-dependencies! Mock 2 {:test ["a" "b" "c"]})
     (set (db/select Dependency, :model "Mock", :model_id 2))))
 
 ;; valid working dependencies list
@@ -82,7 +82,7 @@
      :dependent_on_model "test"
      :dependent_on_id    3}}
   (do
-    (update-dependencies Mock 7 {:test [1 2 3]})
+    (update-dependencies! Mock 7 {:test [1 2 3]})
     (format-dependencies (db/select Dependency, :model "Mock", :model_id 7))))
 
 ;; delete dependencies that are no longer in the list
@@ -102,5 +102,5 @@
       :dependent_on_model "test"
       :dependent_on_id    5
       :created_at         (u/new-sql-timestamp))
-    (update-dependencies Mock 1 {:test [1 2]})
+    (update-dependencies! Mock 1 {:test [1 2]})
     (format-dependencies (db/select Dependency, :model "Mock", :model_id 1))))

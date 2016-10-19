@@ -9,9 +9,8 @@
    once when the application goes through normal startup procedures.  Inside this function you can do any work
    needed and add your events subscribers to the bus as usual via `start-event-listener`."
   (:require [clojure.core.async :as async]
-            [clojure.java.classpath :as classpath]
+            [clojure.string :as s]
             [clojure.tools.logging :as log]
-            [clojure.tools.namespace.find :as ns-find]
             (metabase [config :as config]
                       [util :as u])))
 
@@ -26,8 +25,8 @@
   "Search Classpath for namespaces that start with `metabase.events.`, and call their `events-init` function if it exists."
   []
   (when-not config/is-test?
-    (doseq [ns-symb (ns-find/find-namespaces (classpath/classpath))
-            :when (re-find #"^metabase\.events\." (name ns-symb))]
+    (doseq [ns-symb @u/metabase-namespace-symbols
+            :when   (.startsWith (name ns-symb) "metabase.events.")]
       (require ns-symb)
       ;; look for `events-init` function in the namespace and call it if it exists
       (when-let [init-fn (ns-resolve ns-symb 'events-init)]
@@ -52,7 +51,7 @@
 (def ^:private events-publication
   "Publication for general events channel.
    Expects a map as input and the map must have a `:topic` key."
-  (async/pub events-channel #(:topic %)))
+  (async/pub events-channel :topic))
 
 (defn publish-event
   "Publish an item into the events stream.
@@ -79,9 +78,8 @@
   "Convenience method for subscribing to a series of topics against a single channel."
   [topics channel]
   {:pre [(coll? topics)]}
-  (loop [[topic & rest] (vec topics)]
-    (subscribe-to-topic topic channel)
-    (when rest (recur rest))))
+  (doseq [topic topics]
+    (subscribe-to-topic topic channel)))
 
 (defn start-event-listener
   "Initialize an event listener which runs on a background thread via `go-loop`."
@@ -104,13 +102,13 @@
 
 
 (defn topic->model
-  "Determine a valid `model` identifier for the given `topic`."
+  "Determine a valid `model` identifier for the given TOPIC."
   [topic]
   ;; just take the first part of the topic name after splitting on dashes.
-  (first (clojure.string/split (name topic) #"-")))
+  (first (s/split (name topic) #"-")))
 
 (defn object->model-id
-  "Determine the appropriate `model_id` (if possible) for a given `object`."
+  "Determine the appropriate `model_id` (if possible) for a given OBJECT."
   [topic object]
   (if (contains? (set (keys object)) :id)
     (:id object)
@@ -118,6 +116,6 @@
       (get object (keyword (format "%s_id" model))))))
 
 (defn object->user-id
-  "Determine the appropriate `user_id` (if possible) for a given `object`."
+  "Determine the appropriate `user_id` (if possible) for a given OBJECT."
   [object]
   (or (:actor_id object) (:user_id object) (:creator_id object)))

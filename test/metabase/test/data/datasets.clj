@@ -6,13 +6,16 @@
             [environ.core :refer [env]]
             [expectations :refer [expect]]
             (metabase [config :as config]
-                      [driver :as driver])
+                      [driver :as driver]
+                      [plugins :as plugins])
             [metabase.test.data.interface :as i]))
+
+;; When running tests, we need to make sure plugins (i.e., the Oracle JDBC driver) are loaded because otherwise the Oracle driver won't show up in the list of valid drivers below
+(plugins/load-plugins!)
 
 (driver/find-and-load-drivers!)
 
 (def ^:const all-valid-engines (set (keys (driver/available-drivers))))
-
 
 ;; # Logic for determining which datasets to test against
 
@@ -125,18 +128,6 @@
   [expected actual]
   `(expect-with-engines all-valid-engines ~expected ~actual))
 
-(defmacro engine-case
-  "Case statement that switches off of the current dataset.
-
-     (engine-case
-       :h2       ...
-       :postgres ...)"
-  [& pairs]
-  `(cond ~@(mapcat (fn [[engine then]]
-                     (assert (contains? all-valid-engines engine))
-                     [`(= *engine* ~engine)
-                      then])
-                   (partition 2 pairs))))
 
 ;;; Load metabase.test.data.* namespaces for all available drivers
 (doseq [[engine _] (driver/available-drivers)]

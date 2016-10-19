@@ -146,13 +146,15 @@
 /* Google Maps widgets */
 .DashCard .gm-style-mtc,
 .DashCard .gm-bundled-control,
-.DashCard .PinMapUpdateButton {
+.DashCard .PinMapUpdateButton,
+.leaflet-container .leaflet-control-container {
   opacity: 0.01;
   transition: opacity 0.3s linear;
 }
 .DashCard:hover .gm-style-mtc,
 .DashCard:hover .gm-bundled-control,
-.DashCard:hover .PinMapUpdateButton {
+.DashCard:hover .PinMapUpdateButton,
+.leaflet-container:hover .leaflet-control-container {
   opacity: 1;
 }
 
@@ -199,6 +201,16 @@
   height: initial;
   opacity: 1;
   pointer-events: all;
+}
+
+.Dash--editing .DashCard .Visualization-slow-spinner {
+    position: absolute;
+    right: -2px;
+    top: -2px;
+}
+.Dash--editing .DashCard:hover .Visualization-slow-spinner {
+    opacity: 0;
+    transition: opacity .15s linear;
 }
 
 .Dash--editing .DashCard.dragging .DashCard-actions,
@@ -319,8 +331,13 @@
   display: none;
 }
 
-.dc-chart rect.bar:hover {
+/* disable dc default behavior */
+.Card-outer .dc-chart rect.bar:hover {
   fill-opacity: 1;
+}
+/* highlight single series bar */
+.mute-0 .Card-outer .dc-chart rect.bar:hover {
+  opacity: 1;
 }
 
 .enable-dots .dc-tooltip circle.dot {
@@ -330,6 +347,12 @@
   stroke-width: 2;
   fill-opacity: 1 !important;
   stroke-opacity: 1 !important;
+}
+
+.dc-chart circle.bubble {
+    fill-opacity: 0.80;
+    stroke-width: 1;
+    stroke: white;
 }
 
 .enable-dots .dc-tooltip circle.dot:hover,
@@ -374,6 +397,12 @@
 .mute-3 svg > g > .chart-body .stack._3 .line,
 .mute-4 svg > g > .chart-body .stack._4 .line,
 .mute-5 svg > g > .chart-body .stack._5 .line,
+.mute-0 svg > g > .chart-body .stack._0 .bar,
+.mute-1 svg > g > .chart-body .stack._1 .bar,
+.mute-2 svg > g > .chart-body .stack._2 .bar,
+.mute-3 svg > g > .chart-body .stack._3 .bar,
+.mute-4 svg > g > .chart-body .stack._4 .bar,
+.mute-5 svg > g > .chart-body .stack._5 .bar,
 .mute-0 svg > g > .chart-body .dc-tooltip._0 .dot,
 .mute-1 svg > g > .chart-body .dc-tooltip._1 .dot,
 .mute-2 svg > g > .chart-body .dc-tooltip._2 .dot,
@@ -399,7 +428,13 @@
 .mute-2 .sub._2 .dot,
 .mute-3 .sub._3 .dot,
 .mute-4 .sub._4 .dot,
-.mute-5 .sub._5 .dot { opacity: 0.25; }
+.mute-5 .sub._5 .dot,
+.mute-0 .sub._0 .bubble,
+.mute-1 .sub._1 .bubble,
+.mute-2 .sub._2 .bubble,
+.mute-3 .sub._3 .bubble,
+.mute-4 .sub._4 .bubble,
+.mute-5 .sub._5 .bubble { opacity: 0.25; }
 
 
 .mute-yl .dc-chart .axis.y,

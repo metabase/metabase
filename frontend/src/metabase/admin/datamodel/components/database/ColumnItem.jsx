@@ -5,7 +5,8 @@ import Select from "metabase/components/Select.jsx";
 
 import * as MetabaseCore from "metabase/lib/core";
 import { titleize, humanize } from "metabase/lib/formatting";
-import { isNumeric } from "metabase/lib/schema_metadata";
+import { isNumericBaseType } from "metabase/lib/schema_metadata";
+import { TYPE, isa, isFK } from "metabase/lib/types";
 
 import _  from "underscore";
 
@@ -61,7 +62,7 @@ export default class Column extends Component {
 
     render() {
         var targetSelect;
-        if (this.props.field.special_type === "fk") {
+        if (isFK(this.props.field.special_type)) {
             targetSelect = (
                 <Select
                     className="TableEditor-field-target block"
@@ -77,14 +78,14 @@ export default class Column extends Component {
         let specialTypes = MetabaseCore.field_special_types.slice(0);
         specialTypes.push({'id': null, 'name': 'No special type', 'section': 'Other'});
         // if we don't have a numeric base-type then prevent the options for unix timestamp conversion (#823)
-        if (!isNumeric(this.props.field)) {
-            specialTypes = specialTypes.filter((f) => !(f.id && f.id.startsWith("timestamp_")));
+        if (!isNumericBaseType(this.props.field)) {
+            specialTypes = specialTypes.filter((f) => !isa(f.id, TYPE.UNIXTimestamp));
         }
 
         return (
             <li className="mt1 mb3">
                 <div>
-                    <Input style={{minWidth: 420}} className="AdminInput TableEditor-field-name float-left bordered inline-block rounded text-bold" type="text" value={this.props.field.display_name} onBlurChange={this.onNameChange}/>
+                    <Input style={{minWidth: 420}} className="AdminInput TableEditor-field-name float-left bordered inline-block rounded text-bold" type="text" value={this.props.field.display_name || ""} onBlurChange={this.onNameChange}/>
                     <div className="clearfix">
                         <div className="flex flex-full">
                             <div className="flex-full px1">
@@ -110,7 +111,7 @@ export default class Column extends Component {
                     </div>
                 </div>
                 <div className="MetadataTable-title flex flex-column flex-full bordered rounded mt1 mr1">
-                    <Input className="AdminInput TableEditor-field-description" type="text" value={this.props.field.description} onBlurChange={this.onDescriptionChange} placeholder="No column description yet" />
+                    <Input className="AdminInput TableEditor-field-description" type="text" value={this.props.field.description || ""} onBlurChange={this.onDescriptionChange} placeholder="No column description yet" />
                 </div>
             </li>
         )

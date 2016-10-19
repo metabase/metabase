@@ -34,7 +34,7 @@ export default class OperatorSelector extends Component {
         }
 
         return (
-            <div className="border-bottom p1">
+            <div id="OperatorSelector" className="border-bottom p1">
                 { visibleOperators.map(o =>
                     <button
                         key={o.name}
@@ -46,7 +46,7 @@ export default class OperatorSelector extends Component {
                 )}
                 { !expanded && expandedOperators.length > 0 ?
                     <div className="text-grey-3 cursor-pointer" onClick={() => this.setState({ expanded: true })}>
-                        <Icon className="px1" name="chevrondown" width="14" height="14" />
+                        <Icon className="px1" name="chevrondown" size={14} />
                         More Options
                     </div>
                 : null }

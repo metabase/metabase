@@ -33,11 +33,11 @@
          (contains? field :base_type)
          (contains? field :special_type)]}
   (and (not (contains? #{:retired :sensitive :hidden :details-only} (keyword visibility_type)))
-       (not (contains? #{:DateField :DateTimeField :TimeField} (keyword base_type)))
-       (or (contains? #{:category :city :state :country :name} (keyword special_type))
-           (= (keyword base_type) :BooleanField))))
+       (not (isa? (keyword base_type) :type/DateTime))
+       (or (isa? (keyword base_type) :type/Boolean)
+           (isa? (keyword special_type) :type/Category))))
 
-(defn- create-field-values
+(defn- create-field-values!
   "Create `FieldValues` for a `Field`."
   {:arglists '([field] [field human-readable-values])}
   [{field-id :id, field-name :name, :as field} & [human-readable-values]]
@@ -56,9 +56,9 @@
   (if-let [field-values (FieldValues :field_id field-id)]
     (db/update! FieldValues (:id field-values)
       :values ((resolve 'metabase.db.metadata-queries/field-distinct-values) field))
-    (create-field-values field)))
+    (create-field-values! field)))
 
-(defn create-field-values-if-needed
+(defn create-field-values-if-needed!
   "Create `FieldValues` for a `Field` if they *should* exist but don't already exist.
    Returns the existing or newly created `FieldValues` for `Field`."
   {:arglists '([field]
@@ -67,9 +67,9 @@
   {:pre [(integer? field-id)]}
   (when (field-should-have-field-values? field)
     (or (FieldValues :field_id field-id)
-        (create-field-values field human-readable-values))))
+        (create-field-values! field human-readable-values))))
 
-(defn save-field-values
+(defn save-field-values!
   "Save the `FieldValues` for FIELD-ID, creating them if needed, otherwise updating them."
   [field-id values]
   {:pre [(integer? field-id)
@@ -78,7 +78,7 @@
     (db/update! FieldValues (:id field-values), :values values)
     (db/insert! FieldValues :field_id field-id, :values values)))
 
-(defn clear-field-values
+(defn clear-field-values!
   "Remove the `FieldValues` for FIELD-ID."
   [field-id]
   {:pre [(integer? field-id)]}

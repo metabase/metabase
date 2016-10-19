@@ -1,0 +1,30 @@
+databaseChangeLog:
+  - changeSet:
+      id: 37
+      author: tlrobinson
+      changes:
+        - addColumn:
+            tableName: query_queryexecution
+            columns:
+              - column:
+                  name: query_hash
+                  type: int
+                  constraints:
+                    nullable: true
+        - addNotNullConstraint:
+            tableName: query_queryexecution
+            columnName: query_hash
+            columnDataType: int
+            defaultNullValue: 0
+        - createIndex:
+            tableName: query_queryexecution
+            indexName: idx_query_queryexecution_query_hash
+            columns:
+              column:
+                name: query_hash
+        - createIndex:
+            tableName: query_queryexecution
+            indexName: idx_query_queryexecution_started_at
+            columns:
+              column:
+                name: started_at

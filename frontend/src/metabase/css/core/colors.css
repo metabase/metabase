@@ -27,13 +27,15 @@
   --slate-light-color: #DFE8EA;
 }
 
-.text-default {
+.text-default, :local(.text-default) {
     color: var(--default-font-color);
 }
 
+.text-danger { color: #EEA5A5; }
+
 /* brand */
-.text-brand,
-.text-brand-hover:hover {
+.text-brand, :local(.text-brand),
+.text-brand-hover:hover, :local(.text-brand-hover):hover {
     color: var(--brand-color);
 }
 
@@ -116,13 +118,8 @@
     color: var(--orange-color);
 }
 
-.text-slate {
-    color: var(--slate-color);
-}
-
-.text-slate-light {
-    color: var(--slate-light-color);
-}
+.text-slate { color: var(--slate-color); }
+.text-slate-light { color: var(--slate-light-color); }
 
 .bg-gold { background-color: var(--gold-color); }
 .bg-purple { background-color: var(--purple-color); }
@@ -136,7 +133,7 @@
 .text-grey-1, :local(.text-grey-1),
 .text-grey-1-hover:hover { color: var(--grey-1) }
 
-.text-grey-2,
+.text-grey-2, :local(.text-grey-2),
 .text-grey-2-hover:hover { color: var(--grey-2) }
 
 .text-grey-3, :local(.text-grey-3),
@@ -151,7 +148,12 @@
 .bg-grey-3 { background-color: var(--grey-3) }
 .bg-grey-4 { background-color: var(--grey-4) }
 
-.text-dark { color: var(--dark-color); }
+.bg-slate { background-color: var(--slate-color); }
+.bg-slate-light { background-color: var(--slate-light-color); }
+
+.text-dark, :local(.text-dark) {
+    color: var(--dark-color);
+}
 
 /* white  - move to bottom for specificity since its often used on hovers, etc */
 .text-white, :local(.text-white),
@@ -167,3 +169,10 @@
 }
 
 .bg-white, :local(.bg-white) { background-color: #fff; }
+
+.bg-light-blue { background-color: #F5FAFC; }
+
+.text-light-blue,
+.text-light-blue-hover:hover {
+  color: #CFE4F5
+}

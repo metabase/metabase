@@ -1,8 +1,9 @@
 (ns metabase.api.field-test
   (:require [expectations :refer :all]
             [metabase.db :as db]
-            [metabase.models.database :refer [Database]]
-            (metabase.models [field :refer [Field]]
+            [metabase.driver :as driver]
+            (metabase.models [database :refer [Database]]
+                             [field :refer [Field]]
                              [field-values :refer [FieldValues]]
                              [table :refer [Table]])
             [metabase.test.data :refer :all]
@@ -13,56 +14,61 @@
 
 (defn- db-details []
   (tu/match-$ (db)
-    {:created_at      $
-     :engine          "h2"
-     :id              $
-     :updated_at      $
-     :name            "test-data"
-     :is_sample       false
-     :is_full_sync    true
-     :organization_id nil
-     :description     nil
-     :features        (mapv name (metabase.driver/features (metabase.driver/engine->driver :h2)))}))
+    {:created_at         $
+     :engine             "h2"
+     :caveats            nil
+     :points_of_interest nil
+     :id                 $
+     :updated_at         $
+     :name               "test-data"
+     :is_sample          false
+     :is_full_sync       true
+     :description        nil
+     :features           (mapv name (driver/features (driver/engine->driver :h2)))}))
 
 
 ;; ## GET /api/field/:id
 (expect
-    (tu/match-$ (Field (id :users :name))
-      {:description     nil
-       :table_id        (id :users)
-       :raw_column_id   $
-       :table           (tu/match-$ (Table (id :users))
-                          {:description     nil
-                           :entity_type     nil
-                           :visibility_type nil
-                           :db              (db-details)
-                           :schema          "PUBLIC"
-                           :name            "USERS"
-                           :display_name    "Users"
-                           :rows            15
-                           :updated_at      $
-                           :entity_name     nil
-                           :active          true
-                           :id              (id :users)
-                           :db_id           (id)
-                           :raw_table_id    $
-                           :created_at      $})
-       :special_type    "name"
-       :name            "NAME"
-       :display_name    "Name"
-       :updated_at      $
-       :last_analyzed   $
-       :active          true
-       :id              (id :users :name)
-       :field_type      "info"
-       :visibility_type "normal"
-       :position        0
-       :preview_display true
-       :created_at      $
-       :base_type       "TextField"
-       :fk_target_field_id nil
-       :parent_id       nil})
-    ((user->client :rasta) :get 200 (format "field/%d" (id :users :name))))
+  (tu/match-$ (Field (id :users :name))
+    {:description        nil
+     :table_id           (id :users)
+     :raw_column_id      $
+     :table              (tu/match-$ (Table (id :users))
+                           {:description             nil
+                            :entity_type             nil
+                            :visibility_type         nil
+                            :db                      (db-details)
+                            :schema                  "PUBLIC"
+                            :name                    "USERS"
+                            :display_name            "Users"
+                            :rows                    15
+                            :updated_at              $
+                            :entity_name             nil
+                            :active                  true
+                            :id                      (id :users)
+                            :db_id                   (id)
+                            :caveats                 nil
+                            :points_of_interest      nil
+                            :show_in_getting_started false
+                            :raw_table_id            $
+                            :created_at              $})
+     :special_type       "type/Name"
+     :name               "NAME"
+     :display_name       "Name"
+     :caveats            nil
+     :points_of_interest nil
+     :updated_at         $
+     :last_analyzed      $
+     :active             true
+     :id                 (id :users :name)
+     :visibility_type    "normal"
+     :position           0
+     :preview_display    true
+     :created_at         $
+     :base_type          "type/Text"
+     :fk_target_field_id nil
+     :parent_id          nil})
+  ((user->client :rasta) :get 200 (format "field/%d" (id :users :name))))
 
 
 ;; ## GET /api/field/:id/summary
@@ -73,7 +79,7 @@
 
 ;; ## PUT /api/field/:id
 
-(defn simple-field-details [field]
+(defn- simple-field-details [field]
   (select-keys field [:name :display_name :description :visibility_type :special_type]))
 
 ;; test that we can do basic field update work, including unsetting some fields such as special-type
@@ -86,86 +92,48 @@
    {:name            "Field Test"
     :display_name    "yay"
     :description     "foobar"
-    :special_type    :name
+    :special_type    :type/Name
     :visibility_type :sensitive}
    {:name            "Field Test"
     :display_name    "yay"
     :description     nil
     :special_type    nil
     :visibility_type :sensitive}]
-  (tu/with-temp* [Database [{database-id :id} {:name      "Field Test"
-                                               :engine    :yeehaw
-                                               :details   {}
-                                               :is_sample false}]
-                  Table    [{table-id :id}    {:name   "Field Test"
-                                               :db_id  database-id
-                                               :active true}]
-                  Field    [{field-id :id}    {:table_id        table-id
-                                               :name            "Field Test"
-                                               :base_type       :TextField
-                                               :field_type      :info
-                                               :special_type    nil
-                                               :active          true
-                                               :preview_display true
-                                               :position        1}]]
+  (tu/with-temp* [Field [{field-id :id} {:name "Field Test"}]]
     (let [original-val (simple-field-details (Field field-id))]
       ;; set it
-      ((user->client :crowberto) :put 200 (format "field/%d" field-id) {:name "something else"
-                                                                        :display_name "yay"
-                                                                        :description "foobar"
-                                                                        :special_type :name
+      ((user->client :crowberto) :put 200 (format "field/%d" field-id) {:name            "something else"
+                                                                        :display_name    "yay"
+                                                                        :description     "foobar"
+                                                                        :special_type    :type/Name
                                                                         :visibility_type :sensitive})
       (let [updated-val (simple-field-details (Field field-id))]
         ;; unset it
-        ((user->client :crowberto) :put 200 (format "field/%d" field-id) {:description nil
+        ((user->client :crowberto) :put 200 (format "field/%d" field-id) {:description  nil
                                                                           :special_type nil})
         [original-val
          updated-val
          (simple-field-details (Field field-id))]))))
 
-;; when we set the special-type from :fk to something else, make sure fk_target_field_id is set to nil
+;; when we set the special-type from :type/FK to something else, make sure fk_target_field_id is set to nil
 (expect
   [true
    nil]
-  (tu/with-temp* [Database [{database-id :id} {:name      "Field Test"
-                                               :engine    :yeehaw
-                                               :details   {}
-                                               :is_sample false}]
-                  Table    [{table-id :id}    {:name   "Field Test"
-                                               :db_id  database-id
-                                               :active true}]
-                  Field    [{field-id1 :id}   {:table_id        table-id
-                                               :name            "Target Field"
-                                               :base_type       :TextField
-                                               :field_type      :info
-                                               :special_type    :id
-                                               :active          true
-                                               :preview_display true
-                                               :position        1}]
-                  Field    [{field-id :id}    {:table_id           table-id
-                                               :name               "Field Test"
-                                               :base_type          :TextField
-                                               :field_type         :info
-                                               :special_type       :fk
-                                               :fk_target_field_id field-id1
-                                               :active             true
-                                               :preview_display    true
-                                               :position           1}]]
+  (tu/with-temp* [Field [{fk-field-id :id}]
+                  Field [{field-id :id}    {:special_type :type/FK, :fk_target_field_id fk-field-id}]]
     (let [original-val (boolean (db/select-one-field :fk_target_field_id Field, :id field-id))]
-      ;; unset the :fk special-type
-      ((user->client :crowberto) :put 200 (format "field/%d" field-id) {:special_type :name})
+      ;; unset the :type/FK special-type
+      ((user->client :crowberto) :put 200 (format "field/%d" field-id) {:special_type :type/Name})
       [original-val
        (db/select-one-field :fk_target_field_id Field, :id field-id)])))
 
-;; check that you can't set a field to :timestamp_seconds if it's not of a proper base_type
+
+;; check that you *can* set it if it *is* the proper base type
 (expect
-  ["Invalid Request."
-   nil]
-  (tu/with-temp* [Database [{database-id :id}]
-                  Table    [{table-id :id} {:db_id database-id}]
-                  Field    [{field-id :id} {:table_id table-id}]]
-    [((user->client :crowberto) :put 400 (str "field/" field-id) {:special_type :timestamp_seconds})
-     (db/select-one-field :special_type Field, :id field-id)]))
+  :type/UNIXTimestampSeconds
+  (tu/with-temp* [Field [{field-id :id} {:base_type :type/Integer}]]
+    ((user->client :crowberto) :put 200 (str "field/" field-id) {:special_type :type/UNIXTimestampSeconds})
+    (db/select-one-field :special_type Field, :id field-id)))
 
 
 (defn- field->field-values
@@ -173,69 +141,69 @@
   [table-kw field-kw]
   (FieldValues :field_id (id table-kw field-kw)))
 
-;; ## GET /api/field/:id/values
-;; Should return something useful for a field that has special_type :category
-(tu/expect-eval-actual-first
-    (tu/match-$ (field->field-values :venues :price)
-      {:field_id              (id :venues :price)
-       :human_readable_values {}
-       :values                [1 2 3 4]
-       :updated_at            $
-       :created_at            $
-       :id                    $})
-  (do (db/update! FieldValues (:id (field->field-values :venues :price))
-        :human_readable_values nil) ; clear out existing human_readable_values in case they're set
-      ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price)))))
+(defn- field-values-id [table-key field-key]
+  (:id (field->field-values table-key field-key)))
 
-;; Should return nothing for a field whose special_type is *not* :category
+;; ## GET /api/field/:id/values
+;; Should return something useful for a field that has special_type :type/Category
 (expect
-    {:values                {}
-     :human_readable_values {}}
+  {:field_id              (id :venues :price)
+   :human_readable_values {}
+   :values                [1 2 3 4]
+   :id                    (field-values-id :venues :price)}
+  (do
+    ;; clear out existing human_readable_values in case they're set
+    (db/update! FieldValues (field-values-id :venues :price)
+      :human_readable_values nil)
+    ;; now update the values via the API
+    (-> ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price)))
+        (dissoc :created_at :updated_at))))
+
+;; Should return nothing for a field whose special_type is *not* :type/Category
+(expect
+  {:values                {}
+   :human_readable_values {}}
   ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :id))))
 
 
 ;; ## POST /api/field/:id/value_map_update
 
 ;; Check that we can set values
-(tu/expect-eval-actual-first
-    [{:status "success"}
-     (tu/match-$ (FieldValues :field_id (id :venues :price))
-       {:field_id              (id :venues :price)
-        :human_readable_values {:1 "$"
-                                :2 "$$"
-                                :3 "$$$"
-                                :4 "$$$$"}
-        :values                [1 2 3 4]
-        :updated_at            $
-        :created_at            $
-        :id                    $})]
+(expect
+  [{:status "success"}
+   {:field_id              (id :venues :price)
+    :human_readable_values {:1 "$"
+                            :2 "$$"
+                            :3 "$$$"
+                            :4 "$$$$"}
+    :values                [1 2 3 4]
+    :id                    (field-values-id :venues :price)}]
   [((user->client :crowberto) :post 200 (format "field/%d/value_map_update" (id :venues :price)) {:values_map {:1 "$"
-                                                                                                                    :2 "$$"
-                                                                                                                    :3 "$$$"
-                                                                                                                    :4 "$$$$"}})
-   ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price)))])
+                                                                                                               :2 "$$"
+                                                                                                               :3 "$$$"
+                                                                                                               :4 "$$$$"}})
+   (-> ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price)))
+       (dissoc :created_at :updated_at))])
 
 ;; Check that we can unset values
-(tu/expect-eval-actual-first
+(expect
   [{:status "success"}
    (tu/match-$ (FieldValues :field_id (id :venues :price))
      {:field_id              (id :venues :price)
       :human_readable_values {}
       :values                [1 2 3 4]
-      :updated_at            $
-      :created_at            $
-      :id                    $})]
+      :id                    (field-values-id :venues :price)})]
   [(do (db/update! FieldValues (:id (field->field-values :venues :price))
          :human_readable_values {:1 "$" ; make sure they're set
                                  :2 "$$"
                                  :3 "$$$"
                                  :4 "$$$$"})
-       ((user->client :crowberto) :post 200 (format "field/%d/value_map_update" (id :venues :price))
-        {:values_map {}}))
-   ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price)))])
+       ((user->client :crowberto) :post 200 (format "field/%d/value_map_update" (id :venues :price)) {:values_map {}}))
+   (-> ((user->client :rasta) :get 200 (format "field/%d/values" (id :venues :price)))
+       (dissoc :created_at :updated_at))])
 
 ;; Check that we get an error if we call value_map_update on something that isn't a category
-(expect "You can only update the mapped values of a Field whose 'special_type' is 'category'/'city'/'state'/'country' or whose 'base_type' is 'BooleanField'."
+(expect "You can only update the mapped values of a Field whose 'special_type' is 'category'/'city'/'state'/'country' or whose 'base_type' is 'type/Boolean'."
   ((user->client :crowberto) :post 400 (format "field/%d/value_map_update" (id :venues :id))
    {:values_map {:1 "$"
                  :2 "$$"

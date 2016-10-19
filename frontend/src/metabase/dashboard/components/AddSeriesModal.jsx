@@ -9,7 +9,7 @@ import CheckBox from "metabase/components/CheckBox.jsx";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import Query from "metabase/lib/query";
 
-import visualizations from "metabase/visualizations";
+import { getVisualizationRaw } from "metabase/visualizations";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -76,12 +76,12 @@ export default class AddSeriesModal extends Component {
 
     async onCardChange(card, e) {
         const { dashcard, dashcardData } = this.props;
-        let CardVisualization = visualizations.get(dashcard.card.display);
+        let { CardVisualization } = getVisualizationRaw([{ card: dashcard.card }]);
         try {
             if (e.target.checked) {
                 if (getIn(dashcardData, [dashcard.id, card.id]) === undefined) {
                     this.setState({ state: "loading" });
-                    await this.props.fetchCardData(card, dashcard);
+                    await this.props.fetchCardData(card, dashcard, { reload: false, clear: true });
                 }
                 let sourceDataset = getIn(this.props.dashcardData, [dashcard.id, dashcard.card.id]);
                 let seriesDataset = getIn(this.props.dashcardData, [dashcard.id, card.id]);
@@ -142,7 +142,7 @@ export default class AddSeriesModal extends Component {
             data: getIn(dashcardData, [dashcard.id, dashcard.card.id, "data"])
         };
 
-        const CardVisualization = visualizations.get(dashcard.card.display);
+        let { CardVisualization } = getVisualizationRaw([{ card: dashcard.card }]);
 
         return cards.filter(card => {
             try {
@@ -152,7 +152,7 @@ export default class AddSeriesModal extends Component {
                 }
                 if (card.dataset_query.type === "query") {
                     if (!CardVisualization.seriesAreCompatible(initialSeries,
-                        { card: card, data: { cols: getQueryColumns(card, databases) } }
+                        { card: card, data: { cols: getQueryColumns(card, databases), rows: [] } }
                     )) {
                         return false;
                     }
@@ -233,7 +233,7 @@ export default class AddSeriesModal extends Component {
                 </div>
                 <div className="border-left flex flex-column" style={{width: 370, backgroundColor: "#F8FAFA", borderColor: "#DBE1DF" }}>
                     <div className="flex-no-shrink border-bottom flex flex-row align-center" style={{ borderColor: "#DBE1DF" }}>
-                        <Icon className="ml2" name="search" width={16} height={16} />
+                        <Icon className="ml2" name="search" size={16} />
                         <input className="h4 input full pl1" style={{ border: "none", backgroundColor: "transparent" }} type="search" placeholder="Search for a question" onFocus={this.onSearchFocus} onChange={this.onSearchChange}/>
                     </div>
                     <LoadingAndErrorWrapper className="flex flex-full" loading={!filteredCards} error={error} noBackground>
@@ -249,7 +249,7 @@ export default class AddSeriesModal extends Component {
                                 </span>
                                 { card.dataset_query.type !== "query" &&
                                     <Tooltip tooltip="We're not sure if this question is compatible">
-                                        <Icon className="px1 flex-align-right text-grey-2 text-grey-4-hover cursor-pointer flex-no-shrink" name="warning" width={20} height={20} />
+                                        <Icon className="px1 flex-align-right text-grey-2 text-grey-4-hover cursor-pointer flex-no-shrink" name="warning" size={20} />
                                     </Tooltip>
                                 }
                             </li>

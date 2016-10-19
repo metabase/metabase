@@ -1,15 +1,22 @@
 import React, { Component, PropTypes } from "react";
+import { connect } from "react-redux";
+import { push } from "react-router-redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 import MetricForm from "./MetricForm.jsx";
 
 import { metricEditSelectors } from "../selectors";
-import * as actions from "../actions";
+import * as actions from "../datamodel";
+import { clearRequestState } from "metabase/redux/requests";
 
-import { connect } from "react-redux";
+const mapDispatchToProps = {
+    ...actions,
+    clearRequestState,
+    onChangeLocation: push
+};
 
-@connect(metricEditSelectors, actions)
+@connect(metricEditSelectors, mapDispatchToProps)
 export default class MetricApp extends Component {
     async componentWillMount() {
         const { params, location } = this.props;
@@ -32,9 +39,11 @@ export default class MetricApp extends Component {
         let { tableMetadata } = this.props;
         if (metric.id != null) {
             await this.props.updateMetric(metric);
+            this.props.clearRequestState({statePath: ['metadata', 'metrics']});
             MetabaseAnalytics.trackEvent("Data Model", "Metric Updated");
         } else {
             await this.props.createMetric(metric);
+            this.props.clearRequestState({statePath: ['metadata', 'metrics']});
             MetabaseAnalytics.trackEvent("Data Model", "Metric Created");
         }
 

@@ -33,12 +33,10 @@ export default class SettingsUpdatesForm extends Component {
         let versionInfo = _.findWhere(this.props.settings, {key: "version-info"}),
             currentVersion = MetabaseSettings.get("version").tag;
 
-        versionInfo = versionInfo ? JSON.parse(versionInfo.value) : null;
-
-        console.log(versionInfo);
+        if (versionInfo) versionInfo = versionInfo.value;
 
         /*
-            We expect the versionInfo to take on the JSON structure detailed below.  
+            We expect the versionInfo to take on the JSON structure detailed below.
             The 'older' section should contain only the last 5 previous versions, we don't need to go on forever.
             The highlights for a version should just be text and should be limited to 5 items tops.
 
@@ -83,7 +81,7 @@ export default class SettingsUpdatesForm extends Component {
                         <span className="text-white text-bold">Metabase {this.removeVersionPrefixIfNeeded(versionInfo.latest.version)} is available.  You're running {this.removeVersionPrefixIfNeeded(currentVersion)}</span>
                         <a data-metabase-event={"Updates Settings; Update link clicked; "+versionInfo.latest.version} className="Button Button--white Button--medium borderless" href="http://www.metabase.com/start" target="_blank">Update</a>
                     </div>
-                    
+
                     <div className="text-grey-3">
                         <h3 className="py3 text-uppercase">What's Changed:</h3>
 

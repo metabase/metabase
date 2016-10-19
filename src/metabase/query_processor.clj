@@ -6,6 +6,7 @@
             (schema [core :as s]
                     utils)
             [swiss.arrows :refer [<<-]]
+            [metabase.api.common :refer [*current-user-id*]]
             (metabase [config :as config]
                       [db :as db]
                       [driver :as driver])
@@ -17,6 +18,7 @@
                                       [interface :refer :all]
                                       [macros :as macros]
                                       [parameters :as params]
+                                      [permissions :as perms]
                                       [resolve :as resolve])
             [metabase.util :as u])
   (:import (schema.utils NamedError ValidationError)))
@@ -33,7 +35,7 @@
 
 ;;;  DYNAMIC VARS
 
-(def ^:dynamic *disable-qp-logging*
+(def ^:dynamic ^Boolean *disable-qp-logging*
   "Should we disable logging for the QP? (e.g., during sync we probably want to turn it off to keep logs less cluttered)."
   false)
 
@@ -127,57 +129,56 @@
            (fail query e)))))
 
 
-(defn- pre-add-settings
+(defn- add-settings
   "Adds the `:settings` map to the query which can contain any fixed properties that would be useful at execution time.
    Currently supports a settings object like:
 
-       {:report-timezone \"US/Pacific\"}
-   "
-  [qp]
-  (fn [{:keys [driver] :as query}]
-    (let [settings {:report-timezone (when (driver/driver-supports? driver :set-timezone)
-                                       (let [report-tz (driver/report-timezone)]
-                                         (when-not (empty? report-tz)
-                                           report-tz)))}]
-      (qp (assoc query :settings (m/filter-vals (complement nil?) settings))))))
+       {:report-timezone \"US/Pacific\"}"
+  [{:keys [driver] :as query}]
+  (let [settings {:report-timezone (when (driver/driver-supports? driver :set-timezone)
+                                     (let [report-tz (driver/report-timezone)]
+                                       (when-not (empty? report-tz)
+                                         report-tz)))}]
+    (assoc query :settings (m/filter-vals (complement nil?) settings))))
+
+(defn- pre-add-settings [qp] (comp qp add-settings))
 
 
-(defn- pre-expand-macros
+(defn- expand-macros
   "Looks for macros in a structured (unexpanded) query and substitutes the macros for their contents."
-  [qp]
-  (fn [query]
-    ;; if necessary, handle macro substitution
-    (let [query (if-not (mbql-query? query)
-                  query
-                  ;; for MBQL queries run our macro expansion
-                  (u/prog1 (macros/expand-macros query)
-                    (when (and (not *disable-qp-logging*)
-                               (not= <> query))
-                      (log/debug (u/format-color 'cyan "\n\nMACRO/SUBSTITUTED: 😻\n%s" (u/pprint-to-str <>))))))]
-      (qp query))))
+  [query]
+  (if-not (mbql-query? query)
+    query
+    (u/prog1 (macros/expand-macros query)
+      (when (and (not *disable-qp-logging*)
+                 (not= <> query))
+        (log/debug (u/format-color 'cyan "\n\nMACRO/SUBSTITUTED: 😻\n%s" (u/pprint-to-str <>)))))))
 
-(defn- pre-substitute-parameters
+(defn- pre-expand-macros [qp] (comp qp expand-macros))
+
+
+(defn- substitute-parameters
   "If any parameters were supplied then substitute them into the query."
-  [qp]
-  (fn [query]
-    ;; if necessary, handle parameters substitution
-    (let [query (u/prog1 (params/expand-parameters query)
-                  (when (and (not *disable-qp-logging*)
-                             (not= <> query))
-                    (log/debug (u/format-color 'cyan "\n\nPARAMS/SUBSTITUTED: 😻\n%s" (u/pprint-to-str <>)))))]
-      (qp query))))
+  [query]
+  (u/prog1 (params/expand-parameters query)
+    (when (and (not *disable-qp-logging*)
+               (not= <> query))
+      (log/debug (u/format-color 'cyan "\n\nPARAMS/SUBSTITUTED: 😻\n%s" (u/pprint-to-str <>))))))
 
-(defn- pre-expand-resolve
-  "Transforms an MBQL into an expanded form with more information and structure.  Also resolves references to fields, tables,
+(defn- pre-substitute-parameters [qp] (comp qp substitute-parameters))
+
+
+(defn- expand-resolve
+  "Transforms an MBQL into an expanded form with more information and structure. Also resolves references to fields, tables,
    etc, into their concrete details which are necessary for query formation by the executing driver."
-  [qp]
-  (fn [{database-id :database, :as query}]
-    (let [resolved-db (db/select-one [database/Database :name :id :engine :details], :id database-id)
-          query       (if-not (mbql-query? query)
-                        query
-                        ;; for MBQL queries we expand first, then resolve
-                        (resolve/resolve (expand/expand query)))]
-      (qp (assoc query :database resolved-db)))))
+  [{database-id :database, :as query}]
+  (let [resolved-db (db/select-one [database/Database :name :id :engine :details], :id database-id)
+        query       (if-not (mbql-query? query)
+                      query
+                      (resolve/resolve (expand/expand query)))]
+    (assoc query :database resolved-db)))
+
+(defn- pre-expand-resolve [qp] (comp qp expand-resolve))
 
 
 (defn- post-add-row-count-and-status
@@ -198,14 +199,15 @@
 
 
 (defn- format-rows [{:keys [report-timezone]} rows]
-  (for [row rows]
-    (for [v row]
-      (if (u/is-temporal? v)
-        ;; NOTE: if we don't have an explicit report-timezone then use the JVM timezone
-        ;;       this ensures alignment between the way dates are processed by JDBC and our returned data
-        ;;       GH issues: #2282, #2035
-        (u/->iso-8601-datetime v (or report-timezone (System/getProperty "user.timezone")))
-        v))))
+  (let [timezone (or report-timezone (System/getProperty "user.timezone"))]
+    (for [row rows]
+      (for [v row]
+        (if (u/is-temporal? v)
+          ;; NOTE: if we don't have an explicit report-timezone then use the JVM timezone
+          ;;       this ensures alignment between the way dates are processed by JDBC and our returned data
+          ;;       GH issues: #2282, #2035
+          (u/->iso-8601-datetime v timezone)
+          v)))))
 
 (defn- post-format-rows
   "Format individual query result values as needed.  Ex: format temporal values as iso8601 strings w/ timezone."
@@ -224,8 +226,8 @@
                 (seq fields)))))
 
 (defn- datetime-field? [{:keys [base-type special-type]}]
-  (or (contains? #{:DateField :DateTimeField} base-type)
-      (contains? #{:timestamp_seconds :timestamp_milliseconds} special-type)))
+  (or (isa? base-type :type/DateTime)
+      (isa? special-type :type/DateTime)))
 
 (defn- fields-for-source-table
   "Return the all fields for SOURCE-TABLE, for use as an implicit `:fields` clause."
@@ -242,37 +244,37 @@
         (map->DateTimeField {:field field, :unit :default})
         field))))
 
-(defn- pre-add-implicit-fields
+(defn- add-implicit-fields
   "Add an implicit `fields` clause to queries with `rows` aggregations."
-  [qp]
-  (fn [{{:keys [source-table]} :query, :as query}]
-    (let [query (if-not (should-add-implicit-fields? query)
-                  query
-                  ;; this is a structured `:rows` query, so lets add a `:fields` clause with all fields from the source table + expressions
-                  (let [fields      (fields-for-source-table source-table)
-                        expressions (for [[expression-name] (get-in query [:query :expressions])]
-                                      (strict-map->ExpressionRef {:expression-name (name expression-name)}))]
-                    (when-not (seq fields)
-                      (log/warn (format "Table '%s' has no Fields associated with it." (:name source-table))))
-                    (-> query
-                        (assoc-in [:query :fields-is-implicit] true)
-                        (assoc-in [:query :fields] (concat fields expressions)))))]
-      (qp query))))
+  [{{:keys [source-table]} :query, :as query}]
+  (if-not (should-add-implicit-fields? query)
+    query
+    ;; this is a structured `:rows` query, so lets add a `:fields` clause with all fields from the source table + expressions
+    (let [fields      (fields-for-source-table source-table)
+          expressions (for [[expression-name] (get-in query [:query :expressions])]
+                        (strict-map->ExpressionRef {:expression-name (name expression-name)}))]
+      (when-not (seq fields)
+        (log/warn (format "Table '%s' has no Fields associated with it." (:name source-table))))
+      (-> query
+          (assoc-in [:query :fields-is-implicit] true)
+          (assoc-in [:query :fields] (concat fields expressions))))))
+
+(defn- pre-add-implicit-fields [qp] (comp qp add-implicit-fields))
 
 
-(defn- pre-add-implicit-breakout-order-by
+(defn- add-implicit-breakout-order-by
   "`Fields` specified in `breakout` should add an implicit ascending `order-by` subclause *unless* that field is *explicitly* referenced in `order-by`."
-  [qp]
-  (fn [{{breakout-fields :breakout, order-by :order-by} :query, :as query}]
-    (if (mbql-query? query)
-      (let [order-by-fields                   (set (map :field order-by))
-            implicit-breakout-order-by-fields (filter (partial (complement contains?) order-by-fields)
-                                                      breakout-fields)]
-        (qp (cond-> query
-              (seq implicit-breakout-order-by-fields) (update-in [:query :order-by] concat (for [field implicit-breakout-order-by-fields]
-                                                                                             {:field field, :direction :ascending})))))
-      ;; for non-MBQL queries we do nothing
-      (qp query))))
+  [{{breakout-fields :breakout, order-by :order-by} :query, :as query}]
+  (if-not (mbql-query? query)
+    query
+    (let [order-by-fields                   (set (map :field order-by))
+          implicit-breakout-order-by-fields (filter (partial (complement contains?) order-by-fields)
+                                                    breakout-fields)]
+      (cond-> query
+        (seq implicit-breakout-order-by-fields) (update-in [:query :order-by] concat (for [field implicit-breakout-order-by-fields]
+                                                                                       {:field field, :direction :ascending}))))))
+
+(defn- pre-add-implicit-breakout-order-by [qp] (comp qp add-implicit-breakout-order-by))
 
 
 (defn- pre-cumulative-sum
@@ -401,9 +403,8 @@
       (update results :rows (partial take (or max-results
                                               absolute-max-results))))))
 
-
-(defn- pre-log-query [qp]
-  (fn [query]
+(defn- log-query [query]
+  (u/prog1 query
     (when (and (mbql-query? query)
                (not *disable-qp-logging*))
       (log/debug (u/format-color 'magenta "\nPREPROCESSED/EXPANDED: 😻\n%s"
@@ -416,7 +417,15 @@
                      ;; obscure DB details when logging. Just log the name of driver because we don't care about its properties
                      (-> query
                          (assoc-in [:database :details] "😋 ") ; :yum:
-                         (update :driver name)))))))
+                         (update :driver name)))))))))
+
+(defn- pre-log-query [qp] (comp qp log-query))
+
+(defn- pre-check-query-permissions [qp]
+  (fn [query]
+    (when *current-user-id*
+      (perms/check-query-permissions *current-user-id* query))
+    ;; TODO - what should we do if there is no *current-user-id* (for something like a pulse?)
     (qp query)))
 
 ;; The following are just assertions that check the behavior of the QP. It doesn't make sense to run them on prod because at best they
@@ -430,11 +439,11 @@
   (if config/is-prod?
     identity
     (fn [qp]
-      (let [called? (atom false)]
-        (fn [query]
-          (assert (not @called?) "(QP QUERY) IS BEING CALLED MORE THAN ONCE!")
-          (reset! called? true)
-          (qp query))))))
+      (comp qp (let [called? (atom false)]
+                 (fn [query]
+                   (u/prog1 query
+                     (assert (not @called?) "(QP QUERY) IS BEING CALLED MORE THAN ONCE!")
+                     (reset! called? true))))))))
 
 
 (def ^:private post-check-results-format
@@ -444,15 +453,23 @@
   (if config/is-prod?
     identity
     (fn [qp]
-      (fn [query]
-        (u/prog1 (qp query)
-          (validate-results <>))))))
+      (comp validate-results qp))))
 
 (defn query->remark
   "Genarate an approparite REMARK to be prepended to a query to give DBAs additional information about the query being executed.
    See documentation for `mbql->native` and [issue #2386](https://github.com/metabase/metabase/issues/2386) for more information."
   ^String [{{:keys [executed-by uuid query-hash query-type], :as info} :info}]
   (format "Metabase:: userID: %s executionID: %s queryType: %s queryHash: %s" executed-by uuid query-type query-hash))
+
+(defn- infer-column-types
+  "Infer the types of columns by looking at the first value for each in the results, and add the relevant information in `:cols`.
+   This is used for native queries, which don't have the type information from the original `Field` objects used in the query, which is added to the results by `annotate`."
+  [results]
+  (assoc results
+    :columns (mapv name (:columns results))
+    :cols    (vec (for [[column first-value] (partition 2 (interleave (:columns results) (first (:rows results))))]
+                    {:name      (name column)
+                     :base_type (driver/class->base-type (type first-value))}))))
 
 (defn- run-query
   "The end of the QP middleware which actually executes the query on the driver.
@@ -466,17 +483,14 @@
                                 (:native query)
                                 (driver/mbql->native (:driver query) query))
                        (when-not *disable-qp-logging*
-                         (log/debug (u/format-color 'green "NATIVE FORM:\n%s\n" (u/pprint-to-str <>)))))
+                         (log/debug (u/format-color 'green "NATIVE FORM: 😳\n%s\n" (u/pprint-to-str <>)))))
         native-query (if-not (mbql-query? query)
                        query
                        (assoc query :native native-form))
         raw-result   (driver/execute-query (:driver query) native-query)
         query-result (if-not (or (mbql-query? query)
                                  (:annotate? raw-result))
-                       (assoc raw-result :columns (mapv name (:columns raw-result))
-                                         :cols    (for [[column first-value] (partition 2 (interleave (:columns raw-result) (first (:rows raw-result))))]
-                                                    {:name      (name column)
-                                                     :base_type (driver/class->base-type (type first-value))}))
+                       (infer-column-types raw-result)
                        (annotate/annotate query raw-result))]
     (assoc query-result :native_form native-form)))
 
@@ -514,6 +528,7 @@
 
 (defn process-query
   "Process an MBQL structured or native query, and return the result."
+  {:style/indent 0}
   [query]
   (when-not *disable-qp-logging*
     (log/debug (u/format-color 'blue "\nQUERY: 😎\n%s"  (u/pprint-to-str query))))
@@ -535,15 +550,24 @@
             limit
             post-check-results-format
             pre-log-query
+            pre-check-query-permissions
             guard-multiple-calls
             run-query) (assoc query :driver driver)))))
+
+
+(def ^{:arglists '([query])} expand
+  "Expand a QUERY the same way it would normally be done as part of query processing.
+   This is useful for things that need to look at an expanded query, such as permissions checking for Cards."
+  (comp expand-resolve
+        substitute-parameters
+        expand-macros))
 
 
 ;;; +----------------------------------------------------------------------------------------------------+
 ;;; |                                     DATASET-QUERY PUBLIC API                                       |
 ;;; +----------------------------------------------------------------------------------------------------+
 
-(declare query-fail query-complete save-query-execution)
+(declare query-fail query-complete save-query-execution!)
 
 (defn- assert-valid-query-result [query-result]
   (when-not (contains? query-result :status)
@@ -565,15 +589,17 @@
 
   Possible caller-options include:
 
-    :executed_by [int]  (user_id of caller)"
+    :executed-by [int]  (User ID of caller)
+    :card-id     [int]  (ID of Card associated with this execution)"
   {:arglists '([query options])}
-  [query {:keys [executed_by]}]
-  {:pre [(integer? executed_by)]}
-  (let [query-uuid      (.toString (java.util.UUID/randomUUID))
+  [query {:keys [executed-by card-id]}]
+  {:pre [(integer? executed-by) (u/maybe? integer? card-id)]}
+  (let [query-uuid      (str (java.util.UUID/randomUUID))
+        query-hash      (hash query)
         query-execution {:uuid              query-uuid
-                         :executor_id       executed_by
+                         :executor_id       executed-by
                          :json_query        query
-                         :query_id          nil
+                         :query_hash        query-hash
                          :version           0
                          :status            :starting
                          :error             ""
@@ -586,9 +612,10 @@
                          :raw_query         ""
                          :additional_info   ""
                          :start_time_millis (System/currentTimeMillis)}
-        query           (assoc query :info {:executed-by executed_by
+        query           (assoc query :info {:executed-by executed-by
+                                            :card-id     card-id
                                             :uuid        query-uuid
-                                            :query-hash  (hash query)
+                                            :query-hash  query-hash
                                             :query-type  (if (mbql-query? query) "MBQL" "native")})]
     (try
       (let [result (process-query query)]
@@ -598,7 +625,7 @@
         (log/error (u/format-color 'red "Query failure: %s\n%s" (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e))))
         (query-fail query-execution (.getMessage e))))))
 
-(defn query-fail
+(defn- query-fail
   "Save QueryExecution state and construct a failed query response"
   [query-execution error-message]
   (let [updates {:status       :failed
@@ -609,7 +636,7 @@
     (-> query-execution
         (dissoc :start_time_millis)
         (merge updates)
-        save-query-execution
+        save-query-execution!
         (dissoc :raw_query :result_rows :version)
         ;; this is just for the response for clien
         (assoc :error     error-message
@@ -618,7 +645,7 @@
                            :cols    []
                            :columns []}))))
 
-(defn query-complete
+(defn- query-complete
   "Save QueryExecution state and construct a completed (successful) query response"
   [query-execution query-result]
   ;; record our query execution and format response
@@ -629,18 +656,17 @@
                          (:start_time_millis query-execution))
         :result_rows  (get query-result :row_count 0))
       (dissoc :start_time_millis)
-      save-query-execution
+      save-query-execution!
       ;; at this point we've saved and we just need to massage things into our final response format
       (dissoc :error :raw_query :result_rows :version)
       (merge query-result)))
 
-(defn save-query-execution
+(defn- save-query-execution!
   "Save (or update) a `QueryExecution`."
   [{:keys [id], :as query-execution}]
   (if id
     ;; execution has already been saved, so update it
-    (do
-      (db/update! QueryExecution id query-execution)
-      query-execution)
+    (u/prog1 query-execution
+      (db/update! QueryExecution id query-execution))
     ;; first time saving execution, so insert it
     (db/insert! QueryExecution query-execution)))

@@ -58,7 +58,7 @@ export const makeGetItem = () => {
             id: entity.id,
             created: moment(entity.created_at).fromNow(),
             by: entity.creator.common_name,
-            icon: (visualizations.get(entity.display)||{}).iconName,
+            icon: visualizations.get(entity.display).iconName,
             favorite: entity.favorite,
             archived: entity.archived,
             labels: entity.labels.map(labelId => labelEntities[labelId]).filter(l => l),

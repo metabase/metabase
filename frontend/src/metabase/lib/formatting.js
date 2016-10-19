@@ -4,7 +4,7 @@ import moment from "moment";
 import Humanize from "humanize";
 import React from "react";
 
-import { isDate } from "metabase/lib/schema_metadata";
+import { isDate, isNumber, isCoordinate } from "metabase/lib/schema_metadata";
 import { parseTimestamp } from "metabase/lib/time";
 
 const PRECISION_NUMBER_FORMATTER      = d3.format(".2r");
@@ -13,7 +13,7 @@ const FIXED_NUMBER_FORMATTER_NO_COMMA = d3.format(".f");
 const DECIMAL_DEGREES_FORMATTER       = d3.format(".08f");
 
 export function formatNumber(number, options = {}) {
-    options = { comma: true, ...options}
+    options = { comma: true, ...options};
     if (options.compact) {
         return Humanize.compactInteger(number, 1);
     } else if (number > -1 && number < 1) {
@@ -49,7 +49,7 @@ function formatMajorMinor(major, minor, options = {}) {
 }
 
 function formatTimeWithUnit(value, unit, options = {}) {
-    let m = parseTimestamp(value);
+    let m = parseTimestamp(value, unit);
     if (!m.isValid()) {
         return String(value);
     }
@@ -67,7 +67,7 @@ function formatTimeWithUnit(value, unit, options = {}) {
                 <div><span className="text-bold">{m.format("MMMM")}</span> {m.format("YYYY")}</div> :
                 m.format("MMMM") + " " + m.format("YYYY");
         case "year": // 2015
-            return String(value);
+            return m.format("YYYY");
         case "quarter": // Q1 - 2015
             return formatMajorMinor(m.format("[Q]Q"), m.format("YYYY"), { ...options, majorWidth: 0 });
         case "hour-of-day": // 12 AM
@@ -89,7 +89,7 @@ export function formatValue(value, options = {}) {
     let column = options.column;
     options = {
         jsx: false,
-        comma: column && column.special_type === "number",
+        comma: isNumber(column),
         ...options
     };
     if (value == undefined) {
@@ -97,12 +97,12 @@ export function formatValue(value, options = {}) {
     } else if (column && column.unit != null) {
         return formatTimeWithUnit(value, column.unit, options);
     } else if (isDate(column) || moment.isDate(value) || moment.isMoment(value) || moment(value, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()) {
-        return parseTimestamp(value).format("LLLL");
+        return parseTimestamp(value, column && column.unit).format("LLLL");
     } else if (typeof value === "string") {
         return value;
     } else if (typeof value === "number") {
-        if (column && (column.special_type === "latitude" || column.special_type === "longitude")) {
-            return DECIMAL_DEGREES_FORMATTER(value)
+        if (isCoordinate(column)) {
+            return DECIMAL_DEGREES_FORMATTER(value);
         } else {
             return formatNumber(value, options);
         }

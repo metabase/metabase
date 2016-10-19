@@ -18,7 +18,7 @@ import pure from "recompose/pure";
 const Item = ({ id, name, created, by, selected, favorite, archived, icon, labels, setItemSelected, setFavorited, setArchived }) =>
     <div className={cx(S.item, { [S.selected]: selected, [S.favorite]: favorite, [S.archived]: archived })}>
         <div className={S.leftIcons}>
-            { icon && <Icon className={S.chartIcon} name={icon} width={40} height={40} /> }
+            { icon && <Icon className={S.chartIcon} name={icon} size={20} /> }
             <CheckBox
                 checked={selected}
                 onChange={(e) => setItemSelected({ [id]: e.target.checked })}
@@ -35,7 +35,7 @@ const Item = ({ id, name, created, by, selected, favorite, archived, icon, label
                 <LabelPopover
                     triggerElement={
                         <Tooltip tooltip={"Labels"}>
-                            <Icon className={S.tagIcon} name="label" width={20} height={20} />
+                            <Icon className={S.tagIcon} name="label" size={20} />
                         </Tooltip>
                     }
                     triggerClasses={S.trigger}
@@ -43,13 +43,13 @@ const Item = ({ id, name, created, by, selected, favorite, archived, icon, label
                     item={{ id, labels }}
                 />
                 <Tooltip tooltip={favorite ? "Unfavorite" : "Favorite"}>
-                    <Icon className={S.favoriteIcon} name="star" width={20} height={20} onClick={() => setFavorited(id, !favorite) }/>
+                    <Icon className={S.favoriteIcon} name="star" size={20} onClick={() => setFavorited(id, !favorite) }/>
                 </Tooltip>
             </div>
         : null }
         <div className={S.extraIcons}>
             <Tooltip tooltip={archived ? "Unarchive" : "Archive"}>
-                <Icon className={S.archiveIcon} name={ archived ? "unarchive" : "archive"} width={20} height={20} onClick={() => setArchived(id, !archived, true)} />
+                <Icon className={S.archiveIcon} name={ archived ? "unarchive" : "archive"} size={20} onClick={() => setArchived(id, !archived, true)} />
             </Tooltip>
         </div>
     </div>

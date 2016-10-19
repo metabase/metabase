@@ -76,10 +76,10 @@
   Field
   (formatted [{:keys [schema-name table-name special-type field-name]}]
     (let [field (keyword (hx/qualify-and-escape-dots schema-name table-name field-name))]
-      (case special-type
-        :timestamp_seconds      (sql/unix-timestamp->timestamp (driver) field :seconds)
-        :timestamp_milliseconds (sql/unix-timestamp->timestamp (driver) field :milliseconds)
-        field)))
+      (cond
+        (isa? special-type :type/UNIXTimestampSeconds)      (sql/unix-timestamp->timestamp (driver) field :seconds)
+        (isa? special-type :type/UNIXTimestampMilliseconds) (sql/unix-timestamp->timestamp (driver) field :milliseconds)
+        :else                                               field)))
 
   DateTimeField
   (formatted [{unit :unit, field :field}]
@@ -227,14 +227,14 @@
   [sql]
   (when sql
     (-> sql
-        (s/replace #"\sFROM" "\nFROM")
+        (s/replace #"\sFROM"      "\nFROM")
         (s/replace #"\sLEFT JOIN" "\nLEFT JOIN")
-        (s/replace #"\sWHERE" "\nWHERE")
-        (s/replace #"\sGROUP BY" "\nGROUP BY")
-        (s/replace #"\sORDER BY" "\nORDER BY")
-        (s/replace #"\sLIMIT" "\nLIMIT")
-        (s/replace #"\sAND\s" "\n   AND ")
-        (s/replace #"\sOR\s" "\n    OR "))))
+        (s/replace #"\sWHERE"     "\nWHERE")
+        (s/replace #"\sGROUP BY"  "\nGROUP BY")
+        (s/replace #"\sORDER BY"  "\nORDER BY")
+        (s/replace #"\sLIMIT"     "\nLIMIT")
+        (s/replace #"\sAND\s"     "\n   AND ")
+        (s/replace #"\sOR\s"      "\n    OR "))))
 
 
 ;; TODO - make this a protocol method ?
@@ -282,22 +282,12 @@
       {:query  sql
        :params args})))
 
-
-(defn- maybe-set-timezone!
-  "Set the timezone if applicable, catching exceptions if it fails."
-  [driver settings connection]
-  (when-let [timezone (:report-timezone settings)]
-    (log/debug (u/format-color 'green "%s" (sql/set-timezone-sql driver)))
-    (try (jdbc/db-do-prepared connection (sql/set-timezone-sql driver) [timezone])
-         (catch Throwable e
-           (log/error (u/format-color 'red "Failed to set timezone: %s" (.getMessage e)))))))
-
 (defn- run-query
   "Run the query itself."
   [{sql :query, params :params, remark :remark} connection]
   (let [sql              (str "-- " remark "\n" (hx/unescape-dots sql))
         statement        (into [sql] params)
-        [columns & rows] (jdbc/query connection statement, :identifiers identity, :as-arrays? true)]
+        [columns & rows] (jdbc/query connection statement {:identifiers identity, :as-arrays? true})]
     {:rows    (or rows [])
      :columns columns}))
 
@@ -310,16 +300,44 @@
 (defn- do-with-try-catch {:style/indent 0} [f]
   (try (f)
        (catch java.sql.SQLException e
+         (log/error (jdbc/print-sql-exception-chain e))
          (throw (Exception. (exception->nice-error-message e))))))
 
 (defn- do-with-auto-commit-disabled
-  "Disable auto-commit for this transaction, that way shady queries are unable to modify the database; execute F in a try-finally block.
-   In the `finally`, rollback any changes made during this transaction just to be extra-double-sure JDBC doesn't try to commit them automatically for us."
+  "Disable auto-commit for this transaction, and make the transaction `rollback-only`, which means when the transaction finishes `.rollback` will be called instead of `.commit`.
+   Furthermore, execute F in a try-finally block; in the `finally`, manually call `.rollback` just to be extra-double-sure JDBC any changes made by the transaction aren't committed."
   {:style/indent 1}
-  [{^java.sql.Connection connection :connection}, f]
-  (.setAutoCommit connection false)
+  [conn f]
+  (jdbc/db-set-rollback-only! conn)
+  (.setAutoCommit (jdbc/get-connection conn) false)
+  ;; TODO - it would be nice if we could also `.setReadOnly` on the transaction as well, but that breaks setting the timezone. Is there some way we can have our cake and eat it too?
   (try (f)
-       (finally (.rollback connection))))
+       (finally (.rollback (jdbc/get-connection conn)))))
+
+(defn- do-in-transaction [connection f]
+  (jdbc/with-db-transaction [transaction-connection connection]
+    (do-with-auto-commit-disabled transaction-connection (partial f transaction-connection))))
+
+(defn- set-timezone!
+  "Set the timezone for the current connection."
+  [driver settings connection]
+  (let [timezone (:report-timezone settings)
+        sql      (sql/set-timezone-sql driver)]
+    (log/debug (u/pprint-to-str 'green [sql timezone]))
+    (jdbc/db-do-prepared connection [sql timezone])))
+
+(defn- run-query-without-timezone [driver settings connection query]
+  (do-in-transaction connection (partial run-query query)))
+
+(defn- run-query-with-timezone [driver settings connection query]
+  (try
+    (do-in-transaction connection (fn [transaction-connection]
+                                    (set-timezone! driver settings transaction-connection)
+                                    (run-query query transaction-connection)))
+    (catch java.sql.SQLException e
+      (log/error "Failed to set timezone:\n" (with-out-str (jdbc/print-sql-exception-chain e)))
+      (run-query-without-timezone driver settings connection query))))
+
 
 (defn execute-query
   "Process and run a native (raw SQL) QUERY."
@@ -328,8 +346,6 @@
     (do-with-try-catch
       (fn []
         (let [db-connection (sql/db->jdbc-connection-spec database)]
-          (jdbc/with-db-transaction [transaction-connection db-connection]
-            (do-with-auto-commit-disabled transaction-connection
-              (fn []
-                (maybe-set-timezone! driver settings transaction-connection)
-                (run-query query transaction-connection)))))))))
+          ((if (seq (:report-timezone settings))
+             run-query-with-timezone
+             run-query-without-timezone) driver settings db-connection query))))))

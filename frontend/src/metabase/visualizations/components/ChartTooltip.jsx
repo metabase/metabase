@@ -18,6 +18,12 @@ export default class ChartTooltip extends Component {
     static defaultProps = {
     };
 
+    componentWillReceiveProps({ hovered }) {
+        if (hovered && !Array.isArray(hovered.data)) {
+            console.warn("hovered.data should be an array of { key, value, col }", hovered.data);
+        }
+    }
+
     render() {
         const { series, hovered } = this.props;
         if (!(hovered && hovered.data && ((hovered.element && document.contains(hovered.element)) || hovered.event))) {
@@ -33,17 +39,23 @@ export default class ChartTooltip extends Component {
                 <table className="py1 px2">
                     <tbody>
                         { Array.isArray(hovered.data)  ?
-                            hovered.data.map(({ key, value }, index) =>
+                            hovered.data.map(({ key, value, col }, index) =>
                                 <tr key={index}>
-                                    <th className="text-light text-right">{key}:</th>
-                                    <th className="pl1 text-bold text-left">{value}</th>
+                                    <td className="text-light text-right">{key}:</td>
+                                    <td className="pl1 text-bold text-left">
+                                        { col ?
+                                            formatValue(value, { column: col, jsx: true, majorWidth: 0 })
+                                        :
+                                            value
+                                        }
+                                    </td>
                                 </tr>
                             )
                         :
                             [["key", 0], ["value", 1]].map(([propName, colIndex]) =>
                                 <tr key={propName} className="">
-                                    <th className="text-light text-right">{getFriendlyName(s.data.cols[colIndex])}:</th>
-                                    <th className="pl1 text-bold text-left">{formatValue(hovered.data[propName], { column: s.data.cols[colIndex], jsx: true, majorWidth: 0 })}</th>
+                                    <td className="text-light text-right">{getFriendlyName(s.data.cols[colIndex])}:</td>
+                                    <td className="pl1 text-bold text-left">{formatValue(hovered.data[propName], { column: s.data.cols[colIndex], jsx: true, majorWidth: 0 })}</td>
                                 </tr>
                             )
                         }

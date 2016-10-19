@@ -23,29 +23,29 @@ export const desaturated = {
 }
 
 export const harmony = [
-    "#509ee3", /* normal blue */
+    "#509ee3",
+    "#9cc177",
+    "#a989c5",
+    "#ef8c8c",
+    "#f9d45c",
     "#6450e3",
-    "#e35850",
     "#55e350",
-    "#50e3ae",
-    "#9cc177", /* normal green */
+    "#e35850",
     "#77c183",
     "#7d77c1",
-    "#c17777",
-    "#c1a877",
-    "#a989c5", /* normal purple */
     "#c589b9",
     "#bec589",
     "#89c3c5",
+    "#c17777",
     "#899bc5",
-    "#ef8c8c", /* normal red */
     "#efce8c",
-    "#8cefc6",
+    "#50e3ae",
     "#be8cef",
+    "#8cefc6",
     "#ef8cde",
-    "#f9d45c", /* normal yellow */
     "#b5f95c",
     "#5cc2f9",
     "#f95cd0",
+    "#c1a877",
     "#f95c67",
 ]

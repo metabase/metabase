@@ -1,162 +1,289 @@
 (ns metabase.models.setting
-  (:refer-clojure :exclude [get set])
-  (:require (clojure [string :as s]
-                     [walk :as walk])
+  "Settings are a fast and simple way to create a setting that can be set
+   from the admin page. They are saved to the Database, but intelligently
+   cached internally for super-fast lookups.
+
+   Define a new Setting with `defsetting` (optionally supplying a default value, type, or custom getters & setters):
+
+      (defsetting mandrill-api-key \"API key for Mandrill\")
+
+   The setting and docstr will then be auto-magically accessible from the admin page.
+
+   You can also set the value via the corresponding env var, which looks like
+   `MB_MANDRILL_API_KEY`, where the name of the setting is converted to uppercase and dashes to underscores.
+
+   The var created with `defsetting` can be used as a getter/setter, or you can
+   use `get` and `set!`:
+
+       (require '[metabase.models.setting :as setting])
+
+       (setting/get :mandrill-api-key)           ; only returns values set explicitly from SuperAdmin
+       (mandrill-api-key)                        ; returns value set in SuperAdmin, OR value of corresponding env var, OR the default value, if any (in that order)
+
+       (setting/set! :mandrill-api-key \"NEW_KEY\")
+       (mandrill-api-key \"NEW_KEY\")
+
+       (setting/set! :mandrill-api-key nil)
+       (mandrill-api-key nil)
+
+   Get a map of all Settings:
+
+      (setting/all)"
+  (:refer-clojure :exclude [get])
+  (:require [clojure.string :as str]
+            [cheshire.core :as json]
             [environ.core :as env]
-            [metabase.config :as config]
-            [metabase.db :as db]
-            [metabase.events :as events]
-            [metabase.models [common :as common]
-                             [interface :as i]]
-            [metabase.setup :as setup]
-            [metabase.util :as u]
-            [metabase.util.password :as password])
-  (:import java.util.TimeZone))
+            [medley.core :as m]
+            [schema.core :as s]
+            (metabase [db :as db]
+                      [events :as events])
+            [metabase.models.interface :as i]
+            [metabase.util :as u]))
 
-;; Settings are a fast + simple way to create a setting that can be set
-;; from the SuperAdmin page. They are saved to the Database, but intelligently
-;; cached internally for super-fast lookups.
-;;
-;; Define a new Setting with `defsetting` (optionally supplying a default value):
-;;
-;;    (defsetting mandrill-api-key "API key for Mandrill")
-;;
-;; The setting and docstr will then be auto-magically accessible from the SuperAdmin page.
-;;
-;; You can also set the value via the corresponding env var, which looks like
-;; `MB_MANDRILL_API_KEY`, where the name of the setting is converted to uppercase and dashes to underscores.
-;;
-;; The var created with `defsetting` can be used as a getter/setter, or you can
-;; use `get`/`set`/`delete`:
-;;
-;;     (require '[metabase.models.setting :as setting])
-;;
-;;     (setting/get :mandrill-api-key)           ; only returns values set explicitly from SuperAdmin
-;;     (mandrill-api-key)                        ; returns value set in SuperAdmin, OR value of corresponding env var, OR the default value, if any (in that order)
-;;
-;;     (setting/set :mandrill-api-key "NEW_KEY")
-;;     (mandrill-api-key "NEW_KEY")
-;;
-;;     (setting/delete :mandrill-api-key)
-;;     (mandrill-api-key nil)
-;;
-;; Get a map of all Settings:
-;;
-;;    (setting/all)
 
-(declare Setting
-         cached-setting->value
-         restore-cache-if-needed
-         settings-list)
+(i/defentity Setting
+  "The model that underlies `defsetting`."
+  :setting)
 
-;;; # PUBLIC
+(u/strict-extend (class Setting)
+  i/IEntity
+  (merge i/IEntityDefaults
+         {:types (constantly {:value :clob})}))
 
-;;; ## ACCESSORS
 
-;;; ### GET
+(def ^:private Type
+  (s/enum :string :boolean :json))
 
-(defn get
-  "Fetch value of `Setting`, first trying our cache, or fetching the value
-   from the DB if that fails. (Cached lookup time is ~60µs, compared to ~1800µs for DB lookup)
+(def ^:private SettingDefinition
+  {:name        s/Keyword
+   :description s/Str            ; used for docstring and is user-facing in the admin panel
+   :default     s/Any            ; this is a string because in the DB all settings are stored as strings; different getters can handle type conversion *from* string
+   :type        Type
+   :getter      clojure.lang.IFn
+   :setter      clojure.lang.IFn
+   :internal?   s/Bool})         ; should the API never return this setting? (default: false)
 
-     (get :mandrill-api-key)
 
-   Unlike using the setting getter fn, this will *not* return default values or values specified by env vars.
+(defonce ^:private registered-settings
+  (atom {}))
 
-   Prefer using the automatically generated getter function unless absolutely necessary:
+(s/defn ^:private ^:always-validate resolve-setting :- SettingDefinition
+  [setting-or-name]
+  (if (map? setting-or-name)
+    setting-or-name
+    (let [k (keyword setting-or-name)]
+      (or (@registered-settings k)
+          (throw (Exception. (format "Setting %s does not exist.\nFound: %s" k (sort (keys @registered-settings)))))))))
 
-     (mandrill-api-key)"
-  [k]
-  {:pre [(keyword? k)]}
-  (restore-cache-if-needed)
-  (if (contains? @cached-setting->value k)
-    (@cached-setting->value k)
-    (let [v (db/select-one-field :value Setting, :key (name k))]
-      (swap! cached-setting->value assoc k v)
+
+;;; ------------------------------------------------------------ cache ------------------------------------------------------------
+
+;; Cache is a 1:1 mapping of what's in the DB
+;; Cached lookup time is ~60µs, compared to ~1800µs for DB lookup
+
+(def ^:private cache
+  (atom nil))
+
+(defn- restore-cache-if-needed! []
+  (when-not @cache
+    (reset! cache (db/select-field->field :key :value Setting))))
+
+
+;;; ------------------------------------------------------------ get ------------------------------------------------------------
+
+(defn- setting-name ^String [setting-or-name]
+  (name (:name (resolve-setting setting-or-name))))
+
+(defn- env-var-name
+  "Get the env var corresponding to SETTING-OR-NAME.
+   (This is used primarily for documentation purposes)."
+  ^String [setting-or-name]
+  (let [setting (resolve-setting setting-or-name)]
+    (str "MB_" (str/upper-case (str/replace (setting-name setting) "-" "_")))))
+
+(defn env-var-value
+  "Get the value of SETTING-OR-NAME from the corresponding env var, if any.
+   The name of the Setting is converted to uppercase and dashes to underscores;
+   for example, a setting named `default-domain` can be set with the env var `MB_DEFAULT_DOMAIN`."
+  ^String [setting-or-name]
+  (let [setting (resolve-setting setting-or-name)
+        v       (env/env (keyword (str "mb-" (setting-name setting))))]
+    (when (seq v)
       v)))
 
-(defn- get-from-env-var
-  "Given a `Setting` like `:mandrill-api-key`, return the value of the corresponding env var,
-   e.g. `MB_MANDRILL_API_KEY`."
-  [setting-key]
-  (env/env (keyword (str "mb-" (name setting-key)))))
-
-(defn get*
-  "Get the value of a `Setting`. Unlike `get`, this also includes values from env vars."
-  [setting-key]
-  (or (get setting-key)
-      (get-from-env-var setting-key)))
+(defn- db-value
+  "Get the value, if any, of SETTING-OR-NAME from the DB (using / restoring the cache as needed)."
+  ^String [setting-or-name]
+  (restore-cache-if-needed!)
+  (clojure.core/get @cache (setting-name setting-or-name)))
 
 
-;;; ### SET / DELETE
+(defn get-string
+  "Get string value of SETTING-OR-NAME. This is the default getter for `String` settings; valuBis fetched as follows:
 
-(defn set
-  "Set the value of a `Setting`.
+   1.  From the database (i.e., set via the admin panel), if a value is present;
+   2.  From corresponding env var, if any;
+   3.  The default value, if one was specified.
+
+   If the fetched value is an empty string it is considered to be unset and this function returns `nil`."
+  ^String [setting-or-name]
+  (let [setting (resolve-setting setting-or-name)
+        v       (or (db-value setting)
+                    (env-var-value setting)
+                    (str (:default setting)))]
+    (when (seq v)
+      v)))
+
+(defn- string->boolean [string-value]
+  (when (seq string-value)
+    (case (str/lower-case string-value)
+      "true"  true
+      "false" false
+      (throw (Exception. "Invalid value for string: must be either \"true\" or \"false\" (case-insensitive).")))))
+
+(defn get-boolean
+  "Get boolean value of (presumably `:boolean`) SETTING-OR-NAME. This is the default getter for `:boolean` settings.
+   Returns one of the following values:
+
+   *  `nil`   if string value of SETTING-OR-NAME is unset (or empty)
+   *  `true`  if *lowercased* string value of SETTING-OR-NAME is `true`
+   *  `false` if *lowercased* string value of SETTING-OR-NAME is `false`."
+  ^Boolean [setting-or-name]
+  (string->boolean (get-string setting-or-name)))
+
+(defn get-json
+  "Get the string value of SETTING-OR-NAME and parse it as JSON."
+  [setting-or-name]
+  (json/parse-string (get-string setting-or-name) keyword))
+
+(def ^:private default-getter-for-type
+  {:string  get-string
+   :boolean get-boolean
+   :json    get-json})
+
+(defn get
+  "Fetch the value of SETTING-OR-NAME. What this means depends on the Setting's `:getter`; by default, this looks for first for a corresponding env var,
+   then checks the cache, then returns the default value of the Setting, if any."
+  [setting-or-name]
+  ((:getter (resolve-setting setting-or-name))))
+
+
+;;; ------------------------------------------------------------ set! ------------------------------------------------------------
+
+(s/defn ^:always-validate set-string!
+  "Set string value of SETTING-OR-NAME. A `nil` or empty NEW-VALUE can be passed to unset (i.e., delete) SETTING-OR-NAME."
+  [setting-or-name, new-value :- (s/maybe s/Str)]
+  (let [new-value    (when (seq new-value)
+                       new-value)
+        setting      (resolve-setting setting-or-name)
+        setting-name (setting-name setting)]
+    (restore-cache-if-needed!)
+    ;; write to DB
+    (cond
+      (not new-value)                 (db/delete! Setting :key setting-name)
+      ;; if there's a value in the cache then the row already exists in the DB; update that
+      (contains? @cache setting-name) (db/update-where! Setting {:key setting-name}
+                                        :value new-value)
+      ;; if there's nothing in the cache then the row doesn't exist, insert a new one
+      :else                           (db/insert! Setting
+                                        :key  setting-name
+                                        :value new-value))
+    ;; update cached value
+    (if new-value
+      (swap! cache assoc  setting-name new-value)
+      (swap! cache dissoc setting-name))
+    new-value))
+
+(defn set-boolean!
+  "Set the value of boolean SETTING-OR-NAME. NEW-VALUE can be nil, a boolean, or a string representation of one, such as `\"true\"` or `\"false\"` (these strings are case-insensitive)."
+  [setting-or-name new-value]
+  (set-string! setting-or-name (if (string? new-value)
+                                 (set-boolean! setting-or-name (string->boolean new-value))
+                                 (case new-value
+                                   true  "true"
+                                   false "false"
+                                   nil   nil))))
+
+(defn set-json!
+  "Serialize NEW-VALUE for SETTING-OR-NAME as a JSON string and save it."
+  [setting-or-name new-value]
+  (set-string! setting-or-name (when new-value
+                                 (json/generate-string new-value))))
+
+(def ^:private default-setter-for-type
+  {:string  set-string!
+   :boolean set-boolean!
+   :json    set-json!})
+
+(defn set!
+  "Set the value of SETTING-OR-NAME. What this means depends on the Setting's `:setter`; by default, this just updates the Settings cache and writes its value to the DB.
 
     (set :mandrill-api-key \"xyz123\")
 
-   Don't use this directly unless absolutely neccesary! Prefer using the setting directly instead:
+   Style note: prefer using the setting directly instead:
 
      (mandrill-api-key \"xyz123\")"
-  [k v]
-  {:pre [(keyword? k) (string? v)]}
-  (if (get k)
-    (db/update-where! Setting {:key (name k)}
-      :value v)
-    (db/insert! Setting
-      :key   (name k)
-      :value v))
-  (restore-cache-if-needed)
-  (swap! cached-setting->value assoc k v)
-  v)
-
-(defn delete
-  "Clear the value of a `Setting`."
-  [k]
-  {:pre [(keyword? k)]}
-  (restore-cache-if-needed)
-  (swap! cached-setting->value dissoc k)
-  (db/delete! Setting, :key (name k))
-  {:status 204, :body nil})
-
-(defn set-all
-  "Set the value of several `Settings` at once.
-
-    (set-all {:mandrill-api-key \"xyz123\", :another-setting \"ABC\"})"
-  [settings]
-  {:pre [(map? settings)]}
-  (doseq [k (keys settings)]
-    (if-let [v (clojure.core/get settings k)]
-      (set k v)
-      (delete k)))
-  (events/publish-event :settings-update settings))
-
-(defn set*
-  "Set the value of a `Setting`, deleting it if VALUE is `nil` or an empty string."
-  [setting-key value]
-  (if (or (not value)
-          (and (string? value)
-               (not (seq value))))
-    (delete setting-key)
-    (set setting-key value)))
+  [setting-or-name new-value]
+  ((:setter (resolve-setting setting-or-name)) new-value))
 
 
-;;; ## DEFSETTING
+;;; ------------------------------------------------------------ register-setting! ------------------------------------------------------------
 
-(defn- setting-extra-dox
-  "Generate some extra documentation for a `Setting`."
-  [symb default-value]
-  (str (format "`%s` is a `Setting`. You can get its value by calling\n\n" symb)
-       (format  "    (%s)\n\n" symb)
-       "and set its value by calling\n\n"
-       (format "    (%s <new-value>)\n\n" symb)
-       (format "You can also set its value with the env var `MB_%s`.\n"
-               (s/upper-case (s/replace (name symb) #"-" "_")))
-       "Clear its value by calling\n\n"
-       (format "    (%s nil)\n\n" symb)
-       (format "Its default value is `%s`." (if (nil? default-value)
-                                              "nil"
-                                              default-value))))
+(defn register-setting!
+  "Register a new `Setting` with a map of `SettingDefinition` attributes.
+   This is used internally be `defsetting`; you shouldn't need to use it yourself."
+  [{setting-name :name, setting-type :type, default :default, :as setting}]
+  (u/prog1 (let [setting-type (s/validate Type (or setting-type :string))]
+             (merge {:name        setting-name
+                     :description nil
+                     :type        setting-type
+                     :default     default
+                     :getter      (partial (default-getter-for-type setting-type) setting-name)
+                     :setter      (partial (default-setter-for-type setting-type) setting-name)
+                     :internal?   false}
+                    (dissoc setting :name :type :default)))
+    (s/validate SettingDefinition <>)
+    (swap! registered-settings assoc setting-name <>)))
+
+
+
+;;; ------------------------------------------------------------ defsetting macro ------------------------------------------------------------
+
+(defn metadata-for-setting-fn
+  "Create metadata for the function automatically generated by `defsetting`."
+  [{:keys [default description], setting-type :type, :as setting}]
+  {:arglists '([] [new-value])
+   ;; indentation below is intentional to make it clearer what shape the generated documentation is going to take. Turn on auto-complete-mode in Emacs and see for yourself!
+   :doc (str/join "\n" [        description
+                                ""
+                        (format "`%s` is a %s `Setting`. You can get its value by calling:" (setting-name setting) (name setting-type))
+                                ""
+                        (format "    (%s)"                                                  (setting-name setting))
+                                ""
+                                "and set its value by calling:"
+                                ""
+                        (format "    (%s <new-value>)"                                      (setting-name setting))
+                                ""
+                        (format "You can also set its value with the env var `%s`."         (env-var-name setting))
+                                ""
+                                "Clear its value by calling:"
+                                ""
+                        (format "    (%s nil)"                                              (setting-name setting))
+                                ""
+                        (format "Its default value is `%s`."                                (if (nil? default) "nil" default))])})
+
+
+
+(defn setting-fn
+  "Create the automatically defined getter/setter function for settings defined by `defsetting`."
+  [setting]
+  (fn
+    ([]
+     (get setting))
+    ([new-value]
+     ;; need to qualify this or otherwise the reader gets this confused with the set! used for things like (set! *warn-on-reflection* true)
+     ;; :refer-clojure :exclude doesn't seem to work in this case
+     (metabase.models.setting/set! setting new-value))))
 
 (defmacro defsetting
   "Defines a new `Setting` that will be added to the DB at some point in the future.
@@ -170,120 +297,59 @@
    A setting can be set from the SuperAdmin page or via the corresponding env var,
    eg. `MB_MANDRILL_API_KEY` for the example above.
 
-   You may optionally pass any of the kwarg OPTIONS below, which are kept as part of the
-   metadata of the `Setting` under the key `::options`:
+   You may optionally pass any of the OPTIONS below:
 
-   *  `:internal` - This `Setting` is for internal use and shouldn't be exposed in the UI (i.e., not
-                    returned by the corresponding endpoints). Default: `false`
+   *  `:default` - The default value of the setting. (default: `nil`)
+   *  `:type` - `:string` (default), `:boolean`, or `:json`. Non-`:string` settings have special default getters and setters that automatically coerce values to the correct types.
+   *  `:internal?` - This `Setting` is for internal use and shouldn't be exposed in the UI (i.e., not
+                     returned by the corresponding endpoints). Default: `false`
    *  `:getter` - A custom getter fn, which takes no arguments. Overrides the default implementation.
-   *  `:setter` - A custom setter fn, which takes a single argument. Overrides the default implementation."
-  [nm description & [default-value & {:as options}]]
-  {:pre [(symbol? nm)
-         (string? description)]}
-  (let [setting-key (keyword nm)
-        value       (gensym "value")]
-    `(defn ~nm ~(str description "\n\n" (setting-extra-dox nm default-value))
-       {:arglists       '~'([] [new-value])
-        ::description   ~description
-        ::is-setting?   true
-        ::default-value ~default-value
-        ::options       ~options}
-       ([]       ~(if (:getter options)
-                    `(~(:getter options))
-                    `(or (get* ~setting-key)
-                         ~default-value)))
-       ([~value] ~(if (:setter options)
-                    `(~(:setter options) ~value)
-                    `(set* ~setting-key ~value))))))
+                  (This can in turn call functions in this namespace like `get-string` or `get-boolean` to invoke the default getter behavior.)
+   *  `:setter` - A custom setter fn, which takes a single argument. Overrides the default implementation.
+                  (This can in turn call functions in this namespace like `set-string!` or `set-boolean!` to invoke the default setter behavior.
+                   Keep in mind that the custom setter may be passed `nil`, which should clear the values of the Setting.)"
+  {:style/indent 1}
+  [setting-symb description & {:as options}]
+  {:pre [(symbol? setting-symb) (string? description)]}
+  `(let [setting# (register-setting! (assoc ~options
+                                       :name ~(keyword setting-symb)
+                                       :description ~description))]
+     (-> (def ~setting-symb (setting-fn setting#))
+         (alter-meta! merge (metadata-for-setting-fn setting#)))))
 
 
-;;; ## ALL SETTINGS (ETC)
+;;; ------------------------------------------------------------ EXTRA UTIL FNS ------------------------------------------------------------
+
+(defn set-many!
+  "Set the value of several `Settings` at once.
+
+    (set-all {:mandrill-api-key \"xyz123\", :another-setting \"ABC\"})"
+  [settings]
+  {:pre [(map? settings)]}
+  (doseq [[k v] settings]
+    (metabase.models.setting/set! k v))
+  ;; TODO - This event is no longer neccessary or desirable. This is used in only a single place, to stop or restart the MetaBot when settings are updated;
+  ;; this only works if the setting is updated via this specific function. Instead, we should define a custom setter for the relevant setting that additionally
+  ;; performs the desired operations when the value is updated. This pattern is easier to understand, works no matter how the setting is changed, and doesn't run when
+  ;; irrelevant changes (to other settings) are made.
+  (events/publish-event :settings-update settings))
+
+
+(defn- user-facing-info [setting]
+  (let [k (:name setting)
+        v (get k)]
+    {:key         k
+     :value       (when (and (not= v (env-var-value setting))
+                             (not= v (:default setting)))
+                    v)
+     :description (:description setting)
+     :default     (or (when (env-var-value setting)
+                        (format "Using $%s" (env-var-name setting)))
+                      (:default setting))}))
 
 (defn all
-  "Return a map of all *defined* `Settings`.
-
-    (all) -> {:mandrill-api-key ...}"
+  "Return a sequence of Settings maps in a format suitable for consumption by the frontend.
+   (For security purposes, this doesn't return the value of a setting if it was set via env var)."
   []
-  (restore-cache-if-needed)
-  @cached-setting->value)
-
-(defn all-with-descriptions
-  "Return a sequence of Settings maps, including value and description."
-  []
-  (let [settings (all)]
-    (->> (settings-list)
-         (map (fn [{k :key, :as setting}]
-                (assoc setting
-                       :value (k settings))))
-         (sort-by :key))))
-
-(def ^:private ^{:arglists '([timezone-name])} short-timezone-name
-  "Get a short display name (e.g. `PST`) for `report-timezone`, or fall back to the System default if it's not set."
-  (memoize (fn [^String timezone-name]
-             (let [^TimeZone timezone (or (when (seq timezone-name)
-                                            (TimeZone/getTimeZone timezone-name))
-                                          (TimeZone/getDefault))]
-               (.getDisplayName timezone (.inDaylightTime timezone (java.util.Date.)) TimeZone/SHORT)))))
-
-
-(defsetting check-for-updates "Identify when new versions of Metabase are available." "true")
-(defsetting version-info "Information about available versions of Metabase." "{}")
-
-
-(defn public-settings
-  "Return a simple map of key/value pairs which represent the public settings for the front-end application."
-  []
-  {:ga_code               "UA-60817802-1"
-   :password_complexity   password/active-password-complexity
-   :timezones             common/timezones
-   :version               config/mb-version-info
-   :engines               ((resolve 'metabase.driver/available-drivers))
-   :setup_token           (setup/token-value)
-   :anon_tracking_enabled (let [tracking? (get :anon-tracking-enabled)]
-                            (or (nil? tracking?) (= "true" tracking?)))
-   :site_name             (get :site-name)
-   :email_configured      ((resolve 'metabase.email/email-configured?))
-   :admin_email           (get :admin-email)
-   :report_timezone       (get :report-timezone)
-   :timezone_short        (short-timezone-name (get :report-timezone))
-   :has_sample_dataset    (db/exists? 'Database, :is_sample true)})
-
-
-;;; # IMPLEMENTATION
-
-(defn- restore-cache-if-needed []
-  (when-not @cached-setting->value
-    (db/setup-db-if-needed)
-    (reset! cached-setting->value (walk/keywordize-keys (db/select-field->field :key :value Setting)))))
-
-(def ^:private cached-setting->value
-  "Map of setting name (keyword) -> string value, as they exist in the DB."
-  (atom nil))
-
-(i/defentity Setting
-  "The model that underlies `defsetting`."
-  :setting)
-
-(u/strict-extend (class Setting)
-  i/IEntity
-  (merge i/IEntityDefaults
-         {:types (constantly {:value :clob})}))
-
-(defn- settings-list
-  "Return a list of all Settings (as created with `defsetting`).
-   This excludes Settings created with the option `:internal`."
-  []
-  (->> (all-ns)
-       (mapcat ns-interns)
-       vals
-       (map meta)
-       (filter ::is-setting?)
-       (filter (complement (u/rpartial get-in [::options :internal]))) ; filter out :internal Settings
-       (map (fn [{k :name, description ::description, default ::default-value}]
-              {:key         (keyword k)
-               :description description
-               :default     (or (when (get-from-env-var k)
-                                  (format "Using $MB_%s" (-> (name k)
-                                                             (s/replace "-" "_")
-                                                             s/upper-case)))
-                                default)}))))
+  (for [setting (sort-by :name (vals @registered-settings))]
+    (user-facing-info setting)))

@@ -66,7 +66,7 @@
 (defn- field->name
   "Return a single string name for FIELD. For nested fields, this creates a combined qualified name."
   ^String [^Field field, ^String separator]
-  (apply str (interpose separator (rest (qualified-name-components field)))))
+  (s/join separator (rest (qualified-name-components field))))
 
 (defmacro ^:private mongo-let
   {:style/indent 1}
@@ -103,10 +103,10 @@
     (mongo-let [field (as-> field <>
                         (->initial-rvalue <>)
                         (cond
-                          (= special-type :timestamp_milliseconds)
+                          (isa? special-type :type/UNIXTimestampMilliseconds)
                           {$add [(java.util.Date. 0) <>]}
 
-                          (= special-type :timestamp_seconds)
+                          (isa? special-type :type/UNIXTimestampSeconds)
                           {$add [(java.util.Date. 0) {$multiply [<> 1000]}]}
 
                           :else <>))]
@@ -148,6 +148,7 @@
                                        3]})
           :year            {$year field})))))
 
+
 (extend-protocol IRValue
   nil (->rvalue [_] nil)
 
@@ -160,10 +161,9 @@
     (str \$ (->lvalue this)))
 
   Value
-  (->rvalue [{value :value, {:keys [field-name base-type]} :field}]
-    (if (and (= field-name "_id")
-             (= base-type  :UnknownField))
-      `(ObjectId. ~value)
+  (->rvalue [{value :value, {:keys [base-type]} :field}]
+    (if (isa? base-type :type/MongoBSONID)
+      (ObjectId. (str value))
       value))
 
   DateTimeValue
@@ -195,7 +195,7 @@
   RelativeDateTimeValue
   (->rvalue [{:keys [amount unit field]}]
     (->rvalue (map->DateTimeValue {:value (u/relative-date (or unit :day) amount)
-                                       :field field}))))
+                                   :field field}))))
 
 
 ;;; ## CLAUSE APPLICATION
@@ -413,4 +413,4 @@
     {:columns   columns
      :rows      (for [row results]
                   (mapv row columns))
-     :annotate? true}))
+     :annotate? mbql?}))

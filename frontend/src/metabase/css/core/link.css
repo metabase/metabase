@@ -2,7 +2,7 @@
   --default-link-color: #4A90E2;
 }
 
-.no-decoration {
+.no-decoration, :local(.no-decoration) {
     text-decoration: none;
 }
 

@@ -61,7 +61,7 @@ export default class DashboardHeader extends Component {
     }
 
     onRevert() {
-        this.props.fetchDashboard(this.props.dashboard.id);
+        this.props.fetchDashboard(this.props.dashboard.id, this.props.location.query);
     }
 
     async onSave() {
@@ -76,8 +76,7 @@ export default class DashboardHeader extends Component {
 
     async onDelete() {
         await this.props.deleteDashboard(this.props.dashboard.id);
-        this.props.onDashboardDeleted(this.props.dashboard.id)
-        this.props.onChangeLocation("/")
+        this.props.onChangeLocation("/");
     }
 
     // 1. fetch revisions
@@ -93,7 +92,7 @@ export default class DashboardHeader extends Component {
     // 3. finished reverting to a revision
     onRevertedRevision() {
         this.refs.dashboardHistory.toggle();
-        this.props.fetchDashboard(this.props.dashboard.id);
+        this.props.fetchDashboard(this.props.dashboard.id, this.props.location.query);
     }
 
     getEditingButtons() {
@@ -128,7 +127,7 @@ export default class DashboardHeader extends Component {
     getHeaderButtons() {
         const { dashboard, parameters, isEditing, isFullscreen, isNightMode } = this.props;
         const isEmpty = !dashboard || dashboard.ordered_cards.length === 0;
-        const canEdit = dashboard && dashboard.can_write;
+        const canEdit = !!dashboard;
 
         const buttons = [];
 
@@ -148,7 +147,7 @@ export default class DashboardHeader extends Component {
                           title="Parameters"
                           onClick={() => this.setState({ modal: "parameters" })}
                         >
-                            <Icon name="funneladd" width="16px" height="16px" />
+                            <Icon name="funneladd" size={16} />
                         </a>
                     </Tooltip>
 
@@ -170,7 +169,7 @@ export default class DashboardHeader extends Component {
                     triggerElement={
                         <Tooltip tooltip="Revision History">
                             <span data-metabase-event={"Dashboard;Revisions"}>
-                                <Icon className="text-brand-hover" name="history" width="16px" height="16px" />
+                                <Icon className="text-brand-hover" name="history" size={16} />
                             </span>
                         </Tooltip>
                     }
@@ -192,7 +191,7 @@ export default class DashboardHeader extends Component {
             buttons.push(
                 <Tooltip tooltip="Edit Dashboard">
                     <a data-metabase-event="Dashboard;Edit" key="edit" title="Edit Dashboard Layout" className="text-brand-hover cursor-pointer" onClick={() => this.onEdit()}>
-                        <Icon name="pencil" width="16px" height="16px" />
+                        <Icon name="pencil" size={16} />
                     </a>
                 </Tooltip>
             );
@@ -206,7 +205,7 @@ export default class DashboardHeader extends Component {
                     triggerElement={
                         <Tooltip tooltip="Add Card">
                             <span data-metabase-event="Dashboard;Add Card Modal" title="Add a question to this dashboard">
-                                <Icon className={cx("text-brand-hover cursor-pointer", { "Icon--pulse": isEmpty })} name="add" width="16px" height="16px" />
+                                <Icon className={cx("text-brand-hover cursor-pointer", { "Icon--pulse": isEmpty })} name="add" size={16} />
                             </span>
                         </Tooltip>
                     }

@@ -1,8 +1,7 @@
+/* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 
 import Icon from "metabase/components/Icon.jsx";
-
-import { savePulse } from "../actions";
 
 import { inflect } from "inflection";
 import _ from "underscore";
@@ -18,27 +17,28 @@ export default class PulseListChannel extends Component {
         pulse: PropTypes.object.isRequired,
         channel: PropTypes.object.isRequired,
         channelSpec: PropTypes.object,
-        user: PropTypes.object.isRequired
+        user: PropTypes.object.isRequired,
+        savePulse: PropTypes.func.isRequired,
     };
 
     subscribe() {
         let { pulse, channel, user } = this.props;
-        this.props.dispatch(savePulse({
+        this.props.savePulse({
             ...pulse,
             channels: pulse.channels.map(c => c !== channel ? c :
                 { ...c, recipients: [...c.recipients, user]}
             )
-        }));
+        });
     }
 
     unsubscribe() {
         let { pulse, channel, user } = this.props;
-        this.props.dispatch(savePulse({
+        this.props.savePulse({
             ...pulse,
             channels: pulse.channels.map(c => c !== channel ? c :
                 { ...c, recipients: c.recipients.filter(r => r.id !== user.id)}
             )
-        }));
+        });
     }
 
     renderChannelSchedule() {
@@ -60,7 +60,7 @@ export default class PulseListChannel extends Component {
 
         return (
             <div className="h4 text-grey-4 py2 flex align-center">
-                { channelIcon && <Icon className="mr1" name={channelIcon} width={24} height={24}/> }
+                { channelIcon && <Icon className="mr1" name={channelIcon} size={24}/> }
                 <span>
                     {channelVerb + " "}
                     <strong>{channelSchedule}</strong>
@@ -71,7 +71,7 @@ export default class PulseListChannel extends Component {
     }
 
     render() {
-        let { channel, channelSpec, user } = this.props;
+        let { pulse, channel, channelSpec, user } = this.props;
 
         let subscribable = channelSpec && channelSpec.allows_recipients;
         let subscribed = false;
@@ -87,14 +87,14 @@ export default class PulseListChannel extends Component {
                         { subscribed ?
                             <div className="flex align-center rounded bg-green text-white text-bold">
                                 <div className="pl2">You get this {channel.channel_type}</div>
-                                <Icon className="p2 text-grey-1 text-white-hover cursor-pointer" name="close" width={12} height={12} onClick={this.unsubscribe}/>
+                                <Icon className="p2 text-grey-1 text-white-hover cursor-pointer" name="close" size={12} onClick={this.unsubscribe}/>
                             </div>
-                        :
+                        : !pulse.read_only ?
                             <div className="flex align-center rounded bordered bg-white text-default text-bold cursor-pointer" onClick={this.subscribe}>
-                                <Icon className="p2" name="add" width={12} height={12}/>
+                                <Icon className="p2" name="add" size={12}/>
                                 <div className="pr2">Get this {channel.channel_type}</div>
                             </div>
-                        }
+                        : null }
                     </div>
                 }
             </div>

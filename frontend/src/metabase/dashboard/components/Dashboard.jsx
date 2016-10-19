@@ -60,28 +60,22 @@ export default class Dashboard extends Component {
         setDashCardVisualizationSetting: PropTypes.func.isRequired,
 
         onChangeLocation: PropTypes.func.isRequired,
-        onDashboardDeleted: PropTypes.func.isRequired,
     };
 
     async componentDidMount() {
-        this.loadDashboard(this.props.selectedDashboard);
+        this.loadDashboard(this.props.params.dashboardId);
     }
 
     componentDidUpdate() {
         this.updateParams();
-
-        if (this.state.isFullscreen) {
-            document.querySelector(".Nav").classList.add("hide");
-        } else {
-            document.querySelector(".Nav").classList.remove("hide");
-        }
+        this._showNav(!this.state.isFullscreen);
     }
 
     componentWillReceiveProps(nextProps) {
-        if (this.props.selectedDashboard !== nextProps.selectedDashboard) {
-            this.loadDashboard(nextProps.selectedDashboard);
+        if (this.props.params.dashboardId !== nextProps.params.dashboardId) {
+            this.loadDashboard(nextProps.params.dashboardId);
         } else if (!_.isEqual(this.props.parameterValues, nextProps.parameterValues) || !this.props.dashboard) {
-            this.fetchDashboardCardData(nextProps, true);
+            this.fetchDashboardCardData(nextProps, { reload: false, clear: true });
         }
     }
 
@@ -92,19 +86,30 @@ export default class Dashboard extends Component {
     }
 
     componentWillUnmount() {
-        document.querySelector(".Nav").classList.remove("hide");
+        this._showNav(true);
         this._clearRefreshInterval();
         if (screenfull.enabled) {
             document.removeEventListener(screenfull.raw.fullscreenchange, this.fullScreenChanged);
         }
     }
 
+    _showNav(show) {
+        const nav = document.querySelector(".Nav");
+        if (show && nav) {
+            nav.classList.remove("hide");
+        } else if (!show && nav) {
+            nav.classList.add("hide");
+        }
+    }
+
     async loadDashboard(dashboardId) {
+        this.props.initialize();
+
         this.loadParams();
-        const { addCardOnLoad, fetchDashboard, fetchCards, addCardToDashboard, onChangeLocation } = this.props;
+        const { addCardOnLoad, fetchDashboard, fetchCards, addCardToDashboard, onChangeLocation, location } = this.props;
 
         try {
-            await fetchDashboard(dashboardId);
+            await fetchDashboard(dashboardId, location.query);
             if (addCardOnLoad != null) {
                 // we have to load our cards before we can add one
                 await fetchCards();
@@ -140,7 +145,7 @@ export default class Dashboard extends Component {
                 .map((value, id) => ([_.findWhere(parameters, { id }), value]))
                 .filter(([param, value]) => (param && value))
                 .reduce((params, [param, value]) => ({ ...params,
-                    [encodeURIComponent(param.slug)]: encodeURIComponent(value)
+                    [param.slug]: value
                 }), {})
                 .value();
 
@@ -238,6 +243,7 @@ export default class Dashboard extends Component {
         let parameters = this.props.dashboard && this.props.dashboard.parameters || [];
         parameters = _.reject(parameters, (p) => p.id === parameter.id);
         this.setDashboardAttribute("parameters", parameters);
+        this.props.removeParameter(parameter.id);
     }
 
     // TODO: move to action
@@ -269,13 +275,12 @@ export default class Dashboard extends Component {
     }
 
     // we don't call this initially because DashCards initiate their own fetchCardData
-    fetchDashboardCardData(props, clearExisting) {
-        console.log("refreshing card data");
+    fetchDashboardCardData(props, options) {
         if (props.dashboard) {
             for (const dashcard of props.dashboard.ordered_cards) {
                 const cards = [dashcard.card].concat(dashcard.series || []);
                 for (const card of cards) {
-                    props.fetchCardData(card, dashcard, clearExisting);
+                    props.fetchCardData(card, dashcard, options);
                 }
             }
         }
@@ -286,8 +291,8 @@ export default class Dashboard extends Component {
         if (refreshElapsed >= this.state.refreshPeriod) {
             refreshElapsed = 0;
 
-            await this.props.fetchDashboard(this.props.selectedDashboard);
-            this.fetchDashboardCardData(this.props);
+            await this.props.fetchDashboard(this.props.params.dashboardId, this.props.location.query);
+            this.fetchDashboardCardData(this.props, { reload: true, clear: false });
         }
         this.setState({ refreshElapsed });
     }
@@ -299,6 +304,7 @@ export default class Dashboard extends Component {
 
         let parameters = dashboard && dashboard.parameters && dashboard.parameters.map(parameter =>
             <ParameterWidget
+                key={parameter.id}
                 className="ml1"
                 isEditing={isEditing}
                 isFullscreen={isFullscreen}
@@ -319,7 +325,7 @@ export default class Dashboard extends Component {
         );
 
         return (
-            <LoadingAndErrorWrapper style={{ minHeight: "100%" }} className={cx("Dashboard absolute top left right", { "Dashboard--fullscreen": isFullscreen, "Dashboard--night": isNightMode})} loading={!dashboard} error={error}>
+            <LoadingAndErrorWrapper style={{ minHeight: "100%" }} className={cx("Dashboard flex-full", { "Dashboard--fullscreen": isFullscreen, "Dashboard--night": isNightMode})} loading={!dashboard} error={error}>
             {() =>
                 <div className="full" style={{ overflowX: "hidden" }}>
                     <header className="DashboardHeader relative z2">

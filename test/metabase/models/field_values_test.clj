@@ -9,38 +9,33 @@
 
 ;; ## TESTS FOR FIELD-SHOULD-HAVE-FIELD-VALUES?
 
-(expect true
-  (field-should-have-field-values? {:special_type :category
-                                    :visibility_type :normal
-                                    :base_type :TextField}))
+(expect (field-should-have-field-values? {:special_type    :type/Category
+                                          :visibility_type :normal
+                                          :base_type       :type/Text}))
 
-(expect false
-  (field-should-have-field-values? {:special_type :category
-                                    :visibility_type :sensitive
-                                    :base_type :TextField}))
-(expect false
-  (field-should-have-field-values? {:special_type :category
-                                    :visibility_type :hidden
-                                    :base_type :TextField}))
-(expect false
-  (field-should-have-field-values? {:special_type :category
-                                    :visibility_type :details-only
-                                    :base_type :TextField}))
+(expect false (field-should-have-field-values? {:special_type    :type/Category
+                                                :visibility_type :sensitive
+                                                :base_type       :type/Text}))
 
-(expect false
-  (field-should-have-field-values? {:special_type nil
-                                    :visibility_type :normal
-                                    :base_type :TextField}))
+(expect false (field-should-have-field-values? {:special_type    :type/Category
+                                                :visibility_type :hidden
+                                                :base_type       :type/Text}))
 
-(expect true
-  (field-should-have-field-values? {:special_type "country"
-                                    :visibility_type :normal
-                                    :base_type :TextField}))
+(expect false (field-should-have-field-values? {:special_type :type/Category
+                                                :visibility_type          :details-only
+                                                :base_type                :type/Text}))
 
-(expect true
-  (field-should-have-field-values? {:special_type nil
-                                    :visibility_type :normal
-                                    :base_type "BooleanField"}))
+(expect false (field-should-have-field-values? {:special_type    nil
+                                                :visibility_type :normal
+                                                :base_type       :type/Text}))
+
+(expect (field-should-have-field-values? {:special_type    "type/Country"
+                                          :visibility_type :normal
+                                          :base_type       :type/Text}))
+
+(expect (field-should-have-field-values? {:special_type    nil
+                                          :visibility_type :normal
+                                          :base_type       "type/Boolean"}))
 
 
 (expect
@@ -52,5 +47,5 @@
                   Field       [{field-id :id} {:table_id table-id}]
                   FieldValues [_              {:field_id field-id, :values "[1,2,3]"}]]
     [(db/select-one-field :values FieldValues, :field_id field-id)
-     (clear-field-values field-id)
+     (clear-field-values! field-id)
      (db/select-one-field :values FieldValues, :field_id field-id)]))

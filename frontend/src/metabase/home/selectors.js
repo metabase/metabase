@@ -1,8 +1,3 @@
-import { createSelector } from 'reselect';
-
-export const homepageSelectors = createSelector(
-	[state => state.activity,
-	 state => state.recentViews],
-
-	(activity, recentViews) => ({activity, recentViews})
-);
+export const getActivity 		= (state) => state.home && state.home.activity
+export const getRecentViews 	= (state) => state.home && state.home.recentViews
+export const getUser 			= (state) => state.currentUser

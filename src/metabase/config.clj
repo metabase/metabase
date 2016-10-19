@@ -35,6 +35,7 @@
   "Retrieve value for a single configuration key.  Accepts either a keyword or a string.
 
    We resolve properties from these places:
+
    1.  environment variables (ex: MB_DB_TYPE -> :mb-db-type)
    2.  jvm options (ex: -Dmb.db.type -> :mb-db-type)
    3.  hard coded `app-defaults`"
@@ -44,6 +45,8 @@
 
 
 ;; These are convenience functions for accessing config values that ensures a specific return type
+;; TODO - These names are bad. They should be something like  `int`, `boolean`, and `keyword`, respectively.
+;; See https://github.com/metabase/metabase/wiki/Metabase-Clojure-Style-Guide#dont-repeat-namespace-alias-in-function-names for discussion
 (defn ^Integer config-int  "Fetch a configuration key and parse it as an integer." [k] (some-> k config-str Integer/parseInt))
 (defn ^Boolean config-bool "Fetch a configuration key and parse it as a boolean."  [k] (some-> k config-str Boolean/parseBoolean))
 (defn ^Keyword config-kw   "Fetch a configuration key and parse it as a keyword."  [k] (some-> k config-str keyword))

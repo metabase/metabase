@@ -12,13 +12,23 @@
 
 (i/defentity Metric :metric)
 
+(defn- pre-cascade-delete [{:keys [id]}]
+  (db/cascade-delete! 'MetricImportantField :metric_id id))
+
+(defn- perms-objects-set [metric read-or-write]
+  (let [table (or (:table metric)
+                  (db/select-one ['Table :db_id :schema :id] :id (:table_id metric)))]
+    (i/perms-objects-set table read-or-write)))
+
 (u/strict-extend (class Metric)
   i/IEntity
   (merge i/IEntityDefaults
-         {:types         (constantly {:definition :json, :description :clob})
-          :timestamped?  (constantly true)
-          :can-read?     (constantly true)
-          :can-write?    i/superuser?}))
+         {:types              (constantly {:definition :json, :description :clob})
+          :timestamped?       (constantly true)
+          :perms-objects-set  perms-objects-set
+          :can-read?          (partial i/current-user-has-full-permissions? :read)
+          :can-write?         (partial i/current-user-has-full-permissions? :write)
+          :pre-cascade-delete pre-cascade-delete}))
 
 
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------
@@ -84,15 +94,14 @@
     (-> (events/publish-event :metric-create metric)
         (hydrate :creator))))
 
-(defn exists-metric?
-  "Predicate function which checks for a given `Metric` with ID.
-   Returns true if `Metric` exists and is active, false otherwise."
-  [id]
+(defn exists?
+  "Does an *active* `Metric` with ID exist?"
+  ^Boolean [id]
   {:pre [(integer? id)]}
   (db/exists? Metric :id id, :is_active true))
 
 (defn retrieve-metric
-  "Fetch a single `Metric` by its ID value."
+  "Fetch a single `Metric` by its ID value. Hydrates its `:creator`."
   [id]
   {:pre [(integer? id)]}
   (-> (Metric id)
@@ -104,8 +113,7 @@
   ([table-id]
    (retrieve-metrics table-id :active))
   ([table-id state]
-   {:pre [(integer? table-id)
-          (keyword? state)]}
+   {:pre [(integer? table-id) (keyword? state)]}
    (-> (if (= :all state)
          (db/select Metric, :table_id table-id, {:order-by [[:name :asc]]})
          (db/select Metric, :table_id table-id, :is_active (= :active state), {:order-by [[:name :asc]]}))
@@ -115,7 +123,7 @@
   "Update an existing `Metric`.
 
    Returns the updated `Metric` or throws an Exception."
-  [{:keys [id name description definition revision_message]} user-id]
+  [{:keys [id name description caveats points_of_interest how_is_this_calculated show_in_getting_started definition revision_message]} user-id]
   {:pre [(integer? id)
          (string? name)
          (map? definition)
@@ -123,9 +131,13 @@
          (string? revision_message)]}
   ;; update the metric itself
   (db/update! Metric id
-    :name        name
-    :description description
-    :definition  definition)
+    :name                    name
+    :description             description
+    :caveats                 caveats
+    :points_of_interest      points_of_interest
+    :how_is_this_calculated  how_is_this_calculated
+    :show_in_getting_started show_in_getting_started
+    :definition              definition)
   (u/prog1 (retrieve-metric id)
     (events/publish-event :metric-update (assoc <> :actor_id user-id, :revision_message revision_message))))
 

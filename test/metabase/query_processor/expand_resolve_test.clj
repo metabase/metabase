@@ -45,8 +45,8 @@
                                                 :fk-field-id        nil
                                                 :field-name         "PRICE"
                                                 :field-display-name "Price"
-                                                :base-type          :IntegerField
-                                                :special-type       :category
+                                                :base-type          :type/Integer
+                                                :special-type       :type/Category
                                                 :visibility-type    :normal
                                                 :table-id           (id :venues)
                                                 :schema-name        "PUBLIC"
@@ -60,8 +60,8 @@
                                                         :fk-field-id        nil
                                                         :field-name         "PRICE"
                                                         :field-display-name "Price"
-                                                        :base-type          :IntegerField
-                                                        :special-type       :category
+                                                        :base-type          :type/Integer
+                                                        :special-type       :type/Category
                                                         :visibility-type    :normal
                                                         :table-id           (id :venues)
                                                         :schema-name        "PUBLIC"
@@ -104,8 +104,8 @@
                                                 :fk-field-id        (id :venues :category_id)
                                                 :field-name         "NAME"
                                                 :field-display-name "Name"
-                                                :base-type          :TextField
-                                                :special-type       :name
+                                                :base-type          :type/Text
+                                                :special-type       :type/Name
                                                 :visibility-type    :normal
                                                 :table-id           (id :categories)
                                                 :schema-name        nil
@@ -119,8 +119,8 @@
                                                         :fk-field-id        (id :venues :category_id)
                                                         :field-name         "NAME"
                                                         :field-display-name "Name"
-                                                        :base-type          :TextField
-                                                        :special-type       :name
+                                                        :base-type          :type/Text
+                                                        :special-type       :type/Name
                                                         :visibility-type    :normal
                                                         :table-id           (id :categories)
                                                         :schema-name        nil
@@ -171,7 +171,7 @@
                                                         :fk-field-id        (id :checkins :user_id)
                                                         :field-name         "LAST_LOGIN"
                                                         :field-display-name "Last Login"
-                                                        :base-type          :DateTimeField
+                                                        :base-type          :type/DateTime
                                                         :special-type       nil
                                                         :visibility-type    :normal
                                                         :table-id           (id :users)
@@ -187,7 +187,7 @@
                                                                 :fk-field-id        (id :checkins :user_id)
                                                                 :field-name         "LAST_LOGIN"
                                                                 :field-display-name "Last Login"
-                                                                :base-type          :DateTimeField
+                                                                :base-type          :type/DateTime
                                                                 :special-type       nil
                                                                 :visibility-type    :normal
                                                                 :table-id           (id :users)
@@ -236,10 +236,10 @@
                                   :id     (id :checkins)}
                    :aggregation  {:aggregation-type :sum
                                   :field            {:description        nil
-                                                     :base-type          :IntegerField
+                                                     :base-type          :type/Integer
                                                      :parent             nil
                                                      :table-id           (id :venues)
-                                                     :special-type       :category
+                                                     :special-type       :type/Category
                                                      :field-name         "PRICE"
                                                      :field-display-name "Price"
                                                      :parent-id          nil
@@ -250,7 +250,7 @@
                                                      :table-name         "VENUES__via__VENUE_ID"
                                                      :schema-name        nil}}
                    :breakout     [{:field {:description        nil
-                                           :base-type          :DateField
+                                           :base-type          :type/Date
                                            :parent             nil
                                            :table-id           (id :checkins)
                                            :special-type       nil

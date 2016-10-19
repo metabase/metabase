@@ -13,7 +13,7 @@ export default class MetadataTableList extends Component {
         super(props, context);
 
         this.state = {
-            searchText: null,
+            searchText: "",
             searchRegex: null
         };
 
@@ -43,7 +43,7 @@ export default class MetadataTableList extends Component {
             _.each(tables, (table) => {
                 var row = (
                     <li key={table.id}>
-                        <a href="#" className={cx("AdminList-item flex align-center no-decoration", { selected: this.props.tableId === table.id })} onClick={this.props.selectTable.bind(null, table)}>
+                        <a className={cx("AdminList-item flex align-center no-decoration", { selected: this.props.tableId === table.id })} onClick={this.props.selectTable.bind(null, table)}>
                             {table.display_name}
                             <ProgressBar className="ProgressBar ProgressBar--mini flex-align-right" percentage={table.metadataStrength} />
                         </a>
@@ -73,7 +73,7 @@ export default class MetadataTableList extends Component {
         return (
             <div className="MetadataEditor-table-list AdminList flex-no-shrink">
                 <div className="AdminList-search">
-                    <Icon name="search" width="16" height="16"/>
+                    <Icon name="search" size={16}/>
                     <input
                         className="AdminInput pl4 border-bottom"
                         type="text"
@@ -85,7 +85,7 @@ export default class MetadataTableList extends Component {
                 { (this.props.onBack || this.props.schema) &&
                     <h4 className="p2 border-bottom">
                         { this.props.onBack &&
-                            <span className="text-brand cursor-pointer" onClick={this.props.onBack}><Icon name="chevronleft" width={10} height={10}/> Schemas</span>
+                            <span className="text-brand cursor-pointer" onClick={this.props.onBack}><Icon name="chevronleft" size={10}/> Schemas</span>
                         }
                         { this.props.onBack && this.props.schema && <span className="mx1">-</span>}
                         { this.props.schema && <span> {this.props.schema.name}</span>}

@@ -2,16 +2,16 @@
   "Amazon Redshift Driver."
   (:require [clojure.java.jdbc :as jdbc]
             [honeysql.core :as hsql]
-            [korma.db :as kdb]
-            (metabase [config :as config]
-                      [driver :as driver])
+            [metabase.config :as config]
+            [metabase.db.spec :as dbspec]
+            [metabase.driver :as driver]
             (metabase.driver [generic-sql :as sql]
                              [postgres :as postgres])
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]))
 
 (defn- connection-details->spec [details]
-  (kdb/postgres (merge details postgres/ssl-params))) ; always connect to redshift over SSL
+  (dbspec/postgres (merge details postgres/ssl-params))) ; always connect to redshift over SSL
 
 (defn- date-interval [unit amount]
   (hsql/call :+ :%getdate (hsql/raw (format "INTERVAL '%d %s'" (int amount) (name unit)))))
@@ -74,11 +74,11 @@
                                              :placeholder  "toucan_sightings"
                                              :required     true}
                                             {:name         "user"
-                                             :display-name "Master username"
+                                             :display-name "Database username"
                                              :placeholder  "cam"
                                              :required     true}
                                             {:name         "password"
-                                             :display-name "Master user password"
+                                             :display-name "Database user password"
                                              :type         :password
                                              :placeholder  "*******"
                                              :required     true}])})

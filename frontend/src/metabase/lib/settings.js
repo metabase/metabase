@@ -4,6 +4,7 @@ import MetabaseUtils from "metabase/lib/utils";
 
 const mb_settings = _.clone(window.MetabaseBootstrap);
 
+const settingListeners = {};
 
 // provides access to Metabase application settings
 const MetabaseSettings = {
@@ -12,9 +13,20 @@ const MetabaseSettings = {
         return mb_settings[propName] !== undefined ? mb_settings[propName] : defaultValue;
     },
 
+    set: function(key, value) {
+        if (mb_settings[key] !== value) {
+            mb_settings[key] = value;
+            if (settingListeners[key]) {
+                for (const listener of settingListeners[key]) {
+                    setTimeout(() => listener(value));
+                }
+            }
+        }
+    },
+
     setAll: function(settings) {
-        for (var attrname in settings) {
-            mb_settings[attrname] = settings[attrname];
+        for (const key in settings) {
+            MetabaseSettings.set(key, settings[key]);
         }
     },
 
@@ -35,11 +47,15 @@ const MetabaseSettings = {
         return (mb_settings.setup_token !== undefined && mb_settings.setup_token !== null);
     },
 
+    ssoEnabled: function() {
+        return mb_settings.google_auth_client_id != null;
+    },
+
     newVersionAvailable: function(settings) {
         let versionInfo = _.findWhere(settings, {key: "version-info"}),
             currentVersion = MetabaseSettings.get("version").tag;
 
-        versionInfo = versionInfo ? JSON.parse(versionInfo.value) : null;
+        if (versionInfo) versionInfo = versionInfo.value;
 
         return (versionInfo && currentVersion !== versionInfo.latest.version);
     },
@@ -71,6 +87,11 @@ const MetabaseSettings = {
         } else {
             return description;
         }
+    },
+
+    on: function(setting, callback) {
+        settingListeners[setting] = settingListeners[setting] || [];
+        settingListeners[setting].push(callback);
     }
 }
 

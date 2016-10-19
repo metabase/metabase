@@ -1,9 +1,11 @@
 (ns metabase.api.common.internal
   "Internal functions used by `metabase.api.common`."
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as s]
             [medley.core :as m]
             [swiss.arrows :refer :all]
-            [metabase.util :as u]))
+            [metabase.util :as u])
+  (:import java.sql.SQLException))
 
 ;;; # DEFENDPOINT HELPER FUNCTIONS + MACROS
 
@@ -35,7 +37,7 @@
 (defn- args-form-flatten
   "A version of `flatten` that will actually flatten a form such as:
 
-    [id :as {{:keys [dataset_query description display name public_perms visualization_settings]} :body}]"
+    [id :as {{:keys [dataset_query description display name visualization_settings]} :body}]"
   [form]
   (cond
     (map? form) (args-form-flatten (mapcat (fn [[k v]]
@@ -181,11 +183,12 @@
 
     (typify-route \"/:id/card\") -> [\"/:id/card\" :id #\"[0-9]+\"]"
   [route]
-  (if (vector? route) route
-      (let [arg-types (->> (route-arg-keywords route)
-                           typify-args)]
-        (if (empty? arg-types) route
-            (apply vector route arg-types)))))
+  (if (vector? route)
+    route
+    (let [arg-types (typify-args (route-arg-keywords route))]
+      (if (empty? arg-types)
+        route
+        (apply vector route arg-types)))))
 
 
 ;;; ## ROUTE ARG AUTO PARSING
@@ -195,11 +198,11 @@
   that can be used in a `let` form."
   [arg-symbol]
   (when (symbol? arg-symbol)
-    (some-> (arg-type arg-symbol)                                    ; :int
-            *auto-parse-types*                                       ; {:parser ... }
-            :parser                                                  ; Integer/parseInt
+    (some-> (arg-type arg-symbol)                                     ; :int
+            *auto-parse-types*                                        ; {:parser ... }
+            :parser                                                   ; Integer/parseInt
             ((fn [parser] `(when ~arg-symbol (~parser ~arg-symbol)))) ; (when id (Integer/parseInt id))
-            ((partial vector arg-symbol)))))                         ; [id (Integer/parseInt id)]
+            ((partial vector arg-symbol)))))                          ; [id (Integer/parseInt id)]
 
 (defmacro auto-parse
   "Create a `let` form that applies corresponding parse-fn for any symbols in ARGS that are present in `*auto-parse-types*`."
@@ -231,10 +234,12 @@
                       status-code            message
                       ;; Otherwise it's a 500. Return a body that includes exception & filtered stacktrace for debugging purposes
                       :else                  (let [stacktrace (u/filtered-stacktrace e)]
-                                               (log/debug message "\n" (u/pprint-to-str stacktrace))
-                                               (assoc other-info
-                                                      :message message
-                                                      :stacktrace stacktrace)))}))))
+                                               (merge (assoc other-info
+                                                        :message    message
+                                                        :stacktrace stacktrace)
+                                                      (when (instance? SQLException e)
+                                                        {:sql-exception-chain (s/split (with-out-str (jdbc/print-sql-exception-chain e))
+                                                                                       #"\s*\n\s*")}))))}))))
 
 (defmacro catch-api-exceptions
   "Execute BODY, and if an exception is thrown, return the appropriate HTTP response."

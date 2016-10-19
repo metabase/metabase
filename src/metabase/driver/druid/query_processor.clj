@@ -1,5 +1,6 @@
 (ns metabase.driver.druid.query-processor
   (:require [clojure.core.match :refer [match]]
+            [clojure.math.numeric-tower :as math]
             [clojure.string :as s]
             [clojure.tools.logging :as log]
             [cheshire.core :as json]
@@ -14,22 +15,28 @@
                                                RelativeDateTimeValue
                                                Value)))
 
-;;             +-----> ::select
-;; ::query ----|                     +----> ::timeseries
-;;             +----> ::ag-query ----|                             +----> ::topN
-;;                                   +----> ::grouped-ag-query ----|
-;;                                                                 +----> ::groupBy
-(derive ::select           ::query)
-(derive ::ag-query         ::query)
-(derive ::timeseries       ::ag-query)
-(derive ::grouped-ag-query ::ag-query)
-(derive ::topN             ::grouped-ag-query)
-(derive ::groupBy          ::grouped-ag-query)
+
+;;             +-----> ::select      +----> :groupBy
+;; ::query ----|                     |
+;;             +----> ::ag-query ----+----> ::topN
+;;                                   |                       +----> total
+;;                                   +----> ::timeseries ----|
+;;                                                           +----> grouped-timeseries
+
+(derive ::select             ::query)
+(derive ::ag-query           ::query)
+(derive ::topN               ::ag-query)
+(derive ::groupBy            ::ag-query)
+(derive ::timeseries         ::ag-query)
+(derive ::total              ::timeseries)
+(derive ::grouped-timeseries ::timeseries)
 
 (def ^:private ^:dynamic *query*
   "The INNER part of the query currently being processed.
    (`:settings` is merged in from the outer query as well so we can access timezone info)."
   nil)
+
+(defn- get-timezone-id [] (or (get-in *query* [:settings :report-timezone]) "UTC"))
 
 (defn- query-type-dispatch-fn [query-type & _] query-type)
 
@@ -41,36 +48,42 @@
   Object                (->rvalue [this] this)
   AgFieldRef            (->rvalue [_] (let [ag-type (or (get-in *query* [:aggregation :aggregation-type])
                                                         (throw (Exception. "Unknown aggregation type!")))]
-                                        (if (= ag-type :distinct) :count
+                                        (if (= ag-type :distinct) :distinct___count
                                             ag-type)))
   Field                 (->rvalue [this] (:field-name this))
   DateTimeField         (->rvalue [this] (->rvalue (:field this)))
   Value                 (->rvalue [this] (:value this))
-  DateTimeValue         (->rvalue [{{unit :unit} :field, value :value}] (u/date->iso-8601 (u/date-trunc-or-extract unit value)))
-  RelativeDateTimeValue (->rvalue [{:keys [unit amount]}] (u/date->iso-8601 (u/date-trunc-or-extract unit (u/relative-date unit amount)))))
+  DateTimeValue         (->rvalue [{{unit :unit} :field, value :value}] (u/date->iso-8601 (u/date-trunc-or-extract unit value (get-timezone-id))))
+  RelativeDateTimeValue (->rvalue [{:keys [unit amount]}] (u/date->iso-8601 (u/date-trunc-or-extract unit (u/relative-date unit amount) (get-timezone-id)))))
 
 (defprotocol ^:private IDimensionOrMetric
   (^:private dimension-or-metric? [this]
    "Is this `Field`/`DateTimeField` a `:dimension` or `:metric`?"))
 
 (extend-protocol IDimensionOrMetric
-  Field         (dimension-or-metric? [this] (case (:base-type this)
-                                               :TextField    :dimension
-                                               :FloatField   :metric
-                                               :IntegerField :metric))
-  DateTimeField (dimension-or-metric? [this] (dimension-or-metric? (:field this))))
+  Field         (dimension-or-metric? [{:keys [base-type]}]
+                  (cond
+                    (isa? base-type :type/Text)    :dimension
+                    (isa? base-type :type/Float)   :metric
+                    (isa? base-type :type/Integer) :metric))
+
+  DateTimeField (dimension-or-metric? [this]
+                  (dimension-or-metric? (:field this))))
 
 
 (def ^:private ^:const query-type->default-query
   (let [defaults {:intervals   ["1900-01-01/2100-01-01"]
                   :granularity :all
                   :context     {:timeout 60000}}]
-    {::select     (merge defaults {:queryType  :select
-                                   :pagingSpec {:threshold qp/absolute-max-results}})
-     ::timeseries (merge defaults {:queryType :timeseries})
-     ::topN       (merge defaults {:queryType :topN
-                                   :threshold qp/absolute-max-results})
-     ::groupBy    (merge defaults {:queryType :groupBy})}))
+    {::select             (merge defaults {:queryType  :select
+                                           :pagingSpec {:threshold qp/absolute-max-results}})
+     ::total              (merge defaults {:queryType :timeseries})
+     ::grouped-timeseries (merge defaults {:queryType :timeseries})
+     ::topN               (merge defaults {:queryType :topN
+                                           :threshold qp/absolute-max-results})
+     ::groupBy            (merge defaults {:queryType :groupBy})}))
+
+
 
 
 ;;; ### handle-source-table
@@ -132,7 +145,7 @@
 (defn- handle-aggregation [query-type {{ag-type :aggregation-type, ag-field :field} :aggregation} druid-query]
   (when (isa? query-type ::ag-query)
     (merge druid-query
-           (let [ag-type (if (= ag-type :rows) nil ag-type)]
+           (let [ag-type (when-not (= ag-type :rows) ag-type)]
              (match [ag-type ag-field]
                ;; For 'distinct values' queries (queries with a breakout by no aggregation) just aggregate by count, but name it :___count so it gets discarded automatically
                [nil     nil] {:aggregations [(ag:count :___count)]}
@@ -150,7 +163,7 @@
                                                            {:type :fieldAccess, :fieldName :___count}]}]}
 
                [:distinct _] {:aggregations [{:type       :cardinality
-                                              :name       :count
+                                              :name       :distinct___count
                                               :fieldNames [(->rvalue ag-field)]}]}
                [:sum      _] {:aggregations [(ag:doubleSum ag-field :sum)]}
                [:min      _] {:aggregations [(ag:doubleMin ag-field)]}
@@ -163,7 +176,9 @@
   (^:private ->dimension-rvalue [this]
    "Format `Field` for use in a `:dimension` or `:dimensions` clause."))
 
-(defn- extract:timeFormat [format-str]
+(defn- extract:timeFormat
+  "Create a time format extraction. Returns a string. See http://druid.io/docs/0.9.1.1/querying/dimensionspecs.html#time-format-extraction-function"
+  [format-str]
   {:pre [(string? format-str)]}
   {:type     :timeFormat
    :format   format-str
@@ -171,21 +186,22 @@
                  "UTC")
    :locale   "en-US"})
 
-(defn- extract:js [& function-str-parts]
+(defn- extract:js
+  "Create an extraction function from JavaScript -- see http://druid.io/docs/0.9.1.1/querying/dimensionspecs.html#javascript-extraction-function"
+  [& function-str-parts]
   {:pre [(every? string? function-str-parts)]}
   {:type     :javascript
    :function (s/replace (apply str function-str-parts) #"\s+" " ")})
 
-(defn- unit->extractionFn
-  "JODA date format strings for each datetime unit. [Described here.](http://www.joda.org/joda-time/apidocs/org/joda/time/format/DateTimeFormat.html)."
-  [unit]
+;; don't try to make this a ^:const map -- extract:timeFormat looks up timezone info at query time
+(defn- unit->extraction-fn [unit]
   (case unit
-    :default         (extract:timeFormat "yyyy-MM-dd'T'HH:mm:ssZ")
-    :minute          (extract:timeFormat "yyyy-MM-dd'T'HH:mm:00Z")
+    :default         (extract:timeFormat "yyyy-MM-dd'T'HH:mm:ssZZ")
+    :minute          (extract:timeFormat "yyyy-MM-dd'T'HH:mm:00ZZ")
     :minute-of-hour  (extract:timeFormat "mm")
-    :hour            (extract:timeFormat "yyyy-MM-dd'T'HH:00:00Z")
+    :hour            (extract:timeFormat "yyyy-MM-dd'T'HH:00:00ZZ")
     :hour-of-day     (extract:timeFormat "HH")
-    :day             (extract:timeFormat "yyyy-MM-ddZ")
+    :day             (extract:timeFormat "yyyy-MM-ddZZ")
     :day-of-week     (extract:js "function (timestamp) {"
                                  "  var date = new Date(timestamp);"
                                  "  return date.getDay() + 1;"
@@ -214,6 +230,33 @@
                                  "}")
     :year            (extract:timeFormat "yyyy")))
 
+(defn- unit->granularity [unit]
+  {:type     "period"
+   :period   (case unit
+               :minute  "PT1M"
+               :hour    "PT1H"
+               :day     "P1D"
+               :week    "P1W"
+               :month   "P1M"
+               :quarter "P3M"
+               :year    "P1Y")
+   :timeZone (get-timezone-id)})
+
+(def ^:private ^:const units-that-need-post-processing-int-parsing
+  "`extract:timeFormat` always returns a string; there are cases where we'd like to return an integer instead, such as `:day-of-month`.
+   There's no simple way to do this in Druid -- Druid 0.9.0+ *does* let you combine extraction functions with `:cascade`, but we're still supporting 0.8.x.
+   Instead, we will perform the conversions in Clojure-land during post-processing. If we need to perform the extra post-processing step, we'll name the resulting
+   column `:timestamp___int`; otherwise we'll keep the name `:timestamp`."
+  #{:minute-of-hour
+    :hour-of-day
+    :day-of-week
+    :day-of-month
+    :day-of-year
+    :week-of-year
+    :month-of-year
+    :quarter-of-year
+    :year})
+
 (extend-protocol IDimension
   nil    (->dimension-rvalue [this] (->rvalue this))
   Object (->dimension-rvalue [this] (->rvalue this))
@@ -222,12 +265,17 @@
   (->dimension-rvalue [{:keys [unit]}]
     {:type         :extraction
      :dimension    :__time
-     :outputName   :timestamp
-     :extractionFn (unit->extractionFn unit)}))
+     :outputName   (if (contains? units-that-need-post-processing-int-parsing unit)
+                     :timestamp___int
+                     :timestamp)
+     :extractionFn (unit->extraction-fn unit)}))
 
 (defmulti ^:private handle-breakout query-type-dispatch-fn)
 
-(defmethod handle-breakout ::query [_ _ _]) ; only topN & groupBy handle breakouts
+(defmethod handle-breakout ::query [_ _ _]) ; only topN , grouped-timeseries & groupBy handle breakouts
+
+(defmethod handle-breakout ::grouped-timeseries [_ {[breakout-field] :breakout} druid-query]
+  (assoc druid-query :granularity (unit->granularity (:unit breakout-field))))
 
 (defmethod handle-breakout ::topN [_ {[breakout-field] :breakout} druid-query]
   (assoc druid-query :dimension (->dimension-rvalue breakout-field)))
@@ -383,7 +431,7 @@
   (let [field             (->rvalue field)
         breakout-field    (->rvalue breakout-field)
         sort-by-breakout? (= field breakout-field)
-        ag-field          (if (= ag-type :distinct) :count ag-type)]
+        ag-field          (if (= ag-type :distinct) :distinct___count ag-type)]
     (assoc druid-query :metric (match [sort-by-breakout? direction]
                                  [true  :ascending]  {:type :alphaNumeric}
                                  [true  :descending] {:type :inverted, :metric {:type :alphaNumeric}}
@@ -394,6 +442,15 @@
   (assoc-in druid-query [:limitSpec :columns] (vec (for [{:keys [field direction]} order-by]
                                                      {:dimension (->rvalue field)
                                                       :direction direction}))))
+
+(defmethod handle-order-by ::grouped-timeseries [_ {{ag-type :aggregation-type} :aggregation, [breakout-field] :breakout, [{field :field, direction :direction}] :order-by} druid-query]
+  (let [field             (->rvalue field)
+        breakout-field    (->rvalue breakout-field)
+        sort-by-breakout? (= field breakout-field)]
+    (if (and sort-by-breakout?
+             (= direction :descending))
+      (assoc druid-query :descending true)
+      druid-query)))
 
 
 ;;; ### handle-fields
@@ -429,7 +486,7 @@
 
 (defmethod handle-limit ::timeseries [_ {limit :limit} _]
   (when limit
-    (log/warn (u/format-color 'red "WARNING: It doesn't make sense to limit an aggregate query without any breakouts, since it will always return one row. Ignoring the LIMIT clause."))))
+    (log/warn (u/format-color 'red "WARNING: Druid doenst allow limitSpec in timeseries queries. Ignoring the LIMIT clause."))))
 
 (defmethod handle-limit ::topN [_ {limit :limit} druid-query]
   (when limit
@@ -453,19 +510,26 @@
 
 ;;; ## Build + Log + Process Query
 
+(def ^:private ^:const timeseries-units
+  #{:minute :hour :day :week :month :quarter :year})
+
 (defn- druid-query-type
   "What type of Druid query type should we perform?"
-  [{breakout-fields :breakout, {ag-type :aggregation-type} :aggregation}]
+  [{breakout-fields :breakout, {ag-type :aggregation-type} :aggregation, limit :limit}]
   (let [breakouts (condp = (count breakout-fields)
                     0 :none
                     1 :one
                       :many)
-        agg?      (boolean (and ag-type (not= ag-type :rows)))]
-    (match [breakouts agg?]
-      [:none false] ::select
-      [:none  true] ::timeseries
-      [:one      _] ::topN
-      [:many     _] ::groupBy)))
+        agg?      (boolean (and ag-type (not= ag-type :rows)))
+        ts?       (and (instance? DateTimeField (first breakout-fields))            ; Checks whether the query is a timeseries
+                       (contains? timeseries-units (:unit (first breakout-fields))) ; (excludes x-of-y type breakouts)
+                       (nil? limit))]                                               ; (excludes queries with LIMIT)
+    (match [breakouts agg? ts?]
+      [:none  false    _] ::select
+      [:none  true     _] ::total
+      [:one   _     true] ::grouped-timeseries
+      [:one   _    false] ::topN
+      [:many  _        _] ::groupBy)))
 
 
 (defn- build-druid-query [query]
@@ -491,10 +555,14 @@
 
 (defmulti ^:private post-process query-type-dispatch-fn)
 
-(defmethod post-process ::select     [_ results] (->> results first :result :events (map :event)))
-(defmethod post-process ::timeseries [_ results] (map :result results))
-(defmethod post-process ::topN       [_ results] (-> results first :result))
-(defmethod post-process ::groupBy    [_ results] (map :event results))
+(defmethod post-process ::select  [_ results] (->> results first :result :events (map :event)))
+(defmethod post-process ::total   [_ results] (map :result results))
+(defmethod post-process ::topN    [_ results] (-> results first :result))
+(defmethod post-process ::groupBy [_ results] (map :event results))
+
+(defmethod post-process ::timeseries [_ results]
+  (for [event results]
+    (conj {:timestamp (:timestamp event)} (:result event))))
 
 (defn post-process-native
   "Post-process the results of a *native* Druid query.
@@ -530,9 +598,25 @@
         {:query      druid-query
          :query-type query-type}))))
 
+
+(defn- columns->getter-fns
+  "Given a sequence of COLUMNS keywords, return a sequence of appropriate getter functions to get values from a single result row. Normally,
+   these are just the keyword column names themselves, but for `:timestamp___int`, we'll also parse the result as an integer (for further
+   explanation, see the docstring for `units-that-need-post-processing-int-parsing`). We also round `:distinct___count` in order to return an
+   integer since Druid returns the approximate floating point value for cardinality queries (See Druid documentation regarding cardinality and HLL)."
+  [columns]
+  (vec (for [k columns]
+         (case k
+            :distinct___count (comp math/round k)
+            :timestamp___int  (comp (fn [^String s]
+                                      (when (seq s)
+                                        (Integer/parseInt s)))
+                                    k)
+            k))))
+
 (defn execute-query
   "Execute a query for a Druid DB."
-  [do-query {database :database, {:keys [query query-type]} :native}]
+  [do-query {database :database, {:keys [query query-type mbql?]} :native}]
   {:pre [database query]}
   (let [details    (:details database)
         query      (if (string? query)
@@ -542,8 +626,12 @@
         results    (->> (do-query details query)
                         (post-process query-type)
                         remove-bonus-keys)
-        columns    (vec (keys (first results)))]
-    {:columns   columns
+        columns    (keys (first results))
+        getters    (columns->getter-fns columns)]
+    ;; rename any occurances of `:timestamp___int` to `:timestamp` in the results so the user doesn't know about our behind-the-scenes conversion
+    ;; and apply any other post-processing on the value such as parsing some units to int and rounding up approximate cardinality values.
+    {:columns   (vec (replace {:timestamp___int :timestamp :distinct___count :count} columns))
      :rows      (for [row results]
-                  (mapv row columns))
-     :annotate? true}))
+                  (for [getter getters]
+                    (getter row)))
+     :annotate? mbql?}))

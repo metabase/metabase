@@ -1,0 +1,23 @@
+databaseChangeLog:
+  - changeSet:
+      id: 46
+      author: camsaul
+      changes:
+        - addNotNullConstraint:
+            tableName: report_dashboardcard
+            columnName: row
+            columnDataType: integer
+            defaultNullValue: 0
+        - addNotNullConstraint:
+            tableName: report_dashboardcard
+            columnName: col
+            columnDataType: integer
+            defaultNullValue: 0
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: row
+            defaultValueNumeric: 0
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: col
+            defaultValueNumeric: 0

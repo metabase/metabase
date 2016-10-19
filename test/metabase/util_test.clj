@@ -6,45 +6,85 @@
 
 ;;; Date stuff
 
-(def ^:private ^:const friday-the-13th   #inst "2015-11-13T19:05:55")
-(def ^:private ^:const saturday-the-14th #inst "2015-11-14T04:18:26")
+(def ^:private ^:const saturday-the-31st   #inst "2005-12-31T19:05:55")
+(def ^:private ^:const sunday-the-1st #inst "2006-01-01T04:18:26")
 
 (expect false (is-temporal? nil))
 (expect false (is-temporal? 123))
 (expect false (is-temporal? "abc"))
 (expect false (is-temporal? [1 2 3]))
 (expect false (is-temporal? {:a "b"}))
-(expect true (is-temporal? friday-the-13th))
+(expect true (is-temporal? saturday-the-31st))
 
-(expect friday-the-13th (->Timestamp (->Date friday-the-13th)))
-(expect friday-the-13th (->Timestamp (->Calendar friday-the-13th)))
-(expect friday-the-13th (->Timestamp (->Calendar (.getTime friday-the-13th))))
-(expect friday-the-13th (->Timestamp (.getTime friday-the-13th)))
-(expect friday-the-13th (->Timestamp "2015-11-13T19:05:55+00:00"))
+(expect saturday-the-31st (->Timestamp (->Date saturday-the-31st)))
+(expect saturday-the-31st (->Timestamp (->Calendar saturday-the-31st)))
+(expect saturday-the-31st (->Timestamp (->Calendar (.getTime saturday-the-31st))))
+(expect saturday-the-31st (->Timestamp (.getTime saturday-the-31st)))
+(expect saturday-the-31st (->Timestamp "2005-12-31T19:05:55+00:00"))
 
 (expect nil (->iso-8601-datetime nil nil))
-(expect "2015-11-13T19:05:55.000Z" (->iso-8601-datetime friday-the-13th nil))
-(expect "2015-11-13T11:05:55.000-08:00" (->iso-8601-datetime friday-the-13th "US/Pacific"))
-(expect "2015-11-14T04:05:55.000+09:00" (->iso-8601-datetime friday-the-13th "Asia/Tokyo"))
+(expect "2005-12-31T19:05:55.000Z" (->iso-8601-datetime saturday-the-31st nil))
+(expect "2005-12-31T11:05:55.000-08:00" (->iso-8601-datetime saturday-the-31st "US/Pacific"))
+(expect "2006-01-01T04:05:55.000+09:00" (->iso-8601-datetime saturday-the-31st "Asia/Tokyo"))
 
-(expect 5    (date-extract :minute-of-hour  friday-the-13th))
-(expect 19   (date-extract :hour-of-day     friday-the-13th))
-(expect 6    (date-extract :day-of-week     friday-the-13th))
-(expect 7    (date-extract :day-of-week     saturday-the-14th))
-(expect 13   (date-extract :day-of-month    friday-the-13th))
-(expect 317  (date-extract :day-of-year     friday-the-13th))
-(expect 46   (date-extract :week-of-year    friday-the-13th))
-(expect 11   (date-extract :month-of-year   friday-the-13th))
-(expect 4    (date-extract :quarter-of-year friday-the-13th))
-(expect 2015 (date-extract :year            friday-the-13th))
 
-(expect #inst "2015-11-13T19:05" (date-trunc :minute  friday-the-13th))
-(expect #inst "2015-11-13T19:00" (date-trunc :hour    friday-the-13th))
-(expect #inst "2015-11-13"       (date-trunc :day     friday-the-13th))
-(expect #inst "2015-11-08"       (date-trunc :week    friday-the-13th))
-(expect #inst "2015-11-08"       (date-trunc :week    saturday-the-14th))
-(expect #inst "2015-11-01"       (date-trunc :month   friday-the-13th))
-(expect #inst "2015-10-01"       (date-trunc :quarter friday-the-13th))
+(expect 5    (date-extract :minute-of-hour  saturday-the-31st   "UTC"))
+(expect 19   (date-extract :hour-of-day     saturday-the-31st   "UTC"))
+(expect 7    (date-extract :day-of-week     saturday-the-31st   "UTC"))
+(expect 1    (date-extract :day-of-week     sunday-the-1st      "UTC"))
+(expect 31   (date-extract :day-of-month    saturday-the-31st   "UTC"))
+(expect 365  (date-extract :day-of-year     saturday-the-31st   "UTC"))
+(expect 53   (date-extract :week-of-year    saturday-the-31st   "UTC"))
+(expect 12   (date-extract :month-of-year   saturday-the-31st   "UTC"))
+(expect 4    (date-extract :quarter-of-year saturday-the-31st   "UTC"))
+(expect 2005 (date-extract :year            saturday-the-31st   "UTC"))
+
+(expect 5    (date-extract :minute-of-hour  saturday-the-31st   "US/Pacific"))
+(expect 11   (date-extract :hour-of-day     saturday-the-31st   "US/Pacific"))
+(expect 7    (date-extract :day-of-week     saturday-the-31st   "US/Pacific"))
+(expect 7    (date-extract :day-of-week     sunday-the-1st      "US/Pacific"))
+(expect 31   (date-extract :day-of-month    saturday-the-31st   "US/Pacific"))
+(expect 365  (date-extract :day-of-year     saturday-the-31st   "US/Pacific"))
+(expect 53   (date-extract :week-of-year    saturday-the-31st   "US/Pacific"))
+(expect 12   (date-extract :month-of-year   saturday-the-31st   "US/Pacific"))
+(expect 4    (date-extract :quarter-of-year saturday-the-31st   "US/Pacific"))
+(expect 2005 (date-extract :year            saturday-the-31st   "US/Pacific"))
+
+(expect 5    (date-extract :minute-of-hour  saturday-the-31st   "Asia/Tokyo"))
+(expect 4    (date-extract :hour-of-day     saturday-the-31st   "Asia/Tokyo"))
+(expect 1    (date-extract :day-of-week     saturday-the-31st   "Asia/Tokyo"))
+(expect 1    (date-extract :day-of-week     sunday-the-1st      "Asia/Tokyo"))
+(expect 1    (date-extract :day-of-month    saturday-the-31st   "Asia/Tokyo"))
+(expect 1    (date-extract :day-of-year     saturday-the-31st   "Asia/Tokyo"))
+(expect 1    (date-extract :week-of-year    saturday-the-31st   "Asia/Tokyo"))
+(expect 1    (date-extract :month-of-year   saturday-the-31st   "Asia/Tokyo"))
+(expect 1    (date-extract :quarter-of-year saturday-the-31st   "Asia/Tokyo"))
+(expect 2006 (date-extract :year            saturday-the-31st   "Asia/Tokyo"))
+
+
+(expect #inst "2005-12-31T19:05" (date-trunc :minute  saturday-the-31st   "UTC"))
+(expect #inst "2005-12-31T19:00" (date-trunc :hour    saturday-the-31st   "UTC"))
+(expect #inst "2005-12-31"       (date-trunc :day     saturday-the-31st   "UTC"))
+(expect #inst "2005-12-25"       (date-trunc :week    saturday-the-31st   "UTC"))
+(expect #inst "2006-01-01"       (date-trunc :week    sunday-the-1st      "UTC"))
+(expect #inst "2005-12-01"       (date-trunc :month   saturday-the-31st   "UTC"))
+(expect #inst "2005-10-01"       (date-trunc :quarter saturday-the-31st   "UTC"))
+
+(expect #inst "2005-12-31T19:05" (date-trunc :minute  saturday-the-31st   "Asia/Tokyo"))
+(expect #inst "2005-12-31T19:00" (date-trunc :hour    saturday-the-31st   "Asia/Tokyo"))
+(expect #inst "2006-01-01+09:00" (date-trunc :day     saturday-the-31st   "Asia/Tokyo"))
+(expect #inst "2006-01-01+09:00" (date-trunc :week    saturday-the-31st   "Asia/Tokyo"))
+(expect #inst "2006-01-01+09:00" (date-trunc :week    sunday-the-1st      "Asia/Tokyo"))
+(expect #inst "2006-01-01+09:00" (date-trunc :month   saturday-the-31st   "Asia/Tokyo"))
+(expect #inst "2006-01-01+09:00" (date-trunc :quarter saturday-the-31st   "Asia/Tokyo"))
+
+(expect #inst "2005-12-31T19:05" (date-trunc :minute  saturday-the-31st   "US/Pacific"))
+(expect #inst "2005-12-31T19:00" (date-trunc :hour    saturday-the-31st   "US/Pacific"))
+(expect #inst "2005-12-31-08:00" (date-trunc :day     saturday-the-31st   "US/Pacific"))
+(expect #inst "2005-12-25-08:00" (date-trunc :week    saturday-the-31st   "US/Pacific"))
+(expect #inst "2005-12-25-08:00" (date-trunc :week    sunday-the-1st      "US/Pacific"))
+(expect #inst "2005-12-01-08:00" (date-trunc :month   saturday-the-31st   "US/Pacific"))
+(expect #inst "2005-10-01-08:00" (date-trunc :quarter saturday-the-31st   "US/Pacific"))
 
 ;;; ## tests for HOST-UP?
 
@@ -67,6 +107,11 @@
 (expect true (is-url? "https://amazon.co.uk"))
 (expect true (is-url? "http://google.com?q=my-query&etc"))
 (expect true (is-url? "http://www.cool.com"))
+(expect true (is-url? "http://localhost/"))
+(expect true (is-url? "http://localhost:3000"))
+(expect true (is-url? "https://www.mapbox.com/help/data/stations.geojson"))
+(expect true (is-url? "http://www.cool.com:3000"))
+(expect true (is-url? "http://localhost:3000/auth/reset_password/144_f98987de-53ca-4335-81da-31bb0de8ea2b#new"))
 (expect false (is-url? "google.com"))                      ; missing protocol
 (expect false (is-url? "ftp://metabase.com"))              ; protocol isn't HTTP/HTTPS
 (expect false (is-url? "http://metabasecom"))              ; no period / TLD
@@ -81,27 +126,6 @@
 
 (expect -7
   ((rpartial - 5 10) 8))
-
-
-;;; ## cond-as->
-(expect 100
-  (cond-as-> 100 <>))
-
-(expect 106
-  (cond-as-> 100 <>
-    true  (+  1 <>)
-    false (+ 10 <>)
-    :ok   (+  5 <>)))
-
-(expect 101
-  (cond-as-> 100 <>
-    (odd? <>)  (inc <>)
-    (even? <>) (inc <>)))
-
-(expect 102
-  (cond-as-> 100 <>
-    (even? <>) (inc <>)
-    (odd? <>)  (inc <>)))
 
 
 ;;; TESTS FOR key-by

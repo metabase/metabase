@@ -9,16 +9,15 @@
   (:import metabase.driver.crate.CrateDriver))
 
 (def ^:private ^:const field-base-type->sql-type
-  {:BigIntegerField "long"
-   :BooleanField    "boolean"
-   :CharField       "string"
-   :DateField       "timestamp"
-   :DateTimeField   "timestamp"
-   :DecimalField    "integer"
-   :FloatField      "float"
-   :IntegerField    "integer"
-   :TextField       "string"
-   :TimeField       "timestamp"})
+  {:type/BigInteger "long"
+   :type/Boolean    "boolean"
+   :type/Date       "timestamp"
+   :type/DateTime   "timestamp"
+   :type/Decimal    "integer"
+   :type/Float      "float"
+   :type/Integer    "integer"
+   :type/Text       "string"
+   :type/Time       "timestamp"})
 
 
 (defn- timestamp->CrateDateTime
@@ -42,13 +41,13 @@
    the calls the resulting function with the rows to insert."
   [& wrap-insert-fns]
   (fn [driver dbdef tabledef]
-    (let [insert!   ((apply comp wrap-insert-fns) (fn [row-or-rows]
-                                                    (apply jdbc/insert!
-                                                           (generic/database->spec driver :db dbdef)
-                                                           (keyword (:table-name tabledef))
-                                                           :transaction? false
-                                                           (escape-field-names row-or-rows))))
-          rows      (apply list (generic/load-data-get-rows driver dbdef tabledef))]
+    (let [insert! ((apply comp wrap-insert-fns) (fn [row-or-rows]
+                                                  (jdbc/insert-multi!
+                                                    (generic/database->spec driver :db dbdef)
+                                                    (keyword (:table-name tabledef))
+                                                    (escape-field-names row-or-rows)
+                                                    {:transaction? false})))
+          rows    (apply list (generic/load-data-get-rows driver dbdef tabledef))]
       (insert! rows))))
 
 (def ^:private database->connection-details

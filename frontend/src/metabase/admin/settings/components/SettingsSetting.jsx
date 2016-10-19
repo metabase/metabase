@@ -12,7 +12,8 @@ export default class SettingsSetting extends Component {
         setting: PropTypes.object.isRequired,
         updateSetting: PropTypes.func.isRequired,
         handleChangeEvent: PropTypes.func.isRequired,
-        autoFocus: PropTypes.bool
+        autoFocus: PropTypes.bool,
+        disabled: PropTypes.bool,
     };
 
     renderStringInput(setting, type="text") {
@@ -56,7 +57,8 @@ export default class SettingsSetting extends Component {
     }
 
     renderToggleInput(setting) {
-        var on = (setting.value == null ? setting.default : setting.value) === "true";
+        const value = setting.value == null ? setting.default : setting.value,
+              on    = value === true || value === "true";
         return (
             <div className="flex align-center pt1">
                 <Toggle value={on} onChange={!this.props.disabled ? this.props.updateSetting.bind(null, setting, on ? "false" : "true") : null}/>

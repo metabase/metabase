@@ -1,8 +1,8 @@
 /* @flow */
 
-import type { TableId } from "./base";
+import type { TableId } from "./Table";
+import type { FieldId } from "./Field";
 
-export type FieldId = number;
 export type SegmentId = number;
 export type MetricId = number;
 
@@ -19,8 +19,16 @@ export type RelativeDatetimePeriod = "current" | "last" | "next" | number;
 export type RelativeDatetimeUnit = "minute" | "hour" | "day" | "week" | "month" | "quarter" | "year";
 export type DatetimeUnit = "default" | "minute" | "minute-of-hour" | "hour" | "hour-of-day" | "day" | "day-of-week" | "day-of-month" | "day-of-year" | "week" | "week-of-year" | "month" | "month-of-year" | "quarter" | "quarter-of-year" | "year";
 
+export type TemplateTag = {
+    name: string,
+    display_name: string,
+    type: string,
+    dimension?: ["field-id", number]
+};
+
 export type NativeQueryObject = {
-    query: string
+    query: string,
+    template_tags: { [key: string]: TemplateTag }
 };
 
 export type StructuredQueryObject = {

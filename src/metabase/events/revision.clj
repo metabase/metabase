@@ -5,7 +5,7 @@
             (metabase.models [card :refer [Card]]
                              [dashboard :refer [Dashboard]]
                              [metric :refer [Metric]]
-                             [revision :refer [push-revision]]
+                             [revision :refer [push-revision!]]
                              [segment :refer [Segment]])))
 
 
@@ -45,30 +45,30 @@
             revision-message (:revision_message object)]
         ;; TODO: seems unnecessary to select each entity again, is there a reason we aren't using `object` directly?
         (case model
-          "card"      (push-revision :entity       Card,
-                                     :id           id,
-                                     :object       (Card id),
-                                     :user-id      user-id,
-                                     :is-creation? (= :card-create topic)
-                                     :message      revision-message)
-          "dashboard" (push-revision :entity       Dashboard,
-                                     :id           id,
-                                     :object       (Dashboard id),
-                                     :user-id      user-id,
-                                     :is-creation? (= :dashboard-create topic)
-                                     :message      revision-message)
-          "metric"    (push-revision :entity       Metric,
-                                     :id           id,
-                                     :object       (Metric id),
-                                     :user-id      user-id,
-                                     :is-creation? (= :metric-create topic)
-                                     :message      revision-message)
-          "segment"   (push-revision :entity       Segment,
-                                     :id           id,
-                                     :object       (Segment id),
-                                     :user-id      user-id,
-                                     :is-creation? (= :segment-create topic)
-                                     :message      revision-message))))
+          "card"      (push-revision! :entity       Card,
+                                      :id           id,
+                                      :object       (Card id),
+                                      :user-id      user-id,
+                                      :is-creation? (= :card-create topic)
+                                      :message      revision-message)
+          "dashboard" (push-revision! :entity       Dashboard,
+                                      :id           id,
+                                      :object       (Dashboard id),
+                                      :user-id      user-id,
+                                      :is-creation? (= :dashboard-create topic)
+                                      :message      revision-message)
+          "metric"    (push-revision! :entity       Metric,
+                                      :id           id,
+                                      :object       (Metric id),
+                                      :user-id      user-id,
+                                      :is-creation? (= :metric-create topic)
+                                      :message      revision-message)
+          "segment"   (push-revision! :entity       Segment,
+                                      :id           id,
+                                      :object       (Segment id),
+                                      :user-id      user-id,
+                                      :is-creation? (= :segment-create topic)
+                                      :message      revision-message))))
     (catch Throwable e
       (log/warn (format "Failed to process revision event. %s" (:topic revision-event)) e))))
 

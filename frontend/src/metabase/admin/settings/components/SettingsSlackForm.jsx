@@ -35,7 +35,7 @@ export default class SettingsSlackForm extends Component {
         // this gives us an opportunity to load up our formData with any existing values for elements
         let formData = {};
         this.props.elements.forEach(function(element) {
-            formData[element.key] = element.value || element.defaultValue;
+            formData[element.key] = element.value == null ? element.defaultValue : element.value;
         });
 
         this.setState({formData});
@@ -158,21 +158,21 @@ export default class SettingsSlackForm extends Component {
 
         let settings = elements.map((element, index) => {
             // merge together data from a couple places to provide a complete view of the Element state
-            let errorMessage = (formErrors && formErrors.elements) ? formErrors.elements[element.key] : validationErrors[element.key],
-                value = formData[element.key] || element.defaultValue;
+            let errorMessage = (formErrors && formErrors.elements) ? formErrors.elements[element.key] : validationErrors[element.key];
+            let value = formData[element.key] == null ? element.defaultValue : formData[element.key];
 
             if (element.key === "slack-token") {
                 return (
                     <SettingsEmailFormElement
                         key={element.key}
-                        element={_.extend(element, {value, errorMessage, fireOnChange: true })}
+                        element={{ ...element, value, errorMessage, fireOnChange: true }}
                         handleChangeEvent={this.handleChangeEvent.bind(this)} />
                 );
             } else if (element.key === "metabot-enabled") {
                 return (
                     <SettingsSetting
                         key={element.key}
-                        setting={_.extend(element, {value, errorMessage })}
+                        setting={{ ...element, value, errorMessage }}
                         updateSetting={(setting, value) => this.handleChangeEvent(setting, value)}
                         disabled={!this.state.formData["slack-token"]}
                     />
@@ -205,14 +205,14 @@ export default class SettingsSlackForm extends Component {
                     <h3 className="text-grey-1">Answers sent right to your Slack #channels</h3>
 
                     <div className="pt3">
-                        <a href="https://api.slack.com/docs/oauth-test-tokens" target="_blank" className="Button Button--primary" style={{padding:0}}>
-                            <div className="float-left py2 pl2">Get an API token from Slack</div>
-                            <Icon className="float-right p2 text-white cursor-pointer" style={{opacity:0.6}} name="external" width={18} height={18}/>
+                        <a href="https://my.slack.com/services/new/bot" target="_blank" className="Button Button--primary" style={{padding:0}}>
+                            <div className="float-left py2 pl2">Create a Slack Bot User for Metabot</div>
+                            <Icon className="float-right p2 text-white cursor-pointer" style={{opacity:0.6}} name="external" size={18}/>
                         </a>
                     </div>
                     <div className="py2">
-                        Once you're there, click <strong>"Create token"</strong> next to the team that you want to integrate with Metabase, then copy and paste the token into the field below.
-                        Slack test tokens work fine with Metabase.
+                        Once you're there, give it a name and click <strong>"Add bot integration"</strong>. Then copy and paste the Bot API Token into the field below. Once you are done, create a "metabase_files" channel in Slack. Metabase needs this to upload graphs.
+
                     </div>
                 </div>
                 <ul>

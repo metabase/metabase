@@ -1,15 +1,15 @@
 (ns metabase.test.data.users
   "Code related to creating / managing fake `Users` for testing purposes."
+  ;; TODO - maybe this namespace should just be `metabase.test.users`.
   (:require [medley.core :as m]
             (metabase [db :as db]
                       [http-client :as http])
-            (metabase.models [user :refer [User]])
+            (metabase.models [permissions-group :as perms-group]
+                             [user :refer [User]])
             [metabase.util :as u]
             [metabase.test.util :refer [random-name]]))
 
-(declare fetch-or-create-user)
-
-;; ## User definitions
+;;; ------------------------------------------------------------ User Definitions ------------------------------------------------------------
 
 ;; ## Test Users
 ;;
@@ -43,17 +43,24 @@
 (def ^:private ^:const usernames
   (set (keys user->info)))
 
-;; ## Public functions for working with Users
+;;; ------------------------------------------------------------ Test User Fns ------------------------------------------------------------
 
-(defn create-user
-  "Create a new `User` with random names + password."
-  [& {:as kwargs}]
-  (let [first-name (random-name)
-        defaults   {:first_name first-name
-                    :last_name  (random-name)
-                    :email      (.toLowerCase ^String (str first-name "@metabase.com"))
-                    :password   first-name}]
-    (db/insert! User (merge defaults kwargs))))
+(defn- fetch-or-create-user!
+  "Create User if they don't already exist and return User."
+  [& {:keys [email first last password superuser active]
+      :or {superuser false
+           active    true}}]
+  {:pre [(string? email) (string? first) (string? last) (string? password) (m/boolean? superuser) (m/boolean? active)]}
+  (or (User :email email)
+      (db/insert! User
+        :email        email
+        :first_name   first
+        :last_name    last
+        :password     password
+        :is_superuser superuser
+        :is_qbnewb    true
+        :is_active    active)))
+
 
 (defn fetch-user
   "Fetch the User object associated with USERNAME.
@@ -61,7 +68,7 @@
     (fetch-user :rasta) -> {:id 100 :first_name \"Rasta\" ...}"
   [username]
   {:pre [(contains? usernames username)]}
-  (m/mapply fetch-or-create-user (user->info username)))
+  (m/mapply fetch-or-create-user! (user->info username)))
 
 (def user->id
   "Memoized fn that returns the ID of User associated with USERNAME.
@@ -96,6 +103,10 @@
         (swap! tokens assoc username <>))
       (throw (Exception. (format "Authentication failed for %s with credentials %s" username (user->credentials username))))))
 
+;; TODO - does it make sense just to make this a non-higher-order function? Or a group of functions, e.g.
+;; (GET :rasta 200 "field/10/values")
+;; vs.
+;; ((user->client :rasta) :get 200 "field/10/values")
 (defn user->client
   "Returns a `metabase.http-client/client` partially bound with the credentials for User with USERNAME.
    In addition, it forces lazy creation of the User if needed.
@@ -114,22 +125,3 @@
           ;; If we got a 401 unauthenticated clear the tokens cache + recur
           (reset! tokens {})
           (apply client-fn args))))))
-
-
-;; ## Implementation
-
-(defn- fetch-or-create-user
-  "Create User if they don't already exist and return User."
-  [& {:keys [email first last password superuser active]
-      :or {superuser false
-           active    true}}]
-  {:pre [(string? email) (string? first) (string? last) (string? password) (m/boolean? superuser) (m/boolean? active)]}
-  (or (User :email email)
-      (db/insert! User
-        :email        email
-        :first_name   first
-        :last_name    last
-        :password     password
-        :is_superuser superuser
-        :is_qbnewb    true
-        :is_active    active)))

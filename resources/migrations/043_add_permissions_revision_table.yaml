@@ -1,0 +1,48 @@
+databaseChangeLog:
+  - changeSet:
+      id: 43
+      author: camsaul
+      validCheckSum: 7:b20750a949504e93efced32877a4488f
+      validCheckSum: 7:dbc18c8ca697fc335869f0ed0eb5f4cb
+      changes:
+        - createTable:
+            tableName: permissions_revision
+            remarks: 'Used to keep track of changes made to permissions.'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: before
+                  type: text
+                  remarks: 'Serialized JSON of the permissions before the changes.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: after
+                  type: text
+                  remarks: 'Serialized JSON of the permissions after the changes.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: 'The ID of the admin who made this set of changes.'
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_permissions_revision_user_id
+              - column:
+                  name: created_at
+                  type: datetime
+                  remarks: 'The timestamp of when these changes were made.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: remark
+                  type: text
+                  remarks: 'Optional remarks explaining why these changes were made.'

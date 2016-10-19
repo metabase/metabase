@@ -1,9 +1,10 @@
 (ns metabase.driver.sqlite
-  (:require [clojure.set :as set]
+  (:require (clojure [set :as set]
+                     [string :as s])
             (honeysql [core :as hsql]
                       [format :as hformat])
-            [korma.db :as kdb]
             [metabase.config :as config]
+            [metabase.db.spec :as dbspec]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
             [metabase.util :as u]
@@ -13,26 +14,26 @@
 ;; because SQLite types can have optional lengths, e.g. NVARCHAR(100) or NUMERIC(10,5)
 ;; See also http://www.sqlite.org/datatype3.html
 (def ^:private ^:const pattern->type
-  [[#"BIGINT"   :BigIntegerField]
-   [#"BIG INT"  :BigIntegerField]
-   [#"INT"      :IntegerField]
-   [#"CHAR"     :TextField]
-   [#"TEXT"     :TextField]
-   [#"CLOB"     :TextField]
-   [#"BLOB"     :UnknownField]
-   [#"REAL"     :FloatField]
-   [#"DOUB"     :FloatField]
-   [#"FLOA"     :FloatField]
-   [#"NUMERIC"  :FloatField]
-   [#"DECIMAL"  :DecimalField]
-   [#"BOOLEAN"  :BooleanField]
-   [#"DATETIME" :DateTimeField]
-   [#"DATE"     :DateField]])
+  [[#"BIGINT"   :type/BigInteger]
+   [#"BIG INT"  :type/BigInteger]
+   [#"INT"      :type/Integer]
+   [#"CHAR"     :type/Text]
+   [#"TEXT"     :type/Text]
+   [#"CLOB"     :type/Text]
+   [#"BLOB"     :type/*]
+   [#"REAL"     :type/Float]
+   [#"DOUB"     :type/Float]
+   [#"FLOA"     :type/Float]
+   [#"NUMERIC"  :type/Float]
+   [#"DECIMAL"  :type/Decimal]
+   [#"BOOLEAN"  :type/Boolean]
+   [#"DATETIME" :type/DateTime]
+   [#"DATE"     :type/Date]])
 
 ;; register the SQLite concatnation operator `||` with HoneySQL as `sqlite-concat`
 ;; (hsql/format (hsql/call :sqlite-concat :a :b)) -> "(a || b)"
 (defmethod hformat/fn-handler "sqlite-concat" [_ & args]
-  (str "(" (apply str (interpose " || " (map hformat/to-sql args))) ")"))
+  (str "(" (s/join " || " (map hformat/to-sql args)) ")"))
 
 (def ^:private ->date     (partial hsql/call :date))
 (def ^:private ->datetime (partial hsql/call :datetime))
@@ -143,7 +144,7 @@
   (merge (sql/ISQLDriverDefaultsMixin)
          {:active-tables             sql/post-filtered-active-tables
           :column->base-type         (sql/pattern-based-column->base-type pattern->type)
-          :connection-details->spec  (u/drop-first-arg kdb/sqlite3)
+          :connection-details->spec  (u/drop-first-arg dbspec/sqlite3)
           :current-datetime-fn       (constantly (hsql/raw "datetime('now')"))
           :date                      (u/drop-first-arg date)
           :prepare-value             (u/drop-first-arg prepare-value)

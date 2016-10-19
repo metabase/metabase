@@ -20,15 +20,31 @@ export default class Icon extends Component {
 
     render() {
         const icon = loadIcon(this.props.name);
-
         if (!icon) {
-            return <span className="hide" />;
-        } else if (icon.img) {
-            return (<RetinaImage forceOriginalDimensions={false} {...icon.attrs} {...this.props} src={icon.img} />);
+            return null;
+        }
+
+        const props = { ...icon.attrs, ...this.props };
+        for (const prop of ["width", "height", "size", "scale"]) {
+            if (typeof props[prop] === "string") {
+                props[prop] = parseInt(props[prop], 10);
+            }
+        }
+        if (props.size != null) {
+            props.width = props.size;
+            props.height = props.size;
+        }
+        if (props.scale != null && props.width != null && props.height != null) {
+            props.width *= props.scale;
+            props.height *= props.scale;
+        }
+
+        if (icon.img) {
+            return (<RetinaImage forceOriginalDimensions={false} {...props} src={icon.img} />);
         } else if (icon.svg) {
-            return (<svg  {...icon.attrs} {...this.props} dangerouslySetInnerHTML={{__html: icon.svg}}></svg>);
+            return (<svg {...props} dangerouslySetInnerHTML={{__html: icon.svg}}></svg>);
         } else {
-            return (<svg {...icon.attrs} {...this.props}><path d={icon.path} /></svg>);
+            return (<svg {...props}><path d={icon.path} /></svg>);
         }
     }
 }

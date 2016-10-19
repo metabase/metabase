@@ -11,7 +11,7 @@
     transition: margin-right 0.35s;
  }
 
-.QueryBuilder--showDataReference {
+.QueryBuilder--showSideDrawer {
     margin-right: 300px;
 }
 
@@ -535,7 +535,7 @@
 
 /* DATA REFERENCE */
 
-.DataReference {
+.SideDrawer {
     z-index: -1;
     position: absolute;
     top: 0;
@@ -546,26 +546,16 @@
     overflow: hidden;
 }
 
+.SideDrawer--show {
+    z-index: 0;
+}
+
 .DataReference-container {
     width: 300px;
 }
 
 .DataReference h1 {
     font-size: 20pt;
-}
-
-.DataRefererenceQueryButton-circle {
-    border: 1px solid currentColor;
-    border-radius: 99px;
-    width: 1.25rem;
-    height: 1.25rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.DataRefererenceQueryButton-text {
-    max-width: 160px;
 }
 
 .DataReference-paneCount {
@@ -602,22 +592,6 @@
     background-color: #F8F8F8;
     border: 1px solid #dedede;
     border-radius: 2px;
-}
-
-.ace_gutter-cell {
-    padding-top: 2px;
-    font-size: 10px;
-    font-weight: 700;
-    color: color(var(--base-grey) shade(30%));
-    padding-left: 0;
-    padding-right: 0;
-    display: block;
-    text-align: center;
-}
-
-.ace_gutter-layer {
-    background-color: #F9FBFC;
-    border-right: 1px solid var(--border-color);
 }
 
 .PopoverBody.AddToDashboard {
@@ -673,6 +647,10 @@
     margin-bottom: 2px;
 }
 
+.List-item--disabled .List-item-title {
+    color: var(--grey-3);
+}
+
 .List-item--segment .Icon,
 .List-item--segment .List-item-title {
   color: var(--purple-color);
@@ -683,7 +661,7 @@
   color: var(--brand-color);
 }
 
-.List-item:hover,
+.List-item:not(.List-item--disabled):hover,
 .List-item--selected {
     background-color: currentColor;
     border-color: rgba(0,0,0,0.2);
@@ -694,12 +672,12 @@
     color: var(--default-font-color);
 }
 
-.List-item:hover .List-item-title,
+.List-item:not(.List-item--disabled):hover .List-item-title,
 .List-item--selected .List-item-title {
     color: white;
 }
 
-.List-item:hover .Icon,
+.List-item:not(.List-item--disabled):hover .Icon,
 .List-item--selected .Icon {
     color: white;
 }
@@ -709,7 +687,7 @@
     visibility: hidden;
 }
 
-.List-item:hover .FieldList-grouping-trigger,
+.List-item:not(.List-item--disabled):hover .FieldList-grouping-trigger,
 .List-item--selected .FieldList-grouping-trigger {
     visibility: visible;
     border-left: 2px solid rgba(0,0,0,0.1);
@@ -772,4 +750,24 @@
   background-color: #F9FBFC;
   border: 1px solid #D5DBE3;
   border-radius: 4px;
+}
+
+.ParameterValuePickerNoPopover input {
+    font-size: 16px;
+    color: var(--default-font-color);
+    border: none;
+}
+
+.ParameterValuePickerNoPopover--selected input {
+    font-weight: bold;
+    color: var(--brand-color);
+}
+
+.ParameterValuePickerNoPopover input:focus {
+    outline: none;
+    color: var(--default-font-color);
+}
+
+.ParameterValuePickerNoPopover input::-webkit-input-placeholder {
+    color: var(--grey-4);
 }

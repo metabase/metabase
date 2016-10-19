@@ -21,14 +21,14 @@
   (doseq [database (db/select Database, :is_sample false)] ; skip Sample Dataset DB
     (try
       ;; NOTE: this happens synchronously for now to avoid excessive load if there are lots of databases
-      (if-not (and (= 0 (t/hour (t/now)))
+      (if-not (and (zero? (t/hour (t/now)))
                    (driver/driver-supports? (driver/engine->driver (:engine database)) :dynamic-schema))
         ;; most of the time we do a quick sync and avoid the lengthy analysis process
         (sync-database/sync-database! database :full-sync? false)
         ;; at midnight we run the full sync
         (sync-database/sync-database! database :full-sync? true))
       (catch Throwable e
-        (log/error "Error syncing database: " (:id database) e)))))
+        (log/error (format "Error syncing database %d: " (:id database)) e)))))
 
 (defn task-init
   "Automatically called during startup; start the job for syncing databases."

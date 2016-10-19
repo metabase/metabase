@@ -81,7 +81,7 @@
           (.setColor graphics color-white)
           (.fillRect graphics (tile-pixel :x) (tile-pixel :y) pin-size pin-size)
           (.setColor graphics color-blue)
-          (.fillRect graphics (+ 1 (tile-pixel :x)) (+ 1 (tile-pixel :y)) (- pin-size 2) (- pin-size 2))))
+          (.fillRect graphics (inc (tile-pixel :x)) (inc (tile-pixel :y)) (- pin-size 2) (- pin-size 2))))
       (catch Throwable e
         (.printStackTrace e))
       (finally
@@ -119,7 +119,7 @@
    lon-col-idx String->Integer
    query       String->Dict}
   (let [updated-query (update query :query #(query-with-inside-filter % lat-field lon-field x y zoom))
-        result        (qp/dataset-query updated-query {:executed_by   *current-user-id*
+        result        (qp/dataset-query updated-query {:executed-by   *current-user-id*
                                                        :synchronously true})
         points        (for [row (-> result :data :rows)]
                         [(nth row lat-col-idx) (nth row lon-col-idx)])]

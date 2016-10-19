@@ -31,7 +31,7 @@
          (integer? id)]}
   (db/select Dependency, :model (:name entity), :model_id id))
 
-(defn update-dependencies
+(defn update-dependencies!
   "Update the set of `Dependency` objects for a given entity."
   [entity id deps]
   {:pre [(i/metabase-entity? entity)

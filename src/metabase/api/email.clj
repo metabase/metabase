@@ -65,7 +65,7 @@
                          {:error :SUCCESS})]
     (if (= :SUCCESS (:error response))
       ;; test was good, save our settings
-      (setting/set-all email-settings)
+      (setting/set-many! email-settings)
       ;; test failed, return response message
       {:status 500
        :body   (humanize-error-messages response)})))

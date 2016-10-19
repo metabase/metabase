@@ -9,6 +9,7 @@ ENV LC_CTYPE en_US.UTF-8
 
 # install core build tools
 RUN apk add --update nodejs git wget bash python make g++ java-cacerts ttf-dejavu fontconfig && \
+    npm install -g npm@2 && \
     ln -sf "${JAVA_HOME}/bin/"* "/usr/bin/"
 
 # fix broken cacerts

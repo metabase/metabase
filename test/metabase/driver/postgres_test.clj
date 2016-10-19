@@ -7,6 +7,7 @@
             [metabase.driver.generic-sql :as sql]
             (metabase.models [database :refer [Database]]
                              [field :refer [Field]])
+            [metabase.query-processor-test :refer [rows]]
             [metabase.query-processor.expand :as ql]
             [metabase.test.data :as data]
             (metabase.test.data [datasets :refer [expect-with-engine]]
@@ -14,6 +15,8 @@
             [metabase.test.util :as tu]
             [metabase.util :as u])
   (:import metabase.driver.postgres.PostgresDriver))
+
+(def ^:private pg-driver (PostgresDriver.))
 
 ;; # Check that SSL params get added the connection details in the way we'd like
 ;; ## no SSL -- this should *not* include the key :ssl (regardless of its value) since that will cause the PG driver to use SSL anyway
@@ -24,11 +27,11 @@
    :subname     "//localhost:5432/bird_sightings"
    :make-pool?  true
    :sslmode     "disable"}
-  (sql/connection-details->spec (PostgresDriver.) {:ssl    false
-                                                   :host   "localhost"
-                                                   :port   5432
-                                                   :dbname "bird_sightings"
-                                                   :user   "camsaul"}))
+  (sql/connection-details->spec pg-driver {:ssl    false
+                                           :host   "localhost"
+                                           :port   5432
+                                           :dbname "bird_sightings"
+                                           :user   "camsaul"}))
 
 ;; ## ssl - check that expected params get added
 (expect
@@ -40,15 +43,15 @@
    :user        "camsaul"
    :sslfactory  "org.postgresql.ssl.NonValidatingFactory"
    :subname     "//localhost:5432/bird_sightings"}
-  (sql/connection-details->spec (PostgresDriver.) {:ssl    true
-                                                   :host   "localhost"
-                                                   :port   5432
-                                                   :dbname "bird_sightings"
-                                                   :user   "camsaul"}))
+  (sql/connection-details->spec pg-driver {:ssl    true
+                                           :host   "localhost"
+                                           :port   5432
+                                           :dbname "bird_sightings"
+                                           :user   "camsaul"}))
 
 ;; Verify that we identify JSON columns and mark metadata properly during sync
 (expect-with-engine :postgres
-  :json
+  :type/SerializedJSON
   (data/with-temp-db
     [_
      (i/create-database-definition "Postgres with a JSON Field"
@@ -59,9 +62,9 @@
 
 
 ;;; # UUID Support
-(i/def-database-definition ^:const ^:private with-uuid
+(i/def-database-definition ^:private with-uuid
   ["users"
-   [{:field-name "user_id", :base-type :UUIDField}]
+   [{:field-name "user_id", :base-type :type/UUID}]
    [[#uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]
     [#uuid "4652b2e7-d940-4d55-a971-7e484566663e"]
     [#uuid "da1d6ecc-e775-4008-b366-c38e7a2e8433"]
@@ -69,10 +72,10 @@
     [#uuid "84ed434e-80b4-41cf-9c88-e334427104ae"]]])
 
 
-;; Check that we can load a Postgres Database with a :UUIDField
+;; Check that we can load a Postgres Database with a :type/UUID
 (expect-with-engine :postgres
-  [{:name "id",      :base_type :IntegerField}
-   {:name "user_id", :base_type :UUIDField}]
+  [{:name "id",      :base_type :type/Integer}
+   {:name "user_id", :base_type :type/UUID}]
   (->> (data/dataset metabase.driver.postgres-test/with-uuid
          (data/run-query users))
        :data
@@ -83,16 +86,22 @@
 ;; Check that we can filter by a UUID Field
 (expect-with-engine :postgres
   [[2 #uuid "4652b2e7-d940-4d55-a971-7e484566663e"]]
-  (-> (data/dataset metabase.driver.postgres-test/with-uuid
-        (data/run-query users
-          (ql/filter (ql/= $user_id "4652b2e7-d940-4d55-a971-7e484566663e"))))
-      :data :rows))
+  (rows (data/dataset metabase.driver.postgres-test/with-uuid
+          (data/run-query users
+            (ql/filter (ql/= $user_id "4652b2e7-d940-4d55-a971-7e484566663e"))))))
+
+;; check that a nil value for a UUID field doesn't barf (#2152)
+(expect-with-engine :postgres
+  []
+  (rows (data/dataset metabase.driver.postgres-test/with-uuid
+          (data/run-query users
+            (ql/filter (ql/= $user_id nil))))))
 
 
-;;; # Make sure that Tables / Fields with dots in their names get escaped properly
-(i/def-database-definition ^:const ^:private dots-in-names
+;; Make sure that Tables / Fields with dots in their names get escaped properly
+(i/def-database-definition ^:private dots-in-names
   ["objects.stuff"
-   [{:field-name "dotted.name", :base-type :TextField}]
+   [{:field-name "dotted.name", :base-type :type/Text}]
    [["toucan_cage"]
     ["four_loko"]
     ["ouija_board"]]])
@@ -107,15 +116,15 @@
       :data (dissoc :cols :native_form)))
 
 
-;;; # Make sure that duplicate column names (e.g. caused by using a FK) still return both columns
-(i/def-database-definition ^:const ^:private duplicate-names
+;; Make sure that duplicate column names (e.g. caused by using a FK) still return both columns
+(i/def-database-definition ^:private duplicate-names
   ["birds"
-   [{:field-name "name", :base-type :TextField}]
+   [{:field-name "name", :base-type :type/Text}]
    [["Rasta"]
     ["Lucky"]]]
   ["people"
-   [{:field-name "name", :base-type :TextField}
-    {:field-name "bird_id", :base-type :IntegerField, :fk :birds}]
+   [{:field-name "name", :base-type :type/Text}
+    {:field-name "bird_id", :base-type :type/Integer, :fk :birds}]
    [["Cam" 1]]])
 
 (expect-with-engine :postgres
@@ -127,19 +136,82 @@
       :data (dissoc :cols :native_form)))
 
 
+;;; Check support for `inet` columns
+(i/def-database-definition ^:private ip-addresses
+  ["addresses"
+   [{:field-name "ip", :base-type {:native "inet"}}]
+   [[(hsql/raw "'192.168.1.1'::inet")]
+    [(hsql/raw "'10.4.4.15'::inet")]]])
+
+;; Filtering by inet columns should add the appropriate SQL cast, e.g. `cast('192.168.1.1' AS inet)` (otherwise this wouldn't work)
+(expect-with-engine :postgres
+  [[1]]
+  (rows (data/dataset metabase.driver.postgres-test/ip-addresses
+          (data/run-query addresses
+            (ql/aggregation (ql/count))
+            (ql/filter (ql/= $ip "192.168.1.1"))))))
+
+
 ;; Check that we properly fetch materialized views.
 ;; As discussed in #2355 they don't come back from JDBC `DatabaseMetadata` so we have to fetch them manually.
 (expect-with-engine :postgres
   {:tables #{{:schema "public", :name "test_mview"}}}
-  (let [driver (PostgresDriver.)]
-    (jdbc/execute! (sql/connection-details->spec driver (i/database->connection-details driver :server nil))
+  (do
+    (jdbc/execute! (sql/connection-details->spec pg-driver (i/database->connection-details pg-driver :server nil))
                    ["DROP DATABASE IF EXISTS materialized_views_test;
                      CREATE DATABASE materialized_views_test;"]
-                   :transaction? false)
-    (let [details (i/database->connection-details driver :db {:database-name "materialized_views_test", :short-lived? true})]
-      (jdbc/execute! (sql/connection-details->spec driver details)
+                   {:transaction? false})
+    (let [details (i/database->connection-details pg-driver :db {:database-name "materialized_views_test", :short-lived? true})]
+      (jdbc/execute! (sql/connection-details->spec pg-driver details)
                      ["DROP MATERIALIZED VIEW IF EXISTS test_mview;
                        CREATE MATERIALIZED VIEW test_mview AS
                        SELECT 'Toucans are the coolest type of bird.' AS true_facts;"])
       (tu/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "materialized_views_test")}]
-        (driver/describe-database driver database)))))
+        (driver/describe-database pg-driver database)))))
+
+;; Check that we properly fetch foreign tables.
+(expect-with-engine :postgres
+  {:tables #{{:schema "public", :name "foreign_table"} {:schema "public", :name "local_table"}}}
+  (do
+    (jdbc/execute! (sql/connection-details->spec pg-driver (i/database->connection-details pg-driver :server nil))
+                   ["DROP DATABASE IF EXISTS fdw_test;
+                     CREATE DATABASE fdw_test;"]
+                   {:transaction? false})
+    (let [details (i/database->connection-details pg-driver :db {:database-name "fdw_test", :short-lived? true})]
+      (jdbc/execute! (sql/connection-details->spec pg-driver details)
+                     [(str "CREATE EXTENSION IF NOT EXISTS postgres_fdw;
+                            CREATE SERVER foreign_server
+                                FOREIGN DATA WRAPPER postgres_fdw
+                                OPTIONS (host '" (:host details) "', port '" (:port details) "', dbname 'fdw_test');
+                            CREATE TABLE public.local_table (data text);
+                            CREATE FOREIGN TABLE foreign_table (data text)
+                                SERVER foreign_server
+                                OPTIONS (schema_name 'public', table_name 'local_table');")])
+      (tu/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "fdw_test")}]
+        (driver/describe-database pg-driver database)))))
+
+;; timezone tests
+
+(tu/resolve-private-vars metabase.driver.generic-sql.query-processor
+  run-query-with-timezone)
+
+(defn- get-timezone-with-report-timezone [report-timezone]
+  (ffirst (:rows (run-query-with-timezone pg-driver
+                                          {:report-timezone report-timezone}
+                                          (sql/connection-details->spec pg-driver (i/database->connection-details pg-driver :server nil))
+                                          {:query "SELECT current_setting('TIMEZONE') AS timezone;"}))))
+
+;; check that if we set report-timezone to US/Pacific that the session timezone is in fact US/Pacific
+(expect-with-engine :postgres
+  "US/Pacific"
+  (get-timezone-with-report-timezone "US/Pacific"))
+
+;; check that we can set it to something else: America/Chicago
+(expect-with-engine :postgres
+  "America/Chicago"
+  (get-timezone-with-report-timezone "America/Chicago"))
+
+;; ok, check that if we try to put in a fake timezone that the query still reëxecutes without a custom timezone. This should give us the same result as if we didn't try to set a timezone at all
+(expect-with-engine :postgres
+  (get-timezone-with-report-timezone nil)
+  (get-timezone-with-report-timezone "Crunk Burger"))

@@ -25,7 +25,7 @@
   (when-let [card (Card card-id)]
     (let [{:keys [creator_id dataset_query]} card]
       (try
-        {:card card :result (qp/dataset-query dataset_query {:executed_by creator_id})}
+        {:card card :result (qp/dataset-query dataset_query {:executed-by creator_id})}
         (catch Throwable t
           (log/warn (format "Error running card query (%n)" card-id) t))))))
 
@@ -45,8 +45,8 @@
   "Create an attachment in Slack for a given Card by rendering its result into an image and uploading it."
   [card-results]
   (when-let [{channel-id :id} (slack/get-or-create-files-channel!)]
-    (doall (for [{{card-id :id, card-name :name, :as card} :card, {:keys [data]} :result} card-results]
-             (let [image-byte-array (render/render-pulse-card-to-png card data)
+    (doall (for [{{card-id :id, card-name :name, :as card} :card, result :result} card-results]
+             (let [image-byte-array (render/render-pulse-card-to-png card result)
                    slack-file-url   (slack/upload-file! image-byte-array "image.png" channel-id)]
                {:title      card-name
                 :title_link (urls/card-url card-id)

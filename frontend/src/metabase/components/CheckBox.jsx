@@ -38,7 +38,7 @@ export default class CheckBox extends Component {
         return (
             <div style={style} className={cx("cursor-pointer", className)} onClick={() => this.onClick()}>
                 <div style={checkboxStyle}>
-                    { checked ? <Icon style={{ color: invertChecked ? "white" : checkColor }} name="check"  width={size - padding * 2} height={size - padding * 2} /> : null }
+                    { checked ? <Icon style={{ color: invertChecked ? "white" : checkColor }} name="check"  size={size - padding * 2} /> : null }
                 </div>
             </div>
         )

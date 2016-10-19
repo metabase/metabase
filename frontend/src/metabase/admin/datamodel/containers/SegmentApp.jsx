@@ -1,15 +1,22 @@
 import React, { Component, PropTypes } from "react";
+import { connect } from "react-redux";
+import { push } from "react-router-redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 import SegmentForm from "./SegmentForm.jsx";
 
 import { segmentEditSelectors } from "../selectors";
-import * as actions from "../actions";
+import * as actions from "../datamodel";
+import { clearRequestState } from "metabase/redux/requests";
 
-import { connect } from "react-redux";
+const mapDispatchToProps = {
+    ...actions,
+    clearRequestState,
+    onChangeLocation: push
+};
 
-@connect(segmentEditSelectors, actions)
+@connect(segmentEditSelectors, mapDispatchToProps)
 export default class SegmentApp extends Component {
     async componentWillMount() {
         const { params, location } = this.props;
@@ -32,9 +39,11 @@ export default class SegmentApp extends Component {
         let { tableMetadata } = this.props;
         if (segment.id != null) {
             await this.props.updateSegment(segment);
+            this.props.clearRequestState({statePath: ['metadata', 'segments']});
             MetabaseAnalytics.trackEvent("Data Model", "Segment Updated");
         } else {
             await this.props.createSegment(segment);
+            this.props.clearRequestState({statePath: ['metadata', 'segments']});
             MetabaseAnalytics.trackEvent("Data Model", "Segment Created");
         }
 

@@ -1,21 +1,36 @@
 /* @flow */
 
-import type { CardObject, CardId } from "./Card";
+import type { CardObject, CardId, VisualizationSettings } from "./Card";
 import type { ConcreteField } from "./Query";
 
+export type DashboardId = number;
 
 export type DashboardObject = {
-    id: number,
+    id: DashboardId,
     ordered_cards: Array<DashCardObject>,
     // incomplete
     parameters: Array<ParameterObject>
 };
 
+export type DashCardId = number;
+
 export type DashCardObject = {
-    id: number,
+    id: DashCardId,
+    card_id: CardId,
+    dashboard_id: DashboardId,
+
+    card: CardObject,
     series: Array<CardObject>,
+
     // incomplete
-    parameter_mappings: Array<ParameterMappingObject>;
+
+    parameter_mappings: Array<ParameterMappingObject>,
+    visualization_settings: VisualizationSettings,
+
+    col: number,
+    row: number,
+    sizeY: number,
+    sizeX: number
 };
 
 export type ParameterId = string;
@@ -29,9 +44,12 @@ export type ParameterObject = {
     default?: string
 };
 
+export type VariableTarget = ["template-tag", string];
+export type DimensionTarget = ["template-tag", string] | ConcreteField
+
 export type ParameterMappingTarget =
-    ["parameter", string] |
-    ["dimension", ConcreteField];
+    ["variable", VariableTarget] |
+    ["dimension", DimensionTarget];
 
 export type ParameterMappingOption = {
     name: string,
@@ -45,8 +63,13 @@ export type ParameterMappingObject = {
 };
 
 export type ParameterOption = {
-    id: string,
     name: string,
     description?: string,
     type: ParameterType
+};
+
+export type ParameterInstance = {
+    type: ParameterType,
+    target: ParameterMappingTarget,
+    value: string
 };

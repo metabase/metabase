@@ -17,17 +17,23 @@ export default class DataSelector extends Component {
         this.state = {
             databases: null,
             selectedSchema: null,
-            showTablePicker: true
+            showTablePicker: true,
+            showSegmentPicker: props.segments && props.segments.length > 0
         }
 
-        _.bindAll(this, "onChangeDatabase", "onChangeSchema", "onChangeTable", "onBack");
+        _.bindAll(this, "onChangeDatabase", "onChangeSchema", "onChangeTable", "onChangeSegment", "onBack");
     }
 
     static propTypes = {
         query: PropTypes.object.isRequired,
         databases: PropTypes.array.isRequired,
+        tables: PropTypes.array,
+        segments: PropTypes.array,
+        disabledTableIds: PropTypes.array,
+        disabledSegmentIds: PropTypes.array,
         setDatabaseFn: PropTypes.func.isRequired,
         setSourceTableFn: PropTypes.func,
+        setSourceSegmentFn: PropTypes.func,
         isInitiallyOpen: PropTypes.bool
     };
 
@@ -38,7 +44,7 @@ export default class DataSelector extends Component {
 
     componentWillMount() {
         this.componentWillReceiveProps(this.props);
-        if (this.props.databases.length === 1) {
+        if (this.props.databases.length === 1 && !this.props.segments) {
             setTimeout(() => this.onChangeDatabase(0));
         }
     }
@@ -86,6 +92,14 @@ export default class DataSelector extends Component {
         this.refs.popover.toggle();
     }
 
+    onChangeSegment(item) {
+        if (item.segment != null) {
+            this.props.setSourceSegmentFn(item.segment.id);
+        }
+
+        this.refs.popover.toggle();
+    }
+
     onChangeSchema(schema) {
         this.setState({
             selectedSchema: schema,
@@ -93,9 +107,16 @@ export default class DataSelector extends Component {
         });
     }
 
+    onChangeSegmentSection() {
+        this.setState({
+            showSegmentPicker: true
+        });
+    }
+
     onBack() {
         this.setState({
-            showTablePicker: false
+            showTablePicker: false,
+            showSegmentPicker: false
         });
     }
 
@@ -113,6 +134,10 @@ export default class DataSelector extends Component {
             selectedSchema: schema,
             showTablePicker: !!schema
         });
+    }
+
+    getSegmentId() {
+        return this.props.query.segment;
     }
 
     getDatabaseId() {
@@ -133,12 +158,13 @@ export default class DataSelector extends Component {
 
         return (
             <AccordianList
+                id="DatabasePicker"
                 key="schemaPicker"
                 className="text-brand"
                 sections={sections}
                 onChange={this.onChangeTable}
                 itemIsSelected={(item) => this.getDatabaseId() === item.database.id}
-                renderItemIcon={() => <Icon className="Icon text-default" name="database" width="18" height="18" />}
+                renderItemIcon={() => <Icon className="Icon text-default" name="database" size={18} />}
                 showItemArrows={false}
             />
         );
@@ -161,14 +187,53 @@ export default class DataSelector extends Component {
 
         return (
             <AccordianList
+                id="DatabaseSchemaPicker"
                 key="schemaPicker"
                 className="text-brand"
                 sections={sections}
                 onChange={this.onChangeSchema}
                 onChangeSection={this.onChangeDatabase}
                 itemIsSelected={(schema) => this.state.selectedSchema === schema}
-                renderSectionIcon={() => <Icon className="Icon text-default" name="database" width="18" height="18" />}
-                renderItemIcon={() => <Icon name="folder" width="16" height="16" />}
+                renderSectionIcon={() => <Icon className="Icon text-default" name="database" size={18} />}
+                renderItemIcon={() => <Icon name="folder" size={16} />}
+                initiallyOpenSection={openSection}
+                showItemArrows={true}
+                alwaysTogglable={true}
+            />
+        );
+    }
+
+    renderSegmentAndDatabasePicker() {
+        const { selectedSchema } = this.state;
+        
+        const segmentItem = [{ name: 'Segments', items: [], icon: 'segment'}];
+        
+        const sections = segmentItem.concat(this.state.databases.map(database => {
+            return {
+                name: database.name,
+                items: database.schemas.length > 1 ? database.schemas : []
+            };
+        }));
+
+        // FIXME: this seems a bit brittle and hard to follow
+        let openSection = selectedSchema && (_.findIndex(this.state.databases, (db) => _.find(db.schemas, selectedSchema)) + segmentItem.length);
+        if (openSection >= 0 && this.state.databases[openSection - segmentItem.length] && this.state.databases[openSection - segmentItem.length].schemas.length === 1) {
+            openSection = -1;
+        }
+
+        return (
+            <AccordianList
+                key="schemaPicker"
+                className="text-brand"
+                sections={sections}
+                onChange={this.onChangeSchema}
+                onChangeSection={(index) => index === 0 ?
+                    this.onChangeSegmentSection() :
+                    this.onChangeDatabase(index - segmentItem.length)
+                }
+                itemIsSelected={(schema) => this.state.selectedSchema === schema}
+                renderSectionIcon={(section, sectionIndex) => <Icon className="Icon text-default" name={section.icon || "database"} size={18} />}
+                renderItemIcon={() => <Icon name="folder" size={16} />}
                 initiallyOpenSection={openSection}
                 showItemArrows={true}
                 alwaysTogglable={true}
@@ -179,10 +244,11 @@ export default class DataSelector extends Component {
     renderTablePicker() {
         const schema = this.state.selectedSchema;
         const hasMultipleDatabases = this.props.databases.length > 1;
+        const hasSegments = !!this.props.segments;
         let header = (
             <span className="flex align-center">
-                <span className={cx("flex align-center text-slate", { "cursor-pointer": hasMultipleDatabases })} onClick={hasMultipleDatabases && this.onBack}>
-                    { hasMultipleDatabases && <Icon name="chevronleft" width={18} height={18} /> }
+                <span className={cx("flex align-center text-slate", { "cursor-pointer": hasMultipleDatabases || hasSegments })} onClick={(hasMultipleDatabases || hasSegments) && this.onBack}>
+                    { (hasMultipleDatabases || hasSegments) && <Icon name="chevronleft" size={18} /> }
                     <span className="ml1">{schema.database.name}</span>
                 </span>
                 { schema.name &&
@@ -207,25 +273,80 @@ export default class DataSelector extends Component {
         } else {
             let sections = [{
                 name: header,
-                items: schema.tables.map(table => ({
-                    name: table.display_name,
-                    table: table,
-                    database: schema.database
-                }))
+                items: schema.tables
+                    .map(table => ({
+                        name: table.display_name,
+                        disabled: this.props.disabledTableIds && this.props.disabledTableIds.includes(table.id),
+                        table: table,
+                        database: schema.database
+                    }))
             }];
             return (
                 <AccordianList
+                    id="TablePicker"
                     key="tablePicker"
                     className="text-brand"
                     sections={sections}
                     searchable={true}
                     onChange={this.onChangeTable}
                     itemIsSelected={(item) => item.table ? item.table.id === this.getTableId() : false}
-                    itemIsClickable={(item) => item.table}
-                    renderItemIcon={(item) => item.table ? <Icon name="table2" width="18" height="18" /> : null}
+                    itemIsClickable={(item) => item.table && !item.disabled}
+                    renderItemIcon={(item) => item.table ? <Icon name="table2" size={18} /> : null}
+                    hideSingleSectionTitle={true}
                 />
             );
         }
+    }
+
+    //TODO: refactor this. lots of shared code with renderTablePicker()
+    renderSegmentPicker() {
+        const { segments } = this.props;
+        const header = (
+            <span className="flex align-center">
+                <span className="flex align-center text-slate cursor-pointer" onClick={this.onBack}>
+                    <Icon name="chevronleft" size={18} />
+                    <span className="ml1">Segments</span>
+                </span>
+            </span>
+        );
+
+        if (!segments || segments.length === 0) {
+            return (
+                <section className="List-section List-section--open" style={{width: '300px'}}>
+                    <div className="p1 border-bottom">
+                        <div className="px1 py1 flex align-center">
+                            <h3 className="text-default">{header}</h3>
+                        </div>
+                    </div>
+                    <div className="p4 text-centered">No segments were found.</div>
+                </section>
+            );
+        }
+
+        const sections = [{
+            name: header,
+            items: segments
+                .map(segment => ({
+                    name: segment.name,
+                    segment: segment,
+                    disabled: this.props.disabledSegmentIds && this.props.disabledSegmentIds.includes(segment.id)
+                }))
+        }];
+
+        return (
+            <AccordianList
+                key="segmentPicker"
+                className="text-brand"
+                sections={sections}
+                searchable={true}
+                searchPlaceholder="Find a segment"
+                onChange={this.onChangeSegment}
+                itemIsSelected={(item) => item.segment ? item.segment.id === this.getSegmentId() : false}
+                itemIsClickable={(item) => item.segment && !item.disabled}
+                renderItemIcon={(item) => item.segment ? <Icon name="segment" size={18} /> : null}
+                hideSingleSectionTitle={true}
+            />
+        );
     }
 
     render() {
@@ -237,7 +358,17 @@ export default class DataSelector extends Component {
         var table = _.find(database.tables, (table) => table.id === tableId);
 
         var content;
-        if (this.props.includeTables) {
+        if (this.props.includeTables && this.props.segments) {
+            const segmentId = this.getSegmentId();
+            const segment = _.find(this.props.segments, (segment) => segment.id === segmentId);
+            if (table) {
+                content = <span className="text-grey no-decoration">{table.display_name || table.name}</span>;
+            } else if (segment) {
+                content = <span className="text-grey no-decoration">{segment.name}</span>;
+            } else {
+                content = <span className="text-grey-4 no-decoration">Pick a segment or table</span>;
+            }
+        } else if (this.props.includeTables) {
             if (table) {
                 content = <span className="text-grey no-decoration">{table.display_name || table.name}</span>;
             } else {
@@ -252,26 +383,30 @@ export default class DataSelector extends Component {
         }
 
         var triggerElement = (
-            <span className="px2 py2 text-bold cursor-pointer text-default">
+            <span className={this.props.className || "px2 py2 text-bold cursor-pointer text-default"} style={this.props.style}>
                 {content}
-                <Icon className="ml1" name="chevrondown" width="8px" height="8px"/>
+                <Icon className="ml1" name="chevrondown" size={this.props.triggerIconSize || 8}/>
             </span>
         )
 
         return (
             <PopoverWithTrigger
+                id="DataPopover"
                 ref="popover"
                 isInitiallyOpen={this.props.isInitiallyOpen}
                 triggerElement={triggerElement}
                 triggerClasses="flex align-center"
-                horizontalAttachments={["left"]}
+                horizontalAttachments={this.props.segments ? ["center", "left", "right"] : ["left"]}
             >
                 { !this.props.includeTables ?
-                    this.renderDatabasePicker()
-                : this.state.selectedSchema && this.state.showTablePicker ?
-                    this.renderTablePicker()
-                :
-                    this.renderDatabaseSchemaPicker()
+                    this.renderDatabasePicker() : 
+                    this.state.selectedSchema && this.state.showTablePicker ?
+                        this.renderTablePicker() :
+                        this.props.segments ?
+                            this.state.showSegmentPicker ?  
+                                this.renderSegmentPicker() :
+                                this.renderSegmentAndDatabasePicker() :
+                            this.renderDatabaseSchemaPicker()
                 }
             </PopoverWithTrigger>
         );

@@ -16,11 +16,10 @@
 (expect
   {:name         "Test Dashboard"
    :description  nil
-   :public_perms 0
    :cards        [{:sizeX   2
                    :sizeY   2
-                   :row     nil
-                   :col     nil
+                   :row     0
+                   :col     0
                    :id      true
                    :card_id true
                    :series  true}]}
@@ -44,11 +43,9 @@
   (diff-dashboards-str
     {:name         "Diff Test"
      :description  nil
-     :public_perms 0
      :cards        []}
     {:name         "Diff Test Changed"
      :description  "foobar"
-     :public_perms 0
      :cards        []}))
 
 (expect
@@ -56,15 +53,13 @@
   (diff-dashboards-str
     {:name         "Diff Test"
      :description  nil
-     :public_perms 0
      :cards        []}
     {:name         "Diff Test"
      :description  nil
-     :public_perms 0
      :cards        [{:sizeX   2
                      :sizeY   2
-                     :row     nil
-                     :col     nil
+                     :row     0
+                     :col     0
                      :id      1
                      :card_id 1
                      :series  []}]}))
@@ -74,24 +69,22 @@
   (diff-dashboards-str
     {:name         "Diff Test"
      :description  nil
-     :public_perms 0
      :cards        [{:sizeX   2
                      :sizeY   2
-                     :row     nil
-                     :col     nil
+                     :row     0
+                     :col     0
                      :id      1
                      :card_id 1
                      :series  [5 6]}
                     {:sizeX   2
                      :sizeY   2
-                     :row     nil
-                     :col     nil
+                     :row     0
+                     :col     0
                      :id      2
                      :card_id 2
                      :series  []}]}
     {:name         "Diff Test"
      :description  nil
-     :public_perms 0
      :cards        [{:sizeX   2
                      :sizeY   2
                      :row     0
@@ -108,29 +101,29 @@
                      :series  [3 4 5]}]}))
 
 
-;; revert-dashboard
+;;; revert-dashboard!
+
+(tu/resolve-private-vars metabase.models.dashboard revert-dashboard!)
+
 (expect
   [{:name         "Test Dashboard"
     :description  nil
-    :public_perms 0
     :cards        [{:sizeX   2
                     :sizeY   2
-                    :row     nil
-                    :col     nil
+                    :row     0
+                    :col     0
                     :id      true
                     :card_id true
                     :series  true}]}
    {:name         "Revert Test"
     :description  "something"
-    :public_perms 0
     :cards        []}
    {:name         "Test Dashboard"
     :description  nil
-    :public_perms 0
     :cards        [{:sizeX   2
                     :sizeY   2
-                    :row     nil
-                    :col     nil
+                    :row     0
+                    :col     0
                     :id      false
                     :card_id true
                     :series  true}]}]
@@ -148,14 +141,14 @@
                                          :series  (= [series-id-1 series-id-2] series))])
           serialized-dashboard (serialize-dashboard dashboard)]
       ;; delete the dashcard and modify the dash attributes
-      (dashboard-card/delete-dashboard-card dashboard-card (user->id :rasta))
+      (dashboard-card/delete-dashboard-card! dashboard-card (user->id :rasta))
       (db/update! Dashboard dashboard-id
         :name        "Revert Test"
         :description "something")
       ;; capture our updated dashboard state
       (let [serialized-dashboard2 (serialize-dashboard (Dashboard dashboard-id))]
         ;; now do the reversion
-        (revert-dashboard dashboard-id (user->id :crowberto) serialized-dashboard)
+        (revert-dashboard! dashboard-id (user->id :crowberto) serialized-dashboard)
         ;; final output is original-state, updated-state, reverted-state
         [(update serialized-dashboard :cards check-ids)
          serialized-dashboard2

@@ -16,10 +16,11 @@ export default class Popover extends Component {
             height: null
         };
 
-        this.handleClickOutside = this.handleClickOutside.bind(this);
+        this.handleDismissal = this.handleDismissal.bind(this);
     }
 
     static propTypes = {
+        id: PropTypes.string,
         isOpen: PropTypes.bool,
         hasArrow: PropTypes.bool,
         // target: PropTypes.oneOfType([PropTypes.func, PropTypes.node]),
@@ -77,7 +78,7 @@ export default class Popover extends Component {
         this._cleanupPopoverElement();
     }
 
-    handleClickOutside(...args) {
+    handleDismissal(...args) {
         if (this.props.onClose) {
             this.props.onClose(...args)
         }
@@ -85,8 +86,8 @@ export default class Popover extends Component {
 
     _popoverComponent() {
         return (
-            <OnClickOutsideWrapper handleClickOutside={this.handleClickOutside}>
-                <div className={cx("PopoverBody", { "PopoverBody--withArrow": this.props.hasArrow }, this.props.className)}>
+            <OnClickOutsideWrapper handleDismissal={this.handleDismissal}>
+                <div id={this.props.id} className={cx("PopoverBody", { "PopoverBody--withArrow": this.props.hasArrow }, this.props.className)}>
                     { typeof this.props.children === "function" ?
                         this.props.children()
                     :
@@ -152,18 +153,17 @@ export default class Popover extends Component {
         if (this.props.isOpen) {
             // popover is open, lets do this!
             const popoverElement = this._getPopoverElement();
-            ReactDOM.render(
-              <ReactCSSTransitionGroup
-                transitionName="Popover"
-                transitionAppear={true}
-                transitionAppearTimeout={250}
-                transitionEnterTimeout={250}
-                transitionLeaveTimeout={250}
-              >
-                {this._popoverComponent()}
-              </ReactCSSTransitionGroup>
-              , popoverElement
-            );
+            ReactDOM.unstable_renderSubtreeIntoContainer(this,
+                <ReactCSSTransitionGroup
+                    transitionName="Popover"
+                    transitionAppear={true}
+                    transitionAppearTimeout={250}
+                    transitionEnterTimeout={250}
+                    transitionLeaveTimeout={250}
+                >
+                    {this._popoverComponent()}
+                </ReactCSSTransitionGroup>
+            , popoverElement);
 
             var tetherOptions = {};
 

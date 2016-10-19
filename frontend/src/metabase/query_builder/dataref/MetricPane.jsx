@@ -2,7 +2,7 @@
 import React, { Component, PropTypes } from "react";
 
 import DetailPane from "./DetailPane.jsx";
-import QueryButton from "./QueryButton.jsx";
+import QueryButton from "metabase/components/QueryButton.jsx";
 import QueryDefinition from "./QueryDefinition.jsx";
 
 import { createCard } from "metabase/lib/card";
@@ -25,14 +25,14 @@ export default class MetricPane extends Component {
     static propTypes = {
         metric: PropTypes.object.isRequired,
         query: PropTypes.object,
-        loadTableFn: PropTypes.func.isRequired,
+        loadTableAndForeignKeysFn: PropTypes.func.isRequired,
         runQueryFn: PropTypes.func.isRequired,
         setQueryFn: PropTypes.func.isRequired,
         setCardAndRun: PropTypes.func.isRequired
     };
 
     componentWillMount() {
-        this.props.loadTableFn(this.props.metric.table_id).then((result) => {
+        this.props.loadTableAndForeignKeysFn(this.props.metric.table_id).then((result) => {
             this.setState({
                 table: result.table,
                 tableForeignKeys: result.foreignKeys
@@ -74,7 +74,12 @@ export default class MetricPane extends Component {
                 useForCurrentQuestion={useForCurrentQuestion}
                 usefulQuestions={usefulQuestions}
                 error={error}
-                extra={table && <QueryDefinition objectType="Metric" object={metric} tableMetadata={table} />}
+                extra={table &&
+                    <div>
+                        <p className="text-bold">Metric Definition</p>
+                        <QueryDefinition object={metric} tableMetadata={table} />
+                    </div>
+                }
             />
         );
     }

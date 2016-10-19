@@ -61,7 +61,7 @@ export default class MetadataTable extends Component {
         var subTypes;
         if (this.props.tableMetadata.visibility_type) {
             subTypes = (
-                <span className="border-left mx2">
+                <span id="VisibilitySubTypes" className="border-left mx2">
                     <span className="mx2 text-uppercase text-grey-3">Why Hide?</span>
                     {this.renderVisibilityType("Technical Data", "technical")}
                     {this.renderVisibilityType("Irrelevant/Cruft", "cruft")}
@@ -69,7 +69,7 @@ export default class MetadataTable extends Component {
             );
         }
         return (
-            <span>
+            <span id="VisibilityTypes">
                 {this.renderVisibilityType("Queryable", null)}
                 {this.renderVisibilityType("Hidden", "hidden", true)}
                 {subTypes}
@@ -86,8 +86,8 @@ export default class MetadataTable extends Component {
         return (
             <div className="MetadataTable px3 flex-full">
                 <div className="MetadataTable-title flex flex-column bordered rounded">
-                    <Input className="AdminInput TableEditor-table-name text-bold border-bottom rounded-top" type="text" value={tableMetadata.display_name} onBlurChange={this.onNameChange}/>
-                    <Input className="AdminInput TableEditor-table-description rounded-bottom" type="text" value={tableMetadata.description} onBlurChange={this.onDescriptionChange} placeholder="No table description yet" />
+                    <Input className="AdminInput TableEditor-table-name text-bold border-bottom rounded-top" type="text" value={tableMetadata.display_name || ""} onBlurChange={this.onNameChange}/>
+                    <Input className="AdminInput TableEditor-table-description rounded-bottom" type="text" value={tableMetadata.description || ""} onBlurChange={this.onDescriptionChange} placeholder="No table description yet" />
                 </div>
                 <div className="MetadataTable-header flex align-center py2 text-grey-3">
                     <span className="mx1 text-uppercase">Visibility</span>

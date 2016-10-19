@@ -1,33 +1,79 @@
 import React, { Component, PropTypes } from "react";
+import { Link } from "react-router";
 
-import "./Breadcrumbs.css";
+import S from "./Breadcrumbs.css";
 
-import Icon from "metabase/components/Icon.jsx"
+import Icon from "metabase/components/Icon.jsx";
+import Ellipsified from "metabase/components/Ellipsified.jsx";
+
+import cx from 'classnames';
 
 export default class Breadcrumbs extends Component {
     static propTypes = {
-        crumbs: PropTypes.array
+        className: PropTypes.string,
+        crumbs: PropTypes.array,
+        inSidebar: PropTypes.bool,
+        placeholder: PropTypes.string
     };
     static defaultProps = {
-        crumbs: []
+        crumbs: [],
+        inSidebar: false,
+        placeholder: null
     };
 
     render() {
-        const children = [];
-        for (let [index, crumb] of this.props.crumbs.entries()) {
-            crumb = Array.isArray(crumb) ? crumb : [crumb];
-            if (crumb.length > 1) {
-                children.push(<a className="Breadcrumb Breadcrumb--path" href={crumb[1]}>{crumb[0]}</a>);
-            } else {
-                children.push(<h2 className="Breadcrumb Breadcrumb--page">{crumb}</h2>);
-            }
-            if (index < this.props.crumbs.length - 1) {
-                children.push(<Icon name="chevronright" className="Breadcrumb-divider" width={12} height={12} />);
-            }
-        }
+        const {
+            className,
+            crumbs,
+            inSidebar,
+            placeholder
+        } = this.props;
+
+        const breadcrumbClass = inSidebar ? S.sidebarBreadcrumb : S.breadcrumb;
+        const breadcrumbsClass = inSidebar ? S.sidebarBreadcrumbs : S.breadcrumbs;
+
         return (
-            <section className="Breadcrumbs">
-                {children}
+            <section className={cx(className, breadcrumbsClass)}>
+                { crumbs.length <= 1 && placeholder ?
+                    <span className={cx(breadcrumbClass, S.breadcrumbPage)}>
+                        {placeholder}
+                    </span> :
+                    crumbs
+                        .map(breadcrumb => Array.isArray(breadcrumb) ?
+                            breadcrumb : [breadcrumb]
+                        )
+                        .map((breadcrumb, index) =>
+                            <Ellipsified
+                                key={index}
+                                tooltip={breadcrumb[0]}
+                                tooltipMaxWidth="100%"
+                                className={cx(
+                                    breadcrumbClass,
+                                    breadcrumb.length > 1 ?
+                                        S.breadcrumbPath : S.breadcrumbPage
+                                )}
+                            >
+                                { breadcrumb.length > 1 ?
+                                    <Link to={breadcrumb[1]}>{breadcrumb[0]}</Link> :
+                                    <span>{breadcrumb[0]}</span>
+                                }
+                            </Ellipsified>
+                        )
+                        .map((breadcrumb, index, breadcrumbs) =>
+                            index < breadcrumbs.length - 1 ?
+                                [
+                                    breadcrumb,
+                                    <Icon
+                                        key={`${index}-separator`}
+                                        name="chevronright"
+                                        className={S.breadcrumbDivider}
+                                        width={12}
+                                        height={12}
+                                    />
+                                ] :
+                                breadcrumb
+                        )
+                }
             </section>
         );
     }

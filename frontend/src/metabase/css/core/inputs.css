@@ -4,7 +4,7 @@
   --input-border-radius: 4px;
 }
 
-.input {
+.input, :local(.input) {
   border: 1px solid var(--input-border-color);
   padding: 0.8rem 1rem;
   transition: border .3s linear;
@@ -16,7 +16,7 @@
 }
 
 .input--focus,
-.input:focus {
+.input:focus, :local(.input):focus {
   outline: none;
   border: 1px solid var(--input-border-active-color);
   transition: border .3s linear;
@@ -27,6 +27,7 @@
   box-shadow: none;
   outline: 0;
   border: none !important;
+  background: transparent;
 }
 
 .input:disabled {

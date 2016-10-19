@@ -1,5 +1,6 @@
 :root {
   --border-size: 1px;
+  --border-size-med: 2px;
   --border-style: solid;
   --border-color: #F0F0F0;
 }
@@ -58,6 +59,10 @@
     border-color: rgba(0,0,0,0.2) !important;
 }
 
+.border-grey-1 {
+    border-color: var(--grey-1) !important;
+}
+
 .border-green {
     border-color: var(--green-color) !important;
 }
@@ -78,7 +83,7 @@
     border-color: var(--success-color) !important;
 }
 
-.border-brand {
+.border-brand, :local(.border-brand) {
     border-color: var(--brand-color) !important;
 }
 
@@ -99,4 +104,8 @@
 
 .border-dashed {
   border-style: dashed;
+}
+
+.border-med {
+    border-width: var(--border-size-med);
 }

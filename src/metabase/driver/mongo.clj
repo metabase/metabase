@@ -1,6 +1,7 @@
 (ns metabase.driver.mongo
   "MongoDB Driver."
-  (:require [clojure.set :as set]
+  (:require (clojure [set :as set]
+                     [string :as s])
             [clojure.tools.logging :as log]
             [cheshire.core :as json]
             (monger [collection :as mc]
@@ -58,14 +59,14 @@
   (cond
     ;; 1. url?
     (and (string? field-value)
-         (u/is-url? field-value)) :url
+         (u/is-url? field-value)) :type/URL
     ;; 2. json?
     (and (string? field-value)
          (or (.startsWith "{" field-value)
              (.startsWith "[" field-value))) (when-let [j (u/try-apply json/parse-string field-value)]
                                            (when (or (map? j)
                                                      (sequential? j))
-                                             :json))))
+                                             :type/SerializedJSON))))
 
 (defn- find-nested-fields [field-value nested-fields]
   (loop [[k & more-keys] (keys field-value)
@@ -74,40 +75,42 @@
       fields
       (recur more-keys (update fields k (partial update-field-attrs (k field-value)))))))
 
+(defn- safe-inc [n]
+  (inc (or n 0)))
+
 (defn- update-field-attrs [field-value field-def]
-  (let [safe-inc #(inc (or % 0))]
-    (-> field-def
-        (update :count safe-inc)
-        (update :len #(if (string? field-value)
-                       (+ (or % 0) (count field-value))
-                       %))
-        (update :types (fn [types]
-                         (update types (type field-value) safe-inc)))
-        (update :special-types (fn [special-types]
-                                 (if-let [st (val->special-type field-value)]
-                                   (update special-types st safe-inc)
-                                   special-types)))
-        (update :nested-fields (fn [nested-fields]
-                                 (if (isa? (type field-value) clojure.lang.IPersistentMap)
-                                   (find-nested-fields field-value nested-fields)
-                                   nested-fields))))))
+  (-> field-def
+      (update :count safe-inc)
+      (update :len #(if (string? field-value)
+                      (+ (or % 0) (count field-value))
+                      %))
+      (update :types (fn [types]
+                       (update types (type field-value) safe-inc)))
+      (update :special-types (fn [special-types]
+                               (if-let [st (val->special-type field-value)]
+                                 (update special-types st safe-inc)
+                                 special-types)))
+      (update :nested-fields (fn [nested-fields]
+                               (if (map? field-value)
+                                 (find-nested-fields field-value nested-fields)
+                                 nested-fields)))))
 
 (defn- describe-table-field [field-kw field-info]
   ;; TODO: indicate preview-display status based on :len
   (cond-> {:name      (name field-kw)
-           :base-type (->> (into [] (:types field-info))
+           :base-type (->> (vec (:types field-info))
                            (sort-by second)
                            last
                            first
                            driver/class->base-type)}
-          (= :_id field-kw) (assoc :pk? true)
-          (:special-types field-info) (assoc :special-type (->> (into [] (:special-types field-info))
-                                                               (filter #(not (nil? (first %))))
-                                                               (sort-by second)
-                                                               last
-                                                               first))
-          (:nested-fields field-info) (assoc :nested-fields (set (for [field (keys (:nested-fields field-info))]
-                                                                  (describe-table-field field (field (:nested-fields field-info))))))))
+    (= :_id field-kw)           (assoc :pk? true)
+    (:special-types field-info) (assoc :special-type (->> (vec (:special-types field-info))
+                                                          (filter #(not (nil? (first %))))
+                                                          (sort-by second)
+                                                          last
+                                                          first))
+    (:nested-fields field-info) (assoc :nested-fields (set (for [field (keys (:nested-fields field-info))]
+                                                             (describe-table-field field (field (:nested-fields field-info))))))))
 
 (defn- describe-database [database]
   (with-mongo-connection [^com.mongodb.DB conn database]
@@ -154,7 +157,7 @@
          name-components (rest (field/qualified-name-components field))]
      (assert (seq name-components))
      (for [row (mq/with-collection *mongo-connection* (:name table)
-                 (mq/fields [(apply str (interpose "." name-components))]))]
+                 (mq/fields [(s/join \. name-components)]))]
        (get-in row (map keyword name-components))))))
 
 

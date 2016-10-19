@@ -5,6 +5,7 @@ import Icon from 'metabase/components/Icon.jsx';
 import IconBorder from 'metabase/components/IconBorder.jsx';
 import LoadingSpinner from 'metabase/components/LoadingSpinner.jsx';
 import { foreignKeyCountsByOriginTable } from 'metabase/lib/schema_metadata';
+import { TYPE, isa, isPK } from "metabase/lib/types";
 import { singularize, inflect } from 'inflection';
 
 import cx from "classnames";
@@ -37,7 +38,7 @@ export default class QueryVisualizationObjectDetailTable extends Component {
 
         for (var i=0; i < this.props.data.cols.length; i++) {
             var coldef = this.props.data.cols[i];
-            if (coldef.special_type === "id") {
+            if (isPK(coldef.special_type)) {
                 return this.props.data.rows[0][i];
             }
         }
@@ -66,7 +67,7 @@ export default class QueryVisualizationObjectDetailTable extends Component {
             var cellValue;
             if (row[1] === null || row[1] === undefined || (typeof row[1] === "string" && row[1].length === 0)) {
                 cellValue = (<span className="text-grey-2">Empty</span>);
-            } else if(row[0].special_type === "json") {
+            } else if (isa(row[0].special_type, TYPE.SerializedJSON)) {
                 let formattedJson = JSON.stringify(JSON.parse(row[1]), null, 2);
                 cellValue = (<pre className="ObjectJSON">{formattedJson}</pre>);
             } else if (typeof row[1] === "object") {
@@ -140,7 +141,7 @@ export default class QueryVisualizationObjectDetailTable extends Component {
             }
             var chevron = (
                 <IconBorder className="flex-align-right">
-                    <Icon name='chevronright' width="10px" height="10px" />
+                    <Icon name='chevronright' size={10} />
                 </IconBorder>
             );
 
@@ -205,7 +206,7 @@ export default class QueryVisualizationObjectDetailTable extends Component {
             idValue = this.getIdValue();
 
         return (
-            <div className="ObjectDetail rounded">
+            <div className="ObjectDetail rounded mt2">
                 <div className="Grid ObjectDetail-headingGroup">
                     <div className="Grid-cell ObjectDetail-infoMain px4 py3 ml2 arrow-right">
                         <div className="text-brand text-bold">
@@ -215,9 +216,9 @@ export default class QueryVisualizationObjectDetailTable extends Component {
                     </div>
                     <div className="Grid-cell flex align-center Cell--1of3 bg-alt">
                         <div className="p4 flex align-center text-bold text-grey-3">
-                            <Icon name="connections" width="17px" height="20px" />
+                            <Icon name="connections" size={17} />
                             <div className="ml2">
-                                This <span className="text-dark">{tableName}</span> is connected to.
+                                This <span className="text-dark">{tableName}</span> is connected to:
                             </div>
                         </div>
                     </div>

@@ -4,15 +4,14 @@ import React, { Component, PropTypes } from "react";
 import S from "./LabelIconPicker.css";
 
 import Icon from "metabase/components/Icon.jsx";
+import LabelIcon from "metabase/components/LabelIcon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 
-import { VirtualScroll } from "react-virtualized";
+import { List } from "react-virtualized";
 import "react-virtualized/styles.css";
 
 import * as colors from "metabase/lib/colors";
 import { categories } from "metabase/lib/emoji";
-
-import LabelIcon from "./LabelIcon.jsx";
 
 const ROW_HEIGHT = 45;
 const VISIBLE_ROWS = 6;
@@ -80,16 +79,16 @@ export default class LabelIconPicker extends Component {
                 triggerElement={<LabelIconButton value={value} />}
                 ref="popover"
             >
-                <VirtualScroll
+                <List
                   width={WIDTH}
                   height={HEIGHT}
-                  rowsCount={ROWS.length}
+                  rowCount={ROWS.length}
                   rowHeight={ROW_HEIGHT}
-                  rowRenderer={ (index) =>
+                  rowRenderer={ ({ index, key, style }) =>
                       ROWS[index].type === "header" ?
-                          <div className={S.sectionHeader}>{ROWS[index].title}</div>
+                          <div key={key} style={style} className={S.sectionHeader}>{ROWS[index].title}</div>
                       :
-                          <ul className={S.list}>
+                          <ul key={key} style={style} className={S.list}>
                               { ROWS[index].icons.map(icon =>
                                   <li key={icon} className={S.option} onClick={() => { onChange(icon); this.refs.popover.close() }}>
                                       <LabelIcon icon={icon} size={28} />
@@ -115,7 +114,7 @@ export default class LabelIconPicker extends Component {
 const LabelIconButton = ({ value = "#eee" }) =>
     <span className={S.dropdownButton}>
         <LabelIcon icon={value} size={28} />
-        <Icon className={S.chevron} name="chevrondown" width={14} height={14} />
+        <Icon className={S.chevron} name="chevrondown" size={14} />
     </span>
 
 LabelIconButton.propTypes = {

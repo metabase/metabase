@@ -8,7 +8,7 @@ import S from "../components/List.css";
 import List from "../components/List.jsx";
 import SearchHeader from "../components/SearchHeader.jsx";
 import ActionHeader from "../components/ActionHeader.jsx";
-import EmptyState from "../components/EmptyState.jsx";
+import EmptyState from "metabase/components/EmptyState.jsx";
 import UndoListing from "./UndoListing.jsx";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
@@ -83,7 +83,7 @@ export default class EntityList extends Component {
       switch (this.props.name) {
         case 'All questions':
           return {
-            icon: '',
+            icon: 'all',
             message: 'No questions have been saved yet.'
           }
         case 'Recently viewed':
@@ -109,7 +109,7 @@ export default class EntityList extends Component {
         case 'Archive':
           return {
             icon: 'archive',
-            message: 'If you no longer need a question you can archive it.'
+            message: 'If you no longer need a question, you can archive it.'
           }
         default:
           return {

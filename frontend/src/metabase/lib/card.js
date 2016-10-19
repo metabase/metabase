@@ -9,10 +9,9 @@ const Card = new AngularResourceProxy("Card", ["get"]);
 export function createCard(name = null) {
     return {
         name: name,
-        public_perms: 0,
         display: "table",
         visualization_settings: {},
-        dataset_query: {},
+        dataset_query: {}
     };
 }
 
@@ -66,6 +65,7 @@ export function isCardDirty(card, originalCard) {
 }
 
 export function serializeCardForUrl(card) {
+    // console.log(JSON.stringify(card, null, '  '));
     var dataset_query = angular.copy(card.dataset_query);
     if (dataset_query.query) {
         dataset_query.query = Query.cleanQuery(dataset_query.query);
@@ -75,12 +75,14 @@ export function serializeCardForUrl(card) {
         description: card.description,
         dataset_query: dataset_query,
         display: card.display,
+        parameters: card.parameters,
         visualization_settings: card.visualization_settings
     };
     return utf8_to_b64url(JSON.stringify(cardCopy));
 }
 
 export function deserializeCardFromUrl(serialized) {
+    serialized = serialized.replace(/^#/, "");
     return JSON.parse(b64url_to_utf8(serialized));
 }
 

@@ -1,11 +1,9 @@
+/* eslint "react/prop-types": "warn" */
 /*eslint-disable react/no-danger */
-
 import React, { Component, PropTypes } from "react";
 
 import Icon from "metabase/components/Icon.jsx";
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
-
-import { fetchPulseCardPreview } from "../actions";
 
 export default class PulseCardPreview extends Component {
     constructor(props, context) {
@@ -15,11 +13,12 @@ export default class PulseCardPreview extends Component {
     static propTypes = {
         card: PropTypes.object.isRequired,
         cardPreview: PropTypes.object,
-        onRemove: PropTypes.func.isRequired
+        onRemove: PropTypes.func.isRequired,
+        fetchPulseCardPreview: PropTypes.func.isRequired,
     };
 
     componentWillMount() {
-        this.props.dispatch(fetchPulseCardPreview(this.props.card.id));
+        this.props.fetchPulseCardPreview(this.props.card.id);
     }
 
     render() {
@@ -27,7 +26,7 @@ export default class PulseCardPreview extends Component {
         return (
             <div className="flex relative flex-full">
                 <a className="text-grey-2 absolute" style={{ top: "15px", right: "15px" }} onClick={this.props.onRemove}>
-                    <Icon name="close" width={16} height={16} />
+                    <Icon name="close" size={16} />
                 </a>
                 <div className="bordered rounded flex-full scroll-x" style={{ display: !cardPreview && "none" }} dangerouslySetInnerHTML={{__html: cardPreview && cardPreview.pulse_card_html}} />
                 { !cardPreview &&

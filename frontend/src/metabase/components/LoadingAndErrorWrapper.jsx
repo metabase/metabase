@@ -13,6 +13,7 @@ export default class LoadingAndErrorWrapper extends Component {
         noBackground:   PropTypes.bool,
         noWrapper:      PropTypes.bool,
         children:       PropTypes.any,
+        style:          PropTypes.object
     };
 
     static defaultProps = {
@@ -55,7 +56,7 @@ export default class LoadingAndErrorWrapper extends Component {
             return React.Children.only(this.getChildren());
         }
         return (
-            <div {...this.props}>
+            <div className={this.props.className} style={this.props.style}>
                 { error ?
                     <div className={contentClassName}>
                         <h2 className="text-normal text-grey-2">{this.getErrorMessage()}</h2>

@@ -1,9 +1,9 @@
 (ns metabase.api.dashboard-test
   "Tests for /api/dashboard endpoints."
   (:require [expectations :refer :all]
-            [metabase.db :as db]
-            [metabase.http-client :as http]
-            [metabase.middleware :as middleware]
+            (metabase [db :as db]
+                      [http-client :as http]
+                      [middleware :as middleware])
             (metabase.models [hydrate :refer [hydrate]]
                              [card :refer [Card]]
                              [dashboard :refer [Dashboard]]
@@ -34,32 +34,32 @@
 
 (defn user-details [user]
   (tu/match-$ user
-              {:id $
-               :email $
-               :date_joined $
-               :first_name $
-               :last_name $
-               :last_login $
-               :is_superuser $
-               :is_qbnewb $
-               :common_name $}))
+    {:id           $
+     :email        $
+     :date_joined  $
+     :first_name   $
+     :last_name    $
+     :last_login   $
+     :is_superuser $
+     :is_qbnewb    $
+     :common_name  $}))
 
 (defn dashcard-response [{:keys [card created_at updated_at] :as dashcard}]
   (-> (into {} dashcard)
       (dissoc :id :dashboard_id :card_id)
-      (assoc :created_at (not (nil? created_at)))
-      (assoc :updated_at (not (nil? updated_at)))
-      (assoc :card (-> (into {} card)
-                       (dissoc :id :database_id :table_id :created_at :updated_at)))))
+      (assoc :created_at (not (nil? created_at))
+             :updated_at (not (nil? updated_at))
+             :card       (-> (into {} card)
+                             (dissoc :id :database_id :table_id :created_at :updated_at)))))
 
 (defn dashboard-response [{:keys [creator ordered_cards created_at updated_at] :as dashboard}]
   (let [dash (-> (into {} dashboard)
                  (dissoc :id)
-                 (assoc :created_at (not (nil? created_at)))
-                 (assoc :updated_at (not (nil? updated_at))))]
+                 (assoc :created_at (not (nil? created_at))
+                        :updated_at (not (nil? updated_at))))]
     (cond-> dash
-            creator (update :creator #(into {} %))
-            ordered_cards (update :ordered_cards #(mapv dashcard-response %)))))
+      creator       (update :creator #(into {} %))
+      ordered_cards (update :ordered_cards #(mapv dashcard-response %)))))
 
 
 ;; ## /api/dashboard/* AUTHENTICATION Tests
@@ -76,58 +76,56 @@
 (expect {:errors {:name "field is a required param."}}
   ((user->client :rasta) :post 400 "dashboard" {}))
 
-(expect {:errors {:parameters "Invalid value 'abc' for 'parameters': value must be an array."}}
-  ((user->client :crowberto) :post 400 "dashboard" {:name         "Test"
-                                                    :public_perms 0
-                                                    :parameters   "abc"}))
+(expect
+  {:errors {:parameters "Invalid value 'abc' for 'parameters': value must be an array."}}
+  ((user->client :crowberto) :post 400 "dashboard" {:name       "Test"
+                                                    :parameters "abc"}))
 
 (expect
-  {:name            "Test Create Dashboard"
-   :description     nil
-   :creator_id      (user->id :rasta)
-   :parameters      [{:hash "abc123", :name "test", :type "date"}]
-   :public_perms    0
-   :updated_at      true
-   :created_at      true
-   :organization_id nil}
-  (-> ((user->client :rasta) :post 200 "dashboard" {:name         "Test Create Dashboard"
-                                                    :public_perms 0
-                                                    :parameters   [{:hash "abc123", :name "test", :type "date"}]})
+  {:name                    "Test Create Dashboard"
+   :description             nil
+   :show_in_getting_started false
+   :caveats                 nil
+   :points_of_interest      nil
+   :creator_id              (user->id :rasta)
+   :parameters              [{:hash "abc123", :name "test", :type "date"}]
+   :updated_at              true
+   :created_at              true}
+  (-> ((user->client :rasta) :post 200 "dashboard" {:name       "Test Create Dashboard"
+                                                    :parameters [{:hash "abc123", :name "test", :type "date"}]})
       dashboard-response))
 
 
 ;; ## GET /api/dashboard/:id
 (expect
-  {:name            "Test Dashboard"
-   :description     nil
-   :creator_id      (user->id :rasta)
-   :creator         (user-details (fetch-user :rasta))
-   :public_perms    0
-   :can_read        true
-   :can_write       true
-   :updated_at      true
-   :created_at      true
-   :parameters      []
-   :ordered_cards   [{:sizeX              2
-                      :sizeY              2
-                      :col                nil
-                      :row                nil
-                      :updated_at         true
-                      :created_at         true
-                      :parameter_mappings []
-                      :card               {:name                   "Dashboard Test Card"
-                                           :description            nil
-                                           :public_perms           0
-                                           :creator_id             (user->id :rasta)
-                                           :creator                (user-details (fetch-user :rasta))
-                                           :organization_id        nil
-                                           :display                "table"
-                                           :query_type             nil
-                                           :dataset_query          {}
-                                           :visualization_settings {}
-                                           :archived               false}
-                      :series              []}]
-   :organization_id nil}
+  {:name                    "Test Dashboard"
+   :description             nil
+   :show_in_getting_started false
+   :caveats                 nil
+   :points_of_interest      nil
+   :creator_id              (user->id :rasta)
+   :creator                 (user-details (fetch-user :rasta))
+   :updated_at              true
+   :created_at              true
+   :parameters              []
+   :ordered_cards           [{:sizeX                  2
+                              :sizeY                  2
+                              :col                    0
+                              :row                    0
+                              :updated_at             true
+                              :created_at             true
+                              :parameter_mappings     []
+                              :visualization_settings {}
+                              :card                   {:name                   "Dashboard Test Card"
+                                                       :description            nil
+                                                       :creator_id             (user->id :rasta)
+                                                       :creator                (user-details (fetch-user :rasta))
+                                                       :display                "table"
+                                                       :query_type             nil
+                                                       :dataset_query          {}
+                                                       :visualization_settings {}
+                                                       :archived               false}
+                              :series                 []}]}
   ;; fetch a dashboard WITH a dashboard card on it
   (tu/with-temp* [Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
                   Card          [{card-id :id}      {:name "Dashboard Test Card"}]
@@ -137,36 +135,38 @@
 
 ;; ## PUT /api/dashboard/:id
 (expect
-  [{:name            "Test Dashboard"
-    :description     nil
-    :creator_id      (user->id :rasta)
-    :public_perms    0
-    :updated_at      true
-    :created_at      true
-    :organization_id nil
-    :parameters      []}
-   {:name            "My Cool Dashboard"
-    :description     "Some awesome description"
-    :creator_id      (user->id :rasta)
-    :public_perms    0
-    :updated_at      true
-    :created_at      true
-    :organization_id nil
-    :parameters      []}
-   {:name            "My Cool Dashboard"
-    :description     "Some awesome description"
-    :creator_id      (user->id :rasta)
-    :public_perms    0
-    :updated_at      true
-    :created_at      true
-    :organization_id nil
-    :parameters      []}]
+  [{:name                    "Test Dashboard"
+    :description             nil
+    :show_in_getting_started false
+    :caveats                 nil
+    :points_of_interest      nil
+    :creator_id              (user->id :rasta)
+    :updated_at              true
+    :created_at              true
+    :parameters              []}
+   {:name                    "My Cool Dashboard"
+    :description             "Some awesome description"
+    :show_in_getting_started false
+    :caveats                 nil
+    :points_of_interest      nil
+    :creator_id              (user->id :rasta)
+    :updated_at              true
+    :created_at              true
+    :parameters              []}
+   {:name                    "My Cool Dashboard"
+    :description             "Some awesome description"
+    :show_in_getting_started false
+    :caveats                 nil
+    :points_of_interest      nil
+    :creator_id              (user->id :rasta)
+    :updated_at              true
+    :created_at              true
+    :parameters              []}]
   (tu/with-temp Dashboard [{dashboard-id :id} {:name "Test Dashboard"}]
     (mapv dashboard-response [(Dashboard dashboard-id)
                               ((user->client :rasta) :put 200 (str "dashboard/" dashboard-id) {:name         "My Cool Dashboard"
                                                                                                :description  "Some awesome description"
                                                                                                ;; these things should fail to update
-                                                                                               :public_perms 2
                                                                                                :creator_id   (user->id :trashbird)})
                               (Dashboard dashboard-id)])))
 
@@ -184,49 +184,53 @@
 ;; ## POST /api/dashboard/:id/cards
 ;; simple creation with no additional series
 (expect
-  [{:sizeX        2
-    :sizeY        2
-    :col          4
-    :row          4
-    :series       []
-    :parameter_mappings [{:card-id 123, :hash "abc", :target "foo"}]
-    :created_at   true
-    :updated_at   true}
-   [{:sizeX        2
-     :sizeY        2
-     :col          4
-     :row          4
-     :parameter_mappings [{:card-id 123, :hash "abc", :target "foo"}]}]]
+  [{:sizeX                  2
+    :sizeY                  2
+    :col                    4
+    :row                    4
+    :series                 []
+    :parameter_mappings     [{:card-id 123, :hash "abc", :target "foo"}]
+    :visualization_settings {}
+    :created_at             true
+    :updated_at             true}
+   [{:sizeX                  2
+     :sizeY                  2
+     :col                    4
+     :row                    4
+     :parameter_mappings     [{:card-id 123, :hash "abc", :target "foo"}]
+     :visualization_settings {}}]]
   (tu/with-temp* [Dashboard [{dashboard-id :id}]
                   Card      [{card-id :id}]]
-    [(-> ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dashboard-id) {:cardId             card-id
-                                                                                      :row                4
-                                                                                      :col                4
-                                                                                      :parameter_mappings [{:card-id 123, :hash "abc", :target "foo"}]})
+    [(-> ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dashboard-id) {:cardId                 card-id
+                                                                                      :row                    4
+                                                                                      :col                    4
+                                                                                      :parameter_mappings     [{:card-id 123, :hash "abc", :target "foo"}]
+                                                                                      :visualization_settings {}})
          (dissoc :id :dashboard_id :card_id)
          (update :created_at #(not (nil? %)))
          (update :updated_at #(not (nil? %))))
      (map (partial into {})
-          (db/select [DashboardCard :sizeX :sizeY :col :row :parameter_mappings], :dashboard_id dashboard-id))]))
+          (db/select [DashboardCard :sizeX :sizeY :col :row :parameter_mappings :visualization_settings], :dashboard_id dashboard-id))]))
 
 ;; new dashboard card w/ additional series
 (expect
-  [{:sizeX        2
-    :sizeY        2
-    :col          4
-    :row          4
-    :parameter_mappings []
-    :series       [{:name                   "Series Card"
-                    :description            nil
-                    :display                "table"
-                    :dataset_query          {}
-                    :visualization_settings {}}]
-    :created_at   true
-    :updated_at   true}
-   [{:sizeX        2
-     :sizeY        2
-     :col          4
-     :row          4}]
+  [{:sizeX                  2
+    :sizeY                  2
+    :col                    4
+    :row                    4
+    :parameter_mappings     []
+    :visualization_settings {}
+    :series                 [{:name                   "Series Card"
+                              :description            nil
+                              :display                "table"
+                              :dataset_query          {}
+                              :visualization_settings {}}]
+    :created_at             true
+    :updated_at             true}
+   [{:sizeX 2
+     :sizeY 2
+     :col   4
+     :row   4}]
    #{0}]
   (tu/with-temp* [Dashboard [{dashboard-id :id}]
                   Card      [{card-id :id}]
@@ -261,44 +265,47 @@
 
 ;; ## PUT /api/dashboard/:id/cards
 (expect
-  [[{:sizeX        2
-     :sizeY        2
-     :col          nil
-     :row          nil
-     :series       []
-     :parameter_mappings []
-     :created_at   true
-     :updated_at   true}
-    {:sizeX        2
-     :sizeY        2
-     :col          nil
-     :row          nil
-     :parameter_mappings []
-     :series       []
-     :created_at   true
-     :updated_at   true}]
+  [[{:sizeX                  2
+     :sizeY                  2
+     :col                    0
+     :row                    0
+     :series                 []
+     :parameter_mappings     []
+     :visualization_settings {}
+     :created_at             true
+     :updated_at             true}
+    {:sizeX                  2
+     :sizeY                  2
+     :col                    0
+     :row                    0
+     :parameter_mappings     []
+     :visualization_settings {}
+     :series                 []
+     :created_at             true
+     :updated_at             true}]
    {:status "ok"}
-   [{:sizeX        4
-     :sizeY        2
-     :col          0
-     :row          0
-     :parameter_mappings []
-     :series       [{:name                   "Series Card"
-                     :description            nil
-
-                     :display                :table
-                     :dataset_query          {}
-                     :visualization_settings {}}]
-     :created_at   true
-     :updated_at   true}
-    {:sizeX        1
-     :sizeY        1
-     :col          1
-     :row          3
-     :parameter_mappings []
-     :series       []
-     :created_at   true
-     :updated_at   true}]]
+   [{:sizeX                  4
+     :sizeY                  2
+     :col                    0
+     :row                    0
+     :parameter_mappings     []
+     :visualization_settings {}
+     :series                 [{:name                   "Series Card"
+                               :description            nil
+                               :display                :table
+                               :dataset_query          {}
+                               :visualization_settings {}}]
+     :created_at             true
+     :updated_at             true}
+    {:sizeX                  1
+     :sizeY                  1
+     :col                    1
+     :row                    3
+     :parameter_mappings     []
+     :visualization_settings {}
+     :series                 []
+     :created_at             true
+     :updated_at             true}]]
   ;; fetch a dashboard WITH a dashboard card on it
   (tu/with-temp* [Dashboard     [{dashboard-id :id}]
                   Card          [{card-id :id}]
@@ -307,11 +314,11 @@
                   Card          [{series-id-1 :id}   {:name "Series Card"}]]
     [[(remove-ids-and-boolean-timestamps (retrieve-dashboard-card dashcard-id-1))
       (remove-ids-and-boolean-timestamps (retrieve-dashboard-card dashcard-id-2))]
-     ((user->client :rasta) :put 200 (format "dashboard/%d/cards" dashboard-id) {:cards [{:id    dashcard-id-1
-                                                                                          :sizeX 4
-                                                                                          :sizeY 2
-                                                                                          :col   0
-                                                                                          :row   0
+     ((user->client :rasta) :put 200 (format "dashboard/%d/cards" dashboard-id) {:cards [{:id     dashcard-id-1
+                                                                                          :sizeX  4
+                                                                                          :sizeY  2
+                                                                                          :col    0
+                                                                                          :row    0
                                                                                           :series [{:id series-id-1}]}
                                                                                          {:id    dashcard-id-2
                                                                                           :sizeX 1
@@ -333,10 +340,10 @@
                       (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
     :diff         {:before {:name        "b"
                             :description nil
-                            :cards       [{:series nil, :col nil, :row nil, :sizeY 2, :sizeX 2}]}
+                            :cards       [{:series nil, :sizeY 2, :sizeX 2}]}
                    :after  {:name        "c"
                             :description "something"
-                            :cards       [{:series [8 9], :col 0, :row 0, :sizeY 3, :sizeX 4}]}}
+                            :cards       [{:series [8 9], :sizeY 3, :sizeX 4}]}}
     :description  "renamed it from \"b\" to \"c\", added a description, rearranged the cards and added some series to card 123."}
    {:is_reversion false
     :is_creation  true
@@ -350,27 +357,25 @@
                                 :model_id     dashboard-id
                                 :object       {:name         "b"
                                                :description  nil
-                                               :public_perms 0
                                                :cards        [{:sizeX   2
                                                                :sizeY   2
-                                                               :row     nil
-                                                               :col     nil
-                                                               :card_id 123
-                                                               :series  []}]}
-                                :is_creation  true}]
-                  Revision  [_ {:model        "Dashboard"
-                                :model_id     dashboard-id
-                                :user_id      (user->id :crowberto)
-                                :object       {:name         "c"
-                                               :description  "something"
-                                               :public_perms 0
-                                               :cards        [{:sizeX   4
-                                                               :sizeY   3
                                                                :row     0
                                                                :col     0
                                                                :card_id 123
-                                                               :series  [8 9]}]}
-                                :message      "updated"}]]
+                                                               :series  []}]}
+                                :is_creation  true}]
+                  Revision  [_ {:model    "Dashboard"
+                                :model_id dashboard-id
+                                :user_id  (user->id :crowberto)
+                                :object   {:name         "c"
+                                           :description  "something"
+                                           :cards        [{:sizeX   4
+                                                           :sizeY   3
+                                                           :row     0
+                                                           :col     0
+                                                           :card_id 123
+                                                           :series  [8 9]}]}
+                                :message  "updated"}]]
     (doall (for [revision ((user->client :crowberto) :get 200 (format "dashboard/%d/revisions" dashboard-id))]
              (dissoc revision :timestamp :id)))))
 
@@ -423,7 +428,6 @@
                                                 :model_id     dashboard-id
                                                 :object       {:name         "a"
                                                                :description  nil
-                                                               :public_perms 0
                                                                :cards        []}
                                                 :is_creation  true}]
                   Revision  [_                 {:model        "Dashboard"
@@ -431,7 +435,6 @@
                                                 :user_id      (user->id :crowberto)
                                                 :object       {:name         "b"
                                                                :description  nil
-                                                               :public_perms 0
                                                                :cards        []}
                                                 :message      "updated"}]]
     [(dissoc ((user->client :crowberto) :post 200 (format "dashboard/%d/revert" dashboard-id) {:revision_id revision-id}) :id :timestamp)

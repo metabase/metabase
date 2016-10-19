@@ -5,6 +5,7 @@ import _ from "underscore";
 
 import { getOperators } from "metabase/lib/schema_metadata";
 import { createLookupByProperty } from "metabase/lib/table";
+import { isFK, TYPE } from "metabase/lib/types";
 
 
 export const NEW_QUERY_TEMPLATES = {
@@ -40,6 +41,32 @@ export function createQuery(type = "query", databaseId, tableId) {
 
     return dataset_query;
 }
+
+
+const METRIC_NAME_BY_AGGREGATION = {
+    "count": "count",
+    "cum_count": "count",
+    "sum": "sum",
+    "cum_sum": "sum",
+    "distinct": "count",
+    "avg": "avg",
+    "min": "min",
+    "max": "max",
+}
+
+const METRIC_TYPE_BY_AGGREGATION = {
+    "count": TYPE.Integer,
+    "cum_count": TYPE.Integer,
+    "sum": TYPE.Float,
+    "cum_sum": TYPE.Float,
+    "distinct": TYPE.Integer,
+    "avg": TYPE.Float,
+    "min": TYPE.Float,
+    "max": TYPE.Float,
+}
+
+const mbqlCanonicalize = (a) => typeof a === "string" ? a.toLowerCase().replace(/_/g, "-") : a;
+const mbqlCompare = (a, b) => mbqlCanonicalize(a) === mbqlCanonicalize(b)
 
 var Query = {
 
@@ -438,23 +465,23 @@ var Query = {
     },
 
     isLocalField(field) {
-        return Array.isArray(field) && field[0] === "field-id";
+        return Array.isArray(field) && mbqlCompare(field[0], "field-id");
     },
 
     isForeignKeyField(field) {
-        return Array.isArray(field) && field[0] === "fk->";
+        return Array.isArray(field) && mbqlCompare(field[0], "fk->");
     },
 
     isDatetimeField(field) {
-        return Array.isArray(field) && field[0] === "datetime_field";
+        return Array.isArray(field) && mbqlCompare(field[0], "datetime-field");
     },
 
     isExpressionField(field) {
-        return Array.isArray(field) && field.length === 2 && field[0] === "expression";
+        return Array.isArray(field) && field.length === 2 && mbqlCompare(field[0], "expression");
     },
 
     isAggregateField(field) {
-        return Array.isArray(field) && field[0] === "aggregation";
+        return Array.isArray(field) && mbqlCompare(field[0], "aggregation");
     },
 
     isValidField(field) {
@@ -462,7 +489,10 @@ var Query = {
             (Query.isRegularField(field)) ||
             (Query.isLocalField(field)) ||
             (Query.isForeignKeyField(field) && Query.isRegularField(field[1]) && Query.isRegularField(field[2])) ||
-            (Query.isDatetimeField(field)   && Query.isValidField(field[1]) && field[2] === "as" && typeof field[3] === "string") ||
+            (Query.isDatetimeField(field)   && Query.isValidField(field[1]) &&
+                (field.length === 4 ?
+                    (field[2] === "as" && typeof field[3] === "string") : // deprecated
+                    typeof field[2] === "string")) ||
             (Query.isExpressionField(field) && _.isString(field[1])) ||
             (Query.isAggregateField(field)  && typeof field[1] === "number")
         );
@@ -491,28 +521,30 @@ var Query = {
     },
 
     // gets the table and field definitions from from a raw, fk->, or datetime_field field
-    getFieldTarget: function(field, tableDef) {
+    getFieldTarget: function(field, tableDef, path = []) {
         if (Query.isRegularField(field)) {
-            return { table: tableDef, field: tableDef.fields_lookup && tableDef.fields_lookup[field] };
+            return { table: tableDef, field: Table.getField(tableDef, field), path };
         } else if (Query.isLocalField(field)) {
-            return Query.getFieldTarget(field[1], tableDef);
+            return Query.getFieldTarget(field[1], tableDef, path);
         } else if (Query.isForeignKeyField(field)) {
-            let fkFieldDef = tableDef.fields_lookup && tableDef.fields_lookup[field[1]];
+            let fkFieldDef = Table.getField(tableDef, field[1]);
             let targetTableDef = fkFieldDef && fkFieldDef.target.table;
-            return Query.getFieldTarget(field[2], targetTableDef);
+            return Query.getFieldTarget(field[2], targetTableDef, path.concat(fkFieldDef));
         } else if (Query.isDatetimeField(field)) {
-            return Query.getFieldTarget(field[1], tableDef);
+            return {
+                ...Query.getFieldTarget(field[1], tableDef, path),
+                unit: Query.getDatetimeUnit(field)
+            };
         } else if (Query.isExpressionField(field)) {
             // hmmm, since this is a dynamic field we'll need to build this here
             let fieldDef = {
                 display_name: field[1],
                 name: field[1],
                 // TODO: we need to do something better here because filtering depends on knowing a sensible type for the field
-                base_type: "IntegerField",
+                base_type: TYPE.Integer,
                 operators_lookup: {},
                 valid_operators: [],
                 active: true,
-                field_type: "info",
                 fk_target_field_id: null,
                 parent_id: null,
                 preview_display: true,
@@ -525,24 +557,33 @@ var Query = {
 
             return {
                 table: tableDef,
-                field: fieldDef
+                field: fieldDef,
+                path: path
             }
         }
 
         console.warn("Unknown field type: ", field);
     },
 
-    getFieldOptions(fields, includeJoins = false, filterFn = (fields) => fields, usedFields = {}) {
+    getDatetimeUnit(field) {
+        if (field.length === 4) {
+            return field[3]; // deprecated
+        } else {
+            return field[2];
+        }
+    },
+
+    getFieldOptions(fields, includeJoins = false, filterFn = _.identity, usedFields = {}) {
         var results = {
             count: 0,
             fields: null,
             fks: []
         };
         // filter based on filterFn, then remove fks if they'll be duplicated in the joins fields
-        results.fields = filterFn(fields).filter((f) => !usedFields[f.id] && (f.special_type !== "fk" || !includeJoins));
+        results.fields = filterFn(fields).filter((f) => !usedFields[f.id] && (!isFK(f.special_type) || !includeJoins));
         results.count += results.fields.length;
         if (includeJoins) {
-            results.fks = fields.filter((f) => f.special_type === "fk" && f.target).map((joinField) => {
+            results.fks = fields.filter((f) => isFK(f.special_type) && f.target).map((joinField) => {
                 var targetFields = filterFn(joinField.target.table.fields).filter(f => (!Array.isArray(f.id) || f.id[0] !== "aggregation") && !usedFields[f.id]);
                 results.count += targetFields.length;
                 return {
@@ -558,12 +599,12 @@ var Query = {
     getFieldName(tableMetadata, field, options) {
         try {
             if (Query.isRegularField(field)) {
-                let fieldDef = tableMetadata.fields_lookup && tableMetadata.fields_lookup[field];
+                let fieldDef = Table.getField(tableMetadata, field);
                 if (fieldDef) {
                     return fieldDef.display_name.replace(/\s+id\s*$/i, "");
                 }
             } else if (Query.isForeignKeyField(field)) {
-                let fkFieldDef = tableMetadata.fields_lookup && tableMetadata.fields_lookup[field[1]];
+                let fkFieldDef = Table.getField(tableMetadata, field[1]);
                 let targetTableDef = fkFieldDef && fkFieldDef.target.table;
                 return [Query.getFieldName(tableMetadata, field[1], options), " → ", Query.getFieldName(targetTableDef, field[2], options)];
             } else if (Query.isDatetimeField(field)) {
@@ -700,14 +741,18 @@ var Query = {
     },
 
     getQueryColumns(tableMetadata, query) {
-        let columns = Query.getBreakouts(query).map(b => Query.getQueryColumn(tableMetadata, b))
-        if (Query.getAggregationType(query) === "rows") {
+        let columns = Query.getBreakouts(query).map(b => Query.getQueryColumn(tableMetadata, b));
+        const aggregation = Query.getAggregationType(query);
+        if (aggregation === "rows") {
             if (columns.length === 0) {
                 return null;
             }
         } else {
-            // NOTE: incomplete (missing name etc), count/distinct are actually IntegerField, but close enough for now
-            columns.push({ base_type: "FloatField", special_type: "number" });
+            columns.push({
+                name: METRIC_NAME_BY_AGGREGATION[aggregation],
+                base_type: METRIC_TYPE_BY_AGGREGATION[aggregation],
+                special_type: TYPE.Number
+            });
         }
         return columns;
     }
@@ -799,6 +844,19 @@ export const BreakoutClause = {
             return breakout;
         } else {
             return breakout;
+        }
+    }
+}
+
+const Table = {
+    getField(table, fieldId) {
+        if (table) {
+            // sometimes we populate fields_lookup, sometimes we don't :(
+            if (table.fields_lookup) {
+                return table.fields_lookup[fieldId];
+            } else {
+                return _.findWhere(table.fields, { id: fieldId });
+            }
         }
     }
 }

@@ -103,7 +103,7 @@
 ;; create a channel then select its details
 (defn- create-channel-then-select!
   [channel]
-  (when-let [new-channel-id (create-pulse-channel channel)]
+  (when-let [new-channel-id (create-pulse-channel! channel)]
     (-> (PulseChannel new-channel-id)
         (hydrate :recipients)
         (update :recipients #(sort-by :email %))
@@ -112,13 +112,13 @@
 
 (defn- update-channel-then-select!
   [{:keys [id] :as channel}]
-  (update-pulse-channel channel)
+  (update-pulse-channel! channel)
   (-> (PulseChannel id)
       (hydrate :recipients)
       (dissoc :id :pulse_id :created_at :updated_at)
       (m/dissoc-in [:details :emails])))
 
-;; create-pulse-channel
+;; create-pulse-channel!
 (expect
   {:enabled       true
    :channel_type  :email
@@ -155,7 +155,7 @@
                                   :recipients    [{:email "foo@bar.com"} {:id (user->id :rasta)} {:id (user->id :crowberto)}]})))
 
 
-;; update-pulse-channel
+;; update-pulse-channel!
 ;; simple starting case where we modify the schedule hour and add a recipient
 (expect
   {:enabled       true

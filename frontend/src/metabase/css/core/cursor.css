@@ -1,3 +1,7 @@
-:local .cursor-pointer {
+.cursor-pointer, :local(.cursor-pointer) {
     cursor: pointer;
+}
+
+.cursor-default, :local(.cursor-default) {
+    cursor: default;
 }

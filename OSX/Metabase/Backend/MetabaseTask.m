@@ -90,12 +90,15 @@
 				
 		NSLog(@"Starting MetabaseTask @ 0x%zx...", (size_t)self);
 		
-		self.task					= [[NSTask alloc] init];
-		self.task.launchPath		= JREPath();
-		self.task.environment		= @{@"MB_DB_FILE": DBPath(),
-										@"MB_JETTY_PORT": @(self.port)};
-		self.task.arguments			= @[@"-Djava.awt.headless=true",
-										@"-jar", UberjarPath()];
+		self.task				= [[NSTask alloc] init];
+		self.task.launchPath	= JREPath();
+		self.task.environment	= @{@"MB_DB_FILE": DBPath(),
+									@"MB_PLUGINS_DIR": PluginsDirPath(),
+									@"MB_JETTY_PORT": @(self.port)};
+		self.task.arguments		= @[@"-Djava.awt.headless=true", // this prevents the extra java icon from popping up in the dock when running
+                                    @"-client",                  // make sure we're running in -client mode, which has a faster lanuch time
+                                    @"-Xverify:none",            // disable bytecode verification for faster launch speed, not really needed here since JAR is packaged as part of signed .app
+									@"-jar", UberjarPath()];
 				
 		__weak MetabaseTask *weakSelf = self;
 		self.task.terminationHandler = ^(NSTask *task){
@@ -109,7 +112,7 @@
 			});
 		};
 												
-		NSLog(@"Launching MetabaseTask\nMB_DB_FILE='%@' MB_JETTY_PORT=%lu %@ -jar %@", DBPath(), self.port, JREPath(), UberjarPath());
+		NSLog(@"Launching MetabaseTask\nMB_DB_FILE='%@'\nMB_PLUGINS_DIR='%@'\nMB_JETTY_PORT=%lu\n%@ -jar %@", DBPath(), PluginsDirPath(), self.port, JREPath(), UberjarPath());
 		[self.task launch];
 	});
 }

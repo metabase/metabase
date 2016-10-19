@@ -9,11 +9,14 @@
                              [card-label :refer [CardLabel]]
                              [database :refer [Database]]
                              [label :refer [Label]]
+                             [permissions :refer [Permissions], :as perms]
+                             [permissions-group :as perms-group]
                              [table :refer [Table]]
                              [view-log :refer [ViewLog]])
             [metabase.test.data :refer :all]
             [metabase.test.data.users :refer :all]
-            [metabase.test.util :refer [match-$ expect-eval-actual-first random-name with-temp with-temp* obj->json->obj expect-with-temp]]))
+            [metabase.test.util :refer [match-$ random-name with-temp with-temp* obj->json->obj expect-with-temp]]
+            [metabase.util :as u]))
 
 ;; # CARD LIFECYCLE
 
@@ -51,10 +54,10 @@
    false
    true]
   (with-temp* [Database [{database-id :id}]
-               Table    [{table-1-id :id} {:db_id database-id}]
-               Table    [{table-2-id :id} {:db_id database-id}]
-               Card     [{card-1-id :id} {:table_id table-1-id}]
-               Card     [{card-2-id :id} {:table_id table-2-id}]]
+               Table    [{table-1-id :id}  {:db_id database-id}]
+               Table    [{table-2-id :id}  {:db_id database-id}]
+               Card     [{card-1-id :id}   {:table_id table-1-id}]
+               Card     [{card-2-id :id}   {:table_id table-2-id}]]
     (let [card-returned? (fn [table-id card-id]
                            (contains? (set (for [card ((user->client :rasta) :get 200 "card", :f :table, :model_id table-id)]
                                              (:id card)))
@@ -75,11 +78,11 @@
                    Card     [{card-3-id :id}]
                    Card     [{card-4-id :id}]
                    ;; 3 was viewed most recently, followed by 4, then 1. Card 2 was viewed by a different user so shouldn't be returned
-                   ViewLog  [_               {:model "card", :model_id card-1-id, :user_id (user->id :rasta),     :timestamp #inst "2015-12-01"}]
-                   ViewLog  [_               {:model "card", :model_id card-2-id, :user_id (user->id :trashbird), :timestamp #inst "2016-01-01"}]
-                   ViewLog  [_               {:model "card", :model_id card-3-id, :user_id (user->id :rasta),     :timestamp #inst "2016-02-01"}]
-                   ViewLog  [_               {:model "card", :model_id card-4-id, :user_id (user->id :rasta),     :timestamp #inst "2016-03-01"}]
-                   ViewLog  [_               {:model "card", :model_id card-3-id, :user_id (user->id :rasta),     :timestamp #inst "2016-04-01"}]]
+                   ViewLog  [_               {:model "card", :model_id card-1-id, :user_id (user->id :rasta),     :timestamp (u/->Timestamp #inst "2015-12-01")}]
+                   ViewLog  [_               {:model "card", :model_id card-2-id, :user_id (user->id :trashbird), :timestamp (u/->Timestamp #inst "2016-01-01")}]
+                   ViewLog  [_               {:model "card", :model_id card-3-id, :user_id (user->id :rasta),     :timestamp (u/->Timestamp #inst "2016-02-01")}]
+                   ViewLog  [_               {:model "card", :model_id card-4-id, :user_id (user->id :rasta),     :timestamp (u/->Timestamp #inst "2016-03-01")}]
+                   ViewLog  [_               {:model "card", :model_id card-3-id, :user_id (user->id :rasta),     :timestamp (u/->Timestamp #inst "2016-04-01")}]]
   [card-3-id card-4-id card-1-id]
   (mapv :id ((user->client :rasta) :get 200 "card", :f :recent)))
 
@@ -133,7 +136,6 @@
   (expect-with-temp [Database [{database-id :id}]
                      Table    [{table-id :id}  {:db_id database-id}]]
     {:description            nil
-     :organization_id        nil
      :name                   card-name
      :creator_id             (user->id :rasta)
      :dataset_query          {:database database-id
@@ -141,15 +143,11 @@
                               :query    {:source-table table-id, :aggregation {:aggregation-type "count"}}}
      :display                "scalar"
      :visualization_settings {:global {:title nil}}
-     :public_perms           0
      :database_id            database-id ; these should be inferred automatically
      :table_id               table-id
      :query_type             "query"
      :archived               false}
     (dissoc ((user->client :rasta) :post 200 "card" {:name                   card-name
-                                                     :public_perms           0
-                                                     :can_read               true
-                                                     :can_write              true
                                                      :display                "scalar"
                                                      :dataset_query          {:database database-id
                                                                               :type     :query
@@ -166,9 +164,6 @@
                                                                 :query    {:source-table table-id, :aggregation {:aggregation-type :count}}}}]]
   (match-$ card
     {:description            nil
-     :can_read               true
-     :can_write              true
-     :organization_id        nil
      :dashboard_count        0
      :name                   $
      :creator_id             (user->id :rasta)
@@ -187,7 +182,6 @@
      :id                     $
      :display                "table"
      :visualization_settings {}
-     :public_perms           0
      :created_at             $
      :database_id            database-id ; these should be inferred from the dataset_query
      :table_id               table-id
@@ -195,6 +189,19 @@
      :archived               false
      :labels                 []})
   ((user->client :rasta) :get 200 (str "card/" (:id card))))
+
+;; Check that a user without permissions isn't allowed to fetch the card
+(expect-with-temp [Database  [{database-id :id}]
+                   Table     [{table-id :id}   {:db_id database-id}]
+                   Card      [card             {:dataset_query {:database database-id
+                                                                :type     :query
+                                                                :query    {:source-table table-id, :aggregation {:aggregation-type :count}}}}]]
+  "You don't have permissions to do that."
+  (do
+    ;; revoke permissions for default group to this database
+    (perms/delete-related-permissions! (perms-group/all-users) (perms/object-path database-id))
+    ;; now a non-admin user shouldn't be able to fetch this card
+    ((user->client :rasta) :get 403 (str "card/" (:id card)))))
 
 ;; ## PUT /api/card/:id
 
@@ -247,10 +254,10 @@
 (defn- fave? [card]
   ((user->client :rasta) :get 200 (format "card/%d/favorite" (:id card))))
 
-(defn- fave [card]
+(defn- fave! [card]
   ((user->client :rasta) :post 200 (format "card/%d/favorite" (:id card))))
 
-(defn- unfave [card]
+(defn- unfave! [card]
   ((user->client :rasta) :delete 204 (format "card/%d/favorite" (:id card))))
 
 ;; ## GET /api/card/:id/favorite
@@ -267,7 +274,7 @@
    {:favorite true}]
   (with-temp-card [card]
     [(fave? card)
-     (do (fave card)
+     (do (fave! card)
          (fave? card))]))
 
 ;; DELETE /api/card/:id/favorite
@@ -278,9 +285,9 @@
    {:favorite false}]
   (with-temp-card [card]
     [(fave? card)
-     (do (fave card)
+     (do (fave! card)
          (fave? card))
-     (do (unfave card)
+     (do (unfave! card)
          (fave? card))]))
 
 
