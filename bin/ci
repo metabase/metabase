@@ -34,9 +34,9 @@ node-4() {
 }
 node-5() {
     run_step lein eastwood
-    run_step npm run lint
-    run_step npm run test
-    run_step npm run flow
+    run_step yarn run lint
+    run_step yarn run test
+    run_step yarn run flow
 }
 node-6() {
     if is_enabled "jar" || is_enabled "e2e" || is_enabled "screenshots"; then
@@ -44,7 +44,7 @@ node-6() {
     fi
     if is_enabled "e2e" || is_enabled "compare_screenshots"; then
         USE_SAUCE=true \
-            run_step npm run test-e2e
+            run_step yarn run test-e2e
     fi
     if is_enabled "screenshots"; then
         run_step node_modules/.bin/babel-node ./bin/compare-screenshots

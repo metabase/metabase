@@ -12,7 +12,7 @@ dependencies:
   override:
     - lein deps
     - pip install awscli==1.7.3
-    - npm install -g yarn
+    - npm install -g 'yarn@>=0.16.0'
     # Forces the Sauce Connect binary to be downloaded during dependencies phase so it's cached
     - SAUCE_CONNECT_DOWNLOAD_ON_INSTALL=true yarn
     - mkdir plugins

@@ -70,7 +70,7 @@ Run your backend development server with
 
 Start the frontend build process with
 
-    npm run build-hot
+    yarn run build-hot
 
 This will get you a full development server running on port :3000 by default.
 
@@ -82,18 +82,18 @@ We use these technologies for our FE build process to allow us to use modules, e
 - babel
 - cssnext
 
-Frontend tasks are executed using `npm run`. All available tasks can be found in `package.json` under *scripts*.
+Frontend tasks are executed using `yarn run`. All available tasks can be found in `package.json` under *scripts*.
 
 To build the frontend client without watching for changes, you can use:
 
 ```sh
-$ npm run build
+$ yarn run build
 ```
 
 If you're working on the frontend directly, you'll most likely want to reload changes on save, and in the case of React components, do so while maintaining state. To start a build with hot reloading, use:
 
 ```sh
-$ npm run build-hot
+$ yarn run build-hot
 ```
 
 Note that at this time if you change CSS variables, those changes will only be picked up when a build is restarted.
@@ -101,20 +101,20 @@ Note that at this time if you change CSS variables, those changes will only be p
 There is also an option to reload changes on save without hot reloading if you prefer that.
 
 ```sh
-$ npm run build-watch
+$ yarn run build-watch
 ```
 
 #### Unit Tests / Linting
 
 Run unit tests with
 
-    npm run test             # Karma
-    npm run test-e2e         # Selenium Webdriver
+    yarn run test             # Karma
+    yarn run test-e2e         # Selenium Webdriver
 
 Run the linters and type checker with
 
-    npm run lint
-    npm run flow
+    yarn run lint
+    yarn run flow
 
 
 ## Backend development
