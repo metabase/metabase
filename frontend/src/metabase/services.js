@@ -2,12 +2,12 @@
 
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 
-export const Activity = {
+export const ActivityApi = {
     list:                        GET("/api/activity"),
     recent_views:                GET("/api/activity/recent_views"),
 };
 
-export const Card = {
+export const CardApi = {
     list:                        GET("/api/card"),
     create:                     POST("/api/card"),
     get:                         GET("/api/card/:cardId"),
@@ -20,7 +20,7 @@ export const Card = {
     updateLabels:               POST("/api/card/:cardId/labels"),
 };
 
-export const Dashboard = {
+export const DashboardApi = {
     list:                        GET("/api/dashboard"),
     create:                     POST("/api/dashboard"),
     get:                         GET("/api/dashboard/:dashId"),
@@ -31,16 +31,16 @@ export const Dashboard = {
     reposition_cards:            PUT("/api/dashboard/:dashId/cards"),
 };
 
-export const Email = {
+export const EmailApi = {
     updateSettings:              PUT("/api/email"),
     sendTest:                   POST("/api/email/test"),
 };
 
-export const Slack = {
+export const SlackApi = {
     updateSettings:              PUT("/api/slack/settings"),
 };
 
-export const Metabase = {
+export const MetabaseApi = {
     db_list:                     GET("/api/database"),
     db_list_with_tables:         GET("/api/database?include_tables=true"),
     db_create:                  POST("/api/database"),
@@ -71,7 +71,7 @@ export const Metabase = {
     dataset_duration:           POST("/api/dataset/duration"),
 };
 
-export const Pulse = {
+export const PulseApi = {
     list:                        GET("/api/pulse"),
     create:                     POST("/api/pulse"),
     get:                         GET("/api/pulse/:pulseId"),
@@ -82,7 +82,7 @@ export const Pulse = {
     preview_card:                GET("/api/pulse/preview_card_info/:id"),
 };
 
-export const Segment = {
+export const SegmentApi = {
     list:                        GET("/api/segment"),
     create:                     POST("/api/segment"),
     get:                         GET("/api/segment/:segmentId"),
@@ -90,7 +90,7 @@ export const Segment = {
     delete:                   DELETE("/api/segment/:segmentId"),
 };
 
-export const Metric = {
+export const MetricApi = {
     list:                        GET("/api/metric"),
     create:                     POST("/api/metric"),
     get:                         GET("/api/metric/:metricId"),
@@ -99,23 +99,23 @@ export const Metric = {
     delete:                   DELETE("/api/metric/:metricId"),
 };
 
-export const Revision = {
+export const RevisionApi = {
     list:                        GET("/api/revision"),
     revert:                     POST("/api/revision/revert"),
 };
 
-export const Revisions = {
+export const RevisionsApi = {
     get:                         GET("/api/:entity/:id/revisions"),
 };
 
-export const Label = {
+export const LabelApi = {
     list:                        GET("/api/label"),
     create:                     POST("/api/label"),
     update:                      PUT("/api/label/:id"),
     delete:                   DELETE("/api/label/:id"),
 };
 
-export const Session = {
+export const SessionApi = {
     create:                     POST("/api/session"),
     createWithGoogleAuth:       POST("/api/session/google_auth"),
     delete:                   DELETE("/api/session"),
@@ -125,14 +125,14 @@ export const Session = {
     password_reset_token_valid:  GET("/api/session/password_reset_token_valid"),
 };
 
-export const Settings = {
+export const SettingsApi = {
     list:                        GET("/api/setting"),
     put:                         PUT("/api/setting/:key"),
     // setAll:                      PUT("/api/setting"),
     // delete:                   DELETE("/api/setting/:key"),
 };
 
-export const Permissions = {
+export const PermissionsApi = {
     groups:                      GET("/api/permissions/group"),
     groupDetails:                GET("/api/permissions/group/:id"),
     graph:                       GET("/api/permissions/graph"),
@@ -145,16 +145,16 @@ export const Permissions = {
     deleteGroup:              DELETE("/api/permissions/group/:id"),
 };
 
-export const GettingStarted = {
+export const GettingStartedApi = {
     get:                         GET("/api/getting_started"),
 };
 
-export const Setup = {
+export const SetupApi = {
     create:                     POST("/api/setup"),
     validate_db:                POST("/api/setup/validate"),
 };
 
-export const User = {
+export const UserApi = {
     create:                     POST("/api/user"),
     list:                        GET("/api/user"),
     current:                     GET("/api/user/current"),
@@ -166,6 +166,6 @@ export const User = {
     send_invite:                POST("/api/user/:id/send_invite"),
 };
 
-export const Util = {
+export const UtilApi = {
     password_check:             POST("/api/util/password_check"),
 };

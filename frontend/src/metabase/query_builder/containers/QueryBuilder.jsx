@@ -4,7 +4,6 @@ import { connect } from "react-redux";
 import cx from "classnames";
 import _ from "underscore";
 
-import { AngularResourceProxy } from "metabase/lib/redux";
 import { loadTableAndForeignKeys } from "metabase/lib/table";
 import { isPK, isFK } from "metabase/lib/types";
 
@@ -43,10 +42,7 @@ import {
 import * as actions from "../actions";
 import { push } from "react-router-redux";
 
-const cardApi = new AngularResourceProxy("Card", ["create", "update", "delete"]);
-const dashboardApi = new AngularResourceProxy("Dashboard", ["list", "create"]);
-const revisionApi = new AngularResourceProxy("Revision", ["list", "revert"]);
-const Metabase = new AngularResourceProxy("Metabase", ["db_autocomplete_suggestions"]);
+import { CardApi, DashboardApi, RevisionApi, MetabaseApi } from "metabase/services";
 
 function cellIsClickable(queryResult, rowIndex, columnIndex) {
     if (!queryResult) return false;
@@ -61,7 +57,7 @@ function cellIsClickable(queryResult, rowIndex, columnIndex) {
 
 function autocompleteResults(card, prefix) {
     let databaseId = card && card.dataset_query && card.dataset_query.database;
-    let apiCall = Metabase.db_autocomplete_suggestions({
+    let apiCall = MetabaseApi.db_autocomplete_suggestions({
        dbId: databaseId,
        prefix: prefix
     });
@@ -98,9 +94,9 @@ const mapStateToProps = (state, props) => {
         isShowingTutorial:         state.qb.uiControls.isShowingTutorial,
         isEditing:                 state.qb.uiControls.isEditing,
         isRunning:                 state.qb.uiControls.isRunning,
-        cardApi:                   cardApi,
-        dashboardApi:              dashboardApi,
-        revisionApi:               revisionApi,
+        cardApi:                   CardApi,
+        dashboardApi:              DashboardApi,
+        revisionApi:               RevisionApi,
         loadTableAndForeignKeysFn: loadTableAndForeignKeys,
         autocompleteResultsFn:     (prefix) => autocompleteResults(state.qb.card, prefix),
         cellIsClickableFn:         (rowIndex, columnIndex) => cellIsClickable(state.qb.queryResult, rowIndex, columnIndex)

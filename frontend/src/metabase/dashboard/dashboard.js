@@ -5,7 +5,7 @@ import _ from "underscore";
 import moment from "moment";
 
 import { createAction } from "redux-actions";
-import { handleActions, combineReducers, AngularResourceProxy, createThunkAction } from "metabase/lib/redux";
+import { handleActions, combineReducers, createThunkAction } from "metabase/lib/redux";
 import { normalize, Schema, arrayOf } from "normalizr";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
@@ -16,6 +16,8 @@ import Utils from "metabase/lib/utils";
 
 import type { Dashboard, DashCard, DashCardId } from "metabase/meta/types/Dashboard";
 import type { Card, CardId } from "metabase/meta/types/Card";
+
+import { DashboardApi, MetabaseApi, CardApi, RevisionApi } from "metabase/services";
 
 const DATASET_SLOW_TIMEOUT   = 15 * 1000;
 const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
@@ -71,14 +73,6 @@ export const SET_PARAMETER_MAPPING = "metabase/dashboard/SET_PARAMETER_MAPPING";
 export const SET_PARAMETER_NAME = "metabase/dashboard/SET_PARAMETER_NAME";
 export const SET_PARAMETER_VALUE = "metabase/dashboard/SET_PARAMETER_VALUE";
 export const SET_PARAMETER_DEFAULT_VALUE = "metabase/dashboard/SET_PARAMETER_DEFAULT_VALUE";
-
-// resource wrappers
-const DashboardApi = new AngularResourceProxy("Dashboard", [
-    "list", "get", "create", "update", "delete", "reposition_cards", "addcard", "removecard"
-]);
-const MetabaseApi = new AngularResourceProxy("Metabase", ["dataset", "dataset_duration", "db_metadata"]);
-const CardApi = new AngularResourceProxy("Card", ["list", "update", "delete", "query"]);
-const RevisionApi = new AngularResourceProxy("Revision", ["list", "revert"]);
 
 // action creators
 

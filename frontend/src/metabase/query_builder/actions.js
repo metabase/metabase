@@ -5,7 +5,7 @@ import _ from "underscore";
 import i from "icepick";
 import moment from "moment";
 
-import { AngularResourceProxy, createThunkAction } from "metabase/lib/redux";
+import { createThunkAction } from "metabase/lib/redux";
 import { push, replace } from "react-router-redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
@@ -21,9 +21,7 @@ import { applyParameters } from "metabase/meta/Card";
 
 import { getParameters, getNativeDatabases } from "./selectors";
 
-const Metabase = new AngularResourceProxy("Metabase", ["db_list_with_tables", "db_fields", "dataset", "table_query_metadata"]);
-const CardAPI = new AngularResourceProxy("Card", ["query"]);
-const User = new AngularResourceProxy("User", ["update_qbnewb"]);
+import { MetabaseApi, CardApi, UserApi } from "metabase/services";
 
 import { parse as urlParse } from "url";
 
@@ -102,7 +100,7 @@ export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) 
 
         // always start the QB by loading up the databases for the application
         try {
-            databases = await Metabase.db_list_with_tables();
+            databases = await MetabaseApi.db_list_with_tables();
         } catch(error) {
             console.log("error fetching dbs", error);
 
@@ -224,7 +222,7 @@ export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {
     return async (dispatch, getState) => {
         // persist the fact that this user has seen the NewbModal
         const { currentUser } = getState();
-        await User.update_qbnewb({id: currentUser.id});
+        await UserApi.update_qbnewb({id: currentUser.id});
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Close Newb Modal');
     };
 });
@@ -296,7 +294,7 @@ export const loadDatabaseFields = createThunkAction(LOAD_DATABASE_FIELDS, (dbId)
             if (databaseFields[dbId]) {
                 fields = databaseFields[dbId];
             } else {
-                fields = await Metabase.db_fields({ dbId: dbId });
+                fields = await MetabaseApi.db_fields({ dbId: dbId });
             }
 
             return {
@@ -793,9 +791,9 @@ export const runQuery = createThunkAction(RUN_QUERY, (card, shouldUpdateUrl = tr
         }
 
         if (card && card.id) {
-            CardAPI.query({ cardId: card.id, parameters: card.dataset_query.parameters }, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
+            CardApi.query({ cardId: card.id, parameters: card.dataset_query.parameters }, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
         } else {
-            Metabase.dataset(card.dataset_query, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
+            MetabaseApi.dataset(card.dataset_query, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
         }
 
         MetabaseAnalytics.trackEvent("QueryBuilder", "Run Query", card.dataset_query.type);
@@ -985,7 +983,7 @@ export const loadObjectDetailFKReferences = createThunkAction(LOAD_OBJECT_DETAIL
             let info = {"status": 0, "value": null};
 
             try {
-                let result = await Metabase.dataset(fkQuery);
+                let result = await MetabaseApi.dataset(fkQuery);
                 if (result && result.status === "completed" && result.data.rows.length > 0) {
                     info["value"] = result.data.rows[0][0];
                 } else {
