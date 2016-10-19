@@ -40,7 +40,6 @@
         "flow-vars/use-flow-type": 1
     },
     "globals": {
-        "angular": false
     },
     "env": {
         "browser": true,

@@ -5,7 +5,7 @@ import _ from "underscore";
 import i from "icepick";
 import moment from "moment";
 
-import { AngularResourceProxy, angularPromise, createThunkAction } from "metabase/lib/redux";
+import { AngularResourceProxy, createThunkAction } from "metabase/lib/redux";
 import { push, replace } from "react-router-redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
@@ -16,6 +16,7 @@ import { createQuery } from "metabase/lib/query";
 import { loadTableAndForeignKeys } from "metabase/lib/table";
 import { isPK, isFK } from "metabase/lib/types";
 import Utils from "metabase/lib/utils";
+import { defer } from "metabase/lib/promise";
 import { applyParameters } from "metabase/meta/Card";
 
 import { getParameters, getNativeDatabases } from "./selectors";
@@ -34,7 +35,7 @@ export const popState = createThunkAction(POP_STATE, (location) =>
     async (dispatch, getState) => {
         const { card } = getState().qb;
         if (location.state && location.state.card) {
-            if (!angular.equals(card, location.state.card)) {
+            if (!Utils.equals(card, location.state.card)) {
                 dispatch(setCardAndRun(location.state.card, false));
                 dispatch(setCurrentState(location.state));
             }
@@ -57,7 +58,7 @@ export const updateUrl = createThunkAction(UPDATE_URL, (card, isDirty = false, r
 
         const { currentState } = getState().qb;
 
-        if (angular.equals(currentState, newState)) {
+        if (Utils.equals(currentState, newState)) {
             return;
         }
 
@@ -779,7 +780,7 @@ export const runQuery = createThunkAction(RUN_QUERY, (card, shouldUpdateUrl = tr
             dispatch(updateUrl(card, cardIsDirty));
         }
 
-        let cancelQueryDeferred = angularPromise();
+        let cancelQueryDeferred = defer();
         const startTime = new Date();
 
         // make our api call
@@ -792,9 +793,9 @@ export const runQuery = createThunkAction(RUN_QUERY, (card, shouldUpdateUrl = tr
         }
 
         if (card && card.id) {
-            CardAPI.query({ timeout: cancelQueryDeferred.promise }, { cardID: card.id, parameters: card.dataset_query.parameters }, onQuerySuccess, onQueryError);
+            CardAPI.query({ cardId: card.id, parameters: card.dataset_query.parameters }, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
         } else {
-            Metabase.dataset({ timeout: cancelQueryDeferred.promise }, card.dataset_query, onQuerySuccess, onQueryError);
+            Metabase.dataset(card.dataset_query, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
         }
 
         MetabaseAnalytics.trackEvent("QueryBuilder", "Run Query", card.dataset_query.type);

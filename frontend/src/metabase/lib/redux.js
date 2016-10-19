@@ -31,19 +31,11 @@ export const createStore = compose(
   window.devToolsExtension ? window.devToolsExtension() : f => f
 )(originalCreateStore);
 
+import * as services from "metabase/services";
+
 // HACK: just use our Angular resources for now
 export function AngularResourceProxy(serviceName, methods) {
-    methods.forEach((methodName) => {
-        this[methodName] = function(...args) {
-            let service = angular.element(document.body).injector().get(serviceName);
-            return service[methodName](...args).$promise;
-        }
-    });
-}
-
-export function angularPromise() {
-    let $q = angular.element(document.body).injector().get("$q");
-    return $q.defer();
+    return services[serviceName];
 }
 
 // similar to createAction but accepts a (redux-thunk style) thunk and dispatches based on whether

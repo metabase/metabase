@@ -127,9 +127,8 @@ export const updateField = createThunkAction("UPDATE_FIELD", function(field) {
             let slimField = { ...field };
             slimField = _.omit(slimField, "operators_lookup", "valid_operators", "values");
 
-            // update the field and strip out angular junk
+            // update the field
             let updatedField = await MetabaseApi.field_update(slimField);
-            _.each(updatedField, (value, key) => { if (key.charAt(0) !== "$") { updatedField[key] = value } });
 
             // refresh idfields
             let table = _.findWhere(editingDatabase.tables, {id: updatedField.table_id});

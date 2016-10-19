@@ -12,6 +12,7 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
 import { applyParameters } from "metabase/meta/Card";
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
+import Utils from "metabase/lib/utils";
 
 import type { Dashboard, DashCard, DashCardId } from "metabase/meta/types/Dashboard";
 import type { Card, CardId } from "metabase/meta/types/Card";
@@ -165,7 +166,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, d
             // if reload not set, check to see if the last result has the same query dict and return that
             const lastResult = i.getIn(dashcardData, [dashcard.id, card.id]);
             // "constraints" is added by the backend, remove it when comparing
-            if (lastResult && angular.equals(_.omit(lastResult.json_query, "constraints"), datasetQuery)) {
+            if (lastResult && Utils.equals(_.omit(lastResult.json_query, "constraints"), datasetQuery)) {
                 return {
                     dashcard_id: dashcard.id,
                     card_id: card.id,
@@ -189,7 +190,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, d
         }, DATASET_SLOW_TIMEOUT);
 
         // make the actual request
-        result = await fetchDataOrError(CardApi.query({cardID: card.id, parameters: datasetQuery.parameters}));
+        result = await fetchDataOrError(CardApi.query({cardId: card.id, parameters: datasetQuery.parameters}));
 
         clearTimeout(slowCardTimer);
 
