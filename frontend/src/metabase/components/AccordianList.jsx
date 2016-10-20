@@ -36,7 +36,7 @@ export default class AccordianList extends Component {
     static propTypes = {
         id: PropTypes.string,
         sections: PropTypes.array.isRequired,
-        searchable: PropTypes.bool,
+        searchable: PropTypes.oneOfType([PropTypes.bool, PropTypes.func]),
         initiallyOpenSection: PropTypes.number,
         openSection: PropTypes.number,
         onChange: PropTypes.func,
@@ -53,10 +53,10 @@ export default class AccordianList extends Component {
 
     static defaultProps = {
         style: {},
-        searchable: false,
+        searchable: (section) => section.items.length > 10,
         alwaysTogglable: false,
         alwaysExpanded: false,
-        hideSingleSectionTitle: false
+        hideSingleSectionTitle: false,
     };
 
     toggleSection(sectionIndex) {
@@ -191,7 +191,7 @@ export default class AccordianList extends Component {
                             </div>
                         : null }
 
-                        { searchable &&
+                        { searchable && (typeof searchable !== "function" || searchable(section)) &&
                             /* NOTE: much of this structure is here just to match strange stuff in 'List-item' below so things align properly */
                             <div className="px1 pt1">
                                 <div style={{border: "2px solid transparent", borderRadius: "6px"}}>
