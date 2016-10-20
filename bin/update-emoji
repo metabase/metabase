@@ -7,7 +7,7 @@ var emoji;
 try {
     emoji = require("emojione/emoji.json");
 } catch (e) {
-    console.log("Please `npm install emojione` and re-run.");
+    console.log("Please `yarn global add emojione` and re-run.");
     process.exit(1);
 }
 
