@@ -205,9 +205,9 @@ export default class DataSelector extends Component {
 
     renderSegmentAndDatabasePicker() {
         const { selectedSchema } = this.state;
-        
+
         const segmentItem = [{ name: 'Segments', items: [], icon: 'segment'}];
-        
+
         const sections = segmentItem.concat(this.state.databases.map(database => {
             return {
                 name: database.name,
@@ -243,12 +243,16 @@ export default class DataSelector extends Component {
 
     renderTablePicker() {
         const schema = this.state.selectedSchema;
+
         const hasMultipleDatabases = this.props.databases.length > 1;
+        const hasMultipleSchemas = schema && schema.database && _.chain(schema.database.tables).pluck("schema").uniq().value().length > 1;
         const hasSegments = !!this.props.segments;
+        const hasMultipleSources = hasMultipleDatabases || hasMultipleSchemas || hasSegments;
+
         let header = (
             <span className="flex align-center">
-                <span className={cx("flex align-center text-slate", { "cursor-pointer": hasMultipleDatabases || hasSegments })} onClick={(hasMultipleDatabases || hasSegments) && this.onBack}>
-                    { (hasMultipleDatabases || hasSegments) && <Icon name="chevronleft" size={18} /> }
+                <span className={cx("flex align-center text-slate", { "cursor-pointer": hasMultipleSources })} onClick={hasMultipleSources && this.onBack}>
+                    { hasMultipleSources && <Icon name="chevronleft" size={18} /> }
                     <span className="ml1">{schema.database.name}</span>
                 </span>
                 { schema.name &&
@@ -269,7 +273,6 @@ export default class DataSelector extends Component {
                     <div className="p4 text-centered">No tables found in this database.</div>
                 </section>
             );
-
         } else {
             let sections = [{
                 name: header,
@@ -399,11 +402,11 @@ export default class DataSelector extends Component {
                 horizontalAttachments={this.props.segments ? ["center", "left", "right"] : ["left"]}
             >
                 { !this.props.includeTables ?
-                    this.renderDatabasePicker() : 
+                    this.renderDatabasePicker() :
                     this.state.selectedSchema && this.state.showTablePicker ?
                         this.renderTablePicker() :
                         this.props.segments ?
-                            this.state.showSegmentPicker ?  
+                            this.state.showSegmentPicker ?
                                 this.renderSegmentPicker() :
                                 this.renderSegmentAndDatabasePicker() :
                             this.renderDatabaseSchemaPicker()
