@@ -195,7 +195,7 @@
                                                            :type         :boolean
                                                            :default      false}])
           :execute-query                     (u/drop-first-arg qp/execute-query)
-          :features                          (constantly #{:dynamic-schema :nested-fields})
+          :features                          (constantly #{:basic-aggregations :dynamic-schema :nested-fields})
           :field-values-lazy-seq             (u/drop-first-arg field-values-lazy-seq)
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
           :mbql->native                      (u/drop-first-arg qp/mbql->native)

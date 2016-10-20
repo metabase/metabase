@@ -293,7 +293,8 @@
 (defn features
   "Default implementation of `IDriver` `features` for SQL drivers."
   [driver]
-  (cond-> #{:standard-deviation-aggregations
+  (cond-> #{:basic-aggregations
+            :standard-deviation-aggregations
             :foreign-keys
             :expressions
             :native-parameters}

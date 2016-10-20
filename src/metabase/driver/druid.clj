@@ -158,7 +158,7 @@
                                                :type         :integer
                                                :default      8082}])
           :execute-query         (fn [_ query] (qp/execute-query do-query query))
-          :features              (constantly #{:set-timezone})
+          :features              (constantly #{:basic-aggregations :set-timezone})
           :field-values-lazy-seq (u/drop-first-arg field-values-lazy-seq)
           :mbql->native          (u/drop-first-arg qp/mbql->native)}))
 
