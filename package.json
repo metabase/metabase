@@ -132,12 +132,12 @@
     "test": "karma start frontend/test/karma.conf.js --single-run",
     "test-watch": "karma start frontend/test/karma.conf.js --auto-watch --reporters nyan",
     "test-e2e": "JASMINE_CONFIG_PATH=./frontend/test/e2e/support/jasmine.json jasmine",
-    "test-e2e-sauce": "USE_SAUCE=true npm run test-e2e",
+    "test-e2e-sauce": "USE_SAUCE=true yarn run test-e2e",
     "build": "webpack --bail",
     "build-watch": "webpack --watch",
     "build-hot": "NODE_ENV=hot webpack && NODE_ENV=hot webpack-dev-server",
-    "shrinkwrap": "npm prune && npm shrinkwrap --dev && ./bin/clean-shrinkwrap",
-    "start": "npm run build && lein ring server",
-    "storybook": "start-storybook -p 9001"
+    "start": "yarn run build && lein ring server",
+    "storybook": "start-storybook -p 9001",
+    "preinstall": "ps -fp $PPID | grep -q yarn || (echo '\\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\\033[0m'; exit 1)"
   }
 }
