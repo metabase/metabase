@@ -11,7 +11,6 @@ import VisualizationError from "./VisualizationError.jsx";
 import VisualizationResult from "./VisualizationResult.jsx";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
-import Query from "metabase/lib/query";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -40,6 +39,7 @@ export default class QueryVisualization extends Component {
         cellIsClickableFn: PropTypes.func,
         cellClickedFn: PropTypes.func,
         isRunning: PropTypes.bool.isRequired,
+        isRunnable: PropTypes.bool.isRequired,
         runQueryFn: PropTypes.func.isRequired,
         cancelQueryFn: PropTypes.func
     };
@@ -79,15 +79,6 @@ export default class QueryVisualization extends Component {
         this.props.runQueryFn();
     }
 
-    canRun() {
-        var query = this.props.card.dataset_query;
-        if (query.query) {
-            return Query.canRun(query.query);
-        } else {
-            return (query.database != undefined && query.native.query !== "");
-        }
-    }
-
     renderHeader() {
         const { isObjectDetail, isRunning } = this.props;
         return (
@@ -97,7 +88,7 @@ export default class QueryVisualization extends Component {
                 </span>
                 <div className="absolute flex layout-centered left right z3">
                     <RunButton
-                        canRun={this.canRun()}
+                        canRun={this.props.isRunnable}
                         isDirty={this.queryIsDirty()}
                         isRunning={isRunning}
                         runFn={this.runQuery}
