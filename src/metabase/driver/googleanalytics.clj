@@ -7,11 +7,11 @@
             [metabase.config :as config]
             [metabase.db :as db]
             [metabase.driver :as driver]
+            (metabase.driver.googleanalytics [query-processor :as qp])
             (metabase.models [database :refer [Database]]
                              [field :as field]
                              [table :as table])
             [metabase.sync-database.analyze :as analyze]
-            [metabase.query-processor :as qp]
             metabase.query-processor.interface
             [metabase.util :as u])
   (:import (java.util Collections Date)
@@ -112,11 +112,39 @@
   [{{:keys [project-id dataset-id]} :details, :as database}]
   (let [client   (database->client database)
         response (execute (.list (.columns (.metadata client)) "ga"))]
-    (for [column (.getItems response) :let [attrs (.getAttributes column)] :when (= (get attrs "status") "PUBLIC")]
+    (for [column (.getItems response)
+           :let [attrs (.getAttributes column)]
+           :when (and (= (get attrs "status") "PUBLIC") (= (get attrs "type") "DIMENSION"))]
       {:name         (.getId column)
       ;  :display-name (get attrs "uiName")
       ;  :description  (get attrs "description")
        :base-type    (ga-type->base-type (get attrs "dataType"))})))
+
+(defn- process-query-in-context [qp]
+  (fn [query]
+    (qp (qp/transform-query query))))
+
+(defn- query->request
+  [query]
+  (let [client  (database->client (:database query))
+        ids     (:ids (:details (:database query)))
+        native  (:native query)
+        request (doto (.get (.ga (.data client))
+                  ids
+                  (:start-date native)
+                  (:end-date native)
+                  (:metrics native)))]
+    (when (:dimensions native)
+      (.setDimensions request (:dimensions native)))
+    (when (:sort native)
+      (.setSort request (:sort native)))
+    (when (:filters native)
+      (.setFilters request (:filters native)))
+    (when (:segment native)
+      (.setSegment request (:segment native)))
+    (when (:max-results native)
+      (.setMaxResults request (:max-results native)))
+    request))
 
 (defrecord GoogleAnalyticsDriver []
   clojure.lang.Named
@@ -130,8 +158,8 @@
            :describe-database     (fn [_ database]
                                     {:tables #{{:name "table", :schema nil}}})
            :describe-table        (fn [_ database table]
-                                    {:name   "table"
-                                     :schema nil
+                                    {:name   (:name table)
+                                     :schema (:schema table)
                                      :fields (set (get-columns database))})
            :field-values-lazy-seq (constantly [])
            :details-fields        (constantly [{:name         "ids"
@@ -150,26 +178,14 @@
                                                 :display-name "Auth Code"
                                                 :placeholder  "4/HSk-KtxkSzTt61j5zcbee2Rmm5JHkRFbL5gD5lgkXek"
                                                 :required     true}])
-           :mbql->native          (fn [_ query]
-                                    {:start-date "2005-01-01"
-                                     :end-date   "today"
-                                     :metrics    (:field-name (:field (:aggregation (:query query))))
-                                     :dimensions (s/join "," (for [breakout (:breakout (:query query))]
-                                                                (:field-name breakout)))})
+           :process-query-in-context (u/drop-first-arg process-query-in-context)
+           :mbql->native             (u/drop-first-arg qp/mbql->native)
            :execute-query         (fn [_ query]
-                                    (let [client     (database->client (:database query))
-                                          ids        (:ids (:details (:database query)))
-                                          response   (execute (doto (.get (.ga (.data client))
-                                                                      ids
-                                                                      (:start-date (:native query))
-                                                                      (:end-date (:native query))
-                                                                      (:metrics (:native query)))
-                                                                (.setDimensions (:dimensions (:native query)))))
+                                    (let [response   (execute (query->request query))
                                           columns    (for [col (.getColumnHeaders response)]
                                                        {:name      (keyword (.getName col))
                                                          :base-type (ga-type->base-type (.getDataType col))})
                                           base-types (for [col columns] (:base-type col))]
-                                      (log/info (str "base-types:" base-types))
                                       {:columns (map :name columns)
                                        :cols    columns
                                        :rows    (for [row (.getRows response)]

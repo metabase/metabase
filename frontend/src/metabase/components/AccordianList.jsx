@@ -160,6 +160,8 @@ export default class AccordianList extends Component {
         const openSection = this.getOpenSection();
         const sectionIsOpen = (sectionIndex) =>
             alwaysExpanded || openSection === sectionIndex;
+        const sectionIsSearchable = (sectionIndex) =>
+            searchable && (typeof searchable !== "function" || searchable(sections[sectionIndex]));
 
         return (
             <div id={id} className={this.props.className} style={{ width: '300px', ...style }}>
@@ -191,7 +193,7 @@ export default class AccordianList extends Component {
                             </div>
                         : null }
 
-                        { searchable && (typeof searchable !== "function" || searchable(section)) &&
+                        { sectionIsSearchable(sectionIndex) &&  sectionIsOpen(sectionIndex) && section.items.length > 0 &&
                             /* NOTE: much of this structure is here just to match strange stuff in 'List-item' below so things align properly */
                             <div className="px1 pt1">
                                 <div style={{border: "2px solid transparent", borderRadius: "6px"}}>

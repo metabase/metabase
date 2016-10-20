@@ -1,5 +1,7 @@
 import 'angular-http-auth';
 
+import * as GA from "metabase/ga-info";
+
 angular.module('metabase.services', ['metabase.core.services', 'http-auth-interceptor']);
 
 // API Services
@@ -303,6 +305,16 @@ CoreServices.factory('Metabase', ['$resource', function($resource) {
             method: 'GET',
             params: {
                 dbId: '@tableId'
+            },
+            transformResponse(data) {
+                let table = angular.fromJson(data);
+                // HACK: inject GA metadata that we don't have intergrated on the backend yet
+                if (table && table.db && table.db.engine === "googleanalytics") {
+                    table.fields = table.fields.map(f => ({ ...f, ...GA.fields[f.name] }));
+                    table.metrics.push(...GA.metrics);
+                    table.segments.push(...GA.segments);
+                }
+                return table;
             }
         },
         table_sync_metadata: {

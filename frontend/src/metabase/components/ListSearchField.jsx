@@ -14,7 +14,7 @@ export default class ListSearchField extends Component {
     static defaultProps = {
         className: "bordered rounded text-grey-2 flex flex-full align-center",
         inputClassName: "p1 h4 input--borderless text-default flex-full",
-        placeholder: "Find a table",
+        placeholder: "Find...",
         searchText: ""
     };
 

@@ -536,11 +536,11 @@
   (let [driver (driver/database-id->driver (:database query))]
     (binding [*driver* driver]
       ((<<- wrap-catch-exceptions
+            (driver/process-query-in-context driver)
             pre-add-settings
             pre-expand-macros
             pre-substitute-parameters
             pre-expand-resolve
-            (driver/process-query-in-context driver)
             post-add-row-count-and-status
             post-format-rows
             pre-add-implicit-fields
