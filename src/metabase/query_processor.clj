@@ -536,8 +536,8 @@
   (let [driver (driver/database-id->driver (:database query))]
     (binding [*driver* driver]
       ((<<- wrap-catch-exceptions
-            (driver/process-query-in-context driver)
             pre-add-settings
+            (driver/process-query-in-context driver)
             pre-expand-macros
             pre-substitute-parameters
             pre-expand-resolve

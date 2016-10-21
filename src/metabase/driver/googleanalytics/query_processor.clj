@@ -66,14 +66,14 @@
 
 (defn mbql->native [query]
   "Transpile MBQL query into parameters required for a Google Analytics request."
-  {:start-date  "2005-01-01"
-   :end-date    "today"
-   :metrics     (get-in query [:ga :metrics])
-   :segment     (get-in query [:ga :segment])
-   :dimensions  (handle-breakout (:query query))
-   :filters     (handle-filter (:query query))
-   :sort        (handle-order-by (:query query))
-   :max-results (handle-limit (:query query))})
+  {:query {:start-date  "2005-01-01"
+           :end-date    "today"
+           :metrics     (get-in query [:ga :metrics])
+           :segment     (get-in query [:ga :segment])
+           :dimensions  (handle-breakout (:query query))
+           :filters     (handle-filter (:query query))
+           :sort        (handle-order-by (:query query))
+           :max-results (handle-limit (:query query))}})
 
 
 
@@ -109,7 +109,9 @@
       ;; TODO: support mulitple metrics
       (assoc-in [:ga :metrics] (get-in query [:query :aggregation 1]))
       ;; remove metrics from query dict
-      (m/dissoc-in [:query :aggregation])
+      ; (m/dissoc-in [:query :aggregation])
+      ;; fake the aggregation :-/
+      (assoc-in [:query :aggregation] [:count])
       ;; pull segments out and put in :ga
       (assoc-in [:ga :segment] (extract-builtin-segment (get-in query [:query :filter])))
       ;; remove segments from query dict

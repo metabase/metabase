@@ -6,6 +6,8 @@ import ReactDOM from "react-dom";
 
 import "./NativeQueryEditor.css";
 
+import { getEngineNativeAceMode, getEngineNativeType, getEngineNativeRequiresTable } from "metabase/lib/engine";
+
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 
 import _ from "underscore";
@@ -26,13 +28,9 @@ function getModeInfo(query, databases) {
         engine     = database ? database.engine : null;
 
     return {
-        mode: engine === 'druid' || engine === 'mongo' ? 'ace/mode/json'  :
-              engine === 'mysql'                       ? 'ace/mode/mysql' :
-              engine === 'postgres'                    ? 'ace/mode/pgsql' :
-              engine === 'sqlserver'                   ? 'ace/mode/sqlserver' :
-                                                         'ace/mode/sql',
-        description: engine === 'druid' || engine === 'mongo' ? 'JSON' : 'SQL',
-        requiresTable: engine === 'mongo',
+        mode: getEngineNativeAceMode(engine),
+        description: getEngineNativeType(engine).toUpperCase(),
+        requiresTable: getEngineNativeRequiresTable(engine),
         database: database
     };
 }

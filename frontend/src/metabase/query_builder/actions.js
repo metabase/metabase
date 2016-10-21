@@ -16,6 +16,7 @@ import { createQuery } from "metabase/lib/query";
 import { loadTableAndForeignKeys } from "metabase/lib/table";
 import { isPK, isFK } from "metabase/lib/types";
 import Utils from "metabase/lib/utils";
+import { getEngineNativeType, formatJsonQuery } from "metabase/lib/engine";
 import { applyParameters } from "metabase/meta/Card";
 
 import { getParameters, getNativeDatabases } from "./selectors";
@@ -570,8 +571,8 @@ export const setQueryMode = createThunkAction(SET_QUERY_MODE, (type) => {
             let nativeQuery = _.pick(queryResult.data.native_form, "query", "collection");
 
             // when the driver requires JSON we need to stringify it because it's been parsed already
-            if (_.contains(["mongo", "druid"], tableMetadata.db.engine)) {
-                nativeQuery.query = JSON.stringify(queryResult.data.native_form.query);
+            if (getEngineNativeType(tableMetadata.db.engine) === "json") {
+                nativeQuery.query = formatJsonQuery(queryResult.data.native_form.query, tableMetadata.db.engine);
             } else {
                 nativeQuery.query = formatSQL(nativeQuery.query);
             }

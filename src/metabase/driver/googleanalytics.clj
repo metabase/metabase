@@ -4,6 +4,7 @@
                      [walk :as walk])
             [clojure.tools.logging :as log]
             [clojure.tools.reader.edn :as edn]
+            [cheshire.core :as json]
             [metabase.config :as config]
             [metabase.db :as db]
             [metabase.driver :as driver]
@@ -125,25 +126,27 @@
     (qp (qp/transform-query query))))
 
 (defn- query->request
-  [query]
-  (let [client  (database->client (:database query))
-        ids     (:ids (:details (:database query)))
-        native  (:native query)
+  [{{:keys [query]} :native, database :database}]
+  (let [query   (if (string? query)
+                    (json/parse-string query keyword)
+                    query)
+        client  (database->client database)
+        ids     (:ids (:details database))
         request (doto (.get (.ga (.data client))
                   ids
-                  (:start-date native)
-                  (:end-date native)
-                  (:metrics native)))]
-    (when (:dimensions native)
-      (.setDimensions request (:dimensions native)))
-    (when (:sort native)
-      (.setSort request (:sort native)))
-    (when (:filters native)
-      (.setFilters request (:filters native)))
-    (when (:segment native)
-      (.setSegment request (:segment native)))
-    (when (:max-results native)
-      (.setMaxResults request (:max-results native)))
+                  (:start-date query)
+                  (:end-date query)
+                  (:metrics query)))]
+    (when (:dimensions query)
+      (.setDimensions request (:dimensions query)))
+    (when (:sort query)
+      (.setSort request (:sort query)))
+    (when (:filters query)
+      (.setFilters request (:filters query)))
+    (when (:segment query)
+      (.setSegment request (:segment query)))
+    (when (:max-results query)
+      (.setMaxResults request (:max-results query)))
     request))
 
 (defrecord GoogleAnalyticsDriver []
@@ -184,8 +187,10 @@
                                     (let [response   (execute (query->request query))
                                           columns    (for [col (.getColumnHeaders response)]
                                                        {:name      (keyword (.getName col))
-                                                         :base-type (ga-type->base-type (.getDataType col))})
-                                          base-types (for [col columns] (:base-type col))]
+                                                        :base-type (ga-type->base-type (.getDataType col))})
+                                          base-types (for [col columns] (:base-type col))
+                                          ; replace last column name with :count for now since that's what our fake aggregation is
+                                          columns    (conj (vec (butlast columns)) (assoc (last columns) :name :count))]
                                       {:columns (map :name columns)
                                        :cols    columns
                                        :rows    (for [row (.getRows response)]
