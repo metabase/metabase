@@ -62,7 +62,7 @@ export default class AddToDashSelectDashModal extends Component {
                 >
                 <div className="flex flex-column">
                     <div
-                        className="text-brand-hover flex-align-right px2 cursor-pointer"
+                        className="text-brand-hover flex-align-right px4 cursor-pointer"
                         onClick={() => this.setState({ shouldCreateDashboard: true })}
                     >
                         <div className="flex align-center">
