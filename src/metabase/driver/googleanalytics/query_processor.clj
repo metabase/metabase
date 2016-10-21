@@ -3,7 +3,46 @@
   (:require (clojure [string :as s])
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            (metabase.query-processor [expand :as expand])))
+            (metabase.query-processor [expand :as expand])
+            [metabase.util :as u])
+  (:import java.sql.Timestamp
+           java.util.Date
+           clojure.lang.PersistentArrayMap
+           (metabase.query_processor.interface AgFieldRef
+                                               DateTimeField
+                                               DateTimeValue
+                                               Field
+                                               RelativeDateTimeValue
+                                               Value)))
+
+(def ^:private ^:const earliest-date "2005-01-01")
+(def ^:private ^:const latest-date "today")
+
+;; TODO: what should this actually be?
+;; https://developers.google.com/analytics/devguides/reporting/core/v3/reference#startDate
+;; says: Relative dates are always relative to the current date at the time of the query and are based on the timezone of the view (profile) specified in the query.
+(defn- get-timezone-id [] "UTC")
+
+(defn- date->ga-date
+  [date]
+  (.format (java.text.SimpleDateFormat. "yyyy-MM-dd") date))
+
+(defprotocol ^:private IRValue
+  (^:private ->rvalue [this]))
+
+(extend-protocol IRValue
+  nil                   (->rvalue [_] nil)
+  Object                (->rvalue [this] this)
+  Field                 (->rvalue [this] (:field-name this))
+  DateTimeField         (->rvalue [this] (->rvalue (:field this)))
+  Value                 (->rvalue [this] (:value this))
+  DateTimeValue         (->rvalue [{{unit :unit} :field, value :value}] (date->ga-date (u/date-trunc-or-extract unit value (get-timezone-id))))
+  RelativeDateTimeValue (->rvalue [{:keys [unit amount]}]
+                                  (cond
+                                    (and (= unit :day) (= amount 0))  "today"
+                                    (and (= unit :day) (= amount -1)) "yesterday"
+                                    (and (= unit :day) (< amount -1)) (str (- amount) "daysAgo")
+                                    :else (date->ga-date (u/date-trunc-or-extract unit (u/relative-date unit amount) (get-timezone-id))))))
 
 (defn- escape-map
   [chars escape-char]
@@ -31,64 +70,63 @@
 ;;; ### filter
 
 ;; TODO: implement negate?
-(defn- parse-filter-subclause [{:keys [filter-type field value] :as filter} & [negate?]]
-  (let [field (when field (:field-name field))
-        value (when value (:value value))]
-    ;; "when field" ends up filtering out datetime filters, which we want, but there's probably a better way
-    (when field (case filter-type
-                  :contains    (ga-filter field "=@" value)
-                  :starts-with (ga-filter field "=~^" (escape-for-regex value))
-                  :ends-with   (ga-filter field "=~"  (escape-for-regex value) "$")
-                  :=           (ga-filter field "==" value)
-                  :>           (ga-filter field ">" value)
-                  :<           (ga-filter field "<" value)
-                  :>=          (ga-filter field ">=" value)
-                  :<=          (ga-filter field "<=" value)
-                  :between     (str (ga-filter field ">=" (:value (:min-val filter)))
-                                    ";"
-                                    (ga-filter field ">=" (:value (:min-val filter))))))))
+(defn- parse-filter-subclause:filter [{:keys [filter-type field value] :as filter} & [negate?]]
+  (if negate? (throw (Exception. ":not is :not yet implemented")))
+  (when-not (instance? DateTimeField field)
+    (let [field (when field (->rvalue field))
+          value (when value (->rvalue value))]
+      (case filter-type
+        :contains    (ga-filter field "=@" value)
+        :starts-with (ga-filter field "=~^" (escape-for-regex value))
+        :ends-with   (ga-filter field "=~"  (escape-for-regex value) "$")
+        :=           (ga-filter field "==" value)
+        :>           (ga-filter field ">" value)
+        :<           (ga-filter field "<" value)
+        :>=          (ga-filter field ">=" value)
+        :<=          (ga-filter field "<=" value)
+        :between     (str (ga-filter field ">=" (->rvalue (:min-val filter)))
+                          ";"
+                          (ga-filter field "<=" (->rvalue (:max-val filter))))))))
 
-(defn- parse-filter-clause [{:keys [compound-type subclause subclauses], :as clause}]
+(defn- parse-filter-clause:filter [{:keys [compound-type subclause subclauses], :as clause}]
   (case compound-type
-    :and (s/join ";" (remove nil? (mapv parse-filter-clause subclauses)))
-    :or  (s/join "," (remove nil? (mapv parse-filter-clause subclauses)))
-    :not (parse-filter-subclause subclause :negate)
-    nil  (parse-filter-subclause clause)))
+    :and (s/join ";" (remove nil? (mapv parse-filter-clause:filter subclauses)))
+    :or  (s/join "," (remove nil? (mapv parse-filter-clause:filter subclauses)))
+    :not (parse-filter-subclause:filter subclause :negate)
+    nil  (parse-filter-subclause:filter clause)))
 
 (defn- handle-filter [{filter-clause :filter}]
   (when filter-clause
-    (let [filter (parse-filter-clause filter-clause)]
+    (let [filter (parse-filter-clause:filter filter-clause)]
       (when-not (s/blank? filter) filter))))
 
+(defn- parse-filter-subclause:interval [{:keys [filter-type field value] :as filter} & [negate?]]
+  (if negate? (throw (Exception. ":not is :not yet implemented")))
+  (when (instance? DateTimeField field)
+    (case filter-type
+      :between {:start-date (->rvalue (:min-val filter))
+                :end-date   (->rvalue (:max-val filter))}
+      :>       {:start-date (->rvalue (:value filter))
+                :end-date   latest-date}
+      :<       {:start-date earliest-date
+                :end-date   (->rvalue (:value filter))}
+      :=       {:start-date (->rvalue (:value filter))
+                :end-date   (->rvalue (:value filter))})))
 
-(defn- format-ga-date [{:keys [amount unit value]}]
-  (cond
-    value                             (.format (java.text.SimpleDateFormat. "yyyy-MM-dd") value)
-    (and (= unit :day) (= amount 0))  "today"
-    (and (= unit :day) (= amount -1)) "yesterday"
-    (and (= unit :day) (< amount -1)) (str (- amount) "daysAgo")))
-
-(defn- parse-date-filter-subclause [{:keys [filter-type field value] :as filter} & [negate?]]
-  (case filter-type
-    :between {:start-date (format-ga-date (:min-val filter))
-              :end-date (format-ga-date  (:max-val filter))}
-    :=       {:start-date "TODO"
-              :end-date "TODO"}))
-
-(defn- parse-date-filter-clause [{:keys [compound-type subclause subclauses], :as clause}]
+(defn- parse-filter-clause:interval [{:keys [compound-type subclause subclauses], :as clause}]
   (case compound-type
-    :and (apply concat (mapv parse-date-filter-clause subclauses))
-    :or  (apply concat (mapv parse-date-filter-clause subclauses))
-    :not (parse-date-filter-clause subclause)
-    nil  (when (isa? (get-in clause [:field :field :base-type]) :type/DateTime)
-           [(parse-date-filter-subclause clause)])))
+    :and (apply concat (remove nil? (mapv parse-filter-clause:interval subclauses)))
+    :or  (apply concat (remove nil? (mapv parse-filter-clause:interval subclauses)))
+    :not (remove nil? [(parse-filter-subclause:interval subclause :negate)])
+    nil  (remove nil? [(parse-filter-subclause:interval clause)])))
 
 (defn- extract-start-end-date [{filter-clause :filter}]
-  (let [date-filters (if filter-clause (parse-date-filter-clause filter-clause) [])]
+  (let [date-filters (if filter-clause (parse-filter-clause:interval filter-clause) [])]
+    (log/info date-filters)
     (case (count date-filters)
-      0 {:start-date "2005-01-01" :end-date "today"}
+      0 {:start-date earliest-date :end-date latest-date}
       1 (first date-filters)
-      (throw (Exception. "Multiple date filters are not allowed")))))
+      (throw (Exception. "Multiple date filters are not supported")))))
 
 ;;; ### order-by
 

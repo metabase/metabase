@@ -192,7 +192,8 @@
                                                         :base-type (ga-type->base-type (.getDataType col))})
                                           base-types (for [col columns] (:base-type col))
                                           ; replace last column name with :count for now since that's what our fake aggregation is
-                                          columns    (conj (vec (butlast columns)) (assoc (last columns) :name :count))]
+                                          columns    (conj (vec (butlast columns)) (assoc (last columns) :name :count))
+                                          ]
                                       {:columns (map :name columns)
                                        :cols    columns
                                        :rows    (for [row (.getRows response)]
