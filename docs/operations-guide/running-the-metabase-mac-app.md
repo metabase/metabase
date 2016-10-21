@@ -28,6 +28,6 @@ Now that you’ve installed Metabase, it’s time to [set it up and connect it t
 ### The application database
 
 The application database lives on your filesystem, at 
-`~/Library/Application Support/Metabase/metabase.db.h2.db`
+`~/Library/Application Support/Metabase/metabase.db.mv.db`
 
 If you want to delete it, back it up, or replace it with an old backup, shut down the application and then delete, copy or replace the file.
