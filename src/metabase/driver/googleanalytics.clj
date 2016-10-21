@@ -114,12 +114,14 @@
   (let [client   (database->client database)
         response (execute (.list (.columns (.metadata client)) "ga"))]
     (for [column (.getItems response)
-           :let [attrs (.getAttributes column)]
-           :when (and (= (get attrs "status") "PUBLIC") (= (get attrs "type") "DIMENSION"))]
+          :let [attrs (.getAttributes column)]
+          :when (and (= (get attrs "status") "PUBLIC") (= (get attrs "type") "DIMENSION"))]
       {:name         (.getId column)
       ;  :display-name (get attrs "uiName")
       ;  :description  (get attrs "description")
-       :base-type    (ga-type->base-type (get attrs "dataType"))})))
+       :base-type    (if (= (.getId column) "ga:date")
+                       :type/Date
+                       (ga-type->base-type (get attrs "dataType")))})))
 
 (defn- process-query-in-context [qp]
   (fn [query]

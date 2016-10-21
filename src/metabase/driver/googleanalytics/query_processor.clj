@@ -9,13 +9,17 @@
   [chars escape-char]
   (into {} (zipmap chars (map #(str escape-char %) chars))))
 
-(defn escape-for-regex
+(defn- escape-for-regex
   [str]
   (s/escape str (escape-map ".\\+*?[^]$(){}=!<>|:-" "\\")))
 
-(defn escape-for-filter-clause
+(defn- escape-for-filter-clause
   [str]
   (s/escape str (escape-map ",;\\" "\\")))
+
+(defn- ga-filter
+  [& parts]
+  (escape-for-filter-clause (apply str parts)))
 
 ;;; ### breakout
 
@@ -26,27 +30,65 @@
 
 ;;; ### filter
 
+;; TODO: implement negate?
 (defn- parse-filter-subclause [{:keys [filter-type field value] :as filter} & [negate?]]
   (let [field (when field (:field-name field))
-        value (when value (:value value))
-        v     (case filter-type
-                :contains    (str "=@"  value)
-                :starts-with (str "=~^" (escape-for-regex value))
-                :ends-with   (str "=~"  (escape-for-regex value) "$")
-                :=           (str "==" value)
-                :!=          (str "!=" value))]
-    (escape-for-filter-clause (str field v))))
+        value (when value (:value value))]
+    ;; "when field" ends up filtering out datetime filters, which we want, but there's probably a better way
+    (when field (case filter-type
+                  :contains    (ga-filter field "=@" value)
+                  :starts-with (ga-filter field "=~^" (escape-for-regex value))
+                  :ends-with   (ga-filter field "=~"  (escape-for-regex value) "$")
+                  :=           (ga-filter field "==" value)
+                  :>           (ga-filter field ">" value)
+                  :<           (ga-filter field "<" value)
+                  :>=          (ga-filter field ">=" value)
+                  :<=          (ga-filter field "<=" value)
+                  :between     (str (ga-filter field ">=" (:value (:min-val filter)))
+                                    ";"
+                                    (ga-filter field ">=" (:value (:min-val filter))))))))
 
 (defn- parse-filter-clause [{:keys [compound-type subclause subclauses], :as clause}]
   (case compound-type
-    :and (s/join ";" (mapv parse-filter-clause subclauses))
-    :or  (s/join "," (mapv parse-filter-clause subclauses))
+    :and (s/join ";" (remove nil? (mapv parse-filter-clause subclauses)))
+    :or  (s/join "," (remove nil? (mapv parse-filter-clause subclauses)))
     :not (parse-filter-subclause subclause :negate)
     nil  (parse-filter-subclause clause)))
 
 (defn- handle-filter [{filter-clause :filter}]
   (when filter-clause
-    (parse-filter-clause filter-clause)))
+    (let [filter (parse-filter-clause filter-clause)]
+      (when-not (s/blank? filter) filter))))
+
+
+(defn- format-ga-date [{:keys [amount unit value]}]
+  (cond
+    value                             (.format (java.text.SimpleDateFormat. "yyyy-MM-dd") value)
+    (and (= unit :day) (= amount 0))  "today"
+    (and (= unit :day) (= amount -1)) "yesterday"
+    (and (= unit :day) (< amount -1)) (str (- amount) "daysAgo")))
+
+(defn- parse-date-filter-subclause [{:keys [filter-type field value] :as filter} & [negate?]]
+  (case filter-type
+    :between {:start-date (format-ga-date (:min-val filter))
+              :end-date (format-ga-date  (:max-val filter))}
+    :=       {:start-date "TODO"
+              :end-date "TODO"}))
+
+(defn- parse-date-filter-clause [{:keys [compound-type subclause subclauses], :as clause}]
+  (case compound-type
+    :and (apply concat (mapv parse-date-filter-clause subclauses))
+    :or  (apply concat (mapv parse-date-filter-clause subclauses))
+    :not (parse-date-filter-clause subclause)
+    nil  (when (isa? (get-in clause [:field :field :base-type]) :type/DateTime)
+           [(parse-date-filter-subclause clause)])))
+
+(defn- extract-start-end-date [{filter-clause :filter}]
+  (let [date-filters (if filter-clause (parse-date-filter-clause filter-clause) [])]
+    (case (count date-filters)
+      0 {:start-date "2005-01-01" :end-date "today"}
+      1 (first date-filters)
+      (throw (Exception. "Multiple date filters are not allowed")))))
 
 ;;; ### order-by
 
@@ -66,16 +108,13 @@
 
 (defn mbql->native [query]
   "Transpile MBQL query into parameters required for a Google Analytics request."
-  {:query {:start-date  "2005-01-01"
-           :end-date    "today"
-           :metrics     (get-in query [:ga :metrics])
-           :segment     (get-in query [:ga :segment])
-           :dimensions  (handle-breakout (:query query))
-           :filters     (handle-filter (:query query))
-           :sort        (handle-order-by (:query query))
-           :max-results (handle-limit (:query query))}})
-
-
+  {:query (merge (extract-start-end-date (:query query))
+                 {:metrics     (get-in query [:ga :metrics])
+                  :dimensions  (handle-breakout (:query query))
+                  :sort        (handle-order-by (:query query))
+                  :segment     (get-in query [:ga :segment])
+                  :filters     (handle-filter (:query query))
+                  :max-results (handle-limit (:query query))})})
 
 (defn- builtin-metric?
   [aggregation]
@@ -93,13 +132,13 @@
   [filter-clause]
   (let [segments (for [f filter-clause :when (builtin-segment? f)] (get f 1))]
     (cond
-      (= 1 (count segments)) (first segments)
-      (< 1 (count segments)) (throw (Exception. "Only one Google Analytics segment allowed at a time.")))))
+      (= (count segments) 1) (first segments)
+      (> (count segments) 1) (throw (Exception. "Only one Google Analytics segment allowed at a time.")))))
 
 (defn- remove-builtin-segments
   [filter-clause]
-  (let [filter-clause (filter (complement builtin-segment?) filter-clause)]
-    (if (> 1 (count filter-clause))
+  (let [filter-clause (vec (filter (complement builtin-segment?) filter-clause))]
+    (if (> (count filter-clause) 1)
       filter-clause)))
 
 (defn transform-query [query]
