@@ -201,6 +201,7 @@ export default class AccordianList extends Component {
                                         onChange={(val) => this.setState({searchText: val})}
                                         searchText={this.state.searchText}
                                         placeholder={searchPlaceholder}
+                                        autoFocus
                                     />
                                 </div>
                             </div>
