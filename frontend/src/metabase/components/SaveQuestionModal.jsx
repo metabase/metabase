@@ -2,6 +2,8 @@ import React, { Component, PropTypes } from "react";
 
 import ReactCSSTransitionGroup from "react-addons-css-transition-group";
 
+import CheckBox from "metabase/components/CheckBox.jsx";
+import DurationPicker from "metabase/components/DurationPicker.jsx";
 import FormField from "metabase/components/FormField.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
 
@@ -26,7 +28,13 @@ export default class SaveQuestionModal extends Component {
             details: {
                 name: props.card.name || isStructured ? Query.generateQueryDescription(props.tableMetadata, props.card.dataset_query.query) : "",
                 description: props.card.description || null,
-                saveType: props.originalCard ? "overwrite" : "create"
+                saveType: props.originalCard ? "overwrite" : "create",
+                cacheResult: props.cacheResult || false,
+                cacheMaxAge: props.cacheMaxAge || 0
+            },
+            cacheMaxAge: {
+                timeUnit: "seconds",
+                value: props.cacheMaxAge || 0
             }
         };
     }
@@ -73,6 +81,17 @@ export default class SaveQuestionModal extends Component {
         this.setState({ details: { ...this.state.details, [fieldName]: fieldValue ? fieldValue : null }});
     }
 
+    onCacheMaxAgeChange(e) {
+        let state = {
+            details: {...this.state.details, cacheMaxAge: e.valueInSeconds},
+            cacheMaxAge: {
+                timeUnit: e.timeUnit,
+                value: e.value
+            }
+        };
+        this.setState(state);
+    }
+
     async formSubmitted(e) {
         try {
             e.preventDefault();
@@ -88,7 +107,9 @@ export default class SaveQuestionModal extends Component {
                 // since description is optional, it can be null, so check for a description before trimming it
                 description: details.saveType === "overwrite" ?
                     originalCard.description :
-                    details.description ? details.description.trim() : null
+                    details.description ? details.description.trim() : null,
+                cache_result: details.cacheResult || false,
+                cache_max_age: details.cacheResult ? details.cacheMaxAge || 0 : 0
             };
 
             if (details.saveType === "create") {
@@ -154,6 +175,21 @@ export default class SaveQuestionModal extends Component {
             );
         }
 
+        let cacheMaxAge = null;
+        if (this.state.details.cacheResult) {
+            cacheMaxAge = (
+                <FormField
+                    key="cacheMaxAge"
+                    displayName="For how long should we reuse the cached result?"
+                    fieldName="cacheMaxAge"
+                    errors={this.state.errors}>
+                    <DurationPicker inputClass="Form-input" selectClass="Form-input" name="cacheMaxAge"
+                                    value={this.state.cacheMaxAge.value} timeUnit={this.state.cacheMaxAge.timeUnit}
+                                    onChange={(e) => this.onCacheMaxAgeChange(e)}/>
+                </FormField>
+            );
+        }
+
         let title = this.props.addToDashboard ? "First, Save Your Question" : "Save Question";
 
         return (
@@ -186,6 +222,19 @@ export default class SaveQuestionModal extends Component {
                                         errors={this.state.errors}>
                                         <textarea className="Form-input full" name="description" placeholder="It's optional but oh, so helpful" value={this.state.details.description} onChange={(e) => this.onChange("description", e.target.value)} />
                                     </FormField>
+                                    <FormField
+                                        key="cacheResult"
+                                        displayName="Should we cache the result of this question?"
+                                        fieldName="cacheResult"
+                                        errors={this.state.errors}>
+                                        <CheckBox
+                                            checkColor="currentColor"
+                                            borderColor={details.cacheResult ? "currentColor" : undefined} size={20}
+                                            checked={this.state.details.cacheResult}
+                                            onChange={(e) => this.onChange("cacheResult", e.target.checked)}
+                                        />
+                                    </FormField>
+                                    {cacheMaxAge}
                                 </div>
                             }
                         </ReactCSSTransitionGroup>
