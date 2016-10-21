@@ -3,55 +3,71 @@ import React, {Component, PropTypes} from "react";
 export default class DurationPicker extends Component {
 
     static propTypes = {
-        value: PropTypes.int,
-        timeUnit: PropTypes.timeUnit,
+        valueInSeconds: PropTypes.number,
         name: PropTypes.string,
         inputClass: PropTypes.string,
         selectClass: PropTypes.string,
         onChange: PropTypes.func
     };
 
+    // IMPORTANT: keep this sort order. The fromSeconds depends of it
+    static timeUnitToSecondsConstants = {
+        days: 86400,
+        hours: 3600,
+        minutes: 60,
+        seconds: 1
+    };
+
+    static toSeconds(timeUnit, value) {
+        return value * DurationPicker.timeUnitToSecondsConstants[timeUnit];
+    }
+
+    static fromSeconds(valueInSeconds){
+        let entries = Object.entries(DurationPicker.timeUnitToSecondsConstants);
+
+        // finds the first element that divides exactly the valueInSeconds
+        let [timeUnit, timeUnitMultiplier] = entries.find(([_, value]) => valueInSeconds % value === 0);
+
+        return {timeUnit: timeUnit, value: valueInSeconds / timeUnitMultiplier};
+    }
+
+    constructor(props, context) {
+        super(props, context);
+
+        this.state = DurationPicker.fromSeconds(props.valueInSeconds || 1);
+    }
+
     onChangeValue(e) {
-        this.notifyUpdate({value: e.target.value, timeUnit: this.props.timeUnit});
+        this.notifyUpdate({value: e.target.value, timeUnit: this.state.timeUnit});
     }
 
     onChangeTimeUnit(e) {
-        this.notifyUpdate({value: this.props.value, timeUnit: e.target.value});
+        this.notifyUpdate({value: this.state.value, timeUnit: e.target.value});
     }
+
 
     notifyUpdate(state) {
 
+        this.setState(state);
+
         const {value, timeUnit} = state;
 
-        let valueInSeconds = 0;
-
-        switch (timeUnit) {
-            case "seconds":
-                valueInSeconds = value;
-                break;
-            case "minutes":
-                valueInSeconds = value * 60;
-                break;
-            case "hours":
-                valueInSeconds = value * 3600;
-                break;
-            case "days":
-                valueInSeconds = value * 86400;
-                break;
-        }
+        let valueInSeconds = DurationPicker.toSeconds(timeUnit, value);
 
         if (this.props.onChange) {
             // TODO: use a proper event object?
             this.props.onChange({
+                ...state,
                 valueInSeconds: valueInSeconds,
-                value: value,
-                timeUnit: timeUnit
             });
         }
     }
 
     render() {
-        const {value, timeUnit, name, inputClass, selectClass} = this.props;
+        const {name, inputClass, selectClass} = this.props;
+
+        const {value, timeUnit} = this.state;
+
         return (
             <div>
                 <input type="number" className={inputClass} name={name} value={value}

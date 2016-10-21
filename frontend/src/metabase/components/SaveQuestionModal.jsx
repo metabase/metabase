@@ -31,10 +31,6 @@ export default class SaveQuestionModal extends Component {
                 saveType: props.originalCard ? "overwrite" : "create",
                 cacheResult: props.cacheResult || false,
                 cacheMaxAge: props.cacheMaxAge || 0
-            },
-            cacheMaxAge: {
-                timeUnit: "seconds",
-                value: props.cacheMaxAge || 0
             }
         };
     }
@@ -46,7 +42,7 @@ export default class SaveQuestionModal extends Component {
         createFn: PropTypes.func.isRequired,
         saveFn: PropTypes.func.isRequired,
         closeFn: PropTypes.func.isRequired
-    }
+    };
 
     componentDidMount() {
         this.validateForm();
@@ -78,18 +74,8 @@ export default class SaveQuestionModal extends Component {
     }
 
     onChange(fieldName, fieldValue) {
+        console.log(fieldName, fieldValue);
         this.setState({ details: { ...this.state.details, [fieldName]: fieldValue ? fieldValue : null }});
-    }
-
-    onCacheMaxAgeChange(e) {
-        let state = {
-            details: {...this.state.details, cacheMaxAge: e.valueInSeconds},
-            cacheMaxAge: {
-                timeUnit: e.timeUnit,
-                value: e.value
-            }
-        };
-        this.setState(state);
     }
 
     async formSubmitted(e) {
@@ -184,8 +170,8 @@ export default class SaveQuestionModal extends Component {
                     fieldName="cacheMaxAge"
                     errors={this.state.errors}>
                     <DurationPicker inputClass="Form-input" selectClass="Form-input" name="cacheMaxAge"
-                                    value={this.state.cacheMaxAge.value} timeUnit={this.state.cacheMaxAge.timeUnit}
-                                    onChange={(e) => this.onCacheMaxAgeChange(e)}/>
+                                    valueInSeconds={this.state.details.cacheMaxAge}
+                                    onChange={(e) => this.onChange("cacheMaxAge", e.valueInSeconds)}/>
                 </FormField>
             );
         }
