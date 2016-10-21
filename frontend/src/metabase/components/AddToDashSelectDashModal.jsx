@@ -1,6 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
 import CreateDashboardModal from 'metabase/components/CreateDashboardModal.jsx';
+import Icon from 'metabase/components/Icon.jsx';
 import ModalContent from "metabase/components/ModalContent.jsx";
 import SortableItemList from 'metabase/components/SortableItemList.jsx';
 
@@ -59,17 +60,21 @@ export default class AddToDashSelectDashModal extends Component {
                     title="Add Question to Dashboard"
                     closeFn={this.props.closeFn}
                 >
+                <div className="flex flex-column">
+                    <div
+                        className="text-brand-hover flex-align-right px2 cursor-pointer"
+                        onClick={() => this.setState({ shouldCreateDashboard: true })}
+                    >
+                        <div className="flex align-center">
+                            <Icon name="add" size={16} />
+                            <h3 className="ml1">Add to new dashboard</h3>
+                        </div>
+                    </div>
                     <SortableItemList
                         items={this.state.dashboards}
                         onClickItemFn={this.addToDashboard}
                     />
-                    <button
-                        className="Button Button--primary"
-                        onClick={() => this.setState({shouldCreateDashboard: true})}
-                    >
-                        Or Create A New Dashboard
-                    </button>
-
+                </div>
                 </ModalContent>
             );
         }
