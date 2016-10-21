@@ -159,7 +159,7 @@
 
 (defendpoint POST "/"
   "Create a new `Card`."
-  [:as {{:keys [dataset_query description display name visualization_settings]} :body}]
+  [:as {{:keys [dataset_query description display name visualization_settings cache_result cache_max_age]} :body}]
   {name                   [Required NonEmptyString]
    display                [Required NonEmptyString]
    visualization_settings [Required Dict]}
@@ -171,8 +171,8 @@
          :display                display
          :name                   name
          :visualization_settings visualization_settings
-         :cache_result true
-         :cache_max_age 120)
+         :cache_result (boolean cache_result)
+         :cache_max_age (if (boolean cache_result) cache_max_age 0))
        (events/publish-event :card-create)))
 
 

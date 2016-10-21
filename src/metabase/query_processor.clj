@@ -580,10 +580,10 @@
 (defn- check-cache-params
   "Validate if cache related params are valid"
   [card-id use-cache cache-max-age]
-  (let [use-cache?  (not (nil? use-cache))
-        card-id? (and (not (nil? card-id)) (integer? card-id))
-        cache-max-age? (and (not (nil? cache-max-age)) (integer? cache-max-age) (> cache-max-age 0))]
-    (or (not card-id?) (and use-cache? cache-max-age?))))
+  (let [use-cache?  (boolean use-cache)
+        card-id? (and (some? card-id) (integer? card-id))
+        cache-max-age? (and (some? cache-max-age) (integer? cache-max-age) (> cache-max-age 0))]
+    (or (not card-id?) (not use-cache?) (and use-cache? cache-max-age?))))
 
 (defn dataset-query
   "Process and run a json based dataset query and return results.
