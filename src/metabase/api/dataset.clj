@@ -48,26 +48,32 @@
                 (float (/ (reduce + running-times)
                           (count running-times))))}))
 
+(defn as-csv
+  "Return a CSV response containing the RESULTS of a query."
+  {:arglists '([results])}
+  [{{:keys [columns rows]} :data, :keys [status], :as response}]
+  (if (= status :completed)
+    ;; successful query, send CSV file
+    {:status  200
+     :body    (with-out-str
+                ;; turn keywords into strings, otherwise we get colons in our output
+                (csv/write-csv *out* (into [(mapv name columns)] rows)))
+     :headers {"Content-Type" "text/csv; charset=utf-8"
+               "Content-Disposition" (str "attachment; filename=\"query_result_" (u/date->iso-8601) ".csv\"")}}
+    ;; failed query, send error message
+    {:status 500
+     :body   (:error response)}))
+
 (defendpoint POST "/csv"
-  "Execute an MQL query and download the result data as a CSV file."
+  "Execute a query and download the result data as a CSV file."
   [query]
   {query [Required String->Dict]}
   (read-check Database (:database query))
-  (let [{{:keys [columns rows]} :data :keys [status] :as response} (qp/dataset-query query {:executed-by *current-user-id*})
-        columns (map name columns)] ; turn keywords into strings, otherwise we get colons in our output
-    (if (= status :completed)
-      ;; successful query, send CSV file
-      {:status  200
-       :body    (with-out-str
-                  (csv/write-csv *out* (into [columns] rows)))
-       :headers {"Content-Type" "text/csv; charset=utf-8"
-                 "Content-Disposition" (str "attachment; filename=\"query_result_" (u/date->iso-8601) ".csv\"")}}
-      ;; failed query, send error message
-      {:status 500
-       :body   (:error response)})))
+  (as-csv (qp/dataset-query query {:executed-by *current-user-id*})))
 
 
 ;; TODO - AFAIK this endpoint is no longer used. Remove it? </3
+;; (We have POST /api/card/:id/query now which is used instead)
 (defendpoint GET "/card/:id"
   "Execute the MQL query for a given `Card` and retrieve both the `Card` and the execution results as JSON.
    This is a convenience endpoint which simplifies the normal 2 api calls to fetch the `Card` then execute its query."
