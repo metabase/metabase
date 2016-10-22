@@ -1,5 +1,11 @@
 (ns metabase.db.migrations
-  "Clojure-land data migration definitions and fns for running them."
+  "Clojure-land data migration definitions and fns for running them.
+   These migrations are all ran once when Metabase is first launched, except when transferring data from an existing H2 database.
+   When data is transferred from an H2 database, migrations will already have been ran against that data; thus, all of these migrations
+   need to be repeatable, e.g.:
+
+     CREATE TABLE IF NOT EXISTS ... -- Good
+     CREATE TABLE ...               -- Bad"
   (:require [clojure.string :as s]
             [clojure.tools.logging :as log]
             (metabase [config :as config]
@@ -228,13 +234,15 @@
         {admin-group-id :id}     (perm-group/admin)]
     (binding [perm-membership/*allow-changing-all-users-group-members* true]
       (doseq [{user-id :id, superuser? :is_superuser} (db/select [User :id :is_superuser])]
-        (db/insert! PermissionsGroupMembership
-          :user_id  user-id
-          :group_id all-users-group-id)
-        (when superuser?
+        (u/ignore-exceptions
           (db/insert! PermissionsGroupMembership
             :user_id  user-id
-            :group_id admin-group-id))))))
+            :group_id all-users-group-id))
+        (when superuser?
+          (u/ignore-exceptions
+            (db/insert! PermissionsGroupMembership
+              :user_id  user-id
+              :group_id admin-group-id)))))))
 
 ;; admin group has a single entry that lets it access to everything
 (defmigration add-admin-group-root-entry
