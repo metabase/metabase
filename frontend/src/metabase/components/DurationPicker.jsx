@@ -25,7 +25,7 @@ export default class DurationPicker extends Component {
     static fromSeconds(valueInSeconds){
         let entries = Object.entries(DurationPicker.timeUnitToSecondsConstants);
 
-        // finds the first element that divides exactly the valueInSeconds
+        // finds the first element that divides valueInSeconds
         let [timeUnit, timeUnitMultiplier] = entries.find(([_, value]) => valueInSeconds % value === 0);
 
         return {timeUnit: timeUnit, value: valueInSeconds / timeUnitMultiplier};

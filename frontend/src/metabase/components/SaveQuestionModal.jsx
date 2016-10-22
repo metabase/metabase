@@ -74,7 +74,6 @@ export default class SaveQuestionModal extends Component {
     }
 
     onChange(fieldName, fieldValue) {
-        console.log(fieldName, fieldValue);
         this.setState({ details: { ...this.state.details, [fieldName]: fieldValue ? fieldValue : null }});
     }
 

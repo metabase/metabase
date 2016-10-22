@@ -5,8 +5,7 @@
     (metabase [db :as db])
     [metabase.models.interface :as i]
     [metabase.util :as u]
-    [clojure.tools.logging :as log])
-  (:import (java.util Date)))
+    [clojure.tools.logging :as log]))
 
 (i/defentity CardCache :report_card_cache)
 
@@ -18,20 +17,19 @@
            :can-read?    (constantly true)
            :can-write?   (constantly true)}))
 
-
-(defn- calc-age
-  "Returns the age in seconds from now to a given Date instance"
-  [time]
-  (if (some? time)
-    (int (/ (- (.getTime (new Date)) (.getTime time)) 1000))
-    Integer/MAX_VALUE))
+(defn- select-cache-entry-query
+  " Builds the 'where' part to fetch a cache entry. It makes
+  "
+  [card-id query-hash max-age]
+  (h/where [:= :card_id card-id]
+           [:= :query_hash query-hash]
+           [:<= :%now (hsql/call :dateadd (hsql/raw "'second'") max-age :updated_at)]))
 
 (defn fetch-from-cache
   "Fetch the result from cache if exists and if it is still valid, returns nil otherwise"
-  [query-id query-hash max-age]
-  (let [cached (CardCache :card_id query-id :query_hash query-hash)
-        time-diff (calc-age (:updated_at cached))]
-    (if (and (some? cached) (<= time-diff max-age))
+  [card-id query-hash max-age]
+  (let [cached (db/simple-select-one CardCache (select-cache-entry-query card-id query-hash max-age))]
+    (if (some? cached)
       (do (log/info "⚡ cached result") (:result cached))
       (log/info "☹ no cached result"))))
 
