@@ -9,11 +9,13 @@ databaseChangeLog:
               - column:
                   name: cache_result
                   type: boolean
+                  defaultValue: false
                   constraints:
                     nullable: false
               - column:
                   name: cache_max_age
                   type: int
+                  defaultValue: 0
                   constraints:
                     nullable: false
         - createTable:
