@@ -28,9 +28,11 @@
 (defn fetch-from-cache
   "Fetch the result from cache if exists and if it is still valid, returns nil otherwise"
   [card-id query-hash max-age]
-  (let [cached (db/simple-select-one CardCache (select-cache-entry-query card-id query-hash max-age))]
-    (if (some? cached)
-      (do (log/info "⚡ cached result") (:result cached))
+  (let [card-cache (db/simple-select-one CardCache (select-cache-entry-query card-id query-hash max-age))]
+    (if-let [result (:result card-cache)]
+      (do
+        (log/info "⚡ cached result")
+        (assoc result :from_cache true :cache_last_update (:updated_at card-cache)))
       (log/info "☹ no cached result"))))
 
 (defn update-cache!
