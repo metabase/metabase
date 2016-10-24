@@ -77,7 +77,7 @@
     "css-loader": "^0.23.1",
     "eslint": "^3.5.0",
     "eslint-loader": "^1.6.0",
-    "eslint-plugin-flow-vars": "^0.5.0",
+    "eslint-plugin-flowtype": "^2.22.0",
     "eslint-plugin-react": "^6.3.0",
     "exports-loader": "^0.6.3",
     "extract-text-webpack-plugin": "^1.0.1",
