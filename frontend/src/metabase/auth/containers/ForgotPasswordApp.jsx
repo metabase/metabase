@@ -1,5 +1,4 @@
 import React, { Component, PropTypes } from "react";
-import { AngularResourceProxy } from "metabase/lib/redux";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -15,7 +14,7 @@ import Icon from "metabase/components/Icon.jsx";
 import MetabaseSettings from "metabase/lib/settings";
 
 
-const SessionApi = new AngularResourceProxy("Session", ["forgot_password"]);
+import { SessionApi } from "metabase/services";
 
 
 export default class ForgotPasswordApp extends Component {

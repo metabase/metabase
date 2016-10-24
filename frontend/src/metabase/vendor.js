@@ -1,11 +1,5 @@
 import 'babel-polyfill';
 
-// angular:
-import 'angular';
-import 'angular-resource';
-import 'angular-cookie';
-import 'angular-http-auth';
-
 // ace:
 import 'ace/ace';
 import 'ace/ext-language_tools';

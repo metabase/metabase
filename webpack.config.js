@@ -114,7 +114,7 @@ var config = module.exports = {
             }
         ],
         noParse: [
-            /node_modules\/(angular|ace|moment|underscore)/ // doesn't include 'crossfilter', 'dc', and 'tether' due to use of 'require'
+            /node_modules\/(ace|moment|underscore)/ // doesn't include 'crossfilter', 'dc', and 'tether' due to use of 'require'
         ]
     },
 
@@ -124,14 +124,6 @@ var config = module.exports = {
             'metabase':             SRC_PATH,
             'style':                SRC_PATH + '/css/core/index.css',
 
-            // angular
-            'angular':              __dirname + '/node_modules/angular/angular.min.js',
-            'angular-cookies':      __dirname + '/node_modules/angular-cookies/angular-cookies.min.js',
-            'angular-resource':     __dirname + '/node_modules/angular-resource/angular-resource.min.js',
-            'angular-route':        __dirname + '/node_modules/angular-route/angular-route.min.js',
-            // angular 3rd-party
-            'angular-cookie':       __dirname + '/node_modules/angular-cookie/angular-cookie.min.js',
-            'angular-http-auth':    __dirname + '/node_modules/angular-http-auth/src/http-auth-interceptor.js',
             // ace
             'ace/ace':              __dirname + '/node_modules/ace-builds/src-min-noconflict/ace.js',
             'ace/ext-language_tools':__dirname+ '/node_modules/ace-builds/src-min-noconflict/ext-language_tools.js',
