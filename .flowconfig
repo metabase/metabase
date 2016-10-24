@@ -3,6 +3,7 @@
 .*/node_modules/postcss-import/node_modules/.*
 .*/node_modules/fixed-data-table/.*
 .*/node_modules/@kadira/storybook/node_modules/.*
+.*/node_modules/.*/\(lib\|test\).*\.json$
 
 [include]
 .*/frontend/.*

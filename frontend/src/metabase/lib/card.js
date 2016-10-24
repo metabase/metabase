@@ -61,6 +61,18 @@ export function isCardDirty(card, originalCard) {
     }
 }
 
+export function isCardRunnable(card) {
+    if (!card) {
+        return false;
+    }
+    const query = card.dataset_query;
+    if (query.query) {
+        return Query.canRun(query.query);
+    } else {
+        return (query.database != undefined && query.native.query !== "");
+    }
+}
+
 export function serializeCardForUrl(card) {
     var dataset_query = Utils.copy(card.dataset_query);
     if (dataset_query.query) {

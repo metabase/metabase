@@ -197,7 +197,7 @@ if (NODE_ENV === "hot") {
         config.entry.app
     ];
 
-    // suffixing with ".hot" allows us to run both `npm run build-hot` and `npm run test` or `npm run test-watch` simultaneously
+    // suffixing with ".hot" allows us to run both `yarn run build-hot` and `yarn run test` or `yarn run test-watch` simultaneously
     config.output.filename = "[name].hot.bundle.js?[hash]";
 
     // point the publicPath (inlined in index.html by HtmlWebpackPlugin) to the hot-reloading server

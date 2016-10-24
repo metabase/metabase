@@ -14,9 +14,9 @@ version() {
     echo "date=${info[3]}" >> resources/version.properties
 }
 
-npm-install() {
-    echo "Running 'npm install' to download javascript dependencies..." &&
-    npm install
+frontend-deps() {
+    echo "Running 'yarn' to download javascript dependencies..." &&
+    yarn
 }
 
 frontend() {
@@ -44,7 +44,7 @@ uberjar() {
 }
 
 all() {
-    version && npm-install && frontend && sample-dataset && uberjar
+    version && frontend-deps && frontend && sample-dataset && uberjar
 }
 
 # Default to running all but let someone specify one or more sub-tasks to run instead if desired

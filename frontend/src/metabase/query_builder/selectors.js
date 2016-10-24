@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import { getTemplateTags } from "metabase/meta/Card";
 
-import { isCardDirty } from "metabase/lib/card";
+import { isCardDirty, isCardRunnable } from "metabase/lib/card";
 import * as DataGrid from "metabase/lib/data_grid";
 import Query from "metabase/lib/query";
 import { parseFieldTarget } from "metabase/lib/query_time";
@@ -169,4 +169,9 @@ export const getFullDatasetQuery = createSelector(
 	[card, getParameters, parameterValues],
 	(card, parameters, parameterValues) =>
 		card && applyParameters(card, parameters, parameterValues)
+)
+
+export const getIsRunnable = createSelector(
+	[card],
+	(card) => isCardRunnable(card)
 )
