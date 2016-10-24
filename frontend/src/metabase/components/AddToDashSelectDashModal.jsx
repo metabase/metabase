@@ -65,7 +65,10 @@ export default class AddToDashSelectDashModal extends Component {
                         className="link flex-align-right px4 cursor-pointer"
                         onClick={() => this.setState({ shouldCreateDashboard: true })}
                     >
-                        <div className="flex align-center">
+                        <div
+                            className="flex align-center absolute"
+                            style={ { right: 40 } }
+                        >
                             <Icon name="add" size={16} />
                             <h3 className="ml1">Add to new dashboard</h3>
                         </div>
