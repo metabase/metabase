@@ -22,6 +22,8 @@
 
 (defrecord ^:private Dimension [^FieldInstance field, param]) ;; param is either a single param or a vector of params
 
+(defrecord ^:private Date [s])
+
 (defrecord ^:private DateRange [start end])
 
 (defrecord ^:private NumberValue [value])
@@ -29,10 +31,15 @@
 (defn- dimension-value->sql
   "Return an appropriate operator and rhs of a SQL `WHERE` clause, e.g. \"= 100\"."
   ^String [dimension-type value]
-  (if (contains? #{"date/range" "date/month-year" "date/quarter-year" "date/relative"} dimension-type)
+  (cond
     ;; for relative dates convert the param to a `DateRange` record type and call `->sql` on it
+    (contains? #{"date/range" "date/month-year" "date/quarter-year" "date/relative"} dimension-type)
     (->sql (map->DateRange ((resolve 'metabase.query-processor.parameters/date->range) value *timezone*))) ; TODO - get timezone from query dict
+    ;; for other date types convert the param to a date
+    (s/starts-with? dimension-type "date/")
+    (str "= " (->sql (map->Date {:s value})))
     ;; for everything else just call `->sql` on it directly
+    :else
     (str "= " (->sql value))))
 
 (defn- honeysql->sql ^String [x]
@@ -40,11 +47,20 @@
            :quoting ((resolve 'metabase.driver.generic-sql/quote-style) *driver*))))
 
 (defn- format-oracle-date [s]
-  (format "TO_TIMESTAMP('%s', 'yyyy-MM-dd')" (u/format-date "yyyy-MM-dd" (u/->Date s))))
+  (format "to_timestamp('%s', 'YYYY-MM-DD')" (u/format-date "yyyy-MM-dd" (u/->Date s))))
 
 (defn- oracle-driver? ^Boolean []
-  (when-let [oracle-driver-class (u/ignore-exceptions (Class/forName "metabase.driver.oracle.OracleDriver"))]
-    (instance? oracle-driver-class *driver*)))
+  ;; we can't just import OracleDriver the normal way here because that would cause a cyclic load dependency
+  (boolean (when-let [oracle-driver-class (u/ignore-exceptions (Class/forName "metabase.driver.oracle.OracleDriver"))]
+             (instance? oracle-driver-class *driver*))))
+
+(defn- format-date
+  ;; This is a dirty dirty HACK! Unfortuantely Oracle is super-dumb when it comes to automatically converting strings to dates
+  ;; so we need to add the cast here
+  [date]
+  (if (oracle-driver?)
+    (format-oracle-date date)
+    (str \' date \')))
 
 (extend-protocol ISQLParamSubstituion
   nil         (->sql [_]    "NULL")
@@ -62,20 +78,15 @@
                ((resolve 'metabase.driver.generic-sql/date) *driver* :day identifier)
                identifier))))
 
+  Date
+  (->sql [{:keys [s]}]
+    (format-date s))
+
   DateRange
   (->sql [{:keys [start end]}]
-    ;; This is a dirty dirty HACK! Unfortuantely Oracle is super-dumb when it comes to automatically converting strings to dates
-    ;; so we need to add the cast here
-    ;; TODO - fix this when we move to support native params in non-SQL databases
-    ;; Perhaps by making ->sql a multimethod that dispatches off of type and engine
-    (if (oracle-driver?)
-      (if (= start end)
-        (format "= %s" (format-oracle-date start))
-        (format "BETWEEN %s AND %s" (format-oracle-date start) (format-oracle-date end)))
-      ;; Not the Oracle driver
-      (if (= start end)
-        (format "= '%s'" start)
-        (format "BETWEEN '%s' AND '%s'" start end))))
+    (if (= start end)
+      (format "= %s" (format-date start))
+      (format "BETWEEN %s AND %s" (format-date start) (format-date end))))
 
   Dimension
   (->sql [{:keys [field param], :as dimension}]
