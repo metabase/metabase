@@ -150,10 +150,6 @@
   {:pre [(map? details-map)]}
   (boolean (get-tables {:details details-map})))
 
-(defn- process-query-in-context [qp]
-  (fn [query]
-    (qp (qp/transform-query query))))
-
 (defn- do-query
   [{{:keys [query]} :native, database :database}]
   (let [query   (if (string? query)
@@ -210,7 +206,6 @@
                                                 :display-name "Auth Code"
                                                 :placeholder  "4/HSk-KtxkSzTt61j5zcbee2Rmm5JHkRFbL5gD5lgkXek"
                                                 :required     true}])
-           :process-query-in-context (u/drop-first-arg process-query-in-context)
            :mbql->native             (u/drop-first-arg qp/mbql->native)
            :execute-query            (fn [_ query] (qp/execute-query do-query query))}))
 

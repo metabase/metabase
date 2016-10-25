@@ -13,6 +13,7 @@
             [metabase.util.schema :as su])
   (:import (metabase.query_processor.interface AgFieldRef
                                                BetweenFilter
+                                               BuiltinMetric
                                                BuiltinSegment
                                                ComparisonFilter
                                                CompoundFilter
@@ -142,6 +143,11 @@
   []
   (i/strict-map->AggregationWithoutField {:aggregation-type :cumulative-count}))
 
+(s/defn ^:ql ^:always-validate metric :- BuiltinMetric
+  "Aggregation clause. Built-in metric."
+  [metric-name]
+  (i/map->BuiltinMetric {:aggregation-type :metric, :metric-name metric-name}))
+
 (defn ^:ql ^:deprecated rows
   "Bare rows aggregation. This is the default behavior, so specifying it is deprecated."
   []
@@ -161,9 +167,10 @@
   ([query ag :- (s/maybe (s/pred map?))]
    (if-not ag
      query
-     (let [ag ((if (:field ag)
-                  i/map->AggregationWithField
-                  i/map->AggregationWithoutField) (update ag :aggregation-type normalize-token))]
+     (let [ag ((cond
+                 (core/= (:aggregation-type ag) :metric) i/map->BuiltinMetric
+                 (:field ag)                             i/map->AggregationWithField
+                 :else                                   i/map->AggregationWithoutField) (update ag :aggregation-type normalize-token))]
        (s/validate i/Aggregation ag)
        (assoc query :aggregation ag)))))
 
