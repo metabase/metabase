@@ -8,8 +8,23 @@ import { createSelector } from 'reselect';
 import * as Dashboard from "metabase/meta/Dashboard";
 import Metadata from "metabase/meta/metadata/Metadata";
 
-import type { CardObject } from "metabase/meta/types/Card";
-import type { ParameterMappingOption, ParameterObject, ParameterMappingObject } from "metabase/meta/types/Dashboard";
+import type { CardId, Card } from "metabase/meta/types/Card";
+import type { ParameterId, DashCardId, ParameterMappingUIOption, Parameter, ParameterMapping } from "metabase/meta/types/Dashboard";
+
+export type AugmentedParameterMapping = ParameterMapping & {
+    dashcard_id: DashCardId,
+    overlapMax?: number,
+    mappingsWithValues?: number,
+    values: Array<string>
+}
+
+export type MappingsByParameter = {
+    [key: ParameterId]: {
+        [key: DashCardId]: {
+            [key: CardId]: AugmentedParameterMapping
+        }
+    }
+}
 
 export const getDashboardId       = state => state.dashboard.dashboardId;
 export const getIsEditing         = state => state.dashboard.isEditing;
@@ -87,27 +102,27 @@ export const getMappingsByParameter = createSelector(
             return {};
         }
 
-        let mappingsByParameter = {};
+        let mappingsByParameter: MappingsByParameter = {};
+        let mappings: Array<AugmentedParameterMapping> = [];
         let countsByParameter = {};
-        let mappings = [];
         for (const dashcard of dashboard.ordered_cards) {
-            const cards: Array<CardObject> = [dashcard.card].concat(dashcard.series);
-            for (let mapping: ParameterMappingObject of (dashcard.parameter_mappings || [])) {
+            const cards: Array<Card> = [dashcard.card].concat(dashcard.series);
+            for (let mapping: ParameterMapping of (dashcard.parameter_mappings || [])) {
                 let card = _.findWhere(cards, { id: mapping.card_id });
-                let field = Dashboard.getParameterMappingTargetField(metadata, card, mapping.target);
+                let field = card && Dashboard.getParameterMappingTargetField(metadata, card, mapping.target);
                 let values = field && field.values() || [];
                 for (const value of values) {
                     countsByParameter = updateIn(countsByParameter, [mapping.parameter_id, value], (count = 0) => count + 1)
                 }
-                mapping = {
+                let augmentedMapping: AugmentedParameterMapping = {
                     ...mapping,
                     parameter_id: mapping.parameter_id,
                     dashcard_id: dashcard.id,
                     card_id: mapping.card_id,
                     values
                 };
-                mappingsByParameter = setIn(mappingsByParameter, [mapping.parameter_id, dashcard.id, mapping.card_id], mapping);
-                mappings.push(mapping);
+                mappingsByParameter = setIn(mappingsByParameter, [mapping.parameter_id, dashcard.id, mapping.card_id], augmentedMapping);
+                mappings.push(augmentedMapping);
             }
         }
         let mappingsWithValuesByParameter = {};
@@ -131,7 +146,7 @@ export const getMappingsByParameter = createSelector(
 export const makeGetParameterMappingOptions = () => {
     const getParameterMappingOptions = createSelector(
         [getMetadata, getEditingParameter, getCard],
-        (metadata, parameter: ParameterObject, card: CardObject): Array<ParameterMappingOption> => {
+        (metadata, parameter: Parameter, card: Card): Array<ParameterMappingUIOption> => {
             return Dashboard.getParameterMappingOptions(metadata, parameter, card);
         }
     );

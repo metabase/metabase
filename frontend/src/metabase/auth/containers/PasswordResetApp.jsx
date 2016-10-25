@@ -1,7 +1,6 @@
 import React, { Component, PropTypes } from "react";
 import { connect } from "react-redux";
 import { Link } from "react-router";
-import { AngularResourceProxy } from "metabase/lib/redux";
 
 import cx from "classnames";
 
@@ -17,7 +16,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import * as authActions from "../auth";
 
 
-const SessionApi = new AngularResourceProxy("Session", ["password_reset_token_valid"]);
+import { SessionApi } from "metabase/services";
 
 const mapStateToProps = (state, props) => {
     return {

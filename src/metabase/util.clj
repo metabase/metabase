@@ -705,11 +705,10 @@
     (s/replace (str k) #"^:" "")))
 
 (defn get-id
-  "Return the value of `:id` if OBJECT-OR-ID is a map, or otherwise return OBJECT-OR-ID as-is.
-   This is provided as a convenience to allow model-layer functions to easily accept either an object or raw ID.
-   This is guaranteed to return an integer ID; it will throw an Exception if it cannot find one."
+  "Return the value of `:id` if OBJECT-OR-ID is a map, or otherwise return OBJECT-OR-ID as-is if it is an integer.
+   This is guaranteed to return an integer ID; it will throw an Exception if it cannot find one.
+   This is provided as a convenience to allow model-layer functions to easily accept either an object or raw ID."
   ;; TODO - lots of functions can be rewritten to use this, which would make them more flexible
-  ;; TODO - should we allow a default option, or make a variation of this function that won't throw an Exception?
   ^Integer [object-or-id]
   (cond
     (map? object-or-id)     (recur (:id object-or-id))

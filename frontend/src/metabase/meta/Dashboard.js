@@ -3,9 +3,10 @@
 import type Metadata from "./metadata/Metadata";
 import type Table from "./metadata/Table";
 import type Field from "./metadata/Field";
+import type { FieldId } from "./types/Field";
 import type { TemplateTag } from "./types/Query";
-import type { CardObject } from "./types/Card";
-import type { ParameterOption, ParameterObject, ParameterMappingOption, ParameterMappingTarget, DimensionTarget, VariableTarget } from "./types/Dashboard";
+import type { Card } from "./types/Card";
+import type { ParameterOption, Parameter, ParameterMappingUIOption, ParameterMappingTarget, DimensionTarget, VariableTarget } from "./types/Dashboard";
 
 import { getTemplateTags } from "./Card";
 
@@ -67,11 +68,18 @@ export const PARAMETER_OPTIONS: Array<ParameterOption> = [
     },
 ];
 
-export const PARAMETER_SECTIONS = [
-    { id: "date",     name: "Time",             description: "Date range, relative date, time of day, etc." },
-    { id: "location", name: "Location",         description: "City, State, Country, ZIP code." },
-    { id: "id",       name: "ID",               description: "User ID, product ID, event ID, etc." },
-    { id: "category", name: "Other Categories", description: "Category, Type, Model, Rating, etc." },
+type ParameterSection = {
+    id: string,
+    name: string,
+    description: string,
+    options: Array<ParameterOption>
+};
+
+export const PARAMETER_SECTIONS: Array<ParameterSection> = [
+    { id: "date",     name: "Time",             description: "Date range, relative date, time of day, etc.", options: [] },
+    { id: "location", name: "Location",         description: "City, State, Country, ZIP code.", options: [] },
+    { id: "id",       name: "ID",               description: "User ID, product ID, event ID, etc.", options: [] },
+    { id: "category", name: "Other Categories", description: "Category, Type, Model, Rating, etc.", options: [] },
 ];
 
 for (const option of PARAMETER_OPTIONS) {
@@ -80,8 +88,10 @@ for (const option of PARAMETER_OPTIONS) {
     if (!section) {
         section = _.findWhere(PARAMETER_SECTIONS, { id: "category" });
     }
-    section.options = section.options || [];
-    section.options.push(option);
+    if (section) {
+        section.options = section.options || [];
+        section.options.push(option);
+    }
 }
 
 type Dimension = {
@@ -121,7 +131,7 @@ export function getTagDimension(tag: TemplateTag, dimension: Dimension): Dimensi
     }
 }
 
-export function getCardDimensions(metadata: Metadata, card: CardObject, filter: FieldFilter = () => true): Array<Dimension> {
+export function getCardDimensions(metadata: Metadata, card: Card, filter: FieldFilter = () => true): Array<Dimension> {
     if (card.dataset_query.type === "query") {
         const table = card.dataset_query.query.source_table != null ? metadata.table(card.dataset_query.query.source_table) : null;
         if (table) {
@@ -143,16 +153,24 @@ export function getCardDimensions(metadata: Metadata, card: CardObject, filter: 
     return [];
 }
 
+function getDimensionTargetFieldId(target: DimensionTarget): ?FieldId {
+    if (Array.isArray(target) && target[0] === "template-tag") {
+        return null;
+    } else {
+        return Query.getFieldTargetId(target);
+    }
+}
+
 export function getTableDimensions(table: Table, depth: number, filter: FieldFilter = () => true): Array<Dimension> {
     return _.chain(table.fields())
         .map(field => {
             let targetField = field.target();
             if (targetField && depth > 0) {
                 let targetTable = targetField.table();
-                return _.map(getTableDimensions(targetTable, depth - 1, filter), (dimension) => ({
+                return getTableDimensions(targetTable, depth - 1, filter).map((dimension: Dimension) => ({
                     ...dimension,
                     parentName: stripId(field.display_name),
-                    target: ["fk->", field.id, dimension.target[0] === "field-id" ? dimension.target[1] : dimension.target],
+                    target: ["fk->", field.id, getDimensionTargetFieldId(dimension.target)],
                     depth: dimension.depth + 1
                 }));
             } else if (filter(field)) {
@@ -164,7 +182,7 @@ export function getTableDimensions(table: Table, depth: number, filter: FieldFil
         .value();
 }
 
-export function getCardVariables(metadata: Metadata, card: CardObject, filter: TemplateTagFilter = () => true): Array<Variable> {
+export function getCardVariables(metadata: Metadata, card: Card, filter: TemplateTagFilter = () => true): Array<Variable> {
     if (card.dataset_query.type === "native") {
         let variables = [];
         for (const tag of getTemplateTags(card)) {
@@ -181,7 +199,7 @@ export function getCardVariables(metadata: Metadata, card: CardObject, filter: T
     return [];
 }
 
-export function getParameterMappingTargetField(metadata: Metadata, card: CardObject, target: ParameterMappingTarget): ?Field {
+export function getParameterMappingTargetField(metadata: Metadata, card: Card, target: ParameterMappingTarget): ?Field {
     if (target[0] === "dimension") {
         let dimension = target[1];
         if (Array.isArray(dimension) && dimension[0] === "template-tag") {
@@ -198,7 +216,7 @@ export function getParameterMappingTargetField(metadata: Metadata, card: CardObj
     return null;
 }
 
-function fieldFilterForParameter(parameter: ParameterObject): FieldFilter {
+function fieldFilterForParameter(parameter: Parameter): FieldFilter {
     const [type] = parameter.type.split("/");
     switch (type) {
         case "date":        return (field: Field) => field.isDate();
@@ -214,7 +232,7 @@ function fieldFilterForParameter(parameter: ParameterObject): FieldFilter {
     return (field: Field) => false;
 }
 
-function tagFilterForParameter(parameter: ParameterObject): TemplateTagFilter {
+function tagFilterForParameter(parameter: Parameter): TemplateTagFilter {
     const [type, subtype] = parameter.type.split("/");
     switch (type) {
         case "date":        return (tag: TemplateTag) => subtype === "single" && tag.type === "date";
@@ -231,7 +249,7 @@ const VARIABLE_ICONS = {
     "date": "calendar"
 };
 
-export function getParameterMappingOptions(metadata: Metadata, parameter: ParameterObject, card: CardObject): Array<ParameterMappingOption> {
+export function getParameterMappingOptions(metadata: Metadata, parameter: Parameter, card: Card): Array<ParameterMappingUIOption> {
     let options = [];
 
     // dimensions
@@ -264,7 +282,7 @@ export function getParameterMappingOptions(metadata: Metadata, parameter: Parame
     return options;
 }
 
-export function createParameter(option: ParameterOption, parameters: Array<ParameterOption> = []): ParameterObject {
+export function createParameter(option: ParameterOption, parameters: Array<ParameterOption> = []): Parameter {
     let name = option.name;
     let nameIndex = 0;
     // get a unique name
@@ -279,7 +297,7 @@ export function createParameter(option: ParameterOption, parameters: Array<Param
     return setParameterName(parameter, name);
 }
 
-export function setParameterName(parameter: ParameterObject, name: string): ParameterObject {
+export function setParameterName(parameter: Parameter, name: string): Parameter {
     return {
         ...parameter,
         name: name,
@@ -287,7 +305,7 @@ export function setParameterName(parameter: ParameterObject, name: string): Para
     };
 }
 
-export function setParameterDefaultValue(parameter: ParameterObject, value: string): ParameterObject {
+export function setParameterDefaultValue(parameter: Parameter, value: string): Parameter {
     return {
         ...parameter,
         default: value

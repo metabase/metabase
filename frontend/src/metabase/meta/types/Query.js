@@ -26,12 +26,12 @@ export type TemplateTag = {
     dimension?: ["field-id", number]
 };
 
-export type NativeQueryObject = {
+export type NativeQuery = {
     query: string,
     template_tags: { [key: string]: TemplateTag }
 };
 
-export type StructuredQueryObject = {
+export type StructuredQuery = {
     source_table: ?TableId,
     aggregation?: AggregationClause,
     breakout?:    BreakoutClause,

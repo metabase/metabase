@@ -5,16 +5,19 @@ import _ from "underscore";
 import moment from "moment";
 
 import { createAction } from "redux-actions";
-import { handleActions, combineReducers, AngularResourceProxy, createThunkAction } from "metabase/lib/redux";
+import { handleActions, combineReducers, createThunkAction } from "metabase/lib/redux";
 import { normalize, Schema, arrayOf } from "normalizr";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
 import { applyParameters } from "metabase/meta/Card";
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
+import Utils from "metabase/lib/utils";
 
-import type { DashboardObject, DashCardObject, DashCardId } from "metabase/meta/types/Dashboard";
-import type { CardObject, CardId } from "metabase/meta/types/Card";
+import type { Dashboard, DashCard, DashCardId } from "metabase/meta/types/Dashboard";
+import type { Card, CardId } from "metabase/meta/types/Card";
+
+import { DashboardApi, MetabaseApi, CardApi, RevisionApi } from "metabase/services";
 
 const DATASET_SLOW_TIMEOUT   = 15 * 1000;
 const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
@@ -71,14 +74,6 @@ export const SET_PARAMETER_NAME = "metabase/dashboard/SET_PARAMETER_NAME";
 export const SET_PARAMETER_VALUE = "metabase/dashboard/SET_PARAMETER_VALUE";
 export const SET_PARAMETER_DEFAULT_VALUE = "metabase/dashboard/SET_PARAMETER_DEFAULT_VALUE";
 
-// resource wrappers
-const DashboardApi = new AngularResourceProxy("Dashboard", [
-    "list", "get", "create", "update", "delete", "reposition_cards", "addcard", "removecard"
-]);
-const MetabaseApi = new AngularResourceProxy("Metabase", ["dataset", "dataset_duration", "db_metadata"]);
-const CardApi = new AngularResourceProxy("Card", ["list", "update", "delete", "query"]);
-const RevisionApi = new AngularResourceProxy("Revision", ["list", "revert"]);
-
 // action creators
 
 export const initialize = createAction(INITIALIZE);
@@ -110,10 +105,10 @@ export const deleteCard = createThunkAction(DELETE_CARD, function(cardId) {
 export const addCardToDashboard = function({ dashId, cardId }: { dashId: DashCardId, cardId: CardId }) {
     return function(dispatch, getState) {
         const { dashboards, dashcards, cards } = getState().dashboard;
-        const dashboard: DashboardObject = dashboards[dashId];
-        const existingCards: Array<DashCardObject> = dashboard.ordered_cards.map(id => dashcards[id]).filter(dc => !dc.isRemoved);
-        const card: CardObject = cards[cardId];
-        const dashcard: DashCardObject = {
+        const dashboard: Dashboard = dashboards[dashId];
+        const existingCards: Array<DashCard> = dashboard.ordered_cards.map(id => dashcards[id]).filter(dc => !dc.isRemoved);
+        const card: Card = cards[cardId];
+        const dashcard: DashCard = {
             id: Math.random(), // temporary id
             dashboard_id: dashId,
             card_id: card.id,
@@ -165,7 +160,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, d
             // if reload not set, check to see if the last result has the same query dict and return that
             const lastResult = i.getIn(dashcardData, [dashcard.id, card.id]);
             // "constraints" is added by the backend, remove it when comparing
-            if (lastResult && angular.equals(_.omit(lastResult.json_query, "constraints"), datasetQuery)) {
+            if (lastResult && Utils.equals(_.omit(lastResult.json_query, "constraints"), datasetQuery)) {
                 return {
                     dashcard_id: dashcard.id,
                     card_id: card.id,
@@ -189,7 +184,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(card, d
         }, DATASET_SLOW_TIMEOUT);
 
         // make the actual request
-        result = await fetchDataOrError(CardApi.query({cardID: card.id, parameters: datasetQuery.parameters}));
+        result = await fetchDataOrError(CardApi.query({cardId: card.id, parameters: datasetQuery.parameters}));
 
         clearTimeout(slowCardTimer);
 

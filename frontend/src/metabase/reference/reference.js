@@ -1,17 +1,16 @@
 import i from 'icepick';
 
-import { 
-    handleActions, 
+import {
+    handleActions,
     createAction,
     createThunkAction,
-    AngularResourceProxy,
     cleanResource,
     fetchData
 } from 'metabase/lib/redux';
 
 import MetabaseAnalytics from 'metabase/lib/analytics';
 
-const GettingStartedApi = new AngularResourceProxy("GettingStarted", ["get"]);
+import { GettingStartedApi } from "metabase/services";
 
 const FETCH_GUIDE = "metabase/reference/FETCH_GUIDE";
 export const fetchGuide = createThunkAction(FETCH_GUIDE, (reload = false) => {
@@ -24,11 +23,11 @@ export const fetchGuide = createThunkAction(FETCH_GUIDE, (reload = false) => {
         };
 
         return await fetchData({
-            dispatch, 
-            getState, 
-            requestStatePath, 
-            existingStatePath, 
-            getData, 
+            dispatch,
+            getState,
+            requestStatePath,
+            existingStatePath,
+            getData,
             reload
         });
     };
@@ -79,7 +78,7 @@ const initialState = {
 };
 export default handleActions({
     [FETCH_GUIDE]: {
-        next: (state, { payload }) => i.assoc(state, 'guide', payload) 
+        next: (state, { payload }) => i.assoc(state, 'guide', payload)
     },
     [SET_ERROR]: {
         throw: (state, { payload }) => i.assoc(state, 'error', payload)

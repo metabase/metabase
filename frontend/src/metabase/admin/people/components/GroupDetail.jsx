@@ -3,8 +3,9 @@ import React, { Component } from "react";
 import _ from "underscore";
 import cx from "classnames";
 
-import { AngularResourceProxy } from "metabase/lib/redux";
 import { isAdminGroup, isDefaultGroup, canEditMembership } from "metabase/lib/groups";
+
+import { PermissionsApi } from "metabase/services";
 
 import Icon from "metabase/components/Icon.jsx";
 import Popover from "metabase/components/Popover.jsx";
@@ -18,8 +19,6 @@ import AdminPaneLayout from "metabase/components/AdminPaneLayout.jsx";
 import Typeahead from "metabase/hoc/Typeahead.jsx";
 
 import AddRow from "./AddRow.jsx";
-
-const PermissionsAPI = new AngularResourceProxy("Permissions", ["createMembership", "deleteMembership"]);
 
 const GroupDescription = ({ group }) =>
     isDefaultGroup(group) ?
@@ -197,7 +196,7 @@ export default class GroupDetail extends Component {
         });
         try {
             await Promise.all(this.state.selectedUsers.map(async (user) => {
-                let members = await PermissionsAPI.createMembership({group_id: this.props.group.id, user_id: user.id});
+                let members = await PermissionsApi.createMembership({group_id: this.props.group.id, user_id: user.id});
                 this.setState({ members });
             }));
         } catch (error) {
@@ -226,7 +225,7 @@ export default class GroupDetail extends Component {
 
     async onRemoveUserClicked(membership) {
         try {
-            await PermissionsAPI.deleteMembership({ id: membership.membership_id })
+            await PermissionsApi.deleteMembership({ id: membership.membership_id })
             const newMembers = _.reject(this.getMembers(), (m) => m.user_id === membership.user_id);
             this.setState({ members: newMembers });
         } catch (error) {

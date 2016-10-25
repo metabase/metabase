@@ -1,6 +1,7 @@
 (ns metabase.api.card
   (:require [clojure.data :as data]
             [compojure.core :refer [GET POST DELETE PUT]]
+            [schema.core :as s]
             (metabase.api [common :refer :all]
                           [dataset :as dataset-api])
             (metabase [db :as db]
@@ -17,7 +18,8 @@
                              [table :refer [Table]]
                              [view-log :refer [ViewLog]])
             (metabase [query-processor :as qp]
-                      [util :as u])))
+                      [util :as u])
+            [metabase.util.schema :as su]))
 
 
 ;;; ------------------------------------------------------------ Hydration ------------------------------------------------------------
@@ -135,10 +137,9 @@
 
 ;;; ------------------------------------------------------------ /api/card & /api/card/:id endpoints ------------------------------------------------------------
 
-(defannotation CardFilterOption
-  "Option must be a valid card filter option."
-  [symb value :nillable]
-  (checkp-contains? (set (keys filter-option->fn)) symb (keyword value)))
+(def ^:private CardFilterOption
+  "Schema for a valid card filter option."
+  (apply s/enum (map name (keys filter-option->fn))))
 
 (defendpoint GET "/"
   "Get all the `Cards`. Option filter param `f` can be used to change the set of Cards that are returned; default is `all`,
@@ -147,22 +148,23 @@
 
    Optionally filter cards by LABEL slug."
   [f model_id label]
-  {f CardFilterOption, model_id Integer, label NonEmptyString}
-  (when (contains? #{:database :table} f)
-    (checkp (integer? model_id) "id" (format "id is required parameter when filter mode is '%s'" (name f)))
-    (case f
-      :database (read-check Database model_id)
-      :table    (read-check Database (db/select-one-field :db_id Table, :id model_id))))
-  (->> (cards-for-filter-option f model_id label)
-       (filterv models/can-read?))) ; filterv because we want make sure all the filtering is done while current user perms set is still bound
+  {f (s/maybe CardFilterOption), model_id (s/maybe su/IntGreaterThanZero), label (s/maybe su/NonBlankString)}
+  (let [f (keyword f)]
+    (when (contains? #{:database :table} f)
+      (checkp (integer? model_id) "id" (format "id is required parameter when filter mode is '%s'" (name f)))
+      (case f
+        :database (read-check Database model_id)
+        :table    (read-check Database (db/select-one-field :db_id Table, :id model_id))))
+    (->> (cards-for-filter-option f model_id label)
+         (filterv models/can-read?)))) ; filterv because we want make sure all the filtering is done while current user perms set is still bound
 
 
 (defendpoint POST "/"
   "Create a new `Card`."
   [:as {{:keys [dataset_query description display name visualization_settings]} :body}]
-  {name                   [Required NonEmptyString]
-   display                [Required NonEmptyString]
-   visualization_settings [Required Dict]}
+  {name                   su/NonBlankString
+   display                su/NonBlankString
+   visualization_settings su/Map}
   (check-403 (perms/set-has-full-permissions-for-set? @*current-user-permissions-set* (card/query-perms-set dataset_query :write)))
   (->> (db/insert! Card
          :creator_id             *current-user-id*
@@ -187,10 +189,10 @@
 (defendpoint PUT "/:id"
   "Update a `Card`."
   [id :as {{:keys [dataset_query description display name visualization_settings archived], :as body} :body}]
-  {name                   NonEmptyString
-   display                NonEmptyString
-   visualization_settings Dict
-   archived               Boolean}
+  {name                   (s/maybe su/NonBlankString)
+   display                (s/maybe su/NonBlankString)
+   visualization_settings (s/maybe su/Map)
+   archived               (s/maybe s/Bool)}
   (let [card (write-check Card id)]
     (db/update-non-nil-keys! Card id
       :dataset_query          dataset_query
@@ -249,7 +251,7 @@
 (defendpoint POST "/:card-id/labels"
   "Update the set of `Labels` that apply to a `Card`."
   [card-id :as {{:keys [label_ids]} :body}]
-  {label_ids [Required ArrayOfIntegers]}
+  {label_ids [su/IntGreaterThanZero]}
   (write-check Card card-id)
   (let [[labels-to-remove labels-to-add] (data/diff (set (db/select-field :label_id CardLabel :card_id card-id))
                                                     (set label_ids))]
@@ -264,7 +266,7 @@
 
 (defendpoint POST "/:card-id/query"
   "Run the query associated with a Card."
-  [card-id :as {{:keys [parameters timeout]} :body}]
+  [card-id :as {{:keys [parameters]} :body}]
   (let [card  (read-check Card card-id)
         query (assoc (:dataset_query card)
                 :parameters  parameters

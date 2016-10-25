@@ -1,6 +1,7 @@
 (ns metabase.api.table
   "/api/table endpoints."
   (:require [compojure.core :refer [GET POST PUT]]
+            [schema.core :as s]
             [metabase.api.common :refer :all]
             [metabase.db :as db]
             [metabase.driver :as driver]
@@ -8,17 +9,16 @@
                              [hydrate :refer :all]
                              [interface :as models]
                              [table :refer [Table] :as table])
-            [metabase.sync-database :as sync-database]))
+            [metabase.sync-database :as sync-database]
+            [metabase.util.schema :as su]))
 
-(defannotation TableEntityType
-  "Param must be one of `person`, `event`, `photo`, or `place`."
-  [symb value :nillable]
-  (checkp-contains? table/entity-types symb (keyword value)))
+(def ^:private TableEntityType
+  "Schema for a valid table entity type."
+  (apply s/enum (map name table/entity-types)))
 
-(defannotation TableVisibilityType
-  "Param must be one of `hidden`, `technical`, or `cruft`."
-  [symb value :nillable]
-  (checkp-contains? table/visibility-types symb (keyword value)))
+(def ^:private TableVisibilityType
+  "Schema for a valid table visibility type."
+  (apply s/enum (map name table/visibility-types)))
 
 (defendpoint GET "/"
   "Get all `Tables`."
@@ -39,9 +39,9 @@
 (defendpoint PUT "/:id"
   "Update `Table` with ID."
   [id :as {{:keys [display_name entity_type visibility_type description caveats points_of_interest show_in_getting_started]} :body}]
-  {display_name    NonEmptyString
-   entity_type     TableEntityType
-   visibility_type TableVisibilityType}
+  {display_name    (s/maybe su/NonBlankString)
+   entity_type     (s/maybe TableEntityType)
+   visibility_type (s/maybe TableVisibilityType)}
   (write-check Table id)
   (check-500 (db/update-non-nil-keys! Table id
                :display_name            display_name
@@ -66,10 +66,10 @@
   By passing `include_sensitive_fields=true`, information *about* sensitive `Fields` will be returned; in no case
   will any of its corresponding values be returned. (This option is provided for use in the Admin Edit Metadata page)."
   [id include_sensitive_fields]
-  {include_sensitive_fields String->Boolean}
+  {include_sensitive_fields (s/maybe su/BooleanString)}
   (-> (read-check Table id)
       (hydrate :db [:fields :target] :field_values :segments :metrics)
-      (update-in [:fields] (if include_sensitive_fields
+      (update-in [:fields] (if (Boolean/parseBoolean include_sensitive_fields)
                              ;; If someone passes include_sensitive_fields return hydrated :fields as-is
                              identity
                              ;; Otherwise filter out all :sensitive fields
@@ -101,7 +101,7 @@
 (defendpoint POST "/:id/reorder"
   "Re-order the `Fields` belonging to this `Table`."
   [id :as {{:keys [new_order]} :body}]
-  {new_order [Required ArrayOfIntegers]}
+  {new_order [s/Int]}
   (write-check Table id)
   (let [table-fields (db/select Field, :table_id id)]
     ;; run a function over the `new_order` list which simply updates `Field` :position to the index in the vector

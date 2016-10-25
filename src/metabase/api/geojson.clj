@@ -5,7 +5,8 @@
             [schema.core :as s]
             [metabase.api.common :refer :all]
             [metabase.models.setting :refer [defsetting], :as setting]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [metabase.util.schema :as su]))
 
 (defn- valid-json?
   "Does this URL-OR-RESOURCE point to valid JSON?
@@ -70,6 +71,7 @@
 (defendpoint GET "/:key"
   "Fetch a custom GeoJSON file as defined in the `custom-geojson` setting. (This just acts as a simple proxy for the file specified for KEY)."
   [key]
+  {key su/NonBlankString}
   (let [url (or (get-in (custom-geojson) [(keyword key) :url])
                 (throw (ex-info (str "Invalid custom GeoJSON key: " key)
                          {:status-code 400})))]

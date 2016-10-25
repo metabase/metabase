@@ -7,7 +7,7 @@
 ;; ## POST /api/util/password_check
 
 ;; Test for required params
-(expect {:errors {:password "field is a required param."}}
+(expect {:errors {:password "Insufficient password strength"}}
   (client :post 400 "util/password_check" {}))
 
 ;; Test complexity check

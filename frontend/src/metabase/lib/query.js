@@ -3,6 +3,7 @@ import React from "react";
 import inflection from "inflection";
 import _ from "underscore";
 
+import Utils from "metabase/lib/utils";
 import { getOperators } from "metabase/lib/schema_metadata";
 import { createLookupByProperty } from "metabase/lib/table";
 import { isFK, TYPE } from "metabase/lib/types";
@@ -29,7 +30,7 @@ export const NEW_QUERY_TEMPLATES = {
 };
 
 export function createQuery(type = "query", databaseId, tableId) {
-    let dataset_query = angular.copy(NEW_QUERY_TEMPLATES[type]);
+    let dataset_query = Utils.copy(NEW_QUERY_TEMPLATES[type]);
 
     if (databaseId) {
         dataset_query.database = databaseId;

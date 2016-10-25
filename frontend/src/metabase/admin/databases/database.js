@@ -1,11 +1,13 @@
 import _ from "underscore";
 
 import { createAction } from "redux-actions";
-import { handleActions, combineReducers, AngularResourceProxy, createThunkAction } from "metabase/lib/redux";
+import { handleActions, combineReducers, createThunkAction } from "metabase/lib/redux";
 import { push } from "react-router-redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
+
+import { MetabaseApi } from "metabase/services";
 
 const RESET = "metabase/admin/databases/RESET";
 const SELECT_ENGINE = "metabase/admin/databases/SELECT_ENGINE";
@@ -15,9 +17,6 @@ const ADD_SAMPLE_DATASET = "metabase/admin/databases/ADD_SAMPLE_DATASET";
 const SAVE_DATABASE = "metabase/admin/databases/SAVE_DATABASE";
 const DELETE_DATABASE = "metabase/admin/databases/DELETE_DATABASE";
 const SYNC_DATABASE = "metabase/admin/databases/SYNC_DATABASE";
-
-// resource wrappers
-const MetabaseApi = new AngularResourceProxy("Metabase", ["db_list", "db_get", "db_add_sample_dataset", "db_create", "db_update", "db_delete", "db_sync_metadata"]);
 
 export const reset = createAction(RESET);
 

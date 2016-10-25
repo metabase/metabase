@@ -51,21 +51,21 @@
                                              :definition {}}))
 
 ;; test validations
-(expect {:errors {:name "field is a required param."}}
+(expect {:errors {:name "value must be a non-blank string."}}
   ((user->client :crowberto) :post 400 "metric" {}))
 
-(expect {:errors {:table_id "field is a required param."}}
+(expect {:errors {:table_id "value must be an integer greater than zero."}}
   ((user->client :crowberto) :post 400 "metric" {:name "abc"}))
 
-(expect {:errors {:table_id "Invalid value 'foobar' for 'table_id': value must be an integer."}}
+(expect {:errors {:table_id "value must be an integer greater than zero."}}
   ((user->client :crowberto) :post 400 "metric" {:name     "abc"
                                                  :table_id "foobar"}))
 
-(expect {:errors {:definition "field is a required param."}}
+(expect {:errors {:definition "value must be a map."}}
   ((user->client :crowberto) :post 400 "metric" {:name     "abc"
                                                  :table_id 123}))
 
-(expect {:errors {:definition "Invalid value 'foobar' for 'definition': value must be a dictionary."}}
+(expect {:errors {:definition "value must be a map."}}
   ((user->client :crowberto) :post 400 "metric" {:name       "abc"
                                                  :table_id   123
                                                  :definition "foobar"}))
@@ -106,21 +106,21 @@
                                               :revision_message "something different"}))
 
 ;; test validations
-(expect {:errors {:name "field is a required param."}}
+(expect {:errors {:name "value must be a non-blank string."}}
   ((user->client :crowberto) :put 400 "metric/1" {}))
 
-(expect {:errors {:revision_message "field is a required param."}}
+(expect {:errors {:revision_message "value must be a non-blank string."}}
   ((user->client :crowberto) :put 400 "metric/1" {:name "abc"}))
 
-(expect {:errors {:revision_message "Invalid value '' for 'revision_message': value must be a non-empty string."}}
+(expect {:errors {:revision_message "value must be a non-blank string."}}
   ((user->client :crowberto) :put 400 "metric/1" {:name             "abc"
                                                    :revision_message ""}))
 
-(expect {:errors {:definition "field is a required param."}}
+(expect {:errors {:definition "value must be a map."}}
   ((user->client :crowberto) :put 400 "metric/1" {:name             "abc"
                                                    :revision_message "123"}))
 
-(expect {:errors {:definition "Invalid value 'foobar' for 'definition': value must be a dictionary."}}
+(expect {:errors {:definition "value must be a map."}}
   ((user->client :crowberto) :put 400 "metric/1" {:name             "abc"
                                                    :revision_message "123"
                                                    :definition       "foobar"}))
@@ -163,10 +163,10 @@
 
 
 ;; test validations
-(expect {:errors {:revision_message "field is a required param."}}
+(expect {:errors {:revision_message "value must be a non-blank string."}}
   ((user->client :crowberto) :delete 400 "metric/1" {:name "abc"}))
 
-(expect {:errors {:revision_message "Invalid value '' for 'revision_message': value must be a non-empty string."}}
+(expect {:errors {:revision_message "value must be a non-blank string."}}
   ((user->client :crowberto) :delete 400 "metric/1" :revision_message ""))
 
 (expect
@@ -274,10 +274,10 @@
   ((user->client :rasta) :post 403 "metric/1/revert" {:revision_id 56}))
 
 
-(expect {:errors {:revision_id "field is a required param."}}
+(expect {:errors {:revision_id "value must be an integer greater than zero."}}
   ((user->client :crowberto) :post 400 "metric/1/revert" {}))
 
-(expect {:errors {:revision_id "Invalid value 'foobar' for 'revision_id': value must be an integer."}}
+(expect {:errors {:revision_id "value must be an integer greater than zero."}}
   ((user->client :crowberto) :post 400 "metric/1/revert" {:revision_id "foobar"}))
 
 

@@ -1,9 +1,12 @@
 (ns metabase.api.tiles
   (:require [clojure.core.match :refer [match]]
             [clojure.java.io :as io]
+            [cheshire.core :as json]
             [compojure.core :refer [GET]]
             [metabase.api.common :refer :all]
-            [metabase.query-processor :as qp])
+            [metabase.query-processor :as qp]
+            [metabase.util :as u]
+            [metabase.util.schema :as su])
   (:import java.awt.Color
            java.awt.image.BufferedImage
            (java.io ByteArrayOutputStream IOException)
@@ -105,20 +108,28 @@
 
 ;;; # ------------------------------------------------------------ ENDPOINT ------------------------------------------------------------
 
-(defendpoint GET "/:zoom/:x/:y/:lat-field/:lon-field/:lat-col-idx/:lon-col-idx/"
+(defendpoint GET "/:zoom/:x/:y/:lat-field-id/:lon-field-id/:lat-col-idx/:lon-col-idx/"
   "This endpoints provides an image with the appropriate pins rendered given a json query.
    We evaluate the query and find the set of lat/lon pairs which are relevant and then render the appropriate ones.
    It's expected that to render a full map view several calls will be made to this endpoint in parallel."
-  [zoom x y lat-field lon-field lat-col-idx lon-col-idx query]
-  {zoom        String->Integer
-   x           String->Integer
-   y           String->Integer
-   lat-field   String->Integer
-   lon-field   String->Integer
-   lat-col-idx String->Integer
-   lon-col-idx String->Integer
-   query       String->Dict}
-  (let [updated-query (update query :query #(query-with-inside-filter % lat-field lon-field x y zoom))
+  [zoom x y lat-field-id lon-field-id lat-col-idx lon-col-idx query]
+  {zoom         su/IntegerString
+   x            su/IntegerString
+   y            su/IntegerString
+   lat-field-id su/IntegerStringGreaterThanZero
+   lon-field-id su/IntegerStringGreaterThanZero
+   lat-col-idx  su/IntegerString
+   lon-col-idx  su/IntegerString
+   query        su/JSONString}
+  (let [zoom          (Integer/parseInt zoom)
+        x             (Integer/parseInt x)
+        y             (Integer/parseInt y)
+        lat-field-id  (Integer/parseInt lat-field-id)
+        lon-field-id  (Integer/parseInt lon-field-id)
+        lat-col-idx   (Integer/parseInt lat-col-idx)
+        lon-col-idx   (Integer/parseInt lon-col-idx)
+        query         (json/parse-string query keyword)
+        updated-query (update query :query (u/rpartial query-with-inside-filter lat-field-id lon-field-id x y zoom))
         result        (qp/dataset-query updated-query {:executed-by   *current-user-id*
                                                        :synchronously true})
         points        (for [row (-> result :data :rows)]
