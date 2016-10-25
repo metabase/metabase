@@ -276,9 +276,12 @@
                            field       :- FieldPlaceholderOrExpressionRef
                            value       :- StringValuePlaceholder])
 
+(s/defrecord BuiltinSegment [filter-type  :- (s/enum :segment)
+                             segment-name :- su/NonBlankString])
+
 (def SimpleFilterClause
   "Schema for a non-compound, non-`not` MBQL `filter` clause."
-  (s/named (s/cond-pre EqualityFilter ComparisonFilter BetweenFilter StringFilter)
+  (s/named (s/cond-pre EqualityFilter ComparisonFilter BetweenFilter StringFilter BuiltinSegment)
            "Simple filter clause"))
 
 (s/defrecord NotFilter [compound-type :- (s/eq :not)

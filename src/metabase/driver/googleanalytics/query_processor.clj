@@ -10,6 +10,7 @@
            java.util.Date
            clojure.lang.PersistentArrayMap
            (metabase.query_processor.interface AgFieldRef
+                                               BuiltinSegment
                                                DateTimeField
                                                DateTimeValue
                                                Field
@@ -72,6 +73,13 @@
   [& parts]
   (escape-for-filter-clause (apply str parts)))
 
+;;; ### source-table
+
+(defn- handle-source-table [{{source-table-name :name} :source-table}]
+  {:pre [(or (string? source-table-name)
+             (keyword? source-table-name))]}
+  {:ids (str "ga:" source-table-name)})
+
 ;;; ### breakout
 
 (defn- unit->ga-dimension
@@ -94,19 +102,19 @@
     :year             "ga:year"))
 
 (defn- handle-breakout [{breakout-clause :breakout}]
-  (if breakout-clause
+  {:dimensions (if breakout-clause
     (s/join "," (for [breakout-field breakout-clause]
                   (if (instance? DateTimeField breakout-field)
                     (unit->ga-dimension (:unit breakout-field))
                     (->rvalue breakout-field))))
-    ""))
+    "")})
 
 ;;; ### filter
 
 ;; TODO: implement negate?
 (defn- parse-filter-subclause:filter [{:keys [filter-type field value] :as filter} & [negate?]]
   (if negate? (throw (Exception. ":not is :not yet implemented")))
-  (when-not (instance? DateTimeField field)
+  (when-not (or (instance? DateTimeField field) (instance? BuiltinSegment filter))
     (let [field (when field (->rvalue field))
           value (when value (->rvalue value))]
       (case filter-type
@@ -129,10 +137,11 @@
     :not (parse-filter-subclause:filter subclause :negate)
     nil  (parse-filter-subclause:filter clause)))
 
-(defn- handle-filter [{filter-clause :filter}]
+(defn- handle-filter:filters [{filter-clause :filter}]
   (when filter-clause
     (let [filter (parse-filter-clause:filter filter-clause)]
-      (when-not (s/blank? filter) filter))))
+      (when-not (s/blank? filter)
+        {:filters filter}))))
 
 (defn- parse-filter-subclause:interval [{:keys [filter-type field value] :as filter} & [negate?]]
   (if negate? (throw (Exception. ":not is :not yet implemented")))
@@ -154,45 +163,63 @@
     :not (remove nil? [(parse-filter-subclause:interval subclause :negate)])
     nil  (remove nil? [(parse-filter-subclause:interval clause)])))
 
-(defn- extract-start-end-date [{filter-clause :filter}]
+(defn- handle-filter:interval [{filter-clause :filter}]
   (let [date-filters (if filter-clause (parse-filter-clause:interval filter-clause) [])]
-    (log/info date-filters)
     (case (count date-filters)
       0 {:start-date earliest-date :end-date latest-date}
       1 (first date-filters)
       (throw (Exception. "Multiple date filters are not supported")))))
 
+(defn- parse-filter-subclause:segment [{:keys [filter-type segment-name] :as filter} & [negate?]]
+  (if negate? (throw (Exception. ":not is :not yet implemented")))
+  (when (instance? BuiltinSegment filter)
+    segment-name))
+
+(defn- parse-filter-clause:segment [{:keys [compound-type subclause subclauses], :as clause}]
+  (case compound-type
+    :and (apply concat (remove nil? (mapv parse-filter-clause:segment subclauses)))
+    :or  (apply concat (remove nil? (mapv parse-filter-clause:segment subclauses)))
+    :not (remove nil? [(parse-filter-subclause:segment subclause :negate)])
+    nil  (remove nil? [(parse-filter-subclause:segment clause)])))
+
+(defn- handle-filter:segment [{filter-clause :filter}]
+  (let [segments (if filter-clause (parse-filter-clause:segment filter-clause) [])]
+    (case (count segments)
+      0 nil
+      1 {:segment (first segments)}
+      (throw (Exception. "Multiple segments are not supported")))))
+
 ;;; ### order-by
 
 (defn- handle-order-by [{order-by-clause :order-by}]
   (when order-by-clause
-    (s/join "," (for [{:keys [field direction]} order-by-clause]
-                  (str (case direction
-                         :ascending  ""
-                         :descending "-")
-                       (if (instance? DateTimeField field)
-                         (unit->ga-dimension (:unit field))
-                         (->rvalue field)))))))
+    {:sort (s/join "," (for [{:keys [field direction]} order-by-clause]
+                         (str (case direction
+                                :ascending  ""
+                                :descending "-")
+                              (if (instance? DateTimeField field)
+                                (unit->ga-dimension (:unit field))
+                                (->rvalue field)))))}))
 
 ;;; ### limit
 
 (defn- handle-limit [{limit-clause :limit}]
-  (int (if (nil? limit-clause)
-    10000
-    limit-clause)))
+  {:max-results (int (if (nil? limit-clause)
+                  10000
+                  limit-clause))})
 
 (defn mbql->native [query]
   "Transpile MBQL query into parameters required for a Google Analytics request."
-  {:query (merge {:ids                (str "ga:" (get-in query [:query :source-table :name]))}
-                 (extract-start-end-date (:query query))
-                 {:metrics            (get-in query [:ga :metrics])
-                  :dimensions         (handle-breakout (:query query))
-                  :sort               (handle-order-by (:query query))
-                  :segment            (get-in query [:ga :segment])
-                  :filters            (handle-filter (:query query))
-                  :max-results        (handle-limit (:query query))
+  {:query (merge (handle-source-table    (:query query))
+                 (handle-filter:interval (:query query))
+                 {:metrics            (get-in query [:ga :metrics])}
+                 (handle-breakout        (:query query))
+                 (handle-order-by        (:query query))
+                 (handle-filter:segment  (:query query))
+                 (handle-filter:filters  (:query query))
+                 (handle-limit           (:query query))
                   ;; set to false to match behavior of other drivers
-                  :include-empty-rows false})
+                 {:include-empty-rows false})
    :mbql? true})
 
 (defn- builtin-metric?
@@ -233,7 +260,8 @@
       ;; pull segments out and put in :ga
       (assoc-in [:ga :segment] (extract-builtin-segment (get-in query [:query :filter])))
       ;; remove segments from query dict
-      (update-in [:query :filter] remove-builtin-segments)))
+      ; (update-in [:query :filter] remove-builtin-segments)
+      ))
 
 (defn- parse-date
   [format str]

@@ -13,6 +13,7 @@
             [metabase.util.schema :as su])
   (:import (metabase.query_processor.interface AgFieldRef
                                                BetweenFilter
+                                               BuiltinSegment
                                                ComparisonFilter
                                                CompoundFilter
                                                EqualityFilter
@@ -239,6 +240,11 @@
 (def ^:ql ^{:arglists '([f s])} starts-with "Filter subclause. Return results where F starts with the string S."    (partial string-filter :starts-with))
 (def ^:ql ^{:arglists '([f s])} contains    "Filter subclause. Return results where F contains the string S."       (partial string-filter :contains))
 (def ^:ql ^{:arglists '([f s])} ends-with   "Filter subclause. Return results where F ends with with the string S." (partial string-filter :ends-with))
+
+(s/defn ^:ql ^:always-validate segment :- BuiltinSegment
+  "Filter subclause. Return results where builtin segment is matched."
+  [segment-name]
+  (i/map->BuiltinSegment {:filter-type :segment, :segment-name segment-name}))
 
 (s/defn ^:ql ^:always-validate not :- i/Filter
   "Filter subclause. Return results that do *not* satisfy SUBCLAUSE.
