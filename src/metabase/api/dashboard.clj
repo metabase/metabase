@@ -1,6 +1,7 @@
 (ns metabase.api.dashboard
   "/api/dashboard endpoints."
   (:require [compojure.core :refer [GET POST PUT DELETE]]
+            [schema.core :as s]
             [metabase.events :as events]
             [metabase.api.common :refer :all]
             [metabase.db :as db]
@@ -11,11 +12,12 @@
                              [interface :as models]
                              [hydrate :refer [hydrate]])
             [metabase.models.revision :as revision]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [metabase.util.schema :as su]))
 
 
 (defn- dashboards-list [filter-option]
-  (filter models/can-read? (-> (db/select Dashboard {:where (case (or filter-option :all)
+  (filter models/can-read? (-> (db/select Dashboard {:where (case (or (keyword filter-option) :all)
                                                               :all  true
                                                               :mine [:= :creator_id *current-user-id*])})
                                (hydrate :creator))))
@@ -26,15 +28,15 @@
   *  `all` - Return all `Dashboards`.
   *  `mine` - Return `Dashboards` created by the current user."
   [f]
-  {f FilterOptionAllOrMine}
+  {f (s/maybe (s/enum "all" "mine"))}
   (dashboards-list f))
 
 
 (defendpoint POST "/"
   "Create a new `Dashboard`."
   [:as {{:keys [name parameters], :as dashboard} :body}]
-  {name       [Required NonEmptyString]
-   parameters [ArrayOfMaps]}
+  {name       su/NonBlankString
+   parameters [su/Map]}
   (dashboard/create-dashboard! dashboard *current-user-id*))
 
 (defn- hide-unreadable-card
@@ -65,8 +67,8 @@
 (defendpoint PUT "/:id"
   "Update a `Dashboard`."
   [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started], :as dashboard} :body}]
-  {name       [Required NonEmptyString]
-   parameters [ArrayOfMaps]}
+  {name       su/NonBlankString
+   parameters [su/Map]}
   (write-check Dashboard id)
   (check-500 (-> (assoc dashboard :id id)
                  (dashboard/update-dashboard! *current-user-id*))))
@@ -83,8 +85,8 @@
 (defendpoint POST "/:id/cards"
   "Add a `Card` to a `Dashboard`."
   [id :as {{:keys [cardId parameter_mappings series] :as dashboard-card} :body}]
-  {cardId             [Required Integer]
-   parameter_mappings [ArrayOfMaps]}
+  {cardId             su/IntGreaterThanZero
+   parameter_mappings [su/Map]}
   (write-check Dashboard id)
   (read-check Card cardId)
   (let [defaults       {:dashboard_id           id
@@ -123,9 +125,9 @@
 (defendpoint DELETE "/:id/cards"
   "Remove a `DashboardCard` from a `Dashboard`."
   [id dashcardId]
-  {dashcardId [Required String->Integer]}
+  {dashcardId su/IntegerStringGreaterThanZero}
   (write-check Dashboard id)
-  (when-let [dashboard-card (DashboardCard dashcardId)]
+  (when-let [dashboard-card (DashboardCard (Integer/parseInt dashcardId))]
     (check-500 (delete-dashboard-card! dashboard-card *current-user-id*))
     {:success true}))
 
@@ -140,7 +142,7 @@
 (defendpoint POST "/:id/revert"
   "Revert a `Dashboard` to a prior `Revision`."
   [id :as {{:keys [revision_id]} :body}]
-  {revision_id [Required Integer]}
+  {revision_id su/IntGreaterThanZero}
   (write-check Dashboard id)
   (revision/revert!
     :entity      Dashboard

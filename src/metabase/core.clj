@@ -252,6 +252,13 @@
   (println "Language:" (System/getProperty "user.language"))
   (println "File encoding:" (System/getProperty "file.encoding")))
 
+(defn ^:command api-documentation
+  "Generate a markdown file containing documentation for all API endpoints. This is written to a file called `docs/api-documentation.md`."
+  []
+  (require 'metabase.cmd.endpoint-dox)
+  ((resolve 'metabase.cmd.endpoint-dox/generate-dox!)))
+
+
 (defn- cmd->fn [command-name]
   (or (when (seq command-name)
         (when-let [varr (ns-resolve 'metabase.core (symbol command-name))]

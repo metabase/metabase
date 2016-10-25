@@ -1,38 +1,29 @@
 (ns metabase.api.common.internal
-  "Internal functions used by `metabase.api.common`."
+  "Internal functions used by `metabase.api.common`.
+   These are primarily used as the internal implementation of `defendpoint`."
   (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as s]
+            [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [medley.core :as m]
-            [swiss.arrows :refer :all]
-            [metabase.util :as u])
+            [schema.core :as s]
+            metabase.logger
+            [metabase.util :as u]
+            [metabase.util.schema :as su])
   (:import java.sql.SQLException))
 
-;;; # DEFENDPOINT HELPER FUNCTIONS + MACROS
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                                  DOCSTRING GENERATION                                                  |
+;;; +------------------------------------------------------------------------------------------------------------------------+
 
-;;; ## DOCUMENTATION GENERATION
-
-(defn- full-route-string
+(defn- endpoint-name
   "Generate a string like `GET /api/meta/db/:id` for a defendpoint route."
   [method route]
-  (let [route (if (vector? route) (first route) route)
-        ns-str (-<>> (.getName *ns*)                 ; 'metabase.api.card
-                     name                            ; "metabase.api.card"
-                     (clojure.string/split <> #"\.") ; ["metabase" "api" "card"]
-                     rest                            ; ["api" "card"]
-                     (interpose "/")                 ; ["api" "/" "card"]
-                     (apply str))]                   ; "api/card"
-    (format "%s /%s%s" (name method) ns-str route))) ; "GET /api/card:id"
-
-(defn- dox-for-annotation
-  "Look up the docstr for annotation."
-  [annotation]
-  {:pre [(symbol? annotation)]}
-  (let [annotation-name (name annotation)]
-    {annotation-name (->> (str "annotation:" annotation-name)
-                          symbol
-                          (ns-resolve *ns*)
-                          meta
-                          :doc)}))
+  (format "%s %s%s"
+          (name method)
+          (str/replace (.getName *ns*) #"^metabase\.api\." "/api/")
+          (if (vector? route)
+            (first route)
+            route)))
 
 (defn- args-form-flatten
   "A version of `flatten` that will actually flatten a form such as:
@@ -47,74 +38,55 @@
     :else       [form]))
 
 (defn- args-form-symbols
+  "Return a map of arg -> nil for args taken from the arguments vector.
+   This map is merged with the ones found in the schema validation map to build a complete map of args used by the endpoint."
   [form]
-  (->> (args-form-flatten form)
-       (filter symbol?)
-       (map #(vector % nil))
-       (into {})))
+  (into {} (for [arg   (args-form-flatten form)
+                 :when (symbol? arg)]
+             {arg nil})))
 
-(defn- get-annotation-dox
-  "Produce a map of `annotation -> documentation` for ANNOTATIONS, which may be either a symbol or sequence of symbols."
-  [annotations]
-  (->> annotations
-       (m/map-vals (fn [annotations]
-                     (if (sequential? annotations) annotations
-                         [annotations])))
-       (map (fn [[param annotations]]
-              {param (->> annotations
-                          (map dox-for-annotation)
-                          (into {}))}))
-       (into {})))
+(defn- dox-for-schema
+  "Look up the docstr for annotation."
+  [schema]
+  (if-not schema
+    ""
+    (or (su/api-error-message schema)
+        (log/warn "We don't have a nice error message for schema:" schema))))
+
+(defn- format-route-schema-dox [param->schema]
+  (when (seq param->schema)
+    (str "\n\n##### PARAMS:\n\n"
+         (str/join "\n\n" (for [[param schema] param->schema]
+                            (format "*  **`%s`** %s" (name param) (dox-for-schema schema)))))))
 
 (defn- format-route-dox
   "Return a markdown-formatted string to be used as documentation for a `defendpoint` function."
-  [route-str docstr params-map]
-  (str (format "`%s`" route-str)
+  [route-str docstr param->schema]
+  (str (format "## `%s`" route-str)
        (when (seq docstr)
          (str "\n\n" docstr))
-       (when (seq params-map)
-         (str "\n\n##### PARAMS:\n\n"
-              (->> params-map
-                   (map (fn [[param annotations-map]]
-                          (apply str (format "*  `%s`\n" (name param))
-                                 (map (fn [[annotation annotation-dox]]
-                                        (format "   *  *%s* %s\n"
-                                                (name annotation)
-                                                (or annotation-dox
-                                                    "*[undocumented annotation]*")))
-                                      annotations-map))))
-                   (apply str))))))
+       (format-route-schema-dox param->schema)))
 
 (defn route-dox
   "Generate a documentation string for a `defendpoint` route."
-  [method route docstr args annotations]
-  (format-route-dox (full-route-string method route)
-                    docstr
+  [method route docstr args param->schema body]
+  (format-route-dox (endpoint-name method route)
+                    (str docstr (when (contains? (set body) '(check-superuser))
+                                  "\n\nYou must be a superuser to do this."))
                     (merge (args-form-symbols args)
-                           (get-annotation-dox annotations))))
+                           param->schema)))
 
 
-;;; ## ROUTE NAME
-
-(defn route-fn-name
-  "Generate a symbol suitable for use as the name of an API endpoint fn.
-   Name is just METHOD + ROUTE with slashes replaced by underscores.
-   `(route-fn-name GET \"/:id\") -> GET_:id`"
-  [method route]
-  (let [route (if (vector? route) (first route) route)] ; if we were passed a vector like [":id" :id #"[0-9+]"] only use first part
-    (-> (str (name method) route)
-        (^String .replace "/" "_")
-        symbol)))
-
-
-;;; ## ROUTE TYPING / AUTO-PARSE SHARED FNS
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                              AUTO-PARSING + ROUTE TYPING                                               |
+;;; +------------------------------------------------------------------------------------------------------------------------+
 
 (defn parse-int
   "Parse VALUE (presumabily a string) as an Integer, or throw a 400 exception.
    Used to automatically to parse `id` parameters in `defendpoint` functions."
   [^String value]
   (try (Integer/parseInt value)
-       (catch java.lang.NumberFormatException _
+       (catch NumberFormatException _
          (throw (ex-info (format "Not a valid integer: '%s'" value) {:status-code 400})))))
 
 (def ^:dynamic *auto-parse-types*
@@ -214,85 +186,93 @@
        ~@body)))
 
 
-;;; ## ROUTE BODY WRAPPERS
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                                   EXCEPTION HANDLING                                                   |
+;;; +------------------------------------------------------------------------------------------------------------------------+
 
-(defn wrap-catch-api-exceptions
-  "Run F in a try-catch block, and format any caught exceptions as an API response."
+;; TODO - this can all probably be implemented as middleware instead
+
+(defn- api-exception-response
+  "Convert an exception from an API endpoint into an appropriate HTTP response."
+  [^Throwable e]
+  (let [{:keys [status-code], :as info} (ex-data e)
+        other-info                      (dissoc info :status-code)
+        message                         (.getMessage e)]
+    {:status (or status-code 500)
+     :body   (cond
+               ;; Exceptions that include a status code *and* other info are things like Field validation exceptions.
+               ;; Return those as is
+               (and status-code
+                    (seq other-info)) other-info
+               ;; If status code was specified but other data wasn't, it's something like a 404. Return message as the body.
+               status-code            message
+               ;; Otherwise it's a 500. Return a body that includes exception & filtered stacktrace for debugging purposes
+               :else                  (let [stacktrace (u/filtered-stacktrace e)]
+                                        (merge (assoc other-info
+                                                 :message    message
+                                                 :stacktrace stacktrace)
+                                               (when (instance? SQLException e)
+                                                 {:sql-exception-chain (str/split (with-out-str (jdbc/print-sql-exception-chain e))
+                                                                                  #"\s*\n\s*")}))))}))
+
+(defn do-with-caught-api-exceptions
+  "Execute F with and catch any exceptions, converting them to the appropriate HTTP response."
   [f]
   (try (f)
        (catch Throwable e
-         (let [{:keys [status-code], :as info} (ex-data e)
-               other-info                      (dissoc info :status-code)
-               message                         (.getMessage e)]
-           {:status (or status-code 500)
-            :body   (cond
-                      ;; Exceptions that include a status code *and* other info are things like Field validation exceptions.
-                      ;; Return those as is
-                      (and status-code
-                           (seq other-info)) other-info
-                      ;; If status code was specified but other data wasn't, it's something like a 404. Return message as the body.
-                      status-code            message
-                      ;; Otherwise it's a 500. Return a body that includes exception & filtered stacktrace for debugging purposes
-                      :else                  (let [stacktrace (u/filtered-stacktrace e)]
-                                               (merge (assoc other-info
-                                                        :message    message
-                                                        :stacktrace stacktrace)
-                                                      (when (instance? SQLException e)
-                                                        {:sql-exception-chain (s/split (with-out-str (jdbc/print-sql-exception-chain e))
-                                                                                       #"\s*\n\s*")}))))}))))
+         (api-exception-response e))))
 
 (defmacro catch-api-exceptions
   "Execute BODY, and if an exception is thrown, return the appropriate HTTP response."
   [& body]
-  `(wrap-catch-api-exceptions
-     (fn [] ~@body)))
+  `(do-with-caught-api-exceptions (fn [] ~@body)))
+
+
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                                    PARAM VALIDATION                                                    |
+;;; +------------------------------------------------------------------------------------------------------------------------+
+
+(defn validate-param
+  "Validate a parameter against its respective schema, or throw an Exception."
+  [field-name value schema]
+  (try (s/validate schema value)
+       (catch Throwable e
+         (throw (ex-info (format "Invalid field: %s" field-name)
+                  {:status-code 400
+                   :errors      {(keyword field-name) (or (su/api-error-message schema)
+                                                          (:message (ex-data e))
+                                                          (.getMessage e))}})))))
+
+(defn validate-params
+  "Generate a series of `validate-param` calls for each param and schema pair in PARAM->SCHEMA."
+  [param->schema]
+  (for [[param schema] param->schema]
+    `(validate-param '~param ~param ~schema)))
+
+
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                           MISC. OTHER FNS USED BY DEFENDPOINT                                          |
+;;; +------------------------------------------------------------------------------------------------------------------------+
+
+(defn route-fn-name
+  "Generate a symbol suitable for use as the name of an API endpoint fn.
+   Name is just METHOD + ROUTE with slashes replaced by underscores.
+   `(route-fn-name GET \"/:id\") -> GET_:id`"
+  [method route]
+  (let [route (if (vector? route) (first route) route)] ; if we were passed a vector like [":id" :id #"[0-9+]"] only use first part
+    (-> (str (name method) route)
+        (^String .replace "/" "_")
+        symbol)))
 
 (defn wrap-response-if-needed
   "If RESPONSE isn't already a map with keys `:status` and `:body`, wrap it in one (using status 200)."
   [response]
-  (when (medley.core/boolean? response)                                                            ; Not sure why this is but the JSON serialization middleware
-    (throw (Exception. "Attempted to return a boolean as an API response. This is not allowed!"))) ; barfs if response is just a plain boolean
-  (letfn [(is-wrapped? [resp] (and (map? resp)
-                                   (contains? resp :status)
-                                   (contains? resp :body)))]
-    (if (is-wrapped? response) response
-        {:status 200
-         :body response})))
-
-
-;;; ## ARG ANNOTATION FUNCTIONALITY
-
-(defn arg-annotation-let-binding
-  "Return a pair like `[arg-symb arg-annotation-form]`, where `arg-annotation-form` is the result of calling the `arg-annotation-fn` implementation
-   for ANNOTATION-KW."
-  [[annotation-kw arg-symb]] ; dispatch-fn passed as a param to avoid circular dependencies
-  {:pre [(keyword? annotation-kw)
-         (symbol? arg-symb)]}
-  `[~arg-symb (~((resolve 'metabase.api.common/-arg-annotation-fn) annotation-kw) '~arg-symb ~arg-symb)])
-
-(defn process-arg-annotations
-  "Internal function used by `defendpoint` for handling a parameter annotations map. Don't call this directly! "
-  [annotations-map]
-  {:pre [(or (nil? annotations-map)
-             (map? annotations-map))]}
-  (some->> annotations-map
-           (mapcat (fn [[arg annotations]]
-                     {:pre [(symbol? arg)
-                            (or (symbol? annotations)
-                                (every? symbol? annotations))]}
-                     (if (sequential? annotations) (->> annotations
-                                                        (map keyword)
-                                                        (map (u/rpartial vector arg)))
-                         [[(keyword annotations) arg]])))
-           (mapcat arg-annotation-let-binding)))
-
-(defmacro let-annotated-args
-  "Wrap BODY in a let-form that calls corresponding implementations of `arg-annotation-fn` for annotated args in ANNOTATED-ARGS-FORM."
-  [arg-annotations & body]
-  {:pre [(or (nil? arg-annotations)
-             (map? arg-annotations))]}
-  (let [annotations (process-arg-annotations arg-annotations)]
-    (if (seq annotations)
-      `(let [~@annotations]
-         ~@body)
-      `(do ~@body))))
+  ;; Not sure why this is but the JSON serialization middleware barfs if response is just a plain boolean
+  (when (m/boolean? response)
+    (throw (Exception. "Attempted to return a boolean as an API response. This is not allowed!")))
+  (if (and (map? response)
+           (contains? response :status)
+           (contains? response :body))
+    response
+    {:status 200
+     :body   response}))

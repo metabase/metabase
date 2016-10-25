@@ -29,7 +29,7 @@
                              (.endsWith (name k) "_id"))
                  (if (or (= :created_at k)
                          (= :updated_at k))
-                   [k (not (nil? v))]
+                   [k (boolean v)]
                    [k (f v)]))))))
 
 (defn user-details [user]
@@ -44,19 +44,19 @@
      :is_qbnewb    $
      :common_name  $}))
 
-(defn dashcard-response [{:keys [card created_at updated_at] :as dashcard}]
+(defn- dashcard-response [{:keys [card created_at updated_at] :as dashcard}]
   (-> (into {} dashcard)
       (dissoc :id :dashboard_id :card_id)
-      (assoc :created_at (not (nil? created_at))
-             :updated_at (not (nil? updated_at))
+      (assoc :created_at (boolean created_at)
+             :updated_at (boolean updated_at)
              :card       (-> (into {} card)
                              (dissoc :id :database_id :table_id :created_at :updated_at)))))
 
-(defn dashboard-response [{:keys [creator ordered_cards created_at updated_at] :as dashboard}]
+(defn- dashboard-response [{:keys [creator ordered_cards created_at updated_at] :as dashboard}]
   (let [dash (-> (into {} dashboard)
                  (dissoc :id)
-                 (assoc :created_at (not (nil? created_at))
-                        :updated_at (not (nil? updated_at))))]
+                 (assoc :created_at (boolean created_at)
+                        :updated_at (boolean updated_at)))]
     (cond-> dash
       creator       (update :creator #(into {} %))
       ordered_cards (update :ordered_cards #(mapv dashcard-response %)))))
@@ -73,11 +73,11 @@
 ;; ## POST /api/dash
 
 ;; test validations
-(expect {:errors {:name "field is a required param."}}
+(expect {:errors {:name "value must be a non-blank string."}}
   ((user->client :rasta) :post 400 "dashboard" {}))
 
 (expect
-  {:errors {:parameters "Invalid value 'abc' for 'parameters': value must be an array."}}
+  {:errors {:parameters "value must be an array. Each value must be a map."}}
   ((user->client :crowberto) :post 400 "dashboard" {:name       "Test"
                                                     :parameters "abc"}))
 
@@ -207,8 +207,8 @@
                                                                                       :parameter_mappings     [{:card-id 123, :hash "abc", :target "foo"}]
                                                                                       :visualization_settings {}})
          (dissoc :id :dashboard_id :card_id)
-         (update :created_at #(not (nil? %)))
-         (update :updated_at #(not (nil? %))))
+         (update :created_at #(boolean %))
+         (update :updated_at #(boolean %)))
      (map (partial into {})
           (db/select [DashboardCard :sizeX :sizeY :col :row :parameter_mappings :visualization_settings], :dashboard_id dashboard-id))]))
 
@@ -382,10 +382,10 @@
 
 ;; ## POST /api/dashboard/:id/revert
 
-(expect {:errors {:revision_id "field is a required param."}}
+(expect {:errors {:revision_id "value must be an integer greater than zero."}}
   ((user->client :crowberto) :post 400 "dashboard/1/revert" {}))
 
-(expect {:errors {:revision_id "Invalid value 'foobar' for 'revision_id': value must be an integer."}}
+(expect {:errors {:revision_id "value must be an integer greater than zero."}}
   ((user->client :crowberto) :post 400 "dashboard/1/revert" {:revision_id "foobar"}))
 
 

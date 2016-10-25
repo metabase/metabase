@@ -1,8 +1,9 @@
 (ns metabase.api.database
   "/api/database endpoints."
-  (:require [clojure.string :as s]
+  (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [compojure.core :refer [GET POST PUT DELETE]]
+            [schema.core :as s]
             [metabase.api.common :refer :all]
             (metabase [config :as config]
                       [db :as db]
@@ -16,12 +17,13 @@
                              [permissions :as perms]
                              [table :refer [Table]])
             (metabase [sample-data :as sample-data]
-                      [util :as u])))
+                      [util :as u])
+            [metabase.util.schema :as su]))
 
-(defannotation DBEngine
-  "Param must be a valid database engine type, e.g. `h2` or `postgres`."
-  [symb value :nillable]
-  (checkp-with driver/is-engine? symb value))
+(def DBEngine
+  "Schema for a valid database engine name, e.g. `h2` or `postgres`."
+  (su/with-api-error-message (s/constrained su/NonBlankString driver/is-engine? "Valid database engine")
+    "value must be a valid database engine."))
 
 
 ;;; ------------------------------------------------------------ GET /api/database ------------------------------------------------------------
@@ -89,13 +91,13 @@
   (db/select [Table :id :db_id :schema :name]
     :db_id       db-id
     :active      true
-    :%lower.name [:like (str (s/lower-case prefix) "%")]
+    :%lower.name [:like (str (str/lower-case prefix) "%")]
     {:order-by [[:%lower.name :asc]]}))
 
 (defn- autocomplete-fields [db-id prefix]
   (db/select [Field :name :base_type :special_type :id :table_id [:table.name :table_name]]
     :metabase_field.active          true
-    :%lower.metabase_field.name     [:like (str (s/lower-case prefix) "%")]
+    :%lower.metabase_field.name     [:like (str (str/lower-case prefix) "%")]
     :metabase_field.visibility_type [:not-in ["sensitive" "retired"]]
     :table.db_id                    db-id
     {:order-by  [[:%lower.metabase_field.name :asc]
@@ -125,7 +127,7 @@
    Tables are returned in the format `[table_name \"Table\"]`;
    Fields are returned in the format `[field_name \"table_name base_type special_type\"]`"
   [id prefix]
-  {prefix [Required NonEmptyString]}
+  {prefix su/NonBlankString}
   (read-check Database id)
   (try
     (autocomplete-suggestions id prefix)
@@ -164,7 +166,7 @@
   "Get a list of all primary key `Fields` for `Database`."
   [id]
   (read-check Database id)
-  (sort-by (comp s/lower-case :name :table) (filter models/can-read? (-> (database/pk-fields {:id id})
+  (sort-by (comp str/lower-case :name :table) (filter models/can-read? (-> (database/pk-fields {:id id})
                                                                          (hydrate :table)))))
 
 
@@ -201,9 +203,9 @@
 (defendpoint POST "/"
   "Add a new `Database`."
   [:as {{:keys [name engine details is_full_sync]} :body}]
-  {name    [Required NonEmptyString]
-   engine  [Required DBEngine]
-   details [Required Dict]}
+  {name    su/NonBlankString
+   engine  DBEngine
+   details su/Map}
   (check-superuser)
   ;; this function tries connecting over ssl and non-ssl to establish a connection
   ;; if it succeeds it returns the `details` that worked, otherwise it returns an error
@@ -244,9 +246,9 @@
 (defendpoint PUT "/:id"
   "Update a `Database`."
   [id :as {{:keys [name engine details is_full_sync description caveats points_of_interest]} :body}]
-  {name    [Required NonEmptyString]
-   engine  [Required DBEngine]
-   details [Required Dict]}
+  {name    su/NonBlankString
+   engine  DBEngine
+   details su/Map}
   (check-superuser)
   (let-404 [database (Database id)]
     (let [details      (if-not (= protected-password (:password details))

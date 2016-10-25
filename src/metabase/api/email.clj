@@ -6,7 +6,8 @@
             [metabase.api.common :refer :all]
             [metabase.config :as config]
             [metabase.email :as email]
-            [metabase.models.setting :as setting]))
+            [metabase.models.setting :as setting]
+            [metabase.util.schema :as su]))
 
 (def ^:private ^:const mb-to-smtp-settings
   {:email-smtp-host     :host
@@ -53,7 +54,7 @@
 (defendpoint PUT "/"
   "Update multiple `Settings` values.  You must be a superuser to do this."
   [:as {settings :body}]
-  {settings [Required Dict]}
+  {settings su/Map}
   (check-superuser)
   (let [email-settings (select-keys settings (keys mb-to-smtp-settings))
         smtp-settings  (-> (set/rename-keys email-settings mb-to-smtp-settings)

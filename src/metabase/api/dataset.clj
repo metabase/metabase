@@ -10,7 +10,8 @@
                              [hydrate :refer [hydrate]]
                              [query-execution :refer [QueryExecution]])
             (metabase [query-processor :as qp]
-                      [util :as u])))
+                      [util :as u])
+            [metabase.util.schema :as su]))
 
 (def ^:private ^:const max-results-bare-rows
   "Maximum number of rows to return specifically on :rows type queries via the API."
@@ -51,9 +52,9 @@
 (defendpoint POST "/csv"
   "Execute an MQL query and download the result data as a CSV file."
   [query]
-  {query [Required String->Dict]}
+  {query su/JSONString}
   (read-check Database (:database query))
-  (let [{{:keys [columns rows]} :data :keys [status] :as response} (qp/dataset-query query {:executed-by *current-user-id*})
+  (let [{{:keys [columns rows]} :data :keys [status] :as response} (qp/dataset-query (json/parse-string query keyword) {:executed-by *current-user-id*})
         columns (map name columns)] ; turn keywords into strings, otherwise we get colons in our output
     (if (= status :completed)
       ;; successful query, send CSV file
