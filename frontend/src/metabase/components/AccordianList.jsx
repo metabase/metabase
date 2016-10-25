@@ -1,4 +1,6 @@
 import React, { Component, PropTypes } from "react";
+import ReactDOM from "react-dom";
+
 import cx from "classnames";
 import _ from "underscore";
 
@@ -58,6 +60,14 @@ export default class AccordianList extends Component {
         alwaysExpanded: false,
         hideSingleSectionTitle: false,
     };
+
+    componentDidMount() {
+        // when the component is mounted and an item is selected then scroll to it
+        const element = this.refs.selected && ReactDOM.findDOMNode(this.refs.selected);
+        if (element) {
+            element.scrollIntoView();
+        }
+    }
 
     toggleSection(sectionIndex) {
         if (this.props.onChangeSection) {
@@ -213,7 +223,11 @@ export default class AccordianList extends Component {
                                 className={cx("p1", { "border-bottom scroll-y scroll-show": !alwaysExpanded })}
                             >
                                 { section.items.filter((i) => searchText ? (i.name.toLowerCase().includes(searchText.toLowerCase())) : true ).map((item, itemIndex) =>
-                                    <li key={itemIndex} className={cx("List-item flex", { 'List-item--selected': this.itemIsSelected(item, itemIndex), 'List-item--disabled': !this.itemIsClickable(item) }, this.getItemClasses(item, itemIndex))}>
+                                    <li
+                                        key={itemIndex}
+                                        ref={this.itemIsSelected(item, itemIndex) ? "selected" : null}
+                                        className={cx("List-item flex", { 'List-item--selected': this.itemIsSelected(item, itemIndex), 'List-item--disabled': !this.itemIsClickable(item) }, this.getItemClasses(item, itemIndex))}
+                                    >
                                         <a
                                             className={cx("flex-full flex align-center px1", this.itemIsClickable(item) ? "cursor-pointer" : "cursor-default")}
                                             style={{ paddingTop: "0.25rem", paddingBottom: "0.25rem" }}
