@@ -58,6 +58,14 @@ var MetabaseUtils = {
     validEmail: function(email) {
         var re = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
         return re.test(email);
+    },
+
+    equals: function(a, b) {
+        return JSON.stringify(a) === JSON.stringify(b);
+    },
+
+    copy: function(a) {
+        return JSON.parse(JSON.stringify(a));
     }
 }
 

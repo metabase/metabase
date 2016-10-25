@@ -1,9 +1,9 @@
 import _ from "underscore";
 import Query from "metabase/lib/query";
+import Utils from "metabase/lib/utils";
 import { createQuery } from "metabase/lib/query";
-import { AngularResourceProxy } from "metabase/lib/redux";
 
-const Card = new AngularResourceProxy("Card", ["get"]);
+import { CardApi } from "metabase/services";
 
 
 export function createCard(name = null) {
@@ -27,11 +27,8 @@ export function startNewCard(type, databaseId, tableId) {
 // load a card either by ID or from a base64 serialization.  if both are present then they are merged, which the serialized version taking precedence
 export async function loadCard(cardId) {
     try {
-        let card = card = await Card.get({ "cardId": cardId });
-
-        // strip off angular $xyz stuff
+        let card = await CardApi.get({ "cardId": cardId });
         return card && cleanCopyCard(card);
-
     } catch (error) {
         console.log("error loading card", error);
         throw error;
@@ -77,8 +74,7 @@ export function isCardRunnable(card) {
 }
 
 export function serializeCardForUrl(card) {
-    // console.log(JSON.stringify(card, null, '  '));
-    var dataset_query = angular.copy(card.dataset_query);
+    var dataset_query = Utils.copy(card.dataset_query);
     if (dataset_query.query) {
         dataset_query.query = Query.cleanQuery(dataset_query.query);
     }

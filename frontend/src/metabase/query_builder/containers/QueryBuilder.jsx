@@ -4,20 +4,19 @@ import { connect } from "react-redux";
 import cx from "classnames";
 import _ from "underscore";
 
-import { AngularResourceProxy } from "metabase/lib/redux";
 import { loadTableAndForeignKeys } from "metabase/lib/table";
 import { isPK, isFK } from "metabase/lib/types";
 
 import NotFound from "metabase/components/NotFound.jsx";
-import QueryHeader from "../QueryHeader.jsx";
-import GuiQueryEditor from "../GuiQueryEditor.jsx";
-import NativeQueryEditor from "../NativeQueryEditor.jsx";
-import QueryVisualization from "../QueryVisualization.jsx";
-import DataReference from "../dataref/DataReference.jsx";
-import TagEditorSidebar from "../template_tags/TagEditorSidebar.jsx";
-import QueryBuilderTutorial from "../../tutorial/QueryBuilderTutorial.jsx";
-import SavedQuestionIntroModal from "../SavedQuestionIntroModal.jsx";
+import QueryBuilderTutorial from "metabase/tutorial/QueryBuilderTutorial.jsx";
 
+import QueryHeader from "../components/QueryHeader.jsx";
+import GuiQueryEditor from "../components/GuiQueryEditor.jsx";
+import NativeQueryEditor from "../components/NativeQueryEditor.jsx";
+import QueryVisualization from "../components/QueryVisualization.jsx";
+import DataReference from "../components/dataref/DataReference.jsx";
+import TagEditorSidebar from "../components/template_tags/TagEditorSidebar.jsx";
+import SavedQuestionIntroModal from "../components/SavedQuestionIntroModal.jsx";
 
 import {
     card,
@@ -44,10 +43,7 @@ import {
 import * as actions from "../actions";
 import { push } from "react-router-redux";
 
-const cardApi = new AngularResourceProxy("Card", ["create", "update", "delete"]);
-const dashboardApi = new AngularResourceProxy("Dashboard", ["list", "create"]);
-const revisionApi = new AngularResourceProxy("Revision", ["list", "revert"]);
-const Metabase = new AngularResourceProxy("Metabase", ["db_autocomplete_suggestions"]);
+import { CardApi, DashboardApi, RevisionApi, MetabaseApi } from "metabase/services";
 
 function cellIsClickable(queryResult, rowIndex, columnIndex) {
     if (!queryResult) return false;
@@ -62,7 +58,7 @@ function cellIsClickable(queryResult, rowIndex, columnIndex) {
 
 function autocompleteResults(card, prefix) {
     let databaseId = card && card.dataset_query && card.dataset_query.database;
-    let apiCall = Metabase.db_autocomplete_suggestions({
+    let apiCall = MetabaseApi.db_autocomplete_suggestions({
        dbId: databaseId,
        prefix: prefix
     });
@@ -101,9 +97,9 @@ const mapStateToProps = (state, props) => {
         isRunning:                 state.qb.uiControls.isRunning,
         isRunnable:                getIsRunnable(state),
 
-        cardApi:                   cardApi,
-        dashboardApi:              dashboardApi,
-        revisionApi:               revisionApi,
+        cardApi:                   CardApi,
+        dashboardApi:              DashboardApi,
+        revisionApi:               RevisionApi,
         loadTableAndForeignKeysFn: loadTableAndForeignKeys,
         autocompleteResultsFn:     (prefix) => autocompleteResults(state.qb.card, prefix),
         cellIsClickableFn:         (rowIndex, columnIndex) => cellIsClickable(state.qb.queryResult, rowIndex, columnIndex)

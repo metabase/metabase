@@ -1,8 +1,8 @@
 /* @flow */
 
-import type { StructuredQueryObject, NativeQueryObject, TemplateTag } from "./types/Query";
-import type { CardObject, DatasetQueryObject, StructuredDatasetQueryObject, NativeDatasetQueryObject } from "./types/Card";
-import type { ParameterObject, ParameterId, ParameterMappingObject } from "metabase/meta/types/Dashboard";
+import type { StructuredQuery, NativeQuery, TemplateTag } from "./types/Query";
+import type { Card, DatasetQuery, StructuredDatasetQuery, NativeDatasetQuery } from "./types/Card";
+import type { Parameter, ParameterId, ParameterMapping } from "metabase/meta/types/Dashboard";
 
 declare class Object {
     static values<T>(object: { [key:string]: T }): Array<T>;
@@ -11,7 +11,7 @@ declare class Object {
 import Query from "metabase/lib/query";
 import _ from "underscore";
 
-export const STRUCTURED_QUERY_TEMPLATE: StructuredDatasetQueryObject = {
+export const STRUCTURED_QUERY_TEMPLATE: StructuredDatasetQuery = {
     type: "query",
     database: null,
     query: {
@@ -22,7 +22,7 @@ export const STRUCTURED_QUERY_TEMPLATE: StructuredDatasetQueryObject = {
     }
 };
 
-export const NATIVE_QUERY_TEMPLATE: NativeDatasetQueryObject = {
+export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
     type: "native",
     database: null,
     native: {
@@ -31,27 +31,27 @@ export const NATIVE_QUERY_TEMPLATE: NativeDatasetQueryObject = {
     }
 };
 
-export function isStructured(card: CardObject): bool {
+export function isStructured(card: Card): bool {
     return card.dataset_query.type === "query";
 }
 
-export function isNative(card: CardObject): bool {
+export function isNative(card: Card): bool {
     return card.dataset_query.type === "native";
 }
 
-export function canRun(card: CardObject): bool {
+export function canRun(card: Card): bool {
     if (card.dataset_query.type === "query") {
-        const query : StructuredQueryObject = card.dataset_query.query;
+        const query : StructuredQuery = card.dataset_query.query;
         return query && query.source_table != undefined && Query.hasValidAggregation(query);
     } else if (card.dataset_query.type === "native") {
-        const native : NativeQueryObject = card.dataset_query.native;
+        const native : NativeQuery = card.dataset_query.native;
         return native && card.dataset_query.database != undefined && native.query !== "";
     } else {
         return false;
     }
 }
 
-export function getQuery(card: CardObject): ?StructuredQueryObject {
+export function getQuery(card: Card): ?StructuredQuery {
     if (card.dataset_query.type === "query") {
         return card.dataset_query.query;
     } else {
@@ -59,18 +59,18 @@ export function getQuery(card: CardObject): ?StructuredQueryObject {
     }
 }
 
-export function getTemplateTags(card: ?CardObject): Array<TemplateTag> {
+export function getTemplateTags(card: ?Card): Array<TemplateTag> {
     return card && card.dataset_query.type === "native" && card.dataset_query.native.template_tags ?
         Object.values(card.dataset_query.native.template_tags) :
         [];
 }
 
 export function applyParameters(
-    card: CardObject,
-    parameters: Array<ParameterObject>,
+    card: Card,
+    parameters: Array<Parameter>,
     parameterValues: { [key: ParameterId]: string } = {},
-    parameterMappings: Array<ParameterMappingObject> = []
-): DatasetQueryObject {
+    parameterMappings: Array<ParameterMapping> = []
+): DatasetQuery {
     const datasetQuery = JSON.parse(JSON.stringify(card.dataset_query));
     // clean the query
     if (datasetQuery.type === "query") {

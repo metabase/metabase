@@ -1,10 +1,8 @@
-import { AngularResourceProxy } from "./redux";
-
 import { addValidOperatorsToFields } from "metabase/lib/schema_metadata";
 
 import _ from "underscore";
 
-const Metabase = new AngularResourceProxy("Metabase", ["table_query_metadata", "table_fks"]);
+import { MetabaseApi } from "metabase/services";
 
 export function isQueryable(table) {
     return table.visibility_type == null;
@@ -12,8 +10,8 @@ export function isQueryable(table) {
 
 export async function loadTableAndForeignKeys(tableId) {
     let [table, foreignKeys] = await Promise.all([
-        Metabase.table_query_metadata({ tableId }),
-        Metabase.table_fks({ tableId })
+        MetabaseApi.table_query_metadata({ tableId }),
+        MetabaseApi.table_fks({ tableId })
     ]);
 
     await augmentTable(table);
@@ -46,7 +44,7 @@ export function augmentDatabase(database) {
 async function loadForeignKeyTables(table) {
     // Load joinable tables
     await Promise.all(table.fields.filter((f) => f.target != null).map(async (field) => {
-        let targetTable = await Metabase.table_query_metadata({ tableId: field.target.table_id });
+        let targetTable = await MetabaseApi.table_query_metadata({ tableId: field.target.table_id });
         field.target.table = populateQueryOptions(targetTable);
     }));
     return table;

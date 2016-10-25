@@ -1,12 +1,12 @@
 
-import { AngularResourceProxy, createAction, createThunkAction } from "metabase/lib/redux";
+import { createAction, createThunkAction } from "metabase/lib/redux";
 import { reset } from 'redux-form';
 import { normalize, Schema, arrayOf } from 'normalizr';
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 const label = new Schema('labels');
-const LabelApi = new AngularResourceProxy("Label", ["list", "create", "update", "delete"]);
+import { LabelApi } from "metabase/services";
 
 import i from "icepick";
 import _ from "underscore";

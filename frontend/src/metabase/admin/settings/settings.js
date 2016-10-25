@@ -1,10 +1,7 @@
 
-import { handleActions, combineReducers, AngularResourceProxy, createThunkAction } from "metabase/lib/redux";
+import { handleActions, combineReducers, createThunkAction } from "metabase/lib/redux";
 
-// resource wrappers
-const SettingsApi = new AngularResourceProxy("Settings", ["list", "put"]);
-const EmailApi = new AngularResourceProxy("Email", ["updateSettings", "sendTest"]);
-const SlackApi = new AngularResourceProxy("Slack", ["updateSettings"]);
+import { SettingsApi, EmailApi, SlackApi } from "metabase/services";
 
 import { refreshSiteSettings } from "metabase/redux/settings";
 
