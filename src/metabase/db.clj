@@ -478,7 +478,7 @@
 
 (defn- format-sql [sql]
   (when sql
-    (loop [sql sql, [k & more] ["FROM" "WHERE" "LEFT JOIN" "INNER JOIN" "ORDER BY" "LIMIT"]]
+    (loop [sql sql, [k & more] ["FROM" "LEFT JOIN" "INNER JOIN" "WHERE" "GROUP BY" "HAVING" "ORDER BY" "OFFSET" "LIMIT"]]
       (if-not k
         sql
         (recur (s/replace sql (re-pattern (format "\\s+%s\\s+" k)) (format "\n%s " k))
