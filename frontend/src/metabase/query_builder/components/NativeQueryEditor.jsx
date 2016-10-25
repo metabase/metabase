@@ -217,7 +217,7 @@ export default class NativeQueryEditor extends Component {
         let dataSelectors = [];
         if (this.state.showEditor && this.props.nativeDatabases) {
             // we only render a db selector if there are actually multiple to choose from
-            if (this.props.nativeDatabases.length > 1) {
+            if (this.props.nativeDatabases.length > 1 && (this.props.query.database === null || _.any(this.props.nativeDatabases, (db) => db.id === this.props.query.database))) {
                 dataSelectors.push(
                     <div key="db_selector" className="GuiBuilder-section GuiBuilder-data flex align-center">
                         <span className="GuiBuilder-section-label Query-label">Database</span>

@@ -264,17 +264,24 @@
 
 ;;; ------------------------------------------------------------ Running a Query ------------------------------------------------------------
 
+(defn- run-query-for-card [card-id parameters]
+  (let [card    (read-check Card card-id)
+        query   (assoc (:dataset_query card)
+                  :parameters  parameters
+                  :constraints dataset-api/query-constraints)
+        options {:executed-by *current-user-id*
+                 :card-id     card-id}]
+    (qp/dataset-query query options)))
+
 (defendpoint POST "/:card-id/query"
   "Run the query associated with a Card."
   [card-id :as {{:keys [parameters]} :body}]
-  (let [card  (read-check Card card-id)
-        query (assoc (:dataset_query card)
-                :parameters  parameters
-                :constraints dataset-api/query-constraints)]
-    ;; Now run the query!
-    (let [options {:executed-by *current-user-id*
-                   :card-id     card-id}]
-      (qp/dataset-query query options))))
+  (run-query-for-card card-id parameters))
+
+(defendpoint POST "/:card-id/query/csv"
+  "Run the query associated with a Card, and return its results as CSV."
+  [card-id :as {{:keys [parameters]} :body}]
+  (dataset-api/as-csv (run-query-for-card card-id parameters)))
 
 
 (define-routes)
