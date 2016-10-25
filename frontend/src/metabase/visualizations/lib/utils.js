@@ -160,7 +160,6 @@ export function colorShade(hex, shade = 0) {
 }
 
 import { isDimension, isMetric } from "metabase/lib/schema_metadata";
-import crossfilter from "crossfilter";
 
 export const DIMENSION_METRIC = "DIMENSION_METRIC";
 export const DIMENSION_METRIC_METRIC = "DIMENSION_METRIC_METRIC";
@@ -184,19 +183,7 @@ export const isDimensionMetricMetric = (cols, strict = true) =>
     isDimension(cols[0]) &&
     cols.slice(1).reduce((acc, col) => acc && isMetric(col), true)
 
-
-function computeColumnCardinality(cols, rows) {
-    let dataset = crossfilter(rows);
-    for (const [index, col] of Object.entries(cols)) {
-        if (col.cardinality == null) {
-            col.cardinality = dataset.dimension(d => d[index]).group().size();
-        }
-    }
-}
-
 export function getChartTypeFromData(cols, rows, strict = true) {
-    computeColumnCardinality(cols, rows);
-
     // this should take precendence for backwards compatibilty
     if (isDimensionMetricMetric(cols, strict)) {
         return DIMENSION_METRIC_METRIC;

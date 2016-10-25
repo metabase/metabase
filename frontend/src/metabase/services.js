@@ -2,6 +2,22 @@
 
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 
+import crossfilter from "crossfilter";
+
+import type { Dataset } from "metabase/meta/types/Dataset";
+
+function augmentDataset(result: Dataset) {
+    if (result.data) {
+        let dataset = crossfilter(result.data.rows);
+        for (const [index, col: any] of result.data.cols.entries()) {
+            if (col.cardinality == null) {
+                col.cardinality = dataset.dimension(d => d[index]).group().size();
+            }
+        }
+    }
+    return result;
+}
+
 export const ActivityApi = {
     list:                        GET("/api/activity"),
     recent_views:                GET("/api/activity/recent_views"),
@@ -13,7 +29,7 @@ export const CardApi = {
     get:                         GET("/api/card/:cardId"),
     update:                      PUT("/api/card/:id"),
     delete:                   DELETE("/api/card/:cardId"),
-    query:                      POST("/api/card/:cardId/query"),
+    query:                      POST("/api/card/:cardId/query", augmentDataset),
     // isfavorite:                  GET("/api/card/:cardId/favorite"),
     favorite:                   POST("/api/card/:cardId/favorite"),
     unfavorite:               DELETE("/api/card/:cardId/favorite"),
@@ -67,7 +83,7 @@ export const MetabaseApi = {
     // field_values:                GET("/api/field/:fieldId/values"),
     // field_value_map_update:     POST("/api/field/:fieldId/value_map_update"),
     field_update:                PUT("/api/field/:id"),
-    dataset:                    POST("/api/dataset"),
+    dataset:                    POST("/api/dataset", augmentDataset),
     dataset_duration:           POST("/api/dataset/duration"),
 };
 
