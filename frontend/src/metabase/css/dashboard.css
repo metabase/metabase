@@ -487,4 +487,9 @@
     nav {
         display: none;
     }
+
+}
+
+@page {
+    margin: 1cm;
 }
