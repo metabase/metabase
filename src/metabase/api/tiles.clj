@@ -1,4 +1,5 @@
 (ns metabase.api.tiles
+  "`/api/tiles` endpoints."
   (:require [clojure.core.match :refer [match]]
             [clojure.java.io :as io]
             [cheshire.core :as json]
@@ -101,31 +102,29 @@
       (catch Throwable e
         (byte-array 0)) ; return empty byte array if we fail for some reason
       (finally
-        (try
-          (.close output-stream)
-          (catch Throwable _))))))
+        (u/ignore-exceptions
+          (.close output-stream))))))
+
 
 
 ;;; # ------------------------------------------------------------ ENDPOINT ------------------------------------------------------------
 
 (defendpoint GET "/:zoom/:x/:y/:lat-field-id/:lon-field-id/:lat-col-idx/:lon-col-idx/"
-  "This endpoints provides an image with the appropriate pins rendered given a json query.
+  "This endpoints provides an image with the appropriate pins rendered given a MBQL QUERY (passed as a GET query string param).
    We evaluate the query and find the set of lat/lon pairs which are relevant and then render the appropriate ones.
    It's expected that to render a full map view several calls will be made to this endpoint in parallel."
   [zoom x y lat-field-id lon-field-id lat-col-idx lon-col-idx query]
   {zoom         su/IntegerString
    x            su/IntegerString
    y            su/IntegerString
-   lat-field-id su/IntegerStringGreaterThanZero
-   lon-field-id su/IntegerStringGreaterThanZero
+   lat-field-id su/IntGreaterThanZero
+   lon-field-id su/IntGreaterThanZero
    lat-col-idx  su/IntegerString
    lon-col-idx  su/IntegerString
    query        su/JSONString}
   (let [zoom          (Integer/parseInt zoom)
         x             (Integer/parseInt x)
         y             (Integer/parseInt y)
-        lat-field-id  (Integer/parseInt lat-field-id)
-        lon-field-id  (Integer/parseInt lon-field-id)
         lat-col-idx   (Integer/parseInt lat-col-idx)
         lon-col-idx   (Integer/parseInt lon-col-idx)
         query         (json/parse-string query keyword)
@@ -137,9 +136,7 @@
     ;; manual ring response here.  we simply create an inputstream from the byte[] of our image
     {:status  200
      :headers {"Content-Type" "image/png"}
-     :body    (-> (create-tile zoom points)
-                  tile->byte-array
-                  java.io.ByteArrayInputStream.)}))
+     :body    (java.io.ByteArrayInputStream. (tile->byte-array (create-tile zoom points)))}))
 
 
 (define-routes)
