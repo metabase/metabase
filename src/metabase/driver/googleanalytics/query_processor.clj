@@ -2,6 +2,7 @@
   "The Query Processor is responsible for translating the Metabase Query Language into Google Analytics request format."
   (:require (clojure [string :as s])
             [clojure.tools.logging :as log]
+            [clojure.tools.reader.edn :as edn]
             [medley.core :as m]
             (metabase.query-processor [expand :as expand])
             [metabase.util :as u])
@@ -17,6 +18,16 @@
 
 (def ^:private ^:const earliest-date "2005-01-01")
 (def ^:private ^:const latest-date "today")
+
+(def ^:const ga-type->base-type
+  {"STRING"      :type/Text
+   "FLOAT"       :type/Float
+   "INTEGER"     :type/Integer
+   "PERCENT"     :type/Float
+   "TIME"        :type/Float
+   "CURRENCY"    :type/Float
+   "US_CURRENCY" :type/Float})
+
 
 ;; TODO: what should this actually be?
 ;; https://developers.google.com/analytics/devguides/reporting/core/v3/reference#startDate
@@ -62,10 +73,31 @@
 
 ;;; ### breakout
 
+(defn- unit->ga-dimension
+  [unit]
+  (case unit
+    ; :minute
+    :minute-of-hour   "ga:minute"
+    :hour             "ga:dateHour"
+    :hour-of-day      "ga:hour"
+    :day              "ga:date"
+    :day-of-week      "ga:dayOfWeek"
+    :day-of-month     "ga:day"
+    ; :day-of-year
+    :week             "ga:yearWeek"
+    :week-of-year     "ga:week"
+    :month            "ga:yearMonth"
+    :month-of-year    "ga:month"
+    ; :quarter
+    ; :quarter-of-year
+    :year             "ga:year"))
+
 (defn- handle-breakout [{breakout-clause :breakout}]
   (when breakout-clause
-    (s/join "," (for [breakout breakout-clause]
-                  (:field-name breakout)))))
+    (s/join "," (for [breakout-field breakout-clause]
+                  (if (instance? DateTimeField breakout-field)
+                    (unit->ga-dimension (:unit breakout-field))
+                    (->rvalue breakout-field))))))
 
 ;;; ### filter
 
@@ -136,7 +168,9 @@
                   (str (case direction
                          :ascending  ""
                          :descending "-")
-                       (:field-name field))))))
+                       (if (instance? DateTimeField field)
+                         (unit->ga-dimension (:unit field))
+                         (->rvalue field)))))))
 
 ;;; ### limit
 
@@ -146,7 +180,8 @@
 
 (defn mbql->native [query]
   "Transpile MBQL query into parameters required for a Google Analytics request."
-  {:query (merge (extract-start-end-date (:query query))
+  {:query (merge {:ids         (str "ga:" (get-in query [:query :source-table :name]))}
+                 (extract-start-end-date (:query query))
                  {:metrics     (get-in query [:ga :metrics])
                   :dimensions  (handle-breakout (:query query))
                   :sort        (handle-order-by (:query query))
@@ -193,3 +228,57 @@
       (assoc-in [:ga :segment] (extract-builtin-segment (get-in query [:query :filter])))
       ;; remove segments from query dict
       (update-in [:query :filter] remove-builtin-segments)))
+
+(defn- parse-date
+  [format str]
+  (.parse (java.text.SimpleDateFormat. format) str))
+
+(defn- parse-number
+  [str]
+  (edn/read-string (s/replace str #"^0+(.+)$" "$1")))
+
+
+(def ^:const ga-dimension->date-format
+  {"ga:minute"    parse-number
+   "ga:dateHour"  #(parse-date "yyyyMMddHH" %)
+   "ga:hour"      parse-number
+   "ga:date"      #(parse-date "yyyyMMdd" %)
+   "ga:dayOfWeek" #(+ 1 (parse-number %))
+   "ga:day"       parse-number
+   "ga:yearWeek"  #(parse-date "YYYYww" %)
+   "ga:week"      parse-number
+   "ga:yearMonth" #(parse-date "yyyyMM" %)
+   "ga:month"     parse-number
+   "ga:year"      parse-number})
+
+
+(defn- header->column
+  [header]
+  (let [date-parser (ga-dimension->date-format (.getName header))]
+    (if date-parser
+      {:name      (keyword "ga:date")
+       :base-type :type/DateTime}
+      {:name      (keyword (.getName header))
+       :base-type (ga-type->base-type (.getDataType header))})))
+
+(defn- header->getter-fn
+  [header]
+  (let [date-parser (ga-dimension->date-format (.getName header))
+        base-type   (ga-type->base-type (.getDataType header))]
+    (cond
+      date-parser                   date-parser
+      (isa? base-type :type/Number) edn/read-string
+      :else                         identity)))
+
+(defn execute-query
+  [do-query query]
+  (let [response (do-query query)
+        columns  (map header->column (.getColumnHeaders response))
+        getters  (map header->getter-fn (.getColumnHeaders response))
+        ; replace last column name with :count for now since that's what our fake aggregation is
+        columns  (conj (vec (butlast columns)) (assoc (last columns) :name :count))]
+    {:columns (map :name columns)
+     :cols    columns
+     :rows    (for [row (.getRows response)]
+                (for [[data getter] (zipmap row getters)]
+                  (getter data)))}))

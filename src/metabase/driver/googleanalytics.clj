@@ -3,7 +3,6 @@
                      [string :as s]
                      [walk :as walk])
             [clojure.tools.logging :as log]
-            [clojure.tools.reader.edn :as edn]
             [cheshire.core :as json]
             [metabase.config :as config]
             [metabase.db :as db]
@@ -100,17 +99,41 @@
 (def ^:private ^{:arglists '([database])} ^Analytics database->client (comp credential->client database->credential))
 ; END DUPLICATED CODE FROM BIGQUERY DRIVER
 
-(def ^:private ^:const ga-type->base-type
-  {"STRING"      :type/Text
-   "FLOAT"       :type/Float
-   "INTEGER"     :type/Integer
-   "PERCENT"     :type/Float
-   "TIME"        :type/Float
-   "CURRENCY"    :type/Float
-   "US_CURRENCY" :type/Float})
+(defn- get-accounts
+  [client]
+  (.getItems (execute (.list (.accounts (.management client))))))
+
+(defn- get-properties
+  [client account-id]
+  (.getItems (execute (.list (.webproperties (.management client)) account-id))))
+
+(defn- get-profiles
+  [client account-id property-id]
+  (.getItems (execute (.list (.profiles (.management client)) account-id property-id))))
+
+(defn- property-profile->name
+  "Format a table name for a GA property and GA profile"
+  [property profile]
+  (let [property-name (s/replace (.getName property) #"^https?://" "")
+        profile-name (s/replace (.getName profile) #"^https?://" "")]
+    ;; don't include the profile if it's the same as property-name or is the default "All Web Site Data"
+    (if (or (.contains property-name profile-name) (= profile-name "All Web Site Data"))
+      property-name
+      (str property-name " (" profile-name ")"))))
+
+
+(defn- get-tables
+  [{{:keys [project-id]} :details, :as database}]
+  (let [client     (database->client database)
+        account-id (.getId (first (get-accounts client)))]
+    (set (apply concat (for [property (get-properties client account-id)]
+                         (for [profile (get-profiles client account-id (.getId property))]
+                           {:name (.getId profile)
+                            ; :display-name (property-profile->name property profile)
+                            :schema nil}))))))
 
 (defn- get-columns
-  [{{:keys [project-id dataset-id]} :details, :as database}]
+  [{{:keys [project-id]} :details, :as database}]
   (let [client   (database->client database)
         response (execute (.list (.columns (.metadata client)) "ga"))]
     (for [column (.getItems response)
@@ -121,7 +144,11 @@
       ;  :description  (get attrs "description")
        :base-type    (if (= (.getId column) "ga:date")
                        :type/Date
-                       (ga-type->base-type (get attrs "dataType")))})))
+                       (qp/ga-type->base-type (get attrs "dataType")))})))
+
+(defn- can-connect? [details-map]
+  {:pre [(map? details-map)]}
+  (boolean (get-tables {:details details-map})))
 
 (defn- process-query-in-context [qp]
   (fn [query]
@@ -133,9 +160,9 @@
                     (json/parse-string query keyword)
                     query)
         client  (database->client database)
-        ids     (:ids (:details database))
+        ; ids     (:ids (:details database))
         request (doto (.get (.ga (.data client))
-                  ids
+                  (:ids query)
                   (:start-date query)
                   (:end-date query)
                   (:metrics query)))]
@@ -151,6 +178,10 @@
       (.setMaxResults request (:max-results query)))
     request))
 
+(defn- do-query
+  [query]
+  (execute (query->request query)))
+
 (defrecord GoogleAnalyticsDriver []
   clojure.lang.Named
   (getName [_] "Google Analytics"))
@@ -158,10 +189,9 @@
 (u/strict-extend GoogleAnalyticsDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-          {:can-connect?          (fn [_ database]
-                                    true)
+          {:can-connect?          (u/drop-first-arg can-connect?)
            :describe-database     (fn [_ database]
-                                    {:tables #{{:name "table", :schema nil}}})
+                                    {:tables (get-tables database)})
            :describe-table        (fn [_ database table]
                                     {:name   (:name table)
                                      :schema (:schema table)
@@ -185,21 +215,6 @@
                                                 :required     true}])
            :process-query-in-context (u/drop-first-arg process-query-in-context)
            :mbql->native             (u/drop-first-arg qp/mbql->native)
-           :execute-query         (fn [_ query]
-                                    (let [response   (execute (query->request query))
-                                          columns    (for [col (.getColumnHeaders response)]
-                                                       {:name      (keyword (.getName col))
-                                                        :base-type (ga-type->base-type (.getDataType col))})
-                                          base-types (for [col columns] (:base-type col))
-                                          ; replace last column name with :count for now since that's what our fake aggregation is
-                                          columns    (conj (vec (butlast columns)) (assoc (last columns) :name :count))
-                                          ]
-                                      {:columns (map :name columns)
-                                       :cols    columns
-                                       :rows    (for [row (.getRows response)]
-                                                  (for [[data base-type] (zipmap row base-types)]
-                                                    (if (isa? base-type :type/Number)
-                                                      (edn/read-string data)
-                                                      data)))}))}))
+           :execute-query            (fn [_ query] (qp/execute-query do-query query))}))
 
 (driver/register-driver! :googleanalytics (GoogleAnalyticsDriver.))
