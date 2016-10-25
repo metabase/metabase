@@ -37,3 +37,9 @@ general:
   artifacts:
     - target/uberjar/metabase.jar
     - screenshots
+experimental:
+  notify:
+    branches:
+      only:
+        - master
+        - /release-.*/

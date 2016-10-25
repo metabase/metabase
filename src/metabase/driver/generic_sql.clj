@@ -218,11 +218,12 @@
         transform-fn   (if (isa? (:base_type field) :type/Text)
                          u/jdbc-clob->str
                          identity)
-        select*        {:select   [[field-k :field]]                ; if we don't specify an explicit ORDER BY some DBs like Redshift will return them in a (seemingly) random order
+        select*        {:select   [[field-k :field]]
+                        :from     [(qualify+escape table)]          ; if we don't specify an explicit ORDER BY some DBs like Redshift will return them in a (seemingly) random order
                         :order-by [[(or pk-field-k field-k) :asc]]} ; try to order by the table's Primary Key to avoid doing full table scans
         fetch-one-page (fn [page-num]
-                         (for [{v :field} (query driver db table (apply-page driver select* {:page {:items driver/field-values-lazy-seq-chunk-size
-                                                                                                    :page  (inc page-num)}}))]
+                         (for [{v :field} (query driver db (apply-page driver select* {:page {:items driver/field-values-lazy-seq-chunk-size
+                                                                                              :page  (inc page-num)}}))]
                            (transform-fn v)))
 
         ;; This function returns a chunked lazy seq that will fetch some range of results, e.g. 0 - 500, then concat that chunk of results

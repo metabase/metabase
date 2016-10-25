@@ -4,6 +4,22 @@ import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 
 import * as GA from "metabase/ga-info";
 
+import crossfilter from "crossfilter";
+
+import type { Dataset } from "metabase/meta/types/Dataset";
+
+function augmentDataset(result: Dataset) {
+    if (result.data) {
+        let dataset = crossfilter(result.data.rows);
+        for (const [index, col: any] of result.data.cols.entries()) {
+            if (col.cardinality == null) {
+                col.cardinality = dataset.dimension(d => d[index]).group().size();
+            }
+        }
+    }
+    return result;
+}
+
 export const ActivityApi = {
     list:                        GET("/api/activity"),
     recent_views:                GET("/api/activity/recent_views"),
@@ -15,7 +31,7 @@ export const CardApi = {
     get:                         GET("/api/card/:cardId"),
     update:                      PUT("/api/card/:id"),
     delete:                   DELETE("/api/card/:cardId"),
-    query:                      POST("/api/card/:cardId/query"),
+    query:                      POST("/api/card/:cardId/query", augmentDataset),
     // isfavorite:                  GET("/api/card/:cardId/favorite"),
     favorite:                   POST("/api/card/:cardId/favorite"),
     unfavorite:               DELETE("/api/card/:cardId/favorite"),
@@ -62,24 +78,22 @@ export const MetabaseApi = {
     // table_fields:                GET("/api/table/:tableId/fields"),
     table_fks:                   GET("/api/table/:tableId/fks"),
     // table_reorder_fields:       POST("/api/table/:tableId/reorder"),
-    table_query_metadata:       (data: { [key:string]: any }, options: { [key:string]: any } = {}) => {
-                                    return GET("/api/table/:tableId/query_metadata")(data, options).then((table) => {
-                                        // HACK: inject GA metadata that we don't have intergrated on the backend yet
-                                        if (table && table.db && table.db.engine === "googleanalytics") {
-                                            table.fields = table.fields.map(f => ({ ...f, ...GA.fields[f.name] }));
-                                            table.metrics.push(...GA.metrics);
-                                            table.segments.push(...GA.segments);
-                                        }
-                                        return table;
-                                    });
-                                 },
+    table_query_metadata:        GET("/api/table/:tableId/query_metadata", (table) => {
+                                    // HACK: inject GA metadata that we don't have intergrated on the backend yet
+                                    if (table && table.db && table.db.engine === "googleanalytics") {
+                                        table.fields = table.fields.map(f => ({ ...f, ...GA.fields[f.name] }));
+                                        table.metrics.push(...GA.metrics);
+                                        table.segments.push(...GA.segments);
+                                    }
+                                    return table;
+                                 }),
     // table_sync_metadata:        POST("/api/table/:tableId/sync"),
     // field_get:                   GET("/api/field/:fieldId"),
     // field_summary:               GET("/api/field/:fieldId/summary"),
     // field_values:                GET("/api/field/:fieldId/values"),
     // field_value_map_update:     POST("/api/field/:fieldId/value_map_update"),
     field_update:                PUT("/api/field/:id"),
-    dataset:                    POST("/api/dataset"),
+    dataset:                    POST("/api/dataset", augmentDataset),
     dataset_duration:           POST("/api/dataset/duration"),
 };
 
