@@ -28,10 +28,15 @@ const VisualizationResult = ({card, isObjectDetail, lastRunDatasetQuery, result,
             ...card,
             dataset_query: lastRunDatasetQuery
         };
+
         return <Visualization
                   className="full"
                   series={[{ card: vizCard, data: result.data }]}
                   isEditing={true}
+
+                  isCached={result.from_cache || false}
+                  cacheLastUpdate={result.cache_last_update || null}
+
                   // Table:
                   {...rest}
               />

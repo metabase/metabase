@@ -66,7 +66,11 @@ export default class Visualization extends Component {
         // used by TableInteractive
         setSortFn: PropTypes.func,
         cellIsClickableFn: PropTypes.func,
-        cellClickedFn: PropTypes.func
+        cellClickedFn: PropTypes.func,
+
+        // used by cached questions
+        isCached:  PropTypes.bool,
+        cacheLastUpdate: PropTypes.string
     };
 
     static defaultProps = {
@@ -116,7 +120,8 @@ export default class Visualization extends Component {
     }
 
     render() {
-        const { actionButtons, className, isDashboard, width, errorIcon, isSlow, expectedDuration, replacementContent } = this.props;
+
+        const { actionButtons, className, isDashboard, width, errorIcon, isSlow, expectedDuration, replacementContent, isCached, cacheLastUpdate  } = this.props;
         const { series, CardVisualization } = this.state;
         const small = width < 330;
 
@@ -241,6 +246,9 @@ export default class Visualization extends Component {
                         onRenderError={this.onRenderError}
                         onRender={this.onRender}
                     />
+                }
+                { isCached ?
+                    <div style={{position: "absolute", bottom: 0, width: "100%", fontStyle : "italic", fontSize: "smaller"}}>⚡ Cached in {cacheLastUpdate}</div> : null
                 }
             </div>
         );

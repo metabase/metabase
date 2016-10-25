@@ -85,6 +85,7 @@ export default class DashCard extends Component {
         const expectedDuration = Math.max(...series.map((s) => s.duration ? s.duration.average : 0));
         const usuallyFast = _.every(series, (s) => s.duration && s.duration.average < s.duration.fast_threshold);
         const isSlow = loading && _.some(series, (s) => s.duration) && (usuallyFast ? "usually-fast" : "usually-slow");
+        const isCached = _.every(series, (s) => s.from_cache);
 
         const parameterMap = dashcard && dashcard.parameter_mappings && dashcard.parameter_mappings
             .reduce((map, mapping) => ({...map, [mapping.parameter_id]: mapping}), {});
@@ -121,6 +122,7 @@ export default class DashCard extends Component {
                     series={series}
                     isDashboard={true}
                     isEditing={isEditing}
+                    isCached={isCached || false}
                     gridSize={this.props.isMobile ? undefined : { width: dashcard.sizeX, height: dashcard.sizeY }}
                     actionButtons={isEditing && !isEditingParameter ?
                         <DashCardActionButtons
