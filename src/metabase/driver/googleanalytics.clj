@@ -154,33 +154,30 @@
   (fn [query]
     (qp (qp/transform-query query))))
 
-(defn- query->request
+(defn- do-query
   [{{:keys [query]} :native, database :database}]
   (let [query   (if (string? query)
                     (json/parse-string query keyword)
                     query)
         client  (database->client database)
-        ; ids     (:ids (:details database))
         request (doto (.get (.ga (.data client))
                   (:ids query)
                   (:start-date query)
                   (:end-date query)
                   (:metrics query)))]
-    (when (:dimensions query)
+    (when-not (s/blank? (:dimensions query))
       (.setDimensions request (:dimensions query)))
-    (when (:sort query)
+    (when-not (s/blank? (:sort query))
       (.setSort request (:sort query)))
-    (when (:filters query)
+    (when-not (s/blank? (:filters query))
       (.setFilters request (:filters query)))
-    (when (:segment query)
+    (when-not (s/blank? (:segment query))
       (.setSegment request (:segment query)))
-    (when (:max-results query)
+    (when-not (nil? (:max-results query))
       (.setMaxResults request (:max-results query)))
-    request))
-
-(defn- do-query
-  [query]
-  (execute (query->request query)))
+    (when-not (nil? (:include-empty-rows query))
+      (.setIncludeEmptyRows request (:include-empty-rows query)))
+    (execute request)))
 
 (defrecord GoogleAnalyticsDriver []
   clojure.lang.Named

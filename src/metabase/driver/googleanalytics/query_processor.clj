@@ -18,6 +18,7 @@
 
 (def ^:private ^:const earliest-date "2005-01-01")
 (def ^:private ^:const latest-date "today")
+(def ^:private ^:const max-rows-maximum 10000)
 
 (def ^:const ga-type->base-type
   {"STRING"      :type/Text
@@ -93,11 +94,12 @@
     :year             "ga:year"))
 
 (defn- handle-breakout [{breakout-clause :breakout}]
-  (when breakout-clause
+  (if breakout-clause
     (s/join "," (for [breakout-field breakout-clause]
                   (if (instance? DateTimeField breakout-field)
                     (unit->ga-dimension (:unit breakout-field))
-                    (->rvalue breakout-field))))))
+                    (->rvalue breakout-field))))
+    ""))
 
 ;;; ### filter
 
@@ -175,19 +177,23 @@
 ;;; ### limit
 
 (defn- handle-limit [{limit-clause :limit}]
-  (when-not (nil? limit-clause)
-     (int limit-clause)))
+  (int (if (nil? limit-clause)
+    10000
+    limit-clause)))
 
 (defn mbql->native [query]
   "Transpile MBQL query into parameters required for a Google Analytics request."
-  {:query (merge {:ids         (str "ga:" (get-in query [:query :source-table :name]))}
+  {:query (merge {:ids                (str "ga:" (get-in query [:query :source-table :name]))}
                  (extract-start-end-date (:query query))
-                 {:metrics     (get-in query [:ga :metrics])
-                  :dimensions  (handle-breakout (:query query))
-                  :sort        (handle-order-by (:query query))
-                  :segment     (get-in query [:ga :segment])
-                  :filters     (handle-filter (:query query))
-                  :max-results (handle-limit (:query query))})})
+                 {:metrics            (get-in query [:ga :metrics])
+                  :dimensions         (handle-breakout (:query query))
+                  :sort               (handle-order-by (:query query))
+                  :segment            (get-in query [:ga :segment])
+                  :filters            (handle-filter (:query query))
+                  :max-results        (handle-limit (:query query))
+                  ;; set to false to match behavior of other drivers
+                  :include-empty-rows false})
+   :mbql? true})
 
 (defn- builtin-metric?
   [aggregation]
@@ -272,13 +278,17 @@
 
 (defn execute-query
   [do-query query]
-  (let [response (do-query query)
+  (let [mbql?    (:mbql? (:native query))
+        response (do-query query)
         columns  (map header->column (.getColumnHeaders response))
         getters  (map header->getter-fn (.getColumnHeaders response))
-        ; replace last column name with :count for now since that's what our fake aggregation is
-        columns  (conj (vec (butlast columns)) (assoc (last columns) :name :count))]
-    {:columns (map :name columns)
-     :cols    columns
-     :rows    (for [row (.getRows response)]
-                (for [[data getter] (zipmap row getters)]
-                  (getter data)))}))
+        columns  (if mbql?
+                   ; replace last column name with :count for now since that's what our fake aggregation is
+                   (conj (vec (butlast columns)) (assoc (last columns) :name :count))
+                   columns)]
+    {:columns  (map :name columns)
+     :cols     columns
+     :rows     (for [row (.getRows response)]
+                 (for [[data getter] (map vector row  getters)]
+                   (getter data)))
+     :annotate mbql?}))

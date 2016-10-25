@@ -32,6 +32,22 @@ export function getEngineNativeRequiresTable(engine) {
 }
 
 export function formatJsonQuery(query, engine) {
-    let indent = engine === "googleanalytics" ? 2 : null;
-    return JSON.stringify(query, null, indent);
+    if (engine === "googleanalytics") {
+        return formatGAQuery(query);
+    } else {
+        return JSON.stringify(query);
+    }
+}
+
+const GA_ORDERED_PARAMS = ["ids", "start-date", "end-date", "metrics", "dimensions", "sort", "filters", "segment", "samplingLevel", "include-empty-rows", "start-index", "max-results"];
+
+// does 3 things: removes null values, sorts the keys by the order in the documentation, and formats with 2 space indents
+function formatGAQuery(query) {
+    const object = {};
+    for (const param of GA_ORDERED_PARAMS) {
+        if (query[param] != null) {
+            object[param] = query[param];
+        }
+    }
+    return JSON.stringify(object, null, 2);
 }
