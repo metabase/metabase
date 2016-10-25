@@ -9,7 +9,6 @@ export type Column = {
     name: ColumnName,
     display_name: string,
     base_type: string,
-    cardinality?: number
 }
 
 export type Row = Array<string|number|Timestamp>
