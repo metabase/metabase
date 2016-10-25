@@ -42,7 +42,8 @@
    This map is merged with the ones found in the schema validation map to build a complete map of args used by the endpoint."
   [form]
   (into {} (for [arg   (args-form-flatten form)
-                 :when (symbol? arg)]
+                 :when (and (symbol? arg)
+                            (not= arg 'body))]
              {arg nil})))
 
 (defn- dox-for-schema

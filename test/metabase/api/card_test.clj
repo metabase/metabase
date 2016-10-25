@@ -252,7 +252,7 @@
 
 ;; Helper Functions
 (defn- fave? [card]
-  ((user->client :rasta) :get 200 (format "card/%d/favorite" (u/get-id card))))
+  (db/exists? CardFavorite, :card_id (u/get-id card), :owner_id (user->id :rasta)))
 
 (defn- fave! [card]
   ((user->client :rasta) :post 200 (format "card/%d/favorite" (u/get-id card))))
@@ -263,15 +263,15 @@
 ;; ## GET /api/card/:id/favorite
 ;; Can we see if a Card is a favorite ?
 (expect
-  {:favorite false}
+  false
   (with-temp-card [card]
     (fave? card)))
 
 ;; ## POST /api/card/:id/favorite
 ;; Can we favorite a card?
 (expect
-  [{:favorite false}
-   {:favorite true}]
+  [false
+   true]
   (with-temp-card [card]
     [(fave? card)
      (do (fave! card)
@@ -280,9 +280,9 @@
 ;; DELETE /api/card/:id/favorite
 ;; Can we unfavorite a card?
 (expect
-  [{:favorite false}
-   {:favorite true}
-   {:favorite false}]
+  [false
+   true
+   false]
   (with-temp-card [card]
     [(fave? card)
      (do (fave! card)

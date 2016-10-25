@@ -135,15 +135,6 @@
       (log/warn "Error with autocomplete: " (.getMessage t)))))
 
 
-;;; ------------------------------------------------------------ GET /api/database/:id/tables ------------------------------------------------------------
-
-(defendpoint GET "/:id/tables"
-  "Get a list of all `Tables` in `Database`."
-  [id]
-  (read-check Database id)
-  (filter models/can-read? (db/select Table, :db_id id, :active true, {:order-by [:%lower.name]})))
-
-
 ;;; ------------------------------------------------------------ GET /api/database/:id/fields ------------------------------------------------------------
 
 (defendpoint GET "/:id/fields"

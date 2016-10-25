@@ -223,13 +223,6 @@
 
 ;;; ------------------------------------------------------------ Favoriting ------------------------------------------------------------
 
-
-(defendpoint GET "/:card-id/favorite"
-  "Has current user favorited this `Card`?"
-  [card-id]
-  (read-check Card card-id)
-  {:favorite (db/exists? CardFavorite :card_id card-id, :owner_id *current-user-id*)})
-
 (defendpoint POST "/:card-id/favorite"
   "Favorite a Card."
   [card-id]
