@@ -53,11 +53,6 @@
   (check-500 (db/update! Table id, :visibility_type visibility_type))
   (Table id))
 
-(defendpoint GET "/:id/fields"
-  "Get all `Fields` for `Table` with ID."
-  [id]
-  (read-check Table id)
-  (db/select Field, :table_id id, :visibility_type [:not-in ["sensitive" "retired"]], {:order-by [[:name :asc]]}))
 
 (defendpoint GET "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.
@@ -76,6 +71,7 @@
                              (partial filter (fn [{:keys [visibility_type]}]
                                                (not= (keyword visibility_type) :sensitive)))))))
 
+
 (defendpoint GET "/:id/fks"
   "Get all foreign keys whose destination is a `Field` that belongs to this `Table`."
   [id]
@@ -90,31 +86,5 @@
          :destination_id (:fk_target_field_id origin-field)
          :destination    (hydrate (Field (:fk_target_field_id origin-field)) :table)}))))
 
-;; TODO - Not sure this is used anymore
-;; TODO - shouldn't you have to be admin to re-sync a table?
-(defendpoint POST "/:id/sync"
-  "Re-sync the metadata for this `Table`. This is ran asynchronously; the endpoint returns right away."
-  [id]
-  (future (sync-database/sync-table! (write-check Table id)))
-  {:status :ok})
-
-(defendpoint POST "/:id/reorder"
-  "Re-order the `Fields` belonging to this `Table`."
-  [id :as {{:keys [new_order]} :body}]
-  {new_order [s/Int]}
-  (write-check Table id)
-  (let [table-fields (db/select Field, :table_id id)]
-    ;; run a function over the `new_order` list which simply updates `Field` :position to the index in the vector
-    ;; NOTE: we assume that all `Fields` in the table are represented in the array
-    (dorun
-     (map-indexed
-      (fn [index field-id]
-        ;; this is a bit superfluous, but we force ourselves to match the supplied `new_order` field-id with an
-        ;; actual `Field` value selected above in order to ensure people don't accidentally update fields they
-        ;; aren't supposed to or aren't allowed to.  e.g. without this the caller could update any field-id they want
-        (when-let [{:keys [id]} (first (filter #(= field-id (:id %)) table-fields))]
-          (db/update! Field id, :position index)))
-      new_order))
-    {:result "success"}))
 
 (define-routes)

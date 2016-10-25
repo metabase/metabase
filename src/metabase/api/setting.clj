@@ -11,14 +11,6 @@
   (check-superuser)
   (setting/all))
 
-(defendpoint PUT "/"
-  "Update multiple `Settings` values.  You must be a superuser to do this."
-  [:as {settings :body}]
-  {settings su/Map}
-  (check-superuser)
-  (setting/set-many! settings)
-  (setting/all))
-
 (defendpoint GET "/:key"
   "Fetch a single `Setting`. You must be a superuser to do this."
   [key]
@@ -38,13 +30,5 @@
   (check-superuser)
   (setting/set! key value))
 
-;; TODO - this endpoint is ultimately unneccesary because you can just PUT nil instead
-(defendpoint DELETE "/:key"
-  "Delete a `Setting`. You must be a superuser to do this."
-  [key]
-  {key su/NonBlankString}
-  (check-superuser)
-  (setting/set! key nil)
-  {:status 204, :body nil})
 
 (define-routes)

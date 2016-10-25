@@ -73,21 +73,4 @@
   (as-csv (qp/dataset-query (json/parse-string query keyword) {:executed-by *current-user-id*})))
 
 
-;; TODO - AFAIK this endpoint is no longer used. Remove it? </3
-;; (We have POST /api/card/:id/query now which is used instead)
-(defendpoint GET "/card/:id"
-  "Execute the MQL query for a given `Card` and retrieve both the `Card` and the execution results as JSON.
-   This is a convenience endpoint which simplifies the normal 2 api calls to fetch the `Card` then execute its query."
-  [id]
-  (let-404 [{:keys [dataset_query] :as card} (Card id)]
-    (read-check card)
-    (read-check Database (:database dataset_query))
-    ;; add sensible constraints for results limits on our query
-    ;; TODO: it would be nice to associate the card :id with the query execution tracking
-    (let [query   (assoc dataset_query :constraints query-constraints)
-          options {:executed-by *current-user-id*}]
-      {:card   (hydrate card :creator)
-       :result (qp/dataset-query query options)})))
-
-
 (define-routes)
