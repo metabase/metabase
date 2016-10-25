@@ -2,10 +2,10 @@ import React, { Component, PropTypes } from "react";
 
 import ReactCSSTransitionGroup from "react-addons-css-transition-group";
 
-import CheckBox from "metabase/components/CheckBox.jsx";
 import DurationPicker from "metabase/components/DurationPicker.jsx";
 import FormField from "metabase/components/FormField.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
+import Toggle from "metabase/components/Toggle.jsx";
 
 import Query from "metabase/lib/query";
 import { cancelable } from "metabase/lib/promise";
@@ -205,18 +205,16 @@ export default class SaveQuestionModal extends Component {
                                         displayName="Description"
                                         fieldName="description"
                                         errors={this.state.errors}>
-                                        <textarea className="Form-input full" name="description" placeholder="It's optional but oh, so helpful" value={this.state.details.description} onChange={(e) => this.onChange("description", e.target.value)} />
+                                        <textarea className="Form-input full" name="description" placeholder="It's optional but oh, so helpful" value={this.state.details.description || ""} onChange={(e) => this.onChange("description", e.target.value)} />
                                     </FormField>
                                     <FormField
                                         key="cacheResult"
                                         displayName="Should we cache the result of this question?"
                                         fieldName="cacheResult"
                                         errors={this.state.errors}>
-                                        <CheckBox
-                                            checkColor="currentColor"
-                                            borderColor={details.cacheResult ? "currentColor" : undefined} size={20}
-                                            checked={this.state.details.cacheResult}
-                                            onChange={(e) => this.onChange("cacheResult", e.target.checked)}
+                                        <Toggle
+                                            value={this.state.details.cacheResult}
+                                            onChange={(e) => this.onChange("cacheResult", e)}
                                         />
                                     </FormField>
                                     {cacheMaxAge}

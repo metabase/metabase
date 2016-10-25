@@ -2,6 +2,8 @@ import React, { Component, PropTypes } from "react";
 
 import Input from "metabase/components/Input.jsx";
 import TitleAndDescription from "metabase/components/TitleAndDescription.jsx";
+import DurationPicker from "metabase/components/DurationPicker.jsx";
+import Toggle from "metabase/components/Toggle.jsx";
 
 
 export default class Header extends Component {
@@ -13,7 +15,18 @@ export default class Header extends Component {
     };
 
     render() {
-        const { isEditing, name, description, breadcrumb, buttons, className } = this.props;
+        const { isEditing, name, description, cacheResult, cacheMaxAge, breadcrumb, buttons, className } = this.props;
+
+        let cacheMaxAgeElement = null;
+        if (cacheResult) {
+            cacheMaxAgeElement = (
+                <DurationPicker inputClass="Form-input" selectClass="Form-input" name="cacheMaxAge"
+                                valueInSeconds={cacheMaxAge || 60}
+                                onChange={(e) => this.props.setItemAttributeFn("cache_max_age", e.valueInSeconds)}/>
+            );
+        }
+
+        let cacheDetails = null;
 
         let titleAndDescription;
         if (isEditing) {
@@ -23,11 +36,19 @@ export default class Header extends Component {
                     <Input className="AdminInput rounded-bottom h4" type="text" value={description} onChange={(e) => this.props.setItemAttributeFn("description", e.target.value)} placeholder="No description yet" />
                 </div>
             );
+            cacheDetails = (
+                <div className="">
+                    <Toggle value={cacheResult || false}
+                            onChange={(e) => this.props.setItemAttributeFn("cache_result", e)}
+                    />
+                    {cacheMaxAgeElement}
+                </div>
+            );
         } else {
             if (name && description) {
                 titleAndDescription = (
                     <TitleAndDescription
-                        title={name} 
+                        title={name}
                         description={description}
                     />
                 );
@@ -44,6 +65,7 @@ export default class Header extends Component {
             <div className={"QueryBuilder-section flex align-center " + className}>
                 <div className="Entity py1">
                     {titleAndDescription}
+                    {cacheDetails}
                 </div>
 
                 <div className="flex-align-right">

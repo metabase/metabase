@@ -188,7 +188,7 @@
 
 (defendpoint PUT "/:id"
   "Update a `Card`."
-  [id :as {{:keys [dataset_query description display name visualization_settings archived], :as body} :body}]
+  [id :as {{:keys [dataset_query description display name visualization_settings archived cache_result cache_max_age], :as body} :body}]
   {name                   NonEmptyString
    display                NonEmptyString
    visualization_settings Dict
@@ -199,6 +199,8 @@
       :description            description
       :display                display
       :name                   name
+      :cache_result           (boolean cache_result)
+      :cache_max_age          (if (boolean cache_result) cache_max_age 0)
       :visualization_settings visualization_settings
       :archived               archived)
     (let [event (cond

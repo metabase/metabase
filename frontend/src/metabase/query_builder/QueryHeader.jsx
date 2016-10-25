@@ -376,6 +376,8 @@ export default class QueryHeader extends Component {
                     isEditing={this.props.isEditing}
                     name={this.props.isNew ? "New question" : this.props.card.name}
                     description={this.props.card ? this.props.card.description : null}
+                    cacheResult={this.props.card ? this.props.card.cache_result : false}
+                    cacheMaxAge={this.props.card ? this.props.card.cache_max_age : 60}
                     breadcrumb={(!this.props.card.id && this.props.originalCard) ? (<span className="pl2">started from <a className="link" onClick={this.onFollowBreadcrumb}>{this.props.originalCard.name}</a></span>) : null }
                     buttons={this.getHeaderButtons()}
                     setItemAttributeFn={this.props.onSetCardAttribute}
