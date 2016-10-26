@@ -123,9 +123,8 @@
 
 
 (defn- get-tables
-  [{{:keys [project-id]} :details, :as database}]
-  (let [client     (database->client database)
-        account-id (.getId (first (get-accounts client)))]
+  [{{:keys [account-id]} :details, :as database}]
+  (let [client (database->client database)]
     (set (apply concat (for [property (get-properties client account-id)]
                          (for [profile (get-profiles client account-id (.getId property))]
                            {:name (.getId profile)
@@ -190,9 +189,9 @@
                                      :schema (:schema table)
                                      :fields (set (get-columns database))})
            :field-values-lazy-seq (constantly [])
-           :details-fields        (constantly [{:name         "ids"
-                                                :display-name "Project ID"
-                                                :placeholder  "ga:12345678"
+           :details-fields        (constantly [{:name         "account-id"
+                                                :display-name "Google Analytics Account ID"
+                                                :placeholder  "1234567"
                                                 :required     true}
                                                {:name         "client-id"
                                                 :display-name "Client ID"
