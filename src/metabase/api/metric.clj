@@ -77,7 +77,6 @@
     ;; add new fields as needed
     (db/insert-many! 'MetricImportantField (for [field-id fields-to-add]
                                              {:metric_id id, :field_id field-id}))
-    ;; we're done (TODO - Do we want to return anything here?)
     {:success true}))
 
 

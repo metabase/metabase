@@ -182,7 +182,7 @@
   "Login with Google Auth."
   [:as {{:keys [token]} :body, remote-address :remote-addr}]
   {token su/NonBlankString}
-  (throttle/check (login-throttlers :ip-address) remote-address) ; TODO - Should we throttle this? It might keep us from being slammed with calls that have to make outbound HTTP requests, etc.
+  (throttle/check (login-throttlers :ip-address) remote-address)
   ;; Verify the token is valid with Google
   (let [{:keys [given_name family_name email]} (google-auth-token-info token)]
     (log/info "Successfully authenicated Google Auth token for:" given_name family_name)

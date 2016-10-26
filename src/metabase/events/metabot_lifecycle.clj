@@ -44,4 +44,4 @@
 (defn events-init
   "Automatically called during startup; start event listener for metabot lifecycle events."
   []
-  (events/start-event-listener metabot-lifecycle-topics metabot-lifecycle-channel process-metabot-lifecycle-event))
+  (events/start-event-listener! metabot-lifecycle-topics metabot-lifecycle-channel process-metabot-lifecycle-event))

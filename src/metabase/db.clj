@@ -522,17 +522,6 @@
   (jdbc/query (db-connection) (honeysql->sql honeysql-form) options))
 
 
-;; TODO - wouldn't it be *pretty cool* if we just made entities implement the honeysql.format/ToSql protocol so we didn't need this function?
-;;        That would however mean we would have to make sure the entities are resolved first
-(defn entity->table-name
-  "Get the keyword table name associated with an ENTITY, which can be anything that can be passed to `resolve-entity`.
-
-     (db/entity->table-name 'CardFavorite) -> :report_cardfavorite"
-  ^clojure.lang.Keyword [entity]
-  {:post [(keyword? %)]}
-  (keyword (:table (resolve-entity entity))))
-
-
 (defn qualify
   "Qualify a FIELD-NAME name with the name its ENTITY. This is necessary for disambiguating fields for HoneySQL queries that contain joins.
 
@@ -540,7 +529,7 @@
   ^clojure.lang.Keyword [entity field-name]
   (if (vector? field-name)
     [(qualify entity (first field-name)) (second field-name)]
-    (hsql/qualify (entity->table-name entity) field-name)))
+    (hsql/qualify (:table (resolve-entity entity)) field-name)))
 
 (defn qualified?
   "Is FIELD-NAME qualified by (e.g. with its table name)?"
@@ -582,7 +571,7 @@
   (let [entity (resolve-entity entity)]
     (vec (for [object (query (merge {:select (or (models/default-fields entity)
                                                  [:*])
-                                     :from   [(entity->table-name entity)]}
+                                     :from   [entity]}
                                     honeysql-form))]
            (models/do-post-select entity object)))))
 
@@ -649,7 +638,7 @@
 
   (^Boolean [entity honeysql-form]
    (let [entity (resolve-entity entity)]
-     (not= [0] (execute! (merge (h/update (entity->table-name entity))
+     (not= [0] (execute! (merge (h/update entity)
                                 honeysql-form)))))
 
   (^Boolean [entity id kvs]
@@ -701,7 +690,7 @@
   ([entity conditions]
    {:pre [(map? conditions) (every? keyword? (keys conditions))]}
    (let [entity (resolve-entity entity)]
-     (not= [0] (execute! (-> (h/delete-from (entity->table-name entity))
+     (not= [0] (execute! (-> (h/delete-from entity)
                              (where conditions))))))
   ([entity k v & more]
    (delete! entity (apply array-map k v more))))
@@ -730,7 +719,7 @@
   {:pre [(sequential? row-maps) (every? map? row-maps)]}
   (when (seq row-maps)
     (let [entity (resolve-entity entity)]
-      (map (insert-id-key) (jdbc/insert-multi! (db-connection) (entity->table-name entity) row-maps {:entities (quote-fn)})))))
+      (map (insert-id-key) (jdbc/insert-multi! (db-connection) (keyword (:table entity)) row-maps {:entities (quote-fn)})))))
 
 (defn insert-many!
   "Insert several new rows into the Database. Resolves ENTITY, and calls `pre-insert` on each of the ROW-MAPS.
@@ -912,8 +901,8 @@
        (db/join [Table :raw_table_id] [RawTable :id])
        :active true)"
   [[source-entity fk] [dest-entity pk]]
-  {:left-join [(entity->table-name dest-entity) [:= (qualify source-entity fk)
-                                                    (qualify dest-entity pk)]]})
+  {:left-join [(resolve-entity dest-entity) [:= (qualify source-entity fk)
+                                                (qualify dest-entity pk)]]})
 
 
 (defn isa

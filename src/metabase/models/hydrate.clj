@@ -243,7 +243,6 @@
 (defn- hydrate-vector
   "Hydrate a nested hydration form (vector) by recursively calling `hydrate`."
   [results [k & more :as vect]]
-  ;; TODO - it would be super snazzy if we could make this a compile-time check
   (assert (> (count vect) 1)
     (format "Replace '%s' with '%s'. Vectors are for nested hydration. There's no need to use one when you only have a single key." vect (first vect)))
   (let [results (hydrate results k)]

@@ -206,9 +206,9 @@
 
 ;;; ------------------------------------------------------------ Sync Util CRUD Fns ------------------------------------------------------------
 
-;; TODO - rename to `update-field-from-field-def!`
-(defn update-field!
-  "Update an existing `Field` from the given FIELD-DEF."
+(defn update-field-from-field-def!
+  "Update an EXISTING-FIELD from the given FIELD-DEF."
+  {:arglists '([existing-field field-def])}
   [{:keys [id], :as existing-field} {field-name :name, :keys [base-type special-type pk? parent-id]}]
   (u/prog1 (assoc existing-field
              :base_type    base-type
@@ -216,7 +216,8 @@
                                (humanization/name->human-readable-name field-name))
              :special_type (or (:special_type existing-field)
                                special-type
-                               (when pk? :type/PK)
+                               (when pk?
+                                 :type/PK)
                                (infer-field-special-type field-name base-type))
 
              :parent_id    parent-id)
@@ -228,13 +229,11 @@
         :special_type (:special_type <>)
         :parent_id    parent-id))))
 
-;; TODO - rename to `create-field-from-field-def!`
-(defn create-field!
+(defn create-field-from-field-def!
   "Create a new `Field` from the given FIELD-DEF."
+  {:arglists '([table-id field-def])}
   [table-id {field-name :name, :keys [base-type special-type pk? parent-id raw-column-id]}]
-  {:pre [(integer? table-id)
-         (string? field-name)
-         (isa? base-type :type/*)]}
+  {:pre [(integer? table-id) (string? field-name) (isa? base-type :type/*)]}
   (let [special-type (or special-type
                        (when pk? :type/PK)
                        (infer-field-special-type field-name base-type))]

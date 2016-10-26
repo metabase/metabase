@@ -50,4 +50,4 @@
 (defn events-init
   "Automatically called during startup; start the events listener for dependencies topics."
   []
-  (events/start-event-listener dependencies-topics dependencies-channel process-dependencies-event))
+  (events/start-event-listener! dependencies-topics dependencies-channel process-dependencies-event))

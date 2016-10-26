@@ -120,8 +120,7 @@
    "segment"   process-segment-activity!
    "user"      process-user-activity!})
 
-;; TODO - this should be renamed to `process-activity-event!`
-(defn process-activity-event
+(defn process-activity-event!
   "Handle processing for a single event notification received on the activity-feed-channel"
   [activity-event]
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
@@ -134,11 +133,10 @@
       (log/warn (format "Failed to process activity event. %s" (:topic activity-event)) e))))
 
 
-
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 
 
 (defn events-init
   "Automatically called during startup; start the events listener for the activity feed."
   []
-  (events/start-event-listener activity-feed-topics activity-feed-channel process-activity-event))
+  (events/start-event-listener! activity-feed-topics activity-feed-channel process-activity-event!))
