@@ -13,7 +13,8 @@
 
 (defn- all-entity-names []
   (set (for [ns       (ns-find/find-namespaces (classpath/classpath))
-             :when    (re-find #"^metabase\.models\." (name ns))
+             :when    (or (re-find #"^metabase\.models\." (name ns))
+                          (= (name ns) "metabase.db.migrations"))
              :when    (not (re-find #"test" (name ns)))
              [_ varr] (do (require ns)
                           (ns-interns ns))
@@ -22,5 +23,5 @@
          (:name entity))))
 
 (expect
-  (migrated-entity-names)
-  (all-entity-names))
+  (all-entity-names)
+  (migrated-entity-names))
