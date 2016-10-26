@@ -75,7 +75,7 @@
          :description description
          :parameters  (or parameters [])
          :creator_id  user-id)
-       (events/publish-event :dashboard-create)))
+       (events/publish-event! :dashboard-create)))
 
 (defn update-dashboard!
   "Update a `Dashboard`"
@@ -92,7 +92,7 @@
     :points_of_interest      points_of_interest
     :show_in_getting_started show_in_getting_started)
   (u/prog1 (Dashboard id)
-    (events/publish-event :dashboard-update (assoc <> :actor_id user-id))))
+    (events/publish-event! :dashboard-update (assoc <> :actor_id user-id))))
 
 
 ;;; ## ---------------------------------------- REVISIONS ----------------------------------------

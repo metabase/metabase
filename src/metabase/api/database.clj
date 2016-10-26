@@ -216,7 +216,7 @@
     (if-not (false? (:valid details-or-error))
       ;; no error, proceed with creation
       (let-500 [new-db (db/insert! Database, :name name, :engine engine, :details details-or-error, :is_full_sync is_full_sync)]
-        (events/publish-event :database-create new-db)
+        (events/publish-event! :database-create new-db)
         new-db)
       ;; failed to connect, return error
       {:status 400
@@ -261,7 +261,7 @@
                        :description        description
                        :caveats            caveats
                        :points_of_interest points_of_interest)) ; TODO - this means one cannot unset the description. Does that matter?
-          (events/publish-event :database-update (Database id)))
+          (events/publish-event! :database-update (Database id)))
         ;; failed to connect, return error
         {:status 400
          :body   conn-error}))))
@@ -274,7 +274,7 @@
   (let-404 [db (Database id)]
     (write-check db)
     (u/prog1 (db/cascade-delete! Database :id id)
-      (events/publish-event :database-delete db))))
+      (events/publish-event! :database-delete db))))
 
 
 ;;; ------------------------------------------------------------ POST /api/database/:id/sync ------------------------------------------------------------
@@ -284,7 +284,7 @@
   "Update the metadata for this `Database`."
   [id]
   ;; just publish a message and let someone else deal with the logistics
-  (events/publish-event :database-trigger-sync (write-check Database id))
+  (events/publish-event! :database-trigger-sync (write-check Database id))
   {:status :ok})
 
 

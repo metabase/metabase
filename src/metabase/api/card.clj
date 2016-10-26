@@ -173,7 +173,7 @@
          :display                display
          :name                   name
          :visualization_settings visualization_settings)
-       (events/publish-event :card-create)))
+       (events/publish-event! :card-create)))
 
 
 (defendpoint GET "/:id"
@@ -182,7 +182,7 @@
   (-> (read-check Card id)
       (hydrate :creator :dashboard_count :labels)
       (assoc :actor_id *current-user-id*)
-      (->> (events/publish-event :card-read))
+      (->> (events/publish-event! :card-read))
       (dissoc :actor_id)))
 
 
@@ -210,7 +210,7 @@
                        (not archived)
                        (:archived card))       :card-unarchive
                   :else                        :card-update)]
-      (events/publish-event event (assoc (Card id) :actor_id *current-user-id*)))))
+      (events/publish-event! event (assoc (Card id) :actor_id *current-user-id*)))))
 
 
 (defendpoint DELETE "/:id"
@@ -218,7 +218,7 @@
   [id]
   (let [card (write-check Card id)]
     (u/prog1 (db/cascade-delete! Card :id id)
-      (events/publish-event :card-delete (assoc card :actor_id *current-user-id*)))))
+      (events/publish-event! :card-delete (assoc card :actor_id *current-user-id*)))))
 
 
 ;;; ------------------------------------------------------------ Favoriting ------------------------------------------------------------

@@ -29,7 +29,7 @@
     (db/insert! Session
       :id      <>
       :user_id (:id user))
-    (events/publish-event :user-login {:user_id (:id user), :session_id <>, :first_login (not (boolean (:last_login user)))})))
+    (events/publish-event! :user-login {:user_id (:id user), :session_id <>, :first_login (not (boolean (:last_login user)))})))
 
 
 ;;; ## API Endpoints

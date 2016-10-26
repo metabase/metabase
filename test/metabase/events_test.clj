@@ -3,9 +3,9 @@
             [expectations :refer :all]
             [metabase.events :as events]))
 
-(def testing-topic :event-test-topic)
+(def ^:private testing-topic :event-test-topic)
 
-(def testing-sub-channel (async/chan))
+(def ^:private testing-sub-channel (async/chan))
 
 
 ;; ## Basic Pub/Sub TESTS
@@ -15,7 +15,7 @@
 ;; we should get back our originally posted object no matter what happens
 (expect
   {:some :object}
-  (events/publish-event testing-topic {:some :object}))
+  (events/publish-event! testing-topic {:some :object}))
 
 ;; when we receive a message it should be wrapped with {:topic `topic` :item `message body`}
 (expect
