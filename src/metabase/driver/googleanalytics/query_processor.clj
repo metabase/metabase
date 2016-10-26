@@ -198,15 +198,16 @@
 
 ;;; ### order-by
 
-(defn- handle-order-by [{order-by-clause :order-by}]
-  (when order-by-clause
-    {:sort (s/join "," (for [{:keys [field direction]} order-by-clause]
+(defn- handle-order-by [{:keys [order-by] :as query}]
+  (when order-by
+    {:sort (s/join "," (for [{:keys [field direction]} order-by]
                          (str (case direction
                                 :ascending  ""
                                 :descending "-")
-                              (if (instance? DateTimeField field)
-                                (unit->ga-dimension (:unit field))
-                                (->rvalue field)))))}))
+                              (cond
+                                (instance? DateTimeField field) (unit->ga-dimension (:unit field))
+                                (instance? AgFieldRef field) (get-in query [:aggregation :metric-name])
+                                :else (->rvalue field)))))}))
 
 ;;; ### limit
 
