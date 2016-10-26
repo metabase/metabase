@@ -300,11 +300,7 @@
   (let [mbql?    (:mbql? (:native query))
         response (do-query query)
         columns  (map header->column (.getColumnHeaders response))
-        getters  (map header->getter-fn (.getColumnHeaders response))
-        columns  (if mbql?
-                   ; replace last column name with :metric for now since that's what the qp thinks it should be
-                   (conj (vec (butlast columns)) (assoc (last columns) :name :metric))
-                   columns)]
+        getters  (map header->getter-fn (.getColumnHeaders response))]
     {:columns  (map :name columns)
      :cols     columns
      :rows     (for [row (.getRows response)]

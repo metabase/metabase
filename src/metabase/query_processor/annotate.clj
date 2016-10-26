@@ -95,7 +95,7 @@
 
 (defn- add-aggregate-field-if-needed
   "Add a Field containing information about an aggregate column such as `:count` or `:distinct` if needed."
-  [{{ag-type :aggregation-type, ag-field :field} :aggregation} fields]
+  [{{ag-type :aggregation-type, ag-field :field, metric-name :metric-name} :aggregation} fields]
   (if (or (not ag-type)
           (= ag-type :rows))
     fields
@@ -109,6 +109,11 @@
                         (when (contains? #{:count :distinct} ag-type)
                           {:base-type    :type/Integer
                            :special-type :type/Number})
+                        ;; Assume built-in metrics are type/Number, and named with the same name as the metric name
+                        (when (contains? #{:metric} ag-type)
+                          {:field-name         metric-name
+                           :field-display-name metric-name
+                           :base-type          :type/Number})
                         ;; For the time being every Expression is an arithmetic operator and returns a floating-point number, so hardcoding these types is fine;
                         ;; In the future when we extend Expressions to handle more functionality we'll want to introduce logic that associates a return type with a given expression.
                         ;; But this will work for the purposes of a patch release.
