@@ -147,15 +147,9 @@
       (swap! connection-pools assoc id <>))))
 
 (defn db->jdbc-connection-spec
-  "Return a JDBC connection spec for DATABASE. Normally this will have a C3P0 pool as its datasource, unless the database is `short-lived`."
-  ;; TODO - I don't think short-lived? key is really needed anymore. It's only used by unit tests, and its original purpose was for creating temporary DBs;
-  ;; since we don't destroy databases at the end of each test anymore, it's probably time to remove this
+  "Return a JDBC connection spec for DATABASE. This will have a C3P0 pool as its datasource."
   [{:keys [engine details], :as database}]
-  (if (:short-lived? details)
-    ;; short-lived connections are not pooled, so just return a non-pooled spec
-    (connection-details->spec (driver/engine->driver engine) details)
-    ;; default behavior is to use a pooled connection
-    (db->pooled-connection-spec database)))
+  (db->pooled-connection-spec database))
 
 
 (defn escape-field-name

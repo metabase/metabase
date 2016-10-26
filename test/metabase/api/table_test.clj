@@ -331,7 +331,7 @@
 (tu/expect-with-temp [Table [table {:rows 15}]]
   (merge (-> (table-defaults)
              (dissoc :segments :field_values :metrics)
-             (assoc-in [:db :details] {:short-lived? nil, :db "mem:test-data;USER=GUEST;PASSWORD=guest"}))
+             (assoc-in [:db :details] {:db "mem:test-data;USER=GUEST;PASSWORD=guest"}))
          (match-$ table
            {:description     "What a nice table!"
             :entity_type     "person"

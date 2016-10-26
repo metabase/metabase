@@ -21,15 +21,15 @@
    :type/Time       "TIME"
    :type/UUID       "UUID"})
 
-(defn- database->connection-details [context {:keys [database-name short-lived?]}]
-  (merge {:host         "localhost"
-          :port         5432
-          :timezone     :America/Los_Angeles
-          :short-lived? short-lived?}
+(defn- database->connection-details [context {:keys [database-name]}]
+  (merge {:host     "localhost"
+          :port     5432
+          :timezone :America/Los_Angeles}
          (when (env :circleci)
            {:user "ubuntu"})
          (when (= context :db)
            {:db database-name})))
+
 
 (u/strict-extend PostgresDriver
   generic/IGenericSQLDatasetLoader
@@ -40,11 +40,12 @@
           :pk-sql-type               (constantly "SERIAL")})
   i/IDatasetLoader
   (merge generic/IDatasetLoaderMixin
-         {:database->connection-details (u/drop-first-arg database->connection-details)
-          :default-schema               (constantly "public")
-          :engine                       (constantly :postgres)
+         {:database->connection-details       (u/drop-first-arg database->connection-details)
+          :default-schema                     (constantly "public")
+          :engine                             (constantly :postgres)
           ;; TODO: this is suspect, but it works
           :has-questionable-timezone-support? (constantly true)}))
+
 
 ;; it's super obnoxious when testing locally to have tests fail because someone is already connected to the test-data DB (meaning we can't drop it), so close all connections to it beforehand
 (defn- kill-connections-to-test-data-db!

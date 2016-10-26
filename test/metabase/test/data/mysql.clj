@@ -19,11 +19,10 @@
    :type/Text       "TEXT"
    :type/Time       "TIME"})
 
-(defn- database->connection-details [context {:keys [database-name short-lived?]}]
+(defn- database->connection-details [context {:keys [database-name]}]
   (merge {:host         "localhost"
           :port         3306
           :timezone     :America/Los_Angeles
-          :short-lived? short-lived?
           :user         (if (env :circleci) "ubuntu"
                             "root")}
          (when (= context :db)
