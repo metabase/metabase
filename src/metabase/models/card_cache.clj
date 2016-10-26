@@ -9,6 +9,10 @@
     [metabase.models.interface :as i]
     [taoensso.nippy :as nippy]))
 
+;;; This is a hand managed version from data stored in the cache.
+;;; So if we ever change the schema of the query result or the serialization/compression of cached data we can simply ignore older versions =)
+(def ^:const cache-schema-version 1)
+
 (i/defentity CardCache :report_card_cache)
 
 (u/strict-extend (class CardCache)
@@ -18,7 +22,6 @@
            :types        (constantly {:data :bytes})
            :can-read?    (constantly true)
            :can-write?   (constantly true)}))
-
 
 ;;;; QUERIES
 
@@ -39,6 +42,7 @@
   [card-id query-hash max-age]
   (h/where [:= :card_id card-id]
            [:= :query_hash query-hash]
+           [:= :schema_version cache-schema-version]
            (expired-clause :<= max-age :updated_at)))
 
 (defn- select-expired-cache-query
@@ -50,6 +54,7 @@
       (h/where [:or
                 [:= :c.cache_result false]
                 [:= :c.archived true]
+                [:<> :cc.schema_version cache-schema-version]
                 (expired-clause :> :c.cache_max_age :cc.updated_at)])))
 
 (defn- delete-expired-cache-query
@@ -57,7 +62,6 @@
   []
   (-> (h/delete-from :report_card_cache)
       (h/where [:in :id (select-expired-cache-query)])))
-
 
 ;;;; SERIALIZATION
 
@@ -85,11 +89,11 @@
   "Update the cache for a card with a more recent version"
   [card-id query-hash result]
   (let [id (db/select-field :id CardCache :card_id card-id :query_hash query-hash)
-        bytes (serialize result)]
+        bytes (serialize result)
+        card-cache-data {:data bytes :data_size (count bytes) :schema_version cache-schema-version}]
     (if (some? id)
-      (db/update! CardCache (first id) {:data bytes :data_size (count bytes)})
-      (db/insert! CardCache {:card_id card-id :query_hash query-hash :data bytes :data_size (count  bytes)}))))
-
+      (db/update! CardCache (first id) card-cache-data)
+      (db/insert! CardCache (assoc card-cache-data :card_id card-id :query_hash query-hash)))))
 
 ;;; EVICTION
 

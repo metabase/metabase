@@ -63,6 +63,12 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  name: schema_version
+                  type: int
+                  defaultValue: 0
+                  constraints:
+                    nullable: false
+              - column:
                   name: created_at
                   type: datetime
                   constraints:
