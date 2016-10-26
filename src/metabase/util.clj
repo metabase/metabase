@@ -310,6 +310,17 @@
     (jdbc-clob->str (.getCharacterStream this))))
 
 
+(defprotocol ^:private IBlobToBytes
+  (jdbc-blob->bytes ^bytes [this]
+    "Convert a Postgres/H2/SQLServer JDBC Blob to a byte array."))
+
+(extend-protocol IBlobToBytes
+  nil     (jdbc-blob->bytes [_]    nil)
+  Object  (jdbc-blob->bytes [this] this)
+
+  java.sql.Blob
+  (jdbc-blob->bytes [this] (.getBytes this 0 (.length this))))
+
 (defn optional
   "Helper function for defining functions that accept optional arguments.
    If PRED? is true of the first item in ARGS, a pair like `[first-arg other-args]`

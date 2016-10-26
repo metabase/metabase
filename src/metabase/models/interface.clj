@@ -82,6 +82,7 @@
      *  `:json` serializes objects as JSON strings before going into the DB, and parses JSON strings when coming out
      *  `:keyword` calls `u/keyword->qualified-name` before going into the DB, and `keyword` when coming out
      *  `:clob` converts clobs to Strings (via `metabase.util/jdbc-clob->str`) when coming out
+     *  `:bytes` converts blobs to bytes (via `metabase.util/jdbc-blob->bytes`) when coming out
 
        (types [_] {:cards :json}) ; encode `:cards` as JSON when stored in the DB")
 
@@ -104,7 +105,9 @@
    :keyword {:in  u/keyword->qualified-name
              :out keyword}
    :clob    {:in  identity
-             :out u/jdbc-clob->str}})
+             :out u/jdbc-clob->str}
+   :bytes    {:in  identity
+             :out u/jdbc-blob->bytes}})
 
 (defn- apply-type-fns
   "Apply the appropriate `type-fns` for OBJ."

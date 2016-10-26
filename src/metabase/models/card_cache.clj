@@ -1,12 +1,13 @@
 (ns metabase.models.card-cache
   (:require
+    [clojure.tools.logging :as log]
     (honeysql [core :as hsql]
               [helpers :as h])
     (metabase [config :as config]
-              [db :as db])
+              [db :as db]
+              [util :as u])
     [metabase.models.interface :as i]
-    [metabase.util :as u]
-    [clojure.tools.logging :as log]))
+    [taoensso.nippy :as nippy]))
 
 (i/defentity CardCache :report_card_cache)
 
@@ -14,7 +15,7 @@
    i/IEntity
    (merge i/IEntityDefaults
           {:timestamped? (constantly true)
-           :types        (constantly {:data :json})
+           :types        (constantly {:data :bytes})
            :can-read?    (constantly true)
            :can-write?   (constantly true)}))
 
@@ -58,25 +59,36 @@
       (h/where [:in :id (select-expired-cache-query)])))
 
 
+;;;; SERIALIZATION
+
+(defn- serialize
+  [result]
+  (nippy/freeze result {:compressor nippy/snappy-compressor}))
+
+(defn- deserialize
+  [bytes]
+  (nippy/thaw bytes {:compressor nippy/snappy-compressor}))
+
 ;;;; OPERATIONS
 
 (defn fetch-from-cache
   "Fetch the result from cache if exists and if it is still valid, returns nil otherwise"
   [card-id query-hash max-age]
   (let [card-cache (db/simple-select-one CardCache (select-cache-entry-query card-id query-hash max-age))]
-    (if-let [result (:data card-cache)]
+    (if-let [data (:data card-cache)]
       (do
-        (log/info "⚡ cached result")
-        (assoc result :from_cache true :cache_last_update (:updated_at card-cache)))
+        (log/info (format "⚡ cached result. Object size is %d bytes" (count data)))
+        (assoc (deserialize data) :from_cache true :cache_last_update (:updated_at card-cache)))
       (log/info "☹ no cached result"))))
 
 (defn update-cache!
   "Update the cache for a card with a more recent version"
   [card-id query-hash result]
-  (let [id (db/select-field :id CardCache :card_id card-id :query_hash query-hash)]
+  (let [id (db/select-field :id CardCache :card_id card-id :query_hash query-hash)
+        bytes (serialize result)]
     (if (some? id)
-      (db/update! CardCache (first id) {:data (.getBytes result) :data_size 0})
-      (db/insert! CardCache {:card_id card-id :query_hash query-hash :data (.getBytes result) :data_size 0}))))
+      (db/update! CardCache (first id) {:data bytes :data_size (count bytes)})
+      (db/insert! CardCache {:card_id card-id :query_hash query-hash :data bytes :data_size (count  bytes)}))))
 
 
 ;;; EVICTION
