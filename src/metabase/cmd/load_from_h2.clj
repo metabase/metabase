@@ -20,6 +20,7 @@
             [medley.core :as m]
             [metabase.config :as config]
             [metabase.db :as db]
+            [metabase.db.migrations :refer [DataMigrations]]
             (metabase.models [activity :refer [Activity]]
                              [card :refer [Card]]
                              [card-favorite :refer [CardFavorite]]
@@ -95,7 +96,8 @@
    PermissionsGroup
    PermissionsGroupMembership
    Permissions
-   PermissionsRevision])
+   PermissionsRevision
+   DataMigrations])
 
 
 (defn- h2-details [h2-connection-string-or-nil]
@@ -177,7 +179,7 @@
 
 (def ^:private entities-without-autoinc-ids
   "Entities that do NOT use an auto incrementing ID column."
-  #{Setting Session})
+  #{Setting Session DataMigrations})
 
 (defn- set-postgres-sequence-values-if-needed!
   "When loading data into a Postgres DB, update the sequence nextvals."

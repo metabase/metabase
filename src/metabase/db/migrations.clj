@@ -31,7 +31,7 @@
 
 ;;; # Migration Helpers
 
-(defentity ^:private DataMigrations :data_migrations)
+(defentity DataMigrations :data_migrations)
 
 (defn- run-migration-if-needed!
   "Run migration defined by MIGRATION-VAR if needed.
