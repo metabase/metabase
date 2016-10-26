@@ -61,7 +61,7 @@
                (hydrate :creator [:ordered_cards [:card :creator] :series])
                read-check
                hide-unreadable-cards)
-    (events/publish-event :dashboard-read (assoc <> :actor_id *current-user-id*))))
+    (events/publish-event! :dashboard-read (assoc <> :actor_id *current-user-id*))))
 
 
 (defendpoint PUT "/:id"
@@ -79,7 +79,7 @@
   [id]
   (let [dashboard (write-check Dashboard id)]
     (u/prog1 (db/cascade-delete! Dashboard :id id)
-      (events/publish-event :dashboard-delete (assoc dashboard :actor_id *current-user-id*)))))
+      (events/publish-event! :dashboard-delete (assoc dashboard :actor_id *current-user-id*)))))
 
 
 (defendpoint POST "/:id/cards"
@@ -96,9 +96,8 @@
                         :series                 (or series [])}
         dashboard-card (-> (merge dashboard-card defaults)
                            (update :series #(filter identity (map :id %))))]
-    (let-500 [result (create-dashboard-card! dashboard-card)]
-      (events/publish-event :dashboard-add-cards {:id id :actor_id *current-user-id* :dashcards [result]})
-      result)))
+    (u/prog1 (check-500 (create-dashboard-card! dashboard-card))
+      (events/publish-event! :dashboard-add-cards {:id id, :actor_id *current-user-id*, :dashcards [<>]}))))
 
 
 (defendpoint PUT "/:id/cards"
@@ -118,7 +117,7 @@
       ;; ensure the dashcard we are updating is part of the given dashboard
       (when (contains? dashcard-ids dashcard-id)
         (update-dashboard-card! (update dashboard-card :series #(filter identity (map :id %)))))))
-  (events/publish-event :dashboard-reposition-cards {:id id :actor_id *current-user-id* :dashcards cards})
+  (events/publish-event! :dashboard-reposition-cards {:id id, :actor_id *current-user-id*, :dashcards cards})
   {:status :ok})
 
 

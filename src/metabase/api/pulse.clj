@@ -72,7 +72,7 @@
   [id]
   (let-404 [pulse (Pulse id)]
     (u/prog1 (db/cascade-delete! Pulse :id id)
-      (events/publish-event :pulse-delete (assoc pulse :actor_id *current-user-id*)))))
+      (events/publish-event! :pulse-delete (assoc pulse :actor_id *current-user-id*)))))
 
 
 (defendpoint GET "/form_input"

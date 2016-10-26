@@ -91,7 +91,7 @@
                  :description description
                  :is_active   true
                  :definition  definition)]
-    (-> (events/publish-event :metric-create metric)
+    (-> (events/publish-event! :metric-create metric)
         (hydrate :creator))))
 
 (defn exists?
@@ -139,7 +139,7 @@
     :show_in_getting_started show_in_getting_started
     :definition              definition)
   (u/prog1 (retrieve-metric id)
-    (events/publish-event :metric-update (assoc <> :actor_id user-id, :revision_message revision_message))))
+    (events/publish-event! :metric-update (assoc <> :actor_id user-id, :revision_message revision_message))))
 
 (defn delete-metric!
   "Delete a `Metric`.
@@ -156,4 +156,4 @@
   (db/update! Metric id, :is_active false)
   ;; retrieve the updated metric (now retired)
   (u/prog1 (retrieve-metric id)
-    (events/publish-event :metric-delete (assoc <> :actor_id user-id, :revision_message revision-message))))
+    (events/publish-event! :metric-delete (assoc <> :actor_id user-id, :revision_message revision-message))))

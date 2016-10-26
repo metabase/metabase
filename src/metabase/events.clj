@@ -53,8 +53,7 @@
    Expects a map as input and the map must have a `:topic` key."
   (async/pub events-channel :topic))
 
-;; TODO - this should be named `publish-event!`
-(defn publish-event
+(defn publish-event!
   "Publish an item into the events stream.
   Returns the published item to allow for chaining."
   [topic event-item]
@@ -66,6 +65,7 @@
 ;;; ## ---------------------------------------- SUBSCRIPTION ----------------------------------------
 
 
+;; TODO - rename to `subscribe-to-topic!`
 (defn subscribe-to-topic
   "Subscribe to a given topic of the general events stream.
    Expects a topic to subscribe to and a `core.async` channel.
@@ -75,6 +75,7 @@
   (async/sub events-publication (keyword topic) channel)
   channel)
 
+;; TODO - rename to `subscribe-to-topics!`
 (defn subscribe-to-topics
   "Convenience method for subscribing to a series of topics against a single channel."
   [topics channel]
@@ -82,6 +83,7 @@
   (doseq [topic topics]
     (subscribe-to-topic topic channel)))
 
+;; TODO - rename to `start-event-listener!`
 (defn start-event-listener
   "Initialize an event listener which runs on a background thread via `go-loop`."
   [topics channel handler-fn]
