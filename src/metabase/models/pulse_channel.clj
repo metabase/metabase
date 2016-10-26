@@ -115,7 +115,7 @@
   (into (mapv (partial array-map :email) (:emails details))
         (db/select [User :id :email :first_name :last_name]
           :id [:in {:select [:user_id]
-                    :from   [(db/entity->table-name PulseChannelRecipient)]
+                    :from   [PulseChannelRecipient]
                     :where  [:= :pulse_channel_id id]}])))
 
 (defn- pre-cascade-delete [{:keys [id]}]

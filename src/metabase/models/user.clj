@@ -151,18 +151,12 @@
       :reset_token     <>
       :reset_triggered (System/currentTimeMillis))))
 
+;; TODO - not sure this belongs in this namespace...
 (defn form-password-reset-url
   "Generate a properly formed password reset url given a password reset token."
   [reset-token]
   {:pre [(string? reset-token)]}
   (str (setting/get :-site-url) "/auth/reset_password/" reset-token))
-
-;; TODO - why is this in `metabase.models.user`?
-(defn instance-created-at
-  "The date this Metabase instance was created.  We use the `:date_joined` of the first `User` to determine this."
-  ^java.sql.Timestamp []
-  (db/select-one-field :date_joined User, {:order-by [[:date_joined :asc]]}))
-
 
 
 ;;; ------------------------------------------------------------ Permissions ------------------------------------------------------------

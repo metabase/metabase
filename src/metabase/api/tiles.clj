@@ -114,13 +114,13 @@
    We evaluate the query and find the set of lat/lon pairs which are relevant and then render the appropriate ones.
    It's expected that to render a full map view several calls will be made to this endpoint in parallel."
   [zoom x y lat-field-id lon-field-id lat-col-idx lon-col-idx query]
-  {zoom         su/IntegerString
-   x            su/IntegerString
-   y            su/IntegerString
+  {zoom         su/IntString
+   x            su/IntString
+   y            su/IntString
    lat-field-id su/IntGreaterThanZero
    lon-field-id su/IntGreaterThanZero
-   lat-col-idx  su/IntegerString
-   lon-col-idx  su/IntegerString
+   lat-col-idx  su/IntString
+   lon-col-idx  su/IntString
    query        su/JSONString}
   (let [zoom          (Integer/parseInt zoom)
         x             (Integer/parseInt x)

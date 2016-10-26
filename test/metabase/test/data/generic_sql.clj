@@ -153,7 +153,7 @@
 
 (defn- default-database->spec [driver context dbdef]
   (let [spec (sql/connection-details->spec driver (i/database->connection-details driver context dbdef))]
-    (assoc spec :make-pool? (not (:short-lived? spec)))))
+    (assoc spec :make-pool? true)))
 
 
 ;;; Loading Table Data

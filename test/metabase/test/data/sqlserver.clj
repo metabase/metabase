@@ -46,14 +46,13 @@
       (throw (Exception. (format "In order to test SQL Server, you must specify the env var MB_SQL_SERVER_%s."
                                  (s/upper-case (name env-var)))))))
 
-(defn- database->connection-details [context {:keys [database-name short-lived?]}]
+(defn- database->connection-details [context {:keys [database-name]}]
   {:host         (get-db-env-var :host)
    :port         (Integer/parseInt (get-db-env-var :port "1433"))
    :user         (get-db-env-var :user)
    :password     (get-db-env-var :password)
    :db           (when (= context :db)
-                   (+suffix database-name))
-   :short-lived? short-lived?})
+                   (+suffix database-name))})
 
 
 (defn- drop-db-if-exists-sql [{:keys [database-name]}]

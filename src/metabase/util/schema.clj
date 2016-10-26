@@ -88,14 +88,13 @@
   (with-api-error-message (s/constrained s/Str password/is-complex?)
     "Insufficient password strength"))
 
-;; TODO - maybe rename this to `IntString` so it's consistent with `IntGreaterThanZero`
-(def IntegerString
+(def IntString
   "Schema for a string that can be parsed as an integer.
    Something that adheres to this schema is guaranteed to to work with `Integer/parseInt`."
   (with-api-error-message (s/constrained s/Str #(u/ignore-exceptions (Integer/parseInt %)))
     "value must be a valid integer."))
 
-(def IntegerStringGreaterThanZero
+(def IntStringGreaterThanZero
   "Schema for a string that can be parsed as an integer, and is greater than zero.
    Something that adheres to this schema is guaranteed to to work with `Integer/parseInt`."
   (with-api-error-message (s/constrained s/Str #(u/ignore-exceptions (< 0 (Integer/parseInt %))))

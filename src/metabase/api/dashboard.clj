@@ -124,7 +124,7 @@
 (defendpoint DELETE "/:id/cards"
   "Remove a `DashboardCard` from a `Dashboard`."
   [id dashcardId]
-  {dashcardId su/IntegerStringGreaterThanZero}
+  {dashcardId su/IntStringGreaterThanZero}
   (write-check Dashboard id)
   (when-let [dashboard-card (DashboardCard (Integer/parseInt dashcardId))]
     (check-500 (delete-dashboard-card! dashboard-card *current-user-id*))

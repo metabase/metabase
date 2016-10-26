@@ -42,6 +42,11 @@
   :default   false
   :internal? true)
 
+(defn- instance-creation-timestamp
+  "The date this Metabase instance was created. We use the `:date_joined` of the first `User` to determine this."
+  ^java.sql.Timestamp []
+  (db/select-one-field :date_joined User, {:order-by [[:date_joined :asc]]}))
+
 ;; 2 weeks of inactivity after 30 days of total install
 
 ;; this sends out a general 2 week email follow up email
@@ -50,7 +55,7 @@
              ;; if we've already sent the follow-up email then we are done
              (when-not (follow-up-email-sent)
                ;; figure out when we consider the instance created
-               (when-let [instance-created (user/instance-created-at)]
+               (when-let [instance-created (instance-creation-timestamp)]
                  ;; we need to be 2+ weeks (14 days) from creation to send the follow up
                  (when (< (* 14 24 60 60 1000)
                           (- (System/currentTimeMillis) (.getTime instance-created)))
@@ -62,7 +67,7 @@
              ;; if we've already sent the abandonment email then we are done
              (when-not (abandonment-email-sent)
                ;; figure out when we consider the instance created
-               (when-let [instance-created (user/instance-created-at)]
+               (when-let [instance-created (instance-creation-timestamp)]
                  ;; we need to be 4+ weeks (30 days) from creation to send the follow up
                  (when (< (* 30 24 60 60 1000)
                           (- (System/currentTimeMillis) (.getTime instance-created)))

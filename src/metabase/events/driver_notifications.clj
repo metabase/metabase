@@ -38,4 +38,4 @@
 (defn events-init
   "Automatically called during startup; start event listener for database sync events."
   []
-  (events/start-event-listener driver-notifications-topics driver-notifications-channel process-driver-notifications-event))
+  (events/start-event-listener! driver-notifications-topics driver-notifications-channel process-driver-notifications-event))

@@ -2,9 +2,11 @@
   ;; TODO - maybe just call this namespace `metabase.models`?
   (:require [clojure.tools.logging :as log]
             [cheshire.core :as json]
+            [honeysql.format :as hformat]
             (metabase [config :as config]
                       [util :as u])
-            [metabase.models.common :as common]))
+            [metabase.models.common :as common])
+  (:import honeysql.format.ToSql))
 
 
 ;;; ------------------------------------------------------------ Entity ------------------------------------------------------------
@@ -286,8 +288,9 @@
           (invoke-entity-or-instance this# arg1# arg2# arg3# arg4# arg5# arg6# arg7# arg8# arg9# arg10# arg11# arg12# arg13# arg14# arg15# arg16# arg17# arg18# arg19#)))
 
        (u/strict-extend ~instance
-         IEntity        IEntityDefaults
-         ICreateFromMap {:map-> (u/drop-first-arg ~map->instance)})
+         IEntity               IEntityDefaults
+         ICreateFromMap        {:map-> (u/drop-first-arg ~map->instance)}
+         honeysql.format/ToSql {:to-sql (comp hformat/to-sql keyword :table)})
 
        (def ~(vary-meta entity assoc
                         :tag      (symbol (str (namespace-munge *ns*) \. instance))

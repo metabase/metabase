@@ -161,7 +161,7 @@
                    ["DROP DATABASE IF EXISTS materialized_views_test;
                      CREATE DATABASE materialized_views_test;"]
                    {:transaction? false})
-    (let [details (i/database->connection-details pg-driver :db {:database-name "materialized_views_test", :short-lived? true})]
+    (let [details (i/database->connection-details pg-driver :db {:database-name "materialized_views_test"})]
       (jdbc/execute! (sql/connection-details->spec pg-driver details)
                      ["DROP MATERIALIZED VIEW IF EXISTS test_mview;
                        CREATE MATERIALIZED VIEW test_mview AS
@@ -177,7 +177,7 @@
                    ["DROP DATABASE IF EXISTS fdw_test;
                      CREATE DATABASE fdw_test;"]
                    {:transaction? false})
-    (let [details (i/database->connection-details pg-driver :db {:database-name "fdw_test", :short-lived? true})]
+    (let [details (i/database->connection-details pg-driver :db {:database-name "fdw_test"})]
       (jdbc/execute! (sql/connection-details->spec pg-driver details)
                      [(str "CREATE EXTENSION IF NOT EXISTS postgres_fdw;
                             CREATE SERVER foreign_server

@@ -84,7 +84,3 @@
 (expect nil            (infer-field-special-type "rating"  :type/Boolean))
 (expect :type/Country  (infer-field-special-type "country" :type/Text))
 (expect nil            (infer-field-special-type "country" :type/Integer))
-
-
-;; TODO: update-field
-;; TODO: create-field
