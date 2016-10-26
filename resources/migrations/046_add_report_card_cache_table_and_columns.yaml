@@ -1,4 +1,13 @@
 databaseChangeLog:
+  - property:
+        name: blob.type
+        value: blob
+        dbms: mysql,h2
+  - property:
+      name: blob.type
+      value: bytea
+      dbms: postgresql
+
   - changeSet:
       id: 46
       author: felipegasparini
@@ -43,8 +52,14 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: result
-                  type: text
+                  name: data
+                  type: ${blob.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: data_size
+                  type: int
+                  defaultValue: 0
                   constraints:
                     nullable: false
               - column:
@@ -62,9 +77,9 @@ databaseChangeLog:
             indexName: idx_report_card_cache_card_id_query_hash
             unique: true
             columns:
-                column:
-                  name: card_id
-                column:
-                  name: query_hash
+            - column:
+                name: card_id
+            - column:
+                name: query_hash
 
 

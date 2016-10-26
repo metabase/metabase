@@ -13,7 +13,7 @@
    i/IEntity
    (merge i/IEntityDefaults
           {:timestamped? (constantly true)
-           :types        (constantly {:result :json})
+           :types        (constantly {:data :json})
            :can-read?    (constantly true)
            :can-write?   (constantly true)}))
 
@@ -29,7 +29,7 @@
   "Fetch the result from cache if exists and if it is still valid, returns nil otherwise"
   [card-id query-hash max-age]
   (let [card-cache (db/simple-select-one CardCache (select-cache-entry-query card-id query-hash max-age))]
-    (if-let [result (:result card-cache)]
+    (if-let [result (:data card-cache)]
       (do
         (log/info "⚡ cached result")
         (assoc result :from_cache true :cache_last_update (:updated_at card-cache)))
@@ -40,8 +40,8 @@
   [card-id query-hash result]
   (let [id (db/select-field :id CardCache :card_id card-id :query_hash query-hash)]
     (if (some? id)
-      (db/update! CardCache (first id) {:result result})
-      (db/insert! CardCache {:card_id card-id :query_hash query-hash :result result}))))
+      (db/update! CardCache (first id) {:data result :data_size 0})
+      (db/insert! CardCache {:card_id card-id :query_hash query-hash :data result :data_size 0}))))
 
 
 (defn- select-expired-cache-query
