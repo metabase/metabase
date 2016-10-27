@@ -6,7 +6,8 @@ import {
     getChartTypeFromData,
     DIMENSION_DIMENSION_METRIC,
     DIMENSION_METRIC,
-    DIMENSION_METRIC_METRIC
+    DIMENSION_METRIC_METRIC,
+    getColumnCardinality
 } from "metabase/visualizations/lib/utils";
 
 import { isNumeric, isDate, isMetric, isDimension, isLatitude, isLongitude, hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
@@ -73,7 +74,7 @@ function getDefaultLineAreaBarColumns([{ data: { cols, rows } }]) {
             if (isDate(dimensions[1]) && !isDate(dimensions[0])) {
                 // if the series dimension is a date but the axis dimension is not then swap them
                 dimensions.reverse();
-            } else if (dimensions[1].cardinality > dimensions[0].cardinality) {
+            } else if (getColumnCardinality(cols, rows, 1) > getColumnCardinality(cols, rows, 0)) {
                 // if the series dimension is higher cardinality than the axis dimension then swap them
                 dimensions.reverse();
             }
