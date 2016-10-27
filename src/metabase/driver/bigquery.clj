@@ -148,6 +148,8 @@
    "INTEGER"   :type/Integer
    "RECORD"    :type/Dictionary ; RECORD -> field has a nested schema
    "STRING"    :type/Text
+   "DATE"      :type/Date
+   "DATETIME"  :type/DateTime
    "TIMESTAMP" :type/DateTime})
 
 (defn- table-schema->metabase-field-info [^TableSchema schema]
@@ -191,6 +193,14 @@
                            (.getDSTSavings default-timezone)
                            (.getRawOffset  default-timezone))))))
 
+(defn- parse-date-str [s]
+  ;; Date strings either come back as YYYY-MM-DD
+  (.parse (java.text.SimpleDateFormat. "yyyy-MM-dd") s))
+
+(defn- parse-datetime-str [s]
+  ;; Date strings either come back as YYYY-MM-DD
+  (.parse (java.text.SimpleDateFormat. "yyyy-MM-dd'T'HH:mm:ss") s))
+
 (def ^:private type->parser
   "Functions that should be used to coerce string values in responses to the appropriate type for their column."
   {"BOOLEAN"   #(Boolean/parseBoolean %)
@@ -198,6 +208,8 @@
    "INTEGER"   #(Integer/parseInt %)
    "RECORD"    identity
    "STRING"    identity
+   "DATE"      parse-date-str
+   "DATETIME"  parse-datetime-str
    "TIMESTAMP" parse-timestamp-str})
 
 (defn- post-process-native
