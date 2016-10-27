@@ -34,15 +34,17 @@ export default class PinMap extends Component {
     }
 
     updateSettings() {
+        let newSettings = {};
         if (this.state.lat != null) {
-            this.props.onUpdateVisualizationSetting("map.center_latitude", this.state.lat);
+            newSettings["map.center_latitude"] = this.state.lat;
         }
         if (this.state.lon != null) {
-            this.props.onUpdateVisualizationSetting("map.center_longitude", this.state.lon);
+            newSettings["map.center_longitude"] = this.state.lon;
         }
         if (this.state.zoom != null) {
-            this.props.onUpdateVisualizationSetting("map.zoom", this.state.zoom);
+            newSettings["map.zoom"] = this.state.zoom;
         }
+        this.props.onUpdateVisualizationSettings(newSettings);
         this.setState({ lat: null, lon: null, zoom: null });
     }
 
