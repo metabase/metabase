@@ -113,7 +113,7 @@
    :updated_at         true})
 
 ;; save-table-fields!
-;; this test also covers create-field! and update-field!
+;; this test also covers create-field-from-field-def! and update-field-from-field-def!
 (expect
   [[]
    ;; initial sync

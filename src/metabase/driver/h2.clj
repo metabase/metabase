@@ -1,5 +1,4 @@
 (ns metabase.driver.h2
-  ;; TODO - This namespace should be reworked to use `u/drop-first-arg` like newer drivers
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as s]
             [honeysql.core :as hsql]
@@ -104,13 +103,13 @@
     (file+options->connection-string file (merge options {"IFEXISTS"         "TRUE"
                                                           "ACCESS_MODE_DATA" "r"}))))
 
-(defn- connection-details->spec [_ details]
+(defn- connection-details->spec [details]
   (dbspec/h2 (if db/*allow-potentailly-unsafe-connections*
                details
                (update details :db connection-string-set-safe-options))))
 
 
-(defn- unix-timestamp->timestamp [_ expr seconds-or-milliseconds]
+(defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
   (hsql/call :timestampadd
              (hx/literal (case seconds-or-milliseconds
                            :seconds      "second"
@@ -132,7 +131,7 @@
                   (= USER "sa"))        ; "sa" is the default USER
           (throw (Exception. "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")))))))
 
-(defn- process-query-in-context [_ qp]
+(defn- process-query-in-context [qp]
   (comp qp check-native-query-not-using-default-user))
 
 
@@ -143,7 +142,7 @@
 (defn- parse-datetime    [format-str expr] (hsql/call :parsedatetime expr  (hx/literal format-str)))
 (defn- trunc-with-format [format-str expr] (parse-datetime format-str (format-datetime format-str expr)))
 
-(defn- date [_ unit expr]
+(defn- date [unit expr]
   (case unit
     :default         expr
     :minute          (trunc-with-format "yyyyMMddHHmm" expr)
@@ -175,13 +174,13 @@
     :year            (hx/year expr)))
 
 ;; TODO - maybe rename this relative-date ?
-(defn- date-interval [_ unit amount]
+(defn- date-interval [unit amount]
   (if (= unit :quarter)
-    (recur nil :month (hx/* amount 3))
+    (recur :month (hx/* amount 3))
     (hsql/call :dateadd (hx/literal unit) amount :%now)))
 
 
-(defn- humanize-connection-error-message [_ message]
+(defn- humanize-connection-error-message [message]
   (condp re-matches message
     #"^A file path that is implicitly relative to the current working directory is not allowed in the database URL .*$"
     (driver/connection-error-messages :cannot-connect-check-host-and-port)
@@ -206,21 +205,21 @@
 (u/strict-extend H2Driver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {:date-interval                     date-interval
+         {:date-interval                     (u/drop-first-arg date-interval)
           :details-fields                    (constantly [{:name         "db"
                                                            :display-name "Connection String"
                                                            :placeholder  "file:/Users/camsaul/bird_sightings/toucans;AUTO_SERVER=TRUE"
                                                            :required     true}])
-          :humanize-connection-error-message humanize-connection-error-message
-          :process-query-in-context          process-query-in-context})
+          :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
+          :process-query-in-context          (u/drop-first-arg process-query-in-context)})
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
          {:active-tables             sql/post-filtered-active-tables
           :column->base-type         (u/drop-first-arg column->base-type)
-          :connection-details->spec  connection-details->spec
-          :date                      date
+          :connection-details->spec  (u/drop-first-arg connection-details->spec)
+          :date                      (u/drop-first-arg date)
           :string-length-fn          (u/drop-first-arg string-length-fn)
-          :unix-timestamp->timestamp unix-timestamp->timestamp}))
+          :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
 (driver/register-driver! :h2 (H2Driver.))

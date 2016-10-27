@@ -129,7 +129,7 @@
       ;; create setup token
       (-init-create-setup-token)
       ;; publish install event
-      (events/publish-event :install {}))
+      (events/publish-event! :install {}))
     (reset! metabase-initialization-progress 0.9)
 
     ;; deal with our sample dataset as needed

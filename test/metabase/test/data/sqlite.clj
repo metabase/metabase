@@ -8,9 +8,8 @@
             [metabase.util.honeysql-extensions :as hx])
   (:import metabase.driver.sqlite.SQLiteDriver))
 
-(defn- database->connection-details [context {:keys [short-lived?], :as dbdef}]
-  {:short-lived? short-lived?
-   :db           (str (i/escaped-name dbdef) ".sqlite")})
+(defn- database->connection-details [context dbdef]
+  {:db (str (i/escaped-name dbdef) ".sqlite")})
 
 (def ^:private ^:const field-base-type->sql-type
   {:type/BigInteger "BIGINT"

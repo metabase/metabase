@@ -1,6 +1,5 @@
 (ns metabase.test.data.h2
   "Code for creating / destroying an H2 database from a `DatabaseDefinition`."
-  ;; TODO - rework this namespace to use `u/drop-first-arg` where appropriate
   (:require [clojure.core.reducers :as r]
             [clojure.string :as s]
             [metabase.db.spec :as dbspec]
@@ -21,20 +20,14 @@
    :type/Text       "VARCHAR"
    :type/Time       "TIME"})
 
-;; ## DatabaseDefinition helper functions
 
-(def ^:private ^:dynamic *dbdef*
-  nil)
-
-(defn- database->connection-details
-  [_ context {:keys [short-lived?], :as dbdef}]
-  {:short-lived? short-lived?
-   :db           (str "mem:" (i/escaped-name dbdef) (when (= context :db)
-                                                      ;; Return details with the GUEST user added so SQL queries are allowed.
-                                                      ";USER=GUEST;PASSWORD=guest"))})
+(defn- database->connection-details [context dbdef]
+  {:db (str "mem:" (i/escaped-name dbdef) (when (= context :db)
+                                            ;; Return details with the GUEST user added so SQL queries are allowed.
+                                            ";USER=GUEST;PASSWORD=guest"))})
 
 
-(defn quote-name [_ nm]
+(defn- quote-name [nm]
   (str \" (s/upper-case nm) \"))
 
 (def ^:private ^:const ^String create-db-sql
@@ -55,7 +48,7 @@
    (generic/default-create-table-sql this dbdef tabledef) ";\n"
 
    ;; Grant the GUEST account r/w permissions for this table
-   (format "GRANT ALL ON %s TO GUEST;" (quote-name this table-name))))
+   (format "GRANT ALL ON %s TO GUEST;" (quote-name table-name))))
 
 
 (u/strict-extend H2Driver
@@ -75,11 +68,11 @@
             :pk-field-name             (constantly "ID")
             :pk-sql-type               (constantly "BIGINT AUTO_INCREMENT")
             :prepare-identifier        (u/drop-first-arg s/upper-case)
-            :quote-name                quote-name}))
+            :quote-name                (u/drop-first-arg quote-name)}))
 
   i/IDatasetLoader
   (merge generic/IDatasetLoaderMixin
-         {:database->connection-details       database->connection-details
+         {:database->connection-details       (u/drop-first-arg database->connection-details)
           :default-schema                     (constantly "PUBLIC")
           :engine                             (constantly :h2)
           :format-name                        (u/drop-first-arg s/upper-case)

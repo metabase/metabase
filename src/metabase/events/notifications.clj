@@ -101,4 +101,4 @@
 (defn events-init
   "Automatically called during startup; start event listener for notifications events."
   []
-  (events/start-event-listener notifications-topics notifications-channel process-notifications-event))
+  (events/start-event-listener! notifications-topics notifications-channel process-notifications-event))

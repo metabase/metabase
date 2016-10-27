@@ -237,14 +237,7 @@
        (get-tables database-id))]))
 
 
-;; TODO: introspect-raw-table-and-update!
-;; TODO: test that table details get updated, and fks update if defined
-;; TODO: test case where table being synced has been removed
-;; TODO: test that dynamic-schema dbs skip the table sync
-
-
-;; introspect-database-and-update-raw-tables!
-;; TODO: test that dynamic-schema dbs skip the table sync
+;;; introspect-database-and-update-raw-tables!
 (expect
   [[]
    moviedb/moviedb-raw-tables

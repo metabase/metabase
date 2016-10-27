@@ -36,12 +36,11 @@
 
 
 (def ^:private db-connection-details
-  (delay {:host         (get-db-env-var :host)
-          :port         (Integer/parseInt (get-db-env-var :port "1521"))
-          :user         (get-db-env-var :user)
-          :password     (get-db-env-var :password)
-          :sid          (get-db-env-var :sid)
-          :short-lived? false}))
+  (delay {:host     (get-db-env-var :host)
+          :port     (Integer/parseInt (get-db-env-var :port "1521"))
+          :user     (get-db-env-var :user)
+          :password (get-db-env-var :password)
+          :sid      (get-db-env-var :sid)}))
 
 
 (def ^:private ^:const field-base-type->sql-type
@@ -71,6 +70,13 @@
   ([db-name table-name]            [session-schema (i/db-qualified-table-name db-name table-name)])
   ([db-name table-name field-name] [session-schema (i/db-qualified-table-name db-name table-name) field-name]))
 
+(defn- expected-base-type->actual [base-type]
+  ;; Oracle doesn't have INTEGERs
+  (if (isa? base-type :type/Integer)
+    :type/Decimal
+    base-type))
+
+
 (extend OracleDriver
   generic/IGenericSQLDatasetLoader
   (merge generic/DefaultsMixin
@@ -88,11 +94,7 @@
          {:database->connection-details (fn [& _] @db-connection-details)
           :default-schema               (constantly session-schema)
           :engine                       (constantly :oracle)
-          :expected-base-type->actual   (fn [_ base-type]
-                                          ;; Oracle doesn't have INTEGERs
-                                          (if (isa? base-type :type/Integer)
-                                            :type/Decimal
-                                            base-type))
+          :expected-base-type->actual   (u/drop-first-arg expected-base-type->actual)
           :id-field-type                (constantly :type/Decimal)}))
 
 (defn- dbspec []

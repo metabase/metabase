@@ -161,8 +161,7 @@
     (db/update-where! Field {:table_id [:in table-ids]}
       :visibility_type "retired")))
 
-;; TODO - rename to `update-table-from-tabledef!`
-(defn update-table!
+(defn update-table-from-tabledef!
   "Update `Table` with the data from TABLE-DEF."
   [{:keys [id display_name], :as existing-table} {table-name :name}]
   {:pre [(integer? id)]}
@@ -175,8 +174,7 @@
     ;; always return the table when we are done
     updated-table))
 
-;; TODO - rename to `create-table-from-tabledef!`
-(defn create-table!
+(defn create-table-from-tabledef!
   "Create `Table` with the data from TABLE-DEF."
   [database-id {schema-name :schema, table-name :name, raw-table-id :raw-table-id, visibility-type :visibility-type}]
   (db/insert! Table

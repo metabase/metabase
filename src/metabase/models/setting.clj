@@ -332,7 +332,7 @@
   ;; this only works if the setting is updated via this specific function. Instead, we should define a custom setter for the relevant setting that additionally
   ;; performs the desired operations when the value is updated. This pattern is easier to understand, works no matter how the setting is changed, and doesn't run when
   ;; irrelevant changes (to other settings) are made.
-  (events/publish-event :settings-update settings))
+  (events/publish-event! :settings-update settings))
 
 
 (defn- user-facing-info [setting]
