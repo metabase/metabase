@@ -4,11 +4,21 @@ import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
 import { hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
-
 import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
+import { formatValue } from "metabase/lib/formatting";
+
+import "leaflet/dist/leaflet.css";
+import L from "leaflet/dist/leaflet-src.js";
 
 import _ from "underscore";
 import cx from "classnames";
+
+const MARKER_ICON = L.icon({
+    iconUrl: "/app/img/pin.png",
+    iconSize: [28, 32],
+    iconAnchor: [15, 24],
+    popupAnchor: [0, -13]
+});
 
 export default class PinMap extends Component {
     static displayName = "Pin Map";
@@ -91,48 +101,30 @@ export default class PinMap extends Component {
             const element = ReactDOM.findDOMNode(this.refs.map);
             const { settings, series: [{ data }] } = this.props;
 
-            const mapOptions = {
-                zoom: settings["map.zoom"],
-                center: new google.maps.LatLng(
-                    settings["map.center_latitude"],
-                    settings["map.center_longitude"]
-                ),
-                mapTypeId: google.maps.MapTypeId.MAP,
-                scrollwheel: false
-            };
+            const map = this.map = L.map(element, {
+                scrollWheelZoom: false,
+            })
 
-            const map = this.map = new google.maps.Map(element, mapOptions);
+            map.setView([
+                settings["map.center_latitude"],
+                settings["map.center_longitude"]
+            ], settings["map.zoom"]);
 
-            if (data.rows.length < 2000) {
-                let tooltip = new google.maps.InfoWindow();
-                let { latitudeIndex, longitudeIndex } = this.getLatLongIndexes();
-                for (let row of data.rows) {
-                    let marker = new google.maps.Marker({
-                        position: new google.maps.LatLng(row[latitudeIndex], row[longitudeIndex]),
-                        map: map,
-                        icon: "/app/img/pin.png"
-                    });
-                    marker.addListener("click", () => {
-                        let tooltipElement = document.createElement("div");
-                        ReactDOM.render(<ObjectDetailTooltip row={row} cols={data.cols} />, tooltipElement);
-                        tooltip.setContent(tooltipElement);
-                        tooltip.open(map, marker);
-                    });
-                }
-            } else {
-                map.overlayMapTypes.push(new google.maps.ImageMapType({
-                    getTileUrl: this.getTileUrl,
-                    tileSize: new google.maps.Size(256, 256)
-                }));
-            }
+            L.tileLayer("http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                attribution: 'Map data © <a href="http://openstreetmap.org">OpenStreetMap</a> contributors'
+            }).addTo(map);
 
-            map.addListener("center_changed", () => {
-                let center = map.getCenter();
-                this.onMapCenterChange(center.lat(), center.lng());
+            this.pinMarkerLayer = L.layerGroup([]);
+            this.pinTileLayer = L.tileLayer("", {});
+            this.popup = L.popup();
+
+            map.on("moveend", () => {
+                const { lat, lng } = map.getCenter();
+                this.onMapCenterChange(lat, lng);
             });
-
-            map.addListener("zoom_changed", () => {
-                this.onMapZoomChange(map.getZoom());
+            map.on("zoomend", () => {
+                const zoom = map.getZoom();
+                this.onMapZoomChange(zoom);
             });
         } catch (err) {
             console.error(err);
@@ -140,21 +132,78 @@ export default class PinMap extends Component {
         }
     }
 
+    _createMarker = (index) => {
+        const marker = L.marker([0,0], { icon: MARKER_ICON });
+        marker.on("click", () => {
+            const { series: [{ data }] } = this.props;
+            const { popup } = this;
+            const el = document.createElement("div");
+            ReactDOM.render(<ObjectDetailTooltip row={data.rows[index]} cols={data.cols} />, el);
+            marker.unbindPopup();
+            marker.bindPopup(el, popup);
+            marker.openPopup();
+        });
+        return marker;
+    }
+
     componentDidUpdate() {
-        if (typeof google !== "undefined") {
-            google.maps.event.trigger(this.map, "resize");
+        try {
+            const { map, pinTileLayer, pinMarkerLayer } = this;
+            const { settings, series: [{ data: { rows } }] } = this.props;
+            const type = settings["map.pin_type"];
+
+            if (type === "markers") {
+                const { latitudeIndex, longitudeIndex } = this.getLatLongIndexes();
+                let markers = pinMarkerLayer.getLayers();
+                let max = Math.max(rows.length, markers.length);
+                for (let i = 0; i < max; i++) {
+                    if (i >= rows.length) {
+                        pinMarkerLayer.removeLayer(markers[i]);
+                    }
+                    if (i >= markers.length) {
+                        const marker = this._createMarker(i);
+                        pinMarkerLayer.addLayer(marker);
+                        markers.push(marker);
+                    }
+
+                    if (i < rows.length) {
+                        const { lat, lng } = markers[i].getLatLng();
+                        if (lat !== rows[i][latitudeIndex] || lng !== rows[i][longitudeIndex]) {
+                            markers[i].setLatLng([rows[i][latitudeIndex], rows[i][longitudeIndex]]);
+                        }
+                    }
+                }
+
+                if (!map.hasLayer(pinMarkerLayer)) {
+                    map.removeLayer(pinTileLayer);
+                    map.addLayer(pinMarkerLayer);
+                }
+            } else if (type === "tiles") {
+                const newUrl = this.getTileUrl({ x: "{x}", y: "{y}"}, "{z}");
+                if (newUrl !== pinTileLayer._url) {
+                    pinTileLayer.setUrl(newUrl)
+                }
+
+                if (!map.hasLayer(pinTileLayer)) {
+                    map.removeLayer(pinMarkerLayer);
+                    map.addLayer(pinTileLayer);
+                }
+            }
+        } catch (err) {
+            console.error(err);
+            this.props.onRenderError(err.message || err);
         }
     }
 
     render() {
-        const { className, isEditing } = this.props;
+        const { className, isEditing, isDashboard } = this.props;
         const { lat, lon, zoom } = this.state;
         const disableUpdateButton = lat == null && lon == null && zoom == null;
         return (
             <div className={className + " PinMap relative"} onMouseDownCapture={(e) =>e.stopPropagation() /* prevent dragging */}>
-                <div className="absolute top left bottom right" ref="map"></div>
-                { isEditing ?
-                    <div className={cx("PinMapUpdateButton Button Button--small absolute top right m1", { "PinMapUpdateButton--disabled": disableUpdateButton })} onClick={this.updateSettings}>
+                <div className="absolute top left bottom right z1" ref="map"></div>
+                { isEditing || !isDashboard ?
+                    <div className={cx("PinMapUpdateButton Button Button--small absolute top right m1 z2", { "PinMapUpdateButton--disabled": disableUpdateButton })} onClick={this.updateSettings}>
                         Save as default view
                     </div>
                 : null }
@@ -168,8 +217,8 @@ const ObjectDetailTooltip = ({ row, cols }) =>
         <tbody>
             { cols.map((col, index) =>
                 <tr>
-                    <td>{col.display_name}</td>
-                    <td>{row[index]}</td>
+                    <td className="pr1">{col.display_name}:</td>
+                    <td>{formatValue(row[index], { column: col, jsx: true })}</td>
                 </tr>
             )}
         </tbody>
