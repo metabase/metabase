@@ -2,6 +2,7 @@
   (:require [clojure.string :as s]
             [environ.core :refer [env]]
             [medley.core :as m]
+            [metabase.driver.google :as google]
             [metabase.driver.bigquery :as bigquery]
             (metabase.test.data [dataset-definitions :as defs]
                                 [datasets :as datasets]
@@ -14,7 +15,7 @@
            (com.google.api.services.bigquery.model Dataset DatasetReference QueryRequest Table TableDataInsertAllRequest TableDataInsertAllRequest$Rows TableFieldSchema TableReference TableRow TableSchema)
            metabase.driver.bigquery.BigQueryDriver))
 
-(resolve-private-vars metabase.driver.bigquery execute execute-no-auto-retry post-process-native)
+(resolve-private-vars metabase.driver.bigquery post-process-native)
 
 ;;; # ------------------------------------------------------------ CONNECTION DETAILS ------------------------------------------------------------
 
@@ -50,16 +51,16 @@
 
 (defn- create-dataset! [^String dataset-id]
   {:pre [(seq dataset-id)]}
-  (execute (.insert (.datasets bigquery) project-id (doto (Dataset.)
-                                                      (.setLocation "US")
-                                                      (.setDatasetReference (doto (DatasetReference.)
-                                                                              (.setDatasetId dataset-id))))))
+  (google/execute (.insert (.datasets bigquery) project-id (doto (Dataset.)
+                                                             (.setLocation "US")
+                                                             (.setDatasetReference (doto (DatasetReference.)
+                                                                                     (.setDatasetId dataset-id))))))
   (println (u/format-color 'blue "Created BigQuery dataset '%s'." dataset-id)))
 
 (defn- destroy-dataset! [^String dataset-id]
   {:pre [(seq dataset-id)]}
-  (execute-no-auto-retry (doto (.delete (.datasets bigquery) project-id dataset-id)
-                           (.setDeleteContents true)))
+  (google/execute-no-auto-retry (doto (.delete (.datasets bigquery) project-id dataset-id)
+                                  (.setDeleteContents true)))
   (println (u/format-color 'red "Deleted BigQuery dataset '%s'." dataset-id)))
 
 (def ^:private ^:const valid-field-types
@@ -67,23 +68,23 @@
 
 (defn- create-table! [^String dataset-id, ^String table-id, field-name->type]
   {:pre [(seq dataset-id) (seq table-id) (map? field-name->type) (every? (partial contains? valid-field-types) (vals field-name->type))]}
-  (execute (.insert (.tables bigquery) project-id dataset-id (doto (Table.)
-                                                               (.setTableReference (doto (TableReference.)
-                                                                                     (.setProjectId project-id)
-                                                                                     (.setDatasetId dataset-id)
-                                                                                     (.setTableId table-id)))
-                                                               (.setSchema (doto (TableSchema.)
-                                                                             (.setFields (for [[field-name field-type] field-name->type]
-                                                                                           (doto (TableFieldSchema.)
-                                                                                             (.setMode "REQUIRED")
-                                                                                             (.setName (name field-name))
-                                                                                             (.setType (name field-type))))))))))
+  (google/execute (.insert (.tables bigquery) project-id dataset-id (doto (Table.)
+                                                                      (.setTableReference (doto (TableReference.)
+                                                                                            (.setProjectId project-id)
+                                                                                            (.setDatasetId dataset-id)
+                                                                                            (.setTableId table-id)))
+                                                                      (.setSchema (doto (TableSchema.)
+                                                                                    (.setFields (for [[field-name field-type] field-name->type]
+                                                                                                  (doto (TableFieldSchema.)
+                                                                                                    (.setMode "REQUIRED")
+                                                                                                    (.setName (name field-name))
+                                                                                                    (.setType (name field-type))))))))))
   (println (u/format-color 'blue "Created BigQuery table '%s.%s'." dataset-id table-id)))
 
 (defn- table-row-count ^Integer [^String dataset-id, ^String table-id]
-  (ffirst (:rows (post-process-native (execute (.query (.jobs bigquery) project-id
-                                                       (doto (QueryRequest.)
-                                                         (.setQuery (format "SELECT COUNT(*) FROM [%s.%s]" dataset-id table-id)))))))))
+  (ffirst (:rows (post-process-native (google/execute (.query (.jobs bigquery) project-id
+                                                              (doto (QueryRequest.)
+                                                                (.setQuery (format "SELECT COUNT(*) FROM [%s.%s]" dataset-id table-id)))))))))
 
 ;; This is a dirty HACK
 (defn- ^DateTime timestamp-honeysql-form->GoogleDateTime
@@ -95,17 +96,17 @@
 
 (defn- insert-data! [^String dataset-id, ^String table-id, row-maps]
   {:pre [(seq dataset-id) (seq table-id) (sequential? row-maps) (seq row-maps) (every? map? row-maps)]}
-  (execute (.insertAll (.tabledata bigquery) project-id dataset-id table-id
-                       (doto (TableDataInsertAllRequest.)
-                         (.setRows (for [row-map row-maps]
-                                     (let [data (TableRow.)]
-                                       (doseq [[k v] row-map
-                                               :let [v (if (instance? honeysql.types.SqlCall v)
-                                                         (timestamp-honeysql-form->GoogleDateTime v)
-                                                         v)]]
-                                         (.set data (name k) v))
-                                       (doto (TableDataInsertAllRequest$Rows.)
-                                         (.setJson data))))))))
+  (google/execute (.insertAll (.tabledata bigquery) project-id dataset-id table-id
+                              (doto (TableDataInsertAllRequest.)
+                                (.setRows (for [row-map row-maps]
+                                            (let [data (TableRow.)]
+                                              (doseq [[k v] row-map
+                                                      :let [v (if (instance? honeysql.types.SqlCall v)
+                                                                (timestamp-honeysql-form->GoogleDateTime v)
+                                                                v)]]
+                                                (.set data (name k) v))
+                                              (doto (TableDataInsertAllRequest$Rows.)
+                                                (.setJson data))))))))
   ;; Wait up to 30 seconds for all the rows to be loaded and become available by BigQuery
   (let [expected-row-count (count row-maps)]
     (loop [seconds-to-wait-for-load 30]
@@ -160,8 +161,8 @@
 (defn- existing-dataset-names
   "Fetch a list of *all* dataset names that currently exist in the BQ test project."
   []
-  (for [dataset (get (execute (doto (.list (.datasets bigquery) project-id)
-                                (.setMaxResults (long Integer/MAX_VALUE)))) ; Long/MAX_VALUE barfs but it has to be a Long
+  (for [dataset (get (google/execute (doto (.list (.datasets bigquery) project-id)
+                                       (.setMaxResults (long Integer/MAX_VALUE)))) ; Long/MAX_VALUE barfs but it has to be a Long
                      "datasets")]
     (get-in dataset ["datasetReference" "datasetId"])))
 
