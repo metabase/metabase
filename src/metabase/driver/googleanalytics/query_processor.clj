@@ -216,8 +216,9 @@
                   10000
                   limit-clause))})
 
-(defn mbql->native [{query :query}]
+(defn mbql->native
   "Transpile MBQL query into parameters required for a Google Analytics request."
+  [{query :query}]
   {:query (merge (handle-source-table    query)
                  (handle-aggregation     query)
                  (handle-breakout        query)
@@ -226,30 +227,30 @@
                  (handle-filter:filters  query)
                  (handle-order-by        query)
                  (handle-limit           query)
-                  ;; set to false to match behavior of other drivers
+                 ;; set to false to match behavior of other drivers
                  {:include-empty-rows false})
    :mbql? true})
 
-(defn- builtin-metric?
+#_(defn- builtin-metric?
   [aggregation]
   (and (sequential? aggregation)
        (= :metric (expand/normalize-token (get aggregation 0)))
        (string? (get aggregation 1))))
 
-(defn- builtin-segment?
+#_(defn- builtin-segment?
   [filter]
   (and (sequential? filter)
        (= :segment (expand/normalize-token (get filter 0)))
        (string? (get filter 1))))
 
-(defn- extract-builtin-segment
+#_(defn- extract-builtin-segment
   [filter-clause]
   (let [segments (for [f filter-clause :when (builtin-segment? f)] (get f 1))]
     (cond
       (= (count segments) 1) (first segments)
       (> (count segments) 1) (throw (Exception. "Only one Google Analytics segment allowed at a time.")))))
 
-(defn- remove-builtin-segments
+#_(defn- remove-builtin-segments
   [filter-clause]
   (let [filter-clause (vec (filter (complement builtin-segment?) filter-clause))]
     (if (> (count filter-clause) 1)

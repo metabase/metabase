@@ -73,7 +73,8 @@
 (defn database->credential
   "Get a `GoogleCredential` for a `DatabaseInstance`."
   {:arglists '([scopes database])}
-  ^GoogleCredential [scopes, {{:keys [^String client-id, ^String client-secret, ^String auth-code, ^String access-token, ^String refresh-token], :as details} :details, id :id, :as db}]
+  ^com.google.api.client.googleapis.auth.oauth2.GoogleCredential
+  [scopes, {{:keys [^String client-id, ^String client-secret, ^String auth-code, ^String access-token, ^String refresh-token], :as details} :details, id :id, :as db}]
   {:pre [(seq client-id) (seq client-secret) (or (seq auth-code)
                                                  (and (seq access-token) (seq refresh-token)))]}
   (if-not (and (seq access-token)
