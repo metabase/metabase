@@ -48,17 +48,8 @@
 #_(defn- get-accounts
   "Returns a `List<Account>`."
   ^List [^Analytics client]
-  (.getItems ^Accounts (google/execute (.list (.accounts (.management client))))))
+    (.getItems ^Accounts (google/execute (.list (.accounts (.management client))))))
 
-#_(defn- property-profile->name
-  "Format a table name for a GA property and GA profile"
-  [property profile]
-  (let [property-name (s/replace (.getName property) #"^https?://" "")
-        profile-name  (s/replace (.getName profile)  #"^https?://" "")]
-    ;; don't include the profile if it's the same as property-name or is the default "All Web Site Data"
-    (if (or (.contains property-name profile-name) (= profile-name "All Web Site Data"))
-      property-name
-      (str property-name " (" profile-name ")"))))
 
 ;;; ------------------------------------------------------------ describe-database ------------------------------------------------------------
 
@@ -70,17 +61,24 @@
   ^Profiles [^Analytics client, ^String account-id, ^String property-id]
   (google/execute (.list (.profiles (.management client)) account-id property-id)))
 
-(defn- fetch-tables
+(defn- properties+profiles
+  "Return a set of tuples of `Webproperty` and `Profile` for DATABASE."
   [{{:keys [account-id]} :details, :as database}]
   (let [client (database->client database)]
     (set (for [^Webproperty property (.getItems (fetch-properties client account-id))
                ^Profile     profile  (.getItems (fetch-profiles client account-id (.getId property)))]
-           {:name   (.getId profile)
-            ;; :display-name (property-profile->name property profile)
-            :schema nil}))))
+           [property profile]))))
+
+(defn- profile-ids
+  "Return a set of all numeric IDs for different profiles available to this account."
+  [database]
+  (set (for [[_, ^Profile profile] (properties+profiles database)]
+         (.getId profile))))
 
 (defn- describe-database [database]
-  {:tables (fetch-tables database)})
+  {:tables (set (for [table-id (cons "_metabase_metadata" (profile-ids database))]
+                  {:name   table-id
+                   :schema nil}))})
 
 
 ;;; ------------------------------------------------------------ describe-table ------------------------------------------------------------
@@ -108,11 +106,35 @@
    :fields (set (get-columns database))})
 
 
+;;; ------------------------------------------------------------ _metabase_metadata ------------------------------------------------------------
+
+(defn- property+profile->display-name
+  "Format a table name for a GA property and GA profile"
+  [^Webproperty property, ^Profile profile]
+  (let [property-name (s/replace (.getName property) #"^https?://" "")
+        profile-name  (s/replace (.getName profile)  #"^https?://" "")]
+    ;; don't include the profile if it's the same as property-name or is the default "All Web Site Data"
+    (if (or (.contains property-name profile-name)
+            (= profile-name "All Web Site Data"))
+      property-name
+      (str property-name " (" profile-name ")"))))
+
+(defn- table-rows-seq [database table]
+  ;; this method is only supposed to be called for _metabase_metadata, make sure that's the case
+  {:pre [(= (:name table) "_metabase_metadata")]}
+  ;; set display_name for all the tables
+  (for [[^Webproperty property, ^Profile profile] (properties+profiles database)]
+    {:keypath (str (.getId profile) ".display_name")
+     :value   (property+profile->display-name property profile)})
+  ;; TODO - set display_name and description for each COLUMN
+  )
+
+
 ;;; ------------------------------------------------------------ can-connect? ------------------------------------------------------------
 
 (defn- can-connect? [details-map]
   {:pre [(map? details-map)]}
-  (boolean (fetch-tables {:details details-map})))
+  (boolean (profile-ids {:details details-map})))
 
 
 ;;; ------------------------------------------------------------ execute-query ------------------------------------------------------------
@@ -152,28 +174,29 @@
 (u/strict-extend GoogleAnalyticsDriver
   driver/IDriver
   (merge driver/IDriverDefaultsMixin
-          {:can-connect?          (u/drop-first-arg can-connect?)
-           :describe-database     (u/drop-first-arg describe-database)
-           :describe-table        (u/drop-first-arg describe-table)
-           :field-values-lazy-seq (constantly [])
-           :details-fields        (constantly [{:name         "account-id"
-                                                :display-name "Google Analytics Account ID"
-                                                :placeholder  "1234567"
-                                                :required     true}
-                                               {:name         "client-id"
-                                                :display-name "Client ID"
-                                                :placeholder  "1201327674725-y6ferb0feo1hfssr7t40o4aikqll46d4.apps.googleusercontent.com"
-                                                :required     true}
-                                               {:name         "client-secret"
-                                                :display-name "Client Secret"
-                                                :placeholder  "dJNi4utWgMzyIFo2JbnsK6Np"
-                                                :required     true}
-                                               {:name         "auth-code"
-                                                :display-name "Auth Code"
-                                                :placeholder  "4/HSk-KtxkSzTt61j5zcbee2Rmm5JHkRFbL5gD5lgkXek"
-                                                :required     true}])
-           :mbql->native             (u/drop-first-arg qp/mbql->native)
-           :execute-query            (u/drop-first-arg (partial qp/execute-query do-query))}))
+         {:can-connect?          (u/drop-first-arg can-connect?)
+          :describe-database     (u/drop-first-arg describe-database)
+          :describe-table        (u/drop-first-arg describe-table)
+          :details-fields        (constantly [{:name         "account-id"
+                                               :display-name "Google Analytics Account ID"
+                                               :placeholder  "1234567"
+                                               :required     true}
+                                              {:name         "client-id"
+                                               :display-name "Client ID"
+                                               :placeholder  "1201327674725-y6ferb0feo1hfssr7t40o4aikqll46d4.apps.googleusercontent.com"
+                                               :required     true}
+                                              {:name         "client-secret"
+                                               :display-name "Client Secret"
+                                               :placeholder  "dJNi4utWgMzyIFo2JbnsK6Np"
+                                               :required     true}
+                                              {:name         "auth-code"
+                                               :display-name "Auth Code"
+                                               :placeholder  "4/HSk-KtxkSzTt61j5zcbee2Rmm5JHkRFbL5gD5lgkXek"
+                                               :required     true}])
+          :execute-query         (u/drop-first-arg (partial qp/execute-query do-query))
+          :field-values-lazy-seq (constantly [])
+          :mbql->native          (u/drop-first-arg qp/mbql->native)
+          :table-rows-seq        (u/drop-first-arg table-rows-seq)}))
 
 
 (driver/register-driver! :googleanalytics (GoogleAnalyticsDriver.))
