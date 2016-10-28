@@ -144,6 +144,10 @@
 
 ;;; ------------------------------------------------------------ execute-query ------------------------------------------------------------
 
+(defn- process-query-in-context [qp]
+  (fn [query]
+    (qp (qp/transform-query query))))
+
 (defn- do-query
   [{{:keys [query]} :native, database :database}]
   (let [query   (if (string? query)
@@ -200,6 +204,7 @@
                                                :required     true}])
           :execute-query         (u/drop-first-arg (partial qp/execute-query do-query))
           :field-values-lazy-seq (constantly [])
+          :process-query-in-context (u/drop-first-arg process-query-in-context)
           :mbql->native          (u/drop-first-arg qp/mbql->native)
           :table-rows-seq        (u/drop-first-arg table-rows-seq)}))
 

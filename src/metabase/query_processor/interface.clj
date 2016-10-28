@@ -248,14 +248,10 @@
                                                                 "Valid aggregation type")
                                    field            :- FieldPlaceholderOrExpressionRef])
 
-(s/defrecord BuiltinMetric [aggregation-type :- (s/named (s/enum :metric)
-                                                         "Valid aggregation type")
-                            metric-name      :- su/NonBlankString])
-
 (def Aggregation
   "Schema for a top-level `aggregation` clause in an MBQL query."
   (s/constrained
-   (s/cond-pre AggregationWithField AggregationWithoutField BuiltinMetric)
+   (s/cond-pre AggregationWithField AggregationWithoutField)
    (fn [{:keys [aggregation-type]}]
      (when (= aggregation-type :stddev)
        (assert-driver-supports :standard-deviation-aggregations))

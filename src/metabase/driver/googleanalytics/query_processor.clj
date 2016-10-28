@@ -80,13 +80,6 @@
              (keyword? source-table-name))]}
   {:ids (str "ga:" source-table-name)})
 
-;;; ### aggregation
-
-(defn- handle-aggregation [{{metric-name :metric-name} :aggregation}]
-  {:pre [(or (string? metric-name)
-             (keyword? metric-name))]}
-  {:metrics metric-name})
-
 ;;; ### breakout
 
 (defn- unit->ga-dimension
@@ -220,7 +213,8 @@
   "Transpile MBQL query into parameters required for a Google Analytics request."
   [{query :query}]
   {:query (merge (handle-source-table    query)
-                 (handle-aggregation     query)
+                 {:metrics (get-in query [:ga :metrics])}
+                ;  (handle-aggregation     query)
                  (handle-breakout        query)
                  (handle-filter:interval query)
                  (handle-filter:segment  query)
@@ -255,6 +249,22 @@
   (let [filter-clause (vec (filter (complement builtin-segment?) filter-clause))]
     (if (> (count filter-clause) 1)
       filter-clause)))
+
+(defn transform-query [query]
+  "Preprocess the incoming query to pull out builtin segments and metrics."
+  (-> query
+      ;; pull metrics out and put in :ga
+      ;; TODO: support mulitple metrics
+      (assoc-in [:ga :metrics] (get-in query [:query :aggregation 1]))
+      ;; remove metrics from query dict
+      ; (m/dissoc-in [:query :aggregation])
+      ;; fake the aggregation :-/
+      (assoc-in [:query :aggregation] [:count])
+      ;; pull segments out and put in :ga
+      (assoc-in [:ga :segment] (extract-builtin-segment (get-in query [:query :filter])))
+      ;; remove segments from query dict
+      ; (update-in [:query :filter] remove-builtin-segments)
+      ))
 
 (defn- parse-date
   [format str]
@@ -302,7 +312,11 @@
   (let [mbql?    (:mbql? (:native query))
         response (do-query query)
         columns  (map header->column (.getColumnHeaders response))
-        getters  (map header->getter-fn (.getColumnHeaders response))]
+        getters  (map header->getter-fn (.getColumnHeaders response))
+        columns  (if mbql?
+                   ; replace last column name with :count for now since that's what our fake aggregation is
+                   (conj (vec (butlast columns)) (assoc (last columns) :name :count))
+                   columns)]
     {:columns  (map :name columns)
      :cols     columns
      :rows     (for [row (.getRows response)]
