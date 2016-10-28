@@ -42,15 +42,6 @@
   (comp credential->client database->credential))
 
 
-;;; ------------------------------------------------------------ (Currently Unused) ------------------------------------------------------------
-
-;; TODO - is this being used?
-#_(defn- get-accounts
-  "Returns a `List<Account>`."
-  ^List [^Analytics client]
-    (.getItems ^Accounts (google/execute (.list (.accounts (.management client))))))
-
-
 ;;; ------------------------------------------------------------ describe-database ------------------------------------------------------------
 
 (defn- fetch-properties
