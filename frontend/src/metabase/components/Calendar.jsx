@@ -11,8 +11,8 @@ import Tooltip from 'metabase/components/Tooltip.jsx';
 const MODES = ['month', 'year', 'decade'];
 
 export default class Calendar extends Component {
-    constructor(props, context) {
-        super(props, context);
+    constructor(props) {
+        super(props);
 
         this.state = {
             current: moment(props.initial || undefined),
