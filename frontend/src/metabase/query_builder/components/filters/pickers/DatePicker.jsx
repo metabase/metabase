@@ -5,8 +5,8 @@ import RelativeDatePicker from "./RelativeDatePicker.jsx";
 import OperatorSelector from "../OperatorSelector.jsx";
 
 export default class DatePicker extends Component {
-    constructor(props, context) {
-        super(props, context);
+    constructor(props) {
+        super(props);
         this.state = {
             pane: this._detectPane(props)
         };
@@ -35,7 +35,8 @@ export default class DatePicker extends Component {
     }
 
     render() {
-        var operators = [
+        const { pane } = this.state;
+        const operators = [
             { name: "relative", verboseName: "Relative date" },
             { name: "specific", verboseName: "Specific date" },
             { name: "IS_NULL", verboseName: "Is Empty", advanced: true },
@@ -54,12 +55,12 @@ export default class DatePicker extends Component {
                         }
                     }}
                 />
-                { this.state.pane === "relative" ?
+                { pane === "relative" ?
                     <RelativeDatePicker
                         filter={this.props.filter}
                         onFilterChange={this.props.onFilterChange}
                     />
-                : this.state.pane === "specific" ?
+                : pane === "specific" ?
                     <SpecificDatePicker
                         filter={this.props.filter}
                         onFilterChange={this.props.onFilterChange}
