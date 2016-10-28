@@ -10,7 +10,6 @@
            java.util.Date
            clojure.lang.PersistentArrayMap
            (metabase.query_processor.interface AgFieldRef
-                                               BuiltinSegment
                                                DateTimeField
                                                DateTimeValue
                                                Field
@@ -112,9 +111,9 @@
 ;;; ### filter
 
 ;; TODO: implement negate?
-(defn- parse-filter-subclause:filter [{:keys [filter-type field value] :as filter} & [negate?]]
+(defn- parse-filter-subclause:filters [{:keys [filter-type field value] :as filter} & [negate?]]
   (if negate? (throw (Exception. ":not is :not yet implemented")))
-  (when-not (or (instance? DateTimeField field) (instance? BuiltinSegment filter))
+  (when-not (instance? DateTimeField field)
     (let [field (when field (->rvalue field))
           value (when value (->rvalue value))]
       (case filter-type
@@ -130,16 +129,16 @@
                           ";"
                           (ga-filter field "<=" (->rvalue (:max-val filter))))))))
 
-(defn- parse-filter-clause:filter [{:keys [compound-type subclause subclauses], :as clause}]
+(defn- parse-filter-clause:filters [{:keys [compound-type subclause subclauses], :as clause}]
   (case compound-type
-    :and (s/join ";" (remove nil? (mapv parse-filter-clause:filter subclauses)))
-    :or  (s/join "," (remove nil? (mapv parse-filter-clause:filter subclauses)))
-    :not (parse-filter-subclause:filter subclause :negate)
-    nil  (parse-filter-subclause:filter clause)))
+    :and (s/join ";" (remove nil? (mapv parse-filter-clause:filters subclauses)))
+    :or  (s/join "," (remove nil? (mapv parse-filter-clause:filters subclauses)))
+    :not (parse-filter-subclause:filters subclause :negate)
+    nil  (parse-filter-subclause:filters clause)))
 
 (defn- handle-filter:filters [{filter-clause :filter}]
   (when filter-clause
-    (let [filter (parse-filter-clause:filter filter-clause)]
+    (let [filter (parse-filter-clause:filters filter-clause)]
       (when-not (s/blank? filter)
         {:filters filter}))))
 
@@ -170,25 +169,6 @@
       1 (first date-filters)
       (throw (Exception. "Multiple date filters are not supported")))))
 
-(defn- parse-filter-subclause:segment [{:keys [filter-type segment-name] :as filter} & [negate?]]
-  (if negate? (throw (Exception. ":not is :not yet implemented")))
-  (when (instance? BuiltinSegment filter)
-    segment-name))
-
-(defn- parse-filter-clause:segment [{:keys [compound-type subclause subclauses], :as clause}]
-  (case compound-type
-    :and (apply concat (remove nil? (mapv parse-filter-clause:segment subclauses)))
-    :or  (apply concat (remove nil? (mapv parse-filter-clause:segment subclauses)))
-    :not (remove nil? [(parse-filter-subclause:segment subclause :negate)])
-    nil  (remove nil? [(parse-filter-subclause:segment clause)])))
-
-(defn- handle-filter:segment [{filter-clause :filter}]
-  (let [segments (if filter-clause (parse-filter-clause:segment filter-clause) [])]
-    (case (count segments)
-      0 nil
-      1 {:segment (first segments)}
-      (throw (Exception. "Multiple segments are not supported")))))
-
 ;;; ### order-by
 
 (defn- handle-order-by [{:keys [order-by] :as query}]
@@ -211,40 +191,53 @@
 
 (defn mbql->native
   "Transpile MBQL query into parameters required for a Google Analytics request."
-  [{query :query}]
+  [{:keys [query] :as raw}]
   {:query (merge (handle-source-table    query)
-                 {:metrics (get-in query [:ga :metrics])}
-                ;  (handle-aggregation     query)
                  (handle-breakout        query)
                  (handle-filter:interval query)
-                 (handle-filter:segment  query)
                  (handle-filter:filters  query)
                  (handle-order-by        query)
                  (handle-limit           query)
+                 ;; segments and metrics are pulled out in transform-query
+                 (get raw :ga)
                  ;; set to false to match behavior of other drivers
                  {:include-empty-rows false})
    :mbql? true})
 
-#_(defn- builtin-metric?
-  [aggregation]
-  (and (sequential? aggregation)
-       (= :metric (expand/normalize-token (get aggregation 0)))
-       (string? (get aggregation 1))))
+(defn- builtin-metric?
+  [aggregation-clause]
+  (and (sequential? aggregation-clause)
+       (= :metric (expand/normalize-token (get aggregation-clause 0)))
+       (string? (get aggregation-clause 1))))
 
-#_(defn- builtin-segment?
-  [filter]
-  (and (sequential? filter)
-       (= :segment (expand/normalize-token (get filter 0)))
-       (string? (get filter 1))))
+(defn- extract-builtin-metrics
+  [aggregation-clause]
+  ;; TODO: support mulitple metrics
+  (if (builtin-metric? aggregation-clause)
+    (get aggregation-clause 1)
+    nil))
 
-#_(defn- extract-builtin-segment
+(defn- replace-builtin-metrics
+  [aggregation-clause]
+  (if (builtin-metric? aggregation-clause)
+    ;; replace with :count as a fake aggregation
+    [:count]
+    nil))
+
+(defn- builtin-segment?
+  [filter-clause]
+  (and (sequential? filter-clause)
+       (= :segment (expand/normalize-token (get filter-clause 0)))
+       (string? (get filter-clause 1))))
+
+(defn- extract-builtin-segments
   [filter-clause]
   (let [segments (for [f filter-clause :when (builtin-segment? f)] (get f 1))]
     (cond
       (= (count segments) 1) (first segments)
       (> (count segments) 1) (throw (Exception. "Only one Google Analytics segment allowed at a time.")))))
 
-#_(defn- remove-builtin-segments
+(defn- replace-builtin-segments
   [filter-clause]
   (let [filter-clause (vec (filter (complement builtin-segment?) filter-clause))]
     (if (> (count filter-clause) 1)
@@ -254,17 +247,13 @@
   "Preprocess the incoming query to pull out builtin segments and metrics."
   (-> query
       ;; pull metrics out and put in :ga
-      ;; TODO: support mulitple metrics
-      (assoc-in [:ga :metrics] (get-in query [:query :aggregation 1]))
-      ;; remove metrics from query dict
-      ; (m/dissoc-in [:query :aggregation])
-      ;; fake the aggregation :-/
-      (assoc-in [:query :aggregation] [:count])
+      (assoc-in [:ga :metrics] (extract-builtin-metrics (get-in query [:query :aggregation])))
+      ;; replace with :count as a fake aggregation
+      (update-in [:query :aggregation] replace-builtin-metrics)
       ;; pull segments out and put in :ga
-      (assoc-in [:ga :segment] (extract-builtin-segment (get-in query [:query :filter])))
+      (assoc-in [:ga :segment] (extract-builtin-segments (get-in query [:query :filter])))
       ;; remove segments from query dict
-      ; (update-in [:query :filter] remove-builtin-segments)
-      ))
+      (update-in [:query :filter] replace-builtin-segments)))
 
 (defn- parse-date
   [format str]
