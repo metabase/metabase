@@ -16,7 +16,7 @@
             [metabase.sync-database.analyze :as analyze]
             metabase.query-processor.interface
             [metabase.util :as u])
-  (:import (java.util Collections Date List)
+  (:import (java.util Collections Date List Map)
            (com.google.api.client.googleapis.auth.oauth2 GoogleCredential GoogleCredential$Builder GoogleAuthorizationCodeFlow GoogleAuthorizationCodeFlow$Builder GoogleTokenResponse)
            com.google.api.client.googleapis.javanet.GoogleNetHttpTransport
            (com.google.api.client.googleapis.json GoogleJsonError GoogleJsonResponseException)
@@ -87,23 +87,31 @@
   ^Columns [^Analytics client]
   (google/execute (.list (.columns (.metadata client)) "ga")))
 
-(defn- get-columns
-  [{{:keys [project-id]} :details, :as database}]
-  (for [^Column column (.getItems (fetch-columns (database->client database)))
-        :let           [attrs (.getAttributes column)]
-        :when          (and (= (get attrs "status") "PUBLIC")
-                            (= (get attrs "type") "DIMENSION"))]
-    {:name      (.getId column)
-     ;;  :display-name (get attrs "uiName")
-     ;;  :description  (get attrs "description")
-     :base-type (if (= (.getId column) "ga:date")
-                  :type/Date
-                  (qp/ga-type->base-type (get attrs "dataType")))}))
+(defn- column-attribute
+  "Get the value of ATTRIBUTE-NAME for COLUMN."
+  [^Column column, attribute-name]
+  (get (.getAttributes column) (name attribute-name)))
+
+(defn- columns
+  "Return a set of `Column`s for this database. Each table in a Google Analytics database has the same columns."
+  [database]
+  (set (for [^Column column (.getItems (fetch-columns (database->client database)))
+             :let           [^Map attributes (.getAttributes column)]
+             :when          (and (= (column-attribute column :status) "PUBLIC")
+                                 (= (column-attribute column :type)   "DIMENSION"))]
+         column)))
+
+(defn- describe-columns [database]
+  (set (for [^Column column (columns database)]
+         {:name      (.getId column)
+          :base-type (if (= (.getId column) "ga:date")
+                       :type/Date
+                       (qp/ga-type->base-type (column-attribute column :dataType)))})))
 
 (defn- describe-table [database table]
   {:name   (:name table)
    :schema (:schema table)
-   :fields (set (get-columns database))})
+   :fields (describe-columns database)})
 
 
 ;;; ------------------------------------------------------------ _metabase_metadata ------------------------------------------------------------
@@ -122,12 +130,18 @@
 (defn- table-rows-seq [database table]
   ;; this method is only supposed to be called for _metabase_metadata, make sure that's the case
   {:pre [(= (:name table) "_metabase_metadata")]}
-  ;; set display_name for all the tables
-  (for [[^Webproperty property, ^Profile profile] (properties+profiles database)]
-    {:keypath (str (.getId profile) ".display_name")
-     :value   (property+profile->display-name property profile)})
-  ;; TODO - set display_name and description for each COLUMN
-  )
+  ;; now build a giant sequence of all the things we want to set
+  (apply concat
+         ;; set display_name for all the tables
+         (for [[^Webproperty property, ^Profile profile] (properties+profiles database)]
+           (cons {:keypath (str (.getId profile) ".display_name")
+                  :value   (property+profile->display-name property profile)}
+                 ;; set display_name and description for each column for this table
+                 (apply concat (for [^Column column (columns database)]
+                                 [{:keypath (str (.getId profile) \. (.getId column) ".display_name")
+                                   :value   (column-attribute column :uiName)}
+                                  {:keypath (str (.getId profile) \. (.getId column) ".description")
+                                   :value   (column-attribute column :description)}]))))))
 
 
 ;;; ------------------------------------------------------------ can-connect? ------------------------------------------------------------
