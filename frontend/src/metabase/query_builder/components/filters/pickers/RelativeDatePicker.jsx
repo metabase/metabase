@@ -1,8 +1,6 @@
 import React, { Component, PropTypes } from "react";
 import { findDOMNode } from "react-dom";
 
-import Icon from "metabase/components/Icon";
-
 export default class RelativeDatePicker extends Component {
     constructor(props) {
         super(props);
@@ -65,13 +63,12 @@ export default class RelativeDatePicker extends Component {
 
 const UNITS = ['Minute', 'Day', 'Week', 'Month', 'Year'];
 
-
 class UnitPicker extends Component {
     constructor () {
         super();
     }
     render () {
-        const { currentUnit, open, setUnit } = this.props;
+        const { currentUnit, setUnit } = this.props;
         return (
            <div>
                <div>
@@ -87,5 +84,5 @@ class UnitPicker extends Component {
            </div>
         );
     }
-};
+}
 

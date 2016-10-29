@@ -8,8 +8,9 @@ export default class DatePicker extends Component {
     constructor(props) {
         super(props);
         this.state = {
-            pane: this._detectPane(props)
+            pane: this._detectPane(props),
         };
+
     }
 
     static propTypes = {
@@ -36,17 +37,20 @@ export default class DatePicker extends Component {
 
     render() {
         const { pane } = this.state;
+
         const operators = [
-            { name: "relative", verboseName: "Relative date" },
-            { name: "specific", verboseName: "Specific date" },
-            { name: "IS_NULL", verboseName: "Is Empty", advanced: true },
-            { name: "NOT_NULL", verboseName: "Not Empty", advanced: true }
+            { clause: "TIME_INTERVAL", verboseName: "Previous" },
+            { clause: "TIME_INTERVAL", verboseName: "Next" },
+            { clause: "<", verbose: "Before" }, 
+            { clause: ">", verbose: "After" }, 
+            { clause: "IS_NULL", verboseName: "Is Empty" },
+            { clause: "NOT_NULL", verboseName: "Not Empty" }
         ];
 
         return (
             <div>
                 <OperatorSelector
-                    operator={this.state.pane}
+                    operator={pane}
                     operators={operators}
                     onOperatorChange={(operator) => {
                         this.setState({ pane: operator });
@@ -56,16 +60,9 @@ export default class DatePicker extends Component {
                     }}
                 />
                 { pane === "relative" ?
-                    <RelativeDatePicker
-                        filter={this.props.filter}
-                        onFilterChange={this.props.onFilterChange}
-                    />
+                    <RelativeDatePicker { ...this.props }  />
                 : pane === "specific" ?
-                    <SpecificDatePicker
-                        filter={this.props.filter}
-                        onFilterChange={this.props.onFilterChange}
-                        onOperatorChange={this.props.onOperatorChange}
-                    />
+                    <SpecificDatePicker { ...this.props } />
                 : null }
             </div>
         )

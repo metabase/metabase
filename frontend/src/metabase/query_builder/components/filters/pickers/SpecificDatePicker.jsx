@@ -11,7 +11,9 @@ import moment from "moment";
 export default class SpecificDatePicker extends Component {
     constructor(props, context) {
         super(props, context);
-
+        this.state = {
+            showCalendar: false
+        }
         _.bindAll(this, "onChange");
     }
 
@@ -69,9 +71,21 @@ export default class SpecificDatePicker extends Component {
             endValue = filter[2];
         }
 
+        const { showCalendar } = this.state;
         return (
-            <div>
-                <div className="mx2 mt2">
+            <div className="px1">
+                <Input
+                    className="input full"
+                    value={startValue && moment(startValue).format("MM/DD/YYYY")}
+                    placeholder={startPlaceholder}
+                    onBlurChange={(e) =>
+                        this.onChange(moment(e.target.value).format("YYYY-MM-DD"), singleDay ? null : endValue)
+                    }
+                    onClick={ () => this.setState({ showCalendar: true }) }
+                />
+                <ExpandingContent
+                    open={showCalendar}
+                >
                     <Calendar
                         initial={initial}
                         selected={start}
@@ -80,25 +94,24 @@ export default class SpecificDatePicker extends Component {
                         onBeforeClick={singleDay ? this.toggleOperator.bind(this, "<") : undefined}
                         onAfterClick={singleDay ? this.toggleOperator.bind(this, ">") : undefined}
                     />
-                    <div className="py2 text-centered">
-                        <Input
-                            className="input input--small text-bold text-grey-4 text-centered"
-                            style={{width: "100px"}}
-                            value={startValue && moment(startValue).format("MM/DD/YYYY")}
-                            placeholder={startPlaceholder}
-                            onBlurChange={(e) => this.onChange(moment(e.target.value).format("YYYY-MM-DD"), singleDay ? null : endValue)}
-                        />
-                        <span className="px1">–</span>
-                        <Input
-                            className="input input--small text-bold text-grey-4 text-centered"
-                            style={{width: "100px"}}
-                            value={endValue && moment(endValue).format("MM/DD/YYYY")}
-                            placeholder={endPlaceholder}
-                            onBlurChange={(e) => this.onChange(startValue, moment(e.target.value).format("YYYY-MM-DD"))}
-                        />
-                    </div>
-                </div>
+                </ExpandingContent>
             </div>
         )
     }
 }
+
+const SpecificDateSelector = (props) =>
+    <div>
+    </div>
+
+const ExpandingContent = ({ children, open }) =>
+    <div
+        style={{
+            maxHeight: open ? 'none' : 0,
+            overflow: 'hidden',
+            transition: 'max-height 0.3s ease'
+        }}
+    >
+        { children }
+    </div>
+

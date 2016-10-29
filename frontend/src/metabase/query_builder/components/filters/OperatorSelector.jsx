@@ -6,8 +6,9 @@ import cx from "classnames";
 import _ from "underscore";
 
 export default class OperatorSelector extends Component {
-    constructor(props, context) {
-        super(props, context);
+    constructor(props) {
+        super(props);
+
         // if the initial operator is "advanced" expand the list
         let operator = _.find(props.operators, o => o.name === props.operator);
         this.state = {
@@ -36,13 +37,12 @@ export default class OperatorSelector extends Component {
         return (
             <div id="OperatorSelector" className="border-bottom p1">
                 { visibleOperators.map(o =>
-                    <button
+                    <li
                         key={o.name}
-                        className={cx("Button Button-normal Button--medium mr1 mb1", { "Button--purple": o.name === operator })}
                         onClick={() => this.props.onOperatorChange(o.name)}
                     >
                         {o.verboseName}
-                    </button>
+                    </li>
                 )}
                 { !expanded && expandedOperators.length > 0 ?
                     <div className="text-grey-3 cursor-pointer" onClick={() => this.setState({ expanded: true })}>
