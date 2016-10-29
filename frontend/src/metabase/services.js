@@ -2,8 +2,6 @@
 
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 
-import * as GA from "metabase/ga-info";
-
 import crossfilter from "crossfilter";
 
 import type { Dataset } from "metabase/meta/types/Dataset";
@@ -19,6 +17,8 @@ function augmentDataset(result: Dataset) {
     }
     return result;
 }
+
+import getGAMetadata from "promise?global!metabase/lib/ga-metadata";
 
 export const ActivityApi = {
     list:                        GET("/api/activity"),
@@ -78,9 +78,10 @@ export const MetabaseApi = {
     // table_fields:                GET("/api/table/:tableId/fields"),
     table_fks:                   GET("/api/table/:tableId/fks"),
     // table_reorder_fields:       POST("/api/table/:tableId/reorder"),
-    table_query_metadata:        GET("/api/table/:tableId/query_metadata", (table) => {
+    table_query_metadata:        GET("/api/table/:tableId/query_metadata", async (table) => {
                                     // HACK: inject GA metadata that we don't have intergrated on the backend yet
                                     if (table && table.db && table.db.engine === "googleanalytics") {
+                                        let GA = await getGAMetadata();
                                         table.fields = table.fields.map(f => ({ ...f, ...GA.fields[f.name] }));
                                         table.metrics.push(...GA.metrics);
                                         table.segments.push(...GA.segments);
