@@ -33,7 +33,7 @@
                Card     [{card-2-id :id} {:database_id db-id}]]
     (let [card-returned? (fn [database-id card-id]
                            (contains? (set (for [card ((user->client :rasta) :get 200 "card", :f :database, :model_id database-id)]
-                                             (:id card)))
+                                             (u/get-id card)))
                                       card-id))]
       [(card-returned? (id) card-1-id)
        (card-returned? db-id card-1-id)
@@ -60,7 +60,7 @@
                Card     [{card-2-id :id}   {:table_id table-2-id}]]
     (let [card-returned? (fn [table-id card-id]
                            (contains? (set (for [card ((user->client :rasta) :get 200 "card", :f :table, :model_id table-id)]
-                                             (:id card)))
+                                             (u/get-id card)))
                                       card-id))]
       [(card-returned? table-1-id card-1-id)
        (card-returned? table-2-id card-1-id)
@@ -188,7 +188,7 @@
      :query_type             "query"
      :archived               false
      :labels                 []})
-  ((user->client :rasta) :get 200 (str "card/" (:id card))))
+  ((user->client :rasta) :get 200 (str "card/" (u/get-id card))))
 
 ;; Check that a user without permissions isn't allowed to fetch the card
 (expect-with-temp [Database  [{database-id :id}]
@@ -201,7 +201,7 @@
     ;; revoke permissions for default group to this database
     (perms/delete-related-permissions! (perms-group/all-users) (perms/object-path database-id))
     ;; now a non-admin user shouldn't be able to fetch this card
-    ((user->client :rasta) :get 403 (str "card/" (:id card)))))
+    ((user->client :rasta) :get 403 (str "card/" (u/get-id card)))))
 
 ;; ## PUT /api/card/:id
 
@@ -252,26 +252,26 @@
 
 ;; Helper Functions
 (defn- fave? [card]
-  ((user->client :rasta) :get 200 (format "card/%d/favorite" (:id card))))
+  (db/exists? CardFavorite, :card_id (u/get-id card), :owner_id (user->id :rasta)))
 
 (defn- fave! [card]
-  ((user->client :rasta) :post 200 (format "card/%d/favorite" (:id card))))
+  ((user->client :rasta) :post 200 (format "card/%d/favorite" (u/get-id card))))
 
 (defn- unfave! [card]
-  ((user->client :rasta) :delete 204 (format "card/%d/favorite" (:id card))))
+  ((user->client :rasta) :delete 204 (format "card/%d/favorite" (u/get-id card))))
 
 ;; ## GET /api/card/:id/favorite
 ;; Can we see if a Card is a favorite ?
 (expect
-  {:favorite false}
+  false
   (with-temp-card [card]
     (fave? card)))
 
 ;; ## POST /api/card/:id/favorite
 ;; Can we favorite a card?
 (expect
-  [{:favorite false}
-   {:favorite true}]
+  [false
+   true]
   (with-temp-card [card]
     [(fave? card)
      (do (fave! card)
@@ -280,9 +280,9 @@
 ;; DELETE /api/card/:id/favorite
 ;; Can we unfavorite a card?
 (expect
-  [{:favorite false}
-   {:favorite true}
-   {:favorite false}]
+  [false
+   true
+   false]
   (with-temp-card [card]
     [(fave? card)
      (do (fave! card)
@@ -308,3 +308,35 @@
     [(get-labels)                            ; (1)
      (update-labels [label-1-id label-2-id]) ; (2)
      (update-labels [])]))                   ; (3)
+
+
+;;; POST /api/:card-id/query/csv
+
+(defn- do-with-temp-native-card {:style/indent 0} [f]
+  (with-temp* [Database  [{database-id :id} {:details (:details (Database (id))), :engine :h2}]
+               Table     [{table-id :id}    {:db_id database-id, :name "CATEGORIES"}]
+               Card      [card              {:dataset_query {:database database-id
+                                                             :type     :native
+                                                             :native   {:query "SELECT COUNT(*) FROM CATEGORIES;"}
+                                                             :query    {:source-table table-id, :aggregation {:aggregation-type :count}}}}]]
+    ;; delete all permissions for this DB
+    (perms/delete-related-permissions! (perms-group/all-users) (perms/object-path database-id))
+    (f database-id card)))
+
+;; can someone with native query *read* permissions see a CSV card? (Issue #3648)
+(expect
+  (str "COUNT(*)\n"
+       "75\n")
+  (do-with-temp-native-card
+    (fn [database-id card]
+      ;; insert new permissions for native read access
+      (perms/grant-native-read-permissions! (perms-group/all-users) database-id)
+      ;; now run the query
+      ((user->client :rasta) :post 200 (format "card/%d/query/csv" (u/get-id card))))))
+
+;; does someone without *read* permissions get DENIED?
+(expect
+  "You don't have permissions to do that."
+  (do-with-temp-native-card
+    (fn [database-id card]
+      ((user->client :rasta) :post 403 (format "card/%d/query/csv" (u/get-id card))))))

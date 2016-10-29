@@ -61,7 +61,7 @@
              :is_full_sync (if-not (nil? is_full_sync)
                              is_full_sync
                              true))
-           (events/publish-event :database-create)))
+           (events/publish-event! :database-create)))
     ;; clear the setup token now, it's no longer needed
     (setup/clear-token!)
     ;; then we create a session right away because we want our new user logged in to continue the setup process
@@ -69,8 +69,8 @@
       :id      session-id
       :user_id (:id new-user))
     ;; notify that we've got a new user in the system AND that this user logged in
-    (events/publish-event :user-create {:user_id (:id new-user)})
-    (events/publish-event :user-login {:user_id (:id new-user), :session_id session-id, :first_login true})
+    (events/publish-event! :user-create {:user_id (:id new-user)})
+    (events/publish-event! :user-login {:user_id (:id new-user), :session_id session-id, :first_login true})
     {:id session-id}))
 
 

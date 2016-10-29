@@ -45,15 +45,6 @@ Get all the `Cards`. Option filter param `f` can be used to change the set of Ca
 *  **`label`** value may be nil, or if non-nil, value must be a non-blank string.
 
 
-## `GET /api/card/:card-id/favorite`
-
-Has current user favorited this `Card`?
-
-##### PARAMS:
-
-*  **`card-id`** 
-
-
 ## `GET /api/card/:id`
 
 Get `Card` with ID.
@@ -111,6 +102,17 @@ Run the query associated with a Card.
 *  **`parameters`** 
 
 
+## `POST /api/card/:card-id/query/csv`
+
+Run the query associated with a Card, and return its results as CSV.
+
+##### PARAMS:
+
+*  **`card-id`** 
+
+*  **`parameters`** 
+
+
 ## `PUT /api/card/:id`
 
 Update a `Card`.
@@ -130,8 +132,6 @@ Update a `Card`.
 *  **`visualization_settings`** value may be nil, or if non-nil, value must be a map.
 
 *  **`archived`** value may be nil, or if non-nil, value must be a boolean.
-
-*  **`body`** 
 
 
 ## `DELETE /api/dashboard/:id`
@@ -338,15 +338,6 @@ Get metadata about a `Database`, including all of its `Tables` and `Fields`.
 *  **`id`** 
 
 
-## `GET /api/database/:id/tables`
-
-Get a list of all `Tables` in `Database`.
-
-##### PARAMS:
-
-*  **`id`** 
-
-
 ## `POST /api/database/`
 
 Add a new `Database`.
@@ -405,16 +396,6 @@ You must be a superuser to do this.
 *  **`points_of_interest`** 
 
 
-## `GET /api/dataset/card/:id`
-
-Execute the MQL query for a given `Card` and retrieve both the `Card` and the execution results as JSON.
-   This is a convenience endpoint which simplifies the normal 2 api calls to fetch the `Card` then execute its query.
-
-##### PARAMS:
-
-*  **`id`** 
-
-
 ## `POST /api/dataset/`
 
 Execute an MQL query and retrieve the results as JSON.
@@ -423,12 +404,10 @@ Execute an MQL query and retrieve the results as JSON.
 
 *  **`database`** 
 
-*  **`body`** 
-
 
 ## `POST /api/dataset/csv`
 
-Execute an MQL query and download the result data as a CSV file.
+Execute a query and download the result data as a CSV file.
 
 ##### PARAMS:
 
@@ -510,23 +489,21 @@ Update `Field` with ID.
 
 ##### PARAMS:
 
-*  **`visibility_type`** value may be nil, or if non-nil, value must be one of: `details-only`, `hidden`, `normal`, `retired`, `sensitive`.
-
-*  **`display_name`** value may be nil, or if non-nil, value must be a non-blank string.
-
-*  **`body`** 
-
-*  **`points_of_interest`** value may be nil, or if non-nil, value must be a non-blank string.
-
-*  **`description`** value may be nil, or if non-nil, value must be a non-blank string.
-
-*  **`special_type`** value may be nil, or if non-nil, value must be a valid field type.
+*  **`id`** 
 
 *  **`caveats`** value may be nil, or if non-nil, value must be a non-blank string.
 
+*  **`description`** value may be nil, or if non-nil, value must be a non-blank string.
+
+*  **`display_name`** value may be nil, or if non-nil, value must be a non-blank string.
+
 *  **`fk_target_field_id`** value may be nil, or if non-nil, value must be an integer.
 
-*  **`id`** 
+*  **`points_of_interest`** value may be nil, or if non-nil, value must be a non-blank string.
+
+*  **`special_type`** value may be nil, or if non-nil, value must be a valid field type.
+
+*  **`visibility_type`** value may be nil, or if non-nil, value must be one of: `details-only`, `hidden`, `normal`, `retired`, `sensitive`.
 
 
 ## `GET /api/geojson/:key`
@@ -579,8 +556,6 @@ Update a `Label`. :label:
 *  **`name`** value may be nil, or if non-nil, value must be a non-blank string.
 
 *  **`icon`** value may be nil, or if non-nil, value must be a non-blank string.
-
-*  **`body`** 
 
 
 ## `DELETE /api/metric/:id`
@@ -905,8 +880,6 @@ Test send an unsaved pulse.
 
 *  **`channels`** value must be an array. Each value must be a map. The array cannot be empty.
 
-*  **`body`** 
-
 
 ## `PUT /api/pulse/:id`
 
@@ -1115,17 +1088,6 @@ Reset password with a reset token.
 *  **`password`** Insufficient password strength
 
 
-## `DELETE /api/setting/:key`
-
-Delete a `Setting`. You must be a superuser to do this.
-
-You must be a superuser to do this.
-
-##### PARAMS:
-
-*  **`key`** value must be a non-blank string.
-
-
 ## `GET /api/setting/`
 
 Get all `Settings` and their values. You must be a superuser to do this.
@@ -1142,17 +1104,6 @@ You must be a superuser to do this.
 ##### PARAMS:
 
 *  **`key`** value must be a non-blank string.
-
-
-## `PUT /api/setting/`
-
-Update multiple `Settings` values.  You must be a superuser to do this.
-
-You must be a superuser to do this.
-
-##### PARAMS:
-
-*  **`settings`** value must be a map.
 
 
 ## `PUT /api/setting/:key`
@@ -1254,15 +1205,6 @@ Get `Table` with ID.
 *  **`id`** 
 
 
-## `GET /api/table/:id/fields`
-
-Get all `Fields` for `Table` with ID.
-
-##### PARAMS:
-
-*  **`id`** 
-
-
 ## `GET /api/table/:id/fks`
 
 Get all foreign keys whose destination is a `Field` that belongs to this `Table`.
@@ -1285,26 +1227,6 @@ Get metadata about a `Table` useful for running queries.
 *  **`id`** 
 
 *  **`include_sensitive_fields`** value may be nil, or if non-nil, value must be a valid boolean (true or false).
-
-
-## `POST /api/table/:id/reorder`
-
-Re-order the `Fields` belonging to this `Table`.
-
-##### PARAMS:
-
-*  **`id`** 
-
-*  **`new_order`** value must be an array.
-
-
-## `POST /api/table/:id/sync`
-
-Re-sync the metadata for this `Table`. This is ran asynchronously; the endpoint returns right away.
-
-##### PARAMS:
-
-*  **`id`** 
 
 
 ## `PUT /api/table/:id`
@@ -1332,7 +1254,7 @@ Update `Table` with ID.
 
 ## `GET /api/tiles/:zoom/:x/:y/:lat-field-id/:lon-field-id/:lat-col-idx/:lon-col-idx/`
 
-This endpoints provides an image with the appropriate pins rendered given a json query.
+This endpoints provides an image with the appropriate pins rendered given a MBQL QUERY (passed as a GET query string param).
    We evaluate the query and find the set of lat/lon pairs which are relevant and then render the appropriate ones.
    It's expected that to render a full map view several calls will be made to this endpoint in parallel.
 
@@ -1344,9 +1266,9 @@ This endpoints provides an image with the appropriate pins rendered given a json
 
 *  **`y`** value must be a valid integer.
 
-*  **`lat-field-id`** value must be a valid integer greater than zero.
+*  **`lat-field-id`** value must be an integer greater than zero.
 
-*  **`lon-field-id`** value must be a valid integer greater than zero.
+*  **`lon-field-id`** value must be an integer greater than zero.
 
 *  **`lat-col-idx`** value must be a valid integer.
 

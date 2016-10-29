@@ -1,7 +1,5 @@
 /* @flow */
 
-export type Timestamp = string;
-
 export type ColumnName = string;
 
 // TODO: incomplete
@@ -11,7 +9,9 @@ export type Column = {
     base_type: string,
 }
 
-export type Row = Array<string|number|Timestamp>
+export type ISO8601Times = string;
+export type Value = string|number|ISO8601Times|boolean|null|{};
+export type Row = Value[];
 
 export type Dataset = {
     data: {

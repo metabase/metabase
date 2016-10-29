@@ -73,7 +73,7 @@
                   :description description
                   :is_active   true
                   :definition  definition)]
-    (-> (events/publish-event :segment-create segment)
+    (-> (events/publish-event! :segment-create segment)
         (hydrate :creator))))
 
 (defn exists?
@@ -123,7 +123,7 @@
      (when (not (nil? show_in_getting_started))
        {:show_in_getting_started show_in_getting_started})))
   (u/prog1 (retrieve-segment id)
-    (events/publish-event :segment-update (assoc <> :actor_id user-id, :revision_message revision_message))))
+    (events/publish-event! :segment-update (assoc <> :actor_id user-id, :revision_message revision_message))))
 
 (defn delete-segment!
   "Delete a `Segment`.
@@ -140,4 +140,4 @@
   (db/update! Segment id, :is_active false)
   ;; retrieve the updated segment (now retired)
   (u/prog1 (retrieve-segment id)
-    (events/publish-event :segment-delete (assoc <> :actor_id user-id, :revision_message revision-message))))
+    (events/publish-event! :segment-delete (assoc <> :actor_id user-id, :revision_message revision-message))))

@@ -122,34 +122,6 @@
     (perms/delete-related-permissions! (perms-group/all-users) (perms/object-path database-id))
     ((user->client :rasta) :get 403 (str "table/" table-id))))
 
-;; ## GET /api/table/:id/fields
-(expect
-  (let [defaults (-> field-defaults
-                     (assoc :table_id (id :categories))
-                     (dissoc :target))]
-    [(merge defaults (match-$ (Field (id :categories :id))
-                       {:special_type       "type/PK"
-                        :name               "ID"
-                        :display_name       "ID"
-                        :updated_at         $
-                        :id                 (id :categories :id)
-                        :created_at         $
-                        :base_type          "type/BigInteger"
-                        :fk_target_field_id $
-                        :raw_column_id      $
-                        :last_analyzed      $}))
-     (merge defaults (match-$ (Field (id :categories :name))
-                       {:special_type       "type/Name"
-                        :name               "NAME"
-                        :display_name       "Name"
-                        :updated_at         $
-                        :id                 (id :categories :name)
-                        :created_at         $
-                        :base_type          "type/Text"
-                        :fk_target_field_id $
-                        :raw_column_id      $
-                        :last_analyzed      $}))])
-  ((user->client :rasta) :get 200 (format "table/%d/fields" (id :categories))))
 
 ;; ## GET /api/table/:id/query_metadata
 (expect
@@ -359,7 +331,7 @@
 (tu/expect-with-temp [Table [table {:rows 15}]]
   (merge (-> (table-defaults)
              (dissoc :segments :field_values :metrics)
-             (assoc-in [:db :details] {:short-lived? nil, :db "mem:test-data;USER=GUEST;PASSWORD=guest"}))
+             (assoc-in [:db :details] {:db "mem:test-data;USER=GUEST;PASSWORD=guest"}))
          (match-$ table
            {:description     "What a nice table!"
             :entity_type     "person"
@@ -439,20 +411,3 @@
                                                               :raw_table_id $
                                                               :created_at   $}))}))}])
   ((user->client :rasta) :get 200 (format "table/%d/fks" (id :users))))
-
-
-;; ## POST /api/table/:id/reorder
-(expect
-  {:result "success"}
-  (let [categories-id-field   (Field :table_id (id :categories), :name "ID")
-        categories-name-field (Field :table_id (id :categories), :name "NAME")
-        api-response          ((user->client :crowberto) :post 200 (format "table/%d/reorder" (id :categories))
-                               {:new_order [(:id categories-name-field) (:id categories-id-field)]})]
-    ;; check the modified values (have to do it here because the api response tells us nothing)
-    (assert (= 0 (db/select-one-field :position Field, :id (:id categories-name-field))))
-    (assert (= 1 (db/select-one-field :position Field, :id (:id categories-id-field))))
-    ;; put the values back to their previous state
-    (db/update! Field (:id categories-name-field), :position 0)
-    (db/update! Field (:id categories-id-field),   :position 0)
-    ;; return our origin api response for validation
-    api-response))

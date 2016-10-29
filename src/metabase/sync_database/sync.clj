@@ -93,9 +93,9 @@
                               :special-type (keyword (:special-type details))))]
         (if-let [existing-field (get raw-column-id->field raw-column-id)]
           ;; field already exists, so we UPDATE it
-          (field/update-field! existing-field column)
+          (field/update-field-from-field-def! existing-field column)
           ;; looks like a new field, so we CREATE it
-          (field/create-field! table-id (assoc column :raw-column-id raw-column-id)))))))
+          (field/create-field-from-field-def! table-id (assoc column :raw-column-id raw-column-id)))))))
 
 
 (defn retire-tables!
@@ -123,7 +123,7 @@
         (table/retire-tables! #{table-id})
         ;; otherwise update based on the RawTable/RawColumn information
         (do
-          (save-table-fields! (table/update-table! existing-table raw-table))
+          (save-table-fields! (table/update-table-from-tabledef! existing-table raw-table))
 
           ;; handle setting any fk relationships
           (when-let [table-fks (db/select [RawColumn [:id :source-column] [:fk_target_column_id :target-column]]
@@ -183,12 +183,12 @@
     (try
       (save-table-fields! (if-let [existing-table (get existing-tables raw-table-id)]
                             ;; table already exists, update it
-                            (table/update-table! existing-table raw-table)
+                            (table/update-table-from-tabledef! existing-table raw-table)
                             ;; must be a new table, insert it
-                            (table/create-table! (:id database) (assoc raw-table
-                                                                      :raw-table-id    raw-table-id
-                                                                      :visibility-type (when (is-crufty-table? raw-table)
-                                                                                         :cruft)))))
+                            (table/create-table-from-tabledef! (:id database) (assoc raw-table
+                                                                                :raw-table-id    raw-table-id
+                                                                                :visibility-type (when (is-crufty-table? raw-table)
+                                                                                                   :cruft)))))
       (catch Throwable e
         (log/error (u/format-color 'red "Unexpected error syncing table") e)))))
 

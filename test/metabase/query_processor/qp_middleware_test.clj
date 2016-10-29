@@ -56,9 +56,6 @@
          (dissoc response3 :driver)]))))
 
 
-;; TODO: pre-expand-macros
-;; TODO: pre-expand-resolve
-
 ;; post-add-row-count-and-status
 
 (expect
@@ -99,12 +96,3 @@
   ((post-format-rows (constantly {:rows [[(tc/to-sql-time 1303121567232)]
                                          [(tc/to-sql-date "2011-04-18")] ; joda-time assumes this is UTC time when parsing it
                                          [(tc/to-date 1303121567232)]]})) {:settings {:report-timezone "Asia/Tokyo"}}))
-
-
-;; TODO: pre-add-implicit-fields
-;; TODO: pre-add-implicit-breakout-order-by
-;; TODO: cumulative-sum
-;; TODO: limit
-;; TODO: post-annotate
-;; TODO: pre-log-query
-;; TODO: wrap-guard-multiple-calls

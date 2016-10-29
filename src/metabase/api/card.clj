@@ -173,7 +173,7 @@
          :display                display
          :name                   name
          :visualization_settings visualization_settings)
-       (events/publish-event :card-create)))
+       (events/publish-event! :card-create)))
 
 
 (defendpoint GET "/:id"
@@ -182,7 +182,7 @@
   (-> (read-check Card id)
       (hydrate :creator :dashboard_count :labels)
       (assoc :actor_id *current-user-id*)
-      (->> (events/publish-event :card-read))
+      (->> (events/publish-event! :card-read))
       (dissoc :actor_id)))
 
 
@@ -210,7 +210,7 @@
                        (not archived)
                        (:archived card))       :card-unarchive
                   :else                        :card-update)]
-      (events/publish-event event (assoc (Card id) :actor_id *current-user-id*)))))
+      (events/publish-event! event (assoc (Card id) :actor_id *current-user-id*)))))
 
 
 (defendpoint DELETE "/:id"
@@ -218,17 +218,10 @@
   [id]
   (let [card (write-check Card id)]
     (u/prog1 (db/cascade-delete! Card :id id)
-      (events/publish-event :card-delete (assoc card :actor_id *current-user-id*)))))
+      (events/publish-event! :card-delete (assoc card :actor_id *current-user-id*)))))
 
 
 ;;; ------------------------------------------------------------ Favoriting ------------------------------------------------------------
-
-
-(defendpoint GET "/:card-id/favorite"
-  "Has current user favorited this `Card`?"
-  [card-id]
-  (read-check Card card-id)
-  {:favorite (db/exists? CardFavorite :card_id card-id, :owner_id *current-user-id*)})
 
 (defendpoint POST "/:card-id/favorite"
   "Favorite a Card."
@@ -264,17 +257,24 @@
 
 ;;; ------------------------------------------------------------ Running a Query ------------------------------------------------------------
 
+(defn- run-query-for-card [card-id parameters]
+  (let [card    (read-check Card card-id)
+        query   (assoc (:dataset_query card)
+                  :parameters  parameters
+                  :constraints dataset-api/query-constraints)
+        options {:executed-by *current-user-id*
+                 :card-id     card-id}]
+    (qp/dataset-query query options)))
+
 (defendpoint POST "/:card-id/query"
   "Run the query associated with a Card."
   [card-id :as {{:keys [parameters]} :body}]
-  (let [card  (read-check Card card-id)
-        query (assoc (:dataset_query card)
-                :parameters  parameters
-                :constraints dataset-api/query-constraints)]
-    ;; Now run the query!
-    (let [options {:executed-by *current-user-id*
-                   :card-id     card-id}]
-      (qp/dataset-query query options))))
+  (run-query-for-card card-id parameters))
+
+(defendpoint POST "/:card-id/query/csv"
+  "Run the query associated with a Card, and return its results as CSV."
+  [card-id :as {{:keys [parameters]} :body}]
+  (dataset-api/as-csv (run-query-for-card card-id parameters)))
 
 
 (define-routes)

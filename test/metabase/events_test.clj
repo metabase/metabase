@@ -1,21 +1,24 @@
 (ns metabase.events-test
   (:require [clojure.core.async :as async]
             [expectations :refer :all]
-            [metabase.events :as events]))
+            [metabase.events :as events]
+            [metabase.test.util :as tu]))
 
-(def testing-topic :event-test-topic)
+(def ^:private testing-topic :event-test-topic)
 
-(def testing-sub-channel (async/chan))
+(def ^:private testing-sub-channel (async/chan))
 
 
 ;; ## Basic Pub/Sub TESTS
 
-(events/subscribe-to-topic testing-topic testing-sub-channel)
+(tu/resolve-private-vars metabase.events subscribe-to-topic!)
+
+(subscribe-to-topic! testing-topic testing-sub-channel)
 
 ;; we should get back our originally posted object no matter what happens
 (expect
   {:some :object}
-  (events/publish-event testing-topic {:some :object}))
+  (events/publish-event! testing-topic {:some :object}))
 
 ;; when we receive a message it should be wrapped with {:topic `topic` :item `message body`}
 (expect
