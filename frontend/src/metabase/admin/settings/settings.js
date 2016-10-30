@@ -2,7 +2,7 @@
 import { handleActions, combineReducers, AngularResourceProxy, createThunkAction } from "metabase/lib/redux";
 
 // resource wrappers
-const SettingsApi = new AngularResourceProxy("Settings", ["list", "put"]);
+const SettingsApi = new AngularResourceProxy("Settings", ["list", "put", "setAll"]);
 const EmailApi = new AngularResourceProxy("Email", ["updateSettings", "sendTest"]);
 const SlackApi = new AngularResourceProxy("Slack", ["updateSettings"]);
 
@@ -46,6 +46,22 @@ export const updateSetting = createThunkAction("UPDATE_SETTING", function(settin
         }
     };
 });
+
+// updateSettings
+export const updateSettings = createThunkAction("UPDATE_SETTINGS", function(settings) {
+    return async function(dispatch, getState) {
+        console.log(settings);
+        try {
+            await SettingsApi.setAll(settings);
+            await dispatch(refreshSiteSettings());
+            return await loadSettings();
+        } catch(error) {
+            console.log("error updating multiple settings", settings, error);
+            throw error;
+        }
+    };
+});
+
 
 // updateEmailSettings
 export const updateEmailSettings = createThunkAction("UPDATE_EMAIL_SETTINGS", function(settings) {

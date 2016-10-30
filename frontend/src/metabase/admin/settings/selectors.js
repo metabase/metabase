@@ -157,6 +157,36 @@ const SECTIONS = [
                 key: "custom-geojson"
             }
         ]
+    },
+    {
+        name: "Cache",
+        settings: [
+            {
+                key: "cache-enabled",
+                display_name: "Use Cache?",
+                type: "boolean",
+                defaultValue: false
+            },
+            {
+                key: "cache-scope",
+                display_name: "Cache scope",
+                type: "radio",
+                options: { global: "Global", card: "Per Card" },
+                defaultValue: 'global'
+            },
+            {
+                key: "cache-global-max-age",
+                display_name: "Cache max age",
+                type: "duration",
+                defaultValue: '300'
+            },
+            {
+                key: "cache-max-allowed-size",
+                display_name: "Max result size to store",
+                type: "number",
+                defaultValue: '300'
+            }
+        ]
     }
 ];
 for (const section of SECTIONS) {

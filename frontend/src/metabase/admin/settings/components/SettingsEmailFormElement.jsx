@@ -1,5 +1,6 @@
 import React, { Component, PropTypes } from "react";
 
+import DurationPicker from "metabase/components/DurationPicker.jsx";
 import Input from "metabase/components/Input.jsx";
 import Select from "metabase/components/Select.jsx";
 import Toggle from "metabase/components/Toggle.jsx";
@@ -7,7 +8,7 @@ import Toggle from "metabase/components/Toggle.jsx";
 import _ from "underscore";
 import cx from "classnames";
 
-
+// TODO this should be generalized since other forms are using it
 export default class SettingsEmailFormElement extends Component {
     static propTypes = {
         element: PropTypes.object.isRequired,
@@ -75,6 +76,19 @@ export default class SettingsEmailFormElement extends Component {
         );
     }
 
+    renderDurationPickerInput(element) {
+        let classes  = "AdminInput bordered rounded h3";
+        return (
+            <div className={classes}>
+                <DurationPicker
+                    valueInSeconds={parseInt(element.value)}
+                    inputClass={classes}
+                    selectClass={classes}
+                    onChange={this.props.handleChangeEvent.bind(this, element, null)}/>            </div>
+        );
+    }
+
+
     render() {
         const element = this.props.element;
 
@@ -85,6 +99,8 @@ export default class SettingsEmailFormElement extends Component {
             case "select":   control = this.renderSelectInput(element); break;
             case "radio":    control = this.renderRadioInput(element); break;
             case "boolean":  control = this.renderToggleInput(element); break;
+            case "number":   control = this.renderTextInput(element, "number"); break;
+            case "duration": control = this.renderDurationPickerInput(element); break;
             default:
                 console.warn("No render method for element type " + element.type + ", defaulting to text input.");
                 control = this.renderTextInput(element);
