@@ -21,6 +21,22 @@ describe('formatting', () => {
             expect(formatNumber(-1/3)).toEqual("-0.33");
             expect(formatNumber(0.0001/3)).toEqual("0.000033");
         });
+        describe("in compact mode", () => {
+            it("should format 0 as 0", () => {
+                expect(formatNumber(0, { compact: true })).toEqual("0");
+            })
+            it("shouldn't display small numbers as 0", () => {
+                expect(formatNumber(0.1, { compact: true })).toEqual("0.1");
+                expect(formatNumber(-0.1, { compact: true })).toEqual("-0.1");
+                expect(formatNumber(0.01, { compact: true })).toEqual("~ 0");
+                expect(formatNumber(-0.01, { compact: true })).toEqual("~ 0");
+            });
+            it("should format large numbers with metric units", () => {
+                expect(formatNumber(1, { compact: true })).toEqual("1");
+                expect(formatNumber(1000, { compact: true })).toEqual("1.0k");
+                expect(formatNumber(1111, { compact: true })).toEqual("1.1k");
+            })
+        });
     });
 
     describe("formatValue", () => {
