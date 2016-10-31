@@ -9,12 +9,15 @@
   (:import java.sql.Timestamp
            java.util.Date
            clojure.lang.PersistentArrayMap
+           (com.google.api.services.analytics.model GaData GaData$ColumnHeaders)
            (metabase.query_processor.interface AgFieldRef
                                                DateTimeField
                                                DateTimeValue
                                                Field
                                                RelativeDateTimeValue
                                                Value)))
+
+(set! *warn-on-reflection* true) ; NOCOMMIT
 
 (def ^:private ^:const earliest-date "2005-01-01")
 (def ^:private ^:const latest-date "today")
@@ -37,7 +40,7 @@
 
 (defn- date->ga-date
   [date]
-  (.format (java.text.SimpleDateFormat. "yyyy-MM-dd") date))
+  (u/format-date "yyyy-MM-dd" date))
 
 (defprotocol ^:private IRValue
   (^:private ->rvalue [this]))
@@ -50,15 +53,15 @@
   Value                 (->rvalue [this] (:value this))
   DateTimeValue         (->rvalue [{{unit :unit} :field, value :value}] (date->ga-date (u/date-trunc-or-extract unit value (get-timezone-id))))
   RelativeDateTimeValue (->rvalue [{:keys [unit amount]}]
-                                  (cond
-                                    (and (= unit :day) (= amount 0))  "today"
-                                    (and (= unit :day) (= amount -1)) "yesterday"
-                                    (and (= unit :day) (< amount -1)) (str (- amount) "daysAgo")
-                                    :else (date->ga-date (u/date-trunc-or-extract unit (u/relative-date unit amount) (get-timezone-id))))))
+                          (cond
+                            (and (= unit :day) (= amount 0))  "today"
+                            (and (= unit :day) (= amount -1)) "yesterday"
+                            (and (= unit :day) (< amount -1)) (str (- amount) "daysAgo")
+                            :else                             (date->ga-date (u/date-trunc-or-extract unit (u/relative-date unit amount) (get-timezone-id))))))
 
 (defn- escape-map
   [chars escape-char]
-  (into {} (zipmap chars (map #(str escape-char %) chars))))
+  (into {} (zipmap chars (map (partial str escape-char) chars))))
 
 (defn- escape-for-regex
   [str]
@@ -84,29 +87,25 @@
 (defn- unit->ga-dimension
   [unit]
   (case unit
-    ; :minute
-    :minute-of-hour   "ga:minute"
-    :hour             "ga:dateHour"
-    :hour-of-day      "ga:hour"
-    :day              "ga:date"
-    :day-of-week      "ga:dayOfWeek"
-    :day-of-month     "ga:day"
-    ; :day-of-year
-    :week             "ga:yearWeek"
-    :week-of-year     "ga:week"
-    :month            "ga:yearMonth"
-    :month-of-year    "ga:month"
-    ; :quarter
-    ; :quarter-of-year
-    :year             "ga:year"))
+    :minute-of-hour "ga:minute"
+    :hour           "ga:dateHour"
+    :hour-of-day    "ga:hour"
+    :day            "ga:date"
+    :day-of-week    "ga:dayOfWeek"
+    :day-of-month   "ga:day"
+    :week           "ga:yearWeek"
+    :week-of-year   "ga:week"
+    :month          "ga:yearMonth"
+    :month-of-year  "ga:month"
+    :year           "ga:year"))
 
 (defn- handle-breakout [{breakout-clause :breakout}]
   {:dimensions (if breakout-clause
-    (s/join "," (for [breakout-field breakout-clause]
-                  (if (instance? DateTimeField breakout-field)
-                    (unit->ga-dimension (:unit breakout-field))
-                    (->rvalue breakout-field))))
-    "")})
+                 (s/join "," (for [breakout-field breakout-clause]
+                               (if (instance? DateTimeField breakout-field)
+                                 (unit->ga-dimension (:unit breakout-field))
+                                 (->rvalue breakout-field))))
+                 "")})
 
 ;;; ### filter
 
@@ -180,19 +179,19 @@
                                 :descending "-")
                               (cond
                                 (instance? DateTimeField field) (unit->ga-dimension (:unit field))
-                                (instance? AgFieldRef field) (get-in query [:aggregation :metric-name])
-                                :else (->rvalue field)))))}))
+                                (instance? AgFieldRef field)    (get-in query [:aggregation :metric-name])
+                                :else                           (->rvalue field)))))}))
 
 ;;; ### limit
 
 (defn- handle-limit [{limit-clause :limit}]
   {:max-results (int (if (nil? limit-clause)
-                  10000
-                  limit-clause))})
+                       10000
+                       limit-clause))})
 
 (defn mbql->native
   "Transpile MBQL query into parameters required for a Google Analytics request."
-  [{:keys [query] :as raw}]
+  [{:keys [query], :as raw}]
   {:query (merge (handle-source-table    query)
                  (handle-breakout        query)
                  (handle-filter:interval query)
@@ -208,28 +207,26 @@
 (defn- builtin-metric?
   [aggregation-clause]
   (and (sequential? aggregation-clause)
-       (= :metric (expand/normalize-token (get aggregation-clause 0)))
-       (string? (get aggregation-clause 1))))
+       (= :metric (expand/normalize-token (first aggregation-clause)))
+       (string? (second aggregation-clause))))
 
 (defn- extract-builtin-metrics
   [aggregation-clause]
   ;; TODO: support mulitple metrics
-  (if (builtin-metric? aggregation-clause)
-    (get aggregation-clause 1)
-    nil))
+  (when (builtin-metric? aggregation-clause)
+    (second aggregation-clause)))
 
 (defn- replace-builtin-metrics
   [aggregation-clause]
-  (if (builtin-metric? aggregation-clause)
-    ;; replace with :count as a fake aggregation
-    [:count]
-    nil))
+  ;; replace with :count as a fake aggregation
+  (when (builtin-metric? aggregation-clause)
+    [:count]))
 
 (defn- builtin-segment?
   [filter-clause]
   (and (sequential? filter-clause)
-       (= :segment (expand/normalize-token (get filter-clause 0)))
-       (string? (get filter-clause 1))))
+       (= :segment (expand/normalize-token (first filter-clause)))
+       (string? (second filter-clause))))
 
 (defn- extract-builtin-segments
   [filter-clause]
@@ -261,27 +258,26 @@
   (.parse (java.text.SimpleDateFormat. format) str))
 
 (defn- parse-number
-  [str]
-  (edn/read-string (s/replace str #"^0+(.+)$" "$1")))
+  [s]
+  (edn/read-string (s/replace s #"^0+(.+)$" "$1")))
 
 
-(def ^:const ga-dimension->date-format
+(def ^:private ga-dimension->date-format-fn
   {"ga:minute"    parse-number
-   "ga:dateHour"  #(parse-date "yyyyMMddHH" %)
+   "ga:dateHour"  (partial parse-date "yyyyMMddHH")
    "ga:hour"      parse-number
-   "ga:date"      #(parse-date "yyyyMMdd" %)
-   "ga:dayOfWeek" #(+ 1 (parse-number %))
+   "ga:date"      (partial parse-date "yyyyMMdd")
+   "ga:dayOfWeek" (comp inc parse-number)
    "ga:day"       parse-number
-   "ga:yearWeek"  #(parse-date "YYYYww" %)
+   "ga:yearWeek"  (partial parse-date "YYYYww")
    "ga:week"      parse-number
-   "ga:yearMonth" #(parse-date "yyyyMM" %)
+   "ga:yearMonth" (partial parse-date "yyyyMM")
    "ga:month"     parse-number
    "ga:year"      parse-number})
 
-
 (defn- header->column
-  [header]
-  (let [date-parser (ga-dimension->date-format (.getName header))]
+  [^GaData$ColumnHeaders header]
+  (let [date-parser (ga-dimension->date-format-fn (.getName header))]
     (if date-parser
       {:name      (keyword "ga:date")
        :base-type :type/DateTime}
@@ -289,8 +285,8 @@
        :base-type (ga-type->base-type (.getDataType header))})))
 
 (defn- header->getter-fn
-  [header]
-  (let [date-parser (ga-dimension->date-format (.getName header))
+  [^GaData$ColumnHeaders header]
+  (let [date-parser (ga-dimension->date-format-fn (.getName header))
         base-type   (ga-type->base-type (.getDataType header))]
     (cond
       date-parser                   date-parser
@@ -299,17 +295,17 @@
 
 (defn execute-query
   [do-query query]
-  (let [mbql?    (:mbql? (:native query))
-        response (do-query query)
-        columns  (map header->column (.getColumnHeaders response))
-        getters  (map header->getter-fn (.getColumnHeaders response))
-        columns  (if mbql?
-                   ; replace last column name with :count for now since that's what our fake aggregation is
-                   (conj (vec (butlast columns)) (assoc (last columns) :name :count))
-                   columns)]
+  (let [mbql?            (:mbql? (:native query))
+        ^GaData response (do-query query)
+        columns          (map header->column (.getColumnHeaders response))
+        getters          (map header->getter-fn (.getColumnHeaders response))
+        columns          (if mbql?
+                           ;; replace last column name with :count for now since that's what our fake aggregation is
+                           (conj (vec (butlast columns)) (assoc (last columns) :name :count))
+                           columns)]
     {:columns  (map :name columns)
      :cols     columns
      :rows     (for [row (.getRows response)]
-                 (for [[data getter] (map vector row  getters)]
+                 (for [[data getter] (map vector row getters)]
                    (getter data)))
      :annotate mbql?}))
