@@ -204,55 +204,6 @@
                  {:include-empty-rows false})
    :mbql? true})
 
-(defn- builtin-metric?
-  [aggregation-clause]
-  (and (sequential? aggregation-clause)
-       (= :metric (expand/normalize-token (first aggregation-clause)))
-       (string? (second aggregation-clause))))
-
-(defn- extract-builtin-metrics
-  [aggregation-clause]
-  ;; TODO: support mulitple metrics
-  (when (builtin-metric? aggregation-clause)
-    (second aggregation-clause)))
-
-(defn- replace-builtin-metrics
-  [aggregation-clause]
-  ;; replace with :count as a fake aggregation
-  (when (builtin-metric? aggregation-clause)
-    [:count]))
-
-(defn- builtin-segment?
-  [filter-clause]
-  (and (sequential? filter-clause)
-       (= :segment (expand/normalize-token (first filter-clause)))
-       (string? (second filter-clause))))
-
-(defn- extract-builtin-segments
-  [filter-clause]
-  (let [segments (for [f filter-clause :when (builtin-segment? f)] (get f 1))]
-    (cond
-      (= (count segments) 1) (first segments)
-      (> (count segments) 1) (throw (Exception. "Only one Google Analytics segment allowed at a time.")))))
-
-(defn- replace-builtin-segments
-  [filter-clause]
-  (let [filter-clause (vec (filter (complement builtin-segment?) filter-clause))]
-    (if (> (count filter-clause) 1)
-      filter-clause)))
-
-(defn transform-query [query]
-  "Preprocess the incoming query to pull out builtin segments and metrics."
-  (-> query
-      ;; pull metrics out and put in :ga
-      (assoc-in [:ga :metrics] (extract-builtin-metrics (get-in query [:query :aggregation])))
-      ;; replace with :count as a fake aggregation
-      (update-in [:query :aggregation] replace-builtin-metrics)
-      ;; pull segments out and put in :ga
-      (assoc-in [:ga :segment] (extract-builtin-segments (get-in query [:query :filter])))
-      ;; remove segments from query dict
-      (update-in [:query :filter] replace-builtin-segments)))
-
 (defn- parse-date
   [format str]
   (.parse (java.text.SimpleDateFormat. format) str))
@@ -281,8 +232,9 @@
     (if date-parser
       {:name      (keyword "ga:date")
        :base-type :type/DateTime}
-      {:name      (keyword (.getName header))
-       :base-type (ga-type->base-type (.getDataType header))})))
+      {:name               (keyword (.getName header))
+       :base-type          (ga-type->base-type (.getDataType header))
+       :field-display-name "COOL"})))
 
 (defn- header->getter-fn
   [^GaData$ColumnHeaders header]
@@ -298,14 +250,63 @@
   (let [mbql?            (:mbql? (:native query))
         ^GaData response (do-query query)
         columns          (map header->column (.getColumnHeaders response))
-        getters          (map header->getter-fn (.getColumnHeaders response))
-        columns          (if mbql?
-                           ;; replace last column name with :count for now since that's what our fake aggregation is
-                           (conj (vec (butlast columns)) (assoc (last columns) :name :count))
-                           columns)]
+        getters          (map header->getter-fn (.getColumnHeaders response))]
     {:columns  (map :name columns)
      :cols     columns
      :rows     (for [row (.getRows response)]
                  (for [[data getter] (map vector row getters)]
                    (getter data)))
      :annotate mbql?}))
+
+
+;;; ------------------------------------------------------------ "transform-query" ------------------------------------------------------------
+
+;; metics
+
+(defn- built-in-metrics
+  [{{[aggregation-type metric-name] :aggregation} :query}]
+  (when (and (= :metric (expand/normalize-token aggregation-type))
+             (string? metric-name))
+        metric-name))
+
+(defn- handle-built-in-metrics [query]
+  (-> query
+      (assoc-in [:ga :metrics] (built-in-metrics query))
+      (m/dissoc-in [:query :aggregation])))
+
+
+;; segments
+
+(defn- built-in-segment?
+  [[filter-type segment-name]]
+  (and (= :segment (expand/normalize-token filter-type))
+       (string? segment-name)))
+
+(defn- built-in-segments
+  [{{filter-clause :filter} :query}]
+  (when-let [[built-in-segment-name & more] (seq (for [subclause filter-clause
+                                                       :when     (built-in-segment? subclause)]
+                                                   (second subclause)))]
+    (when (seq more)
+      (throw (Exception. "Only one Google Analytics segment allowed at a time.")))
+    built-in-segment-name))
+
+(defn- remove-built-in-segments
+  [filter-clause]
+  (when-let [filter-clause (seq (filter (complement built-in-segment?) filter-clause))]
+    ;; filter out things like empty `:and` clauses
+    (when (> (count filter-clause) 1)
+      (vec filter-clause))))
+
+(defn- handle-built-in-segments [query]
+  (-> query
+      (assoc-in [:ga :segment] (built-in-segments query))
+      (update-in [:query :filter] remove-built-in-segments)))
+
+
+;; public
+
+(def ^{:arglists '([query])} transform-query
+  "Preprocess the incoming query to pull out built-in segments and metrics.
+   This removes customizations to the query dict and makes it compatible with MBQL."
+  (comp handle-built-in-metrics handle-built-in-segments))

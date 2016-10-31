@@ -83,14 +83,18 @@
   [^Column column, attribute-name]
   (get (.getAttributes column) (name attribute-name)))
 
+(defn- column-has-attributes? ^Boolean [^Column column, ^Map attributes-map]
+  (reduce #(and %1 %2) (for [[k v] attributes-map]
+                         (= (column-attribute column k) v))))
+
 (defn- columns
   "Return a set of `Column`s for this database. Each table in a Google Analytics database has the same columns."
-  [database]
-  (set (for [^Column column (.getItems (fetch-columns (database->client database)))
-             :let           [^Map attributes (.getAttributes column)]
-             :when          (and (= (column-attribute column :status) "PUBLIC")
-                                 (= (column-attribute column :type)   "DIMENSION"))]
-         column)))
+  ([database]
+   (columns database {:status "PUBLIC", :type "DIMENSION"}))
+  ([database attributes]
+   (set (for [^Column column (.getItems (fetch-columns (database->client database)))
+              :when          (column-has-attributes? column attributes)]
+          column))))
 
 (defn- describe-columns [database]
   (set (for [^Column column (columns database)]
@@ -144,9 +148,31 @@
 
 ;;; ------------------------------------------------------------ execute-query ------------------------------------------------------------
 
+;; memoize this because the display names aren't going to change and fetching this info from GA can take around half a second
+(def ^:private ^{:arglists '([database-id metric-id])} built-in-metric-name->display-name
+  "Given a DATABASE-ID and a METRIC-ID like `ga:users`, return an appropriate `:display_name` like `Users`."
+  (memoize
+   (fn [database-id metric-id]
+     (some (fn [^Column column]
+             (when (= (.getId column) metric-id)
+               (column-attribute column :uiName)))
+           (columns (Database (u/get-id database-id))
+                    {:type "METRIC", :status "PUBLIC"})))))
+
+(defn- with-column-display-names [qp query]
+  (let [results              (qp query)
+        built-in-metric-name (name (get-in query [:ga :metrics]))]
+    (if-not built-in-metric-name
+      results
+      (update-in results [:data :cols] (fn [cols]
+                                         (for [col cols]
+                                           (if-not (= (name (:name col)) built-in-metric-name)
+                                             col
+                                             (assoc col :display_name (built-in-metric-name->display-name (:database query) built-in-metric-name)))))))))
+
 (defn- process-query-in-context [qp]
-  (fn [query]
-    (qp (qp/transform-query query))))
+  (comp (partial with-column-display-names qp)
+        qp/transform-query))
 
 (defn- do-query
   [{{:keys [query]} :native, database :database}]
