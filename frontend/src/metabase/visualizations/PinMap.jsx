@@ -9,6 +9,8 @@ import LeafletTilePinMap from "./components/LeafletTilePinMap.jsx";
 import _ from "underscore";
 import cx from "classnames";
 
+import L from "leaflet/dist/leaflet-src.js";
+
 const MAP_COMPONENTS_BY_TYPE = {
     "markers": LeafletMarkerPinMap,
     "tiles": LeafletTilePinMap,
@@ -31,10 +33,17 @@ export default class PinMap extends Component {
         super(props, context);
         this.state = {
             lat: null,
-            lon: null,
-            zoom: null
+            lng: null,
+            zoom: null,
+            ...this._getPoints(props)
         };
         _.bindAll(this, "onMapZoomChange", "onMapCenterChange", "updateSettings");
+    }
+
+    componentWillReceiveProps(newProps) {
+        if (newProps.series[0].data !== this.props.series[0].data) {
+            this.setState(this._getPoints(newProps))
+        }
     }
 
     updateSettings() {
@@ -42,30 +51,44 @@ export default class PinMap extends Component {
         if (this.state.lat != null) {
             newSettings["map.center_latitude"] = this.state.lat;
         }
-        if (this.state.lon != null) {
-            newSettings["map.center_longitude"] = this.state.lon;
+        if (this.state.lng != null) {
+            newSettings["map.center_longitude"] = this.state.lng;
         }
         if (this.state.zoom != null) {
             newSettings["map.zoom"] = this.state.zoom;
         }
         this.props.onUpdateVisualizationSettings(newSettings);
-        this.setState({ lat: null, lon: null, zoom: null });
+        this.setState({ lat: null, lng: null, zoom: null });
     }
 
-    onMapCenterChange = (lat, lon) => {
-        this.setState({ lat, lon });
+    onMapCenterChange = (lat, lng) => {
+        this.setState({ lat, lng });
     }
 
     onMapZoomChange = (zoom) => {
         this.setState({ zoom });
     }
 
+    _getPoints(props) {
+        const { settings, series: [{ data: { cols, rows }}] } = props;
+        const latitudeIndex = _.findIndex(cols, (col) => col.name === settings["map.latitude_column"]);
+        const longitudeIndex = _.findIndex(cols, (col) => col.name === settings["map.longitude_column"]);
+        const points = rows.map(row => [
+            row[longitudeIndex],
+            row[latitudeIndex]
+        ]);
+        const bounds = L.latLngBounds(points);
+        return { points, bounds };
+    }
+
     render() {
         const { className, settings, isEditing, isDashboard } = this.props;
-        const { lat, lon, zoom } = this.state;
-        const disableUpdateButton = lat == null && lon == null && zoom == null;
+        let { lat, lng, zoom } = this.state;
+        const disableUpdateButton = lat == null && lng == null && zoom == null;
 
         const Map = MAP_COMPONENTS_BY_TYPE[settings["map.pin_type"]];
+
+        const { points, bounds } = this.state;//this._getPoints(this.props);
 
         return (
             <div className={className + " PinMap relative"} onMouseDownCapture={(e) =>e.stopPropagation() /* prevent dragging */}>
@@ -75,6 +98,11 @@ export default class PinMap extends Component {
                         className="absolute top left bottom right z1"
                         onMapCenterChange={this.onMapCenterChange}
                         onMapZoomChange={this.onMapZoomChange}
+                        lat={lat}
+                        lng={lng}
+                        zoom={zoom}
+                        points={points}
+                        bounds={bounds}
                     />
                 : null }
                 { isEditing || !isDashboard ?

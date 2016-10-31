@@ -18,20 +18,20 @@ export default class LeafletMarkerPinMap extends LeafletMap {
         super.componentDidMount();
 
         this.pinMarkerLayer = L.layerGroup([]).addTo(this.map);
-        this.componentDidUpdate();
+        this.componentDidUpdate({}, {});
     }
 
-    componentDidUpdate() {
+    componentDidUpdate(prevProps, prevState) {
+        super.componentDidUpdate(prevProps, prevState);
+
         try {
             const { pinMarkerLayer } = this;
-            const { series: [{ data: { rows } }] } = this.props;
-
-            const { latitudeIndex, longitudeIndex } = this._getLatLongIndexes();
+            const { points } = this.props;
 
             let markers = pinMarkerLayer.getLayers();
-            let max = Math.max(rows.length, markers.length);
+            let max = Math.max(points.length, markers.length);
             for (let i = 0; i < max; i++) {
-                if (i >= rows.length) {
+                if (i >= points.length) {
                     pinMarkerLayer.removeLayer(markers[i]);
                 }
                 if (i >= markers.length) {
@@ -40,10 +40,10 @@ export default class LeafletMarkerPinMap extends LeafletMap {
                     markers.push(marker);
                 }
 
-                if (i < rows.length) {
+                if (i < points.length) {
                     const { lat, lng } = markers[i].getLatLng();
-                    if (lat !== rows[i][latitudeIndex] || lng !== rows[i][longitudeIndex]) {
-                        markers[i].setLatLng([rows[i][latitudeIndex], rows[i][longitudeIndex]]);
+                    if (lng !== points[i][0] || lat !== points[i][1]) {
+                        markers[i].setLatLng(points[i]);
                     }
                 }
             }

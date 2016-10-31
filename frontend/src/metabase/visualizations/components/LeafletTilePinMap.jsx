@@ -9,10 +9,12 @@ export default class LeafletTilePinMap extends LeafletMap {
         super.componentDidMount();
 
         this.pinTileLayer = L.tileLayer("", {}).addTo(this.map);
-        this.componentDidUpdate();
+        this.componentDidUpdate({}, {});
     }
 
-    componentDidUpdate() {
+    componentDidUpdate(prevProps, prevState) {
+        super.componentDidUpdate(prevProps, prevState);
+
         try {
             const { pinTileLayer } = this;
             const newUrl = this._getTileUrl({ x: "{x}", y: "{y}"}, "{z}");

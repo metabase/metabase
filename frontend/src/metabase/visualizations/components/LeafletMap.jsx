@@ -16,10 +16,7 @@ export default class LeafletMap extends Component {
                 scrollWheelZoom: false,
             })
 
-            map.setView([
-                settings["map.center_latitude"],
-                settings["map.center_longitude"]
-            ], settings["map.zoom"]);
+            map.setView([0,0], 8);
 
             L.tileLayer("http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
                 attribution: 'Map data © <a href="http://openstreetmap.org">OpenStreetMap</a> contributors'
@@ -36,6 +33,20 @@ export default class LeafletMap extends Component {
         } catch (err) {
             console.error(err);
             this.props.onRenderError(err.message || err);
+        }
+    }
+
+    componentDidUpdate(prevProps) {
+        const { bounds, settings } = this.props;
+        if (!prevProps || prevProps.points !== this.props.points) {
+            if (settings["map.center_latitude"] != null || settings["map.center_longitude"] != null || settings["map.zoom"] != null) {
+                this.map.setView([
+                    settings["map.center_latitude"],
+                    settings["map.center_longitude"]
+                ], settings["map.zoom"]);
+            } else {
+                this.map.fitBounds(bounds);
+            }
         }
     }
 
