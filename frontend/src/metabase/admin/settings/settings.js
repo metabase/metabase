@@ -50,7 +50,6 @@ export const updateSetting = createThunkAction("UPDATE_SETTING", function(settin
 // updateSettings
 export const updateSettings = createThunkAction("UPDATE_SETTINGS", function(settings) {
     return async function(dispatch, getState) {
-        console.log(settings);
         try {
             await SettingsApi.setAll(settings);
             await dispatch(refreshSiteSettings());

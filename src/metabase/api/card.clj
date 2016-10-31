@@ -268,7 +268,7 @@
 
 (defendpoint POST "/:card-id/query"
   "Run the query associated with a Card."
-  [card-id :as {{:keys [parameters timeout]} :body}]
+  [card-id :as {{:keys [parameters timeout bypass-cache] :or {bypass-cache false}} :body}]
   (let [card  (read-check Card card-id)
         query (assoc (:dataset_query card)
                 :parameters  parameters
@@ -276,8 +276,8 @@
     ;; Now run the query!
     (let [options {:executed-by *current-user-id*
                    :card-id     card-id
-                   :use-cache (:cache_result card)
-                   :cache-max-age (:cache_max_age card)}]
+                   :bypass-cache bypass-cache
+                   :card card}]
       (qp/dataset-query query options))))
 
 

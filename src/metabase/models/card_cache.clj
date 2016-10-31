@@ -7,40 +7,7 @@
               [db :as db]
               [util :as u])
     [metabase.models.interface :as i]
-    [metabase.models.setting :as setting :refer [defsetting]]
     [taoensso.nippy :as nippy]))
-
-(defsetting cache-enabled
-            "If cache is enabled"
-            :type :boolean
-            :default false)
-
-(defsetting cache-scope
-            "Where the cache is applyied (global/per_card)"
-            :type :string
-            :default nil
-            :setter (fn [new-value]
-                      (when-not (nil? new-value)
-                        (assert (contains? #{"global" "card"} new-value)))
-                      (setting/set-string! :cache-scope new-value)))
-
-(defn- set-number
-  [new-value key]
-  (when-not (nil? new-value)
-    (assert (number? (read-string new-value))))
-  (setting/set-string! key new-value))
-
-(defsetting cache-global-max-age
-            "When scope is global, what is the duration of cached data?"
-            :type :string
-            :default nil
-            :setter (fn [new-value] (set-number new-value :cache-global-max-age)))
-
-(defsetting cache-max-allowed-size
-            "The max size in bytes allowed to store data in cache"
-            :type :string
-            :default nil
-            :setter (fn [new-value] (set-number new-value :cache-max-allowed-size)))
 
 ;;; This is a hand managed version from data stored in the cache.
 ;;; So if we ever change the schema of the query result or the serialization/compression of cached data we can simply ignore older versions =)
@@ -120,13 +87,16 @@
 
 (defn update-cache!
   "Update the cache for a card with a more recent version"
-  [card-id query-hash result]
+  [card-id query-hash result max-size]
   (let [id (db/select-field :id CardCache :card_id card-id :query_hash query-hash)
         bytes (serialize result)
-        card-cache-data {:data bytes :data_size (count bytes) :schema_version cache-schema-version}]
-    (if (some? id)
-      (db/update! CardCache (first id) card-cache-data)
-      (db/insert! CardCache (assoc card-cache-data :card_id card-id :query_hash query-hash)))))
+        size (count bytes)
+        card-cache-data {:data bytes :data_size size :schema_version cache-schema-version}]
+    (if (>= max-size size)
+      (if (some? id)
+        (db/update! CardCache (first id) card-cache-data)
+        (db/insert! CardCache (assoc card-cache-data :card_id card-id :query_hash query-hash)))
+      (log/info (format "Can't store result in cache. Max allowed size is %d bytes and current object has %s bytes" max-size size)))))
 
 ;;; EVICTION
 
