@@ -159,9 +159,8 @@
            (columns (Database (u/get-id database-id))
                     {:type "METRIC", :status "PUBLIC"})))))
 
-(defn- with-column-display-names [qp query]
-  (let [results              (qp query)
-        built-in-metric-name (name (get-in query [:ga :metrics]))]
+(defn- add-metric-display-names [query results]
+  (let [built-in-metric-name (name (get-in query [:ga :metrics]))]
     (if-not built-in-metric-name
       results
       (update-in results [:data :cols] (fn [cols]
@@ -171,7 +170,8 @@
                                              (assoc col :display_name (built-in-metric-name->display-name (:database query) built-in-metric-name)))))))))
 
 (defn- process-query-in-context [qp]
-  (comp (partial with-column-display-names qp)
+  (comp (fn [query]
+          (add-metric-display-names query (qp query)))
         qp/transform-query))
 
 (defn- do-query

@@ -278,8 +278,9 @@
 ;; segments
 
 (defn- built-in-segment?
-  [[filter-type segment-name]]
-  (and (= :segment (expand/normalize-token filter-type))
+  [[filter-type segment-name, :as filter-clause]]
+  (and (sequential? filter-clause)
+       (= :segment (expand/normalize-token filter-type))
        (string? segment-name)))
 
 (defn- built-in-segments
