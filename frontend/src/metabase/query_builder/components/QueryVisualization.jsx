@@ -140,6 +140,8 @@ export default class QueryVisualization extends Component {
     renderDownloadButton() {
         const { card, result } = this.props;
 
+        const csvUrl = card.id != null ? `/api/card/${card.id}/query/csv`: "/api/dataset/csv";
+
         if (result && !result.error) {
             if (result && result.data && result.data.rows_truncated) {
                 // this is a "large" dataset, so show a modal to inform users about this and make them click again to d/l
@@ -151,7 +153,7 @@ export default class QueryVisualization extends Component {
                         }}>Download CSV</button>);
                 } else {
                     downloadButton = (
-                        <form ref={(c) => this._downloadCsvForm = c} method="POST" action="/api/dataset/csv">
+                        <form ref={(c) => this._downloadCsvForm = c} method="POST" action={csvUrl}>
                             <input type="hidden" name="query" value="" />
                             <a className="Button Button--primary" onClick={() => {this.onDownloadCSV(); this.refs.downloadModal.toggle();}}>
                                 Download CSV
@@ -191,7 +193,7 @@ export default class QueryVisualization extends Component {
                     );
                 } else {
                     return (
-                        <form ref={(c) => this._downloadCsvForm = c} method="POST" action="/api/dataset/csv">
+                        <form ref={(c) => this._downloadCsvForm = c} method="POST" action={csvUrl}>
                             <input type="hidden" name="query" value="" />
                             <a className="mx1" title="Download this data" onClick={() => this.onDownloadCSV()}>
                                 <Icon name='download' size={16} />

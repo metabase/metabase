@@ -61,7 +61,10 @@
     .xl-text-right { text-align: right; }
 }
 
-.text-uppercase, :local(.text-uppercase) { text-transform: uppercase; }
+.text-uppercase, :local(.text-uppercase) {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
 .text-lowercase { text-transform: lowercase; }
 
 /* text weight */

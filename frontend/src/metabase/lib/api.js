@@ -6,11 +6,19 @@ import EventEmitter from "events";
 
 let events = new EventEmitter();
 
+type ParamsMap = { [key:string]: any };
+type TransformFn = (o: any) => any;
+
 function makeMethod(method: string, hasBody: boolean = false) {
     return function(
         urlTemplate: string,
-        params: { [key:string]: any } = {}
+        params: ParamsMap|TransformFn = {},
+        transformResponse: TransformFn = (o) => o
     ) {
+        if (typeof params === "function") {
+            transformResponse = params;
+            params = {};
+        }
         return function(
             data: { [key:string]: any },
             options: { [key:string]: any } = {}
@@ -54,7 +62,7 @@ function makeMethod(method: string, hasBody: boolean = false) {
                         let body = xhr.responseText;
                         try { body = JSON.parse(body); } catch (e) {}
                         if (xhr.status >= 200 && xhr.status <= 299) {
-                            resolve(body);
+                            resolve(transformResponse(body));
                         } else {
                             reject({
                                 status: xhr.status,

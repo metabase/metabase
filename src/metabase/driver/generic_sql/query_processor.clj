@@ -221,8 +221,6 @@
       (h/limit items)
       (h/offset (* items (dec page)))))
 
-
-;; TODO - is there any reason to make this a protocol method ?
 (defn- apply-source-table [_ honeysql-form {{table-name :name, schema :schema} :source-table}]
   {:pre [table-name]}
   (h/from honeysql-form (hx/qualify-and-escape-dots schema table-name)))
