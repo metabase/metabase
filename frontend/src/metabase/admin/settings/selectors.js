@@ -49,8 +49,8 @@ const SECTIONS = [
                 type: "boolean"
             },
             {
-                key: "google-maps-api-key",
-                display_name: "Google Maps API Key",
+                key: "map-tile-server-url",
+                display_name: "Map tile server URL",
                 type: "string"
             }
         ]

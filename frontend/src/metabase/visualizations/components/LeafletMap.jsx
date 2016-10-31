@@ -1,6 +1,8 @@
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
+import MetabaseSettings from "metabase/lib/settings";
+
 import "leaflet/dist/leaflet.css";
 import L from "leaflet/dist/leaflet-src.js";
 
@@ -10,17 +12,18 @@ export default class LeafletMap extends Component {
     componentDidMount() {
         try {
             const element = ReactDOM.findDOMNode(this.refs.map);
-            const { settings } = this.props;
 
             const map = this.map = L.map(element, {
                 scrollWheelZoom: false,
+                minZoom: 2
             })
 
             map.setView([0,0], 8);
 
-            L.tileLayer("http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-                attribution: 'Map data © <a href="http://openstreetmap.org">OpenStreetMap</a> contributors'
-            }).addTo(map);
+            const mapTileUrl = MetabaseSettings.get("map_tile_server_url");
+            const mapTileAttribution = mapTileUrl.indexOf("openstreetmap.org") >= 0 ? 'Map data © <a href="http://openstreetmap.org">OpenStreetMap</a> contributors' : null;
+
+            L.tileLayer(mapTileUrl, { attribution: mapTileAttribution }).addTo(map);
 
             map.on("moveend", () => {
                 const { lat, lng } = map.getCenter();
