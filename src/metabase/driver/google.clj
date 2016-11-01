@@ -75,8 +75,8 @@
   {:arglists '([scopes database])}
   ^com.google.api.client.googleapis.auth.oauth2.GoogleCredential
   [scopes, {{:keys [^String client-id, ^String client-secret, ^String auth-code, ^String access-token, ^String refresh-token], :as details} :details, id :id, :as db}]
-  {:pre [(seq client-id) (seq client-secret) (or (seq auth-code)
-                                                 (and (seq access-token) (seq refresh-token)))]}
+  {:pre [(map? db) (seq client-id) (seq client-secret) (or (seq auth-code)
+                                                           (and (seq access-token) (seq refresh-token)))]}
   (if-not (and (seq access-token)
                (seq refresh-token))
     ;; If Database doesn't have access/refresh tokens fetch them and try again

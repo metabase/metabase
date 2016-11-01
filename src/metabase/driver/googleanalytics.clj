@@ -24,7 +24,7 @@
            com.google.api.client.http.HttpTransport
            com.google.api.client.json.JsonFactory
            com.google.api.client.json.jackson2.JacksonFactory
-           (com.google.api.services.analytics Analytics Analytics$Builder AnalyticsScopes)
+           (com.google.api.services.analytics Analytics Analytics$Builder Analytics$Data$Ga$Get AnalyticsScopes)
            (com.google.api.services.analytics.model Account Accounts Columns Column Profile Profiles Webproperty Webproperties)))
 
 (set! *warn-on-reflection* true) ; NOCOMMIT
@@ -174,30 +174,35 @@
           (add-metric-display-names query (qp query)))
         qp/transform-query))
 
+(defn- mbql-query->request ^Analytics$Data$Ga$Get [{{:keys [query]} :native, database :database}]
+  (let [query  (if (string? query)
+                 (json/parse-string query keyword)
+                 query)
+        client (database->client database)]
+    (u/prog1 (.get (.ga (.data client))
+                   (:ids query)
+                   (:start-date query)
+                   (:end-date query)
+                   (:metrics query))
+      (when-not (s/blank? (:dimensions query))
+        (.setDimensions <> (:dimensions query)))
+      (when-not (s/blank? (:sort query))
+        (.setSort <> (:sort query)))
+      (when-not (s/blank? (:filters query))
+        (.setFilters <> (:filters query)))
+      (when-not (s/blank? (:segment query))
+        (.setSegment <> (:segment query)))
+      (when-not (nil? (:max-results query))
+        (.setMaxResults <> (:max-results query)))
+      (when-not (nil? (:include-empty-rows query))
+        (.setIncludeEmptyRows <> (:include-empty-rows query)))
+      (println "(u/pprint-to-str 'cyan <>):" (u/pprint-to-str 'cyan <>)) ; NOCOMMIT
+      (println "(class <>):" (class <>))) ; NOCOMMIT
+))
+
 (defn- do-query
-  [{{:keys [query]} :native, database :database}]
-  (let [query   (if (string? query)
-                  (json/parse-string query keyword)
-                  query)
-        client  (database->client database)
-        request (.get (.ga (.data client))
-                      (:ids query)
-                      (:start-date query)
-                      (:end-date query)
-                      (:metrics query))]
-    (when-not (s/blank? (:dimensions query))
-      (.setDimensions request (:dimensions query)))
-    (when-not (s/blank? (:sort query))
-      (.setSort request (:sort query)))
-    (when-not (s/blank? (:filters query))
-      (.setFilters request (:filters query)))
-    (when-not (s/blank? (:segment query))
-      (.setSegment request (:segment query)))
-    (when-not (nil? (:max-results query))
-      (.setMaxResults request (:max-results query)))
-    (when-not (nil? (:include-empty-rows query))
-      (.setIncludeEmptyRows request (:include-empty-rows query)))
-    (google/execute request)))
+  [query]
+  (google/execute (mbql-query->request query)))
 
 
 ;;; ------------------------------------------------------------ Driver ------------------------------------------------------------
