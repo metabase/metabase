@@ -46,20 +46,20 @@ Here's each step:
 * Clone the latest version to your local machine:
 
 ```bash
-    git clone https://github.com/metabase/metabase-deploy.git  
-    cd metabase-deploy
+git clone https://github.com/metabase/metabase-deploy.git  
+cd metabase-deploy
 ```
 
 * Add a git remote with your metabase setup:
 
 ```bash
-    git remote add heroku https://git.heroku.com/your-metabase-app.git
+git remote add heroku https://git.heroku.com/your-metabase-app.git
 ```
 
 * Force push the new version to Heroku:
 
 ```bash
-    git push -f heroku master
+git push -f heroku master
 ```
 
 * Wait for the deploy to finish
