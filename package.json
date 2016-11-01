@@ -114,6 +114,7 @@
     "selenium-webdriver": "^2.53.3",
     "style-loader": "^0.13.0",
     "unused-files-webpack-plugin": "^2.0.2",
+    "webchauffeur": "^1.0.1",
     "webpack": "^1.12.14",
     "webpack-dev-server": "^1.14.0",
     "webpack-hot-middleware": "^2.10.0",
