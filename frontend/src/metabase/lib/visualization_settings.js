@@ -10,7 +10,7 @@ import {
     getColumnCardinality
 } from "metabase/visualizations/lib/utils";
 
-import { isNumeric, isDate, isMetric, isDimension, isLatitude, isLongitude, hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
+import { isNumeric, isDate, isMetric, isDimension, isCoordinate, isLatitude, isLongitude, hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 import Query from "metabase/lib/query";
 import { capitalize } from "metabase/lib/formatting";
 
@@ -22,6 +22,7 @@ import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import ChartSettingInput from "metabase/visualizations/components/settings/ChartSettingInput.jsx";
 import ChartSettingInputNumeric from "metabase/visualizations/components/settings/ChartSettingInputNumeric.jsx";
 import ChartSettingSelect from "metabase/visualizations/components/settings/ChartSettingSelect.jsx";
+import ChartSettingSelectNullable from "metabase/visualizations/components/settings/ChartSettingSelectNullable.jsx";
 import ChartSettingToggle from "metabase/visualizations/components/settings/ChartSettingToggle.jsx";
 import ChartSettingFieldPicker from "metabase/visualizations/components/settings/ChartSettingFieldPicker.jsx";
 import ChartSettingFieldsPicker from "metabase/visualizations/components/settings/ChartSettingFieldsPicker.jsx";
@@ -581,6 +582,16 @@ const SETTINGS = {
         }),
         getHidden: (series, vizSettings) => vizSettings["map.type"] !== "pin"
     },
+    "map.category_column": {
+        title: "Category field",
+        widget: ChartSettingSelectNullable,
+        getDefault: ([{ card, data: { cols }}]) =>
+            (_.find(cols, (c) => !isCoordinate(c)) || {}).name,
+        getProps: ([{ card, data: { cols }}]) => ({
+            options: cols.filter(col => !isCoordinate(col)).map(getOptionFromColumn)
+        }),
+        getHidden: (series, vizSettings) => vizSettings["map.type"] !== "pin"
+    },
     "map.region": {
         title: "Region map",
         widget: ChartSettingSelect,
@@ -633,9 +644,13 @@ const SETTINGS = {
     "map.pin_type": {
         title: "Pin type",
         // Don't expose this in the UI for now
-        // widget: ChartSettingSelect,
+        widget: ChartSettingSelect,
         props: {
-            options: [{ name: "Tiles", value: "tiles" }, { name: "Markers", value: "markers" }]
+            options: [
+                { name: "Tiles", value: "tiles" },
+                { name: "Markers", value: "markers" },
+                { name: "Clustered", value: "cluster" }
+            ]
         },
         getDefault: (series) => series[0].data.rows.length >= 1000 ? "tiles" : "markers",
         getHidden: (series, vizSettings) => vizSettings["map.type"] !== "pin"

@@ -328,6 +328,17 @@ autoprefixer@^6.0.2, autoprefixer@^6.3.1:
     postcss "^5.2.2"
     postcss-value-parser "^3.2.3"
 
+autoprefixer@^6.3.7:
+  version "6.5.1"
+  resolved "https://registry.yarnpkg.com/autoprefixer/-/autoprefixer-6.5.1.tgz#ae759a5221e709f3da17c2d656230e67c43cbb75"
+  dependencies:
+    browserslist "~1.4.0"
+    caniuse-db "^1.0.30000554"
+    normalize-range "^0.1.2"
+    num2fraction "^1.2.2"
+    postcss "^5.2.4"
+    postcss-value-parser "^3.2.3"
+
 aws-sign2@~0.6.0:
   version "0.6.0"
   resolved "https://registry.yarnpkg.com/aws-sign2/-/aws-sign2-0.6.0.tgz#14342dd38dbcc94d0e5b87d763cd63612c0e794f"
@@ -1344,6 +1355,10 @@ caniuse-api@^1.3.2:
 caniuse-db@^1.0.30000346, caniuse-db@^1.0.30000539, caniuse-db@^1.0.30000540:
   version "1.0.30000554"
   resolved "https://registry.yarnpkg.com/caniuse-db/-/caniuse-db-1.0.30000554.tgz#cd1dbe423d00b6203ba93f05973a476428dec919"
+
+caniuse-db@^1.0.30000554:
+  version "1.0.30000572"
+  resolved "https://registry.yarnpkg.com/caniuse-db/-/caniuse-db-1.0.30000572.tgz#81d0aa6b7de2d785c8dcab135502983276cc707d"
 
 caseless@~0.11.0:
   version "0.11.0"
@@ -3905,6 +3920,18 @@ leaflet:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/leaflet/-/leaflet-1.0.1.tgz#5868c389b556cd85481198ff8bfe59a8de0932db"
 
+Leaflet.vector-markers:
+  version "0.0.6"
+  resolved "https://registry.yarnpkg.com/Leaflet.vector-markers/-/Leaflet.vector-markers-0.0.6.tgz#d1d25b158a0f5d0a0353d662362b46b1d59b87f0"
+  dependencies:
+    autoprefixer "^6.3.7"
+    leaflet "^0.7.0"
+    postcss-loader "^0.9.1"
+
+leaflet@^0.7.0:
+  version "0.7.7"
+  resolved "https://registry.yarnpkg.com/leaflet/-/leaflet-0.7.7.tgz#1e352ba54e63d076451fa363c900890cb2cf75ee"
+
 levn@^0.3.0, levn@~0.3.0:
   version "0.3.0"
   resolved "https://registry.yarnpkg.com/levn/-/levn-0.3.0.tgz#3b09924edf9f083c0490fdd4c0bc4421e04764ee"
@@ -3936,7 +3963,7 @@ load-json-file@^1.0.0:
     pinkie-promise "^2.0.0"
     strip-bom "^2.0.0"
 
-loader-utils@^0.2.11, loader-utils@^0.2.12, loader-utils@^0.2.15, loader-utils@^0.2.3, loader-utils@^0.2.5, loader-utils@^0.2.7, loader-utils@~0.2.2, loader-utils@~0.2.5, loader-utils@0.2.x, loader-utils@0.x.x:
+loader-utils@^0.2.11, loader-utils@^0.2.12, loader-utils@^0.2.14, loader-utils@^0.2.15, loader-utils@^0.2.3, loader-utils@^0.2.5, loader-utils@^0.2.7, loader-utils@~0.2.2, loader-utils@~0.2.5, loader-utils@0.2.x, loader-utils@0.x.x:
   version "0.2.16"
   resolved "https://registry.yarnpkg.com/loader-utils/-/loader-utils-0.2.16.tgz#f08632066ed8282835dff88dfb52704765adee6d"
   dependencies:
@@ -5098,6 +5125,13 @@ postcss-loader@^0.8.1:
     loader-utils "^0.2.12"
     postcss "^5.0.19"
 
+postcss-loader@^0.9.1:
+  version "0.9.1"
+  resolved "https://registry.yarnpkg.com/postcss-loader/-/postcss-loader-0.9.1.tgz#87a3e70f58e46d68a75badc6725d9ea4773fd1d7"
+  dependencies:
+    loader-utils "^0.2.14"
+    postcss "^5.0.19"
+
 postcss-media-minmax@^2.1.0:
   version "2.1.2"
   resolved "https://registry.yarnpkg.com/postcss-media-minmax/-/postcss-media-minmax-2.1.2.tgz#444c5cf8926ab5e4fd8a2509e9297e751649cdf8"
@@ -5342,6 +5376,15 @@ postcss@^5.0.0, postcss@^5.0.10, postcss@^5.0.11, postcss@^5.0.12, postcss@^5.0.
     source-map "^0.5.6"
     supports-color "^3.1.2"
 
+postcss@^5.2.4:
+  version "5.2.5"
+  resolved "https://registry.yarnpkg.com/postcss/-/postcss-5.2.5.tgz#ec428c27dffc7fac65961340a9b022fa4af5f056"
+  dependencies:
+    chalk "^1.1.3"
+    js-base64 "^2.1.9"
+    source-map "^0.5.6"
+    supports-color "^3.1.2"
+
 prelude-ls@~1.1.2:
   version "1.1.2"
   resolved "https://registry.yarnpkg.com/prelude-ls/-/prelude-ls-1.1.2.tgz#21932a549f5e52ffd9a827f570e04be62a97da54"
@@ -5402,6 +5445,10 @@ proxy-addr@~1.1.2:
 prr@~0.0.0:
   version "0.0.0"
   resolved "https://registry.yarnpkg.com/prr/-/prr-0.0.0.tgz#1a84b85908325501411853d0081ee3fa86e2926a"
+
+prunecluster:
+  version "2.0.0-beta.3"
+  resolved "https://registry.yarnpkg.com/prunecluster/-/prunecluster-2.0.0-beta.3.tgz#c5dc6a8e73e520f4e93939e5bc9d65a86900d29b"
 
 pump@^1.0.0:
   version "1.0.1"

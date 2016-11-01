@@ -5,15 +5,19 @@ import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
 
 import LeafletMarkerPinMap from "./components/LeafletMarkerPinMap.jsx";
 import LeafletTilePinMap from "./components/LeafletTilePinMap.jsx";
+import LeafletClusterPinMap from "./components/LeafletClusterPinMap.jsx";
 
 import _ from "underscore";
 import cx from "classnames";
+
+import Utils from "metabase/lib/utils";
 
 import L from "leaflet/dist/leaflet-src.js";
 
 const MAP_COMPONENTS_BY_TYPE = {
     "markers": LeafletMarkerPinMap,
     "tiles": LeafletTilePinMap,
+    "cluster": LeafletClusterPinMap,
 }
 
 export default class PinMap extends Component {
@@ -41,7 +45,7 @@ export default class PinMap extends Component {
     }
 
     componentWillReceiveProps(newProps) {
-        if (newProps.series[0].data !== this.props.series[0].data) {
+        if (newProps.series[0].data !== this.props.series[0].data || !Utils.equals(newProps.settings, this.props.series.settings)) {
             this.setState(this._getPoints(newProps))
         }
     }
@@ -73,10 +77,11 @@ export default class PinMap extends Component {
         const { settings, series: [{ data: { cols, rows }}] } = props;
         const latitudeIndex = _.findIndex(cols, (col) => col.name === settings["map.latitude_column"]);
         const longitudeIndex = _.findIndex(cols, (col) => col.name === settings["map.longitude_column"]);
-        const points = rows.map(row => [
-            row[longitudeIndex],
-            row[latitudeIndex]
-        ]);
+        const categoryIndex = _.findIndex(cols, (col) => col.name === settings["map.category_column"]);
+        const points = rows.map(categoryIndex >= 0 ?
+            (row => [row[longitudeIndex], row[latitudeIndex], row[categoryIndex]]) :
+            (row => [row[longitudeIndex], row[latitudeIndex]])
+        );
         const bounds = L.latLngBounds(points);
         return { points, bounds };
     }
@@ -88,7 +93,7 @@ export default class PinMap extends Component {
 
         const Map = MAP_COMPONENTS_BY_TYPE[settings["map.pin_type"]];
 
-        const { points, bounds } = this.state;//this._getPoints(this.props);
+        const { points, bounds } = this.state;
 
         return (
             <div className={className + " PinMap relative"} onMouseDownCapture={(e) =>e.stopPropagation() /* prevent dragging */}>

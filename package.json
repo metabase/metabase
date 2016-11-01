@@ -10,6 +10,7 @@
     "npm": "2.15.9"
   },
   "dependencies": {
+    "Leaflet.vector-markers": "^0.0.6",
     "ace-builds": "^1.2.2",
     "babel-polyfill": "^6.6.1",
     "classnames": "^2.1.3",
@@ -31,6 +32,7 @@
     "normalizr": "^2.0.0",
     "number-to-locale-string": "^1.0.1",
     "password-generator": "^2.0.1",
+    "prunecluster": "^2.0.0-beta.3",
     "react": "^15.2.1",
     "react-addons-css-transition-group": "^15.2.1",
     "react-addons-perf": "^15.2.1",
