@@ -84,8 +84,9 @@
   (get (.getAttributes column) (name attribute-name)))
 
 (defn- column-has-attributes? ^Boolean [^Column column, ^Map attributes-map]
-  (reduce #(and %1 %2) (for [[k v] attributes-map]
-                         (= (column-attribute column k) v))))
+  (or (empty? attributes-map)
+      (reduce #(and %1 %2) (for [[k v] attributes-map]
+                             (= (column-attribute column k) v)))))
 
 (defn- columns
   "Return a set of `Column`s for this database. Each table in a Google Analytics database has the same columns."
@@ -149,29 +150,30 @@
 ;;; ------------------------------------------------------------ execute-query ------------------------------------------------------------
 
 ;; memoize this because the display names aren't going to change and fetching this info from GA can take around half a second
-(def ^:private ^{:arglists '([database-id metric-id])} built-in-metric-name->display-name
+(def ^:private ^{:arglists '([database-id metric-id])} built-in-name->display-name
   "Given a DATABASE-ID and a METRIC-ID like `ga:users`, return an appropriate `:display_name` like `Users`."
   (memoize
    (fn [database-id metric-id]
      (some (fn [^Column column]
              (when (= (.getId column) metric-id)
                (column-attribute column :uiName)))
-           (columns (Database (u/get-id database-id))
-                    {:type "METRIC", :status "PUBLIC"})))))
+           (columns (Database (u/get-id database-id)) {:status "PUBLIC"})))))
 
-(defn- add-metric-display-names [query results]
-  (let [built-in-metric-name (name (get-in query [:ga :metrics]))]
-    (if-not built-in-metric-name
-      results
-      (update-in results [:data :cols] (fn [cols]
-                                         (for [col cols]
-                                           (if-not (= (name (:name col)) built-in-metric-name)
-                                             col
-                                             (assoc col :display_name (built-in-metric-name->display-name (:database query) built-in-metric-name)))))))))
+(defn- add-col-metadata [{database :database, {built-in-metric-name :metrics} :ga} col]
+  (merge col
+         (when (= (:name col) (:display_name col))
+           {:display_name (built-in-name->display-name database (:name col))})
+         (when (= (:name col) built-in-metric-name)
+           {:base_type :type/Integer})
+         (when (= (:name col) "ga:date")
+           {:base_type :type/Date})))
+
+(defn- add-built-in-column-metadata [query results]
+  (update-in results [:data :cols] (partial map (partial add-col-metadata query))))
 
 (defn- process-query-in-context [qp]
   (comp (fn [query]
-          (add-metric-display-names query (qp query)))
+          (add-built-in-column-metadata query (qp query)))
         qp/transform-query))
 
 (defn- mbql-query->request ^Analytics$Data$Ga$Get [{{:keys [query]} :native, database :database}]
@@ -195,10 +197,7 @@
       (when-not (nil? (:max-results query))
         (.setMaxResults <> (:max-results query)))
       (when-not (nil? (:include-empty-rows query))
-        (.setIncludeEmptyRows <> (:include-empty-rows query)))
-      (println "(u/pprint-to-str 'cyan <>):" (u/pprint-to-str 'cyan <>)) ; NOCOMMIT
-      (println "(class <>):" (class <>))) ; NOCOMMIT
-))
+        (.setIncludeEmptyRows <> (:include-empty-rows query))))))
 
 (defn- do-query
   [query]
