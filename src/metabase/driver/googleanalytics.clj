@@ -149,24 +149,35 @@
 
 ;;; ------------------------------------------------------------ execute-query ------------------------------------------------------------
 
-;; memoize this because the display names aren't going to change and fetching this info from GA can take around half a second
-(def ^:private ^{:arglists '([database-id metric-id])} built-in-name->display-name
-  "Given a DATABASE-ID and a METRIC-ID like `ga:users`, return an appropriate `:display_name` like `Users`."
-  (memoize
-   (fn [database-id metric-id]
-     (some (fn [^Column column]
-             (when (= (.getId column) metric-id)
-               (column-attribute column :uiName)))
-           (columns (Database (u/get-id database-id)) {:status "PUBLIC"})))))
+(defn- column-with-name ^Column [database-or-id column-name]
+  (some (fn [^Column column]
+          (when (= (.getId column) (name column-name))
+            column))
+        (columns (Database (u/get-id database-or-id)) {:status "PUBLIC"})))
 
-(defn- add-col-metadata [{database :database, {built-in-metric-name :metrics} :ga} col]
-  (merge col
-         (when (= (:name col) (:display_name col))
-           {:display_name (built-in-name->display-name database (:name col))})
-         (when (= (:name col) built-in-metric-name)
-           {:base_type :type/Integer})
-         (when (= (:name col) "ga:date")
-           {:base_type :type/Date})))
+(defn- column-metadata [database-id column-name]
+  (when-let [ga-column (column-with-name database-id column-name)]
+    (merge
+     {:display_name (column-attribute ga-column :uiName)
+      :description   (column-attribute ga-column :description)}
+     (let [data-type (column-attribute ga-column :dataType)]
+       (when-let [base-type (cond
+                              (= column-name "ga:date") :type/Date
+                              (= data-type "INTEGER")   :type/Integer
+                              (= data-type "STRING")    :type/Text)]
+         {:base_type base-type})))))
+
+;; memoize this because the display names and other info isn't going to change and fetching this info from GA can take around half a second
+(def ^:private ^{:arglists '([database-id column-name])} memoized-column-metadata
+  (memoize column-metadata))
+
+(def ^:private ^{:arglists '([database-id column-name])} built-in-name->display-name
+  "Given a DATABASE-ID and a COLUMN-NAME like `ga:users`, return an appropriate `:display_name` like `Users`."
+  (memoize
+   (comp (u/rpartial column-attribute :uiName) column-with-name)))
+
+(defn- add-col-metadata [{database :database} col]
+  (merge col (memoized-column-metadata (u/get-id database) (:name col))))
 
 (defn- add-built-in-column-metadata [query results]
   (update-in results [:data :cols] (partial map (partial add-col-metadata query))))
