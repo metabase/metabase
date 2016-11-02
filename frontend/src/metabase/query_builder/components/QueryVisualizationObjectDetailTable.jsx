@@ -7,6 +7,7 @@ import LoadingSpinner from 'metabase/components/LoadingSpinner.jsx';
 import { foreignKeyCountsByOriginTable } from 'metabase/lib/schema_metadata';
 import { TYPE, isa, isPK } from "metabase/lib/types";
 import { singularize, inflect } from 'inflection';
+import { formatValue } from "metabase/lib/formatting";
 
 import cx from "classnames";
 
@@ -74,8 +75,10 @@ export default class QueryVisualizationObjectDetailTable extends Component {
                 let formattedJson = JSON.stringify(row[1], null, 2);
                 cellValue = (<pre className="ObjectJSON">{formattedJson}</pre>);
             } else {
-                // TODO: should we be casting all values toString()?
-                cellValue = (<ExpandableString str={row[1].toString()} length={140}></ExpandableString>);
+                cellValue = formatValue(row[1], { column: row[0], jsx: true });
+                if (typeof cellValue === "string") {
+                    cellValue = (<ExpandableString str={cellValue} length={140}></ExpandableString>);
+                }
             }
 
             // NOTE: that the values to our function call look off, but that's because we are un-pivoting them
