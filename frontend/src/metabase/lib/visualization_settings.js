@@ -530,7 +530,7 @@ const SETTINGS = {
             columnsAreValid(card.visualization_settings["table.columns"].map(x => x.name), data),
         getDefault: ([{ data: { cols }}]) => cols.map(col => ({
             name: col.name,
-            enabled: true
+            enabled: col.visibility_type !== "details-only"
         })),
         getProps: ([{ data: { cols }}]) => ({
             columnNames: cols.reduce((o, col) => ({ ...o, [col.name]: getFriendlyName(col)}), {})
