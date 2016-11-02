@@ -15,6 +15,7 @@
             [metabase.db.spec :as dbspec]
             [metabase.models.interface :as models]
             [metabase.util :as u]
+            [metabase.util.tracking :as tracking]
             metabase.util.honeysql-extensions) ; this needs to be loaded so the `:h2` quoting style gets added
   (:import java.io.StringWriter
            java.sql.Connection
@@ -176,6 +177,7 @@
    that were made. (If a single statement in a transaction fails you can't do anything futher until you clear the error state by doing something like calling `.rollback`.)"
   [conn, ^Liquibase liquibase]
   (when (has-unran-migrations? liquibase)
+    (tracking/track-event! "server-info" "migration" "forced" "started")
     (doseq [line (migrations-lines liquibase)]
       (log/info line)
       (jdbc/with-db-transaction [nested-transaction-connection conn]
@@ -183,6 +185,7 @@
              (log/info (u/format-color 'green "[SUCCESS]"))
              (catch Throwable e
                (.rollback (jdbc/get-connection nested-transaction-connection))
+               (tracking/track-event! "server-error" "migration" "forced" "nested-error")
                (log/error (u/format-color 'red "[ERROR] %s" (.getMessage e)))))))))
 
 (def ^{:arglists '([])} ^DatabaseFactory database-factory
@@ -236,6 +239,7 @@
        :done
        ;; If for any reason any part of the migrations fail then rollback all changes
        (catch Throwable e
+         (tracking/track-event! "server-error" "migration" "error" "top-level")
          ;; This should already be happening as a result of `db-set-rollback-only!` but running it twice won't hurt so better safe than sorry
          (.rollback (jdbc/get-connection conn))
          (throw e))))))
