@@ -18,18 +18,18 @@
   "Send anonymous usage information via Google Analytics
    For server errors, the use event-category `server-error`
    For others use `server-event`"
-  [event-category event-action]
-  (track-event! event-category event-action "" "")
-  [event-category event-action event-label]
-  (track-event! event-category event-action event-label "")
-  [event-category event-action event-label event-value]
-  (if (setting/get :anon-tracking-enabled)
+  ([event-category event-action]
+   (track-event! event-category event-action "" ""))
+  ([event-category event-action event-label]
+   (track-event! event-category event-action event-label ""))
+  ([event-category event-action event-label event-value]
+  	(when (setting/get :anon-tracking-enabled)
       (let [form-params {:v 1
-                :tid metabase-google-analytics-id 
-                :cid (generate-anonymous-id)
-                :t "event"
-                :ec event-category
-                :ea event-action
-                :el event-label
-                :ev event-value } ]
-  		(client/post google-analytics-collect-url {:form-params form-params}))))
+    		             :tid metabase-google-analytics-id 
+             		     :cid (generate-anonymous-id)
+                		 :t "event"
+                		 :ec event-category
+                		 :ea event-action
+                	     :el event-label
+                		 :ev event-value } ]
+  		(client/post google-analytics-collect-url {:form-params form-params})))))
