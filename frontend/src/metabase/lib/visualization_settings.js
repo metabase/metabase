@@ -227,10 +227,22 @@ const SETTINGS = {
         title: "Show point markers on lines",
         widget: ChartSettingToggle
     },
-    "stackable.stacked": {
+    "stackable.stack_type": {
         section: "Display",
         title: "Stacked",
-        widget: ChartSettingToggle,
+        widget: ChartSettingSelect,
+        getProps: (series, vizSettings) => ({
+            options: [
+                { name: "None", value: null },
+                { name: "Stacked", value: "stacked" },
+                { name: "Proportional", value: "normalized" }
+            ]
+        }),
+        getDefault: (series, vizSettings) =>
+            vizSettings["stackable.stacked"] ? "stacked" : null
+    },
+    // legacy, supeceded by stackable.stack_type
+    "stackable.stacked": {
         readDependencies: ["graph.metrics"],
         getDefault: ([{ card, data }], vizSettings) => (
             // area charts should usually be stacked
