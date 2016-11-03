@@ -38,19 +38,26 @@ export type StructuredQuery = {
     filter?:      FilterClause,
     order_by?:    OrderByClause,
     limit?:       LimitClause,
-    expressions?: { [key: ExpressionName]: Expression }
+    expressions?: ExpressionClause
 };
 
 export type AggregationClause =
+    Aggregation | // deprecated
+    Array<Aggregation>
+export type Aggregation =
     ["rows"] | // deprecated
     ["count"] |
     ["count"|"avg"|"cum_sum"|"distinct"|"stddev"|"sum"|"min"|"max", ConcreteField] |
     ["metric", MetricId];
 
-export type BreakoutClause = Array<ConcreteField>;
-export type FilterClause =
-    ["and"|"or",            FilterClause, FilterClause] |
-    ["not",                 FilterClause] |
+export type BreakoutClause = Array<Breakout>;
+export type Breakout =
+    ConcreteField;
+
+export type FilterClause = Filter;
+export type Filter =
+    ["and"|"or",            Filter, Filter] |
+    ["not",                 Filter] |
     ["="|"!=",              ConcreteField, Value] |
     ["<"|">"|"<="|">=",     ConcreteField, OrderableValue] |
     ["is-null"|"not-null",  ConcreteField] |
@@ -92,8 +99,13 @@ export type DatetimeField =
 
 export type AggregateField = ["aggregation", number];
 
-export type ExpressionOperator = "+" | "-" | "*" | "/";
-export type ExpressionOperand = ConcreteField | NumericLiteral | Expression;
+
+export type ExpressionClause = {
+    [key: ExpressionName]: Expression
+};
 
 export type Expression =
     [ExpressionOperator, ExpressionOperand, ExpressionOperand];
+
+export type ExpressionOperator = "+" | "-" | "*" | "/";
+export type ExpressionOperand = ConcreteField | NumericLiteral | Expression;

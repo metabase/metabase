@@ -9,6 +9,8 @@ import { createLookupByProperty } from "metabase/lib/table";
 import { isFK, TYPE } from "metabase/lib/types";
 
 
+import * as Q from "./query/query";
+
 export const NEW_QUERY_TEMPLATES = {
     query: {
         database: null,
@@ -103,30 +105,13 @@ var Query = {
         }
 
         // filters
-        var queryFilters = Query.getFilters(query);
-        if (queryFilters.length > 1) {
-            var hasNullValues = function(arr) {
-                for (var j=0; j < arr.length; j++) {
-                    if (arr[j] === null) {
-                        return true;
-                    }
-                }
-
-                return false;
-            };
-
-            var cleanFilters = [queryFilters[0]];
-            for (var i=1; i < queryFilters.length; i++) {
-                if (!hasNullValues(queryFilters[i])) {
-                    cleanFilters.push(queryFilters[i]);
-                }
-            }
-
-            if (cleanFilters.length > 1) {
-                query.filter = cleanFilters;
-            } else {
-                query.filter = [];
-            }
+        const filters = Query.getFilters(query).filter(filter =>
+            _.all(filter, a => a != null)
+        );
+        if (filters.length > 0) {
+            query.filter = ["AND", ...filters];
+        } else {
+            delete query.filter;
         }
 
         if (query.order_by) {
@@ -305,80 +290,6 @@ var Query = {
     clearAggregations(query) {
         // use updateAggregation so we clear sort and breakouts if necessary
         Query.updateAggregation(query, 0, null);
-    },
-
-    getFilters(query) {
-        if (!query) throw 'query is null!';
-        // Special handling for accessing query filters because it's been fairly complex to deal with their structure.
-        // This method provide a unified and consistent view of the filter definition for the rest of the tool to use.
-
-        var queryFilters = query.filter;
-
-        // quick check for older style filter definitions and tweak them to a format we want to work with
-        if (queryFilters && queryFilters.length > 0 && queryFilters[0] !== "AND") {
-            var reformattedFilters = [];
-
-            for (var i=0; i < queryFilters.length; i++) {
-                if (queryFilters[i] !== null) {
-                    reformattedFilters = ["AND", queryFilters];
-                    break;
-                }
-            }
-
-            queryFilters = reformattedFilters;
-        }
-
-        return queryFilters || [];
-    },
-
-    canAddFilter(query) {
-        var queryFilters = Query.getFilters(query);
-        if (!queryFilters) {
-            return false;
-        }
-        if (queryFilters.length > 0) {
-            var lastFilter = queryFilters[queryFilters.length - 1];
-            // simply make sure that there are no null values in the last filter
-            for (var i=0; i < lastFilter.length; i++) {
-                if (lastFilter[i] === null) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    },
-
-    addFilter(query) {
-        var queryFilters = Query.getFilters(query);
-
-        if (queryFilters.length === 0) {
-            queryFilters = ["AND", [null, null, null]];
-        } else {
-            queryFilters = queryFilters.concat([[null, null, null]]);
-        }
-
-        query.filter = queryFilters;
-    },
-
-    updateFilter(query, index, filter) {
-        var queryFilters = Query.getFilters(query);
-
-        queryFilters[index] = filter;
-
-        query.filter = queryFilters;
-    },
-
-    removeFilter(query, index) {
-        var queryFilters = Query.getFilters(query);
-
-        if (queryFilters.length === 2) {
-            // this equates to having a single filter because the arry looks like ... ["AND" [a filter def array]]
-            queryFilters = [];
-        } else {
-            queryFilters.splice(index, 1);
-        }
-
-        query.filter = queryFilters;
     },
 
     isSegmentFilter(filter) {
@@ -807,6 +718,10 @@ var Query = {
         }
         return columns;
     }
+}
+
+for (const prop in Q) {
+    Query[prop] = Q[prop];
 }
 
 export const AggregationClause = {

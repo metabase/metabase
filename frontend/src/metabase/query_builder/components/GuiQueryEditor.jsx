@@ -91,11 +91,9 @@ export default class GuiQueryEditor extends Component {
     }
 
     addFilter = (filter) => {
-        let query = this.props.query.query;
-        Query.addFilter(query);
-        Query.updateFilter(query, Query.getFilters(query).length - 1, filter);
-
-        this.setQuery(this.props.query);
+        const query = this.props.query;
+        Query.addFilter(query.query, filter);
+        this.setQuery(query);
 
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Add Filter');
     }

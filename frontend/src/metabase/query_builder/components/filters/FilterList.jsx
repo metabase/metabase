@@ -35,13 +35,13 @@ export default class FilterList extends Component {
         const { filters, tableMetadata } = this.props;
         return (
             <div className="Query-filterList scroll-x scroll-show scroll-show--horizontal">
-                {filters.slice(1).map((filter, index) =>
+                {filters.map((filter, index) =>
                     <FilterWidget
                         key={index}
                         placeholder="Item"
                         filter={filter}
                         tableMetadata={tableMetadata}
-                        index={index+1}
+                        index={index}
                         removeFilter={this.props.removeFilter}
                         updateFilter={this.props.updateFilter}
                         maxDisplayValues={this.props.maxDisplayValues}

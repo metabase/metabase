@@ -53,8 +53,7 @@ export default class FieldPane extends Component {
         if (!Query.hasValidAggregation(query.query)) {
             Query.clearAggregations(query.query);
         }
-        Query.addFilter(query.query);
-        Query.updateFilter(query.query, Query.getFilters(query.query).length - 1, [null, this.props.field.id, null]);
+        Query.addFilter(query.query, [null, this.props.field.id, null]);
         this.props.setQueryFn(query);
     }
 
