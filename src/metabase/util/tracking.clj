@@ -12,13 +12,13 @@
   "Get the GA id for the main metabase application"
   []
   (require 'metabase.public-settings)
-  ((resolve 'metabase.public-settings/ga_code)))
+  ((resolve 'metabase.public-settings) :ga_code))
 
 (defn- anon-tracking-enabled? 
   "To avoid a circular reference"
   []
   (require 'metabase.public-settings)
-  ((resolve 'metabase.public-settings/anon-tracking-enabled)))
+  ((resolve 'metabase.public-settings) :anon-tracking-enabled))
 
 (defn track-event!
   "Send anonymous usage information via Google Analytics
@@ -43,16 +43,12 @@
 
 (defn track-error! 
   "Simpler way to track errors that keeps our event labels tidy"
-  [& {:keys [action label value]
-      :or {label "" 
-           value ""}}]
-  (track-event! :category "server-error" :action action :label label :value value)
+  [& args]
+  (track-event! :category "server-error" args)
   )
 
-((defn track-info! 
+(defn track-info! 
   "Simpler way to track server events that keeps our event labels tidy"
-  [& {:keys [action label value]
-      :or {label "" 
-           value ""}}]
-  (track-event! :category "server-info" :action action :label label :value value)
-  ))
+  [& args]
+  (track-event! :category "server-info" args)
+  )
