@@ -624,15 +624,21 @@ const SETTINGS = {
         }),
         getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region"
     },
-    // TODO: translate legacy settings
     "map.zoom": {
-        default: 9
     },
     "map.center_latitude": {
-        default: 37.7577 //defaults to SF ;-)
     },
     "map.center_longitude": {
-        default: -122.4376
+    },
+    "map.pin_type": {
+        title: "Pin type",
+        // Don't expose this in the UI for now
+        // widget: ChartSettingSelect,
+        props: {
+            options: [{ name: "Tiles", value: "tiles" }, { name: "Markers", value: "markers" }]
+        },
+        getDefault: (series) => series[0].data.rows.length >= 1000 ? "tiles" : "markers",
+        getHidden: (series, vizSettings) => vizSettings["map.type"] !== "pin"
     }
 };
 

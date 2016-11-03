@@ -127,10 +127,10 @@ export default class DashCard extends Component {
                             series={series}
                             onRemove={onRemove}
                             onAddSeries={onAddSeries}
-                            onUpdateVisualizationSettings={this.props.onUpdateVisualizationSettings}
+                            onReplaceAllVisualizationSettings={this.props.onReplaceAllVisualizationSettings}
                         /> : undefined
                     }
-                    onUpdateVisualizationSetting={this.props.onUpdateVisualizationSetting}
+                    onUpdateVisualizationSettings={this.props.onUpdateVisualizationSettings}
                     replacementContent={isEditingParameter && <DashCardParameterMapper dashcard={dashcard} />}
                 />
             </div>
@@ -138,18 +138,18 @@ export default class DashCard extends Component {
     }
 }
 
-const DashCardActionButtons = ({ series, onRemove, onAddSeries, onUpdateVisualizationSettings }) =>
+const DashCardActionButtons = ({ series, onRemove, onAddSeries, onReplaceAllVisualizationSettings }) =>
     <span className="DashCard-actions flex align-center">
         { getVisualizationRaw(series).CardVisualization.supportsSeries &&
             <AddSeriesButton series={series} onAddSeries={onAddSeries} />
         }
-        { onUpdateVisualizationSettings &&
-            <ChartSettingsButton series={series} onUpdateVisualizationSettings={onUpdateVisualizationSettings} />
+        { onReplaceAllVisualizationSettings &&
+            <ChartSettingsButton series={series} onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings} />
         }
         <RemoveButton onRemove={onRemove} />
     </span>
 
-const ChartSettingsButton = ({ series, onUpdateVisualizationSettings }) =>
+const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) =>
     <ModalWithTrigger
         className="Modal Modal--wide Modal--tall"
         triggerElement={<Icon name="gear" />}
@@ -157,7 +157,7 @@ const ChartSettingsButton = ({ series, onUpdateVisualizationSettings }) =>
     >
         <ChartSettings
             series={series}
-            onChange={onUpdateVisualizationSettings}
+            onChange={onReplaceAllVisualizationSettings}
             isDashboard
         />
     </ModalWithTrigger>
