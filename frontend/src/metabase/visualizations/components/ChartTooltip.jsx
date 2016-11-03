@@ -40,21 +40,21 @@ export default class ChartTooltip extends Component {
                     <tbody>
                         { Array.isArray(hovered.data)  ?
                             hovered.data.map(({ key, value, col }, index) =>
-                                <tr key={index}>
-                                    <td className="text-light text-right">{key}:</td>
-                                    <td className="pl1 text-bold text-left">
-                                        <Value value={value} column={col} majorWidth={0} />
-                                    </td>
-                                </tr>
+                                <TooltipRow
+                                    key={index}
+                                    name={key}
+                                    value={value}
+                                    column={col}
+                                />
                             )
                         :
                             [["key", 0], ["value", 1]].map(([propName, colIndex]) =>
-                                <tr key={propName} className="">
-                                    <td className="text-light text-right">{getFriendlyName(s.data.cols[colIndex])}:</td>
-                                    <td className="pl1 text-bold text-left">
-                                        <Value value={hovered.data[propName]} column={s.data.cols[colIndex]} majorWidth={0} />
-                                    </td>
-                                </tr>
+                                <TooltipRow
+                                    key={propName}
+                                    name={getFriendlyName(s.data.cols[colIndex])}
+                                    value={hovered.data[propName]}
+                                    column={s.data.cols[colIndex]}
+                                />
                             )
                         }
                     </tbody>
@@ -63,3 +63,15 @@ export default class ChartTooltip extends Component {
         );
     }
 }
+
+const TooltipRow = ({ name, value, column }) =>
+    <tr>
+        <td className="text-light text-right">{name}:</td>
+        <td className="pl1 text-bold text-left">
+            { React.isValidElement(value) ?
+                value
+            :
+                <Value value={value} column={column} majorWidth={0} />
+            }
+        </td>
+    </tr>

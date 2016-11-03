@@ -8,7 +8,7 @@ import Popover from "metabase/components/Popover.jsx";
 import Value from "metabase/components/Value.jsx";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import { formatValue, capitalize } from "metabase/lib/formatting";
+import { capitalize } from "metabase/lib/formatting";
 
 import _ from "underscore";
 import cx from "classnames";
