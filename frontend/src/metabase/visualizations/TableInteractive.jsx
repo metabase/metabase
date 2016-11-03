@@ -5,6 +5,7 @@ import { Table, Column } from "fixed-data-table";
 
 import Icon from "metabase/components/Icon.jsx";
 import Popover from "metabase/components/Popover.jsx";
+import Value from "metabase/components/Value.jsx";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { formatValue, capitalize } from "metabase/lib/formatting";
@@ -168,12 +169,14 @@ export default class TableInteractive extends Component {
     }
 
     cellRenderer(cellData, cellDataKey, rowData, rowIndex, columnData, width) {
-        cellData = cellData != null ? formatValue(cellData, { column: this.props.data.cols[cellDataKey], jsx: true }) : null;
+        const column = this.props.data.cols[cellDataKey];
 
         var key = 'cl'+rowIndex+'_'+cellDataKey;
         if (this.props.cellIsClickableFn(rowIndex, cellDataKey)) {
             return (
-                <a key={key} className="link cellData" onClick={this.cellClicked.bind(this, rowIndex, cellDataKey)}>{cellData}</a>
+                <a key={key} className="link cellData" onClick={this.cellClicked.bind(this, rowIndex, cellDataKey)}>
+                    <Value value={cellData} column={column} />
+                </a>
             );
         } else {
             var popover = null;
@@ -199,7 +202,9 @@ export default class TableInteractive extends Component {
             }
             return (
                 <div key={key} onClick={this.showPopover.bind(this, rowIndex, cellDataKey)}>
-                    <span className="cellData">{cellData}</span>
+                    <span className="cellData">
+                        <Value value={cellData} column={column} />
+                    </span>
                     {popover}
                 </div>
             );

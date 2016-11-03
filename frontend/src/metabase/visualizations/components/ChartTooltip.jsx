@@ -1,8 +1,8 @@
 import React, { Component, PropTypes } from "react";
 
 import TooltipPopover from "metabase/components/TooltipPopover.jsx"
+import Value from "metabase/components/Value.jsx";
 
-import { formatValue } from "metabase/lib/formatting";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 
 export default class ChartTooltip extends Component {
@@ -43,11 +43,7 @@ export default class ChartTooltip extends Component {
                                 <tr key={index}>
                                     <td className="text-light text-right">{key}:</td>
                                     <td className="pl1 text-bold text-left">
-                                        { col ?
-                                            formatValue(value, { column: col, jsx: true, majorWidth: 0 })
-                                        :
-                                            value
-                                        }
+                                        <Value value={value} column={col} majorWidth={0} />
                                     </td>
                                 </tr>
                             )
@@ -55,7 +51,9 @@ export default class ChartTooltip extends Component {
                             [["key", 0], ["value", 1]].map(([propName, colIndex]) =>
                                 <tr key={propName} className="">
                                     <td className="text-light text-right">{getFriendlyName(s.data.cols[colIndex])}:</td>
-                                    <td className="pl1 text-bold text-left">{formatValue(hovered.data[propName], { column: s.data.cols[colIndex], jsx: true, majorWidth: 0 })}</td>
+                                    <td className="pl1 text-bold text-left">
+                                        <Value value={hovered.data[propName]} column={s.data.cols[colIndex]} majorWidth={0} />
+                                    </td>
                                 </tr>
                             )
                         }
