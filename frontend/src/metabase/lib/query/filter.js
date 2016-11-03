@@ -24,20 +24,20 @@ export function canAddFilter(filter: ?FilterClause): boolean {
 
 export function addFilter(filter: ?FilterClause, newFilter: FilterClause): ?FilterClause {
     const filters = getFilters(filter);
-    return getMinimalFilterClause([...filters, newFilter]);
+    return canonicalize([...filters, newFilter]);
 }
 
 export function updateFilter(filter: ?FilterClause, index: number, updatedFilter: FilterClause): ?FilterClause {
     const filters = getFilters(filter);
-    return getMinimalFilterClause([...filters.slice(0, index), updatedFilter, ...filters.slice(index + 1)]);
+    return canonicalize([...filters.slice(0, index), updatedFilter, ...filters.slice(index + 1)]);
 }
 
 export function removeFilter(filter: ?FilterClause, index: number): ?FilterClause {
     const filters = getFilters(filter);
-    return getMinimalFilterClause([...filters.slice(0, index), ...filters.slice(index + 1)]);
+    return canonicalize([...filters.slice(0, index), ...filters.slice(index + 1)]);
 }
 
-function getMinimalFilterClause(filters: Filter[]): ?FilterClause {
+function canonicalize(filters: Filter[]): ?FilterClause {
     if (filters.length === 0) {
         return undefined;
     } else if (filters.length === 1) {

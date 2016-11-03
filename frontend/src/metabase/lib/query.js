@@ -143,7 +143,7 @@ var Query = {
                         }
                         return [targetMatches[0], s[1]];
                     }
-                } else if (Query.isBareRowsAggregation(query)) {
+                } else if (Query.isBareRows(query)) {
                     return s;
                 }
 
@@ -225,79 +225,12 @@ var Query = {
         }
     },
 
-    clearBreakouts(query) {
-        delete query.breakout;
-    },
-
-    hasEmptyAggregation(query) {
-        let aggregations = Query.getAggregations(query);
-        return _.any(aggregations, (aggregation) => aggregation && (
-            (aggregation.length === 1 && aggregation[0] == null) ||
-            (aggregation.length === 2 && aggregation[0] == null && aggregation[1] == null)
-        ));
-    },
-
-    hasValidAggregation(query) {
-        let aggregations = Query.getAggregations(query);
-        let x = _.all(aggregations, (aggregation) => aggregation && (
-            (aggregation.length === 1 && aggregation[0] !== null) ||
-            (aggregation.length === 2 && aggregation[0] !== null && aggregation[1] !== null)
-        ));
-        return x;
-    },
-
-    isBareRowsAggregation(query) {
-        return Query.getAggregations(query).length === 0;
-    },
-
-    getAggregations(query) {
-        let aggregations;
-        if (!query.aggregation) {
-            aggregations = [];
-        } else if (query.aggregation.length === 0 || Array.isArray(query.aggregation[0])) {
-            aggregations = query.aggregation;
-        } else {
-            // legacy
-            aggregations = [query.aggregation]
-        }
-        return aggregations.filter(agg => agg && agg[0] && !mbqlCompare(agg[0], "rows"));
-    },
-
-    updateAggregation(query, index, aggregationClause) {
-        let isBareRows = !aggregationClause || mbqlCompare(aggregationClause[0], "rows");
-
-        // when switching to or from "rows" aggregation clear out any sorting clauses
-        if (Query.isBareRowsAggregation(query) !== isBareRows) {
-            Query.clearSort(query);
-        }
-
-        if (isBareRows) {
-            delete query.aggregation;
-            // for "rows" type aggregation we always clear out any dimensions because they don't make sense
-            Query.clearBreakouts(query);
-        } else {
-            let aggregations = Query.getAggregations(query);
-            query.aggregation = [...aggregations.slice(0, index), aggregationClause, ...aggregations.slice(index + 1)];
-        }
-    },
-
-    removeAggregation(query, index) {
-        const aggregations = Query.getAggregations(query);
-        query.aggregation = [...aggregations.slice(0, index), aggregations.slice(index + 1)];
-        return query;
-    },
-
-    clearAggregations(query) {
-        // use updateAggregation so we clear sort and breakouts if necessary
-        Query.updateAggregation(query, 0, null);
-    },
-
     isSegmentFilter(filter) {
         return Array.isArray(filter) && filter[0] === "SEGMENT";
     },
 
     canAddLimitAndSort(query) {
-        if (Query.isBareRowsAggregation(query)) {
+        if (Query.isBareRows(query)) {
             return true;
         } else if (Query.hasValidBreakout(query)) {
             return true;
@@ -309,7 +242,7 @@ var Query = {
     getSortableFields(query, fields) {
         // in bare rows all fields are sortable, otherwise we only sort by our breakout columns
 
-        if (Query.isBareRowsAggregation(query)) {
+        if (Query.isBareRows(query)) {
             return fields;
         } else if (Query.hasValidBreakout(query)) {
             // further filter field list down to only fields in our breakout clause
@@ -343,18 +276,6 @@ var Query = {
         }
     },
 
-    addLimit(query) {
-        query.limit = null;
-    },
-
-    updateLimit(query, limit) {
-        query.limit = limit;
-    },
-
-    removeLimit(query) {
-        delete query.limit;
-    },
-
     canAddSort(query) {
         // TODO: allow for multiple sorting choices
         return false;
@@ -383,10 +304,6 @@ var Query = {
                 query.order_by.splice(index, 1);
             }
         }
-    },
-
-    clearSort(query) {
-        delete query.order_by;
     },
 
     getExpressions(query) {

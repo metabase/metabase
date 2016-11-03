@@ -46,7 +46,7 @@ export default class ExtendedOptions extends Component {
             Query.updateLimit(this.props.query.query, limit);
             MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Limit');
         } else {
-            Query.removeLimit(this.props.query.query);
+            Query.clearLimit(this.props.query.query);
             MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove Limit');
         }
         this.props.setQuery(this.props.query);

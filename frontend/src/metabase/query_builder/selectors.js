@@ -96,7 +96,7 @@ export const isObjectDetail = createSelector(
 	    if (dataset_query.query &&
 	            dataset_query.query.source_table &&
 	            dataset_query.query.filter &&
-				Query.isBareRowsAggregation(dataset_query.query) &&
+				Query.isBareRows(dataset_query.query) &&
 	            data.rows &&
 	            data.rows.length === 1) {
 
@@ -135,7 +135,7 @@ export const queryResult = createSelector(
 		// if we are display bare rows, filter out columns with visibility_type = details-only
         if (queryResult && queryResult.json_query && !isObjectDetail &&
         		Query.isStructured(queryResult.json_query) &&
-                Query.isBareRowsAggregation(queryResult.json_query.query)) {
+                Query.isBareRows(queryResult.json_query.query)) {
         	// TODO: mutability?
             queryResult.data = DataGrid.filterOnPreviewDisplay(queryResult.data);
         }

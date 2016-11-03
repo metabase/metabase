@@ -53,7 +53,7 @@ export default class CardPicker extends Component {
     renderItem(card) {
         let error;
         try {
-            if (Query.isBareRowsAggregation(card.dataset_query.query)) {
+            if (Query.isBareRows(card.dataset_query.query)) {
                 error = "Raw data cannot be included in pulses";
             }
         } catch (e) {}

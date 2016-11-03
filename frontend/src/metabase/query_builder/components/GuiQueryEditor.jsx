@@ -205,7 +205,7 @@ export default class GuiQueryEditor extends Component {
 
         // aggregation clause.  must have table details available
         if (tableMetadata) {
-            let isBareRows = Query.isBareRowsAggregation(query);
+            let isBareRows = Query.isBareRows(query);
             let aggregations = Query.getAggregations(query);
 
             if (aggregations.length === 0) {
@@ -228,7 +228,7 @@ export default class GuiQueryEditor extends Component {
                         tableMetadata={tableMetadata}
                         customFields={Query.getExpressions(this.props.query.query)}
                         updateAggregation={(aggregation) => this.updateAggregation(index, aggregation)}
-                        removeAggregation={canRemoveAggregation && this.removeAggregation.bind(null, index)}
+                        removeAggregation={canRemoveAggregation ? this.removeAggregation.bind(null, index) : null}
                         addButton={this.renderAdd(index === 0 ? "Add a grouping" : null)}
                     />
                 );
