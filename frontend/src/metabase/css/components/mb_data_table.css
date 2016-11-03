@@ -32,7 +32,6 @@
 }
 
 .MB-DataTable .public_fixedDataTableCell_main:hover {
-    cursor: pointer;
     border-color: var(--brand-color);
     color: var(--brand-color);
 }

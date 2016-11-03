@@ -882,7 +882,7 @@ export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnInde
 
             newCard.dataset_query.query.source_table = coldef.table_id;
             newCard.dataset_query.query.aggregation = ["rows"];
-            newCard.dataset_query.query.filter = ["AND", ["=", fieldRefForm, value]];
+            newCard.dataset_query.query.filter = ["AND", ["=", coldef.id, value]];
 
             // run it
             dispatch(setCardAndRun(newCard));
@@ -905,7 +905,7 @@ export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnInde
             let dataset_query = JSON.parse(JSON.stringify(card.dataset_query));
             Query.addFilter(dataset_query.query);
 
-            if (coldef.unit) {
+            if (coldef.unit && coldef.unit != "default" && filter === "=") {
                 // this is someone using quick filters on a datetime value
                 let start = moment(value).format("YYYY-MM-DD");
                 let end = start;
