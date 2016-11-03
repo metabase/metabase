@@ -2,6 +2,7 @@ import React, { Component, PropTypes } from "react";
 
 import AggregationPopover from "./AggregationPopover.jsx";
 import FieldName from './FieldName.jsx';
+import Clearable from './Clearable.jsx';
 
 import Popover from "metabase/components/Popover.jsx";
 
@@ -28,7 +29,8 @@ export default class AggregationWidget extends Component {
         aggregation: PropTypes.array.isRequired,
         tableMetadata: PropTypes.object.isRequired,
         customFields: PropTypes.object,
-        updateAggregation: PropTypes.func.isRequired
+        updateAggregation: PropTypes.func.isRequired,
+        removeAggregation: PropTypes.func,
     };
 
     setAggregation(aggregation) {
@@ -49,13 +51,15 @@ export default class AggregationWidget extends Component {
 
         let selectedAggregation = getAggregator(AggregationClause.getOperator(aggregation));
         return (
-            <div id="Query-section-aggregation" onClick={this.open} className="Query-section Query-section-aggregation cursor-pointer">
-                <span className="View-section-aggregation QueryOption py1 pl1">{selectedAggregation ? selectedAggregation.name.replace(" of ...", "") : "Choose an aggregation"}</span>
+            <div id="Query-section-aggregation" onClick={this.open} className="Query-section Query-section-aggregation cursor-pointer px1">
+                <span className="View-section-aggregation QueryOption py1">
+                    {selectedAggregation ? selectedAggregation.name.replace(" of ...", "") : "Choose an aggregation"}
+                </span>
                 {aggregation.length > 1 &&
                     <div className="View-section-aggregation flex align-center">
                         <span style={{paddingRight: "4px", paddingLeft: "4px"}} className="text-bold">of</span>
                         <FieldName
-                            className="View-section-aggregation-target SelectionModule py1 pr1"
+                            className="View-section-aggregation-target SelectionModule py1"
                             tableMetadata={tableMetadata}
                             field={fieldId}
                             fieldOptions={Query.getFieldOptions(tableMetadata.fields, true)}
@@ -105,24 +109,31 @@ export default class AggregationWidget extends Component {
     }
 
     render() {
-        const { aggregation } = this.props;
-
-        if (!aggregation || aggregation.length === 0) {
-            // we can't do anything without a valid aggregation
-            return <span/>;
-        }
-
-        return (
-            <div className={cx("Query-section Query-section-aggregation", { "selected": this.state.isOpen })}>
-                <div>
-                    {AggregationClause.isMetric(aggregation) ?
-                        this.renderMetricAggregation()
-                    :
-                        this.renderStandardAggregation()
-                    }
+        const { aggregation, addButton } = this.props;
+        if (aggregation && aggregation.length > 0) {
+            return (
+                <div className={cx("Query-section Query-section-aggregation", { "selected": this.state.isOpen })}>
+                    <div>
+                        <Clearable onClear={this.props.removeAggregation}>
+                        {AggregationClause.isMetric(aggregation) ?
+                            this.renderMetricAggregation()
+                        :
+                            this.renderStandardAggregation()
+                        }
+                        </Clearable>
+                        {this.renderPopover()}
+                    </div>
+                </div>
+            );
+        } else if (addButton) {
+            return (
+                <div className={cx("Query-section Query-section-aggregation")} onClick={this.open}>
+                    {addButton}
                     {this.renderPopover()}
                 </div>
-            </div>
-        );
+            );
+        } else {
+            return null;
+        }
     }
 }

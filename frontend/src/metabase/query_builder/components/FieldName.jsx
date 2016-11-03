@@ -3,6 +3,7 @@ import React, { Component, PropTypes } from "react";
 import i from 'icepick';
 
 import Icon from "metabase/components/Icon.jsx";
+import Clearable from "./Clearable.jsx";
 
 import Query from "metabase/lib/query";
 import { formatBucketing } from "metabase/lib/query_time";
@@ -48,16 +49,11 @@ export default class FieldName extends Component {
         }
 
         return (
-            <div className="flex align-center">
+            <Clearable onClear={this.props.removeField}>
                 <div className={cx(className, { selected: Query.isValidField(field) })} onClick={this.props.onClick}>
                     <span className="QueryOption">{parts}</span>
                 </div>
-                { this.props.removeField &&
-                    <a className="text-grey-2 no-decoration pr1 flex align-center" onClick={this.props.removeField}>
-                        <Icon name='close' size={14} />
-                    </a>
-                }
-            </div>
+            </Clearable>
         );
     }
 }

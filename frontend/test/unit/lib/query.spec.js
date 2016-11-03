@@ -216,7 +216,7 @@ describe('Query', () => {
         });
     });
 
-    describe('removeDimension', () => {
+    describe('removeBreakout', () => {
         it('should remove the dimension', () => {
             let query = {
                 source_table: 0,
@@ -224,7 +224,7 @@ describe('Query', () => {
                 breakout: [1],
                 filter: []
             };
-            Query.removeDimension(query, 0);
+            Query.removeBreakout(query, 0);
             expect(query.breakout.length).toBe(0);
         });
         it('should remove sort clauses for the dimension that was removed', () => {
@@ -237,7 +237,7 @@ describe('Query', () => {
                     [1, "ascending"]
                 ]
             };
-            Query.removeDimension(query, 0);
+            Query.removeBreakout(query, 0);
             expect(query.order_by).toBe(undefined);
         });
     });

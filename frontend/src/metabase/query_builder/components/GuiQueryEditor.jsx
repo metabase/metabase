@@ -28,8 +28,6 @@ export default class GuiQueryEditor extends Component {
 
         _.bindAll(
             this,
-            "addFilter", "updateFilter", "removeFilter",
-            "updateAggregation",
             "setBreakout",
         );
     }
@@ -60,16 +58,16 @@ export default class GuiQueryEditor extends Component {
         this.props.setQueryFn(datasetQuery);
     }
 
-    setBreakout(index, field) {
+    setBreakout = (index, field) => {
         if (field == null) {
-            Query.removeDimension(this.props.query.query, index);
+            Query.removeBreakout(this.props.query.query, index);
             this.setQuery(this.props.query);
             MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove GroupBy');
         } else {
-            let isNew = index+1 > this.props.query.query.breakout.length;
-            Query.updateDimension(this.props.query.query, field, index);
+            Query.updateBreakout(this.props.query.query, field, index);
             this.setQuery(this.props.query);
 
+            const isNew = index + 1 > Query.getBreakouts(this.props.query.query).length;
             if (isNew) {
                 MetabaseAnalytics.trackEvent('QueryBuilder', 'Add GroupBy');
             } else {
@@ -78,14 +76,21 @@ export default class GuiQueryEditor extends Component {
         }
     }
 
-    updateAggregation(aggregationClause) {
-        Query.updateAggregation(this.props.query.query, aggregationClause);
+    updateAggregation = (index, aggregationClause) => {
+        Query.updateAggregation(this.props.query.query, index, aggregationClause);
         this.setQuery(this.props.query);
 
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Aggregation', aggregationClause[0]);
     }
 
-    addFilter(filter) {
+    removeAggregation = (index, aggregationClause) => {
+        Query.removeAggregation(this.props.query.query, index);
+        this.setQuery(this.props.query);
+
+        MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove Aggregation', aggregationClause[0]);
+    }
+
+    addFilter = (filter) => {
         let query = this.props.query.query;
         Query.addFilter(query);
         Query.updateFilter(query, Query.getFilters(query).length - 1, filter);
@@ -95,14 +100,14 @@ export default class GuiQueryEditor extends Component {
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Add Filter');
     }
 
-    updateFilter(index, filter) {
+    updateFilter = (index, filter) => {
         Query.updateFilter(this.props.query.query, index, filter);
         this.setQuery(this.props.query);
 
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Modify Filter');
     }
 
-    removeFilter(index) {
+    removeFilter = (index) => {
         Query.removeFilter(this.props.query.query, index);
         this.setQuery(this.props.query);
 
@@ -114,15 +119,15 @@ export default class GuiQueryEditor extends Component {
         if (onClick) {
             return (
                 <a className={className} onClick={onClick}>
+                    { text && <span className="mr1">{text}</span> }
                     {this.renderAddIcon(targetRefName)}
-                    { text && <span className="ml1">{text}</span> }
                 </a>
             );
         } else {
             return (
                 <span className={className}>
+                    { text && <span className="mr1">{text}</span> }
                     {this.renderAddIcon(targetRefName)}
-                    { text && <span className="ml1">{text}</span> }
                 </span>
             );
         }
@@ -194,20 +199,48 @@ export default class GuiQueryEditor extends Component {
     }
 
     renderAggregation() {
+        const { query: { query }, tableMetadata } = this.props;
+
         if (!this.props.features.aggregation) {
             return;
         }
 
         // aggregation clause.  must have table details available
-        if (this.props.tableMetadata) {
-            return (
-                <AggregationWidget
-                    aggregation={this.props.query.query.aggregation}
-                    tableMetadata={this.props.tableMetadata}
-                    customFields={Query.getExpressions(this.props.query.query)}
-                    updateAggregation={this.updateAggregation}
-                />
-            );
+        if (tableMetadata) {
+            let isBareRows = Query.isBareRowsAggregation(query);
+            let aggregations = Query.getAggregations(query);
+
+            if (aggregations.length === 0) {
+                // add implicit rows aggregation
+                aggregations.push(["rows"]);
+            }
+
+            const canRemoveAggregation = aggregations.length > 1;
+
+            if (!isBareRows) {
+                aggregations.push([]);
+            }
+
+            let aggregationList = [];
+            for (const [index, aggregation] of aggregations.entries()) {
+                aggregationList.push(
+                    <AggregationWidget
+                        key={"agg"+index}
+                        aggregation={aggregation}
+                        tableMetadata={tableMetadata}
+                        customFields={Query.getExpressions(this.props.query.query)}
+                        updateAggregation={(aggregation) => this.updateAggregation(index, aggregation)}
+                        removeAggregation={canRemoveAggregation && this.removeAggregation.bind(null, index)}
+                        addButton={this.renderAdd(index === 0 ? "Add a grouping" : null)}
+                    />
+                );
+                if (aggregations[index + 1] != null && aggregations[index + 1].length > 0) {
+                    aggregationList.push(
+                        <span key={"and"+index} className="text-bold">and</span>
+                    );
+                }
+            }
+            return aggregationList
         } else {
             // TODO: move this into AggregationWidget?
             return (
@@ -219,66 +252,55 @@ export default class GuiQueryEditor extends Component {
     }
 
     renderBreakouts() {
-        if (!this.props.features.breakout) {
+        const { query: { query }, tableMetadata, features } = this.props;
+
+        if (!features.breakout) {
             return;
         }
 
-        var enabled = (this.props.tableMetadata &&
-                       this.props.tableMetadata.breakout_options.fields.length > 0 &&
-                       !Query.hasEmptyAggregation(this.props.query.query));
-        var breakoutList = [];
+        const enabled = tableMetadata && tableMetadata.breakout_options.fields.length > 0;
+        const breakoutList = [];
 
-        const breakout = this.props.query.query.breakout;
         if (enabled) {
-            if (breakout.length === 0) {
-                // no breakouts specified yet, so just render a single widget
-                breakoutList.push(
-                    <BreakoutWidget
-                        className="View-section-breakout SelectionModule p1"
-                        fieldOptions={Query.getFieldOptions(this.props.tableMetadata.fields, true, this.props.tableMetadata.breakout_options.validFieldsFilter, {})}
-                        customFieldOptions={Query.getExpressions(this.props.query.query)}
-                        tableMetadata={this.props.tableMetadata}
-                        setField={(field) => this.setBreakout(0, field)}
-                        addButton={this.renderAdd("Add a grouping")}
-                    />
-                );
+            const breakouts = Query.getBreakouts(query);
 
-            } else {
-                // we have 1+ defined breakouts, so provide 2 widgets
-                breakoutList.push(
-                    <span className="text-bold">by</span>
-                );
+            const usedFields = {};
+            for (const breakout of breakouts) {
+                usedFields[breakout] = true;
+            }
 
-                breakoutList.push(
-                    <BreakoutWidget
-                        key={"breakout0"}
-                        className="View-section-breakout SelectionModule p1"
-                        fieldOptions={Query.getFieldOptions(this.props.tableMetadata.fields, true, this.props.tableMetadata.breakout_options.validFieldsFilter, {})}
-                        customFieldOptions={Query.getExpressions(this.props.query.query)}
-                        tableMetadata={this.props.tableMetadata}
-                        field={breakout[0]}
-                        setField={(fieldId) => this.setBreakout(0, fieldId)}
-                    />
-                );
+            const remainingFieldOptions = Query.getFieldOptions(tableMetadata.fields, true, tableMetadata.breakout_options.validFieldsFilter, usedFields);
+            if (remainingFieldOptions.count > 0 && (breakouts.length === 0 || breakouts[breakouts.length - 1] != null)) {
+                breakouts.push(null);
+            }
 
-                if (breakout.length === 2) {
+            for (let i = 0; i < breakouts.length; i++) {
+                const breakout = breakouts[i];
+
+                if (i === 0 && breakout != null) {
                     breakoutList.push(
-                        <span className="text-bold">and</span>
+                        <span  key={"by"+i} className="text-bold">by</span>
                     );
                 }
 
                 breakoutList.push(
                     <BreakoutWidget
-                        key={"breakout1"}
+                        key={"breakout"+i}
                         className="View-section-breakout SelectionModule p1"
-                        fieldOptions={Query.getFieldOptions(this.props.tableMetadata.fields, true, this.props.tableMetadata.breakout_options.validFieldsFilter, {[breakout[0]]: true})}
-                        customFieldOptions={Query.getExpressions(this.props.query.query)}
-                        tableMetadata={this.props.tableMetadata}
-                        field={breakout.length > 1 ? breakout[1] : null}
-                        setField={(field) => this.setBreakout(1, field)}
-                        addButton={this.renderAdd()}
+                        fieldOptions={Query.getFieldOptions(tableMetadata.fields, true, tableMetadata.breakout_options.validFieldsFilter, _.omit(usedFields, breakout))}
+                        customFieldOptions={Query.getExpressions(query)}
+                        tableMetadata={tableMetadata}
+                        field={breakout}
+                        setField={(field) => this.setBreakout(i, field)}
+                        addButton={this.renderAdd(i === 0 ? "Add a grouping" : null)}
                     />
                 );
+
+                if (breakouts[i + 1] != null) {
+                    breakoutList.push(
+                        <span key={"and"+i} className="text-bold">and</span>
+                    );
+                }
             }
         }
 

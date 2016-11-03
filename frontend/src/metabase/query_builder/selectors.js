@@ -96,9 +96,7 @@ export const isObjectDetail = createSelector(
 	    if (dataset_query.query &&
 	            dataset_query.query.source_table &&
 	            dataset_query.query.filter &&
-	            dataset_query.query.aggregation &&
-	            dataset_query.query.aggregation.length > 0 &&
-	            dataset_query.query.aggregation[0] === "rows" &&
+				Query.isBareRowsAggregation(dataset_query.query) &&
 	            data.rows &&
 	            data.rows.length === 1) {
 

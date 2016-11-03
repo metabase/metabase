@@ -12,6 +12,8 @@ import VisualizationResult from "./VisualizationResult.jsx";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 
+import Query from "metabase/lib/query";
+
 import cx from "classnames";
 import _ from "underscore";
 
@@ -108,9 +110,7 @@ export default class QueryVisualization extends Component {
               rows = this.props.result.data.rows;
 
         if (this.props.result.data.rows_truncated ||
-            (dataset_query.type === "query" &&
-             dataset_query.query.aggregation[0] === "rows" &&
-             rows.length === 2000))
+            (dataset_query.type === "query" && Query.isBareRowsAggregation(dataset_query.query) && rows.length === 2000))
         {
             return true;
         } else {
