@@ -165,8 +165,6 @@
         (log/debug (u/format-color 'green "Field '%s' looks like it contains valid email addresses. Setting special_type to :type/Email." (field/qualified-name field)))
         (assoc field-stats :special-type :type/Email, :preview-display true)))))
 
-
-
 (defn- test:new-field
   "Do the various tests that should only be done for a new `Field`.
    We only run most of the field analysis work when the field is NEW in order to favor performance of the sync process."
