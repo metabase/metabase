@@ -512,7 +512,9 @@ const getMetricQuestions = createSelector(
     (metricId, questions) => Object.values(questions)
         .filter(question =>
             question.dataset_query.type === "query" &&
-            AggregationClause.getMetric(question.dataset_query.query.aggregation) === metricId
+            _.any(Query.getAggregations(question.dataset_query.query), (aggregation) =>
+                AggregationClause.getMetric(aggregation) === metricId
+            )
         )
         .reduce((map, question) => i.assoc(map, question.id, question), {})
 );

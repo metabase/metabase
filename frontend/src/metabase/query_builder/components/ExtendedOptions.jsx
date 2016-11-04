@@ -25,7 +25,7 @@ export default class ExtendedOptions extends Component {
 
         _.bindAll(
             this,
-            "setLimit", "addSort", "updateSort", "removeSort"
+            "setLimit", "addOrderBy", "updateOrderBy", "removeOrderBy"
         );
     }
 
@@ -53,22 +53,22 @@ export default class ExtendedOptions extends Component {
         this.setState({isOpen: false});
     }
 
-    addSort() {
-        Query.addSort(this.props.query.query);
+    addOrderBy() {
+        Query.addOrderBy(this.props.query.query, [null, "ascending"]);
         this.props.setQuery(this.props.query);
 
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Sort', 'manual');
     }
 
-    updateSort(index, sort) {
-        Query.updateSort(this.props.query.query, index, sort);
+    updateOrderBy(index, sort) {
+        Query.updateOrderBy(this.props.query.query, index, sort);
         this.props.setQuery(this.props.query);
 
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Sort', 'manual');
     }
 
-    removeSort(index) {
-        Query.removeSort(this.props.query.query, index);
+    removeOrderBy(index) {
+        Query.removeOrderBy(this.props.query.query, index);
         this.props.setQuery(this.props.query);
 
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove Sort');
@@ -100,49 +100,67 @@ export default class ExtendedOptions extends Component {
     }
 
     renderSort() {
+        const { query: { query }, tableMetadata } = this.props;
+
         if (!this.props.features.limit) {
             return;
         }
 
-        var sortFieldOptions;
+        let sortList, addSortButton;
 
-        if (this.props.tableMetadata) {
-            sortFieldOptions = Query.getFieldOptions(
-                this.props.tableMetadata.fields,
-                true,
-                Query.getSortableFields.bind(null, this.props.query.query)
+        if (tableMetadata) {
+            const sorts = Query.getOrderBys(query);
+            const expressions = Query.getExpressions(query);
+
+            const usedFields = {};
+            const usedExpressions = {};
+            for (const sort of sorts) {
+                if (Query.isExpressionField(sort[0])) {
+                    usedExpressions[sort[0][1]] = true;
+                } else {
+                    usedFields[sort[0]] = true;
+                }
+            }
+
+            sortList = sorts.map((sort, index) =>
+                <SortWidget
+                    key={index}
+                    tableMetadata={tableMetadata}
+                    sort={sort}
+                    fieldOptions={
+                        Query.getFieldOptions(
+                            tableMetadata.fields,
+                            true,
+                            Query.getSortableFields.bind(null, query),
+                            _.omit(usedFields, sort[0])
+                        )
+                    }
+                    customFieldOptions={expressions}
+                    removeOrderBy={this.removeOrderBy.bind(null, index)}
+                    updateOrderBy={this.updateOrderBy.bind(null, index)}
+                />
             );
+
+
+            const remainingFieldOptions = Query.getFieldOptions(
+                tableMetadata.fields,
+                true,
+                Query.getSortableFields.bind(null, query),
+                usedFields
+            );
+            const remainingExpressions = Object.keys(_.omit(expressions, usedExpressions));
+            if ((remainingFieldOptions.count > 0 || remainingExpressions.length > 1) &&
+                (sorts.length === 0 || sorts[sorts.length - 1][0] != null)) {
+                addSortButton = (<AddClauseButton text="Pick a field to sort by" onClick={this.addOrderBy} />);
+            }
         }
 
-        var sortList = [];
-        if (this.props.query.query.order_by && this.props.tableMetadata) {
-            sortList = this.props.query.query.order_by.map((order_by, index) => {
-                return (
-                    <SortWidget
-                        key={index}
-                        tableMetadata={this.props.tableMetadata}
-                        sort={order_by}
-                        fieldOptions={sortFieldOptions}
-                        customFieldOptions={Query.getExpressions(this.props.query.query)}
-                        removeSort={this.removeSort.bind(null, index)}
-                        updateSort={this.updateSort.bind(null, index)}
-                    />
-                );
-            });
-        }
-
-        var content;
-        if (sortList.length > 0) {
-            content = sortList;
-        } else if (sortFieldOptions && sortFieldOptions.count > 0) {
-            content = (<AddClauseButton text="Pick a field to sort by" onClick={this.addSort} />);
-        }
-
-        if (content) {
+        if ((sortList && sortList.length > 0) || addSortButton) {
             return (
                 <div className="pb3">
                     <div className="pb1 h6 text-uppercase text-grey-3 text-bold">Sort</div>
-                    {content}
+                    {sortList}
+                    {addSortButton}
                 </div>
             );
         }

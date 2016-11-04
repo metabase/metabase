@@ -111,8 +111,7 @@ export const isObjectDetail = createSelector(
 
 	        // now check that we have a filter clause w/ '=' filter on PK column
 	        if (pkField !== undefined) {
-	            for (var j=0; j < dataset_query.query.filter.length; j++) {
-	                let filter = dataset_query.query.filter[j];
+	            for (const filter of Query.getFilters(dataset_query.query)) {
 	                if (Array.isArray(filter) &&
 	                        filter.length === 3 &&
 	                        filter[0] === "=" &&

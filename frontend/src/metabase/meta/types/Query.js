@@ -76,7 +76,7 @@ export type Breakout =
 
 export type FilterClause = Filter;
 export type Filter =
-    AndFilter           |
+    AndFilter          |
     OrFilter           |
     NotFilter          |
     EqualFilter        |

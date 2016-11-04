@@ -13,6 +13,8 @@ import { formatValue } from "metabase/lib/formatting";
 import { metricFormSelectors } from "../selectors";
 import { reduxForm } from "redux-form";
 
+import Query from "metabase/lib/Query";
+
 import cx from "classnames";
 
 @reduxForm({
@@ -31,8 +33,9 @@ import cx from "classnames";
                 errors.revision_message = "Revision message is required";
             }
         }
-        if (!values.definition || !values.definition.filter || !values.definition.aggregation || values.definition.aggregation[0] == null) {
-            errors.definition = "Aggreagtion is required";
+        let aggregations = values.definition && Query.getAggregations(values.definition);
+        if (!aggregations || aggregations.length === 0) {
+            errors.definition = "Aggregation is required";
         }
         return errors;
     }

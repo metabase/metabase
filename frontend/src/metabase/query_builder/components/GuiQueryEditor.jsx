@@ -161,7 +161,6 @@ export default class GuiQueryEditor extends Component {
                 );
             }
 
-            // TODO: proper check for isFilterComplete(filter)
             if (Query.canAddFilter(this.props.query.query)) {
                 addFilterButton = this.renderAdd((filterList ? null : "Add filters to narrow your answer"), null, "addFilterTarget");
             }

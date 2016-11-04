@@ -25,12 +25,12 @@ export default class QueryDefinitionTooltip extends Component {
                 </div>
                 <FieldSet legend="Definition" border="border-light">
                     <div className="TooltipFilterList">
-                        { object.definition.aggregation &&
+                        { Query.getAggregations(object.definition).map(aggregation =>
                             <AggregationWidget
                                 aggregation={object.definition.aggregation}
                                 tableMetadata={tableMetadata}
                             />
-                        }
+                        )}
                         <FilterList
                             filters={Query.getFilters(object.definition)}
                             tableMetadata={tableMetadata}
