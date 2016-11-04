@@ -16,3 +16,12 @@ export const op = (clause: any): string =>
     clause[0];
 export const args = (clause: any[]): any[] =>
     clause.slice(1);
+
+export const add = <T>(items: T[], item: T): T[] =>
+    [...items, item];
+export const update = <T>(items: T[], index: number, newItem: T): T[] =>
+    [...items.slice(0, index), newItem, ...items.slice(index + 1)];
+export const remove = <T>(items: T[], index: number): T[] =>
+    [...items.slice(0, index), ...items.slice(index + 1)];
+export const clear = <T>(): T[] =>
+    [];

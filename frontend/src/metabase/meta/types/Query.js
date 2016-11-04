@@ -43,12 +43,32 @@ export type StructuredQuery = {
 
 export type AggregationClause =
     Aggregation | // deprecated
-    Array<Aggregation>
+    Array<Aggregation>;
+
 export type Aggregation =
-    ["rows"] | // deprecated
-    ["count"] |
-    ["count"|"avg"|"cum_sum"|"distinct"|"stddev"|"sum"|"min"|"max", ConcreteField] |
-    ["metric", MetricId];
+    Rows | // deprecated
+    CountAgg |
+    CountFieldAgg |
+    AvgAgg |
+    CumSumAgg |
+    DistinctAgg |
+    StdDevAgg |
+    SumAgg |
+    MinAgg |
+    MaxAgg |
+    MetricAgg;
+
+type Rows           = ["rows"]; // deprecated
+type CountAgg       = ["count"];
+type CountFieldAgg  = ["count", ConcreteField];
+type AvgAgg         = ["avg", ConcreteField];
+type CumSumAgg      = ["cum_sum", ConcreteField];
+type DistinctAgg    = ["distinct", ConcreteField];
+type StdDevAgg      = ["stddev", ConcreteField];
+type SumAgg         = ["sum", ConcreteField];
+type MinAgg         = ["min", ConcreteField];
+type MaxAgg         = ["max", ConcreteField];
+type MetricAgg      = ["metric", MetricId];
 
 export type BreakoutClause = Array<Breakout>;
 export type Breakout =
@@ -56,17 +76,46 @@ export type Breakout =
 
 export type FilterClause = Filter;
 export type Filter =
-    ["and"|"or",            Filter, Filter] |
-    ["not",                 Filter] |
-    ["="|"!=",              ConcreteField, Value] |
-    ["<"|">"|"<="|">=",     ConcreteField, OrderableValue] |
-    ["is-null"|"not-null",  ConcreteField] |
-    ["between",             ConcreteField, OrderableValue, OrderableValue] |
-    ["inside",              ConcreteField, ConcreteField, NumericLiteral, NumericLiteral, NumericLiteral, NumericLiteral] |
-    ["starts-with"|"contains"|"does-not-contain"|"ends-with",
-                            ConcreteField, StringLiteral] |
-    ["time-interval",       ConcreteField, RelativeDatetimePeriod, RelativeDatetimeUnit] |
-    ["segment",             SegmentId];
+    AndFilter           |
+    OrFilter           |
+    NotFilter          |
+    EqualFilter        |
+    NEFilter           |
+    LTFilter           |
+    LTEFilter          |
+    GTFilter           |
+    GTEFilter          |
+    NullFilter         |
+    NotNullFilter      |
+    NotNullFilter      |
+    BetweenFilter      |
+    InsideFilter       |
+    StartsWithFilter   |
+    ContainsFilter     |
+    NotContainsFilter  |
+    EndsWithFilter     |
+    TimeIntervalFilter |
+    SegmentFilter;
+
+type AndFilter          = ["and", Filter, Filter];
+type OrFilter           = ["or", Filter, Filter];
+type NotFilter          = ["not", Filter];
+type EqualFilter        = ["=", ConcreteField, Value];
+type NEFilter           = ["!=", ConcreteField, Value];
+type LTFilter           = ["<", ConcreteField, OrderableValue];
+type LTEFilter          = ["<=", ConcreteField, OrderableValue];
+type GTFilter           = [">", ConcreteField, OrderableValue];
+type GTEFilter          = [">=", ConcreteField, OrderableValue];
+type NullFilter         = ["is-null", ConcreteField];
+type NotNullFilter      = ["not-null", ConcreteField];
+type BetweenFilter      = ["between", ConcreteField, OrderableValue, OrderableValue];
+type InsideFilter       = ["inside", ConcreteField, ConcreteField, NumericLiteral, NumericLiteral, NumericLiteral, NumericLiteral];
+type StartsWithFilter   = ["starts-with", ConcreteField, StringLiteral];
+type ContainsFilter     = ["contains", ConcreteField, StringLiteral];
+type NotContainsFilter  = ["does-not-contain", ConcreteField, StringLiteral];
+type EndsWithFilter     = ["ends-with", ConcreteField, StringLiteral];
+type TimeIntervalFilter = ["time-interval", ConcreteField, RelativeDatetimePeriod, RelativeDatetimeUnit];
+type SegmentFilter      = ["segment", SegmentId];
 
 export type OrderByClause = Array<OrderBy>;
 export type OrderBy = ["asc"|"desc", Field];

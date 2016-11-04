@@ -3,7 +3,7 @@
 import type {
     StructuredQuery as SQ,
     Aggregation, AggregationClause,
-    BreakoutClause,
+    Breakout, BreakoutClause,
     Filter, FilterClause,
     LimitClause,
     OrderByClause
@@ -22,15 +22,20 @@ import Query from "metabase/lib/query";
 export const getAggregations     = (query: SQ) => A.getAggregations(query.aggregation);
 export const addAggregation      = (query: SQ, aggregation: Aggregation)                => setAggregationClause(query, A.addAggregation(query.aggregation, aggregation));
 export const updateAggregation   = (query: SQ, index: number, aggregation: Aggregation) => setAggregationClause(query, A.updateAggregation(query.aggregation, index, aggregation));
-export const removeAggregation   = (query: SQ, index: number, aggregation: Aggregation) => setAggregationClause(query, A.removeAggregation(query.aggregation, index));
-export const clearAggregations   = (query: SQ) => setAggregationClause(query, A.clearAggregations(query.aggregation));
+export const removeAggregation   = (query: SQ, index: number)                           => setAggregationClause(query, A.removeAggregation(query.aggregation, index));
+export const clearAggregations   = (query: SQ)                                          => setAggregationClause(query, A.clearAggregations(query.aggregation));
+
 export const isBareRows          = (query: SQ) => A.isBareRows(query.aggregation);
 export const hasEmptyAggregation = (query: SQ) => A.hasEmptyAggregation(query.aggregation);
 export const hasValidAggregation = (query: SQ) => A.hasValidAggregation(query.aggregation);
 
 // BREAKOUT
 
-export const clearBreakouts = (query: SQ) => setBreakoutClause(query, B.clearBreakouts(query.breakout));
+export const getBreakouts   = (query: SQ) => B.getBreakouts(query.breakout);
+export const addBreakout    = (query: SQ, breakout: Breakout)                => setBreakoutClause(query, B.addBreakout(query.breakout, breakout));
+export const updateBreakout = (query: SQ, index: number, breakout: Breakout) => setBreakoutClause(query, B.updateBreakout(query.breakout, index, breakout));
+export const removeBreakout = (query: SQ, index: number)                     => setBreakoutClause(query, B.removeBreakout(query.breakout, index));
+export const clearBreakouts = (query: SQ)                                    => setBreakoutClause(query, B.clearBreakouts(query.breakout));
 
 // FILTER
 
@@ -38,6 +43,8 @@ export const getFilters   = (query: SQ) => F.getFilters(query.filter);
 export const addFilter    = (query: SQ, filter: Filter)                 => setFilterClause(query, F.addFilter(query.filter, filter));
 export const updateFilter = (query: SQ, index: number, filter: Filter)  => setFilterClause(query, F.updateFilter(query.filter, index, filter));
 export const removeFilter = (query: SQ, index: number)                  => setFilterClause(query, F.removeFilter(query.filter, index));
+export const clearFilters = (query: SQ)                                 => setFilterClause(query, F.clearFilters(query.filter));
+
 export const canAddFilter = (query: SQ) => F.canAddFilter(query.filter);
 
 // ORDER_BY
@@ -65,6 +72,13 @@ function setAggregationClause(query: SQ, aggregationClause: ?AggregationClause):
     return setClause("aggregation", query, aggregationClause);
 }
 function setBreakoutClause(query: SQ, breakoutClause: ?BreakoutClause): SQ {
+    // if (query.order_by) {
+    //     query.order_by = query.order_by.filter(s => s[0] !== field);
+    //     if (query.order_by.length === 0) {
+    //         delete query.order_by;
+    //     }
+    // }
+    console.log("breakoutClause", breakoutClause)
     return setClause("breakout", query, breakoutClause);
 }
 function setFilterClause(query: SQ, filterClause: ?FilterClause): SQ {

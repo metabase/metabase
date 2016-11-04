@@ -198,33 +198,6 @@ var Query = {
         );
     },
 
-    getBreakouts(query) {
-        return (query && query.breakout || []).filter(b => b != null);
-    },
-
-    addBreakout(query) {
-        query.breakout.push(null);
-    },
-
-    updateBreakout(query, value, index) {
-        query.breakout = BreakoutClause.setBreakout(query.breakout, index, value);
-    },
-
-    removeBreakout(query, index) {
-        let field = query.breakout[index];
-
-        // remove the field from the breakout clause
-        query.breakout = BreakoutClause.removeBreakout(query.breakout, index);
-
-        // remove sorts that referenced the dimension that was removed
-        if (query.order_by) {
-            query.order_by = query.order_by.filter(s => s[0] !== field);
-            if (query.order_by.length === 0) {
-                delete query.order_by;
-            }
-        }
-    },
-
     isSegmentFilter(filter) {
         return Array.isArray(filter) && filter[0] === "SEGMENT";
     },

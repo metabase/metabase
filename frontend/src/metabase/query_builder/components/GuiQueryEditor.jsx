@@ -64,13 +64,13 @@ export default class GuiQueryEditor extends Component {
             this.setQuery(this.props.query);
             MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove GroupBy');
         } else {
-            Query.updateBreakout(this.props.query.query, field, index);
-            this.setQuery(this.props.query);
-
-            const isNew = index + 1 > Query.getBreakouts(this.props.query.query).length;
-            if (isNew) {
+            if (index > Query.getBreakouts(this.props.query.query) - 1) {
+                Query.addBreakout(this.props.query.query, field);
+                this.setQuery(this.props.query);
                 MetabaseAnalytics.trackEvent('QueryBuilder', 'Add GroupBy');
             } else {
+                Query.updateBreakout(this.props.query.query, index, field);
+                this.setQuery(this.props.query);
                 MetabaseAnalytics.trackEvent('QueryBuilder', 'Modify GroupBy');
             }
         }
