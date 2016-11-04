@@ -60,3 +60,12 @@
 (expect false (values-are-valid-json? ["100"]))
 (expect false (values-are-valid-json? ["true"]))
 (expect false (values-are-valid-json? ["false"]))
+
+;; Check that things that are valid emails are marked as Emails
+(expect true (values-are-valid-email? ["helper@metabase.com"]))
+(expect true (values-are-valid-email? ["helper@metabase.com", "someone@here.com", "help@nope.com"]))
+
+(expect false (values-are-valid-email? ["\"A string should not cause a Field to be marked as email\""]))
+(expect false (values-are-valid-email? [100]))
+(expect false (values-are-valid-email? ["true"]))
+(expect false (values-are-valid-email? ["false"]))
