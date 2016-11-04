@@ -23,6 +23,7 @@
 ;;; ## mark-json-field!
 
 (tu/resolve-private-vars metabase.sync-database.analyze values-are-valid-json?)
+(tu/resolve-private-vars metabase.sync-database.analyze values-are-valid-emails?)
 
 (def ^:const ^:private fake-values-seq-json
   "A sequence of values that should be marked is valid JSON.")
@@ -62,10 +63,12 @@
 (expect false (values-are-valid-json? ["false"]))
 
 ;; Check that things that are valid emails are marked as Emails
-(expect true (values-are-valid-email? ["helper@metabase.com"]))
-(expect true (values-are-valid-email? ["helper@metabase.com", "someone@here.com", "help@nope.com"]))
+(expect true (values-are-valid-emails? ["helper@metabase.com"]))
+(expect true (values-are-valid-emails? ["helper@metabase.com", "someone@here.com", "help@nope.com"]))
+(expect true (values-are-valid-emails? ["helper@metabase.com", nil, "help@nope.com"]))
 
-(expect false (values-are-valid-email? ["\"A string should not cause a Field to be marked as email\""]))
-(expect false (values-are-valid-email? [100]))
-(expect false (values-are-valid-email? ["true"]))
-(expect false (values-are-valid-email? ["false"]))
+(expect false (values-are-valid-emails? ["helper@metabase.com", "1111IsNot!An....email", "help@nope.com"]))
+(expect false (values-are-valid-emails? ["\"A string should not cause a Field to be marked as email\""]))
+(expect false (values-are-valid-emails? [100]))
+(expect false (values-are-valid-emails? ["true"]))
+(expect false (values-are-valid-emails? ["false"]))
