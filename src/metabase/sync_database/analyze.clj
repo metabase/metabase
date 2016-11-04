@@ -175,7 +175,7 @@
        (test:no-preview-display driver field)
        (test:url-special-type   driver field)
        (test:json-special-type  driver field)
-       (test:email-special-type  driver field)))
+       (test:email-special-type driver field)))
 
 (defn make-analyze-table
   "Make a generic implementation of `analyze-table`."
