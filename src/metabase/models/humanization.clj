@@ -12,10 +12,12 @@
             [metabase.models.setting :refer [defsetting], :as setting]
             [metabase.util.infer-spaces :refer [infer-spaces]]))
 
+(def ^:private ^:const acronyms
+  #{"id" "url" "ip" "uid" "uuid" "guid"})
 
 (defn- capitalize-word [word]
-  (if (= word "id")
-    "ID"
+  (if (contains? acronyms (s/lower-case word))
+    (s/upper-case word)
     (s/capitalize word)))
 
 (defn- name->human-readable-name:advanced
