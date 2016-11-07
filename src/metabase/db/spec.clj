@@ -76,3 +76,16 @@
   (merge {:subprotocol "oracle:thin"
           :subname     (str "@" host ":" port)}
          (dissoc opts :host :port)))
+
+
+(defn impala
+  "Create a database specification for a Impala database. Opts should include keys
+  for :db, :user, and :password and authentication mechanism."
+  [{:keys [host port db make-pool? connProperties]
+    :or {host "localhost", port 21050, db "", make-pool? true}
+    :as opts}]
+  (merge {:classname "com.cloudera.impala.jdbc41.Driver" ; must be in plugins directory
+          :subprotocol "impala"
+          :subname (str "//" host ":" port "/" db connProperties)
+          :make-pool? make-pool?}
+         (dissoc opts :host :port :db :connProperties)))
