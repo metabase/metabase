@@ -91,9 +91,15 @@ export const updateUrl = createThunkAction(UPDATE_URL, (card, isDirty = false, r
     }
 );
 
+export const RESET_QB = "metabase/qb/RESET_QB";
+export const resetQB = createAction(RESET_QB);
+
 export const INITIALIZE_QB = "INITIALIZE_QB";
 export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) => {
     return async (dispatch, getState) => {
+        // do this immediately to ensure old state is cleared before the user sees it
+        dispatch(resetQB())
+
         const { currentUser } = getState();
 
         let card, databases, originalCard, uiControls = {};
