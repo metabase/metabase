@@ -43,7 +43,7 @@ import {
 import * as actions from "../actions";
 import { push } from "react-router-redux";
 
-import { CardApi, DashboardApi, RevisionApi, MetabaseApi } from "metabase/services";
+import { MetabaseApi } from "metabase/services";
 
 function cellIsClickable(queryResult, rowIndex, columnIndex) {
     if (!queryResult) return false;
@@ -97,9 +97,6 @@ const mapStateToProps = (state, props) => {
         isRunning:                 state.qb.uiControls.isRunning,
         isRunnable:                getIsRunnable(state),
 
-        cardApi:                   CardApi,
-        dashboardApi:              DashboardApi,
-        revisionApi:               RevisionApi,
         loadTableAndForeignKeysFn: loadTableAndForeignKeys,
         autocompleteResultsFn:     (prefix) => autocompleteResults(state.qb.card, prefix),
         cellIsClickableFn:         (rowIndex, columnIndex) => cellIsClickable(state.qb.queryResult, rowIndex, columnIndex)

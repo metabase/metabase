@@ -15,6 +15,8 @@ import QuestionSavedModal from 'metabase/components/QuestionSavedModal.jsx';
 import SaveQuestionModal from 'metabase/components/SaveQuestionModal.jsx';
 import Tooltip from "metabase/components/Tooltip.jsx";
 
+import { CardApi, RevisionApi } from "metabase/services";
+
 import MetabaseAnalytics from "metabase/lib/analytics";
 import Query from "metabase/lib/query";
 import { cancelable } from "metabase/lib/promise";
@@ -44,9 +46,6 @@ export default class QueryHeader extends Component {
         originalCard: PropTypes.object,
         isEditing: PropTypes.bool.isRequired,
         tableMetadata: PropTypes.object, // can't be required, sometimes null
-        cardApi: PropTypes.object.isRequired,
-        dashboardApi: PropTypes.object.isRequired,
-        revisionApi: PropTypes.object.isRequired,
         onSetCardAttribute: PropTypes.func.isRequired,
         reloadCardFn: PropTypes.func.isRequired,
         setQueryModeFn: PropTypes.func.isRequired,
@@ -84,7 +83,8 @@ export default class QueryHeader extends Component {
             Query.cleanQuery(card.dataset_query.query);
         }
 
-        this.requesetPromise = cancelable(this.props.cardApi.create(card));
+        // TODO: reduxify
+        this.requesetPromise = cancelable(CardApi.create(card));
         return this.requesetPromise.then(newCard => {
             this.props.notifyCardCreatedFn(newCard);
 
@@ -108,7 +108,8 @@ export default class QueryHeader extends Component {
             Query.cleanQuery(card.dataset_query.query);
         }
 
-        this.requesetPromise = cancelable(this.props.cardApi.update(card));
+        // TODO: reduxify
+        this.requesetPromise = cancelable(CardApi.update(card));
         return this.requesetPromise.then(updatedCard => {
             if (this.props.fromUrl) {
                 this.onGoBack();
@@ -137,7 +138,8 @@ export default class QueryHeader extends Component {
     }
 
     async onDelete() {
-        await this.props.cardApi.delete({ 'cardId': this.props.card.id });
+        // TODO: reduxify
+        await CardApi.delete({ 'cardId': this.props.card.id });
         this.onGoBack();
         MetabaseAnalytics.trackEvent("QueryBuilder", "Delete");
     }
@@ -155,12 +157,14 @@ export default class QueryHeader extends Component {
     }
 
     async onFetchRevisions({ entity, id }) {
-        var revisions = await this.props.revisionApi.list({ entity, id });
+        // TODO: reduxify
+        var revisions = await RevisionApi.list({ entity, id });
         this.setState({ revisions });
     }
 
     onRevertToRevision({ entity, id, revision_id }) {
-        return this.props.revisionApi.revert({ entity, id, revision_id });
+        // TODO: reduxify
+        return RevisionApi.revert({ entity, id, revision_id });
     }
 
     onRevertedRevision() {
@@ -392,7 +396,6 @@ export default class QueryHeader extends Component {
                 <Modal isOpen={this.state.modal === "add-to-dashboard"} onClose={this.onCloseModal}>
                     <AddToDashSelectDashModal
                         card={this.props.card}
-                        dashboardApi={this.props.dashboardApi}
                         closeFn={this.onCloseModal}
                         onChangeLocation={this.props.onChangeLocation}
                     />
