@@ -4,6 +4,7 @@
         "node": true
     },
     "globals": {
+        "d": true,
         "driver": true,
         "server": true
     }

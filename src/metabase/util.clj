@@ -444,6 +444,7 @@
   "Return the index of the first item in COLL where `(pred item)` is logically `true`.
 
      (first-index-satisfying keyword? ['a 'b :c 3 \"e\"]) -> 2"
+  {:style/indent 1}
   [pred coll]
   (loop [i 0, [item & more] coll]
     (cond

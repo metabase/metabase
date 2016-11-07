@@ -237,7 +237,7 @@ const OPERATORS = {
     },
     "INSIDE": {
         validArgumentsFilters: [longitudeFieldSelectArgument, numberArgument, numberArgument, numberArgument, numberArgument],
-        placeholders: ["Select longitude field", "Enter upper latitude", "Enter left longitude", "Enter lower latitude", "Enter right latitude"]
+        placeholders: ["Select longitude field", "Enter upper latitude", "Enter left longitude", "Enter lower latitude", "Enter right longitude"]
     },
     "BETWEEN": {
         validArgumentsFilters: [comparableArgument, comparableArgument]

@@ -3,6 +3,8 @@ import path from "path";
 
 import { By, until } from "selenium-webdriver";
 
+import { Driver } from "webchauffeur";
+
 const DEFAULT_TIMEOUT = 50000;
 
 const delay = (timeout = 0) => new Promise((resolve) => setTimeout(resolve, timeout));
@@ -189,6 +191,7 @@ export const describeE2E = (name, options, describeCallback) => {
             ]);
 
             global.driver = webdriver.driver;
+            global.d = new Driver(webdriver.driver);
             global.server = server;
 
             await driver.get(`${server.host}/`);

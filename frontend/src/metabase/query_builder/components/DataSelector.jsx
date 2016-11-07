@@ -245,7 +245,7 @@ export default class DataSelector extends Component {
         const schema = this.state.selectedSchema;
 
         const hasMultipleDatabases = this.props.databases.length > 1;
-        const hasMultipleSchemas = schema && schema.database && _.chain(schema.database.tables).pluck("schema").uniq().value().length > 1;
+        const hasMultipleSchemas = schema && schema.database && _.uniq(schema.database.tables, (t) => t.schema).length > 1;
         const hasSegments = !!this.props.segments;
         const hasMultipleSources = hasMultipleDatabases || hasMultipleSchemas || hasSegments;
 

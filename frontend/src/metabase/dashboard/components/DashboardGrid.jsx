@@ -51,6 +51,9 @@ export default class DashboardGrid extends Component {
         markNewCardSeen: PropTypes.func.isRequired,
         fetchCardData: PropTypes.func.isRequired,
 
+        onUpdateDashCardVisualizationSettings: PropTypes.func.isRequired,
+        onReplaceAllDashCardVisualizationSettings: PropTypes.func.isRequired,
+
         onChangeLocation: PropTypes.func.isRequired
     };
 
@@ -191,21 +194,6 @@ export default class DashboardGrid extends Component {
         this.setState({ addSeriesModalDashCard: dc });
     }
 
-    onUpdateVisualizationSetting(dc, key, value) {
-        this.props.setDashCardVisualizationSetting({
-            id: dc.id,
-            key: key,
-            value: value
-        });
-    }
-
-    onUpdateVisualizationSettings(dc, settings) {
-        this.props.setDashCardVisualizationSettings({
-            id: dc.id,
-            settings: settings
-        });
-    }
-
     renderDashCard(dc, isMobile) {
         return (
             <DashCard
@@ -221,8 +209,8 @@ export default class DashboardGrid extends Component {
                 isMobile={isMobile}
                 onRemove={this.onDashCardRemove.bind(this, dc)}
                 onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
-                onUpdateVisualizationSetting={this.onUpdateVisualizationSetting.bind(this, dc)}
-                onUpdateVisualizationSettings={this.onUpdateVisualizationSettings.bind(this, dc)}
+                onUpdateVisualizationSettings={this.props.onUpdateDashCardVisualizationSettings.bind(this, dc.id)}
+                onReplaceAllVisualizationSettings={this.props.onReplaceAllDashCardVisualizationSettings.bind(this, dc.id)}
             />
         )
     }

@@ -72,7 +72,7 @@ export default class Visualization extends Component {
     static defaultProps = {
         isDashboard: false,
         isEditing: false,
-        onUpdateVisualizationSetting: (...args) => console.warn("onUpdateVisualizationSetting", args)
+        onUpdateVisualizationSettings: (...args) => console.warn("onUpdateVisualizationSettings", args)
     };
 
     componentWillMount() {
