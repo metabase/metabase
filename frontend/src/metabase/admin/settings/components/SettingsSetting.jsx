@@ -3,9 +3,7 @@ import React, { Component, PropTypes } from "react";
 import Input from "metabase/components/Input.jsx";
 import Select from "metabase/components/Select.jsx";
 import Toggle from "metabase/components/Toggle.jsx";
-
-import _ from "underscore";
-import cx from "classnames";
+import Radio from "metabase/components/Radio.jsx";
 
 export default class SettingsSetting extends Component {
     static propTypes = {
@@ -31,15 +29,13 @@ export default class SettingsSetting extends Component {
     }
 
     renderRadioInput(setting) {
-        var options = _.map(setting.options, (name, value) => {
-            var classes = cx("h3", "text-bold", "text-brand-hover", "no-decoration",  { "text-brand": setting.value === value });
-            return (
-                <li className="mr3" key={value}>
-                    <a className={classes} href="#" onClick={this.props.updateSetting.bind(null, setting, value)}>{name}</a>
-                </li>
-            );
-        });
-        return <ul className="flex text-grey-4">{options}</ul>
+        return (
+            <Radio
+                value={setting.value}
+                onChange={(value) => this.props.updateSetting(setting, value)}
+                options={setting.options}
+            />
+        );
     }
 
     renderSelectInput(setting) {

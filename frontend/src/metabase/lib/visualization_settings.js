@@ -21,6 +21,7 @@ import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 
 import ChartSettingInput from "metabase/visualizations/components/settings/ChartSettingInput.jsx";
 import ChartSettingInputNumeric from "metabase/visualizations/components/settings/ChartSettingInputNumeric.jsx";
+import ChartSettingRadio from "metabase/visualizations/components/settings/ChartSettingRadio.jsx";
 import ChartSettingSelect from "metabase/visualizations/components/settings/ChartSettingSelect.jsx";
 import ChartSettingToggle from "metabase/visualizations/components/settings/ChartSettingToggle.jsx";
 import ChartSettingFieldPicker from "metabase/visualizations/components/settings/ChartSettingFieldPicker.jsx";
@@ -229,13 +230,13 @@ const SETTINGS = {
     },
     "stackable.stack_type": {
         section: "Display",
-        title: "Stacked?",
-        widget: ChartSettingSelect,
+        title: "Stacking",
+        widget: ChartSettingRadio,
         getProps: (series, vizSettings) => ({
             options: [
-                { name: "No", value: null },
-                { name: "Stacked", value: "stacked" },
-                { name: "Stacked - 100%", value: "normalized" }
+                { name: "Don't stack", value: null },
+                { name: "Stack", value: "stacked" },
+                { name: "Stack - 100%", value: "normalized" }
             ]
         }),
         getDefault: (series, vizSettings) =>

@@ -3,7 +3,7 @@ import React, { Component, PropTypes } from "react";
 import "./SortableItemList.css";
 
 import Icon from "metabase/components/Icon.jsx";
-import RadioSelect from 'metabase/components/RadioSelect.jsx';
+import Radio from 'metabase/components/Radio.jsx';
 
 export default class SortableItemList extends Component {
     constructor(props, context) {
@@ -37,10 +37,13 @@ export default class SortableItemList extends Component {
             <div className="SortableItemList">
                 <div className="flex align-center px2 pb3 border-bottom">
                     <h5 className="text-bold text-uppercase text-grey-3 ml2 mr2">Sort by</h5>
-                    <RadioSelect
+                    <Radio
                         value={this.state.sort}
                         options={["Last Modified", /*"Most Popular",*/  "Alphabetical Order"]}
                         onChange={(sort) => this.setState({ sort })}
+                        optionNameFn={o => o}
+                        optionValueFn={o => o}
+                        optionKeyFn={o => o}
                     />
                 </div>
 
