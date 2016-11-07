@@ -487,14 +487,14 @@
         display: none;
     }
     .DashCard .Card {
-      border: none !important;
-      box-shadow: none !important;
+      border: none;
+      box-shadow: none;
     }
     /* improve label contrast */
     .dc-chart .axis .tick text,
     .dc-chart .x-axis-label,
     .dc-chart .y-axis-label {
-      fill: #222222 !important;
+      fill: #222222;
     }
 }
 
