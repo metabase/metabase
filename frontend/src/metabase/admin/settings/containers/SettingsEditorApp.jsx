@@ -11,7 +11,6 @@ import SettingsSlackForm from "../components/SettingsSlackForm.jsx";
 import SettingsSetupList from "../components/SettingsSetupList.jsx";
 import SettingsUpdatesForm from "../components/SettingsUpdatesForm.jsx";
 import SettingsSingleSignOnForm from "../components/SettingsSingleSignOnForm.jsx";
-import SettingsCustomMaps from "../components/SettingsCustomMaps.jsx";
 
 import _ from "underscore";
 import cx from 'classnames';
@@ -42,13 +41,12 @@ const mapDispatchToProps = {
 export default class SettingsEditorApp extends Component {
     constructor(props, context) {
         super(props, context);
-        this.handleChangeEvent = this.handleChangeEvent.bind(this);
         this.updateSetting = this.updateSetting.bind(this);
     }
 
     static propTypes = {
         sections: PropTypes.array.isRequired,
-        activeSection: PropTypes.object.isRequired,
+        activeSection: PropTypes.object,
         updateSetting: PropTypes.func.isRequired,
         updateEmailSettings: PropTypes.func.isRequired,
         updateSlackSettings: PropTypes.func.isRequired,
@@ -71,10 +69,6 @@ export default class SettingsEditorApp extends Component {
             this.refs.layout.setSaveError(error.data);
             MetabaseAnalytics.trackEvent("General Settings", setting.display_name, "error");
         });
-    }
-
-    handleChangeEvent(setting, event) {
-        this.updateSetting(setting, event.target.value);
     }
 
     renderSettingsPane() {
@@ -111,7 +105,6 @@ export default class SettingsEditorApp extends Component {
                     settings={this.props.settings}
                     elements={section.settings}
                     updateSetting={this.updateSetting}
-                    handleChangeEvent={this.handleChangeEvent}
                 />
             );
         } else if (section.name === "Single Sign-On") {
@@ -121,20 +114,19 @@ export default class SettingsEditorApp extends Component {
                     updateSetting={this.updateSetting}
                 />
             );
-        } else if (section.name === "Custom Maps") {
-            return (
-                <SettingsCustomMaps
-                    elements={section.settings}
-                    reloadSettings={this.props.reloadSettings}
-                />
-            );
         } else {
-            let settings = section.settings.map((setting, index) => {
-                return <SettingsSetting key={setting.key} setting={setting} updateSetting={this.updateSetting} handleChangeEvent={this.handleChangeEvent} autoFocus={index === 0}/>
-            });
-
             return (
-                <ul>{settings}</ul>
+                <ul>
+                    {section.settings.map((setting, index) =>
+                        <SettingsSetting
+                            key={setting.key}
+                            setting={setting}
+                            updateSetting={this.updateSetting.bind(this, setting)}
+                            reloadSettings={this.props.reloadSettings}
+                            autoFocus={index === 0}
+                        />
+                    )}
+                </ul>
             );
         }
     }
