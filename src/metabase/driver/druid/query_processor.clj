@@ -46,10 +46,12 @@
 (extend-protocol IRValue
   nil                   (->rvalue [_] nil)
   Object                (->rvalue [this] this)
-  AgFieldRef            (->rvalue [_] (let [ag-type (or (get-in *query* [:aggregation :aggregation-type])
-                                                        (throw (Exception. "Unknown aggregation type!")))]
-                                        (if (= ag-type :distinct) :distinct___count
-                                            ag-type)))
+  AgFieldRef            (->rvalue [{index :index}] (let [ag      (nth (:aggregation *query*) index)
+                                                         ag-type (or (:aggregation-type ag)
+                                                                     (throw (Exception. "Unknown aggregation type!")))]
+                                                     (if (= ag-type :distinct)
+                                                       :distinct___count
+                                                       ag-type)))
   Field                 (->rvalue [this] (:field-name this))
   DateTimeField         (->rvalue [this] (->rvalue (:field this)))
   Value                 (->rvalue [this] (:value this))
@@ -142,32 +144,40 @@
   ([field output-name] (ag:filtered (filter:not (filter:nil? field))
                                     (ag:count output-name))))
 
-(defn- handle-aggregation [query-type {{ag-type :aggregation-type, ag-field :field} :aggregation} druid-query]
+(defn- handle-aggregation [query-type {ag-type :aggregation-type, ag-field :field} druid-query]
   (when (isa? query-type ::ag-query)
-    (merge druid-query
-           (let [ag-type (when-not (= ag-type :rows) ag-type)]
-             (match [ag-type ag-field]
-               ;; For 'distinct values' queries (queries with a breakout by no aggregation) just aggregate by count, but name it :___count so it gets discarded automatically
-               [nil     nil] {:aggregations [(ag:count :___count)]}
+    (merge-with concat
+      druid-query
+      (let [ag-type (when-not (= ag-type :rows) ag-type)]
+        (match [ag-type ag-field]
+          ;; For 'distinct values' queries (queries with a breakout by no aggregation) just aggregate by count, but name it :___count so it gets discarded automatically
+          [nil     nil] {:aggregations [(ag:count :___count)]}
 
-               [:count  nil] {:aggregations [(ag:count :count)]}
+          [:count  nil] {:aggregations [(ag:count :count)]}
 
-               [:count    _] {:aggregations [(ag:count ag-field :count)]}
+          [:count    _] {:aggregations [(ag:count ag-field :count)]}
 
-               [:avg      _] {:aggregations     [(ag:count ag-field :___count)
-                                                 (ag:doubleSum ag-field :___sum)]
-                              :postAggregations [{:type   :arithmetic
-                                                  :name   :avg
-                                                  :fn     :/
-                                                  :fields [{:type :fieldAccess, :fieldName :___sum}
-                                                           {:type :fieldAccess, :fieldName :___count}]}]}
+          [:avg      _] {:aggregations     [(ag:count ag-field :___count)
+                                            (ag:doubleSum ag-field :___sum)]
+                         :postAggregations [{:type   :arithmetic
+                                             :name   :avg
+                                             :fn     :/
+                                             :fields [{:type :fieldAccess, :fieldName :___sum}
+                                                      {:type :fieldAccess, :fieldName :___count}]}]}
 
-               [:distinct _] {:aggregations [{:type       :cardinality
-                                              :name       :distinct___count
-                                              :fieldNames [(->rvalue ag-field)]}]}
-               [:sum      _] {:aggregations [(ag:doubleSum ag-field :sum)]}
-               [:min      _] {:aggregations [(ag:doubleMin ag-field)]}
-               [:max      _] {:aggregations [(ag:doubleMax ag-field)]})))))
+          [:distinct _] {:aggregations [{:type       :cardinality
+                                         :name       :distinct___count
+                                         :fieldNames [(->rvalue ag-field)]}]}
+          [:sum      _] {:aggregations [(ag:doubleSum ag-field :sum)]}
+          [:min      _] {:aggregations [(ag:doubleMin ag-field)]}
+          [:max      _] {:aggregations [(ag:doubleMax ag-field)]})))))
+
+(defn- handle-aggregations [query-type {aggregations :aggregation} druid-query]
+  (loop [[ag & more] aggregations, query druid-query]
+    (let [query (handle-aggregation query-type ag query)]
+      (if-not (seq more)
+        query
+        (recur more query)))))
 
 
 ;;; ### handle-breakout
@@ -427,7 +437,8 @@
 (defmethod handle-order-by ::query [_ _ _]
   (log/warn (u/format-color 'red "Sorting with Druid is only allowed in queries that have one or more breakout columns. Ignoring :order-by clause.")))
 
-(defmethod handle-order-by ::topN [_ {{ag-type :aggregation-type} :aggregation, [breakout-field] :breakout, [{field :field, direction :direction}] :order-by} druid-query]
+
+(defmethod handle-order-by ::topN [_ {[{ag-type :aggregation-type}] :aggregation, [breakout-field] :breakout, [{field :field, direction :direction}] :order-by} druid-query]
   (let [field             (->rvalue field)
         breakout-field    (->rvalue breakout-field)
         sort-by-breakout? (= field breakout-field)
@@ -443,7 +454,7 @@
                                                      {:dimension (->rvalue field)
                                                       :direction direction}))))
 
-(defmethod handle-order-by ::grouped-timeseries [_ {{ag-type :aggregation-type} :aggregation, [breakout-field] :breakout, [{field :field, direction :direction}] :order-by} druid-query]
+(defmethod handle-order-by ::grouped-timeseries [_ {[breakout-field] :breakout, [{field :field, direction :direction}] :order-by} druid-query]
   (let [field             (->rvalue field)
         breakout-field    (->rvalue breakout-field)
         sort-by-breakout? (= field breakout-field)]
@@ -515,7 +526,7 @@
 
 (defn- druid-query-type
   "What type of Druid query type should we perform?"
-  [{breakout-fields :breakout, {ag-type :aggregation-type} :aggregation, limit :limit}]
+  [{breakout-fields :breakout, [{ag-type :aggregation-type}] :aggregation, limit :limit}]
   (let [breakouts (condp = (count breakout-fields)
                     0 :none
                     1 :one
@@ -536,7 +547,7 @@
   {:pre [(map? query)]}
   (let [query-type (druid-query-type query)]
     (loop [druid-query (query-type->default-query query-type), [f & more] [handle-source-table
-                                                                           handle-aggregation
+                                                                           handle-aggregations
                                                                            handle-breakout
                                                                            handle-filter
                                                                            handle-order-by

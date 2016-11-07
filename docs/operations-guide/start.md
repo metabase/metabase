@@ -96,7 +96,7 @@ You can see these database files from the terminal:
 
 You should see the following files:
 
-    metabase.db.h2.db
+    metabase.db.h2.db  # Or metabase.db.mv.db depending on when you first started using Metabase.
     metabase.db.trace.db
 
 If for any reason you want to use an H2 database file in a separate location from where you launch Metabase you can do so using an environment variable.  For example:
@@ -107,7 +107,8 @@ If for any reason you want to use an H2 database file in a separate location fro
 
 
 #### [Postgres](http://www.postgresql.org/)
-For production installations of Metabase we recommend that users replace the H2 database with a more robust option such as Postgres.  This offers a greater degree of performance and reliability when Metabase is running with many users.
+
+**For production installations of Metabase we recommend that users replace the H2 database with a more robust option such as Postgres.** This offers a greater degree of performance and reliability when Metabase is running with many users.
 
 You can change the application database to use Postgres using a few simple environment variables. For example:
 
@@ -206,7 +207,7 @@ If you are using Metabase in a production environment or simply want to make sur
 Metabase uses a single SQL database for all of its runtime application data, so all you need to do is backup that database and you're good to go.  From a database back-up you can restore any Metabase installation.
 
 ### H2 Embedded Database (default)
-If you launched Metabase on a laptop or PC the application will create an embedded H2 database in the directory it is being run in.  Navigate to the directory where you started Metabase from and find the file named `metabase.db.h2.db`.  Simply copy that file somewhere safe and you are all backed up!
+If you launched Metabase on a laptop or PC the application will create an embedded H2 database in the directory it is being run in.  Navigate to the directory where you started Metabase from and find the file named `metabase.db.h2.db` or `metabase.db.mv.db` (you will see one of the two depending on when you first started using Metabase).  Simply copy that file somewhere safe and you are all backed up!
 
 NOTE: If your Metabase is currently running it's best to shut down the Metabase process before making a backup copy of the file.  Then, restart the application.
 

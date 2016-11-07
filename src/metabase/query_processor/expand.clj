@@ -156,15 +156,20 @@
    (log/warn "The syntax for aggregate fields has changed in MBQL '98. Instead of `[:aggregation 0]`, please use `[:aggregate-field 0]` instead.")
    (aggregate-field index))
 
-  ;; Handle :aggregation top-level clauses
-  ([query ag :- (s/maybe (s/pred map?))]
-   (if-not ag
-     query
-     (let [ag ((if (:field ag)
-                  i/map->AggregationWithField
-                  i/map->AggregationWithoutField) (update ag :aggregation-type normalize-token))]
-       (s/validate i/Aggregation ag)
-       (assoc query :aggregation ag)))))
+  ;; Handle :aggregation top-level clauses. This is either a single map (single aggregation) or a vector of maps (multiple aggregations)
+  ([query ag-or-ags :- (s/maybe (s/cond-pre su/Map [su/Map]))]
+   (cond
+     (map? ag-or-ags)  (recur query [ag-or-ags])
+     (empty? ag-or-ags) query
+     :else              (assoc query :aggregation (vec (for [ag ag-or-ags]
+                                                         (u/prog1 ((if (:field ag)
+                                                                     i/map->AggregationWithField
+                                                                     i/map->AggregationWithoutField) (update ag :aggregation-type normalize-token))
+                                                           (s/validate i/Aggregation <>)))))))
+
+  ;; also handle varargs for convenience
+  ([query ag & more]
+   (aggregation query (cons ag more))))
 
 
 ;;; ## breakout & fields

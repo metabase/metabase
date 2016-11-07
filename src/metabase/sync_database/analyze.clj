@@ -123,8 +123,8 @@
   "Mark FIELD as `:json` if it's textual, doesn't already have a special type, the majority of it's values are non-nil, and all of its non-nil values
    are valid serialized JSON dictionaries or arrays."
   [driver field field-stats]
-  (if-not (and (not (:special_type field))
-               (not (isa? (:base_type field) :type/Text)))
+  (if (or (:special_type field)
+          (not (isa? (:base_type field) :type/Text)))
     ;; this field isn't suited for this test
     field-stats
     ;; check for json values
@@ -134,6 +134,37 @@
         (log/debug (u/format-color 'green "Field '%s' looks like it contains valid JSON objects. Setting special_type to :type/JSON." (field/qualified-name field)))
         (assoc field-stats :special-type :type/JSON, :preview-display false)))))
 
+(defn- values-are-valid-emails?
+  "`true` if at every item in VALUES is `nil` or a valid email, and at least one of those is non-nil."
+  [values]
+  (try
+    (loop [at-least-one-non-nil-value? false, [val & more] values]
+      (cond
+        (and (not val)
+             (not (seq more))) at-least-one-non-nil-value?
+        (s/blank? val)         (recur at-least-one-non-nil-value? more)
+        ;; If val is non-nil, check that it's a JSON dictionary or array. We don't want to mark Fields containing other
+        ;; types of valid JSON values as :json (e.g. a string representation of a number or boolean)
+        :else                  (do (assert (u/is-email? val))
+                                   (recur true more))))
+    (catch Throwable _
+      false)))
+
+(defn- test:email-special-type
+  "Mark FIELD as `:email` if it's textual, doesn't already have a special type, the majority of it's values are non-nil, and all of its non-nil values
+   are valid emails."
+  [driver field field-stats]
+  (if (or (:special_type field)
+          (not (isa? (:base_type field) :type/Text)))
+    ;; this field isn't suited for this test
+    field-stats
+    ;; check for emails
+    (if-not (values-are-valid-emails? (take driver/max-sync-lazy-seq-results (driver/field-values-lazy-seq driver field)))
+      field-stats
+      (do
+        (log/debug (u/format-color 'green "Field '%s' looks like it contains valid email addresses. Setting special_type to :type/Email." (field/qualified-name field)))
+        (assoc field-stats :special-type :type/Email, :preview-display true)))))
+
 (defn- test:new-field
   "Do the various tests that should only be done for a new `Field`.
    We only run most of the field analysis work when the field is NEW in order to favor performance of the sync process."
@@ -141,7 +172,8 @@
   (->> field-stats
        (test:no-preview-display driver field)
        (test:url-special-type   driver field)
-       (test:json-special-type  driver field)))
+       (test:json-special-type  driver field)
+       (test:email-special-type driver field)))
 
 (defn make-analyze-table
   "Make a generic implementation of `analyze-table`."

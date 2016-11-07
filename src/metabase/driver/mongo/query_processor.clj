@@ -91,8 +91,8 @@
     (str \$ (field->name this ".")))
 
   AgFieldRef
-  (->lvalue [_]
-    (let [{:keys [aggregation-type]} (:aggregation (:query *query*))]
+  (->lvalue [{:keys [index]}]
+    (let [{:keys [aggregation-type]} (nth (:aggregation (:query *query*)) index)]
       (ag-type->field-name aggregation-type)))
 
   DateTimeField
@@ -245,6 +245,7 @@
 ;;; ### aggregation
 
 (defn- aggregation->rvalue [{:keys [aggregation-type field]}]
+  {:pre [(keyword? aggregation-type)]}
   (if-not field
     (case aggregation-type
       :count {$sum 1})
@@ -258,35 +259,34 @@
       :min      {$min (->rvalue field)}
       :max      {$max (->rvalue field)})))
 
-(defn- handle-breakout+aggregation [{breakout-fields :breakout, {ag-type :aggregation-type, ag-field :field, :as aggregation} :aggregation} pipeline]
-  (let [aggregation? ag-type
-        breakout?    (seq breakout-fields)]
-    (when (or aggregation? breakout?)
-      (let [ag-field-name (ag-type->field-name ag-type)]
-        (filter identity
-                [ ;; create a totally sweet made-up column called __group to store the fields we'd like to group by
-                 (when breakout?
-                   {$project (merge
-                              {"_id"      "$_id"
-                               "___group" (into {} (for [field breakout-fields]
-                                                     {(->lvalue field) (->rvalue field)}))}
-                              (when ag-field
-                                {(->lvalue ag-field) (->rvalue ag-field)}))})
-                 ;; Now project onto the __group and the aggregation rvalue
-                 {$group (merge {"_id" (when breakout?
-                                         "$___group")}
-                                (when aggregation
-                                  {ag-field-name (aggregation->rvalue aggregation)}))}
-                 ;; Sort by _id (___group)
-                 {$sort {"_id" 1}}
-                 ;; now project back to the fields we expect
-                 {$project (merge {"_id" false}
-                                  (when aggregation?
-                                    {ag-field-name (if (= ag-type :distinct)
-                                                     {$size "$count"} ; HACK
-                                                     true)})
-                                  (into {} (for [field breakout-fields]
-                                             {(->lvalue field) (format "$_id.%s" (->lvalue field))})))}])))))
+(defn- handle-breakout+aggregation [{breakout-fields :breakout, aggregations :aggregation} pipeline]
+  (let [aggregations? (seq aggregations)
+        breakout?     (seq breakout-fields)]
+    (when (or aggregations? breakout?)
+      (filter identity
+              [ ;; create a totally sweet made-up column called __group to store the fields we'd like to group by
+               (when breakout?
+                 {$project (merge {"_id"      "$_id"
+                                   "___group" (into {} (for [field breakout-fields]
+                                                         {(->lvalue field) (->rvalue field)}))}
+                                  (into {} (for [{ag-field :field} aggregations
+                                                 :when             ag-field]
+                                             {(->lvalue ag-field) (->rvalue ag-field)})))})
+               ;; Now project onto the __group and the aggregation rvalue
+               {$group (merge {"_id" (when breakout?
+                                       "$___group")}
+                              (into {} (for [{ag-type :aggregation-type, :as aggregation} aggregations]
+                                         {(ag-type->field-name ag-type) (aggregation->rvalue aggregation)})))}
+               ;; Sort by _id (___group)
+               {$sort {"_id" 1}}
+               ;; now project back to the fields we expect
+               {$project (merge {"_id" false}
+                                (into {} (for [{ag-type :aggregation-type} aggregations]
+                                           {(ag-type->field-name ag-type) (if (= ag-type :distinct)
+                                                                            {$size "$count"} ; HACK
+                                                                            true)}))
+                                (into {} (for [field breakout-fields]
+                                           {(->lvalue field) (format "$_id.%s" (->lvalue field))})))}]))))
 
 
 ;;; ### order-by

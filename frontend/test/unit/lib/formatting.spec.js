@@ -2,6 +2,7 @@
 import { isElementOfType } from "react-addons-test-utils";
 
 import { formatNumber, formatValue, formatUrl } from 'metabase/lib/formatting';
+import ExternalLink from "metabase/components/ExternalLink.jsx";
 import { TYPE } from "metabase/lib/types";
 
 describe('formatting', () => {
@@ -63,9 +64,9 @@ describe('formatting', () => {
             expect(formatUrl("http://metabase.com/")).toEqual("http://metabase.com/")
         });
         it("should return a component for http:, https:, and mailto: links in jsx mode", () => {
-            expect(isElementOfType(formatUrl("http://metabase.com/", { jsx: true }), "a")).toEqual(true);
-            expect(isElementOfType(formatUrl("https://metabase.com/", { jsx: true }), "a")).toEqual(true);
-            expect(isElementOfType(formatUrl("mailto:tom@metabase.com", { jsx: true }), "a")).toEqual(true);
+            expect(isElementOfType(formatUrl("http://metabase.com/", { jsx: true }), ExternalLink)).toEqual(true);
+            expect(isElementOfType(formatUrl("https://metabase.com/", { jsx: true }), ExternalLink)).toEqual(true);
+            expect(isElementOfType(formatUrl("mailto:tom@metabase.com", { jsx: true }), ExternalLink)).toEqual(true);
         });
         it("should return a string for javascript:, data:, and other links in jsx mode", () => {
             expect(formatUrl("javascript:alert('pwnd')", { jsx: true })).toEqual("javascript:alert('pwnd')");
