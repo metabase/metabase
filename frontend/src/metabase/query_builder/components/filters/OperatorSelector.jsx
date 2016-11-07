@@ -1,19 +1,16 @@
 import React, { Component, PropTypes } from "react";
-
-import Icon from "metabase/components/Icon.jsx";
-
-import cx from "classnames";
-import _ from "underscore";
+import Icon from "metabase/components/Icon";
+import { titleCase } from "humanize-plus";
 
 export default class OperatorSelector extends Component {
-    constructor(props) {
-        super(props);
+    constructor() {
+        super();
 
-        // if the initial operator is "advanced" expand the list
-        let operator = _.find(props.operators, o => o.name === props.operator);
         this.state = {
-            expanded: operator && operator.advanced
+            expanded: false
         };
+
+        this.toggleExpanded = this.toggleExpanded.bind(this);
     }
 
     static propTypes = {
@@ -22,34 +19,40 @@ export default class OperatorSelector extends Component {
         onOperatorChange: PropTypes.func.isRequired
     };
 
+    toggleExpanded () {
+        this.setState({ expanded: !this.state.expanded });
+    }
+
     render() {
-        let { operator, operators } = this.props;
-        let { expanded } = this.state;
-
-        let defaultOperators = operators.filter(o => !o.advanced);
-        let expandedOperators = operators.filter(o => o.advanced);
-
-        let visibleOperators = defaultOperators;
-        if (expanded) {
-            visibleOperators = visibleOperators.concat(expandedOperators);
-        }
+        const { operator, operators, onOperatorChange } = this.props;
+        const { expanded } = this.state;
 
         return (
-            <div id="OperatorSelector" className="border-bottom p1">
-                { visibleOperators.map(o =>
-                    <li
-                        key={o.name}
-                        onClick={() => this.props.onOperatorChange(o.name)}
-                    >
-                        {o.verboseName}
-                    </li>
-                )}
-                { !expanded && expandedOperators.length > 0 ?
-                    <div className="text-grey-3 cursor-pointer" onClick={() => this.setState({ expanded: true })}>
-                        <Icon className="px1" name="chevrondown" size={14} />
-                        More Options
-                    </div>
-                : null }
+            <div>
+                <div
+                    className="flex align-center"
+                    onClick={() => this.toggleExpanded()}
+                >
+                    <h2>{titleCase(operator)}</h2>
+                    <Icon name='chevrondown' />
+                </div>
+                <ul style={{
+                    height: expanded ? 'auto' : 0,
+                    overflow: 'hidden',
+                    display: 'block',
+                }}>
+                    { operators.map(operator =>
+                        <li
+                            key={operator.name}
+                            onClick={() => {
+                                onOperatorChange(operator);
+                                this.toggleExpanded();
+                            }}
+                        >
+                            {operator.name}
+                        </li>
+                    )}
+                </ul>
             </div>
         );
     }

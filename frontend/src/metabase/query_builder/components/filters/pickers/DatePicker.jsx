@@ -1,16 +1,32 @@
 import React, { Component, PropTypes } from "react";
 
-import SpecificDatePicker from "./SpecificDatePicker.jsx";
-import RelativeDatePicker from "./RelativeDatePicker.jsx";
-import OperatorSelector from "../OperatorSelector.jsx";
+import SpecificDatePicker from "./SpecificDatePicker";
+import RelativeDatePicker from "./RelativeDatePicker";
+import OperatorSelector from "../OperatorSelector";
+import moment from "moment";
+
+import _ from "underscore";
+
+const OPERATORS = [
+    { clause: "TIME_INTERVAL", name: "Previous" },
+    { clause: "TIME_INTERVAL", name: "Next" },
+    { clause: "TIME_INTERVAL", name: "Current" },
+    { clause: "<", name: "Before" },
+    { clause: ">", name: "After" },
+    { clause: "=", name: "On" },
+    { clause: "=", name: "Between" },
+    { clause: "IS_NULL", name: "Is Empty" },
+    { clause: "NOT_NULL", name: "Not Empty" }
+];
 
 export default class DatePicker extends Component {
     constructor(props) {
         super(props);
         this.state = {
-            pane: this._detectPane(props),
+            operator: this.detectPane(props.filter) || "previous"
         };
 
+        this.changeOperator = this.changeOperator.bind(this)
     }
 
     static propTypes = {
@@ -20,51 +36,74 @@ export default class DatePicker extends Component {
         tableMetadata: PropTypes.object.isRequired
     };
 
-    _detectPane(props) {
-        if (props.filter[0] === "IS_NULL" || props.filter[0] === "NOT_NULL") {
-            return props.filter[0]
-        } else if (props.filter[0] !== "TIME_INTERVAL" && typeof props.filter[2] === "string") {
-            return "specific";
+    detectPane(filter) {
+        const [ clause, field, value, endValue ] = filter;
+
+        if(clause !== "TIME_INTERVAL") {
+            // TODO - will need to handle between
+            return OPERATORS[_.findIndex(OPERATORS, { clause })].name.toLowerCase()
         } else {
-            return "relative";
+            if(value < 0) {
+                return "previous";
+            } else if (value > 0) {
+                return "next";
+            } else {
+                return "current";
+            }
         }
     }
 
-    selectPane(pane) {
-        this.props.onFilterChange([null, this.props.filter[1]]);
-        this.setState({ pane });
+    changeOperator (operator) {
+        this.setState({ operator: operator.name.toLowerCase() })
+        this.props.onOperatorChange(operator.clause)
     }
 
     render() {
-        const { pane } = this.state;
-
-        const operators = [
-            { clause: "TIME_INTERVAL", verboseName: "Previous" },
-            { clause: "TIME_INTERVAL", verboseName: "Next" },
-            { clause: "<", verbose: "Before" }, 
-            { clause: ">", verbose: "After" }, 
-            { clause: "IS_NULL", verboseName: "Is Empty" },
-            { clause: "NOT_NULL", verboseName: "Not Empty" }
-        ];
+        const { operator } = this.state;
+        const [, , value , endVal] = this.props.filter;
 
         return (
             <div>
                 <OperatorSelector
-                    operator={pane}
-                    operators={operators}
-                    onOperatorChange={(operator) => {
-                        this.setState({ pane: operator });
-                        if (operator === "IS_NULL" || operator === "NOT_NULL") {
-                            this.props.onOperatorChange(operator);
-                        }
-                    }}
+                    operator={operator}
+                    operators={OPERATORS}
+                    onOperatorChange={operator => this.changeOperator(operator)}
                 />
-                { pane === "relative" ?
-                    <RelativeDatePicker { ...this.props }  />
-                : pane === "specific" ?
-                    <SpecificDatePicker { ...this.props } />
+                { operator === "previous" || operator ==="next" ?
+                    <RelativeDatePicker
+                        formatter={(val) => {
+                            if(operator === "previous") {
+                                return val * -1
+                            }
+                            return val
+                        }}
+                        { ...this.props}
+                    />
+                : operator === "after" || operator === "before" || operator === "on" ?
+                    <SpecificDatePicker
+                        value={value}
+                        { ...this.props }
+                    />
+                : operator === "between" ?
+                    <MultiDatePicker
+                        start={value || moment()}
+                        end={endVal || moment()}
+                        { ...this.props }
+                    />
                 : null }
             </div>
         )
     }
 }
+
+const MultiDatePicker = ({ start, end, ...rest }) =>
+    <div className="flex align-center">
+        <SpecificDatePicker
+            date={start}
+            {...rest}
+        />
+        <SpecificDatePicker
+            date={end}
+            {...rest}
+        />
+    </div>

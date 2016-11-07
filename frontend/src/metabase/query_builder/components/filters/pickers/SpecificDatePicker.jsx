@@ -1,20 +1,24 @@
 import React, { Component, PropTypes } from 'react';
 
-import Calendar from "metabase/components/Calendar.jsx";
-import Input from "metabase/components/Input.jsx";
+import Calendar from "metabase/components/Calendar";
+import Input from "metabase/components/Input";
+import Icon from "metabase/components/Icon";
+import ExpandingContent from "metabase/components/ExpandingContent";
 
 import { computeFilterTimeRange } from "metabase/lib/query_time";
 
-import _ from "underscore";
 import moment from "moment";
 
 export default class SpecificDatePicker extends Component {
-    constructor(props, context) {
-        super(props, context);
+    constructor() {
+        super();
+
         this.state = {
-            showCalendar: false
+            showCalendar: true,
+            showTime: false,
         }
-        _.bindAll(this, "onChange");
+
+        this.onChange = this.onChange.bind(this);
     }
 
     static propTypes = {
@@ -23,95 +27,68 @@ export default class SpecificDatePicker extends Component {
         onOperatorChange: PropTypes.func.isRequired
     };
 
-    toggleOperator(operator) {
-        if (this.props.filter[0] === operator) {
-            this.props.onOperatorChange("=");
-        } else {
-            this.props.onOperatorChange(operator);
-        }
-    }
-
-    onChange(start, end) {
-        let { filter } = this.props;
-        if (start && end && !moment(start).isSame(end)) {
-            this.props.onFilterChange(["BETWEEN", filter[1], start, end]);
-        } else {
-            this.props.onFilterChange(["=", filter[1], start || end]);
-        }
+    onChange(val) {
+        this.props.onFilterChange(["=", this.props.filter[1], val]);
     }
 
     render() {
-        let { filter } = this.props;
-        let [start, end] = computeFilterTimeRange(filter);
+        const { value } = this.props;
+        const { showCalendar, showTime } = this.state;
 
-        let initial;
-        if (start && end) {
-            initial = Math.abs(moment().diff(start)) < Math.abs(moment().diff(end)) ? start : end;
-        } else if (start) {
-            initial = start;
-        }
+        let start, end, startValue, endValue, singleDay;
 
-        let singleDay = start && start.isSame(end, "day");
-        if (singleDay) {
-            end = null;
-        }
+        let initial = value || moment();
 
-        let startValue, startPlaceholder, endValue, endPlaceholder;
-        if (filter[0] === "<") {
-            startPlaceholder = "∞";
-            endValue = filter[2];
-        } else if (filter[0] === ">") {
-            startValue = filter[2];
-            endPlaceholder = "∞";
-        } else if (filter[0] === "BETWEEN") {
-            startValue = filter[2];
-            endValue = filter[3];
-        } else {
-            startValue = filter[2];
-            endValue = filter[2];
-        }
-
-        const { showCalendar } = this.state;
         return (
             <div className="px1">
                 <Input
                     className="input full"
-                    value={startValue && moment(startValue).format("MM/DD/YYYY")}
-                    placeholder={startPlaceholder}
-                    onBlurChange={(e) =>
-                        this.onChange(moment(e.target.value).format("YYYY-MM-DD"), singleDay ? null : endValue)
+                    value={moment(value).format("MM-DD-YYYY")}
+                    onBlurChange={({ target: { value } }) =>
+                        this.onChange(moment(value).format("YYYY-MM-DD"))
                     }
                     onClick={ () => this.setState({ showCalendar: true }) }
                 />
-                <ExpandingContent
-                    open={showCalendar}
-                >
+                <ExpandingContent open={showCalendar}>
                     <Calendar
                         initial={initial}
                         selected={start}
-                        selectedEnd={end}
                         onChange={this.onChange}
-                        onBeforeClick={singleDay ? this.toggleOperator.bind(this, "<") : undefined}
-                        onAfterClick={singleDay ? this.toggleOperator.bind(this, ">") : undefined}
                     />
                 </ExpandingContent>
+
+                <div>
+                    { !showTime && (
+                        <div onClick={() => this.setState({ showTime: !showTime }) }>
+                            <Icon name='clock' />
+                            Add a time
+                        </div>
+                    )}
+                    { showTime && (
+                        <HoursMinutes
+                            hours={this.state.hours}
+                            minuts={this.state.minutes}
+                        />
+                    )}
+                </div>
             </div>
         )
     }
 }
 
-const SpecificDateSelector = (props) =>
+const HoursMinutes = ({ hours, minutes, onChange, clear }) =>
     <div>
-    </div>
-
-const ExpandingContent = ({ children, open }) =>
-    <div
-        style={{
-            maxHeight: open ? 'none' : 0,
-            overflow: 'hidden',
-            transition: 'max-height 0.3s ease'
-        }}
-    >
-        { children }
+        <Input
+            className="borderless"
+            defaultValue={12}
+            placeholder="12"
+            value={hours}
+        />
+        <Input
+            className="borderless"
+            defaultValue={30}
+            placeholder="20"
+            value={minutes}
+        />
     </div>
 

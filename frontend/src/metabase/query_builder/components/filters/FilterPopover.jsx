@@ -209,7 +209,9 @@ export default class FilterPopover extends Component {
             let { table, field } = Query.getFieldTarget(filter[1], this.props.tableMetadata);
 
             return (
-                <div style={{width: 300}}>
+                <div style={{
+                    minWidth: 300
+                }}>
                     <div className="FilterPopover-header text-grey-3 p1 mt1 flex align-center">
                         <a className="cursor-pointer flex align-center" onClick={this.clearField}>
                             <Icon name="chevronleft" size={18}/>

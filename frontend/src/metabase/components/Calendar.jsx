@@ -1,33 +1,29 @@
 import React, { Component, PropTypes } from 'react';
+import { findDOMNode } from 'react-dom';
 
 import "./Calendar.css";
 
 import cx from 'classnames';
-import moment from "moment";
+import moment from 'moment';
 
-import Icon from 'metabase/components/Icon.jsx';
-import Tooltip from 'metabase/components/Tooltip.jsx';
-
-const MODES = ['month', 'year', 'decade'];
+import Icon from 'metabase/components/Icon';
+import Tooltip from 'metabase/components/Tooltip';
 
 export default class Calendar extends Component {
     constructor(props) {
         super(props);
 
         this.state = {
-            current: moment(props.initial || undefined),
-            currentMode: MODES[0]
+            current: moment(props.initial || undefined)
         };
 
         this.previous = this.previous.bind(this);
         this.next = this.next.bind(this);
-        this.cycleMode = this.cycleMode.bind(this);
         this.onClickDay = this.onClickDay.bind(this);
     }
 
     static propTypes = {
         selected: PropTypes.object,
-        selectedEnd: PropTypes.object,
         onChange: PropTypes.func.isRequired,
         onAfterClick: PropTypes.func,
         onBeforeClick: PropTypes.func,
@@ -62,15 +58,6 @@ export default class Calendar extends Component {
         }
     }
 
-    cycleMode() {
-        // let i = this.currentMode
-        // console.log('mode cycle y\'all')
-        // let i = ++i%this.state.modes.length;
-        // this.setState({
-        //     mode: this.modes[i]
-        // })
-    }
-
     previous() {
         let month = this.state.current;
         month.add(-1, "M");
@@ -90,7 +77,9 @@ export default class Calendar extends Component {
                     <Icon name="chevronleft" size={10} />
                 </div>
                 <span className="flex-full" />
-                <h4 className="bordered border-hover cursor-pointer rounded p1" onClick={this.cycleMode}>{this.state.current.format("MMMM YYYY")}</h4>
+                <h4 className="cursor-pointer rounded p1">
+                    {this.state.current.format("MMMM YYYY")}
+                </h4>
                 <span className="flex-full" />
                 <div className="bordered border-hover rounded p1 transition-border cursor-pointer px1" onClick={this.next}>
                     <Icon name="chevronright" size={10} />
@@ -123,7 +112,6 @@ export default class Calendar extends Component {
                     month={this.state.current}
                     onClickDay={this.onClickDay}
                     selected={this.props.selected}
-                    selectedEnd={this.props.selectedEnd}
                 />
             );
             date.add(1, "w");
@@ -132,30 +120,15 @@ export default class Calendar extends Component {
         }
 
         return (
-            <div className="relative">
-                <div className="Calendar-weeks">
-                    {weeks}
-                </div>
-                {this.props.onBeforeClick &&
-                    <div className="absolute top left z2" style={{marginTop: "-12px", marginLeft: "-12px"}}>
-                        <Tooltip tooltip={"Everything before " + this.props.selected.format("MMMM Do, YYYY")}>
-                            <a className="circle-button cursor-pointer" onClick={this.props.onBeforeClick}>«</a>
-                        </Tooltip>
-                    </div>
-                }
-                {this.props.onAfterClick &&
-                    <div className="absolute bottom right z2" style={{marginBottom: "-12px", marginRight: "-12px"}}>
-                        <Tooltip tooltip={"Everything after " + this.props.selected.format("MMMM Do, YYYY")}>
-                            <a className="circle-button cursor-pointer" onClick={this.props.onAfterClick}>»</a>
-                        </Tooltip>
-                    </div>
-                }
+            <div className="Calendar-weeks relative">
+                {weeks}
             </div>
         );
     }
     render() {
         return (
-            <div className={cx("Calendar", { "Calendar--range": this.props.selected && this.props.selectedEnd })}>
+            <div className={
+                cx("Calendar", { "Calendar--range": this.props.selected && this.props.selectedEnd })}>
                 {this.renderMonthHeader()}
                 {this.renderDayNames()}
                 {this.renderWeeks()}

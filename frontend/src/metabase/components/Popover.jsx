@@ -2,7 +2,7 @@ import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 import ReactCSSTransitionGroup from "react-addons-css-transition-group";
 
-import OnClickOutsideWrapper from "./OnClickOutsideWrapper.jsx";
+import OnClickOutsideWrapper from "./OnClickOutsideWrapper";
 import Tether from "tether";
 
 import cx from "classnames";
