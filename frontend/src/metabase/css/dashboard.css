@@ -477,17 +477,27 @@
 
 @media screen and (min-width: 1540px) {
   .Dashboard.Dashboard--fullscreen { font-size: 1.6em; }
-
 }
 
 
-/* what for the print the dashboards */
+/* what for to print the dashboards */
 @media print {
     header,
     nav {
         display: none;
     }
+    .DashCard .Card {
+      border: none !important;
+      box-shadow: none !important;
+    }
+    /* improve label contrast */
+    .dc-chart .axis .tick text,
+    .dc-chart .x-axis-label,
+    .dc-chart .y-axis-label {
+      fill: #222222 !important;
+    }
 }
+
 @media print and (orientation: portrait) {
     html {
         width: 8.5in;
@@ -499,6 +509,4 @@
     }
 }
 
-@page {
-    margin: 1cm;
-}
+@page { margin: 1cm; }
