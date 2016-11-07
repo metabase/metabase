@@ -74,6 +74,19 @@
 
 ;;; ------------------------------------------------------------ describe-table ------------------------------------------------------------
 
+;; This is the set of column ids covered by unit->ga-dimension in googleanalytics/query-processor
+(def ^:private ^:const redundant-date-fields
+  #{"ga:minute"
+    "ga:dateHour"
+    "ga:hour"
+    "ga:dayOfWeek"
+    "ga:day"
+    "ga:yearWeek"
+    "ga:week"
+    "ga:yearMonth"
+    "ga:month"
+    "ga:year"})
+
 (defn- fetch-columns
   ^Columns [^Analytics client]
   (google/execute (.list (.columns (.metadata client)) "ga")))
@@ -98,7 +111,8 @@
           column))))
 
 (defn- describe-columns [database]
-  (set (for [^Column column (columns database)]
+  (set (for [^Column column (columns database)
+             :when          (not (contains? redundant-date-fields (.getId column)))]
          {:name      (.getId column)
           :base-type (if (= (.getId column) "ga:date")
                        :type/Date
