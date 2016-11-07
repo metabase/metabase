@@ -2,7 +2,6 @@ import React, { Component, PropTypes } from "react";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseUtils from "metabase/lib/utils";
-import SettingsEmailFormElement from "./SettingsEmailFormElement.jsx";
 import SettingsSetting from "./SettingsSetting.jsx";
 
 import Icon from "metabase/components/Icon.jsx";
@@ -163,17 +162,21 @@ export default class SettingsSlackForm extends Component {
 
             if (element.key === "slack-token") {
                 return (
-                    <SettingsEmailFormElement
+                    <SettingsSetting
                         key={element.key}
-                        element={{ ...element, value, errorMessage, fireOnChange: true }}
-                        handleChangeEvent={this.handleChangeEvent.bind(this)} />
+                        setting={{ ...element, value }}
+                        updateSetting={(value) => this.handleChangeEvent(element, value)}
+                        errorMessage={errorMessage}
+                        fireOnChange
+                    />
                 );
             } else if (element.key === "metabot-enabled") {
                 return (
                     <SettingsSetting
                         key={element.key}
-                        setting={{ ...element, value, errorMessage }}
-                        updateSetting={(setting, value) => this.handleChangeEvent(setting, value)}
+                        setting={{ ...element, value }}
+                        updateSetting={(value) => this.handleChangeEvent(element, value)}
+                        errorMessage={errorMessage}
                         disabled={!this.state.formData["slack-token"]}
                     />
                 );

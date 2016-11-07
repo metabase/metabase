@@ -96,11 +96,16 @@ export default class SettingsUpdatesForm extends Component {
     }
 
     render() {
-        let { elements } = this.props;
+        let { elements, updateSetting } = this.props;
 
-        let settings = elements.map((setting, index) => {
-            return <SettingsSetting key={setting.key} setting={setting} updateSetting={this.props.updateSetting} handleChangeEvent={this.props.handleChangeEvent} autoFocus={index === 0}/>
-        });
+        let settings = elements.map((setting, index) =>
+            <SettingsSetting
+                key={setting.key}
+                setting={setting}
+                updateSetting={(value) => updateSetting(setting, value)}
+                autoFocus={index === 0}
+            />
+        );
 
         return (
             <div style={{width: "585px"}}>
