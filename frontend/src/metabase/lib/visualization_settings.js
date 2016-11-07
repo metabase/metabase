@@ -229,13 +229,13 @@ const SETTINGS = {
     },
     "stackable.stack_type": {
         section: "Display",
-        title: "Stacked",
+        title: "Stacked?",
         widget: ChartSettingSelect,
         getProps: (series, vizSettings) => ({
             options: [
-                { name: "None", value: null },
+                { name: "No", value: null },
                 { name: "Stacked", value: "stacked" },
-                { name: "Proportional", value: "normalized" }
+                { name: "Stacked - 100%", value: "normalized" }
             ]
         }),
         getDefault: (series, vizSettings) =>
