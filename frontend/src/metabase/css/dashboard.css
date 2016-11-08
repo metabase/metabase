@@ -488,6 +488,7 @@
     }
     .DashCard .Card {
       box-shadow: none;
+      border-color: #a1a1a1;
     }
     /* improve label contrast */
     .dc-chart .axis .tick text,
