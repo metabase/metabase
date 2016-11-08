@@ -487,7 +487,6 @@
         display: none;
     }
     .DashCard .Card {
-      border: none;
       box-shadow: none;
     }
     /* improve label contrast */
