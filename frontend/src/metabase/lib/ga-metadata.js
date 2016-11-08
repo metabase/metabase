@@ -763,3 +763,14 @@ export const segments = [ { id: 'gaid::-1', name: 'All Users', description: '', 
   { id: 'gaid::-104', name: 'Made a Purchase', description: 'users::condition::ga:transactions>0', is_active: true },
   { id: 'gaid::-105', name: 'Performed Site Search', description: 'users::sequence::ga:searchKeyword!~^$|^\\(not set\\)$', is_active: true } ];
 
+fields["ga:date"].grouping_options = [
+    "hour",
+    "day",
+    "week",
+    "month",
+    "year",
+    "hour-of-day",
+    "day-of-week",
+    "week-of-year",
+    "month-of-year"
+];

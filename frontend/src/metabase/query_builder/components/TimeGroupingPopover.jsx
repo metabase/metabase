@@ -5,8 +5,8 @@ import { parseFieldBucketing, formatBucketing } from "metabase/lib/query_time";
 import cx from "classnames";
 
 const BUCKETINGS = [
-    // "default",
-    // "minute",
+    "default",
+    "minute",
     "hour",
     "day",
     "week",
@@ -14,11 +14,11 @@ const BUCKETINGS = [
     "quarter",
     "year",
     null,
-    // "minute-of-hour",
+    "minute-of-hour",
     "hour-of-day",
     "day-of-week",
-    // "day-of-month",
-    // "day-of-year",
+    "day-of-month",
+    "day-of-year",
     "week-of-year",
     "month-of-year",
     "quarter-of-year",
@@ -36,17 +36,39 @@ export default class TimeGroupingPopover extends Component {
         onFieldChange: PropTypes.func.isRequired
     };
 
+    static defaultProps = {
+        groupingOptions: [
+            // "default",
+            // "minute",
+            "hour",
+            "day",
+            "week",
+            "month",
+            "quarter",
+            "year",
+            // "minute-of-hour",
+            "hour-of-day",
+            "day-of-week",
+            // "day-of-month",
+            // "day-of-year",
+            "week-of-year",
+            "month-of-year",
+            "quarter-of-year",
+        ]
+    }
+
     setField(bucketing) {
         this.props.onFieldChange(["datetime_field", this.props.value, "as", bucketing]);
     }
 
     render() {
-        let { field } = this.props;
+        const { field } = this.props;
+        const enabledOptions = new Set(this.props.groupingOptions);
         return (
-            <div className="p2" style={{width:"250px"}}>
+            <div className="px2 pt2 pb1" style={{width:"250px"}}>
                 <h3 className="List-section-header mx2">Group time by</h3>
                 <ul className="py1">
-                { BUCKETINGS.map((bucketing, bucketingIndex) =>
+                { BUCKETINGS.filter(o => o == null || enabledOptions.has(o)).map((bucketing, bucketingIndex) =>
                     bucketing == null ?
                         <hr key={bucketingIndex} style={{ "border": "none" }}/>
                     :

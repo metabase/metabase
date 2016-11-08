@@ -5377,13 +5377,13 @@ progress@^1.1.8:
   version "1.1.8"
   resolved "https://registry.yarnpkg.com/progress/-/progress-1.1.8.tgz#e260c78f6161cdd9b0e56cc3e0a85de17c7a57be"
 
-promise-loader:
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/promise-loader/-/promise-loader-1.0.0.tgz#6fc7c8529c1fdfc497bef5fe7448bb61af9546cc"
-
 promise-chain-decorator@^1.2.0:
   version "1.2.0"
   resolved "https://registry.yarnpkg.com/promise-chain-decorator/-/promise-chain-decorator-1.2.0.tgz#3ed952bd37f6351b3989468d1aff40e7d740b451"
+
+promise-loader:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/promise-loader/-/promise-loader-1.0.0.tgz#6fc7c8529c1fdfc497bef5fe7448bb61af9546cc"
 
 promise@^7.1.1:
   version "7.1.1"
@@ -7126,3 +7126,4 @@ yeast@0.1.2:
 z-index@0.0.1:
   version "0.0.1"
   resolved "https://registry.yarnpkg.com/z-index/-/z-index-0.0.1.tgz#4f3d257a36869dabd990572b70494291cb3eab8f"
+
