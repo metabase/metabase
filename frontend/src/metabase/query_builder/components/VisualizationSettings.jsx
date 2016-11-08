@@ -19,8 +19,8 @@ export default class VisualizationSettings extends React.Component {
         card: PropTypes.object.isRequired,
         result: PropTypes.object,
         setDisplayFn: PropTypes.func.isRequired,
-        onUpdateVisualizationSetting: PropTypes.func.isRequired,
-        onUpdateVisualizationSettings: PropTypes.func.isRequired
+        onUpdateVisualizationSettings: PropTypes.func.isRequired,
+        onReplaceAllVisualizationSettings: PropTypes.func.isRequired
     };
 
     setDisplay = (type) => {
@@ -85,7 +85,7 @@ export default class VisualizationSettings extends React.Component {
                     >
                         <ChartSettings
                             series={[{ card: this.props.card, data: this.props.result.data }]}
-                            onChange={this.props.onUpdateVisualizationSettings}
+                            onChange={this.props.onReplaceAllVisualizationSettings}
                         />
                     </ModalWithTrigger>
                 </div>

@@ -64,7 +64,7 @@
                         (query checkins
                                (ql/aggregation (ql/count))))
                       (assoc :type "query")
-                      (assoc-in [:query :aggregation] {:aggregation-type "count"})
+                      (assoc-in [:query :aggregation] [{:aggregation-type "count"}])
                       (assoc :constraints query-constraints))
     :started_at   true
     :finished_at  true
@@ -80,7 +80,7 @@
                         (query checkins
                                (ql/aggregation (ql/count))))
                       (assoc :type "query")
-                      (assoc-in [:query :aggregation] {:aggregation-type "count"})
+                      (assoc-in [:query :aggregation] [{:aggregation-type "count"}])
                       (assoc :constraints query-constraints))
     :started_at   true
     :finished_at  true

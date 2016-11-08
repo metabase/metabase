@@ -375,9 +375,11 @@
                          (log/error "Don't know how to alias: " this))]}
   (cond
     field (recur field) ; type/DateTime
-    index (name (let [{{{ag-type :aggregation-type} :aggregation} :query} sqlqp/*query*]
-                  (if (= ag-type :distinct) :count
-                      ag-type)))
+    index (name (let [{{aggregations :aggregation} :query} sqlqp/*query*
+                      {ag-type :aggregation-type}          (nth aggregations index)]
+                  (if (= ag-type :distinct)
+                    :count
+                    ag-type)))
     :else (str schema-name \. table-name \. field-name)))
 
 ;; We have to override the default SQL implementations of breakout and order-by because BigQuery propogates casting functions in SELECT

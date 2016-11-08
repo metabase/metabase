@@ -26,7 +26,8 @@
                       [setup :as setup]
                       [task :as task]
                       [util :as u])
-            [metabase.models.user :refer [User]]))
+            [metabase.models.user :refer [User]])
+  (:import org.eclipse.jetty.server.Server))
 
 ;;; CONFIG
 
@@ -180,7 +181,7 @@
   []
   (when @jetty-instance
     (log/info "Shutting Down Embedded Jetty Webserver")
-    (.stop ^org.eclipse.jetty.server.Server @jetty-instance)
+    (.stop ^Server @jetty-instance)
     (reset! jetty-instance nil)))
 
 
@@ -195,7 +196,7 @@
     (init!)
     ;; Ok, now block forever while Jetty does its thing
     (when (config/config-bool :mb-jetty-join)
-      (.join ^org.eclipse.jetty.server.Server @jetty-instance))
+      (.join ^Server @jetty-instance))
     (catch Throwable e
       (.printStackTrace e)
       (log/error "Metabase Initialization FAILED: " (.getMessage e))
@@ -206,7 +207,7 @@
 (defn ^:command migrate
   "Run database migrations. Valid options for DIRECTION are `up`, `force`, `down-one`, `print`, or `release-locks`."
   [direction]
-  (db/migrate! @db/db-connection-details (keyword direction)))
+  (db/migrate! (keyword direction)))
 
 (defn ^:command load-from-h2
   "Transfer data from existing H2 database to the newly created MySQL or Postgres DB specified by env vars."

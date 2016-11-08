@@ -3901,9 +3901,9 @@ lazy-cache@^1.0.3:
   version "1.0.4"
   resolved "https://registry.yarnpkg.com/lazy-cache/-/lazy-cache-1.0.4.tgz#a1d78fc3a50474cb80845d3b3b6e1da49a446e8e"
 
-leaflet@^0.7.7:
-  version "0.7.7"
-  resolved "https://registry.yarnpkg.com/leaflet/-/leaflet-0.7.7.tgz#1e352ba54e63d076451fa363c900890cb2cf75ee"
+leaflet:
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/leaflet/-/leaflet-1.0.1.tgz#5868c389b556cd85481198ff8bfe59a8de0932db"
 
 levn@^0.3.0, levn@~0.3.0:
   version "0.3.0"
@@ -5376,6 +5376,10 @@ process@^0.11.0, process@~0.11.0:
 progress@^1.1.8:
   version "1.1.8"
   resolved "https://registry.yarnpkg.com/progress/-/progress-1.1.8.tgz#e260c78f6161cdd9b0e56cc3e0a85de17c7a57be"
+
+promise-chain-decorator@^1.2.0:
+  version "1.2.0"
+  resolved "https://registry.yarnpkg.com/promise-chain-decorator/-/promise-chain-decorator-1.2.0.tgz#3ed952bd37f6351b3989468d1aff40e7d740b451"
 
 promise@^7.1.1:
   version "7.1.1"
@@ -6901,6 +6905,12 @@ watchpack@^0.2.1:
     async "^0.9.0"
     chokidar "^1.0.0"
     graceful-fs "^4.1.2"
+
+webchauffeur:
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/webchauffeur/-/webchauffeur-1.0.1.tgz#ed9d4ae28bb3a2e87d755b2d470c535e39cf30e4"
+  dependencies:
+    promise-chain-decorator "^1.2.0"
 
 webpack-core@~0.6.0:
   version "0.6.8"
