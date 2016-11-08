@@ -259,7 +259,7 @@ const EditMap = ({ map, onMapChange, originalMap, geoJson, geoJsonLoading, geoJs
                         value={map.url}
                         onChange={(e) => onMapChange({ ...map, "url": e.target.value })}
                     />
-                    <button className={cx("Button ml1", { "Button--primary" : !geoJson })} onClick={onLoadGeoJson}>{geoJson ? "Refresh" : "Load"}</button>
+                    <button className={cx("Button ml1", { "Button--primary" : !geoJson, disabled: !map.url })} onClick={onLoadGeoJson}>{geoJson ? "Refresh" : "Load"}</button>
                 </div>
             </SettingContainer>
             <div className={cx({ "disabled": !geoJson })}>

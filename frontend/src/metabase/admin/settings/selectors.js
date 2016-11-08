@@ -153,6 +153,7 @@ const SECTIONS = [
             {
                 key: "map-tile-server-url",
                 display_name: "Map tile server URL",
+                note: "Metabase uses OpenStreetMaps by default.",
                 type: "string"
             },
             {
