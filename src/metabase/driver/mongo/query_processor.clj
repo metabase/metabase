@@ -437,6 +437,32 @@
        :collection source-table-name
        :mbql?      true})))
 
+;; omf: if value 'is' a ISODate, extract the date/time string and convert it to date object
+(defn- to-date-object [value]
+  (if (and (string? value) (clojure.string/starts-with? value "ISODate"))
+    (let [reg (re-seq #"ISODate\((.*?)\)" value)
+          isodate (get (first reg) 1)]
+          (c/from-long (c/to-long isodate)))
+    value))
+
+;; omf: possibly reduce-recurse contained map objects rying to find ISODate values
+(defn recurse-map [altered-map k v]
+  (if (map? v)
+    (assoc altered-map k (reduce-kv recurse-map {} v))
+    (assoc altered-map k (to-date-object v)))
+)
+
+;; omf: parse the query collection and reduce-recurse each map object
+(defn- parse-dates [query]
+  (let [reg query]
+    (loop [f (first reg)
+           r (rest reg)
+           m []]
+      (if-not f
+        m
+        (recur (first r) (rest r) (conj m (reduce-kv recurse-map {} f))))
+    )))
+
 (defn execute-query
   "Process and run a native MongoDB query."
   [{{:keys [collection query mbql?]} :native, database :database}]
@@ -444,7 +470,7 @@
          (string? collection)
          (map? database)]}
   (let [query   (if (string? query)
-                  (json/parse-string query keyword)
+                  (parse-dates (json/parse-string query keyword))
                   query)
         results (mc/aggregate *mongo-connection* collection query
                               :allow-disk-use true)
@@ -461,3 +487,4 @@
      :rows      (for [row results]
                   (mapv row columns))
      :annotate? mbql?}))
+
