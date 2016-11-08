@@ -3,6 +3,7 @@ import React, { Component } from "react";
 class ExpandingContent extends Component {
     constructor () {
         super();
+        this.state = { open: false };
     }
     render () {
         const { children, open } = this.props;

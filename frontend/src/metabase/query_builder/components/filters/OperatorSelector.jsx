@@ -1,14 +1,13 @@
 import React, { Component, PropTypes } from "react";
+import ReactCSSTransitionGroup from "react-addons-css-transition-group";
+
 import Icon from "metabase/components/Icon";
 import { titleCase } from "humanize-plus";
 
 export default class OperatorSelector extends Component {
     constructor() {
         super();
-
-        this.state = {
-            expanded: false
-        };
+        this.state = { expanded: false };
 
         this.toggleExpanded = this.toggleExpanded.bind(this);
     }
@@ -28,28 +27,31 @@ export default class OperatorSelector extends Component {
         const { expanded } = this.state;
 
         return (
-            <div>
+            <div className="mx2">
                 <div
-                    className="flex align-center"
+                    className="flex align-center cursor-pointer text-purple-hover mb2"
                     onClick={() => this.toggleExpanded()}
                 >
-                    <h2>{titleCase(operator)}</h2>
+                    <h3>{titleCase(operator)}</h3>
                     <Icon name='chevrondown' />
                 </div>
-                <ul style={{
-                    height: expanded ? 'auto' : 0,
-                    overflow: 'hidden',
-                    display: 'block',
-                }}>
+                <ul
+                    style={{
+                        height: expanded ? 'auto' : 0,
+                        overflow: 'hidden',
+                        display: 'block',
+                    }}
+                >
                     { operators.map(operator =>
                         <li
+                            className="cursor-pointer mb1 text-purple-hover"
                             key={operator.name}
                             onClick={() => {
                                 onOperatorChange(operator);
                                 this.toggleExpanded();
                             }}
                         >
-                            {operator.name}
+                            <h4>{operator.name}</h4>
                         </li>
                     )}
                 </ul>

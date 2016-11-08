@@ -5,8 +5,6 @@ import { pluralize } from "humanize-plus";
 import Icon from "metabase/components/Icon";
 import ExpandingContent from "metabase/components/ExpandingContent";
 
-const UNITS = ['Minute', 'Day', 'Week', 'Month', 'Year'];
-
 export default class RelativeDatePicker extends Component {
     constructor(props) {
         super(props);
@@ -33,6 +31,7 @@ export default class RelativeDatePicker extends Component {
     setFilter () {
         const { filter, formatter, onFilterChange } = this.props;
         const { val, timeUnit } = this.state;
+        console.log('state val', val);
         onFilterChange(["TIME_INTERVAL", filter[1], val, timeUnit]);
     }
 
@@ -42,6 +41,7 @@ export default class RelativeDatePicker extends Component {
 
     onValueChange (val) {
         val = this.props.formatter(val); // needs to be an integer
+        console.log(val)
         this.setState({ val }, () => this.setFilter());
     }
 
@@ -68,14 +68,14 @@ export default class RelativeDatePicker extends Component {
     }
 }
 
-const UnitPicker =({ currentUnit, setUnit, val }) =>
+export const UnitPicker =({ currentUnit, setUnit, val }) =>
    <div>
-       <div>
+       <div className="flex align-center">
            <h2>{pluralize(val, currentUnit)}</h2>
            <Icon name='chevrondown' />
         </div>
         <ol>
-           { UNITS.map((unit, index) =>
+           { ['Minute', 'Hour', 'Day', 'Month', 'Year',].map((unit, index) =>
                <li
                    key={index}
                    onClick={ () => setUnit(unit.toLowerCase()) }

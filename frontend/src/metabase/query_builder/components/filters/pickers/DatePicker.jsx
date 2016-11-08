@@ -1,7 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
 import SpecificDatePicker from "./SpecificDatePicker";
-import RelativeDatePicker from "./RelativeDatePicker";
+import RelativeDatePicker, { UnitPicker } from "./RelativeDatePicker";
 import OperatorSelector from "../OperatorSelector";
 import moment from "moment";
 
@@ -55,7 +55,6 @@ export default class DatePicker extends Component {
 
     changeOperator (operator) {
         this.setState({ operator: operator.name.toLowerCase() })
-        this.props.onOperatorChange(operator.clause)
     }
 
     render() {
@@ -63,7 +62,7 @@ export default class DatePicker extends Component {
         const [, , value , endVal] = this.props.filter;
 
         return (
-            <div>
+            <div className="mt2">
                 <OperatorSelector
                     operator={operator}
                     operators={OPERATORS}
@@ -79,6 +78,8 @@ export default class DatePicker extends Component {
                         }}
                         { ...this.props}
                     />
+                : operator === "current" ?
+                    <CurrentPicker { ...this.props } />
                 : operator === "after" || operator === "before" || operator === "on" ?
                     <SpecificDatePicker
                         value={value}
@@ -96,8 +97,13 @@ export default class DatePicker extends Component {
     }
 }
 
+const CurrentPicker = ({ filter, onChangeFilter }) =>
+    <div>
+        <UnitPicker filter onChangeFilter />
+    </div>
+
 const MultiDatePicker = ({ start, end, ...rest }) =>
-    <div className="flex align-center">
+    <div className="flex mx2">
         <SpecificDatePicker
             date={start}
             {...rest}
