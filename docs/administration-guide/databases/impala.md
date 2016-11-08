@@ -50,22 +50,23 @@ If you're running Metabase from the Mac App, the plugins directory defaults to `
 
 Finally, you can choose a custom plugins directory if the default doesn't suit your needs by setting the environment variable `MB_PLUGINS_DIR`.
 
+### Authentication mechanism
 
-### Configuring Kerberos
-
-The Impala JDBC driver support 4 different authentication mechanisms.
-
+The Impala JDBC driver support 4 different authentication mechanisms. 
 ```
 No Authentication
 Kerberos
 User Name
 User Name And Password
 ```
+The preferred mechanism can be selected using the AuthMech parameter. 
 
-To configuring the Impala driver to use Kerberos use the following steps:
+### Configuring Kerberos
 
-1) Install Kerberos client packages on the server where you have installed Metabase.
-2) Configure the correct Kerberos settings (krb5.conf)
+Configuring the Impala driver to use Kerberos requires the following steps:
+
+1. Install Kerberos client OS packages on the server where you have installed Metabase.
+2. Configure the correct Kerberos settings (krb5.conf), see the following example:
 
 ```
 [libdefaults]
@@ -88,16 +89,16 @@ admin_server = admin.example.com
 }
 ```
 
-3) Create a keytab file
-
+3. Create a keytab file
+A keytab is a file that contains usernames and encrypted passwords, the Impala JDC driver uses the keytab to authenticate with the Impala service. Create a keytab file with the ktutil utility.
 ```
 ktutil
-ktutil:  addent -password -p username@MYREALM -k 1 -e aes256-cts
+ktutil: addent -password -p username@MYREALM -k 1 -e aes256-cts
 wkt my_keytab
 ```
 
-4) Create a JAAS file
-
+4. Create a JAAS file
+A JAAS (Java Authentication and Authorization Service), is used to configure how Java should authenticate with Kerberos. See the following example.
 ```
 Client {
     com.sun.security.auth.module.Krb5LoginModule required
@@ -108,34 +109,31 @@ Client {
 };
 ```
 
-5) Enable Strong encryption for Java
-
-Download the [Java Cryptography Extension (JCE) Unlimited Strength Jurisdiction Policy Files](http://www.oracle.com/technetwork/java/javase/downloads/jce8-download-2133166.html)
-and follow the installation instructions provided by Oracle.
+5. Enable Strong encryption for Java
+Strong encryption is disabled by default when you install Java, to be able to use strong AES encryption the [Java Cryptography Extension (JCE) Unlimited Strength Jurisdiction Policy Files](http://www.oracle.com/technetwork/java/javase/downloads/jce8-download-2133166.html) need to be installed. Follow the installation instructions provided by Oracle.
 
 
-6) Start Metabase using JAAS
-
+6. Start Metabase using JAAS
+Use an additional Java option which points to the location of the JAAS config file.
+ 
 ```
 java -Djava.security.auth.login.config=jaas.conf -jar metabase.jar
 ```
 
-In case of troublw, you can add the Kerberos debug options
-```
-java -Djava.security.auth.login.config=jaas.conf -Dsun.security.krb5.debug=true -Dsun.security.jgss.debug=true -jar metabase.jar
-```
-
-7) Create a new database using the Impala driver and supply the "AuthMech", "KrbRealm", "KrbHostFQDN" and "KrbServiceName" in the
-"Connection attributes" field.
+7. In Metabase, create a new database by selecting the Impala driver and add the "AuthMech", "KrbRealm", "KrbHostFQDN" and "KrbServiceName" properties in the "Connection attributes" field. For example:
 
 ```
 ;AuthMech=1;KrbRealm=MYREALM;KrbHostFQDN=impala-node.example.com;KrbServiceName=impala
 ```
 
+When no Impala connection can be created, add the Kerberos debug options to the Metabase start options to get more detailed logging information.
+```
+java -Djava.security.auth.login.config=jaas.conf -Dsun.security.krb5.debug=true -Dsun.security.jgss.debug=true -jar metabase.jar
+```
 
+It is also possible to have the Impala JDBC driver produce more logging by adding the following properties to the "Connection attributes" field. For example:
 
-
-
-
-
+```
+;LogLevel=6;LogPath=/path/to/logdir;
+```
 

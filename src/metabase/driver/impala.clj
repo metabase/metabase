@@ -125,20 +125,22 @@
                                                            :default      21050}
                                                           {:name         "dbname"
                                                            :display-name "Database name"
-                                                           :placeholder  "Store_Sales"
-                                                           :required     false}  ;;database is optional in the connection url
+                                                           :placeholder  "default"
+                                                           :required     false}           ;;database is optional in the connection url
                                                           {:name         "user"
                                                            :display-name "Database username"
                                                            :placeholder  "What username do you use to login to the database?"
-                                                           :required     false}  ;; Impala AuthMech=0 does not require username and password to connect.
-                                                                                 ;; AuthMech=0 == Wildy insecure!!!
+                                                           :required     false}           ;; Impala AuthMech=0 does not require username and password to connect.
+                                                                                          ;; AuthMech=0 == Wildy insecure!!!
                                                           {:name         "password"
                                                            :display-name "Database password"
                                                            :type         :password
                                                            :placeholder  "*******"
-                                                           :required     false} ;; Impala authMech=2 does not require password
+                                                           :required     false}            ;; Impala authMech=2 does not require password
                                                            {:name        "connProperties"  ;;Impala driver supports many additional properties
-                                                                                           ;;These properties are semicolon separated.     
+                                                                                           ;;These properties are semicolon separated.
+                                                                                           ;;An overview of available properties can be found at:
+                                                                                           ;;http://www.cloudera.com/documentation/other/connectors/impala-jdbc/latest/Cloudera-JDBC-Driver-for-Impala-Install-Guide.pdf     
                                                            :display-name "Connection attributes"
                                                            :placeholder  ";AuthMech=1;KrbRealm=EXAMPLE.COM;KrbHostFQDN=impala.example.com;KrbServiceName=impala"}])
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
@@ -149,6 +151,7 @@
           :column->base-type         (u/drop-first-arg column->base-type)
           :connection-details->spec  (u/drop-first-arg connection-details->spec)
           :date                      (u/drop-first-arg date)
+          :excluded-schemas          (constantly #{"default" "_impala_builtins"})
           ;;Impala likes mysql style backticks around table and attr names.
           :quote-style               (constantly :mysql)
           :string-length-fn          (u/drop-first-arg string-length-fn)
