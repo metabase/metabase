@@ -32,7 +32,7 @@ const mapDispatchToProps = {
     requestEntityNames
 };
 
-let pendingRequests = {};
+let pendingRequests = new Map()
 let pendingTimeout;
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -43,14 +43,16 @@ export default class EntityValue extends Component {
         let entityId = props.value;
         let fieldId = getColumnEntityIdField(props.column);
         if (entityId != null && fieldId != null && getIn(entitiesByField, [fieldId, entityId]) == null) {
-            pendingRequests[fieldId] = pendingRequests[fieldId] || {};
-            pendingRequests[fieldId][entityId] = true;
+            if (!pendingRequests.has(fieldId)) {
+                pendingRequests.set(fieldId, new Set())
+            }
+            pendingRequests.get(fieldId).add(entityId);
             if (pendingTimeout != null) {
                 clearTimeout(pendingTimeout);
             }
             pendingTimeout = setTimeout(() => {
                 props.requestEntityNames(pendingRequests);
-                pendingRequests = {};
+                pendingRequests = new Map();
                 pendingTimeout = null;
             }, 100);
         }

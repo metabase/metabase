@@ -41,9 +41,8 @@ export const requestEntityNames = createThunkAction(REQUEST_ENTITY_NAMES, (reque
     async (dispatch, getState) => {
         const { entitynames: { entitiesByField }} = getState();
         const entityNames = {};
-        for (let fieldId in requestsByFieldId) {
-            fieldId = parseInt(fieldId);
-            const entityIds = Object.keys(requestsByFieldId[fieldId]);
+        for (let [fieldId, entityIds] of requestsByFieldId.entries()) {
+            entityIds = Array.from(entityIds);
             const entityIdField = getField(getState(), fieldId);
             const entityNameField = _.find(entityIdField && entityIdField.table.fields, (f) => isa(f.special_type, TYPE.Name));
             const newEntityIds = entityIds.filter(entityId =>
