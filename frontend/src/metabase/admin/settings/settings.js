@@ -34,7 +34,7 @@ export const initializeSettings = createThunkAction("INITIALIZE_SETTINGS", funct
 export const updateSetting = createThunkAction("UPDATE_SETTING", function(setting) {
     return async function(dispatch, getState) {
         try {
-            await SettingsApi.put({ key: setting.key }, setting);
+            await SettingsApi.put(setting);
             await dispatch(refreshSiteSettings());
             return await loadSettings();
         } catch(error) {

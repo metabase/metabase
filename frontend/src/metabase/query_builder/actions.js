@@ -340,18 +340,18 @@ export const setCardVisualization = createThunkAction(SET_CARD_VISUALIZATION, (d
     }
 });
 
-export const SET_CARD_VISUALIZATION_SETTING = "SET_CARD_VISUALIZATION_SETTING";
-export const setCardVisualizationSetting = createThunkAction(SET_CARD_VISUALIZATION_SETTING, (key, value) => {
+export const UPDATE_CARD_VISUALIZATION_SETTINGS = "UPDATE_CARD_VISUALIZATION_SETTINGS";
+export const updateCardVisualizationSettings = createThunkAction(UPDATE_CARD_VISUALIZATION_SETTINGS, (settings) => {
     return (dispatch, getState) => {
         const { qb: { card, uiControls } } = getState();
-        let updatedCard = updateVisualizationSettings(card, uiControls.isEditing, card.display, i.assocIn(card.visualization_settings, key, value));
+        let updatedCard = updateVisualizationSettings(card, uiControls.isEditing, card.display, { ...card.visualization_settings, ...settings });
         dispatch(updateUrl(updatedCard, true));
         return updatedCard;
     };
 });
 
-export const SET_CARD_VISUALIZATION_SETTINGS = "SET_CARD_VISUALIZATION_SETTINGS";
-export const setCardVisualizationSettings = createThunkAction(SET_CARD_VISUALIZATION_SETTINGS, (settings) => {
+export const REPLACE_ALL_CARD_VISUALIZATION_SETTINGS = "REPLACE_ALL_CARD_VISUALIZATION_SETTINGS";
+export const replaceAllCardVisualizationSettings = createThunkAction(REPLACE_ALL_CARD_VISUALIZATION_SETTINGS, (settings) => {
     return (dispatch, getState) => {
         const { qb: { card, uiControls } } = getState();
         let updatedCard = updateVisualizationSettings(card, uiControls.isEditing, card.display, settings);
@@ -882,7 +882,7 @@ export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnInde
 
             newCard.dataset_query.query.source_table = coldef.table_id;
             newCard.dataset_query.query.aggregation = ["rows"];
-            newCard.dataset_query.query.filter = ["AND", ["=", fieldRefForm, value]];
+            newCard.dataset_query.query.filter = ["AND", ["=", coldef.id, value]];
 
             // run it
             dispatch(setCardAndRun(newCard));
@@ -905,7 +905,7 @@ export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnInde
             let dataset_query = JSON.parse(JSON.stringify(card.dataset_query));
             Query.addFilter(dataset_query.query);
 
-            if (coldef.unit) {
+            if (coldef.unit && coldef.unit != "default" && filter === "=") {
                 // this is someone using quick filters on a datetime value
                 let start = moment(value).format("YYYY-MM-DD");
                 let end = start;
@@ -1029,7 +1029,7 @@ export const setDisplayFn = setCardVisualization;
 export const onSetCardAttribute = setCardAttribute;
 export const reloadCardFn = reloadCard;
 export const onRestoreOriginalQuery = reloadCard;
-export const onUpdateVisualizationSetting = setCardVisualizationSetting;
-export const onUpdateVisualizationSettings = setCardVisualizationSettings;
+export const onUpdateVisualizationSettings = updateCardVisualizationSettings;
+export const onReplaceAllVisualizationSettings = replaceAllCardVisualizationSettings;
 export const cellClickedFn = cellClicked;
 export const followForeignKeyFn = followForeignKey;

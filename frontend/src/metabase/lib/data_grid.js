@@ -7,31 +7,6 @@ function compareNumbers(a, b) {
     return a - b;
 }
 
-export function filterOnPreviewDisplay(data) {
-    // find any columns where visibility_type = details-only
-    var hiddenColumnIdxs = _.map(data.cols, function(col, idx) { if(col.visibility_type === "details-only") return idx; });
-    hiddenColumnIdxs = _.filter(hiddenColumnIdxs, function(val) { return val !== undefined; });
-
-    // filter out our data grid using the indexes of the hidden columns
-    var filteredRows = data.rows.map(function(row, rowIdx) {
-        return row.filter(function(cell, cellIdx) {
-            if (_.contains(hiddenColumnIdxs, cellIdx)) {
-                return false;
-            } else {
-                return true;
-            }
-        });
-    });
-
-    return {
-        cols: _.filter(data.cols, function(col) { return col.visibility_type !== "details-only"; }),
-        columns: _.map(data.cols, function(col) { return col.display_name; }),
-        rows: filteredRows,
-        rows_truncated: data.rows_truncated,
-        native_form: data.native_form
-    };
-}
-
 export function pivot(data) {
     // find the lowest cardinality dimension and make it our "pivoted" column
     // TODO: we assume dimensions are in the first 2 columns, which is less than ideal

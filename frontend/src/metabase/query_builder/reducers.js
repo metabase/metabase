@@ -19,8 +19,8 @@ import {
     SET_CARD_AND_RUN,
     SET_CARD_ATTRIBUTE,
     SET_CARD_VISUALIZATION,
-    SET_CARD_VISUALIZATION_SETTING,
-    SET_CARD_VISUALIZATION_SETTINGS,
+    UPDATE_CARD_VISUALIZATION_SETTINGS,
+    REPLACE_ALL_CARD_VISUALIZATION_SETTINGS,
     UPDATE_TEMPLATE_TAG,
     SET_PARAMETER_VALUE,
 
@@ -79,8 +79,8 @@ export const card = handleActions({
 
     [SET_CARD_ATTRIBUTE]: { next: (state, { payload }) => ({...state, [payload.attr]: payload.value }) },
     [SET_CARD_VISUALIZATION]: { next: (state, { payload }) => payload },
-    [SET_CARD_VISUALIZATION_SETTING]: { next: (state, { payload }) => payload },
-    [SET_CARD_VISUALIZATION_SETTINGS]: { next: (state, { payload }) => payload },
+    [UPDATE_CARD_VISUALIZATION_SETTINGS]: { next: (state, { payload }) => payload },
+    [REPLACE_ALL_CARD_VISUALIZATION_SETTINGS]: { next: (state, { payload }) => payload },
 
     [UPDATE_TEMPLATE_TAG]: { next: (state, { payload }) => payload },
 

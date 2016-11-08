@@ -4,7 +4,10 @@ import moment from "moment";
 import Humanize from "humanize";
 import React from "react";
 
+import ExternalLink from "metabase/components/ExternalLink.jsx";
+
 import { isDate, isNumber, isCoordinate } from "metabase/lib/schema_metadata";
+import { isa, TYPE } from "metabase/lib/types";
 import { parseTimestamp } from "metabase/lib/time";
 
 const PRECISION_NUMBER_FORMATTER      = d3.format(".2r");
@@ -98,6 +101,27 @@ function formatTimeWithUnit(value, unit, options = {}) {
     }
 }
 
+const EMAIL_WHITELIST_REGEX = /.+@.+/;
+
+export function formatEmail(value, { jsx } = {}) {
+    if (jsx && EMAIL_WHITELIST_REGEX.test(value)) {
+        return <ExternalLink href={"mailto:" + value}>{value}</ExternalLink>;
+    } else {
+        value;
+    }
+}
+
+// prevent `javascript:` etc URLs
+const URL_WHITELIST_REGEX = /^(https?|mailto):/;
+
+export function formatUrl(value, { jsx } = {}) {
+    if (jsx && URL_WHITELIST_REGEX.test(value)) {
+        return <ExternalLink href={value}>{value}</ExternalLink>;
+    } else {
+        return value;
+    }
+}
+
 export function formatValue(value, options = {}) {
     let column = options.column;
     options = {
@@ -107,6 +131,10 @@ export function formatValue(value, options = {}) {
     };
     if (value == undefined) {
         return null;
+    } else if (column && isa(column.special_type, TYPE.URL)) {
+        return formatUrl(value, options);
+    } else if (column && isa(column.special_type, TYPE.Email)) {
+        return formatEmail(value, options);
     } else if (column && column.unit != null) {
         return formatTimeWithUnit(value, column.unit, options);
     } else if (isDate(column) || moment.isDate(value) || moment.isMoment(value) || moment(value, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()) {

@@ -87,8 +87,8 @@
 
   ;; e.g. the ["aggregation" 0] fields we allow in order-by
   AgFieldRef
-  (formatted [_]
-    (let [{:keys [aggregation-type]} (:aggregation (:query *query*))]
+  (formatted [{index :index}]
+    (let [{:keys [aggregation-type]} (nth (:aggregation (:query *query*)) index)]
       ;; For some arcane reason we name the results of a distinct aggregation "count",
       ;; everything else is named the same as the aggregation
       (if (= aggregation-type :distinct)
@@ -114,14 +114,19 @@
 ;;; ## Clause Handlers
 
 (defn apply-aggregation
-  "Apply an `aggregation` clause to HONEYSQL-FORM. Default implementation of `apply-aggregation` for SQL drivers."
-  ([driver honeysql-form {{:keys [aggregation-type field]} :aggregation}]
-   (apply-aggregation driver honeysql-form aggregation-type (formatted field)))
+  "Apply a `aggregation` clauses to HONEYSQL-FORM. Default implementation of `apply-aggregation` for SQL drivers."
+  ([driver honeysql-form {aggregations :aggregation}]
+   (loop [form honeysql-form, [{:keys [aggregation-type field]} & more] aggregations]
+     (let [form (apply-aggregation driver form aggregation-type (formatted field))]
+       (if-not (seq more)
+         form
+         (recur form more)))))
 
   ([driver honeysql-form aggregation-type field]
    (h/merge-select honeysql-form [(if-not field
                                     ;; aggregation clauses w/o a field
-                                    (do (assert (= aggregation-type :count))
+                                    (do (assert (= aggregation-type :count)
+                                          (format "Aggregations of type '%s' must specify a field." aggregation-type))
                                         :%count.*)
                                     ;; aggregation clauses w/ a Field
                                     (hsql/call (case  aggregation-type
@@ -132,7 +137,8 @@
                                                  :sum      :sum
                                                  :min      :min
                                                  :max      :max)
-                                               field))
+                                      field))
+                                  ;; the column alias is always the same as the ag type except for `:distinct` with is called `:count` (WHY?)
                                   (if (= aggregation-type :distinct)
                                     :count
                                     aggregation-type)])))

@@ -159,9 +159,7 @@
                                                                         "foreign-keys is not supported by this driver."))
                                datetime-unit :- (s/maybe (apply s/enum datetime-field-units))])
 
-(s/defrecord AgFieldRef [index :- (s/constrained s/Int
-                                                 zero?
-                                                 "Ag field index should be 0 -- MBQL currently only supports a single aggregation")])
+(s/defrecord AgFieldRef [index :- s/Int])
 
 ;; TODO - add a method to get matching expression from the query?
 
@@ -248,14 +246,16 @@
                                                                 "Valid aggregation type")
                                    field            :- FieldPlaceholderOrExpressionRef])
 
+(defn- valid-aggregation-for-driver? [{:keys [aggregation-type]}]
+  (when (= aggregation-type :stddev)
+    (assert-driver-supports :standard-deviation-aggregations))
+  true)
+
 (def Aggregation
-  "Schema for a top-level `aggregation` clause in an MBQL query."
+  "Schema for an `aggregation` subclause in an MBQL query."
   (s/constrained
    (s/cond-pre AggregationWithField AggregationWithoutField)
-   (fn [{:keys [aggregation-type]}]
-     (when (= aggregation-type :stddev)
-       (assert-driver-supports :standard-deviation-aggregations))
-     true)
+   valid-aggregation-for-driver?
    "standard-deviation-aggregations is not supported by this driver."))
 
 
@@ -313,7 +313,7 @@
 
 (def Query
   "Schema for an MBQL query."
-  {(s/optional-key :aggregation) Aggregation
+  {(s/optional-key :aggregation) [Aggregation]
    (s/optional-key :breakout)    [FieldPlaceholderOrExpressionRef]
    (s/optional-key :fields)      [AnyField]
    (s/optional-key :filter)      Filter

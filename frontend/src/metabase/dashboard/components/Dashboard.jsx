@@ -57,7 +57,9 @@ export default class Dashboard extends Component {
         saveDashboard: PropTypes.func.isRequired,
         setDashboardAttributes: PropTypes.func.isRequired,
         setEditingDashboard: PropTypes.func.isRequired,
-        setDashCardVisualizationSetting: PropTypes.func.isRequired,
+
+        onUpdateDashCardVisualizationSettings: PropTypes.func.isRequired,
+        onReplaceAllDashCardVisualizationSettings: PropTypes.func.isRequired,
 
         onChangeLocation: PropTypes.func.isRequired,
     };
