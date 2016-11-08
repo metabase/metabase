@@ -1,3 +1,4 @@
+/* @flow */
 
 import { createAction, createThunkAction, handleActions, combineReducers } from "metabase/lib/redux";
 import { merge } from "icepick"
@@ -5,6 +6,8 @@ import { TYPE, isa } from "metabase/lib/types";
 import _ from "underscore";
 
 import { MetabaseApi } from "metabase/services";
+
+import type { Dataset } from "metabase/meta/types/Dataset";
 
 const REQUEST_ENTITY_NAMES = "entitynames/REQUEST_ENTITY_NAMES";
 const FETCH_ENTITY_NAMES = "entitynames/FETCH_ENTITY_NAMES";
@@ -66,18 +69,38 @@ export const requestEntityNames = createThunkAction(REQUEST_ENTITY_NAMES, (reque
 );
 
 // extract entity names from a dataset response
-function extractEntityNames(data) {
+function extractEntityNames(result: Dataset) {
     const entityNames = {};
-    // TODO: what if there's more than one entity id or entity name?
-    const entityIdIndex = _.findIndex(data.cols, (col) => isa(col.special_type, TYPE.PK));
-    const entityNameIndex = _.findIndex(data.cols, (col) => isa(col.special_type, TYPE.Name));
-    if (entityIdIndex >= 0 && entityNameIndex >= 0) {
-        const entityIdColumn = data.cols[entityIdIndex];
-        entityNames[entityIdColumn.id] = {};
-        for (const row of data.rows) {
-            const entityId = row[entityIdIndex];
-            const entityName = row[entityNameIndex];
-            entityNames[entityIdColumn.id][entityId] = { state: "loaded", name: entityName };
+    if (result.error == null) {
+        const { data } = result;
+        // TODO: what if there's more than one entity id or entity name?
+        const entityIdIndex = _.findIndex(data.cols, (col) => isa(col.special_type, TYPE.PK));
+        const entityNameIndex = _.findIndex(data.cols, (col) => isa(col.special_type, TYPE.Name));
+        if (entityIdIndex >= 0 && entityNameIndex >= 0) {
+            // $FlowFixMe
+            const entityIdColumnId: FieldId = data.cols[entityIdIndex].id;
+            entityNames[entityIdColumnId] = {};
+            for (const row of data.rows) {
+                const entityId = row[entityIdIndex];
+                const entityName = row[entityNameIndex];
+                entityNames[entityIdColumnId][entityId] = { state: "loaded", name: entityName };
+            }
+        }
+    }
+    return entityNames;
+}
+
+// extract failed entity id column id + entity ids from the result
+function extractEntityErrors(result: Dataset) {
+    const entityNames = {};
+    if (result.error != null) {
+        // $FlowFixMe
+        const entityIdColumnId: FieldId = result.json_query.query.fields[0];
+        entityNames[entityIdColumnId] = {};
+        // $FlowFixMe
+        const entityIds = result.json_query.query.filter.slice(2);
+        for (const entityId of entityIds) {
+            entityNames[entityIdColumnId][entityId] = { state: "error" };
         }
     }
     return entityNames;
@@ -87,17 +110,17 @@ const entitiesByField = handleActions({
     [REQUEST_ENTITY_NAMES]: (state, { payload }) => {
         return merge(state, payload);
     },
-    [FETCH_ENTITY_NAMES]: (state, { payload }) => {
-        if (payload) {
-            return merge(state, extractEntityNames(payload.data));
+    [FETCH_ENTITY_NAMES]: (state, { payload: result }) => {
+        if (result) {
+            return merge(state, merge(extractEntityNames(result), extractEntityErrors(result)));
         }
         return state;
     },
     // scrape entity id/name pairs from qb queries as well
     ["QUERY_COMPLETED"]: (state, { payload }) => {
-        let data = payload && payload.queryResult && payload.queryResult.data;
-        if (data) {
-            return merge(state, extractEntityNames(data));
+        let result = payload && payload.queryResult;
+        if (result) {
+            return merge(state, extractEntityNames(result));
         }
         return state;
     }

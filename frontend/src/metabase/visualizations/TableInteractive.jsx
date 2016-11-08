@@ -5,7 +5,6 @@ import { Table, Column } from "fixed-data-table";
 
 import Icon from "metabase/components/Icon.jsx";
 
-import Popover from "metabase/components/Popover.jsx";
 import Value from "metabase/components/Value.jsx";
 import QuickFilterPopover from "metabase/query_builder/components/QuickFilterPopover.jsx";
 

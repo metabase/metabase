@@ -2,15 +2,20 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { getIn } from "icepick";
 
-import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
+// import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
+import cx from "classnames";
 
 import { TYPE, isa } from "metabase/lib/types";
 import { requestEntityNames } from "metabase/redux/entitynames";
 
+import "./EntityValue.css";
+
 function getColumnEntityIdField(column) {
-    if (isa(column.special_type, TYPE.PK)) {
-        return column.id;
-    } else if (isa(column.special_type, TYPE.FK)) {
+    if (!column) {
+        return null;
+    // } else if (isa(column.special_type, TYPE.PK)) {
+    //     return column.id;
+    } else if (isa(column.special_type, TYPE.FK) && column.target) {
         return column.target.id;
     }
     return null;
@@ -73,8 +78,10 @@ export default class EntityValue extends Component {
         const isLoading = entity && entity.state === "loading";
         return (
             <span className="flex align-center">
-                <div>{entity && entity.name != null ? entity.name : value}</div>
-                { isLoading && <LoadingSpinner className="ml1" size={15} borderWidth={4}/> }
+                <div className={cx({ "EntityValue--loading": isLoading })}>
+                    {entity && entity.name ? entity.name : value}
+                </div>
+                {/* { isLoading && <LoadingSpinner className="ml1" size={15} borderWidth={4}/> } */}
             </span>
         )
     }
