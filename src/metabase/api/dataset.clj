@@ -60,7 +60,7 @@
                 ;; turn keywords into strings, otherwise we get colons in our output
                 (csv/write-csv *out* (into [(mapv name columns)] rows)))
      :headers {"Content-Type" "text/csv; charset=utf-8"
-               "Content-Disposition" (str "attachment; filename=\"query_result_" (u/date->iso-8601) ".csv\"")}}
+               "Content-Disposition" (str "attachment; filename=\"data_" (u/date->iso-8601) ".csv\"")}}
     ;; failed query, send error message
     {:status 500
      :body   (:error response)}))
