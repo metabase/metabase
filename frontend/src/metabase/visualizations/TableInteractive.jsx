@@ -13,7 +13,14 @@ import _ from "underscore";
 import cx from "classnames";
 
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
-import { Grid } from "react-virtualized";
+import { Grid, ScrollSync } from "react-virtualized";
+
+import Draggable from "react-draggable";
+
+const HEADER_HEIGHT = 50;
+const ROW_HEIGHT = 35;
+const MIN_COLUMN_WIDTH = ROW_HEIGHT;
+const RESIZE_HANDLE_WIDTH = 5;
 
 @ExplicitSize
 export default class TableInteractive extends Component {
@@ -27,8 +34,6 @@ export default class TableInteractive extends Component {
         };
 
         _.bindAll(this, "onClosePopover", "cellRenderer", "columnResized");
-
-        this.isColumnResizing = false;
     }
 
     static propTypes = {
@@ -70,9 +75,10 @@ export default class TableInteractive extends Component {
     }
 
     componentDidUpdate() {
-        if (!this.state.contentWidths) {
+        const element = ReactDOM.findDOMNode(this);
+        if (!this.state.contentWidths && element) {
             let contentWidths = [];
-            let cellElements = ReactDOM.findDOMNode(this).querySelectorAll(".public_fixedDataTableCell_cellContent");
+            let cellElements = element.querySelectorAll(".public_fixedDataTableCell_cellContent");
             for (let cellElement of cellElements) {
                 let columnIndex = cellElement.parentElement.dataset.column;
                 contentWidths[columnIndex] = Math.max(contentWidths[columnIndex] || 0, cellElement.offsetWidth);
@@ -89,7 +95,12 @@ export default class TableInteractive extends Component {
                 return 300;
             }
         });
-        this.setState({ columnWidths }, () => this.refs.grid.recomputeGridSize());
+        this.setState({ columnWidths }, this.recomputeGridSize);
+    }
+
+    recomputeGridSize = () => {
+        this.header.recomputeGridSize();
+        this.grid.recomputeGridSize();
     }
 
     isSortable() {
@@ -161,13 +172,12 @@ export default class TableInteractive extends Component {
         }
     }
 
-    columnResized(width, idx) {
+    columnResized(columnIndex, width) {
         var tableColumnWidths = this.state.columnWidths.slice();
-        tableColumnWidths[idx] = width;
+        tableColumnWidths[columnIndex] = Math.max(MIN_COLUMN_WIDTH, width);
         this.setState({
             columnWidths: tableColumnWidths
-        });
-        this.isColumnResizing = false;
+        }, this.recomputeGridSize);
     }
 
     tableHeaderRenderer(columnIndex) {
@@ -183,7 +193,7 @@ export default class TableInteractive extends Component {
             colVal = "Unset";
         }
 
-        var headerClasses = cx('MB-DataTable-header cellData align-center', {
+        var headerClasses = cx('MB-DataTable-header cellData align-center public_fixedDataTableCell_cellContent', {
             'MB-DataTable-header--sorted': (this.props.sort && (this.props.sort[0][0] === column.id)),
         });
 
@@ -214,29 +224,86 @@ export default class TableInteractive extends Component {
         }
     }
 
+    getColumnWidth = ({ index }) => this.state.columnWidths[index] || MIN_COLUMN_WIDTH;
+
     render() {
         const { width, height, data: { cols, rows }, className } = this.props;
 
+        if (!width || !height) {
+            return <div className={className} />;
+        }
+
         return (
-            <div className={cx(className, 'MB-DataTable', { 'MB-DataTable--pivot': this.props.isPivoted, 'MB-DataTable--ready': this.state.contentWidths })}>
-                <Grid
-                    ref="grid"
-                    className="fixedDataTableLayout_main public_fixedDataTable_main"
-                    width={width || 0}
-                    height={height || 0}
-                    columnCount={cols.length}
-                    columnWidth={({ index }) => this.state.columnWidths[index] || 75}
-                    rowCount={rows.length}
-                    rowHeight={35}
-                    cellRenderer={({ key, style, rowIndex, columnIndex }) =>
-                        <div key={key} style={style} className="fixedDataTableCellLayout_main public_fixedDataTableCell_main">
-                            <div className="fixedDataTableCellLayout_wrap3 public_fixedDataTableCell_wrap3" data-column={columnIndex}>
-                                {this.cellRenderer({ rowIndex, columnIndex })}
+            <ScrollSync>
+            {({ clientHeight, clientWidth, onScroll, scrollHeight, scrollLeft, scrollTop, scrollWidth }) =>
+                <div className={cx(className, 'MB-DataTable relative fixedDataTableLayout_main public_fixedDataTable_main', { 'MB-DataTable--pivot': this.props.isPivoted, 'MB-DataTable--ready': this.state.contentWidths })}>
+                    <Grid
+                        ref={(ref) => this.header = ref}
+                        style={{ top: 0, left: 0, right: 0, height: HEADER_HEIGHT, position: "absolute" }}
+                        className="fixedDataTableRowLayout_main public_fixedDataTableRow_main fixedDataTableLayout_header public_fixedDataTable_header scroll-hide-all"
+                        width={width || 0}
+                        height={HEADER_HEIGHT}
+                        columnCount={cols.length}
+                        columnWidth={this.getColumnWidth}
+                        rowCount={1}
+                        rowHeight={HEADER_HEIGHT}
+                        cellRenderer={({ key, style, rowIndex, columnIndex }) =>
+                            <div
+                                key={key}
+                                style={{ ...style, overflow: "visible" /* ensure resize handle is visible */ }}
+                                className="fixedDataTableCellLayout_main public_fixedDataTableCell_main"
+                            >
+                                <div className="fixedDataTableCellLayout_wrap3 public_fixedDataTableCell_wrap3" data-column={columnIndex}>
+                                    {this.tableHeaderRenderer(columnIndex)}
+                                </div>
+                                <Draggable
+                                    axis="x"
+                                    bounds={{ left: RESIZE_HANDLE_WIDTH }}
+                                    position={{ x: this.getColumnWidth({ index: columnIndex }), y: 0 }}
+                                    onStart={() => {
+                                        this.setState({ draggingIndex: columnIndex })
+                                    }}
+                                    onStop={(e, { x }) => {
+                                        this.setState({ draggingIndex: null })
+                                        this.columnResized(columnIndex, x)}
+                                    }
+                                >
+                                    <div
+                                        style={{ zIndex: 99, position: "absolute", width: RESIZE_HANDLE_WIDTH, top: 0, bottom: 0, left: -RESIZE_HANDLE_WIDTH - 1, cursor: "ew-resize" }}
+                                        className={cx("bg-brand-hover", { "bg-brand": this.state.draggingIndex === columnIndex })}
+                                    />
+                                </Draggable>
                             </div>
-                        </div>
-                    }
-                />
-            </div>
+                        }
+                        onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
+                        scrollLeft={scrollLeft}
+                        tabIndex={null}
+                    />
+                    <Grid
+                        ref={(ref) => this.grid = ref}
+                        style={{ top: HEADER_HEIGHT, left: 0, right: 0, bottom: 0, position: "absolute" }}
+                        className="fixedDataTableRowLayout_main public_fixedDataTableRow_main"
+                        width={width}
+                        height={height - HEADER_HEIGHT}
+                        columnCount={cols.length}
+                        columnWidth={this.getColumnWidth}
+                        rowCount={rows.length}
+                        rowHeight={ROW_HEIGHT}
+                        cellRenderer={({ key, style, rowIndex, columnIndex }) =>
+                            <div key={key} style={style} className="fixedDataTableCellLayout_main public_fixedDataTableCell_main">
+                                <div className="fixedDataTableCellLayout_wrap3 public_fixedDataTableCell_wrap3" data-column={columnIndex}>
+                                    {this.cellRenderer({ rowIndex, columnIndex })}
+                                </div>
+                            </div>
+                        }
+                        onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
+                        scrollLeft={scrollLeft}
+                        tabIndex={null}
+                        overscanRowCount={10}
+                    />
+                </div>
+            }
+            </ScrollSync>
         );
     }
 }

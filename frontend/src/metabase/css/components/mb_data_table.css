@@ -68,6 +68,11 @@
     overflow-x: hidden;
 }
 
+.MB-DataTable .public_fixedDataTableCell_main {
+  display: flex;
+  align-items: center;
+}
+
 /* needs to be display:block so .cellData doesn't overflow the width and not show ellipsis */
 /* only enable once the contentWidths have been computed (.MB-DataTable--ready) */
 /* only enable for the body rows (.public_fixedDataTable_bodyRow) */
