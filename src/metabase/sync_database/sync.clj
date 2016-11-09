@@ -62,7 +62,7 @@
                          (db/update-where! Table {:name  table-name
                                                   :db_id (:id database)}
                            (keyword k) value))
-               (log/error (u/format-color "Error syncing _metabase_metadata: no matching keypath: %s" keypath)))
+               (log/error (u/format-color 'red "Error syncing _metabase_metadata: no matching keypath: %s" keypath)))
              (catch Throwable e
                (log/error (u/format-color 'red "Error in _metabase_metadata: %s" (.getMessage e)))))))))
 
@@ -225,4 +225,5 @@
         raw-table-id->table (u/key-by :raw_table_id (db/select Table, :db_id database-id, :active true))]
     (create-and-update-tables! database raw-table-id->table raw-tables)
     (set-fk-relationships! database)
+    ;; HACK! we can't sync the _metabase_metadata table until all the "Raw" Tables/Columns are backed
     (maybe-sync-metabase-metadata-table! database raw-tables)))

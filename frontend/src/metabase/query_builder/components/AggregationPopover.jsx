@@ -113,15 +113,19 @@ export default class AggregationPopover extends Component {
             selectedAggregation = _.findWhere(availableAggregations, { short: AggregationClause.getOperator(aggregation) });
         }
 
-        let sections = [{
-            name: "Metabasics",
-            items: availableAggregations.map(aggregation => ({
-                name: aggregation.name,
-                value: [aggregation.short].concat(aggregation.fields.map(field => null)),
-                aggregation: aggregation
-            })),
-            icon: "table2"
-        }];
+        let sections = [];
+
+        if (availableAggregations.length > 0) {
+            sections.push({
+                name: "Metabasics",
+                items: availableAggregations.map(aggregation => ({
+                    name: aggregation.name,
+                    value: [aggregation.short].concat(aggregation.fields.map(field => null)),
+                    aggregation: aggregation
+                })),
+                icon: "table2"
+            });
+        }
 
         // we only want to consider active metrics, with the ONE exception that if the currently selected aggregation is a
         // retired metric then we include it in the list to maintain continuity

@@ -1,8 +1,8 @@
 import React, { Component, PropTypes } from "react";
 
 import cx from "classnames";
-import _ from "underscore";
 import { formatSQL, capitalize } from "metabase/lib/formatting";
+import { getEngineNativeType, formatJsonQuery } from "metabase/lib/engine";
 import Icon from "metabase/components/Icon.jsx";
 import Modal from "metabase/components/Modal.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
@@ -37,7 +37,7 @@ export default class QueryModeButton extends Component {
         var targetType = (mode === "query") ? "native" : "query";
 
         const engine = tableMetadata && tableMetadata.db.engine;
-        const nativeQueryName = _.contains(["mongo", "druid"], engine) ? "native query" : "SQL";
+        const nativeQueryName = getEngineNativeType(engine) === "sql" ? "SQL" : "native query";
 
         // maybe switch up the icon based on mode?
         let onClick = null;
@@ -67,8 +67,8 @@ export default class QueryModeButton extends Component {
 
                         <pre className="mb3 p2 sql-code">
                             {nativeForm && nativeForm.query && (
-                                _.contains(["mongo", "druid"], engine) ?
-                                    JSON.stringify(nativeForm.query)
+                                getEngineNativeType(engine) === "json" ?
+                                    formatJsonQuery(nativeForm.query, engine)
                                 :
                                     formatSQL(nativeForm.query)
                             )}

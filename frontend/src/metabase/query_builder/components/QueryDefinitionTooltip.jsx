@@ -20,24 +20,32 @@ export default class QueryDefinitionTooltip extends Component {
 
         return (
             <div className="p2" style={{width: 250}}>
-                <div className="mb2">
-                    { type && type === "metric" && !object.is_active ? "This metric has been retired.  It's no longer available for use." : object.description }
+                <div>
+                    { type && type === "metric" && !object.is_active ?
+                        "This metric has been retired.  It's no longer available for use."
+                    :
+                        object.description
+                    }
                 </div>
-                <FieldSet legend="Definition" border="border-light">
-                    <div className="TooltipFilterList">
-                        { object.definition.aggregation &&
-                            <AggregationWidget
-                                aggregation={object.definition.aggregation}
-                                tableMetadata={tableMetadata}
-                            />
-                        }
-                        <FilterList
-                            filters={Query.getFilters(object.definition)}
-                            tableMetadata={tableMetadata}
-                            maxDisplayValues={Infinity}
-                        />
+                { object.definition &&
+                    <div className="mt2">
+                        <FieldSet legend="Definition" border="border-light">
+                            <div className="TooltipFilterList">
+                                { object.definition.aggregation &&
+                                    <AggregationWidget
+                                        aggregation={object.definition.aggregation}
+                                        tableMetadata={tableMetadata}
+                                    />
+                                }
+                                <FilterList
+                                    filters={Query.getFilters(object.definition)}
+                                    tableMetadata={tableMetadata}
+                                    maxDisplayValues={Infinity}
+                                />
+                            </div>
+                        </FieldSet>
                     </div>
-                </FieldSet>
+                }
             </div>
         );
     }
