@@ -258,6 +258,7 @@
 ;;; ------------------------------------------------------------ Running a Query ------------------------------------------------------------
 
 (defn- run-query-for-card [card-id parameters]
+  {:pre [(u/maybe? sequential? parameters)]}
   (let [card    (read-check Card card-id)
         query   (assoc (:dataset_query card)
                   :parameters  parameters
@@ -275,6 +276,13 @@
   "Run the query associated with a Card, and return its results as CSV."
   [card-id :as {{:keys [parameters]} :body}]
   (dataset-api/as-csv (run-query-for-card card-id parameters)))
+
+(defendpoint GET "/:card-id/json"
+  "Fetch the results of a Card as JSON."
+  [card-id]
+  (let [{{:keys [columns rows]} :data} (run-query-for-card card-id nil)]
+    (for [row rows]
+      (zipmap columns row))))
 
 
 (define-routes)
