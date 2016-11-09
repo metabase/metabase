@@ -160,6 +160,6 @@ export const getFullDatasetQuery = createSelector(
 )
 
 export const getIsRunnable = createSelector(
-	[card],
-	(card) => isCardRunnable(card)
+	[card, tableMetadata],
+	(card, tableMetadata) => isCardRunnable(card, tableMetadata)
 )

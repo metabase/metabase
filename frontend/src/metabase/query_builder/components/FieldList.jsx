@@ -114,6 +114,7 @@ export default class FieldList extends Component {
                             field={field}
                             value={item.value}
                             onFieldChange={this.props.onFieldChange}
+                            groupingOptions={item.field.grouping_options}
                         />
                     </PopoverWithTrigger>
                 }

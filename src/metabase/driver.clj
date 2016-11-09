@@ -131,6 +131,7 @@
   *  `:foreign-keys` - Does this database support foreign key relationships?
   *  `:nested-fields` - Does this database support nested fields (e.g. Mongo)?
   *  `:set-timezone` - Does this driver support setting a timezone for the query?
+  *  `:basic-aggregations` - Does the driver support *basic* aggregations like `:count` and `:sum`? (Currently, everything besides standard deviation is considered \"basic\"; only GA doesn't support this).
   *  `:standard-deviation-aggregations` - Does this driver support [standard deviation aggregations](https://github.com/metabase/metabase/wiki/Query-Language-'98#stddev-aggregation)?
   *  `:expressions` - Does this driver support [expressions](https://github.com/metabase/metabase/wiki/Query-Language-'98#expressions) (e.g. adding the values of 2 columns together)?
   *  `:dynamic-schema` -  Does this Database have no fixed definitions of schemas? (e.g. Mongo)

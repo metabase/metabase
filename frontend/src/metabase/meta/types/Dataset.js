@@ -6,7 +6,7 @@ export type ColumnName = string;
 export type Column = {
     name: ColumnName,
     display_name: string,
-    base_type: string
+    base_type: string,
 }
 
 export type ISO8601Times = string;
