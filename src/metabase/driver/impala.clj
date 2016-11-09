@@ -66,9 +66,12 @@
     :month-of-year   (hsql/call :extract v (str "month"))
     :quarter         (hsql/call :trunc v (str "Q")) 
     ;; SQL: select floor((extract(trunc(now(), 'Q'), "month") /3) + 1);
-    :quarter-of-year (hsql/call :floor (inc (/ 
-                     (hsql/call :extract 
-                     (hsql/call :trunc v (str "Q")), (str "month")) 3))) 
+    ;; q = (m + 2) / 3
+    :quarter-of-year (hx// (hx/+ (hsql/call :extract v (str "month"))
+                                   2)
+                             3)
+    ;;:quarter-of-year (hsql/call :floor (inc (/ (hsql/call :extract 
+    ;;                 (hsql/call :trunc v (str "Q")), (str "month")) 3))) 
     :year            (hsql/call :extract (str "year") v)))
 
 
@@ -127,6 +130,11 @@
                                                            :display-name "Database name"
                                                            :placeholder  "default"
                                                            :required     false}           ;;database is optional in the connection url
+                                                          {:name         "authMech"
+                                                           :display-name "Authentication mechanism"
+                                                           :type         :integer
+                                                           :placeholder  "0=No Authentication, 1=Kerberos, 2=Username, 3=Username and Password"
+                                                           :required     true}            ;; It would be nice to have a pulldown menu with choices here
                                                           {:name         "user"
                                                            :display-name "Database username"
                                                            :placeholder  "What username do you use to login to the database?"
@@ -136,13 +144,13 @@
                                                            :display-name "Database password"
                                                            :type         :password
                                                            :placeholder  "*******"
-                                                           :required     false}            ;; Impala authMech=2 does not require password
-                                                           {:name        "connProperties"  ;;Impala driver supports many additional properties
-                                                                                           ;;These properties are semicolon separated.
-                                                                                           ;;An overview of available properties can be found at:
-                                                                                           ;;http://www.cloudera.com/documentation/other/connectors/impala-jdbc/latest/Cloudera-JDBC-Driver-for-Impala-Install-Guide.pdf     
+                                                           :required     false}            ;; Impala authMech=(0|2) does not require password
+                                                           {:name        "connProperties"  ;; Impala driver supports many additional properties
+                                                                                           ;; These properties are semicolon separated.
+                                                                                           ;; An overview of available properties can be found at:
+                                                                                           ;; http://www.cloudera.com/documentation/other/connectors/impala-jdbc/latest/Cloudera-JDBC-Driver-for-Impala-Install-Guide.pdf     
                                                            :display-name "Connection attributes"
-                                                           :placeholder  ";AuthMech=1;KrbRealm=EXAMPLE.COM;KrbHostFQDN=impala.example.com;KrbServiceName=impala"}])
+                                                           :placeholder  "KrbRealm=EXAMPLE.COM;KrbHostFQDN=impala.example.com;KrbServiceName=impala"}])
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
 
   sql/ISQLDriver

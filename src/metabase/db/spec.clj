@@ -81,11 +81,11 @@
 (defn impala
   "Create a database specification for a Impala database. Opts should include keys
   for :db, :user, and :password and authentication mechanism."
-  [{:keys [host port db make-pool? connProperties]
-    :or {host "localhost", port 21050, db "default", make-pool? true, connProperties ""}
+  [{:keys [host port db make-pool? authMech user password connProperties]
+    :or {host "localhost", port 21050, db "default", make-pool? true, authMech="0" connProperties ";"}
     :as opts}]
   (merge {:classname "com.cloudera.impala.jdbc41.Driver" ; must be in plugins directory
           :subprotocol "impala"
-          :subname (str "//" host ":" port "/" db connProperties ";UseNativeQuery=1")  ;;Use UseNativeQuery=1 to prevent SQL rewriting by the JDBC driver
+          :subname (str "//" host ":" port "/" db ";AuthMech=" authMech ";UID=" user ";PWD=" password  connProperties ";UseNativeQuery=1")  ;;Use UseNativeQuery=1 to prevent SQL rewriting by the JDBC driver
           :make-pool? make-pool?}
          (dissoc opts :host :port :db :connProperties)))
