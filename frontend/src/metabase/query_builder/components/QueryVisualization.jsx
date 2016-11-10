@@ -110,7 +110,7 @@ export default class QueryVisualization extends Component {
               rows = this.props.result.data.rows;
 
         if (this.props.result.data.rows_truncated ||
-            (dataset_query.type === "query" && Query.isBareRowsAggregation(dataset_query.query) && rows.length === 2000))
+            (dataset_query.type === "query" && Query.isBareRows(dataset_query.query) && rows.length === 2000))
         {
             return true;
         } else {

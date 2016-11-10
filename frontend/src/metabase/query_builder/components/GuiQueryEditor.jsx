@@ -64,13 +64,13 @@ export default class GuiQueryEditor extends Component {
             this.setQuery(this.props.query);
             MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove GroupBy');
         } else {
-            Query.updateBreakout(this.props.query.query, field, index);
-            this.setQuery(this.props.query);
-
-            const isNew = index + 1 > Query.getBreakouts(this.props.query.query).length;
-            if (isNew) {
+            if (index > Query.getBreakouts(this.props.query.query) - 1) {
+                Query.addBreakout(this.props.query.query, field);
+                this.setQuery(this.props.query);
                 MetabaseAnalytics.trackEvent('QueryBuilder', 'Add GroupBy');
             } else {
+                Query.updateBreakout(this.props.query.query, index, field);
+                this.setQuery(this.props.query);
                 MetabaseAnalytics.trackEvent('QueryBuilder', 'Modify GroupBy');
             }
         }
@@ -91,11 +91,9 @@ export default class GuiQueryEditor extends Component {
     }
 
     addFilter = (filter) => {
-        let query = this.props.query.query;
-        Query.addFilter(query);
-        Query.updateFilter(query, Query.getFilters(query).length - 1, filter);
-
-        this.setQuery(this.props.query);
+        const query = this.props.query;
+        Query.addFilter(query.query, filter);
+        this.setQuery(query);
 
         MetabaseAnalytics.trackEvent('QueryBuilder', 'Add Filter');
     }
@@ -163,7 +161,6 @@ export default class GuiQueryEditor extends Component {
                 );
             }
 
-            // TODO: proper check for isFilterComplete(filter)
             if (Query.canAddFilter(this.props.query.query)) {
                 addFilterButton = this.renderAdd((filterList ? null : "Add filters to narrow your answer"), null, "addFilterTarget");
             }
@@ -207,7 +204,7 @@ export default class GuiQueryEditor extends Component {
 
         // aggregation clause.  must have table details available
         if (tableMetadata) {
-            let isBareRows = Query.isBareRowsAggregation(query);
+            let isBareRows = Query.isBareRows(query);
             let aggregations = Query.getAggregations(query);
 
             if (aggregations.length === 0) {
@@ -230,7 +227,7 @@ export default class GuiQueryEditor extends Component {
                         tableMetadata={tableMetadata}
                         customFields={Query.getExpressions(this.props.query.query)}
                         updateAggregation={(aggregation) => this.updateAggregation(index, aggregation)}
-                        removeAggregation={canRemoveAggregation && this.removeAggregation.bind(null, index)}
+                        removeAggregation={canRemoveAggregation ? this.removeAggregation.bind(null, index) : null}
                         addButton={this.renderAdd(index === 0 ? "Add a grouping" : null)}
                     />
                 );

@@ -96,7 +96,7 @@ export const isObjectDetail = createSelector(
 	    if (dataset_query.query &&
 	            dataset_query.query.source_table &&
 	            dataset_query.query.filter &&
-				Query.isBareRowsAggregation(dataset_query.query) &&
+				Query.isBareRows(dataset_query.query) &&
 	            data.rows &&
 	            data.rows.length === 1) {
 
@@ -111,8 +111,7 @@ export const isObjectDetail = createSelector(
 
 	        // now check that we have a filter clause w/ '=' filter on PK column
 	        if (pkField !== undefined) {
-	            for (var j=0; j < dataset_query.query.filter.length; j++) {
-	                let filter = dataset_query.query.filter[j];
+	            for (const filter of Query.getFilters(dataset_query.query)) {
 	                if (Array.isArray(filter) &&
 	                        filter.length === 3 &&
 	                        filter[0] === "=" &&
@@ -135,7 +134,7 @@ export const queryResult = createSelector(
 		// if we are display bare rows, filter out columns with visibility_type = details-only
         if (queryResult && queryResult.json_query && !isObjectDetail &&
         		Query.isStructured(queryResult.json_query) &&
-                Query.isBareRowsAggregation(queryResult.json_query.query)) {
+                Query.isBareRows(queryResult.json_query.query)) {
         	// TODO: mutability?
             queryResult.data = DataGrid.filterOnPreviewDisplay(queryResult.data);
         }

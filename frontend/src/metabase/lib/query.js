@@ -9,6 +9,8 @@ import { createLookupByProperty } from "metabase/lib/table";
 import { isFK, TYPE } from "metabase/lib/types";
 
 
+import * as Q from "./query/query";
+
 export const NEW_QUERY_TEMPLATES = {
     query: {
         database: null,
@@ -103,30 +105,13 @@ var Query = {
         }
 
         // filters
-        var queryFilters = Query.getFilters(query);
-        if (queryFilters.length > 1) {
-            var hasNullValues = function(arr) {
-                for (var j=0; j < arr.length; j++) {
-                    if (arr[j] === null) {
-                        return true;
-                    }
-                }
-
-                return false;
-            };
-
-            var cleanFilters = [queryFilters[0]];
-            for (var i=1; i < queryFilters.length; i++) {
-                if (!hasNullValues(queryFilters[i])) {
-                    cleanFilters.push(queryFilters[i]);
-                }
-            }
-
-            if (cleanFilters.length > 1) {
-                query.filter = cleanFilters;
-            } else {
-                query.filter = [];
-            }
+        const filters = Query.getFilters(query).filter(filter =>
+            _.all(filter, a => a != null)
+        );
+        if (filters.length > 0) {
+            query.filter = ["AND", ...filters];
+        } else {
+            delete query.filter;
         }
 
         if (query.order_by) {
@@ -158,7 +143,7 @@ var Query = {
                         }
                         return [targetMatches[0], s[1]];
                     }
-                } else if (Query.isBareRowsAggregation(query)) {
+                } else if (Query.isBareRows(query)) {
                     return s;
                 }
 
@@ -207,178 +192,9 @@ var Query = {
         }
         const aggregations = Query.getAggregations(query);
         return (
-            index < aggregations.length &&
             aggregations[index] && aggregations[index][0] &&
             SORTABLE_AGGREGATION_TYPES.has(mbqlCanonicalize(aggregations[index][0]))
         );
-    },
-
-    getBreakouts(query) {
-        return (query && query.breakout || []).filter(b => b != null);
-    },
-
-    addBreakout(query) {
-        query.breakout.push(null);
-    },
-
-    updateBreakout(query, value, index) {
-        query.breakout = BreakoutClause.setBreakout(query.breakout, index, value);
-    },
-
-    removeBreakout(query, index) {
-        let field = query.breakout[index];
-
-        // remove the field from the breakout clause
-        query.breakout = BreakoutClause.removeBreakout(query.breakout, index);
-
-        // remove sorts that referenced the dimension that was removed
-        if (query.order_by) {
-            query.order_by = query.order_by.filter(s => s[0] !== field);
-            if (query.order_by.length === 0) {
-                delete query.order_by;
-            }
-        }
-    },
-
-    clearBreakouts(query) {
-        delete query.breakout;
-    },
-
-    hasEmptyAggregation(query) {
-        let aggregations = Query.getAggregations(query);
-        return _.any(aggregations, (aggregation) => aggregation && (
-            (aggregation.length === 1 && aggregation[0] == null) ||
-            (aggregation.length === 2 && aggregation[0] == null && aggregation[1] == null)
-        ));
-    },
-
-    hasValidAggregation(query) {
-        let aggregations = Query.getAggregations(query);
-        let x = _.all(aggregations, (aggregation) => aggregation && (
-            (aggregation.length === 1 && aggregation[0] !== null) ||
-            (aggregation.length === 2 && aggregation[0] !== null && aggregation[1] !== null)
-        ));
-        return x;
-    },
-
-    isBareRowsAggregation(query) {
-        return Query.getAggregations(query).length === 0;
-    },
-
-    getAggregations(query) {
-        let aggregations;
-        if (!query.aggregation) {
-            aggregations = [];
-        } else if (query.aggregation.length === 0 || Array.isArray(query.aggregation[0])) {
-            aggregations = query.aggregation;
-        } else {
-            // legacy
-            aggregations = [query.aggregation]
-        }
-        return aggregations.filter(agg => agg && agg[0] && !mbqlCompare(agg[0], "rows"));
-    },
-
-    updateAggregation(query, index, aggregationClause) {
-        let isBareRows = !aggregationClause || mbqlCompare(aggregationClause[0], "rows");
-
-        // when switching to or from "rows" aggregation clear out any sorting clauses
-        if (Query.isBareRowsAggregation(query) !== isBareRows) {
-            Query.clearSort(query);
-        }
-
-        if (isBareRows) {
-            delete query.aggregation;
-            // for "rows" type aggregation we always clear out any dimensions because they don't make sense
-            Query.clearBreakouts(query);
-        } else {
-            let aggregations = Query.getAggregations(query);
-            query.aggregation = [...aggregations.slice(0, index), aggregationClause, ...aggregations.slice(index + 1)];
-        }
-    },
-
-    removeAggregation(query, index) {
-        const aggregations = Query.getAggregations(query);
-        query.aggregation = [...aggregations.slice(0, index), aggregations.slice(index + 1)];
-        return query;
-    },
-
-    clearAggregations(query) {
-        // use updateAggregation so we clear sort and breakouts if necessary
-        Query.updateAggregation(query, 0, null);
-    },
-
-    getFilters(query) {
-        if (!query) throw 'query is null!';
-        // Special handling for accessing query filters because it's been fairly complex to deal with their structure.
-        // This method provide a unified and consistent view of the filter definition for the rest of the tool to use.
-
-        var queryFilters = query.filter;
-
-        // quick check for older style filter definitions and tweak them to a format we want to work with
-        if (queryFilters && queryFilters.length > 0 && queryFilters[0] !== "AND") {
-            var reformattedFilters = [];
-
-            for (var i=0; i < queryFilters.length; i++) {
-                if (queryFilters[i] !== null) {
-                    reformattedFilters = ["AND", queryFilters];
-                    break;
-                }
-            }
-
-            queryFilters = reformattedFilters;
-        }
-
-        return queryFilters || [];
-    },
-
-    canAddFilter(query) {
-        var queryFilters = Query.getFilters(query);
-        if (!queryFilters) {
-            return false;
-        }
-        if (queryFilters.length > 0) {
-            var lastFilter = queryFilters[queryFilters.length - 1];
-            // simply make sure that there are no null values in the last filter
-            for (var i=0; i < lastFilter.length; i++) {
-                if (lastFilter[i] === null) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    },
-
-    addFilter(query) {
-        var queryFilters = Query.getFilters(query);
-
-        if (queryFilters.length === 0) {
-            queryFilters = ["AND", [null, null, null]];
-        } else {
-            queryFilters = queryFilters.concat([[null, null, null]]);
-        }
-
-        query.filter = queryFilters;
-    },
-
-    updateFilter(query, index, filter) {
-        var queryFilters = Query.getFilters(query);
-
-        queryFilters[index] = filter;
-
-        query.filter = queryFilters;
-    },
-
-    removeFilter(query, index) {
-        var queryFilters = Query.getFilters(query);
-
-        if (queryFilters.length === 2) {
-            // this equates to having a single filter because the arry looks like ... ["AND" [a filter def array]]
-            queryFilters = [];
-        } else {
-            queryFilters.splice(index, 1);
-        }
-
-        query.filter = queryFilters;
     },
 
     isSegmentFilter(filter) {
@@ -386,7 +202,7 @@ var Query = {
     },
 
     canAddLimitAndSort(query) {
-        if (Query.isBareRowsAggregation(query)) {
+        if (Query.isBareRows(query)) {
             return true;
         } else if (Query.hasValidBreakout(query)) {
             return true;
@@ -397,24 +213,23 @@ var Query = {
 
     getSortableFields(query, fields) {
         // in bare rows all fields are sortable, otherwise we only sort by our breakout columns
-
-        if (Query.isBareRowsAggregation(query)) {
+        if (Query.isBareRows(query)) {
             return fields;
         } else if (Query.hasValidBreakout(query)) {
             // further filter field list down to only fields in our breakout clause
             var breakoutFieldList = [];
 
-            query.breakout.map(function (breakoutField) {
-                let breakoutFieldId = Query.getFieldTargetId(breakoutField);
-                fields.map(function(field) {
-                    if (field.id === breakoutFieldId) {
-                        breakoutFieldList.push(field);
-                    }
-                });
+            const breakouts = Query.getBreakouts(query);
+            breakouts.map(function (breakoutField) {
+                const fieldId = Query.getFieldTargetId(breakoutField);
+                const field = _.findWhere(fields, { id: fieldId });
+                if (field) {
+                    breakoutFieldList.push(field);
+                }
             });
 
             const aggregations = Query.getAggregations(query);
-            for (const [index, aggregation] of aggregations) {
+            for (const [index, aggregation] of aggregations.entries()) {
                 if (Query.canSortByAggregateField(query, index)) {
                     breakoutFieldList.push({
                         id: ["aggregation",  index],
@@ -424,58 +239,15 @@ var Query = {
                 }
             }
 
-
-
             return breakoutFieldList;
         } else {
             return [];
         }
     },
 
-    addLimit(query) {
-        query.limit = null;
-    },
-
-    updateLimit(query, limit) {
-        query.limit = limit;
-    },
-
-    removeLimit(query) {
-        delete query.limit;
-    },
-
     canAddSort(query) {
         // TODO: allow for multiple sorting choices
         return false;
-    },
-
-    addSort(query) {
-        // TODO: make sure people don't try to sort by the same field multiple times
-        var order_by = query.order_by;
-        if (!order_by) {
-            order_by = [];
-        }
-
-        order_by.push([null, "ascending"]);
-        query.order_by = order_by;
-    },
-
-    updateSort(query, index, sort) {
-        query.order_by[index] = sort;
-    },
-
-    removeSort(query, index) {
-        if (query.order_by) {
-            if (query.order_by.length === 1) {
-                delete query.order_by;
-            } else {
-                query.order_by.splice(index, 1);
-            }
-        }
-    },
-
-    clearSort(query) {
-        delete query.order_by;
     },
 
     getExpressions(query) {
@@ -677,8 +449,8 @@ var Query = {
         return [inflection.pluralize(tableMetadata.display_name)];
     },
 
-    getAggregationDescription(tableMetadata, { aggregation }, options) {
-        if (aggregation) {
+    getAggregationDescription(tableMetadata, query, options) {
+        return conjunctList(Query.getAggregations(query).map(aggregation => {
             switch (aggregation[0]) {
                 case "METRIC":
                     let metric = _.findWhere(tableMetadata.metrics, { id: aggregation[1] });
@@ -695,8 +467,7 @@ var Query = {
                 case "max":       return            ["Maximum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
                 case "min":       return            ["Minimum of ", Query.getFieldName(tableMetadata, aggregation[1], options)];
             }
-        }
-        return "";
+        }), "and");
     },
 
     getBreakoutDescription(tableMetadata, { breakout }, options) {
@@ -774,12 +545,12 @@ var Query = {
         return field && field[3];
     },
 
-    getAggregationType(query) {
-        return query && query.aggregation && query.aggregation[0];
+    getAggregationType(aggregation) {
+        return aggregation && aggregation[0];
     },
 
-    getAggregationField(query) {
-        return query && query.aggregation && query.aggregation[1];
+    getAggregationField(aggregation) {
+        return aggregation && aggregation[1];
     },
 
     getQueryColumn(tableMetadata, field) {
@@ -793,20 +564,26 @@ var Query = {
 
     getQueryColumns(tableMetadata, query) {
         let columns = Query.getBreakouts(query).map(b => Query.getQueryColumn(tableMetadata, b));
-        const aggregation = Query.getAggregationType(query);
-        if (aggregation === "rows") {
+        if (Query.isBareRows(query)) {
             if (columns.length === 0) {
                 return null;
             }
         } else {
-            columns.push({
-                name: METRIC_NAME_BY_AGGREGATION[aggregation],
-                base_type: METRIC_TYPE_BY_AGGREGATION[aggregation],
-                special_type: TYPE.Number
-            });
+            for (const aggregation of Query.getAggregations(query)) {
+                const type = Query.getAggregationType(aggregation)
+                columns.push({
+                    name: METRIC_NAME_BY_AGGREGATION[type],
+                    base_type: METRIC_TYPE_BY_AGGREGATION[type],
+                    special_type: TYPE.Number
+                });
+            }
         }
         return columns;
     }
+}
+
+for (const prop in Q) {
+    Query[prop] = Q[prop];
 }
 
 export const AggregationClause = {
