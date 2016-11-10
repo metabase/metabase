@@ -120,10 +120,10 @@ Use an additional Java option which points to the location of the JAAS config fi
 java -Djava.security.auth.login.config=jaas.conf -jar metabase.jar
 ```
 
-7. In Metabase, create a new database by selecting the Impala driver and add the "AuthMech", "KrbRealm", "KrbHostFQDN" and "KrbServiceName" properties in the "Connection attributes" field. For example:
+7. In Metabase, create a new database by selecting the Impala driver. Enter the value 1 in the "Authentication mechanism" field and configure the "KrbRealm", "KrbHostFQDN" and "KrbServiceName" properties in the "Connection attributes" field. For example:
 
 ```
-;AuthMech=1;KrbRealm=MYREALM;KrbHostFQDN=impala-node.example.com;KrbServiceName=impala
+KrbRealm=MYREALM;KrbHostFQDN=impala-node.example.com;KrbServiceName=impala
 ```
 
 When no Impala connection can be created, add the Kerberos debug options to the Metabase start options to get more detailed logging information.
@@ -134,6 +134,6 @@ java -Djava.security.auth.login.config=jaas.conf -Dsun.security.krb5.debug=true 
 It is also possible to have the Impala JDBC driver produce more logging by adding the following properties to the "Connection attributes" field. For example:
 
 ```
-;LogLevel=6;LogPath=/path/to/logdir;
+LogLevel=6;LogPath=/path/to/logdir;
 ```
 

@@ -38,41 +38,47 @@
       dbspec/impala
       (dissoc :ssl))) ;; SSL attribute is part of connProperties
 
-
 (defn- trunc
-  "Truncate a date.
-  See: http://www.cloudera.com/documentation/enterprise/latest/topics/impala_datetime_functions.html
-      (trunc :day v) -> trunc(v, 'day')"
+  "Truncate a datetime, also see:
+   https://www.cloudera.com/documentation/enterprise/5-8-x/topics/impala_datetime_functions.html
+
+      (trunc :day v) -> TRUNC(v, 'day')"
   [format-template v]
   (hsql/call :trunc v (hx/literal format-template)))
 
+(defn- extract-old
+  "Extract value from datetime field), also see:
+   https://www.cloudera.com/documentation/enterprise/5-8-x/topics/impala_datetime_functions.html
+
+      (extract :day v) -> extract(v, 'dd')"
+  [format-template v]
+  (hsql/call :extract v (hx/literal format-template)))
 
 (defn- date
-  "Apply truncation / extraction to a date field or value for Oracle."
+  "Apply truncation / extraction to a date field or value."
   [unit v]
   (case unit
     :default         (hx/->timestamp v)
-    :minute          (hsql/call :trunc v (str "MI"))
-    :minute-of-hour  (hsql/call :extract v (str "minute"))
-    :hour            (hsql/call :trunc v (str "HH"))
-    :hour-of-day     (hsql/call :extract v (str "hour"))
-    :day             (hsql/call :trunc v (str "DD")) 
+    :minute          (trunc :MI v)
+    :minute-of-hour  (hsql/call :extract :minute v)
+    :hour            (trunc :HH v)
+    :hour-of-day     (hsql/call :extract :hour v)
+    :day             (trunc :dd v)
     :day-of-week     (hsql/call :dayofweek v) 
     :day-of-month    (hsql/call :dayofmonth v)
     :day-of-year     (hsql/call :dayofyear v)
-    :week            (hsql/call :trunc v (str "DAY")) 
+    ;; trunc "day" gets start day of the week
+    :week            (trunc :day v)
     :week-of-year    (hsql/call :weekofyear v)
-    :month           (hsql/call :trunc v (str "MONTH")) 
-    :month-of-year   (hsql/call :extract v (str "month"))
-    :quarter         (hsql/call :trunc v (str "Q")) 
-    ;; SQL: select floor((extract(trunc(now(), 'Q'), "month") /3) + 1);
+    :month           (trunc :month v)
+    ;;:month-of-year   (extract :month v)
+    :month-of-year   (hsql/call :extract :month v)
+    :quarter         (trunc :Q v)
     ;; q = (m + 2) / 3
-    :quarter-of-year (hx// (hx/+ (hsql/call :extract v (str "month"))
+    :quarter-of-year (hx// (hx/+ (hsql/call :extract :month v)
                                    2)
                              3)
-    ;;:quarter-of-year (hsql/call :floor (inc (/ (hsql/call :extract 
-    ;;                 (hsql/call :trunc v (str "Q")), (str "month")) 3))) 
-    :year            (hsql/call :extract (str "year") v)))
+    :year             (hsql/call :extract :year v)))
 
 
 (def ^:private ^:const now (hsql/call :now))
@@ -87,7 +93,7 @@
 (defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
   (hsql/call :from_unixtime (case seconds-or-milliseconds
                               :seconds      expr
-                              :milliseconds (hx// expr 1000))))
+                              :milliseconds (hx/->integer (hx// expr 1000)))))
 
 
 (defn- humanize-connection-error-message [message]
@@ -159,7 +165,7 @@
           :column->base-type         (u/drop-first-arg column->base-type)
           :connection-details->spec  (u/drop-first-arg connection-details->spec)
           :date                      (u/drop-first-arg date)
-          :excluded-schemas          (constantly #{"default" "_impala_builtins"})
+          :excluded-schemas          (constantly #{"default" "_impala_builtins" "cloudera_manager_metastore_canary_test_db_hive_hivemetastore"})
           ;;Impala likes mysql style backticks around table and attr names.
           :quote-style               (constantly :mysql)
           :string-length-fn          (u/drop-first-arg string-length-fn)

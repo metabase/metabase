@@ -92,7 +92,6 @@
           :drop-db-if-exists-sql     (constantly nil)
           :drop-table-if-exists-sql  default-drop-table-if-exists-sql                ;; No support for cascade
           :field-base-type->sql-type (u/drop-first-arg field-base-type->sql-type)
-          ;;:pk-field-name             (constantly "id")
           :pk-sql-type               (constantly "INT")
           :add-fk-sql                (constantly nil)
           :load-data!                (generic/make-load-data-fn generic/load-data-add-ids)  ;; Impala has no autoincrement like generator for PK values.
