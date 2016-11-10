@@ -1,66 +1,39 @@
 import React, { Component, PropTypes } from "react";
-import { findDOMNode } from "react-dom";
 import { pluralize } from "humanize-plus";
 
 import Icon from "metabase/components/Icon";
 import ExpandingContent from "metabase/components/ExpandingContent";
 
+import NumericInput from "./NumericInput.jsx";
+
 export default class RelativeDatePicker extends Component {
-    constructor(props) {
-        super(props);
-        const [, , value, unit] = props.filter;
-        const { formatter } = props;
-
-        this.state = {
-            val: formatter(value) || 30,
-            timeUnit: unit || "day"
-        }
-    }
-
     static propTypes = {
         filter: PropTypes.array.isRequired,
         onFilterChange: PropTypes.func.isRequired,
         formatter: PropTypes.func.isRequired
     };
 
-    componentDidMount () {
-        // focus the value input immediately
-        findDOMNode(this.refs.valueInput).focus();
-    }
-
-    setFilter () {
-        const { filter, formatter, onFilterChange } = this.props;
-        const { val, timeUnit } = this.state;
-        console.log('state val', val);
-        onFilterChange(["TIME_INTERVAL", filter[1], val, timeUnit]);
-    }
-
-    setUnit (timeUnit) {
-        this.setState({ timeUnit }, () => this.setFilter());
-    }
-
-    onValueChange (val) {
-        val = this.props.formatter(val); // needs to be an integer
-        console.log(val)
-        this.setState({ val }, () => this.setFilter());
+    static defaultProps = {
+        formatter: (value) => value
     }
 
     render() {
-        const { timeUnit, val } = this.state;
+        const { filter: [op, field, intervals, unit], onFilterChange, formatter } = this.props;
         return (
             <div className="p2">
-                <input
+                <NumericInput
                     className="input"
-                    defaultValue={val}
-                    onChange={ ({ target: { value }}) => this.onValueChange(value) }
+                    value={typeof intervals === "number" ? Math.abs(intervals) : intervals}
+                    onChange={(value) =>
+                        onFilterChange([op, field, formatter(value), unit])
+                    }
                     placeholder="30"
-                    ref="valueInput"
                 />
                 <ExpandingContent open={true}>
                     <UnitPicker
-                        val={val}
-                        currentUnit={timeUnit}
-                        setUnit={this.setUnit.bind(this)}
+                        value={unit}
+                        onChange={(value) => onFilterChange([op, field, intervals, value])}
+                        intervals={intervals}
                     />
                 </ExpandingContent>
             </div>
@@ -68,19 +41,19 @@ export default class RelativeDatePicker extends Component {
     }
 }
 
-export const UnitPicker =({ currentUnit, setUnit, val }) =>
+export const UnitPicker = ({ value, onChange, intervals }) =>
    <div>
        <div className="flex align-center">
-           <h2>{pluralize(val, currentUnit)}</h2>
+           <h2>{pluralize(intervals || 1, value)}</h2>
            <Icon name='chevrondown' />
         </div>
         <ol>
            { ['Minute', 'Hour', 'Day', 'Month', 'Year',].map((unit, index) =>
                <li
                    key={index}
-                   onClick={ () => setUnit(unit.toLowerCase()) }
+                   onClick={ () => onChange(unit.toLowerCase()) }
                >
-                   {pluralize(val, unit)}
+                   {pluralize(intervals || 1, unit)}
                </li>
              )
            }

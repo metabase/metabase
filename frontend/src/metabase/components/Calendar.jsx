@@ -27,6 +27,11 @@ export default class Calendar extends Component {
         onChange: PropTypes.func.isRequired,
         onAfterClick: PropTypes.func,
         onBeforeClick: PropTypes.func,
+        isRangePicker: PropTypes.bool
+    };
+
+    static defaultProps = {
+        isRangePicker: true
     };
 
     componentWillReceiveProps(nextProps) {
@@ -46,8 +51,8 @@ export default class Calendar extends Component {
     }
 
     onClickDay(date, e) {
-        let { selected, selectedEnd } = this.props;
-        if (!selected || selectedEnd) {
+        let { selected, selectedEnd, isRangePicker } = this.props;
+        if (!isRangePicker || !selected || selectedEnd) {
             this.props.onChange(date.format("YYYY-MM-DD"), null);
         } else if (!selectedEnd) {
             if (date.isAfter(selected)) {

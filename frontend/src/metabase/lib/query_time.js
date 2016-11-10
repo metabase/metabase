@@ -76,13 +76,13 @@ export function generateTimeIntervalDescription(n, unit) {
         switch (n) {
             case "current":
             case 0:
-                return "Today";
+                return ["Today"];
             case "next":
             case 1:
-                return "Tomorrow";
+                return ["Tomorrow"];
             case "last":
             case -1:
-                return "Yesterday";
+                return ["Yesterday"];
         }
     }
 

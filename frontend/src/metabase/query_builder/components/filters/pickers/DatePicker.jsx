@@ -7,109 +7,115 @@ import moment from "moment";
 
 import _ from "underscore";
 
+const SingleDatePicker = ({ filter: [op, field, value], onFilterChange }) =>
+    <SpecificDatePicker value={value} onChange={(value) => onFilterChange([op, field, value])} />
+
+const MultiDatePicker = ({ filter: [op, field, startValue, endValue], onFilterChange }) =>
+    <div className="flex mx2">
+        <SpecificDatePicker value={startValue} onChange={(value) => onFilterChange([op, field, value, endValue])} />
+        <SpecificDatePicker value={endValue} onChange={(value) => onFilterChange([op, field, startValue, value])} />
+    </div>
+
+const PreviousPicker =  (props) =>
+    <RelativeDatePicker {...props} formatter={(value) => value * -1} />
+
+const NextPicker = (props) =>
+    <RelativeDatePicker {...props} />
+
+const CurrentPicker = ({ filter: [operator, field, intervals, unit], onFilterChange }) =>
+    <UnitPicker value={unit} onChange={(value) => onFilterChange([operator, field, intervals, value])} />
+
+const getIntervals = ([op, field, value, unit]) => op === "TIME_INTERVAL" && typeof value === "number" ? Math.abs(value) : 1;
+const getUnit      = ([op, field, value, unit]) => op === "TIME_INTERVAL" && unit ? unit : "day";
+const getDate      = (value) => typeof value === "string" && moment(value).isValid() ? value : moment().format("YYYY-MM-DD");
+
 const OPERATORS = [
-    { clause: "TIME_INTERVAL", name: "Previous" },
-    { clause: "TIME_INTERVAL", name: "Next" },
-    { clause: "TIME_INTERVAL", name: "Current" },
-    { clause: "<", name: "Before" },
-    { clause: ">", name: "After" },
-    { clause: "=", name: "On" },
-    { clause: "=", name: "Between" },
-    { clause: "IS_NULL", name: "Is Empty" },
-    { clause: "NOT_NULL", name: "Not Empty" }
+    {
+        name: "Previous",
+        init: (filter) => ["TIME_INTERVAL", filter[1], -getIntervals(filter), getUnit(filter)],
+        test: ([op, field, value]) => op === "TIME_INTERVAL" && value < 0 || Object.is(value, -0),
+        widget: PreviousPicker,
+    },
+    {
+        name: "Next",
+        init: (filter) => ["TIME_INTERVAL", filter[1], getIntervals(filter), getUnit(filter)],
+        test: ([op, field, value]) => op === "TIME_INTERVAL" && value >= 0,
+        widget: NextPicker,
+    },
+    {
+        name: "Current",
+        init: (filter) => ["TIME_INTERVAL", filter[1], "current", getUnit(filter)],
+        test: ([op, field, value]) => op === "TIME_INTERVAL" && value === "current",
+        widget: CurrentPicker,
+    },
+    {
+        name: "Before",
+        init: (filter) => ["<", filter[1], getDate(filter[2])],
+        test: ([op]) => op === "<",
+        widget: SingleDatePicker,
+    },
+    {
+        name: "After",
+        init: (filter) => [">", filter[1], getDate(filter[2])],
+        test: ([op]) => op === ">",
+        widget: SingleDatePicker,
+    },
+    {
+        name: "On",
+        init: (filter) => ["=", filter[1], getDate(filter[2])],
+        test: ([op]) => op === "=",
+        widget: SingleDatePicker,
+    },
+    {
+        name: "Between",
+        init: (filter) => ["BETWEEN", filter[1], getDate(filter[2]), getDate(filter[3])],
+        test: ([op]) => op === "BETWEEN",
+        widget: MultiDatePicker,
+    },
+    {
+        name: "Is Empty",
+        init: (filter) => ["IS_NULL", filter[1]],
+        test: ([op]) => op === "IS_NULL"
+    },
+    {
+        name: "Not Empty",
+        init: (filter) => ["NOT_NULL", filter[1]],
+        test: ([op]) => op === "NOT_NULL"
+    }
 ];
 
 export default class DatePicker extends Component {
-    constructor(props) {
-        super(props);
-        this.state = {
-            operator: this.detectPane(props.filter) || "previous"
-        };
-
-        this.changeOperator = this.changeOperator.bind(this)
-    }
-
     static propTypes = {
         filter: PropTypes.array.isRequired,
         onFilterChange: PropTypes.func.isRequired,
-        onOperatorChange: PropTypes.func.isRequired,
         tableMetadata: PropTypes.object.isRequired
     };
 
-    detectPane(filter) {
-        const [ clause, field, value, endValue ] = filter;
-
-        if(clause !== "TIME_INTERVAL") {
-            // TODO - will need to handle between
-            return OPERATORS[_.findIndex(OPERATORS, { clause })].name.toLowerCase()
-        } else {
-            if(value < 0) {
-                return "previous";
-            } else if (value > 0) {
-                return "next";
-            } else {
-                return "current";
-            }
-        }
+    componentWillMount() {
+        const operator = this._getOperator() || OPERATORS[0];
+        this.props.onFilterChange(operator.init(this.props.filter));
     }
 
-    changeOperator (operator) {
-        this.setState({ operator: operator.name.toLowerCase() })
+    _getOperator() {
+        return _.find(OPERATORS, (o) => o.test(this.props.filter));
     }
 
     render() {
-        const { operator } = this.state;
-        const [, , value , endVal] = this.props.filter;
+        let { filter, onFilterChange } = this.props;
+        const operator = this._getOperator();
+        const Widget = operator && operator.widget;
 
         return (
             <div className="mt2">
                 <OperatorSelector
-                    operator={operator}
+                    operator={operator && operator.name}
                     operators={OPERATORS}
-                    onOperatorChange={operator => this.changeOperator(operator)}
+                    onOperatorChange={operator => onFilterChange(operator.init(filter))}
                 />
-                { operator === "previous" || operator ==="next" ?
-                    <RelativeDatePicker
-                        formatter={(val) => {
-                            if(operator === "previous") {
-                                return val * -1
-                            }
-                            return val
-                        }}
-                        { ...this.props}
-                    />
-                : operator === "current" ?
-                    <CurrentPicker { ...this.props } />
-                : operator === "after" || operator === "before" || operator === "on" ?
-                    <SpecificDatePicker
-                        value={value}
-                        { ...this.props }
-                    />
-                : operator === "between" ?
-                    <MultiDatePicker
-                        start={value || moment()}
-                        end={endVal || moment()}
-                        { ...this.props }
-                    />
-                : null }
+                { Widget &&
+                    <Widget {...this.props} filter={filter} />
+                }
             </div>
         )
     }
 }
-
-const CurrentPicker = ({ filter, onChangeFilter }) =>
-    <div>
-        <UnitPicker filter onChangeFilter />
-    </div>
-
-const MultiDatePicker = ({ start, end, ...rest }) =>
-    <div className="flex mx2">
-        <SpecificDatePicker
-            date={start}
-            {...rest}
-        />
-        <SpecificDatePicker
-            date={end}
-            {...rest}
-        />
-    </div>
