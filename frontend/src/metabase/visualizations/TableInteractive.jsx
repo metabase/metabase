@@ -103,6 +103,10 @@ export default class TableInteractive extends Component {
         this.grid.recomputeGridSize();
     }
 
+    recomputeColumnSizes = _.debounce(() => {
+        this.setState({ contentWidths: null })
+    }, 100)
+
     isSortable() {
         return (this.props.setSortFn !== undefined);
     }
@@ -135,6 +139,11 @@ export default class TableInteractive extends Component {
         this.setState({ popover: null });
     }
 
+    onCellResize = () => {
+        console.log("onCellResize")
+        this.recomputeColumnSizes();
+    }
+
     cellRenderer({ rowIndex, columnIndex }) {
         const { data: { cols, rows }} = this.props;
         const column = cols[columnIndex];
@@ -146,7 +155,7 @@ export default class TableInteractive extends Component {
                     className="link cellData public_fixedDataTableCell_cellContent"
                     onClick={this.cellClicked.bind(this, rowIndex, columnIndex)}
                 >
-                    <Value value={cellData} column={column} />
+                    <Value value={cellData} column={column} onResize={this.onCellResize} />
                 </a>
             );
         } else {
@@ -158,7 +167,7 @@ export default class TableInteractive extends Component {
                     onClick={isFilterable && this.showPopover.bind(this, rowIndex, columnIndex)}
                 >
                     <span className="cellData">
-                        <Value value={cellData} column={column} />
+                        <Value value={cellData} column={column} onResize={this.onCellResize} />
                     </span>
                     { popover && popover.rowIndex === rowIndex && popover.columnIndex === columnIndex &&
                         <QuickFilterPopover

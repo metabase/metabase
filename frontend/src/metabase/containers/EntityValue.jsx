@@ -40,6 +40,8 @@ const mapDispatchToProps = {
 let pendingRequests = new Map()
 let pendingTimeout;
 
+const getName = (props) => props.entity && props.entity.name ? props.entity.name : props.value;
+
 @connect(mapStateToProps, mapDispatchToProps)
 export default class EntityValue extends Component {
     // normally this debouncing logic etc would be in redux-land but it needs to be extremely fast
@@ -65,6 +67,12 @@ export default class EntityValue extends Component {
 
     componentWillMount() {
         this._loadEntityName(this.props);
+    }
+
+    componentDidUpdate(prevProps) {
+        if (this.props.onResize && getName(prevProps) !== getName(this.props)) {
+            this.props.onResize();
+        }
     }
 
     componentWillReceiveProps(newProps) {

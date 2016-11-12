@@ -1,3 +1,7 @@
+.PagingButtons {
+    border: 1px solid #ddd;
+}
+
 
 .MB-DataTable-header:hover {
     cursor: pointer;
@@ -8,10 +12,6 @@
 .MB-DataTable-header--sorted .Icon     {
     opacity: 1;
     transition: opacity .3s linear;
-}
-
-.PagingButtons {
-    border: 1px solid #ddd;
 }
 
 /* if the column is the one that is being sorted*/

@@ -123,9 +123,9 @@ export function formatUrl(value, { jsx } = {}) {
     }
 }
 
-export function formatEntity(value, { jsx, column } = {}) {
+export function formatEntity(value, { jsx, column, ...rest } = {}) {
     if (jsx) {
-        return <EntityValue value={value} column={column} />;
+        return <EntityValue value={value} column={column} {...rest} />;
     } else {
         return value;
     }
