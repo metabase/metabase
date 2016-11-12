@@ -32,8 +32,9 @@ export default class TableInteractive extends Component {
             columnWidths: [],
             contentWidths: null
         };
+        this.columnHasResized = {};
 
-        _.bindAll(this, "onClosePopover", "cellRenderer", "columnResized");
+        _.bindAll(this, "onClosePopover", "cellRenderer");
     }
 
     static propTypes = {
@@ -55,12 +56,18 @@ export default class TableInteractive extends Component {
         this.componentWillReceiveProps(this.props);
     }
 
+    resetColumnWidths() {
+        this.setState({
+            columnWidths: [],
+            contentWidths: null
+        });
+        this.columnHasResized = {};
+        this.props.onUpdateVisualizationSettings({ "table.column_widths": [] });
+    }
+
     componentWillReceiveProps(newProps) {
         if (JSON.stringify(this.props.data && this.props.data.cols) !== JSON.stringify(newProps.data && newProps.data.cols)) {
-            this.setState({
-                columnWidths: newProps.data.cols ? newProps.data.cols.map(col => 0) : [], // content cells don't wrap so this is fine
-                contentWidths: null
-            });
+            this.resetColumnWidths();
         }
     }
 
@@ -78,24 +85,31 @@ export default class TableInteractive extends Component {
         const element = ReactDOM.findDOMNode(this);
         if (!this.state.contentWidths && element) {
             let contentWidths = [];
-            let cellElements = element.querySelectorAll(".public_fixedDataTableCell_cellContent");
+            let cellElements = element.querySelectorAll(".MB-DataTable-cellContent");
             for (let cellElement of cellElements) {
-                let columnIndex = cellElement.parentElement.dataset.column;
+                let columnIndex = cellElement.dataset.column;
                 contentWidths[columnIndex] = Math.max(contentWidths[columnIndex] || 0, cellElement.offsetWidth);
             }
-            this.setState({ contentWidths }, () => this.calculateColumnWidths(this.props.data.cols));
-        }
-    }
 
-    calculateColumnWidths(cols) {
-        let columnWidths = cols.map((col, index) => {
-            if (this.state.contentWidths) {
-                return Math.min(this.state.contentWidths[index] + 1, 300); // + 1 to make sure it doen't wrap?
-            } else {
-                return 300;
-            }
-        });
-        this.setState({ columnWidths }, this.recomputeGridSize);
+            const { data: { cols } } = this.props;
+
+            let columnWidths = cols.map((col, index) => {
+                if (this.columnNeedsResize) {
+                    if (this.columnNeedsResize[index] && !this.columnHasResized[index]) {
+                        this.columnHasResized[index] = true;
+                        return contentWidths[index] + 1; // + 1 to make sure it doen't wrap?
+                    } else if (this.state.columnWidths[index]) {
+                        return this.state.columnWidths[index];
+                    }
+                } else {
+                    return contentWidths[index] + 1;
+                }
+            });
+
+            delete this.columnNeedsResize;
+
+            this.setState({ contentWidths, columnWidths }, this.recomputeGridSize);
+        }
     }
 
     recomputeGridSize = () => {
@@ -106,6 +120,20 @@ export default class TableInteractive extends Component {
     recomputeColumnSizes = _.debounce(() => {
         this.setState({ contentWidths: null })
     }, 100)
+
+    onCellResize(columnIndex) {
+        this.columnNeedsResize = this.columnNeedsResize || {}
+        this.columnNeedsResize[columnIndex] = true;
+        this.recomputeColumnSizes();
+    }
+
+    onColumnResize(columnIndex, width) {
+        const { settings } = this.props;
+        let columnWidthsSetting = settings["table.column_widths"] ? settings["table.column_widths"].slice() : [];
+        columnWidthsSetting[columnIndex] = Math.max(MIN_COLUMN_WIDTH, width);
+        this.props.onUpdateVisualizationSettings({ "table.column_widths": columnWidthsSetting });
+        setTimeout(() => this.recomputeGridSize(), 1);
+    }
 
     isSortable() {
         return (this.props.setSortFn !== undefined);
@@ -139,11 +167,6 @@ export default class TableInteractive extends Component {
         this.setState({ popover: null });
     }
 
-    onCellResize = () => {
-        console.log("onCellResize")
-        this.recomputeColumnSizes();
-    }
-
     cellRenderer({ rowIndex, columnIndex }) {
         const { data: { cols, rows }} = this.props;
         const column = cols[columnIndex];
@@ -152,10 +175,10 @@ export default class TableInteractive extends Component {
         if (this.props.cellIsClickableFn(rowIndex, columnIndex)) {
             return (
                 <a
-                    className="link cellData public_fixedDataTableCell_cellContent"
+                    className="link cellData"
                     onClick={this.cellClicked.bind(this, rowIndex, columnIndex)}
                 >
-                    <Value value={cellData} column={column} onResize={this.onCellResize} />
+                    <Value value={cellData} column={column} onResize={this.onCellResize.bind(this, columnIndex)} />
                 </a>
             );
         } else {
@@ -163,12 +186,10 @@ export default class TableInteractive extends Component {
             const isFilterable = column.source !== "aggregation";
             return (
                 <div
-                    className={cx("public_fixedDataTableCell_cellContent", { "cursor-pointer": isFilterable })}
+                    className={cx("cellData", { "cursor-pointer": isFilterable })}
                     onClick={isFilterable && this.showPopover.bind(this, rowIndex, columnIndex)}
                 >
-                    <span className="cellData">
-                        <Value value={cellData} column={column} onResize={this.onCellResize} />
-                    </span>
+                    <Value value={cellData} column={column} onResize={this.onCellResize.bind(this, columnIndex)} />
                     { popover && popover.rowIndex === rowIndex && popover.columnIndex === columnIndex &&
                         <QuickFilterPopover
                             column={cols[this.state.popover.columnIndex]}
@@ -179,14 +200,6 @@ export default class TableInteractive extends Component {
                 </div>
             );
         }
-    }
-
-    columnResized(columnIndex, width) {
-        var tableColumnWidths = this.state.columnWidths.slice();
-        tableColumnWidths[columnIndex] = Math.max(MIN_COLUMN_WIDTH, width);
-        this.setState({
-            columnWidths: tableColumnWidths
-        }, this.recomputeGridSize);
     }
 
     tableHeaderRenderer(columnIndex) {
@@ -202,8 +215,8 @@ export default class TableInteractive extends Component {
             colVal = "Unset";
         }
 
-        var headerClasses = cx('MB-DataTable-header cellData align-center public_fixedDataTableCell_cellContent', {
-            'MB-DataTable-header--sorted': (this.props.sort && (this.props.sort[0][0] === column.id)),
+        var headerClasses = cx('MB-DataTable-headerCellData cellData align-center', {
+            'MB-DataTable-headerCellData--sorted': (this.props.sort && (this.props.sort[0][0] === column.id)),
         });
 
         // set the initial state of the sorting indicator chevron
@@ -233,7 +246,12 @@ export default class TableInteractive extends Component {
         }
     }
 
-    getColumnWidth = ({ index }) => this.state.columnWidths[index] || MIN_COLUMN_WIDTH;
+    getColumnWidth = ({ index }) => {
+        const { settings } = this.props;
+        const { columnWidths } = this.state;
+        const columnWidthsSetting = settings["table.column_widths"] || [];
+        return columnWidthsSetting[index] || columnWidths[index] || MIN_COLUMN_WIDTH;
+    }
 
     render() {
         const { width, height, data: { cols, rows }, className } = this.props;
@@ -245,11 +263,11 @@ export default class TableInteractive extends Component {
         return (
             <ScrollSync>
             {({ clientHeight, clientWidth, onScroll, scrollHeight, scrollLeft, scrollTop, scrollWidth }) =>
-                <div className={cx(className, 'MB-DataTable relative fixedDataTableLayout_main public_fixedDataTable_main', { 'MB-DataTable--pivot': this.props.isPivoted, 'MB-DataTable--ready': this.state.contentWidths })}>
+                <div className={cx(className, 'MB-DataTable relative', { 'MB-DataTable--pivot': this.props.isPivoted, 'MB-DataTable--ready': this.state.contentWidths })}>
                     <Grid
                         ref={(ref) => this.header = ref}
                         style={{ top: 0, left: 0, right: 0, height: HEADER_HEIGHT, position: "absolute" }}
-                        className="fixedDataTableRowLayout_main public_fixedDataTableRow_main fixedDataTableLayout_header public_fixedDataTable_header scroll-hide-all"
+                        className=" MB-DataTable-header scroll-hide-all"
                         width={width || 0}
                         height={HEADER_HEIGHT}
                         columnCount={cols.length}
@@ -260,9 +278,9 @@ export default class TableInteractive extends Component {
                             <div
                                 key={key}
                                 style={{ ...style, overflow: "visible" /* ensure resize handle is visible */ }}
-                                className="fixedDataTableCellLayout_main public_fixedDataTableCell_main"
+                                className="MB-DataTable-cellWrapper"
                             >
-                                <div className="fixedDataTableCellLayout_wrap3 public_fixedDataTableCell_wrap3" data-column={columnIndex}>
+                                <div className="MB-DataTable-cellContent" data-column={columnIndex}>
                                     {this.tableHeaderRenderer(columnIndex)}
                                 </div>
                                 <Draggable
@@ -274,7 +292,7 @@ export default class TableInteractive extends Component {
                                     }}
                                     onStop={(e, { x }) => {
                                         this.setState({ draggingIndex: null })
-                                        this.columnResized(columnIndex, x)}
+                                        this.onColumnResize(columnIndex, x)}
                                     }
                                 >
                                     <div
@@ -291,7 +309,7 @@ export default class TableInteractive extends Component {
                     <Grid
                         ref={(ref) => this.grid = ref}
                         style={{ top: HEADER_HEIGHT, left: 0, right: 0, bottom: 0, position: "absolute" }}
-                        className="fixedDataTableRowLayout_main public_fixedDataTableRow_main"
+                        className=""
                         width={width}
                         height={height - HEADER_HEIGHT}
                         columnCount={cols.length}
@@ -299,8 +317,8 @@ export default class TableInteractive extends Component {
                         rowCount={rows.length}
                         rowHeight={ROW_HEIGHT}
                         cellRenderer={({ key, style, rowIndex, columnIndex }) =>
-                            <div key={key} style={style} className="fixedDataTableCellLayout_main public_fixedDataTableCell_main">
-                                <div className="fixedDataTableCellLayout_wrap3 public_fixedDataTableCell_wrap3" data-column={columnIndex}>
+                            <div key={key} style={style} className="MB-DataTable-cellWrapper">
+                                <div className="MB-DataTable-cellContent" data-column={columnIndex}>
                                     {this.cellRenderer({ rowIndex, columnIndex })}
                                 </div>
                             </div>

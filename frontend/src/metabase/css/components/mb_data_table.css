@@ -2,84 +2,80 @@
     border: 1px solid #ddd;
 }
 
+.MB-DataTable-headerCellData {
+  font-weight: 700;
+}
 
-.MB-DataTable-header:hover {
+.MB-DataTable-headerCellData:hover {
     cursor: pointer;
 }
 
-.MB-DataTable-header .Icon       { opacity: 0; }
-.MB-DataTable-header:hover .Icon,
-.MB-DataTable-header--sorted .Icon     {
+.MB-DataTable-headerCellData .Icon       { opacity: 0; }
+.MB-DataTable-headerCellData:hover .Icon,
+.MB-DataTable-headerCellData--sorted .Icon     {
     opacity: 1;
     transition: opacity .3s linear;
 }
 
 /* if the column is the one that is being sorted*/
-.MB-DataTable-header--sorted {
+.MB-DataTable-headerCellData--sorted {
      color: var(--brand-color);
 }
 
 /* what follows is a war crime but such is the state of FE development */
-.MB-DataTable .public_fixedDataTable_main {
-    border-color: rgb(205, 205, 205);
+.MB-DataTable {
+    border: 1px solid rgb(205, 205, 205);
+}
+.MB-DataTable-header {
+    border-bottom: 1px solid rgb(205, 205, 205);
+    border-right: 1px solid rgb(205, 205, 205);
+    box-sizing: border-box;
 }
 
-.MB-DataTable .public_fixedDataTableCell_main {
+.MB-DataTable .MB-DataTable-cellWrapper {
     border-right: 1px solid #e8e8e8;
     border-bottom: 1px solid #e8e8e8;
     border-top: 1px solid transparent;
     border-left: 1px solid transparent;
 }
 
-.MB-DataTable .public_fixedDataTableCell_main:hover {
+.MB-DataTable .MB-DataTable-cellWrapper:hover {
     border-color: var(--brand-color);
     color: var(--brand-color);
 }
 
-.MB-DataTable .public_fixedDataTableRow_highlighted,
-.MB-DataTable .public_fixedDataTableRow_highlighted .public_fixedDataTableCell_main {
-    background-color: #fff;
-}
-
-.MB-DataTable .public_fixedDataTable_header,
-.MB-DataTable .public_fixedDataTable_header .public_fixedDataTableCell_main {
+.MB-DataTable .MB-DataTable-header,
+.MB-DataTable .MB-DataTable-header .MB-DataTable-cellWrapper {
     background-color: #fff;
     background-image: none;
 }
 
-.MB-DataTable .public_fixedDataTable_header,
-.MB-DataTable .public_fixedDataTable_header .public_fixedDataTableCell_main {
+.MB-DataTable .MB-DataTable-header,
+.MB-DataTable .MB-DataTable-header .MB-DataTable-cellWrapper {
     background-color: #fff;
 }
 
-.MB-DataTable .public_fixedDataTable_header .public_fixedDataTableCell_main:hover {
+.MB-DataTable .MB-DataTable-header .MB-DataTable-cellWrapper:hover {
     border-color: #e8e8e8;
 }
 
-/* this is so that our column calculation code works correctly */
-.MB-DataTable .public_fixedDataTableCell_cellContent {
-    display: block;
+.MB-DataTable .MB-DataTable-cellContent {
+    padding: 8px;
 }
 
 /* cell overflow ellipsis */
 .MB-DataTable .cellData {
+  display: block;
     white-space: nowrap;
     text-overflow: ellipsis;
     overflow-x: hidden;
 }
 
-.MB-DataTable .public_fixedDataTableCell_main {
+.MB-DataTable .MB-DataTable-cellWrapper {
   display: flex;
   align-items: center;
 }
 
-/* needs to be display:block so .cellData doesn't overflow the width and not show ellipsis */
-/* only enable once the contentWidths have been computed (.MB-DataTable--ready) */
-/* only enable for the body rows (.public_fixedDataTable_bodyRow) */
-.MB-DataTable.MB-DataTable--ready .public_fixedDataTable_bodyRow .public_fixedDataTableCell_wrap1,
-.MB-DataTable.MB-DataTable--ready .public_fixedDataTable_bodyRow .public_fixedDataTableCell_wrap2,
-.MB-DataTable.MB-DataTable--ready .public_fixedDataTable_bodyRow .public_fixedDataTableCell_wrap3,
-.MB-DataTable.MB-DataTable--ready .public_fixedDataTable_bodyRow .public_fixedDataTableCell_cellContent,
-.MB-DataTable.MB-DataTable--ready .public_fixedDataTable_bodyRow .cellData {
-    display: block;
+.MB-DataTable.MB-DataTable--ready .MB-DataTable-cellContent {
+  overflow: hidden;
 }

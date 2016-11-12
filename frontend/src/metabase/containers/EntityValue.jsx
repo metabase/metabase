@@ -85,11 +85,8 @@ export default class EntityValue extends Component {
         const { value, entity } = this.props;
         const isLoading = entity && entity.state === "loading";
         return (
-            <span className="flex align-center">
-                <div className={cx({ "EntityValue--loading": isLoading })}>
-                    {entity && entity.name ? entity.name : value}
-                </div>
-                {/* { isLoading && <LoadingSpinner className="ml1" size={15} borderWidth={4}/> } */}
+            <span className={cx({ "EntityValue--loading": isLoading })}>
+                {entity && entity.name ? entity.name : value}
             </span>
         )
     }
