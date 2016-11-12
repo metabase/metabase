@@ -2680,10 +2680,6 @@ fined@^1.0.1:
     lodash.pick "^4.2.1"
     parse-filepath "^1.0.1"
 
-fixed-data-table@^0.6.0:
-  version "0.6.3"
-  resolved "https://registry.yarnpkg.com/fixed-data-table/-/fixed-data-table-0.6.3.tgz#e0bba85bc84a065dea71f0fb3a46d61441ad81e8"
-
 flagged-respawn@^0.3.2:
   version "0.3.2"
   resolved "https://registry.yarnpkg.com/flagged-respawn/-/flagged-respawn-0.3.2.tgz#ff191eddcd7088a675b2610fffc976be9b8074b5"

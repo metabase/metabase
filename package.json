@@ -18,7 +18,6 @@
     "d3": "^3.5.17",
     "dc": "^2.0.0-beta.32",
     "diff": "^2.2.1",
-    "fixed-data-table": "^0.6.0",
     "history": "^3.0.0",
     "humanize-plus": "^1.8.1",
     "icepick": "^1.1.0",
