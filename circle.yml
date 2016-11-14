@@ -8,6 +8,8 @@ machine:
     version: 2.7.3
   node:
     version: 4.4.7
+  services:
+    - docker
 dependencies:
   override:
     - lein deps
@@ -17,6 +19,7 @@ dependencies:
     - SAUCE_CONNECT_DOWNLOAD_ON_INSTALL=true yarn
     - mkdir plugins
     - wget --output-document=plugins/ojdbc7.jar $ORACLE_JDBC_JAR
+    - wget --output-document=plugins/vertica-jdbc-7.1.2-0.jar $VERTICA_JDBC_JAR
   cache_directories:
     - "~/.yarn"
     - "~/.yarn-cache"
