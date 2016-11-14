@@ -340,3 +340,13 @@
   (do-with-temp-native-card
     (fn [database-id card]
       ((user->client :rasta) :post 403 (format "card/%d/query/csv" (u/get-id card))))))
+
+
+;;; Tests for GET /api/card/:id/json
+;; endpoint should return an array of maps, one for each row
+(expect
+  [{(keyword "COUNT(*)") 75}]
+  (do-with-temp-native-card
+    (fn [database-id card]
+      (perms/grant-native-read-permissions! (perms-group/all-users) database-id)
+      ((user->client :rasta) :get 200 (format "card/%d/json" (u/get-id card))))))
