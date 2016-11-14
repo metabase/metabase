@@ -30,7 +30,9 @@ export default class FieldName extends Component {
 
         let parts = [];
 
-        if (fieldTarget) {
+        if (fieldTarget && !fieldTarget.field) {
+            parts.push(<span className="text-error" key="field">Missing Field</span>);
+        } else if (fieldTarget) {
             // fk path
             for (let [index, fkField] of Object.entries(fieldTarget.path)) {
                 parts.push(<span key={"fkName"+index}>{stripId(fkField.display_name)}</span>);
