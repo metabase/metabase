@@ -393,10 +393,6 @@ export const setParameterValue = createAction(SET_PARAMETER_VALUE, (parameterId,
 export const NOTIFY_CARD_CREATED = "NOTIFY_CARD_CREATED";
 export const notifyCardCreatedFn = createThunkAction(NOTIFY_CARD_CREATED, (card) => {
     return (dispatch, getState) => {
-        dispatch(loadMetadataForCard(card));
-
-        // we do this to force the indication of the fact that the card should not be considered dirty when the url is updated
-        dispatch(runQuery(card, false));
         dispatch(updateUrl(card, false));
 
         MetabaseAnalytics.trackEvent("QueryBuilder", "Create Card", card.dataset_query.type);
@@ -408,10 +404,6 @@ export const notifyCardCreatedFn = createThunkAction(NOTIFY_CARD_CREATED, (card)
 export const NOTIFY_CARD_UPDATED = "NOTIFY_CARD_UPDATED";
 export const notifyCardUpdatedFn = createThunkAction("NOTIFY_CARD_UPDATED", (card) => {
     return (dispatch, getState) => {
-        dispatch(loadMetadataForCard(card));
-
-        // we do this to force the indication of the fact that the card should not be considered dirty when the url is updated
-        dispatch(runQuery(card, false));
         dispatch(updateUrl(card, false));
 
         MetabaseAnalytics.trackEvent("QueryBuilder", "Update Card", card.dataset_query.type);
