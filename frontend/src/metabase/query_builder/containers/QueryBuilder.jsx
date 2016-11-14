@@ -156,6 +156,9 @@ export default class QueryBuilder extends Component {
     }
 
     componentWillUnmount() {
+        // cancel the query if one is running
+        this.props.cancelQuery();
+
         window.removeEventListener("resize", this.handleResize);
         document.addEventListener("keydown", this.handleKeyDown);
     }

@@ -99,7 +99,8 @@ export const INITIALIZE_QB = "INITIALIZE_QB";
 export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) => {
     return async (dispatch, getState) => {
         // do this immediately to ensure old state is cleared before the user sees it
-        dispatch(resetQB())
+        dispatch(resetQB());
+        dispatch(cancelQuery());
 
         const { currentUser } = getState();
 
