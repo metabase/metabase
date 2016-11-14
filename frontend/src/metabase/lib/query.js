@@ -574,6 +574,20 @@ var Query = {
         console.warn("Unknown field type: ", field);
     },
 
+    getFieldPath(fieldId, tableDef) {
+        let path = [];
+        while (fieldId != null) {
+            let field = Table.getField(tableDef, fieldId);
+            path.unshift(field);
+            fieldId = field && field.parent_id;
+        }
+        return path;
+    },
+
+    getFieldPathName(fieldId, tableDef) {
+        return Query.getFieldPath(fieldId, tableDef).map(f => f && f.display_name).join(": ")
+    },
+
     getDatetimeUnit(field) {
         if (field.length === 4) {
             return field[3]; // deprecated
