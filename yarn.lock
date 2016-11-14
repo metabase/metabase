@@ -5381,6 +5381,10 @@ promise-chain-decorator@^1.2.0:
   version "1.2.0"
   resolved "https://registry.yarnpkg.com/promise-chain-decorator/-/promise-chain-decorator-1.2.0.tgz#3ed952bd37f6351b3989468d1aff40e7d740b451"
 
+promise-loader:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/promise-loader/-/promise-loader-1.0.0.tgz#6fc7c8529c1fdfc497bef5fe7448bb61af9546cc"
+
 promise@^7.1.1:
   version "7.1.1"
   resolved "https://registry.yarnpkg.com/promise/-/promise-7.1.1.tgz#489654c692616b8aa55b0724fa809bb7db49c5bf"

@@ -2,7 +2,7 @@ import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
 import LeafletMap from "./LeafletMap.jsx";
-import L from "leaflet/dist/leaflet-src.js";
+import L from "leaflet";
 
 import { formatValue } from "metabase/lib/formatting";
 

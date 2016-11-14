@@ -193,15 +193,16 @@
                   :table_id    nil}]
     (-> (merge defaults field)
         (update :field-display-name name)
-        (set/rename-keys  {:base-type          :base_type
-                           :field-id           :id
-                           :field-name         :name
-                           :field-display-name :display_name
-                           :schema-name        :schema_name
-                           :special-type       :special_type
-                           :visibility-type    :visibility_type
-                           :table-id           :table_id
-                           :fk-field-id        :fk_field_id})
+        (set/rename-keys {:base-type          :base_type
+                          :field-display-name :display_name
+                          :field-id           :id
+                          :field-name         :name
+                          :fk-field-id        :fk_field_id
+                          :preview-display    :preview_display
+                          :schema-name        :schema_name
+                          :special-type       :special_type
+                          :table-id           :table_id
+                          :visibility-type    :visibility_type})
         (dissoc :position :clause-position :parent :parent-id :table-name))))
 
 (defn- fk-field->dest-fn

@@ -4,7 +4,7 @@ import ReactDOM from "react-dom";
 import MetabaseSettings from "metabase/lib/settings";
 
 import "leaflet/dist/leaflet.css";
-import L from "leaflet/dist/leaflet-src.js";
+import L from "leaflet";
 
 import _ from "underscore";
 

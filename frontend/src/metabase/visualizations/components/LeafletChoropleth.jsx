@@ -1,12 +1,16 @@
 import React, { Component, PropTypes } from "react";
 
+import { normal } from "metabase/lib/colors";
+
 import CardRenderer from "./CardRenderer.jsx";
 
 // import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import L from "leaflet/dist/leaflet-src.js";
+import L from "leaflet";
 
-const LeafletChoropleth = ({ series, geoJson, minimalBounds, getColor, onHoverFeature, }) =>
+import { computeMinimalBounds } from "metabase/visualizations/lib/mapping";
+
+const LeafletChoropleth = ({ series, geoJson, minimalBounds = computeMinimalBounds(geoJson.features), getColor = () => normal.blue, onHoverFeature = () => {}, }) =>
     <CardRenderer
         series={series}
         className="spread"

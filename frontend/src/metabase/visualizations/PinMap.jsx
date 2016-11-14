@@ -9,7 +9,7 @@ import LeafletTilePinMap from "./components/LeafletTilePinMap.jsx";
 import _ from "underscore";
 import cx from "classnames";
 
-import L from "leaflet/dist/leaflet-src.js";
+import L from "leaflet";
 
 const MAP_COMPONENTS_BY_TYPE = {
     "markers": LeafletMarkerPinMap,

@@ -1,8 +1,10 @@
 (ns metabase.db.metadata-queries
   "Predefined MBQL queries for getting metadata about an external database."
-  (:require [metabase.models.field :as field]
+  (:require [metabase.db :as db]
+            [metabase.models.table :refer [Table]]
             [metabase.query-processor :as qp]
-            [metabase.query-processor.expand :as ql]))
+            [metabase.query-processor.expand :as ql]
+            [metabase.util :as u]))
 
 (defn- qp-query [db-id query]
   (-> (qp/process-query
@@ -12,11 +14,11 @@
       :data
       :rows))
 
-(defn- field-query [field query]
-  (let [table (field/table field)]
-    (qp-query (:db_id table)
-              (ql/query (merge query)
-                        (ql/source-table (:id table))))))
+(defn- field-query [{table-id :table_id} query]
+  {:pre [(integer? table-id)]}
+  (qp-query (db/select-one-field :db_id Table, :id table-id)
+            (ql/query (merge query)
+                      (ql/source-table table-id))))
 
 (defn table-row-count
   "Fetch the row count of TABLE via the query processor."
@@ -31,16 +33,16 @@
   "Return the distinct values of FIELD.
    This is used to create a `FieldValues` object for `:type/Category` Fields."
   ([field]
-    (field-distinct-values field @(resolve 'metabase.sync-database.analyze/low-cardinality-threshold)))
-  ([{field-id :id :as field} max-results]
+   (field-distinct-values field @(resolve 'metabase.sync-database.analyze/low-cardinality-threshold)))
+  ([field max-results]
    {:pre [(integer? max-results)]}
    (mapv first (field-query field (-> {}
-                                      (ql/breakout (ql/field-id field-id))
+                                      (ql/breakout (ql/field-id (u/get-id field)))
                                       (ql/limit max-results))))))
 
 (defn field-distinct-count
   "Return the distinct count of FIELD."
-  [{field-id :id :as field} & [limit]]
+  [{field-id :id, :as field} & [limit]]
   (-> (field-query field (-> {}
                              (ql/aggregation (ql/distinct (ql/field-id field-id)))
                              (ql/limit limit)))

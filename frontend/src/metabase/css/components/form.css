@@ -126,16 +126,16 @@
     transition: background .3s linear;
 }
 
-.Form-field .Form-radio {
+.Form-radio {
     display: none;
 }
 
-.Form-field .Form-radio + label {
+.Form-radio + label {
     cursor: pointer;
     display: inline-block;
     flex: 0 0 auto;
     position: relative;
-    margin-right: var(--margin-1); 
+    margin-right: var(--margin-1);
     width: 8px;
     height: 8px;
     border: 2px solid white;
@@ -143,7 +143,7 @@
     border-radius: 8px;
 }
 
-.Form-field .Form-radio:checked + label {
+.Form-radio:checked + label {
     box-shadow: 0 0 0 2px var(--brand-color);
     background-color: var(--brand-color);
 }

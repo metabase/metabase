@@ -61,13 +61,13 @@ export function isCardDirty(card, originalCard) {
     }
 }
 
-export function isCardRunnable(card) {
+export function isCardRunnable(card, tableMetadata) {
     if (!card) {
         return false;
     }
     const query = card.dataset_query;
     if (query.query) {
-        return Query.canRun(query.query);
+        return Query.canRun(query.query, tableMetadata);
     } else {
         return (query.database != undefined && query.native.query !== "");
     }

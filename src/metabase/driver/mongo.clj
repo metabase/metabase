@@ -9,10 +9,12 @@
                     [conversion :as conv]
                     [db :as mdb]
                     [query :as mq])
+            [metabase.db :as db]
             [metabase.driver :as driver]
             (metabase.driver.mongo [query-processor :as qp]
                                    [util :refer [*mongo-connection* with-mongo-connection values->base-type]])
-            (metabase.models [field :as field]
+            (metabase.models [database :refer [Database]]
+                             [field :as field]
                              [table :as table])
             [metabase.sync-database.analyze :as analyze]
             [metabase.util :as u])
@@ -42,8 +44,8 @@
     message))
 
 (defn- process-query-in-context [qp]
-  (fn [{:keys [database], :as query}]
-    (with-mongo-connection [^DB conn, database]
+  (fn [{database-id :database, :as query}]
+    (with-mongo-connection [^DB conn, (db/select-one [Database :details], :id database-id)]
       (qp query))))
 
 
@@ -64,9 +66,9 @@
     (and (string? field-value)
          (or (.startsWith "{" field-value)
              (.startsWith "[" field-value))) (when-let [j (u/try-apply json/parse-string field-value)]
-                                           (when (or (map? j)
-                                                     (sequential? j))
-                                             :type/SerializedJSON))))
+                                               (when (or (map? j)
+                                                         (sequential? j))
+                                                 :type/SerializedJSON))))
 
 (defn- find-nested-fields [field-value nested-fields]
   (loop [[k & more-keys] (keys field-value)
@@ -195,11 +197,12 @@
                                                            :type         :boolean
                                                            :default      false}])
           :execute-query                     (u/drop-first-arg qp/execute-query)
-          :features                          (constantly #{:dynamic-schema :nested-fields})
+          :features                          (constantly #{:basic-aggregations :dynamic-schema :nested-fields})
           :field-values-lazy-seq             (u/drop-first-arg field-values-lazy-seq)
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)
           :mbql->native                      (u/drop-first-arg qp/mbql->native)
           :process-query-in-context          (u/drop-first-arg process-query-in-context)
           :sync-in-context                   (u/drop-first-arg sync-in-context)}))
+
 
 (driver/register-driver! :mongo (MongoDriver.))
