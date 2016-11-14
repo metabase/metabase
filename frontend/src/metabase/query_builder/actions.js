@@ -20,7 +20,7 @@ import { getEngineNativeType, formatJsonQuery } from "metabase/lib/engine";
 import { defer } from "metabase/lib/promise";
 import { applyParameters } from "metabase/meta/Card";
 
-import { getParameters, getNativeDatabases } from "./selectors";
+import { isDirty, getParameters, getNativeDatabases } from "./selectors";
 
 import { MetabaseApi, CardApi, UserApi } from "metabase/services";
 
@@ -797,7 +797,8 @@ export const runQuery = createThunkAction(RUN_QUERY, (card, shouldUpdateUrl = tr
             dispatch(queryErrored(startTime, error));
         }
 
-        if (card && card.id) {
+        // use the CardApi.query if the query is saved and not dirty so users with view but not create permissions can see it.
+        if (card && card.id && !isDirty(state)) {
             CardApi.query({ cardId: card.id, parameters: card.dataset_query.parameters }, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
         } else {
             MetabaseApi.dataset(card.dataset_query, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
