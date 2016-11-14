@@ -1,12 +1,16 @@
 import React, { Component, PropTypes } from "react";
+import { findDOMNode } from "react-dom";
 import { pluralize } from "humanize-plus";
 
 import Icon from "metabase/components/Icon";
-import ExpandingContent from "metabase/components/ExpandingContent";
-
 import NumericInput from "./NumericInput.jsx";
 
 export default class RelativeDatePicker extends Component {
+    constructor () {
+        super();
+        this.state = { showUnits: false };
+    }
+
     static propTypes = {
         filter: PropTypes.array.isRequired,
         onFilterChange: PropTypes.func.isRequired,
@@ -17,39 +21,52 @@ export default class RelativeDatePicker extends Component {
         formatter: (value) => value
     }
 
+    componentDidMount () {
+        findDOMNode(this.refs.input).focus()
+    }
+
     render() {
         const { filter: [op, field, intervals, unit], onFilterChange, formatter } = this.props;
         return (
-            <div className="p2">
+            <div className="px2">
                 <NumericInput
-                    className="input"
+                    className="input h3 mb2"
                     value={typeof intervals === "number" ? Math.abs(intervals) : intervals}
                     onChange={(value) =>
                         onFilterChange([op, field, formatter(value), unit])
                     }
+                    ref="input"
                     placeholder="30"
                 />
-                <ExpandingContent open={true}>
-                    <UnitPicker
-                        value={unit}
-                        onChange={(value) => onFilterChange([op, field, intervals, value])}
-                        intervals={intervals}
-                    />
-                </ExpandingContent>
+                <UnitPicker
+                    open={this.state.showUnits}
+                    value={unit}
+                    onChange={(value) => {
+                        onFilterChange([op, field, intervals, value]);
+                        this.setState({ showUnits: false });
+                    }}
+                    intervals={intervals}
+                />
             </div>
         );
     }
 }
 
-export const UnitPicker = ({ value, onChange, intervals }) =>
+export const UnitPicker = ({ open, value, onChange, intervals }) =>
    <div>
-       <div className="flex align-center">
-           <h2>{pluralize(intervals || 1, value)}</h2>
+       <div
+           className="flex align-center cursor-pointer text-purple-hover mb2"
+       >
+           <h3>{pluralize(intervals || 1, value)}</h3>
            <Icon name='chevrondown' />
         </div>
-        <ol>
+        <ol style={{
+            maxHeight: open ? 'none': 0,
+            overflow: 'hidden'
+        }}>
            { ['Minute', 'Hour', 'Day', 'Month', 'Year',].map((unit, index) =>
                <li
+                   className="cursor-pointer mb1 text-bold text-purple-hover"
                    key={index}
                    onClick={ () => onChange(unit.toLowerCase()) }
                >

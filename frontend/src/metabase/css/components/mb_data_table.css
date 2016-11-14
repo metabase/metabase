@@ -79,21 +79,3 @@
 .MB-DataTable.MB-DataTable--ready .public_fixedDataTable_bodyRow .cellData {
     display: block;
 }
-
-.link.cellData {
-  animation: linkLoad 1.5s infinite
-}
-
-@-webkit-keyframes linkLoad {
-  0 % {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.4;
-  }
-
-  100% {
-    opacity: 1;
-  }
-}

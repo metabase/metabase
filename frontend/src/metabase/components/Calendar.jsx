@@ -1,5 +1,4 @@
 import React, { Component, PropTypes } from 'react';
-import { findDOMNode } from 'react-dom';
 
 import "./Calendar.css";
 
@@ -7,7 +6,6 @@ import cx from 'classnames';
 import moment from 'moment';
 
 import Icon from 'metabase/components/Icon';
-import Tooltip from 'metabase/components/Tooltip';
 
 export default class Calendar extends Component {
     constructor(props) {

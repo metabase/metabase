@@ -23,7 +23,12 @@ const NextPicker = (props) =>
     <RelativeDatePicker {...props} />
 
 const CurrentPicker = ({ filter: [operator, field, intervals, unit], onFilterChange }) =>
-    <UnitPicker value={unit} onChange={(value) => onFilterChange([operator, field, intervals, value])} />
+    <div className="mx2">
+        <UnitPicker
+            value={unit}
+            onChange={(value) => onFilterChange([operator, field, intervals, value])}
+        />
+    </div>
 
 const getIntervals = ([op, field, value, unit]) => op === "TIME_INTERVAL" && typeof value === "number" ? Math.abs(value) : 1;
 const getUnit      = ([op, field, value, unit]) => op === "TIME_INTERVAL" && unit ? unit : "day";

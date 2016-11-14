@@ -7,8 +7,6 @@ import ExpandingContent from "metabase/components/ExpandingContent";
 import Tooltip from "metabase/components/Tooltip";
 import NumericInput from "./NumericInput.jsx";
 
-import { computeFilterTimeRange } from "metabase/lib/query_time";
-
 import moment from "moment";
 import cx from "classnames";
 
@@ -71,9 +69,9 @@ export default class SpecificDatePicker extends Component {
         return (
             <div className="px1">
                 <div className="flex align-center mb1">
-                    <div className="border-top border-bottom border-left">
+                    <div className="border-top border-bottom full border-left">
                         <Input
-                            className="borderless full p2 h4"
+                            className="borderless full p2 h3"
                             style={{
                                 outline: 'none'
                             }}
@@ -158,11 +156,11 @@ const HoursMinutes = ({ hours, minutes, onChangeHours, onChangeMinutes, clear })
             onChange={(value) => onChangeMinutes(value) }
         />
         <div className="flex align-center pl1">
-            <span className={cx("text-brand-hover mr1", { "text-brand": hours < 12, "cursor-pointer": hours >= 12 })} onClick={hours >= 12 ? () => onChangeHours(hours - 12) : null}>AM</span>
-            <span className={cx("text-brand-hover mr1", { "text-brand": hours >= 12, "cursor-pointer": hours < 12 })} onClick={hours < 12 ? () => onChangeHours(hours + 12) : null}>PM</span>
+            <span className={cx("text-purple-hover mr1", { "text-purple": hours < 12, "cursor-pointer": hours >= 12 })} onClick={hours >= 12 ? () => onChangeHours(hours - 12) : null}>AM</span>
+            <span className={cx("text-purple-hover mr1", { "text-purple": hours >= 12, "cursor-pointer": hours < 12 })} onClick={hours < 12 ? () => onChangeHours(hours + 12) : null}>PM</span>
         </div>
         <Icon
-            className="text-grey-2 cursor-pointer text-grey-4-hover"
+            className="text-grey-2 cursor-pointer text-grey-4-hover ml-auto"
             name="close"
             onClick={() => clear() }
         />
