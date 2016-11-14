@@ -1014,8 +1014,16 @@ export const loadObjectDetailFKReferences = createThunkAction(LOAD_OBJECT_DETAIL
     };
 });
 
+const getExistingFields = (query, cols) =>
+    (query.fields && query.fields > 0) ?
+        query.fields
+    : Query.isBareRowsAggregation(query) ?
+        cols.map(col => col.id).filter(id => id != null)
+    :
+        []
+
 const ADD_FIELD = "query_builder/ADD_FIELD";
-export const addField = createThunkAction(ADD_FIELD, (field, run = true) => {
+export const addField = createThunkAction(ADD_FIELD, (field, run = true, cols = []) => {
     return (dispatch, getState) => {
         const { qb: { card } } = getState();
         if (card.dataset_query.type === "query") {
@@ -1023,7 +1031,7 @@ export const addField = createThunkAction(ADD_FIELD, (field, run = true) => {
                 ...card.dataset_query,
                 query: {
                     ...card.dataset_query.query,
-                    fields: (card.dataset_query.query.fields || []).concat([field])
+                    fields: getExistingFields(card.dataset_query.query, cols).concat([field])
                 }
             }, true));
         }
@@ -1031,16 +1039,15 @@ export const addField = createThunkAction(ADD_FIELD, (field, run = true) => {
 });
 
 const REMOVE_FIELD = "query_builder/REMOVE_FIELD";
-export const removeField = createThunkAction(REMOVE_FIELD, (field, run = true) => {
+export const removeField = createThunkAction(REMOVE_FIELD, (field, run = true, cols = []) => {
     return (dispatch, getState) => {
         const { qb: { card } } = getState();
         if (card.dataset_query.type === "query") {
-            console.log("field", field, card.dataset_query.query);
             dispatch(setQuery({
                 ...card.dataset_query,
                 query: {
                     ...card.dataset_query.query,
-                    fields: (card.dataset_query.query.fields || []).filter(f => !_.isEqual(f, field))
+                    fields: getExistingFields(card.dataset_query.query, cols).filter(f => !_.isEqual(f, field))
                 }
             }, run));
         }

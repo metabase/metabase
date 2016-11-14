@@ -69,10 +69,10 @@ export default class ChartSettingOrderedFields extends Component {
                             <span className="ml1 h4">{getFriendlyName(columnsByName[item.name])}</span>
                             { columnsByName[item.name].source === "fields" &&
                                 <a className="ml1 cursor-pointer text-grey-2 text-grey-4-hover" onClick={() => removeField(getField(columnsByName[item.name]))} >
-                                    <Icon name="close" size={6} />
+                                    <Icon name="close" size={12} />
                                 </a>
                             }
-                            <Icon className="flex-align-right text-grey-2 mr1 cursor-pointer" name="grabber" width={14} height={14}/>
+                            <Icon className="flex-align-right text-grey-2 mr1 cursor-pointer" name="grabber" size={14} />
                         </div>
                     </OrderedFieldListItem>
                 )}
