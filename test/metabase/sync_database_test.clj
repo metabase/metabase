@@ -10,7 +10,8 @@
                              [table :refer [Table]])
             [metabase.sync-database :refer :all]
             (metabase.test [data :refer :all]
-                           [util :refer [resolve-private-vars] :as tu])))
+                           [util :refer [resolve-private-vars] :as tu])
+            [metabase.util :as u]))
 
 (def ^:private ^:const sync-test-tables
   {"movie"  {:name "movie"
@@ -132,12 +133,12 @@
                                   :name         "studio"
                                   :display_name "Studio"
                                   :base_type    :type/Text})]})]
-  (tu/with-temp Database [fake-db {:engine :sync-test}]
-    (sync-database! fake-db)
+  (tu/with-temp Database [db {:engine :sync-test}]
+    (sync-database! db)
     ;; we are purposely running the sync twice to test for possible logic issues which only manifest
     ;; on resync of a database, such as adding tables that already exist or duplicating fields
-    (sync-database! fake-db)
-    (mapv table-details (db/select Table, :db_id (:id fake-db), {:order-by [:name]}))))
+    (sync-database! db)
+    (mapv table-details (db/select Table, :db_id (u/get-id db), {:order-by [:name]}))))
 
 
 ;; ## SYNC TABLE
@@ -162,14 +163,14 @@
                                  :name         "title"
                                  :display_name "Title"
                                  :base_type    :type/Text})]})
-  (tu/with-temp* [Database [fake-db {:engine :sync-test}]
-                  RawTable [{raw-table-id :id} {:database_id (:id fake-db), :name "movie", :schema "default"}]
-                  Table    [fake-table {:raw_table_id raw-table-id
-                                        :name   "movie"
-                                        :schema "default"
-                                        :db_id  (:id fake-db)}]]
-    (sync-table! fake-table)
-    (table-details (Table (:id fake-table)))))
+  (tu/with-temp* [Database [db        {:engine :sync-test}]
+                  RawTable [raw-table {:database_id (u/get-id db), :name "movie", :schema "default"}]
+                  Table    [table     {:raw_table_id (u/get-id raw-table)
+                                       :name         "movie"
+                                       :schema       "default"
+                                       :db_id        (u/get-id db)}]]
+    (sync-table! table)
+    (table-details (Table (:id table)))))
 
 
 ;; test that we prevent running simultaneous syncs on the same database
@@ -186,42 +187,43 @@
          {:analyze-table     (constantly nil)
           :describe-database (fn [_ _]
                                (swap! sync-count inc)
-                               (Thread/sleep 500)
-                               {:tables []})
+                               (Thread/sleep 1000)
+                               {:tables #{}})
           :describe-table    (constantly nil)
           :details-fields    (constantly [])}))
 
 (driver/register-driver! :concurrent-sync-test (ConcurrentSyncTestDriver.))
 
+;; only one sync should be going on at a time
 (expect
-  [0 1]
-  (tu/with-temp* [Database [fake-db {:engine :concurrent-sync-test}]]
+  1
+  (tu/with-temp* [Database [db {:engine :concurrent-sync-test}]]
     (reset! sync-count 0)
-    (let [future-sleep-then-run (fn [f]
-                                  (Thread/sleep 100)
-                                  (future (f)))
-          concurrent-sync       #(sync-database! fake-db)]
-    [@sync-count
-     (do
-       (future-sleep-then-run concurrent-sync)
-       (future-sleep-then-run concurrent-sync)
-       (concurrent-sync)
-       @sync-count)])))
+    ;; start a sync processes in the background. It should take 1000 ms to finish
+    (future (sync-database! db))
+    ;; wait 200 ms to make sure everything is going
+    (Thread/sleep 200)
+    ;; Start another in the background. Nothing should happen here because the first is already running
+    (future (sync-database! db))
+    ;; Start another in the foreground. Again, nothing should happen here because the original should still be running
+    (sync-database! db)
+    ;; Check the number of syncs that took place. Should be 1 (just the first)
+    @sync-count))
 
-;; ## Test that we will remove field-values when they aren't appropriate
 
+;;; Test that we will remove field-values when they aren't appropriate
 (expect
   [[1 2 3]
    [1 2 3]]
-  (tu/with-temp* [Database [fake-db    {:engine :sync-test}]
-                  RawTable [fake-table {:database_id (:id fake-db), :name "movie", :schema "default"}]]
-    (sync-database! fake-db)
-    (let [table-id (db/select-one-id Table, :raw_table_id (:id fake-table))
+  (tu/with-temp* [Database [db    {:engine :sync-test}]
+                  RawTable [table {:database_id (u/get-id db), :name "movie", :schema "default"}]]
+    (sync-database! db)
+    (let [table-id (db/select-one-id Table, :raw_table_id (:id table))
           field-id (db/select-one-id Field, :table_id table-id, :name "title")]
       (tu/with-temp FieldValues [_ {:field_id field-id
                                     :values   "[1,2,3]"}]
         (let [initial-field-values (db/select-one-field  :values FieldValues, :field_id field-id)]
-          (sync-database! fake-db)
+          (sync-database! db)
           [initial-field-values
            (db/select-one-field :values FieldValues, :field_id field-id)])))))
 
