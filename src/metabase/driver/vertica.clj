@@ -32,7 +32,7 @@
    (keyword "Long Varchar")   :type/Text
    (keyword "Long Varbinary") :type/*})
 
-(defn- vertica-spec [{:keys [host port db make-pool?]
+(defn- vertica-spec [{:keys [host port db]
                       :or   {host "localhost", port 5433, db ""}
                       :as   opts}]
   (merge {:classname   "com.vertica.jdbc.Driver"

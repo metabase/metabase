@@ -25,7 +25,6 @@
    :classname   "org.postgresql.Driver"
    :subprotocol "postgresql"
    :subname     "//localhost:5432/bird_sightings"
-   :make-pool?  true
    :sslmode     "disable"}
   (sql/connection-details->spec pg-driver {:ssl    false
                                            :host   "localhost"
@@ -36,7 +35,6 @@
 ;; ## ssl - check that expected params get added
 (expect
   {:ssl         true
-   :make-pool?  true
    :sslmode     "require"
    :classname   "org.postgresql.Driver"
    :subprotocol "postgresql"
