@@ -265,7 +265,7 @@
                  (.setTestConnectionOnCheckout     false)
                  (.setPreferredTestQuery           nil)
                  (.setProperties                   (u/prog1 (java.util.Properties.)
-                                                     (doseq [[k v] (dissoc spec :make-pool? :classname :subprotocol :subname :naming :delimiters :alias-delimiter
+                                                     (doseq [[k v] (dissoc spec :classname :subprotocol :subname :naming :delimiters :alias-delimiter
                                                                                 :excess-timeout :minimum-pool-size :idle-connection-test-period)]
                                                        (.setProperty <> (name k) (str v))))))})
 
