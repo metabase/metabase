@@ -125,3 +125,10 @@
           ;; If we got a 401 unauthenticated clear the tokens cache + recur
           (reset! tokens {})
           (apply client-fn args))))))
+
+
+(defn delete-temp-users!
+  "Delete all users besides the 4 persistent test users.
+   This is a HACK to work around tests that don't properly clean up after themselves; one day we should be able to remove this. (TODO)"
+  []
+  (db/cascade-delete! 'User :id [:not-in (map user->id [:crowberto :lucky :rasta :trashbird])]))
