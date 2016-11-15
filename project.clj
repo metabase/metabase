@@ -66,7 +66,7 @@
                  [org.liquibase/liquibase-core "3.5.2"]               ; migration management (Java lib)
                  [org.slf4j/slf4j-log4j12 "1.7.21"]                   ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
                  [org.yaml/snakeyaml "1.17"]                          ; YAML parser (required by liquibase)
-                 [org.xerial/sqlite-jdbc "3.14.2.1"]                  ; SQLite driver
+                 [org.xerial/sqlite-jdbc "3.8.11.2"]                  ; SQLite driver
                  [postgresql "9.3-1102.jdbc41"]                       ; Postgres driver
                  [io.crate/crate-jdbc "1.13.1"]                       ; Crate JDBC driver
                  [io.crate/crate-client "0.56.0"]                     ; Crate Java client (used by Crate JDBC)
