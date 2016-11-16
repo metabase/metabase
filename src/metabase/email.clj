@@ -35,11 +35,11 @@
   []
   (not (s/blank? (setting/get :email-smtp-host))))
 
-(defn send-message
+(defn send-message!
   "Send an email to one or more RECIPIENTS.
    RECIPIENTS is a sequence of email addresses; MESSAGE-TYPE must be either `:text` or `:html`.
 
-     (email/send-message
+     (email/send-message!
        :subject      \"[Metabase] Password Reset Request\"
        :recipients   [\"cam@metabase.com\"]
        :message-type :text
@@ -95,8 +95,8 @@
   {:pre [(string? host)
          (integer? port)]}
   (try
-    (let [ssl     (= security "ssl")
-          proto   (if ssl "smtps" "smtp")
+    (let [ssl?    (= security "ssl")
+          proto   (if ssl? "smtps" "smtp")
           details (-> details
                       (assoc :proto proto
                              :connectiontimeout "1000"
@@ -112,6 +112,6 @@
     {:error   :SUCCESS
      :message nil}
     (catch Throwable e
-      (println "err" (.getMessage e))
+      (log/error "Error testing SMTP connection:" (.getMessage e))
       {:error   :ERROR
        :message (.getMessage e)})))

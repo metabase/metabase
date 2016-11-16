@@ -42,7 +42,7 @@
     :body [{:type    "text/html; charset=utf-8"
             :content "101. Metabase will make you a better person"}]}]
   (with-fake-inbox
-    (email/send-message
+    (email/send-message!
       :subject      "101 Reasons to use Metabase"
       :recipients   ["test@test.com"]
       :message-type :html
