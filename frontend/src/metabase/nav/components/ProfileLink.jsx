@@ -124,7 +124,7 @@ export default class ProfileLink extends Component {
                                         data-metabase-event={"Navbar;Profile Dropdown;Logout"}
                                         className="Dropdown-item block text-white no-decoration"
                                     >
-                                        Logout
+                                        Sign out
                                     </Link>
                                 </li>
                             </ul>
