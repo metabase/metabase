@@ -2,10 +2,8 @@ import React, { Component, PropTypes } from "react";
 
 import ReactCSSTransitionGroup from "react-addons-css-transition-group";
 
-import DurationPicker from "metabase/components/DurationPicker.jsx";
 import FormField from "metabase/components/FormField.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
-import Toggle from "metabase/components/Toggle.jsx";
 
 import Query from "metabase/lib/query";
 import { cancelable } from "metabase/lib/promise";
@@ -28,9 +26,7 @@ export default class SaveQuestionModal extends Component {
             details: {
                 name: props.card.name || isStructured ? Query.generateQueryDescription(props.tableMetadata, props.card.dataset_query.query) : "",
                 description: props.card.description || null,
-                saveType: props.originalCard ? "overwrite" : "create",
-                cacheResult: props.cacheResult || false,
-                cacheMaxAge: props.cacheMaxAge || 0
+                saveType: props.originalCard ? "overwrite" : "create"
             }
         };
     }
@@ -42,7 +38,7 @@ export default class SaveQuestionModal extends Component {
         createFn: PropTypes.func.isRequired,
         saveFn: PropTypes.func.isRequired,
         closeFn: PropTypes.func.isRequired
-    };
+    }
 
     componentDidMount() {
         this.validateForm();
@@ -63,8 +59,8 @@ export default class SaveQuestionModal extends Component {
 
         let valid = true;
 
-        // name is required for create
-        if (details.saveType === "create" && !details.name) {
+        // name is required
+        if (!details.name) {
             valid = false;
         }
 
@@ -93,8 +89,7 @@ export default class SaveQuestionModal extends Component {
                 description: details.saveType === "overwrite" ?
                     originalCard.description :
                     details.description ? details.description.trim() : null,
-                cache_result: details.cacheResult || false,
-                cache_max_age: details.cacheResult ? details.cacheMaxAge || 0 : 0
+                public_perms: 2
             };
 
             if (details.saveType === "create") {
@@ -146,7 +141,7 @@ export default class SaveQuestionModal extends Component {
                     errors={this.state.errors}>
                     <ul className="ml1">
                         <li className="flex align-center cursor-pointer mt2 mb1" onClick={(e) => this.onChange("saveType", "overwrite")}>
-                            <input className="Form-radio" type="radio" name="saveType" id="saveType-overwrite" value="overwrite" checked={this.state.details.saveType === "overwrite"} />
+                            <input className="Form-radio" type="radio" name="saveType" id="saveType-overwrite" value="overwrite" checked={this.state.details.saveType === "overwrite"} /> 
                             <label htmlFor="saveType-overwrite"></label>
                             <span className={details.saveType === 'overwrite' ? 'text-brand' : 'text-default'}>Replace original question, "{this.props.originalCard.name}"</span>
                         </li>
@@ -160,26 +155,10 @@ export default class SaveQuestionModal extends Component {
             );
         }
 
-        let cacheMaxAge = null;
-        if (this.state.details.cacheResult) {
-            cacheMaxAge = (
-                <FormField
-                    key="cacheMaxAge"
-                    displayName="For how long should we reuse the cached result?"
-                    fieldName="cacheMaxAge"
-                    errors={this.state.errors}>
-                    <DurationPicker inputClass="Form-input" selectClass="Form-input" name="cacheMaxAge"
-                                    valueInSeconds={this.state.details.cacheMaxAge}
-                                    onChange={(e) => this.onChange("cacheMaxAge", e.valueInSeconds)}/>
-                </FormField>
-            );
-        }
-
         let title = this.props.addToDashboard ? "First, Save Your Question" : "Save Question";
 
         return (
             <ModalContent
-                id="SaveQuestionModal"
                 title={title}
                 closeFn={this.props.closeFn}
             >
@@ -191,7 +170,7 @@ export default class SaveQuestionModal extends Component {
                             transitionEnterTimeout={500}
                             transitionLeaveTimeout={500}
                         >
-                            { details.saveType === "create" &&
+                            { details.saveType === "create" && 
                                 <div key="saveQuestionModalFields" className="saveQuestionModalFields">
                                     <FormField
                                         key="name"
@@ -205,19 +184,8 @@ export default class SaveQuestionModal extends Component {
                                         displayName="Description"
                                         fieldName="description"
                                         errors={this.state.errors}>
-                                        <textarea className="Form-input full" name="description" placeholder="It's optional but oh, so helpful" value={this.state.details.description || ""} onChange={(e) => this.onChange("description", e.target.value)} />
+                                        <textarea className="Form-input full" name="description" placeholder="It's optional but oh, so helpful" value={this.state.details.description} onChange={(e) => this.onChange("description", e.target.value)} />
                                     </FormField>
-                                    <FormField
-                                        key="cacheResult"
-                                        displayName="Should we cache the result of this question?"
-                                        fieldName="cacheResult"
-                                        errors={this.state.errors}>
-                                        <Toggle
-                                            value={this.state.details.cacheResult}
-                                            onChange={(e) => this.onChange("cacheResult", e)}
-                                        />
-                                    </FormField>
-                                    {cacheMaxAge}
                                 </div>
                             }
                         </ReactCSSTransitionGroup>
