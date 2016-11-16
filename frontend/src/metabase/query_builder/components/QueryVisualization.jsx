@@ -11,6 +11,9 @@ import VisualizationError from "./VisualizationError.jsx";
 import VisualizationResult from "./VisualizationResult.jsx";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
+import Warnings from "./Warnings.jsx";
+
+import { formatNumber, inflect } from "metabase/lib/formatting";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -95,37 +98,25 @@ export default class QueryVisualization extends Component {
                         cancelFn={this.props.cancelQueryFn}
                     />
                 </div>
-                <div className="absolute right z4 flex align-center">
+                <div className="absolute right z4 flex align-center"  style={{ lineHeight: 0 /* needed to align icons :-/ */ }}>
                     {!this.queryIsDirty() && this.renderCount()}
+                    { !isObjectDetail &&
+                        <Warnings warnings={this.state.warnings} className="mx2" size={18} />
+                    }
                     {this.renderDownloadButton()}
                 </div>
             </div>
         );
     }
 
-    hasTooManyRows() {
-        const dataset_query = this.props.card.dataset_query,
-              rows = this.props.result.data.rows;
-
-        if (this.props.result.data.rows_truncated ||
-            (dataset_query.type === "query" &&
-             dataset_query.query.aggregation[0] === "rows" &&
-             rows.length === 2000))
-        {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
     renderCount() {
         let { result, isObjectDetail, card } = this.props;
-        if (result &&  result.data && !isObjectDetail && card.display === "table") {
+        if (result && result.data && !isObjectDetail && card.display === "table") {
             return (
                 <div>
-                    { this.hasTooManyRows() ? ("Showing max of ") : ("Showing ")}
-                    <b>{result.row_count}</b>
-                    { (result.data.rows.length !== 1) ? (" rows") : (" row")}.
+                    { result.data.rows_truncated != null ? ("Showing max of ") : ("Showing ")}
+                    <b>{formatNumber(result.row_count)}</b>
+                    { " " + inflect("row", result.data.rows.length) }.
                 </div>
             );
         }
@@ -219,7 +210,13 @@ export default class QueryVisualization extends Component {
             if (error) {
                 viz = <VisualizationError error={error} card={card} duration={result.duration} />
             } else if (result.data) {
-                viz = <VisualizationResult lastRunDatasetQuery={this.state.lastRunDatasetQuery} {...this.props} />
+                viz = (
+                    <VisualizationResult
+                        lastRunDatasetQuery={this.state.lastRunDatasetQuery}
+                        onUpdateWarnings={(warnings) => this.setState({ warnings })}
+                        {...this.props}
+                    />
+                );
             }
         }
 

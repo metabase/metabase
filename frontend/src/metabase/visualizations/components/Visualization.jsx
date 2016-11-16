@@ -8,11 +8,12 @@ import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 
-import { duration } from "metabase/lib/formatting";
+import { duration, formatNumber } from "metabase/lib/formatting";
 
 import { getVisualizationTransformed } from "metabase/visualizations";
 import { getSettings } from "metabase/lib/visualization_settings";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
+import Utils from "metabase/lib/utils";
 
 import { assoc, getIn, setIn } from "icepick";
 import _ from "underscore";
@@ -27,9 +28,10 @@ export default class Visualization extends Component {
         super(props, context)
 
         this.state = {
-            renderInfo: null,
             hovered: null,
-            error: null
+            error: null,
+            warnings: [],
+            yAxisSplit: null,
         };
 
         _.bindAll(this, "onRender", "onRenderError", "onHoverChange");
@@ -66,7 +68,10 @@ export default class Visualization extends Component {
         // used by TableInteractive
         setSortFn: PropTypes.func,
         cellIsClickableFn: PropTypes.func,
-        cellClickedFn: PropTypes.func
+        cellClickedFn: PropTypes.func,
+
+        // warnings
+        onUpdateWarnings: PropTypes.func,
     };
 
     static defaultProps = {
@@ -80,35 +85,60 @@ export default class Visualization extends Component {
     }
 
     componentWillReceiveProps(newProps) {
-        if (isSameSeries(newProps.series, this.props.series)) {
-            // clear the error so we can try to render again
-            this.setState({ error: null });
-        } else {
+        if (!isSameSeries(newProps.series, this.props.series) || !Utils.equals(newProps.settings, this.props.settings)) {
             this.transform(newProps);
+        }
+    }
+
+    componentDidMount() {
+        this.updateWarnings();
+    }
+
+    componentDidUpdate(prevProps, prevState) {
+        if (!Utils.equals(this.getWarnings(prevProps, prevState), this.getWarnings())) {
+            this.updateWarnings();
+        }
+    }
+
+    getWarnings(props = this.props, state = this.state) {
+        let warnings = state.warnings || [];
+        // don't warn about truncated data for table since we show a warning in the row count
+        if (state.series[0].card.display !== "table") {
+            warnings = warnings.concat(props.series
+                .filter(s => s.data.rows_truncated != null)
+                .map(s => `Data truncated to ${formatNumber(s.data.rows_truncated)} rows.`));
+        }
+        return warnings;
+    }
+
+    updateWarnings() {
+        if (this.props.onUpdateWarnings) {
+            this.props.onUpdateWarnings(this.getWarnings() || []);
         }
     }
 
     transform(newProps) {
         this.setState({
-            error: null,
+            yAxisSplit: null,
+            warnings: [],
             ...getVisualizationTransformed(newProps.series)
         });
     }
 
     onHoverChange(hovered) {
-        const { renderInfo } = this.state;
+        const { yAxisSplit } = this.state;
         if (hovered) {
             // if we have Y axis split info then find the Y axis index (0 = left, 1 = right)
-            if (renderInfo && renderInfo.yAxisSplit) {
-                const axisIndex = _.findIndex(renderInfo.yAxisSplit, (indexes) => _.contains(indexes, hovered.index));
+            if (yAxisSplit) {
+                const axisIndex = _.findIndex(yAxisSplit, (indexes) => _.contains(indexes, hovered.index));
                 hovered = assoc(hovered, "axisIndex", axisIndex);
             }
         }
         this.setState({ hovered });
     }
 
-    onRender(renderInfo) {
-        this.setState({ renderInfo });
+    onRender({ yAxisSplit, warnings = [] } = {}) {
+        this.setState({ yAxisSplit, warnings });
     }
 
     onRenderError(error) {
