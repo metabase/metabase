@@ -1,8 +1,8 @@
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
-import visualizations, { getVisualizationRaw } from "metabase/visualizations";
-import Visualization, { ERROR_MESSAGE_GENERIC, ERROR_MESSAGE_PERMISSION } from "metabase/visualizations/components/Visualization.jsx";
+import visualizations from "metabase/visualizations";
+import Visualization from "metabase/visualizations/components/Visualization.jsx";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import ChartSettings from "metabase/visualizations/components/ChartSettings.jsx";
@@ -69,11 +69,7 @@ export default class DashCard extends Component {
     render() {
         const { dashcard, dashcardData, cardDurations, parameterValues, isEditing, isEditingParameter, onAddSeries, onRemove } = this.props;
 
-        const mainCard = {
-            ...dashcard.card,
-            visualization_settings: { ...dashcard.card.visualization_settings, ...dashcard.visualization_settings }
-        };
-        const cards = [mainCard].concat(dashcard.series || []);
+        const cards = [dashcard.card].concat(dashcard.series || []);
         const series = cards
             .map(card => ({
                 ...getIn(dashcardData, [dashcard.id, card.id]),
@@ -85,7 +81,6 @@ export default class DashCard extends Component {
         const expectedDuration = Math.max(...series.map((s) => s.duration ? s.duration.average : 0));
         const usuallyFast = _.every(series, (s) => s.duration && s.duration.average < s.duration.fast_threshold);
         const isSlow = loading && _.some(series, (s) => s.duration) && (usuallyFast ? "usually-fast" : "usually-slow");
-        const isCached = _.every(series, (s) => s.from_cache);
 
         const parameterMap = dashcard && dashcard.parameter_mappings && dashcard.parameter_mappings
             .reduce((map, mapping) => ({...map, [mapping.parameter_id]: mapping}), {});
@@ -95,16 +90,22 @@ export default class DashCard extends Component {
             .every(parameterId => parameterMap[parameterId]);
 
         const errors = series.map(s => s.error).filter(e => e);
+        const error = errors[0] || this.state.error;
 
-        let errorMessage, errorIcon;
-        if (_.any(errors, e => e && e.status === 403)) {
-            errorMessage = ERROR_MESSAGE_PERMISSION;
-            errorIcon = "key";
-        } else if (errors.length > 0 || this.state.error) {
-            errorMessage = ERROR_MESSAGE_GENERIC;
-            errorIcon = "warning";
+        let errorMessage;
+        if (error) {
+            if (error.data) {
+                errorMessage = error.data.message;
+            } else if (error.status === 503) {
+                errorMessage = "I'm sorry, the server timed out while asking your question."
+            } else if (typeof error === "string") {
+                errorMessage = error;
+            } else {
+                errorMessage = "Oh snap!  Something went wrong loading this card :sad:";
+            }
         }
 
+        const CardVisualization = visualizations.get(series[0].card.display);
         return (
             <div
                 className={"Card bordered rounded flex flex-column " + cx({
@@ -116,20 +117,18 @@ export default class DashCard extends Component {
                 <Visualization
                     className="flex-full"
                     error={errorMessage}
-                    errorIcon={errorIcon}
                     isSlow={isSlow}
                     expectedDuration={expectedDuration}
                     series={series}
                     isDashboard={true}
                     isEditing={isEditing}
-                    isCached={isCached || false}
                     gridSize={this.props.isMobile ? undefined : { width: dashcard.sizeX, height: dashcard.sizeY }}
                     actionButtons={isEditing && !isEditingParameter ?
                         <DashCardActionButtons
                             series={series}
+                            visualization={CardVisualization}
                             onRemove={onRemove}
                             onAddSeries={onAddSeries}
-                            onUpdateVisualizationSettings={this.props.onUpdateVisualizationSettings}
                         /> : undefined
                     }
                     onUpdateVisualizationSetting={this.props.onUpdateVisualizationSetting}
@@ -140,13 +139,13 @@ export default class DashCard extends Component {
     }
 }
 
-const DashCardActionButtons = ({ series, onRemove, onAddSeries, onUpdateVisualizationSettings }) =>
+const DashCardActionButtons = ({ series, visualization, onRemove, onAddSeries, onUpdateVisualizationSettings }) =>
     <span className="DashCard-actions flex align-center">
-        { getVisualizationRaw(series).CardVisualization.supportsSeries &&
+        { visualization.supportsSeries &&
             <AddSeriesButton series={series} onAddSeries={onAddSeries} />
         }
         { onUpdateVisualizationSettings &&
-            <ChartSettingsButton series={series} onUpdateVisualizationSettings={onUpdateVisualizationSettings} />
+            <ChartSettingsButton series={series} onChange={onUpdateVisualizationSettings} />
         }
         <RemoveButton onRemove={onRemove} />
     </span>
@@ -160,7 +159,6 @@ const ChartSettingsButton = ({ series, onUpdateVisualizationSettings }) =>
         <ChartSettings
             series={series}
             onChange={onUpdateVisualizationSettings}
-            isDashboard
         />
     </ModalWithTrigger>
 

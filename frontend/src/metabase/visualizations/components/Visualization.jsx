@@ -1,5 +1,3 @@
-/* eslint "react/prop-types": "warn" */
-
 import React, { Component, PropTypes } from "react";
 
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
@@ -10,16 +8,14 @@ import Tooltip from "metabase/components/Tooltip.jsx";
 
 import { duration } from "metabase/lib/formatting";
 
-import { getVisualizationTransformed } from "metabase/visualizations";
+import visualizations from "metabase/visualizations";
 import { getSettings } from "metabase/lib/visualization_settings";
-import { isSameSeries } from "metabase/visualizations/lib/utils";
 
-import { assoc, getIn, setIn } from "icepick";
+import { assoc, getIn } from "icepick";
 import _ from "underscore";
 import cx from "classnames";
 
-export const ERROR_MESSAGE_GENERIC = "There was a problem displaying this chart.";
-export const ERROR_MESSAGE_PERMISSION = "Sorry, you don't have permission to see this card."
+const ERROR_MESSAGE_GENERIC = "There was a problem displaying this chart.";
 
 @ExplicitSize
 export default class Visualization extends Component {
@@ -38,39 +34,13 @@ export default class Visualization extends Component {
     static propTypes = {
         series: PropTypes.array.isRequired,
 
-        className: PropTypes.string,
-
         isDashboard: PropTypes.bool,
         isEditing: PropTypes.bool,
-
-        actionButtons: PropTypes.node,
-
-        // errors
-        error: PropTypes.string,
-        errorIcon: PropTypes.string,
-
-        // slow card warnings
-        isSlow: PropTypes.bool,
-        expectedDuration: PropTypes.number,
-
-        // injected by ExplicitSize
-        width: PropTypes.number,
-        height: PropTypes.number,
-
-        // settings overrides from settings panel
-        settings: PropTypes.object,
-
-        // used for showing content in place of visualization, e.x. dashcard filter mapping
-        replacementContent: PropTypes.node,
 
         // used by TableInteractive
         setSortFn: PropTypes.func,
         cellIsClickableFn: PropTypes.func,
-        cellClickedFn: PropTypes.func,
-
-        // used by cached questions
-        isCached:  PropTypes.bool,
-        cacheLastUpdate: PropTypes.string
+        cellClickedFn: PropTypes.func
     };
 
     static defaultProps = {
@@ -79,24 +49,9 @@ export default class Visualization extends Component {
         onUpdateVisualizationSetting: (...args) => console.warn("onUpdateVisualizationSetting", args)
     };
 
-    componentWillMount() {
-        this.transform(this.props);
-    }
-
-    componentWillReceiveProps(newProps) {
-        if (isSameSeries(newProps.series, this.props.series)) {
-            // clear the error so we can try to render again
-            this.setState({ error: null });
-        } else {
-            this.transform(newProps);
-        }
-    }
-
-    transform(newProps) {
-        this.setState({
-            error: null,
-            ...getVisualizationTransformed(newProps.series)
-        });
+    componentWillReceiveProps() {
+        // clear the error so we can try to render again
+        this.setState({ error: null });
     }
 
     onHoverChange(hovered) {
@@ -120,9 +75,8 @@ export default class Visualization extends Component {
     }
 
     render() {
-
-        const { actionButtons, className, isDashboard, width, errorIcon, isSlow, expectedDuration, replacementContent, isCached, cacheLastUpdate  } = this.props;
-        const { series, CardVisualization } = this.state;
+        const { series, actionButtons, className, isDashboard, width, isSlow, expectedDuration, replacementContent } = this.props;
+        const CardVisualization = visualizations.get(series[0].card.display);
         const small = width < 330;
 
         let error = this.props.error || this.state.error;
@@ -150,37 +104,23 @@ export default class Visualization extends Component {
                 }
             }
         }
-
-        // if on dashoard, and error didn't come from props replace it with the generic error message
-        if (isDashboard && error && this.props.error !== error) {
-            error = ERROR_MESSAGE_GENERIC;
-        }
-
         if (!error) {
             noResults = getIn(series, [0, "data", "rows", "length"]) === 0;
         }
 
-        let extra = (
-            <span className="flex align-center">
-                {isSlow && !loading &&
-                    <LoadingSpinner size={18} className={cx("Visualization-slow-spinner", isSlow === "usually-slow" ? "text-gold" : "text-slate")}/>
-                }
-                {actionButtons}
-            </span>
-        );
+        let extra;
+        if (!loading) {
+            extra = actionButtons;
+        } else if (isSlow) {
+            extra = <LoadingSpinner className={isSlow === "usually-slow" ? "text-gold" : "text-slate"} size={18} />
+        }
 
         return (
             <div className={cx(className, "flex flex-column")}>
-                { isDashboard && (settings["card.title"] || extra) && (loading || error || !CardVisualization.noHeader) || replacementContent ?
+                { isDashboard && (loading || error || !CardVisualization.noHeader) || replacementContent ?
                     <div className="p1 flex-no-shrink">
                         <LegendHeader
-                            series={
-                                settings["card.title"] ?
-                                    // if we have a card title set, use it
-                                    setIn(series, [0, "card", "name"], settings["card.title"]) :
-                                    // otherwise use the original series
-                                    series
-                            }
+                            series={series}
                             actionButtons={extra}
                             settings={settings}
                         />
@@ -203,12 +143,12 @@ export default class Visualization extends Component {
                     </div>
                 : error ?
                     <div className="flex-full px1 pb1 text-centered text-slate-light flex flex-column layout-centered">
-                        <Tooltip tooltip={error} isEnabled={small}>
-                            <Icon className="mb2" name={errorIcon || "warning"} size={50} />
+                        <Tooltip tooltip={isDashboard ? ERROR_MESSAGE_GENERIC : error} isEnabled={small}>
+                            <Icon className="mb2" name="warning" size={50} />
                         </Tooltip>
                         { !small &&
                             <span className="h4 text-bold">
-                                {error}
+                                { isDashboard ? ERROR_MESSAGE_GENERIC : error }
                             </span>
                         }
                     </div>
@@ -246,9 +186,6 @@ export default class Visualization extends Component {
                         onRenderError={this.onRenderError}
                         onRender={this.onRender}
                     />
-                }
-                { isCached ?
-                    <div style={{position: "absolute", bottom: 0, width: "100%", fontStyle : "italic", fontSize: "smaller"}}>⚡ Cached in {cacheLastUpdate}</div> : null
                 }
             </div>
         );
