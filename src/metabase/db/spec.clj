@@ -35,7 +35,7 @@
           :subprotocol "mysql"
           :subname (str "//" host ":" port "/" db)
           :delimiters "`"}
-         (dissoc opts :host :port :db)))
+         (dissoc opts :host :port :db :additional-options)))
 
 
 ;; TODO - These other ones can acutally be moved directly into their respective drivers themselves since they're not supported as backing DBs
