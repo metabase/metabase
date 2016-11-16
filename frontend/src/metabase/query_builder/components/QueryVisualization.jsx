@@ -114,7 +114,7 @@ export default class QueryVisualization extends Component {
         if (result && result.data && !isObjectDetail && card.display === "table") {
             return (
                 <div>
-                    { result.data.rows_truncated != null ? ("Showing max of ") : ("Showing ")}
+                    { result.data.rows_truncated != null ? ("Showing first ") : ("Showing ")}
                     <b>{formatNumber(result.row_count)}</b>
                     { " " + inflect("row", result.data.rows.length) }.
                 </div>
