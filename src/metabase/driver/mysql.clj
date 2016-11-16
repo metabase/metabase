@@ -56,23 +56,20 @@
                (str (name k) \= (name v)))))
 
 (defn- append-connection-args
+  "Append `default-connection-args-string` to the connection string in CONNECTION-DETAILS, and an additional option to explicitly disable SSL if appropriate.
+   (Newer versions of MySQL will complain if you don't explicitly disable SSL.)"
   {:argslist '([connection-spec details])}
-  [{connection-string :subname, :as connection-spec} {ssl? :ssl, additional-options :additional-options, :as details}]
+  [{connection-string :subname, :as connection-spec} {ssl? :ssl}]
   (assoc connection-spec
-    :subname (str connection-string
-                  "?"
-                  default-connection-args-string
-                  ;; newer versions of MySQL will complain if you don't explicitly disable SSL
-                  (when-not ssl?
-                    "&useSSL=false")
-                  (when (seq additional-options)
-                    (str "&" additional-options)))))
+    :subname (str connection-string "?" default-connection-args-string (when-not ssl?
+                                                                         "&useSSL=false"))))
 
 (defn- connection-details->spec [details]
   (-> details
       (set/rename-keys {:dbname :db})
       dbspec/mysql
-      (append-connection-args details)))
+      (append-connection-args details)
+      (sql/handle-additional-options details)))
 
 (defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
   (hsql/call :from_unixtime (case seconds-or-milliseconds

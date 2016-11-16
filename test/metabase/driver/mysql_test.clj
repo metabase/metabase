@@ -1,7 +1,7 @@
 (ns metabase.driver.mysql-test
   (:require [expectations :refer :all]
             [metabase.db :as db]
-            (metabase.driver [generic-sql :as generic-sql]
+            (metabase.driver [generic-sql :as sql]
                              mysql)
             [metabase.models.database :refer [Database]]
             [metabase.sync-database :as sync-db]
@@ -29,10 +29,10 @@
 ;; make sure connection details w/ extra params work as expected
 (expect
   "//localhost:3306/cool?zeroDateTimeBehavior=convertToNull&useUnicode=true&characterEncoding=UTF8&characterSetResults=UTF8&useSSL=false&tinyInt1isBit=false"
-  (:subname (generic-sql/connection-details->spec (MySQLDriver.) {:host               "localhost"
-                                                                  :port               "3306"
-                                                                  :dbname             "cool"
-                                                                  :additional-options "tinyInt1isBit=false"})))
+  (:subname (sql/connection-details->spec (MySQLDriver.) {:host               "localhost"
+                                                          :port               "3306"
+                                                          :dbname             "cool"
+                                                          :additional-options "tinyInt1isBit=false"})))
 
 
 ;; Test how TINYINT(1) columns are interpreted. By default, they should be interpreted as integers,

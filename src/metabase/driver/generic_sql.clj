@@ -1,7 +1,8 @@
 (ns metabase.driver.generic-sql
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.math.numeric-tower :as math]
-            [clojure.set :as set]
+            (clojure [set :as set]
+                     [string :as str])
             [clojure.tools.logging :as log]
             (honeysql [core :as hsql]
                       [format :as hformat])
@@ -150,6 +151,16 @@
   "Return a JDBC connection spec for DATABASE. This will have a C3P0 pool as its datasource."
   [{:keys [engine details], :as database}]
   (db->pooled-connection-spec database))
+
+(defn handle-additional-options
+  "If DETAILS contains an `:addtional-options` key, append those options to the connection string in CONNECTION-SPEC.
+   (Some drivers like MySQL provide this details field to allow special behavior where needed)."
+  {:arglists '([connection-spec details])}
+  [{connection-string :subname, :as connection-spec} {additional-options :additional-options, :as details}]
+  (-> (dissoc connection-spec :additional-options)
+      (assoc :subname (str connection-string (when (seq additional-options)
+                                               (str (if (str/includes? connection-string "?") "&" "?")
+                                                    additional-options))))))
 
 
 (defn escape-field-name
