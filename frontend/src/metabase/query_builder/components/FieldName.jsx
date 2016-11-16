@@ -1,7 +1,5 @@
 import React, { Component, PropTypes } from "react";
 
-import i from 'icepick';
-
 import Icon from "metabase/components/Icon.jsx";
 
 import Query from "metabase/lib/query";
