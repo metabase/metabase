@@ -70,11 +70,15 @@ export default class FieldList extends Component {
 
         let fkSections = fieldOptions.fks.map(fk => ({
             name: stripId(fk.field.display_name),
-            items: fk.fields.map(field => ({
-                name: Query.getFieldPathName(field.id, tableMetadata),
-                value: ["fk->", fk.field.id, field.id],
-                field: field
-            }))
+            items: fk.fields.map(field => {
+                const value = ["fk->", fk.field.id, field.id];
+                const target = Query.getFieldTarget(value, tableMetadata);
+                return {
+                    name: Query.getFieldPathName(target.field.id, target.table),
+                    value: value,
+                    field: field
+                };
+            })
         }));
 
         let sections = [mainSection].concat(fkSections);
