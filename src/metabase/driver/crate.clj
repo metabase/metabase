@@ -44,7 +44,7 @@
 
 (defn- crate-spec
   [{:keys [hosts]
-    :or   {hosts "//localhost:4300"}
+    :or   {hosts "//localhost:5432/"}
     :as   opts}]
   (merge {:classname   "io.crate.client.jdbc.CrateDriver" ; must be in classpath
           :subprotocol "crate"
@@ -70,7 +70,7 @@
           :date-interval  crate-util/date-interval
           :details-fields (constantly [{:name         "hosts"
                                         :display-name "Hosts"
-                                        :default      "//localhost:4300"}])
+                                        :default      "//localhost:5432/"}])
           :features       (comp (u/rpartial set/difference #{:foreign-keys}) sql/features)})
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
