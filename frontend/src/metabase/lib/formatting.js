@@ -90,6 +90,8 @@ function formatTimeWithUnit(value, unit, options = {}) {
             return moment().hour(value).format("h A");
         case "day-of-week": // Sunday
             return moment().day(value - 1).format("dddd");
+        case "day-of-month":
+            return moment().date(value).format("D");
         case "week-of-year": // 1st
             return moment().week(value).format("wo");
         case "month-of-year": // January

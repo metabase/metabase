@@ -49,7 +49,7 @@ export default class TimeGroupingPopover extends Component {
             // "minute-of-hour",
             "hour-of-day",
             "day-of-week",
-            // "day-of-month",
+            "day-of-month",
             // "day-of-year",
             "week-of-year",
             "month-of-year",
