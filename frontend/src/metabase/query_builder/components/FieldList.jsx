@@ -10,6 +10,7 @@ import QueryDefinitionTooltip from "./QueryDefinitionTooltip.jsx";
 import { isDate, getIconForField } from 'metabase/lib/schema_metadata';
 import { parseFieldBucketing, parseFieldTarget } from "metabase/lib/query_time";
 import { stripId, singularize } from "metabase/lib/formatting";
+import Query from "metabase/lib/query";
 
 import _ from "underscore";
 
@@ -61,7 +62,7 @@ export default class FieldList extends Component {
         let mainSection = {
             name: singularize(tableName),
             items: specialOptions.concat(fieldOptions.fields.map(field => ({
-                name: field.display_name,
+                name: Query.getFieldPathName(field.id, tableMetadata),
                 value: field.id,
                 field: field
             })))
@@ -70,7 +71,7 @@ export default class FieldList extends Component {
         let fkSections = fieldOptions.fks.map(fk => ({
             name: stripId(fk.field.display_name),
             items: fk.fields.map(field => ({
-                name: field.display_name,
+                name: Query.getFieldPathName(field.id, tableMetadata),
                 value: ["fk->", fk.field.id, field.id],
                 field: field
             }))

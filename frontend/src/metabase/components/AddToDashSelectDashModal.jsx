@@ -6,6 +6,7 @@ import ModalContent from "metabase/components/ModalContent.jsx";
 import SortableItemList from 'metabase/components/SortableItemList.jsx';
 
 import Urls from "metabase/lib/urls";
+import { DashboardApi } from "metabase/services";
 
 import moment from 'moment';
 
@@ -24,13 +25,13 @@ export default class AddToDashSelectDashModal extends Component {
 
     static propTypes = {
         card: PropTypes.object.isRequired,
-        dashboardApi: PropTypes.object.isRequired,
         closeFn: PropTypes.func.isRequired,
         onChangeLocation: PropTypes.func.isRequired
     };
 
     async loadDashboardList() {
-        var dashboards = await this.props.dashboardApi.list({ f: "all" });
+        // TODO: reduxify
+        var dashboards = await DashboardApi.list({ f: "all" });
         for (var dashboard of dashboards) {
             dashboard.updated_at = moment(dashboard.updated_at);
         }
@@ -43,7 +44,8 @@ export default class AddToDashSelectDashModal extends Component {
     }
 
     async createDashboard(newDashboard) {
-        let dashboard = await this.props.dashboardApi.create(newDashboard);
+        // TODO: reduxify
+        let dashboard = await DashboardApi.create(newDashboard);
         // this.props.notifyDashboardCreatedFn(dashboard);
         this.addToDashboard(dashboard);
     }
