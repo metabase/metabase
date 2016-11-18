@@ -277,15 +277,13 @@
   "Run the query associated with a Card, and return its results as CSV. Note that this expects the query as serialized JSON in the 'query' parameters."
   [card-id query]
   {query (s/maybe su/JSONString)}
-  (dataset-api/as-csv (run-query-for-card card-id (when query
-                                                    (:parameters (json/parse-string query keyword))))))
+  (dataset-api/as-csv (run-query-for-card card-id (:parameters (json/parse-string query keyword)))))
 
-(defendpoint GET "/:card-id/json"
-  "Fetch the results of a Card as JSON."
-  [card-id]
-  (let [{{:keys [columns rows]} :data} (run-query-for-card card-id nil)]
-    (for [row rows]
-      (zipmap columns row))))
+(defendpoint POST "/:card-id/query/json"
+  "Run the query associated with a Card, and return its results as JSON. Note that this expects the query as serialized JSON in the 'query' parameters."
+  [card-id query]
+  {query (s/maybe su/JSONString)}
+  (dataset-api/as-json (run-query-for-card card-id (:parameters (json/parse-string query keyword)))))
 
 
 (define-routes)

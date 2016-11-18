@@ -7,7 +7,6 @@ import { getTemplateTags } from "metabase/meta/Card";
 import { isCardDirty, isCardRunnable } from "metabase/lib/card";
 import { parseFieldTarget } from "metabase/lib/query_time";
 import { isPK } from "metabase/lib/types";
-import { applyParameters } from "metabase/meta/Card";
 
 export const uiControls                = state => state.qb.uiControls;
 
@@ -152,12 +151,6 @@ export const getParameters = createSelector(
 	[getImplicitParameters],
 	(implicitParameters) => implicitParameters
 );
-
-export const getFullDatasetQuery = createSelector(
-	[card, getParameters, parameterValues],
-	(card, parameters, parameterValues) =>
-		card && applyParameters(card, parameters, parameterValues)
-)
 
 export const getIsRunnable = createSelector(
 	[card, tableMetadata],
