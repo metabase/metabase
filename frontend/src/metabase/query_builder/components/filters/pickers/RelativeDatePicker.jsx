@@ -21,10 +21,6 @@ export default class RelativeDatePicker extends Component {
         formatter: (value) => value
     }
 
-    componentDidMount () {
-        findDOMNode(this.refs.input).focus()
-    }
-
     render() {
         const { filter: [op, field, intervals, unit], onFilterChange, formatter } = this.props;
         return (
@@ -35,7 +31,6 @@ export default class RelativeDatePicker extends Component {
                     onChange={(value) =>
                         onFilterChange([op, field, formatter(value), unit])
                     }
-                    ref="input"
                     placeholder="30"
                 />
                 <UnitPicker
@@ -45,6 +40,7 @@ export default class RelativeDatePicker extends Component {
                         onFilterChange([op, field, intervals, value]);
                         this.setState({ showUnits: false });
                     }}
+                    togglePicker={() => this.setState({ showUnits: !this.state.showUnits})}
                     intervals={intervals}
                 />
             </div>
@@ -52,9 +48,10 @@ export default class RelativeDatePicker extends Component {
     }
 }
 
-export const UnitPicker = ({ open, value, onChange, intervals }) =>
+export const UnitPicker = ({ open, value, onChange, togglePicker, intervals }) =>
    <div>
        <div
+           onClick={() => togglePicker()}
            className="flex align-center cursor-pointer text-purple-hover mb2"
        >
            <h3>{pluralize(intervals || 1, value)}</h3>
