@@ -32,7 +32,7 @@ export default class OperatorSelector extends Component {
                     className="flex align-center cursor-pointer text-purple-hover mb2"
                     onClick={() => this.toggleExpanded()}
                 >
-                    <h3>{titleCase(operator)}</h3>
+                    <h3>{operator && titleCase(operator)}</h3>
                     <Icon name='chevrondown' />
                 </div>
                 <ul

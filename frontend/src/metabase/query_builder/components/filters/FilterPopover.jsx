@@ -52,7 +52,9 @@ export default class FilterPopover extends Component {
 
             // default to the first operator
             let { field } = Query.getFieldTarget(filter[1], this.props.tableMetadata);
-            let operator = field.valid_operators[0].name;
+
+            // let the DatePicker choose the default operator, otherwise use the first one
+            let operator = isDate(field) ? null : field.valid_operators[0].name;
 
             filter = this._updateOperator(filter, operator);
         }
