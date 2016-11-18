@@ -87,7 +87,7 @@ export default class QueryVisualization extends Component {
         return (
             <div className="relative flex flex-no-shrink mt3 mb1" style={{ minHeight: "2em" }}>
                 <span className="relative z4">
-                  { !isObjectDetail && <VisualizationSettings {...this.props}/> }
+                  { !isObjectDetail && <VisualizationSettings ref="settings" {...this.props} /> }
                 </span>
                 <div className="absolute flex layout-centered left right z3">
                     <RunButton
@@ -214,6 +214,7 @@ export default class QueryVisualization extends Component {
                     <VisualizationResult
                         lastRunDatasetQuery={this.state.lastRunDatasetQuery}
                         onUpdateWarnings={(warnings) => this.setState({ warnings })}
+                        onOpenChartSettings={() => this.refs.settings.open()}
                         {...this.props}
                     />
                 );

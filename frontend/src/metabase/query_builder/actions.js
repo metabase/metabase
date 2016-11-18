@@ -20,7 +20,7 @@ import { getEngineNativeType, formatJsonQuery } from "metabase/lib/engine";
 import { defer } from "metabase/lib/promise";
 import { applyParameters } from "metabase/meta/Card";
 
-import { getParameters, getNativeDatabases } from "./selectors";
+import { isDirty, getParameters, getNativeDatabases } from "./selectors";
 
 import { MetabaseApi, CardApi, UserApi } from "metabase/services";
 
@@ -92,9 +92,16 @@ export const updateUrl = createThunkAction(UPDATE_URL, (card, isDirty = false, r
     }
 );
 
+export const RESET_QB = "metabase/qb/RESET_QB";
+export const resetQB = createAction(RESET_QB);
+
 export const INITIALIZE_QB = "INITIALIZE_QB";
 export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) => {
     return async (dispatch, getState) => {
+        // do this immediately to ensure old state is cleared before the user sees it
+        dispatch(resetQB());
+        dispatch(cancelQuery());
+
         const { currentUser } = getState();
 
         let card, databases, originalCard, uiControls = {};
@@ -387,10 +394,6 @@ export const setParameterValue = createAction(SET_PARAMETER_VALUE, (parameterId,
 export const NOTIFY_CARD_CREATED = "NOTIFY_CARD_CREATED";
 export const notifyCardCreatedFn = createThunkAction(NOTIFY_CARD_CREATED, (card) => {
     return (dispatch, getState) => {
-        dispatch(loadMetadataForCard(card));
-
-        // we do this to force the indication of the fact that the card should not be considered dirty when the url is updated
-        dispatch(runQuery(card, false));
         dispatch(updateUrl(card, false));
 
         MetabaseAnalytics.trackEvent("QueryBuilder", "Create Card", card.dataset_query.type);
@@ -402,10 +405,6 @@ export const notifyCardCreatedFn = createThunkAction(NOTIFY_CARD_CREATED, (card)
 export const NOTIFY_CARD_UPDATED = "NOTIFY_CARD_UPDATED";
 export const notifyCardUpdatedFn = createThunkAction("NOTIFY_CARD_UPDATED", (card) => {
     return (dispatch, getState) => {
-        dispatch(loadMetadataForCard(card));
-
-        // we do this to force the indication of the fact that the card should not be considered dirty when the url is updated
-        dispatch(runQuery(card, false));
         dispatch(updateUrl(card, false));
 
         MetabaseAnalytics.trackEvent("QueryBuilder", "Update Card", card.dataset_query.type);
@@ -791,7 +790,8 @@ export const runQuery = createThunkAction(RUN_QUERY, (card, shouldUpdateUrl = tr
             dispatch(queryErrored(startTime, error));
         }
 
-        if (card && card.id) {
+        // use the CardApi.query if the query is saved and not dirty so users with view but not create permissions can see it.
+        if (card && card.id && !isDirty(state)) {
             CardApi.query({ cardId: card.id, parameters: card.dataset_query.parameters }, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
         } else {
             MetabaseApi.dataset(card.dataset_query, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
