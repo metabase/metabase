@@ -53,12 +53,12 @@ export default class DateMonthYearWidget extends Component {
                 <div className="flex">
                     <ol className="flex flex-column">
                     { _.range(0,6).map(m =>
-                        <Month month={m} selected={m === month} onClick={() => this.setState({ month: m }, onClose)} />
+                        <Month key={m} month={m} selected={m === month} onClick={() => this.setState({ month: m }, onClose)} />
                     )}
                     </ol>
                     <ol className="flex flex-column">
                     { _.range(6,12).map(m =>
-                        <Month month={m} selected={m === month} onClick={() => this.setState({ month: m }, onClose)} />
+                        <Month key={m} month={m} selected={m === month} onClick={() => this.setState({ month: m }, onClose)} />
                     )}
                     </ol>
                 </div>

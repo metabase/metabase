@@ -1,15 +1,12 @@
 //import _ from "underscore";
 import { createAction } from "redux-actions";
-import { AngularResourceProxy, createThunkAction } from "metabase/lib/redux";
+import { createThunkAction } from "metabase/lib/redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseCookies from "metabase/lib/cookies";
 import MetabaseSettings from "metabase/lib/settings";
 
-
-// // resource wrappers
-const SetupApi = new AngularResourceProxy("Setup", ["create", "validate_db"]);
-const UtilApi = new AngularResourceProxy("Util", ["password_check"]);
+import { SetupApi, UtilApi } from "metabase/services";
 
 
 // action constants

@@ -3,6 +3,7 @@ import React from "react";
 import inflection from "inflection";
 import _ from "underscore";
 
+import Utils from "metabase/lib/utils";
 import { getOperators } from "metabase/lib/schema_metadata";
 import { createLookupByProperty } from "metabase/lib/table";
 import { isFK, TYPE } from "metabase/lib/types";
@@ -29,7 +30,7 @@ export const NEW_QUERY_TEMPLATES = {
 };
 
 export function createQuery(type = "query", databaseId, tableId) {
-    let dataset_query = angular.copy(NEW_QUERY_TEMPLATES[type]);
+    let dataset_query = Utils.copy(NEW_QUERY_TEMPLATES[type]);
 
     if (databaseId) {
         dataset_query.database = databaseId;
@@ -78,8 +79,16 @@ var Query = {
         return dataset_query && dataset_query.type === "native";
     },
 
-    canRun(query) {
-        return query && query.source_table != undefined && Query.hasValidAggregation(query);
+    canRun(query, tableMetadata) {
+        if (!query || query.source_table == null || !Query.hasValidAggregation(query)) {
+            return false;
+        }
+        // check that the table supports this aggregation, if we have tableMetadata
+        let agg = query.aggregation && query.aggregation[0] || "rows";
+        if (!mbqlCompare(agg, "metric") && tableMetadata && !_.findWhere(tableMetadata.aggregation_options, { short: agg })) {
+            return false;
+        }
+        return true;
     },
 
     cleanQuery(query) {
@@ -195,9 +204,9 @@ var Query = {
     },
 
     canSortByAggregateField(query) {
-        var SORTABLE_AGGREGATION_TYPES = new Set(["avg", "count", "distinct", "stddev", "sum", "min", "max"]);
+        var SORTABLE_AGGREGATION_TYPES = new Set(["avg", "count", "distinct", "stddev", "sum", "min", "max", "metric"]);
 
-        return Query.hasValidBreakout(query) && SORTABLE_AGGREGATION_TYPES.has(query.aggregation[0]);
+        return Query.hasValidBreakout(query) && SORTABLE_AGGREGATION_TYPES.has(query.aggregation && query.aggregation[0].toLowerCase());
     },
 
     addDimension(query) {
@@ -523,11 +532,11 @@ var Query = {
     // gets the table and field definitions from from a raw, fk->, or datetime_field field
     getFieldTarget: function(field, tableDef, path = []) {
         if (Query.isRegularField(field)) {
-            return { table: tableDef, field: tableDef.fields_lookup && tableDef.fields_lookup[field], path };
+            return { table: tableDef, field: Table.getField(tableDef, field), path };
         } else if (Query.isLocalField(field)) {
             return Query.getFieldTarget(field[1], tableDef, path);
         } else if (Query.isForeignKeyField(field)) {
-            let fkFieldDef = tableDef.fields_lookup && tableDef.fields_lookup[field[1]];
+            let fkFieldDef = Table.getField(tableDef, field[1]);
             let targetTableDef = fkFieldDef && fkFieldDef.target.table;
             return Query.getFieldTarget(field[2], targetTableDef, path.concat(fkFieldDef));
         } else if (Query.isDatetimeField(field)) {
@@ -565,6 +574,20 @@ var Query = {
         console.warn("Unknown field type: ", field);
     },
 
+    getFieldPath(fieldId, tableDef) {
+        let path = [];
+        while (fieldId != null) {
+            let field = Table.getField(tableDef, fieldId);
+            path.unshift(field);
+            fieldId = field && field.parent_id;
+        }
+        return path;
+    },
+
+    getFieldPathName(fieldId, tableDef) {
+        return Query.getFieldPath(fieldId, tableDef).map(f => f && f.display_name).join(": ")
+    },
+
     getDatetimeUnit(field) {
         if (field.length === 4) {
             return field[3]; // deprecated
@@ -599,12 +622,12 @@ var Query = {
     getFieldName(tableMetadata, field, options) {
         try {
             if (Query.isRegularField(field)) {
-                let fieldDef = tableMetadata.fields_lookup && tableMetadata.fields_lookup[field];
+                let fieldDef = Table.getField(tableMetadata, field);
                 if (fieldDef) {
                     return fieldDef.display_name.replace(/\s+id\s*$/i, "");
                 }
             } else if (Query.isForeignKeyField(field)) {
-                let fkFieldDef = tableMetadata.fields_lookup && tableMetadata.fields_lookup[field[1]];
+                let fkFieldDef = Table.getField(tableMetadata, field[1]);
                 let targetTableDef = fkFieldDef && fkFieldDef.target.table;
                 return [Query.getFieldName(tableMetadata, field[1], options), " → ", Query.getFieldName(targetTableDef, field[2], options)];
             } else if (Query.isDatetimeField(field)) {
@@ -844,6 +867,19 @@ export const BreakoutClause = {
             return breakout;
         } else {
             return breakout;
+        }
+    }
+}
+
+const Table = {
+    getField(table, fieldId) {
+        if (table) {
+            // sometimes we populate fields_lookup, sometimes we don't :(
+            if (table.fields_lookup) {
+                return table.fields_lookup[fieldId];
+            } else {
+                return _.findWhere(table.fields, { id: fieldId });
+            }
         }
     }
 }

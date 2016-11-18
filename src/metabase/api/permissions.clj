@@ -10,7 +10,8 @@
                              [permissions-group :refer [PermissionsGroup], :as group]
                              [permissions-group-membership :refer [PermissionsGroupMembership]]
                              [table :refer [Table]])
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [metabase.util.schema :as su]))
 
 ;;; +------------------------------------------------------------------------------------------------------------------------------------------------------+
 ;;; |                                                             PERMISSIONS GRAPH ENDPOINTS                                                              |
@@ -66,7 +67,7 @@
    you revisions, the endpoint will instead make no changes andr eturn a 409 (Conflict) response. In this case, you should fetch the updated graph
    and make desired changes to that."
   [:as {body :body}]
-  {body [Required Dict]}
+  {body su/Map}
   (check-superuser)
   (perms/update-graph! (dejsonify-graph body))
   (perms/graph))
@@ -82,11 +83,12 @@
   (check-superuser)
   (db/query {:select    [:pg.id :pg.name [:%count.pgm.id :members]]
              :from      [[:permissions_group :pg]]
-             :left-join [[:permissions_group_membership :pgm]
-                         [:= :pg.id :pgm.group_id]]
-             :where     (if (metabot/metabot-enabled)
-                          true
-                          [:not= :pg.id (:id (group/metabot))])
+             :left-join [[:permissions_group_membership :pgm] [:= :pg.id :pgm.group_id]
+                         [:core_user :user]                   [:= :pgm.user_id :user.id]]
+             :where     [:and [:= :user.is_active true]
+                              (if (metabot/metabot-enabled)
+                                true
+                                [:not= :pg.id (:id (group/metabot))])]
              :group-by  [:pg.id :pg.name]
              :order-by  [:%lower.pg.name]}))
 
@@ -100,7 +102,7 @@
 (defendpoint POST "/group"
   "Create a new `PermissionsGroup`."
   [:as {{:keys [name]} :body}]
-  {name [Required NonEmptyString]}
+  {name su/NonBlankString}
   (check-superuser)
   (db/insert! PermissionsGroup
     :name name))
@@ -108,7 +110,7 @@
 (defendpoint PUT "/group/:group-id"
   "Update the name of a `PermissionsGroup`."
   [group-id :as {{:keys [name]} :body}]
-  {name [Required NonEmptyString]}
+  {name su/NonBlankString}
   (check-superuser)
   (check-404 (db/exists? PermissionsGroup :id group-id))
   (db/update! PermissionsGroup group-id
@@ -138,8 +140,8 @@
 (defendpoint POST "/membership"
   "Add a `User` to a `PermissionsGroup`. Returns updated list of members belonging to the group."
   [:as {{:keys [group_id user_id]} :body}]
-  {group_id [Required Integer]
-   user_id  [Required Integer]}
+  {group_id su/IntGreaterThanZero
+   user_id  su/IntGreaterThanZero}
   (check-superuser)
   (db/insert! PermissionsGroupMembership
     :group_id group_id

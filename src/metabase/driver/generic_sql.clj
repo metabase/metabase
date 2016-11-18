@@ -1,7 +1,8 @@
 (ns metabase.driver.generic-sql
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.math.numeric-tower :as math]
-            [clojure.set :as set]
+            (clojure [set :as set]
+                     [string :as str])
             [clojure.tools.logging :as log]
             (honeysql [core :as hsql]
                       [format :as hformat])
@@ -147,15 +148,19 @@
       (swap! connection-pools assoc id <>))))
 
 (defn db->jdbc-connection-spec
-  "Return a JDBC connection spec for DATABASE. Normally this will have a C3P0 pool as its datasource, unless the database is `short-lived`."
-  ;; TODO - I don't think short-lived? key is really needed anymore. It's only used by unit tests, and its original purpose was for creating temporary DBs;
-  ;; since we don't destroy databases at the end of each test anymore, it's probably time to remove this
+  "Return a JDBC connection spec for DATABASE. This will have a C3P0 pool as its datasource."
   [{:keys [engine details], :as database}]
-  (if (:short-lived? details)
-    ;; short-lived connections are not pooled, so just return a non-pooled spec
-    (connection-details->spec (driver/engine->driver engine) details)
-    ;; default behavior is to use a pooled connection
-    (db->pooled-connection-spec database)))
+  (db->pooled-connection-spec database))
+
+(defn handle-additional-options
+  "If DETAILS contains an `:addtional-options` key, append those options to the connection string in CONNECTION-SPEC.
+   (Some drivers like MySQL provide this details field to allow special behavior where needed)."
+  {:arglists '([connection-spec details])}
+  [{connection-string :subname, :as connection-spec} {additional-options :additional-options, :as details}]
+  (-> (dissoc connection-spec :additional-options)
+      (assoc :subname (str connection-string (when (seq additional-options)
+                                               (str (if (str/includes? connection-string "?") "&" "?")
+                                                    additional-options))))))
 
 
 (defn escape-field-name
@@ -218,11 +223,12 @@
         transform-fn   (if (isa? (:base_type field) :type/Text)
                          u/jdbc-clob->str
                          identity)
-        select*        {:select   [[field-k :field]]                ; if we don't specify an explicit ORDER BY some DBs like Redshift will return them in a (seemingly) random order
+        select*        {:select   [[field-k :field]]
+                        :from     [(qualify+escape table)]          ; if we don't specify an explicit ORDER BY some DBs like Redshift will return them in a (seemingly) random order
                         :order-by [[(or pk-field-k field-k) :asc]]} ; try to order by the table's Primary Key to avoid doing full table scans
         fetch-one-page (fn [page-num]
-                         (for [{v :field} (query driver db table (apply-page driver select* {:page {:items driver/field-values-lazy-seq-chunk-size
-                                                                                                    :page  (inc page-num)}}))]
+                         (for [{v :field} (query driver db (apply-page driver select* {:page {:items driver/field-values-lazy-seq-chunk-size
+                                                                                              :page  (inc page-num)}}))]
                            (transform-fn v)))
 
         ;; This function returns a chunked lazy seq that will fetch some range of results, e.g. 0 - 500, then concat that chunk of results
@@ -293,7 +299,8 @@
 (defn features
   "Default implementation of `IDriver` `features` for SQL drivers."
   [driver]
-  (cond-> #{:standard-deviation-aggregations
+  (cond-> #{:basic-aggregations
+            :standard-deviation-aggregations
             :foreign-keys
             :expressions
             :native-parameters}

@@ -36,11 +36,10 @@
         "react/no-did-mount-set-state": 0,
         "react/no-did-update-set-state": 0,
         "react/no-find-dom-node": 0,
-        "flow-vars/define-flow-type": 1,
-        "flow-vars/use-flow-type": 1
+        "flowtype/define-flow-type": 1,
+        "flowtype/use-flow-type": 1
     },
     "globals": {
-        "angular": false
     },
     "env": {
         "browser": true,
@@ -50,7 +49,7 @@
     "parser": "babel-eslint",
     "plugins": [
         "react",
-        "flow-vars"
+        "flowtype"
     ],
     "extends": ["eslint:recommended", "plugin:react/recommended"]
 }

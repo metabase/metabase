@@ -81,4 +81,5 @@
                       (models/can-read? model-object))]
     (assoc view-log :model_object (dissoc model-object :dataset_query))))
 
+
 (define-routes)

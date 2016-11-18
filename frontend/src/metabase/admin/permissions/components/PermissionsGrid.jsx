@@ -280,54 +280,57 @@ const PermissionsGrid = ({ className, grid, onUpdatePermission }) => {
         ({ id: id, ...PERMISSIONS_UI[id], ...permission })
     );
     return (
-        <AutoSizer>
-            {({ height, width }) =>
-                <FixedHeaderGrid
-                    height={height}
-                    width={width}
-                    className={className}
-                    rowCount={grid.entities.length}
-                    columnCount={grid.groups.length}
-                    columnWidth={Math.max(CELL_WIDTH, (width - HEADER_WIDTH) / grid.groups.length)}
-                    rowHeight={CELL_HEIGHT}
-                    columnHeaderHeight={HEADER_HEIGHT}
-                    rowHeaderWidth={HEADER_WIDTH}
-                    renderCell={({ columnIndex, rowIndex }) =>
-                        <PermissionsCell
-                            group={grid.groups[columnIndex]}
-                            permissions={permissions}
-                            entity={grid.entities[rowIndex]}
-                            onUpdatePermission={onUpdatePermission}
-                            isFirstRow={rowIndex === 0}
-                            isLastRow={rowIndex === grid.entities.length - 1}
-                            isFirstColumn={columnIndex === 0}
-                            isLastColumn={columnIndex === grid.groups.length - 1}
-                        />
-                    }
-                    renderColumnHeader={({ columnIndex }) =>
-                        <GroupColumnHeader
-                            group={grid.groups[columnIndex]}
-                            permissions={permissions}
-                            isFirstColumn={columnIndex === 0}
-                            isLastColumn={columnIndex === grid.groups.length - 1}
-                        />
-                    }
-                    renderRowHeader={({ rowIndex }) =>
-                        <EntityRowHeader
-                            type={grid.type}
-                            entity={grid.entities[rowIndex]}
-                            isFirstRow={rowIndex === 0}
-                            isLastRow={rowIndex === grid.entities.length - 1}
-                        />
-                    }
-                    renderCorner={() =>
-                        <CornerHeader
-                            grid={grid}
-                        />
-                    }
-                />
-            }
-        </AutoSizer>
+        <div className={className}>
+            <AutoSizer>
+                {({ height, width }) =>
+                    <FixedHeaderGrid
+                        height={height}
+                        width={width}
+                        rowCount={grid.entities.length}
+                        columnCount={grid.groups.length}
+                        columnWidth={Math.max(CELL_WIDTH, (width - 20 - HEADER_WIDTH) / grid.groups.length)}
+                        rowHeight={CELL_HEIGHT}
+                        paddingBottom={20}
+                        paddingRight={20}
+                        columnHeaderHeight={HEADER_HEIGHT}
+                        rowHeaderWidth={HEADER_WIDTH}
+                        renderCell={({ columnIndex, rowIndex }) =>
+                            <PermissionsCell
+                                group={grid.groups[columnIndex]}
+                                permissions={permissions}
+                                entity={grid.entities[rowIndex]}
+                                onUpdatePermission={onUpdatePermission}
+                                isFirstRow={rowIndex === 0}
+                                isLastRow={rowIndex === grid.entities.length - 1}
+                                isFirstColumn={columnIndex === 0}
+                                isLastColumn={columnIndex === grid.groups.length - 1}
+                            />
+                        }
+                        renderColumnHeader={({ columnIndex }) =>
+                            <GroupColumnHeader
+                                group={grid.groups[columnIndex]}
+                                permissions={permissions}
+                                isFirstColumn={columnIndex === 0}
+                                isLastColumn={columnIndex === grid.groups.length - 1}
+                            />
+                        }
+                        renderRowHeader={({ rowIndex }) =>
+                            <EntityRowHeader
+                                type={grid.type}
+                                entity={grid.entities[rowIndex]}
+                                isFirstRow={rowIndex === 0}
+                                isLastRow={rowIndex === grid.entities.length - 1}
+                            />
+                        }
+                        renderCorner={() =>
+                            <CornerHeader
+                                grid={grid}
+                            />
+                        }
+                    />
+                }
+            </AutoSizer>
+        </div>
     );
 }
 

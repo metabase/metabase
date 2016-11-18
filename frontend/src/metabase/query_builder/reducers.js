@@ -2,6 +2,7 @@ import { handleActions } from "redux-actions";
 import i from "icepick";
 
 import {
+    RESET_QB,
     INITIALIZE_QB,
     TOGGLE_DATA_REFERENCE,
     TOGGLE_TEMPLATE_TAGS_EDITOR,
@@ -19,8 +20,8 @@ import {
     SET_CARD_AND_RUN,
     SET_CARD_ATTRIBUTE,
     SET_CARD_VISUALIZATION,
-    SET_CARD_VISUALIZATION_SETTING,
-    SET_CARD_VISUALIZATION_SETTINGS,
+    UPDATE_CARD_VISUALIZATION_SETTINGS,
+    REPLACE_ALL_CARD_VISUALIZATION_SETTINGS,
     UPDATE_TEMPLATE_TAG,
     SET_PARAMETER_VALUE,
 
@@ -70,6 +71,7 @@ export const uiControls = handleActions({
 
 // the card that is actively being worked on
 export const card = handleActions({
+    [RESET_QB]: { next: (state, { payload }) => null },
     [INITIALIZE_QB]: { next: (state, { payload }) => payload ? payload.card : null },
     [RELOAD_CARD]: { next: (state, { payload }) => payload },
     [CANCEL_EDITING]: { next: (state, { payload }) => payload },
@@ -79,8 +81,8 @@ export const card = handleActions({
 
     [SET_CARD_ATTRIBUTE]: { next: (state, { payload }) => ({...state, [payload.attr]: payload.value }) },
     [SET_CARD_VISUALIZATION]: { next: (state, { payload }) => payload },
-    [SET_CARD_VISUALIZATION_SETTING]: { next: (state, { payload }) => payload },
-    [SET_CARD_VISUALIZATION_SETTINGS]: { next: (state, { payload }) => payload },
+    [UPDATE_CARD_VISUALIZATION_SETTINGS]: { next: (state, { payload }) => payload },
+    [REPLACE_ALL_CARD_VISUALIZATION_SETTINGS]: { next: (state, { payload }) => payload },
 
     [UPDATE_TEMPLATE_TAG]: { next: (state, { payload }) => payload },
 
@@ -113,11 +115,13 @@ export const databases = handleActions({
 
 // the table actively being queried against.  this is only used for MBQL queries.
 export const tableMetadata = handleActions({
+    [RESET_QB]: { next: (state, { payload }) => null },
     [LOAD_DATABASE]: { next: (state, { payload }) => null},
     [LOAD_TABLE_METADATA]: { next: (state, { payload }) => payload && payload.table ? payload.table : state }
 }, null);
 
 export const tableForeignKeys = handleActions({
+    [RESET_QB]: { next: (state, { payload }) => null },
     [LOAD_DATABASE]: { next: (state, { payload }) => null},
     [LOAD_TABLE_METADATA]: { next: (state, { payload }) => payload && payload.foreignKeys ? payload.foreignKeys : state }
 }, null);
@@ -134,9 +138,9 @@ export const tableForeignKeyReferences = handleActions({
 
 // the result of a query execution.  optionally an error if the query fails to complete successfully.
 export const queryResult = handleActions({
+    [RESET_QB]: { next: (state, { payload }) => null },
     [QUERY_COMPLETED]: { next: (state, { payload }) => payload.queryResult },
-    [QUERY_ERRORED]: { next: (state, { payload }) => payload ? payload : state },
-    [INITIALIZE_QB]: { next: (state, { payload }) => null }
+    [QUERY_ERRORED]: { next: (state, { payload }) => payload ? payload : state }
 }, null);
 
 // promise used for tracking a query execution in progress.  when a query is started we capture this.

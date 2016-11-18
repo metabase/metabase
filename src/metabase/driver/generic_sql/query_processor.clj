@@ -87,8 +87,8 @@
 
   ;; e.g. the ["aggregation" 0] fields we allow in order-by
   AgFieldRef
-  (formatted [_]
-    (let [{:keys [aggregation-type]} (:aggregation (:query *query*))]
+  (formatted [{index :index}]
+    (let [{:keys [aggregation-type]} (nth (:aggregation (:query *query*)) index)]
       ;; For some arcane reason we name the results of a distinct aggregation "count",
       ;; everything else is named the same as the aggregation
       (if (= aggregation-type :distinct)
@@ -114,14 +114,19 @@
 ;;; ## Clause Handlers
 
 (defn apply-aggregation
-  "Apply an `aggregation` clause to HONEYSQL-FORM. Default implementation of `apply-aggregation` for SQL drivers."
-  ([driver honeysql-form {{:keys [aggregation-type field]} :aggregation}]
-   (apply-aggregation driver honeysql-form aggregation-type (formatted field)))
+  "Apply a `aggregation` clauses to HONEYSQL-FORM. Default implementation of `apply-aggregation` for SQL drivers."
+  ([driver honeysql-form {aggregations :aggregation}]
+   (loop [form honeysql-form, [{:keys [aggregation-type field]} & more] aggregations]
+     (let [form (apply-aggregation driver form aggregation-type (formatted field))]
+       (if-not (seq more)
+         form
+         (recur form more)))))
 
   ([driver honeysql-form aggregation-type field]
    (h/merge-select honeysql-form [(if-not field
                                     ;; aggregation clauses w/o a field
-                                    (do (assert (= aggregation-type :count))
+                                    (do (assert (= aggregation-type :count)
+                                          (format "Aggregations of type '%s' must specify a field." aggregation-type))
                                         :%count.*)
                                     ;; aggregation clauses w/ a Field
                                     (hsql/call (case  aggregation-type
@@ -132,7 +137,8 @@
                                                  :sum      :sum
                                                  :min      :min
                                                  :max      :max)
-                                               field))
+                                      field))
+                                  ;; the column alias is always the same as the ag type except for `:distinct` with is called `:count` (WHY?)
                                   (if (= aggregation-type :distinct)
                                     :count
                                     aggregation-type)])))
@@ -221,42 +227,29 @@
       (h/limit items)
       (h/offset (* items (dec page)))))
 
-;; TODO - not sure "pprint" is an appropriate name for this since this function doesn't print anything
-(defn pprint-sql
-  "Add newlines to the SQL to make it more readable."
-  [sql]
-  (when sql
-    (-> sql
-        (s/replace #"\sFROM"      "\nFROM")
-        (s/replace #"\sLEFT JOIN" "\nLEFT JOIN")
-        (s/replace #"\sWHERE"     "\nWHERE")
-        (s/replace #"\sGROUP BY"  "\nGROUP BY")
-        (s/replace #"\sORDER BY"  "\nORDER BY")
-        (s/replace #"\sLIMIT"     "\nLIMIT")
-        (s/replace #"\sAND\s"     "\n   AND ")
-        (s/replace #"\sOR\s"      "\n    OR "))))
-
-
-;; TODO - make this a protocol method ?
 (defn- apply-source-table [_ honeysql-form {{table-name :name, schema :schema} :source-table}]
   {:pre [table-name]}
   (h/from honeysql-form (hx/qualify-and-escape-dots schema table-name)))
 
 (def ^:private clause-handlers
-  {:aggregation  #'sql/apply-aggregation ; use the vars rather than the functions themselves because them implementation
-   :breakout     #'sql/apply-breakout    ; will get swapped around and  we'll be left with old version of the function that nobody implements
+  ;; 1) Use the vars rather than the functions themselves because them implementation
+  ;;    will get swapped around and  we'll be left with old version of the function that nobody implements
+  ;; 2) This is a vector rather than a map because the order the clauses get handled is important for some drivers.
+  ;;    For example, Oracle needs to wrap the entire query in order to apply its version of limit (`WHERE ROWNUM`).
+  [:source-table apply-source-table
+   :aggregation  #'sql/apply-aggregation
+   :breakout     #'sql/apply-breakout
    :fields       #'sql/apply-fields
    :filter       #'sql/apply-filter
    :join-tables  #'sql/apply-join-tables
-   :limit        #'sql/apply-limit
    :order-by     #'sql/apply-order-by
    :page         #'sql/apply-page
-   :source-table apply-source-table})
+   :limit        #'sql/apply-limit])
 
 (defn- apply-clauses
   "Loop through all the `clause->handler` entries; if the query contains a given clause, apply the handler fn."
   [driver honeysql-form query]
-  (loop [honeysql-form honeysql-form, [[clause f] & more] (seq clause-handlers)]
+  (loop [honeysql-form honeysql-form, [clause f & more] (seq clause-handlers)]
     (let [honeysql-form (if (clause query)
                           (f driver honeysql-form query)
                           honeysql-form)]

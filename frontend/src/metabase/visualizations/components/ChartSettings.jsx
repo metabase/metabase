@@ -49,12 +49,6 @@ class ChartSettings extends Component {
         this.setState({ currentTab: tab });
     }
 
-    onUpdateVisualizationSetting = (key, value) => {
-        this.onChangeSettings({
-            [key]: value
-        });
-    }
-
     onChangeSettings = (newSettings) => {
         for (const key of Object.keys(newSettings)) {
             MetabaseAnalytics.trackEvent("Chart Settings", "Change Setting", key);
@@ -126,7 +120,7 @@ class ChartSettings extends Component {
                           series={series}
                           isEditing
                           isDashboard
-                          onUpdateVisualizationSetting={this.onUpdateVisualizationSetting}
+                          onUpdateVisualizationSettings={this.onChangeSettings}
                       />
                   </div>
               </div>

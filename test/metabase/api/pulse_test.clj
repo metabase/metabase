@@ -52,30 +52,30 @@
 
 ;; ## POST /api/pulse
 
-(expect {:errors {:name "field is a required param."}}
+(expect {:errors {:name "value must be a non-blank string."}}
   ((user->client :rasta) :post 400 "pulse" {}))
 
-(expect {:errors {:cards "field is a required param."}}
+(expect {:errors {:cards "value must be an array. Each value must be a map. The array cannot be empty."}}
   ((user->client :rasta) :post 400 "pulse" {:name "abc"}))
 
-(expect {:errors {:cards "Invalid value 'foobar' for 'cards': value must be an array."}}
+(expect {:errors {:cards "value must be an array. Each value must be a map. The array cannot be empty."}}
   ((user->client :rasta) :post 400 "pulse" {:name  "abc"
                                             :cards "foobar"}))
 
-(expect {:errors {:cards "Invalid value 'abc' for 'cards': array value must be a map."}}
+(expect {:errors {:cards "value must be an array. Each value must be a map. The array cannot be empty."}}
   ((user->client :rasta) :post 400 "pulse" {:name  "abc"
                                             :cards ["abc"]}))
 
-(expect {:errors {:channels "field is a required param."}}
+(expect {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
   ((user->client :rasta) :post 400 "pulse" {:name "abc"
                                             :cards [{:id 100} {:id 200}]}))
 
-(expect {:errors {:channels "Invalid value 'foobar' for 'channels': value must be an array."}}
+(expect {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
   ((user->client :rasta) :post 400 "pulse" {:name    "abc"
                                             :cards   [{:id 100} {:id 200}]
                                             :channels "foobar"}))
 
-(expect {:errors {:channels "Invalid value 'abc' for 'channels': array value must be a map."}}
+(expect {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
   ((user->client :rasta) :post 400 "pulse" {:name     "abc"
                                             :cards    [{:id 100} {:id 200}]
                                             :channels ["abc"]}))
@@ -112,30 +112,30 @@
 
 ;; ## PUT /api/pulse
 
-(expect {:errors {:name "field is a required param."}}
+(expect {:errors {:name "value must be a non-blank string."}}
   ((user->client :rasta) :put 400 "pulse/1" {}))
 
-(expect {:errors {:cards "field is a required param."}}
+(expect {:errors {:cards "value must be an array. Each value must be a map. The array cannot be empty."}}
   ((user->client :rasta) :put 400 "pulse/1" {:name "abc"}))
 
-(expect {:errors {:cards "Invalid value 'foobar' for 'cards': value must be an array."}}
+(expect {:errors {:cards "value must be an array. Each value must be a map. The array cannot be empty."}}
   ((user->client :rasta) :put 400 "pulse/1" {:name  "abc"
                                              :cards "foobar"}))
 
-(expect {:errors {:cards "Invalid value 'abc' for 'cards': array value must be a map."}}
+(expect {:errors {:cards "value must be an array. Each value must be a map. The array cannot be empty."}}
   ((user->client :rasta) :put 400 "pulse/1" {:name  "abc"
                                              :cards ["abc"]}))
 
-(expect {:errors {:channels "field is a required param."}}
+(expect {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
   ((user->client :rasta) :put 400 "pulse/1" {:name "abc"
                                              :cards [{:id 100} {:id 200}]}))
 
-(expect {:errors {:channels "Invalid value 'foobar' for 'channels': value must be an array."}}
+(expect {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
   ((user->client :rasta) :put 400 "pulse/1" {:name    "abc"
                                              :cards   [{:id 100} {:id 200}]
                                              :channels "foobar"}))
 
-(expect {:errors {:channels "Invalid value 'abc' for 'channels': array value must be a map."}}
+(expect {:errors {:channels "value must be an array. Each value must be a map. The array cannot be empty."}}
   ((user->client :rasta) :put 400 "pulse/1" {:name     "abc"
                                              :cards    [{:id 100} {:id 200}]
                                              :channels ["abc"]}))

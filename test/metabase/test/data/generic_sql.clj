@@ -152,8 +152,7 @@
    (quote+combine-names driver (qualified-name-components driver db-name table-name field-name))))
 
 (defn- default-database->spec [driver context dbdef]
-  (let [spec (sql/connection-details->spec driver (i/database->connection-details driver context dbdef))]
-    (assoc spec :make-pool? (not (:short-lived? spec)))))
+  (sql/connection-details->spec driver (i/database->connection-details driver context dbdef)))
 
 
 ;;; Loading Table Data

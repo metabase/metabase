@@ -292,6 +292,7 @@
 
 ;;; ---------------------------------------- Helper Fns ----------------------------------------
 
+;; TODO - why does this take a PATH when everything else takes PATH-COMPONENTS or IDs?
 (defn delete-related-permissions!
   "Delete all permissions for GROUP-OR-ID for ancestors or descendant objects of object with PATH.
    You can optionally include OTHER-CONDITIONS, which are anded into the filter clause, to further restrict what is deleted."

@@ -1,12 +1,13 @@
 (ns metabase.card-cache
   (:require
     [clojure.tools.logging :as log]
-    [metabase.models.card-cache :as model ]
+    [metabase.models.card-cache :as model]
     [metabase.models.setting :as setting :refer [defsetting]]))
 
 
 ;;; ## ---------------------------------------- SETTINGS ----------------------------------------
 
+(defonce all-settings [:cache-enabled :cache-scope :cache-global-max-age :cache-max-allowed-size])
 
 (defn- set-number
   [new-value key]

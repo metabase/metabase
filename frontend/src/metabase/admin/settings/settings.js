@@ -1,10 +1,7 @@
 
-import { handleActions, combineReducers, AngularResourceProxy, createThunkAction } from "metabase/lib/redux";
+import { handleActions, combineReducers, createThunkAction } from "metabase/lib/redux";
 
-// resource wrappers
-const SettingsApi = new AngularResourceProxy("Settings", ["list", "put", "setAll"]);
-const EmailApi = new AngularResourceProxy("Email", ["updateSettings", "sendTest"]);
-const SlackApi = new AngularResourceProxy("Slack", ["updateSettings"]);
+import { SettingsApi, EmailApi, SlackApi, CardCacheApi } from "metabase/services";
 
 import { refreshSiteSettings } from "metabase/redux/settings";
 
@@ -37,7 +34,7 @@ export const initializeSettings = createThunkAction("INITIALIZE_SETTINGS", funct
 export const updateSetting = createThunkAction("UPDATE_SETTING", function(setting) {
     return async function(dispatch, getState) {
         try {
-            await SettingsApi.put({ key: setting.key }, setting);
+            await SettingsApi.put(setting);
             await dispatch(refreshSiteSettings());
             return await loadSettings();
         } catch(error) {
@@ -46,21 +43,6 @@ export const updateSetting = createThunkAction("UPDATE_SETTING", function(settin
         }
     };
 });
-
-// updateSettings
-export const updateSettings = createThunkAction("UPDATE_SETTINGS", function(settings) {
-    return async function(dispatch, getState) {
-        try {
-            await SettingsApi.setAll(settings);
-            await dispatch(refreshSiteSettings());
-            return await loadSettings();
-        } catch(error) {
-            console.log("error updating multiple settings", settings, error);
-            throw error;
-        }
-    };
-});
-
 
 // updateEmailSettings
 export const updateEmailSettings = createThunkAction("UPDATE_EMAIL_SETTINGS", function(settings) {
@@ -102,6 +84,20 @@ export const updateSlackSettings = createThunkAction("UPDATE_SLACK_SETTINGS", fu
     };
 });
 
+// updateCacheSettings
+export const updateCacheSettings = createThunkAction("UPDATE_CACHE_SETTINGS", function(settings) {
+    return async function(dispatch, getState) {
+        try {
+            await CardCacheApi.updateSettings(settings);
+            await dispatch(refreshSiteSettings());
+            return await loadSettings();
+        } catch(error) {
+            console.log("error updating slack settings", settings, error);
+            throw error;
+        }
+    };
+});
+
 export const reloadSettings = createThunkAction("RELOAD_SETTINGS", function() {
     return async function(dispatch, getState) {
         await dispatch(refreshSiteSettings());
@@ -116,6 +112,7 @@ const settings = handleActions({
     ["UPDATE_SETTING"]: { next: (state, { payload }) => payload },
     ["UPDATE_EMAIL_SETTINGS"]: { next: (state, { payload }) => payload },
     ["UPDATE_SLACK_SETTINGS"]: { next: (state, { payload }) => payload },
+    ["UPDATE_CACHE_SETTINGS"]: { next: (state, { payload }) => payload },
     ["RELOAD_SETTINGS"]: { next: (state, { payload }) => payload }
 }, []);
 

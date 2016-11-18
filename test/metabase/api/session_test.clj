@@ -21,10 +21,10 @@
       (tu/is-uuid-string? (:id (client :post 200 "session" (user->credentials :rasta))))))
 
 ;; Test for required params
-(expect {:errors {:email "field is a required param."}}
+(expect {:errors {:email "value must be a valid email address."}}
   (client :post 400 "session" {}))
 
-(expect {:errors {:password "field is a required param."}}
+(expect {:errors {:password "value must be a non-blank string."}}
   (client :post 400 "session" {:email "anything@metabase.com"}))
 
 ;; Test for inactive user (user shouldn't be able to login if :is_active = false)
@@ -76,7 +76,7 @@
     (reset-fields-set?)))
 
 ;; Test that email is required
-(expect {:errors {:email "field is a required param."}}
+(expect {:errors {:email "value must be a valid email address."}}
   (client :post 400 "session/forgot_password" {}))
 
 ;; Test that email not found also gives 200 as to not leak existence of user
@@ -125,10 +125,10 @@
           (update :session_id tu/is-uuid-string?)))))
 
 ;; Test that token and password are required
-(expect {:errors {:token "field is a required param."}}
+(expect {:errors {:token "value must be a non-blank string."}}
   (client :post 400 "session/reset_password" {}))
 
-(expect {:errors {:password "field is a required param."}}
+(expect {:errors {:password "Insufficient password strength"}}
   (client :post 400 "session/reset_password" {:token "anything"}))
 
 ;; Test that malformed token returns 400

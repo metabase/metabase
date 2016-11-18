@@ -1,5 +1,5 @@
 
-import { AngularResourceProxy, createAction, createThunkAction } from "metabase/lib/redux";
+import { createAction, createThunkAction } from "metabase/lib/redux";
 
 import { normalize, Schema, arrayOf } from 'normalizr';
 import i from "icepick";
@@ -18,7 +18,7 @@ card.define({
   labels: arrayOf(label)
 });
 
-const CardApi = new AngularResourceProxy("Card", ["list", "update", "favorite", "unfavorite", "updateLabels"]);
+import { CardApi } from "metabase/services";
 
 const SELECT_SECTION = 'metabase/questions/SELECT_SECTION';
 const SET_SEARCH_TEXT = 'metabase/questions/SET_SEARCH_TEXT';

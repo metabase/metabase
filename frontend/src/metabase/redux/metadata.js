@@ -1,7 +1,6 @@
 import {
     handleActions,
     combineReducers,
-    AngularResourceProxy,
     createThunkAction,
     resourceListToMap,
     cleanResource,
@@ -15,10 +14,7 @@ import _ from "underscore";
 
 import { augmentDatabase, augmentTable } from "metabase/lib/table";
 
-const MetabaseApi = new AngularResourceProxy("Metabase", ["db_list", "db_update", "db_metadata", "table_list", "table_update", "table_query_metadata", "field_update"]);
-const MetricApi = new AngularResourceProxy("Metric", ["list", "update", "update_important_fields"]);
-const SegmentApi = new AngularResourceProxy("Segment", ["list", "update"]);
-const RevisionApi = new AngularResourceProxy("Revisions", ["get"]);
+import { MetabaseApi, MetricApi, SegmentApi, RevisionsApi } from "metabase/services";
 
 const database_list = new Schema('database_list');
 const database = new Schema('databases');
@@ -46,11 +42,11 @@ export const fetchMetrics = createThunkAction(FETCH_METRICS, (reload = false) =>
         };
 
         return await fetchData({
-            dispatch, 
-            getState, 
-            requestStatePath, 
-            existingStatePath, 
-            getData, 
+            dispatch,
+            getState,
+            requestStatePath,
+            existingStatePath,
+            getData,
             reload
         });
     };
@@ -74,10 +70,10 @@ export const updateMetric = createThunkAction(UPDATE_METRIC, function(metric) {
         };
 
         return await updateData({
-            dispatch, 
-            getState, 
-            requestStatePath, 
-            existingStatePath, 
+            dispatch,
+            getState,
+            requestStatePath,
+            existingStatePath,
             dependentRequestStatePaths,
             putData
         });
@@ -95,10 +91,10 @@ export const updateMetricImportantFields = createThunkAction(UPDATE_METRIC_IMPOR
         };
 
         return await updateData({
-            dispatch, 
-            getState, 
-            requestStatePath, 
-            existingStatePath, 
+            dispatch,
+            getState,
+            requestStatePath,
+            existingStatePath,
             dependentRequestStatePaths,
             putData
         });
@@ -122,11 +118,11 @@ export const fetchSegments = createThunkAction(FETCH_SEGMENTS, (reload = false) 
         };
 
         return await fetchData({
-            dispatch, 
-            getState, 
-            requestStatePath, 
-            existingStatePath, 
-            getData, 
+            dispatch,
+            getState,
+            requestStatePath,
+            existingStatePath,
+            getData,
             reload
         });
     };
@@ -150,10 +146,10 @@ export const updateSegment = createThunkAction(UPDATE_SEGMENT, function(segment)
         };
 
         return await updateData({
-            dispatch, 
-            getState, 
-            requestStatePath, 
-            existingStatePath, 
+            dispatch,
+            getState,
+            requestStatePath,
+            existingStatePath,
             dependentRequestStatePaths,
             putData
         });
@@ -181,11 +177,11 @@ export const fetchDatabases = createThunkAction(FETCH_DATABASES, (reload = false
         };
 
         return await fetchData({
-            dispatch, 
-            getState, 
-            requestStatePath, 
-            existingStatePath, 
-            getData, 
+            dispatch,
+            getState,
+            requestStatePath,
+            existingStatePath,
+            getData,
             reload
         });
     };
@@ -204,11 +200,11 @@ export const fetchDatabaseMetadata = createThunkAction(FETCH_DATABASE_METADATA, 
         };
 
         return await fetchData({
-            dispatch, 
-            getState, 
-            requestStatePath, 
-            existingStatePath, 
-            getData, 
+            dispatch,
+            getState,
+            requestStatePath,
+            existingStatePath,
+            getData,
             reload
         });
     };
@@ -235,10 +231,10 @@ export const updateDatabase = createThunkAction(UPDATE_DATABASE, function(databa
         };
 
         return await updateData({
-            dispatch, 
-            getState, 
-            requestStatePath, 
-            existingStatePath, 
+            dispatch,
+            getState,
+            requestStatePath,
+            existingStatePath,
             putData
         });
     };
@@ -271,10 +267,10 @@ export const updateTable = createThunkAction(UPDATE_TABLE, function(table) {
         };
 
         return await updateData({
-            dispatch, 
-            getState, 
-            requestStatePath, 
-            existingStatePath, 
+            dispatch,
+            getState,
+            requestStatePath,
+            existingStatePath,
             putData
         });
     };
@@ -295,11 +291,11 @@ export const fetchTables = createThunkAction(FETCH_TABLES, (reload = false) => {
         };
 
         return await fetchData({
-            dispatch, 
-            getState, 
-            requestStatePath, 
-            existingStatePath, 
-            getData, 
+            dispatch,
+            getState,
+            requestStatePath,
+            existingStatePath,
+            getData,
             reload
         });
     };
@@ -318,11 +314,11 @@ export const fetchTableMetadata = createThunkAction(FETCH_TABLE_METADATA, functi
         };
 
         return await fetchData({
-            dispatch, 
-            getState, 
-            requestStatePath, 
-            existingStatePath, 
-            getData, 
+            dispatch,
+            getState,
+            requestStatePath,
+            existingStatePath,
+            getData,
             reload
         });
     };
@@ -356,10 +352,10 @@ export const updateField = createThunkAction(UPDATE_FIELD, function(field) {
         };
 
         return await updateData({
-            dispatch, 
-            getState, 
-            requestStatePath, 
-            existingStatePath, 
+            dispatch,
+            getState,
+            requestStatePath,
+            existingStatePath,
             putData
         });
     };
@@ -377,7 +373,7 @@ export const fetchRevisions = createThunkAction(FETCH_REVISIONS, (type, id, relo
         const requestStatePath = ["metadata", "revisions", type, id];
         const existingStatePath = ["metadata", "revisions"];
         const getData = async () => {
-            const revisions = await RevisionApi.get({id, entity: type});
+            const revisions = await RevisionsApi.get({id, entity: type});
             const revisionMap = resourceListToMap(revisions);
 
             const existingRevisions = i.getIn(getState(), existingStatePath);
@@ -385,11 +381,11 @@ export const fetchRevisions = createThunkAction(FETCH_REVISIONS, (type, id, relo
         };
 
         return await fetchData({
-            dispatch, 
-            getState, 
-            requestStatePath, 
-            existingStatePath, 
-            getData, 
+            dispatch,
+            getState,
+            requestStatePath,
+            existingStatePath,
+            getData,
             reload
         });
     };

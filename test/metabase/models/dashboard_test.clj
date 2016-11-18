@@ -18,8 +18,8 @@
    :description  nil
    :cards        [{:sizeX   2
                    :sizeY   2
-                   :row     nil
-                   :col     nil
+                   :row     0
+                   :col     0
                    :id      true
                    :card_id true
                    :series  true}]}
@@ -58,8 +58,8 @@
      :description  nil
      :cards        [{:sizeX   2
                      :sizeY   2
-                     :row     nil
-                     :col     nil
+                     :row     0
+                     :col     0
                      :id      1
                      :card_id 1
                      :series  []}]}))
@@ -71,15 +71,15 @@
      :description  nil
      :cards        [{:sizeX   2
                      :sizeY   2
-                     :row     nil
-                     :col     nil
+                     :row     0
+                     :col     0
                      :id      1
                      :card_id 1
                      :series  [5 6]}
                     {:sizeX   2
                      :sizeY   2
-                     :row     nil
-                     :col     nil
+                     :row     0
+                     :col     0
                      :id      2
                      :card_id 2
                      :series  []}]}
@@ -110,8 +110,8 @@
     :description  nil
     :cards        [{:sizeX   2
                     :sizeY   2
-                    :row     nil
-                    :col     nil
+                    :row     0
+                    :col     0
                     :id      true
                     :card_id true
                     :series  true}]}
@@ -122,8 +122,8 @@
     :description  nil
     :cards        [{:sizeX   2
                     :sizeY   2
-                    :row     nil
-                    :col     nil
+                    :row     0
+                    :col     0
                     :id      false
                     :card_id true
                     :series  true}]}]

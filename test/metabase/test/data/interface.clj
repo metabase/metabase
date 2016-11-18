@@ -26,11 +26,7 @@
                               rows              :- [[s/Any]]])
 
 (s/defrecord DatabaseDefinition [database-name     :- su/NonBlankString
-                                 table-definitions :- [TableDefinition]
-                                 ;; Optional. Set this to non-nil to let dataset loaders know that we don't intend to keep it
-                                 ;; for long -- they can adjust connection behavior, e.g. choosing simple connections instead of creating pools.
-                                 ;; TODO - not sure this is still used now that we create connection pools directly via C3P0; we might be able to remove it
-                                 short-lived?      :- (s/maybe s/Bool)])
+                                 table-definitions :- [TableDefinition]])
 
 (defn escaped-name
   "Return escaped version of database name suitable for use as a filename / database name / etc."

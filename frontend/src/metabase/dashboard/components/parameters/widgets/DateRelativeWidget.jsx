@@ -1,6 +1,6 @@
 import React, { Component, PropTypes } from "react";
 
-import RelativeDatePicker from "metabase/query_builder/filters/pickers/RelativeDatePicker.jsx";
+import RelativeDatePicker from "metabase/query_builder/components/filters/pickers/RelativeDatePicker.jsx";
 
 import _ from "underscore";
 

@@ -7,12 +7,10 @@
    The most appropriate way to initialize event listeners in any `metabase.events.*` namespace is to implement the
    `events-init` function which accepts zero arguments.  This function is dynamically resolved and called exactly
    once when the application goes through normal startup procedures.  Inside this function you can do any work
-   needed and add your events subscribers to the bus as usual via `start-event-listener`."
+   needed and add your events subscribers to the bus as usual via `start-event-listener!`."
   (:require [clojure.core.async :as async]
-            [clojure.java.classpath :as classpath]
             [clojure.string :as s]
             [clojure.tools.logging :as log]
-            [clojure.tools.namespace.find :as ns-find]
             (metabase [config :as config]
                       [util :as u])))
 
@@ -27,8 +25,8 @@
   "Search Classpath for namespaces that start with `metabase.events.`, and call their `events-init` function if it exists."
   []
   (when-not config/is-test?
-    (doseq [ns-symb (ns-find/find-namespaces (classpath/classpath))
-            :when (re-find #"^metabase\.events\." (name ns-symb))]
+    (doseq [ns-symb @u/metabase-namespace-symbols
+            :when   (.startsWith (name ns-symb) "metabase.events.")]
       (require ns-symb)
       ;; look for `events-init` function in the namespace and call it if it exists
       (when-let [init-fn (ns-resolve ns-symb 'events-init)]
@@ -55,7 +53,7 @@
    Expects a map as input and the map must have a `:topic` key."
   (async/pub events-channel :topic))
 
-(defn publish-event
+(defn publish-event!
   "Publish an item into the events stream.
   Returns the published item to allow for chaining."
   [topic event-item]
@@ -66,8 +64,7 @@
 
 ;;; ## ---------------------------------------- SUBSCRIPTION ----------------------------------------
 
-
-(defn subscribe-to-topic
+(defn- subscribe-to-topic!
   "Subscribe to a given topic of the general events stream.
    Expects a topic to subscribe to and a `core.async` channel.
    Returns the channel to allow for chaining."
@@ -76,20 +73,19 @@
   (async/sub events-publication (keyword topic) channel)
   channel)
 
-(defn subscribe-to-topics
+(defn- subscribe-to-topics!
   "Convenience method for subscribing to a series of topics against a single channel."
   [topics channel]
   {:pre [(coll? topics)]}
   (doseq [topic topics]
-    (subscribe-to-topic topic channel)))
+    (subscribe-to-topic! topic channel)))
 
-(defn start-event-listener
+(defn start-event-listener!
   "Initialize an event listener which runs on a background thread via `go-loop`."
   [topics channel handler-fn]
-  {:pre [(seq topics)
-         (fn? handler-fn)]}
+  {:pre [(seq topics) (fn? handler-fn)]}
   ;; create the core.async subscription for each of our topics
-  (subscribe-to-topics topics channel)
+  (subscribe-to-topics! topics channel)
   ;; start listening for events we care about and do something with them
   (async/go-loop []
     ;; try/catch here to get possible exceptions thrown by core.async trying to read from the channel

@@ -1,8 +1,6 @@
 (ns metabase.models.hydrate
   "Functions for deserializing and hydrating fields in objects fetched from the DB."
-  (:require [clojure.java.classpath :as classpath]
-            [clojure.tools.namespace.find :as ns-find]
-            [medley.core :as m]
+  (:require [medley.core :as m]
             [metabase.db :as db]
             [metabase.models.interface :as i]
             [metabase.util :as u]))
@@ -150,7 +148,7 @@
    e.g. `:user -> User`.
 
    This is built pulling the `hydration-keys` set from all of our entities."
-  (delay (for [ns-symb (ns-find/find-namespaces (classpath/classpath))               ; Seems to work fine without this but better safe than sorry IMO
+  (delay (for [ns-symb @u/metabase-namespace-symbols
                :when   (re-matches #"^metabase\.models\.[a-z0-9]+$" (name ns-symb))]
            (require ns-symb))
          (into {} (for [ns       (all-ns)
@@ -245,7 +243,6 @@
 (defn- hydrate-vector
   "Hydrate a nested hydration form (vector) by recursively calling `hydrate`."
   [results [k & more :as vect]]
-  ;; TODO - it would be super snazzy if we could make this a compile-time check
   (assert (> (count vect) 1)
     (format "Replace '%s' with '%s'. Vectors are for nested hydration. There's no need to use one when you only have a single key." vect (first vect)))
   (let [results (hydrate results k)]
@@ -364,22 +361,21 @@
 
   You can hydrate several keys at one time:
 
-    (hydrate {:a (delay 1) :b (delay 2)} :a :b)
-      -> {:a 1 :b 2}
+    (hydrate {...} :a :b)
+      -> {:a 1, :b 2}
 
 
   ** Nested Hydration **
 
   You can do recursive hydration by listing keys inside a vector:
 
-    (hydrate {:a (delay {:b (delay 1)})} [:a :b])
+    (hydrate {...} [:a :b])
       -> {:a {:b 1}}
 
   The first key in a vector will be hydrated normally, and any subsequent keys
   will be hydrated *inside* the corresponding values for that key.
 
-    (hydrate {:a (delay {:b (delay {:c (delay 1)})
-                         :e (delay 2)})}
+    (hydrate {...}
              [:a [:b :c] :e])
       -> {:a {:b {:c 1} :e 2}}"
   [results k & ks]

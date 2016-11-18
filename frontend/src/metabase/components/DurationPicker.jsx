@@ -64,16 +64,23 @@ export default class DurationPicker extends Component {
     }
 
     render() {
-        const {name, inputClass, selectClass} = this.props;
+        const {name, inputClass, inputStyle = {}, selectClass, selectStyle = {}} = this.props;
 
         const {value, timeUnit} = this.state;
 
         return (
             <div>
-                <input type="number" className={inputClass} name={name} value={value}
+                <input type="number"
+                       name={name}
+                       value={value}
+                       className={inputClass}
+                       style={inputStyle}
                        onChange={(e) => this.onChangeValue(e)}/>
 
-                <select className={selectClass} value={timeUnit} onChange={(e) => this.onChangeTimeUnit(e)}>
+                <select value={timeUnit}
+                    className={selectClass}
+                    style={selectStyle}
+                    onChange={(e) => this.onChangeTimeUnit(e)}>
                     <option value="seconds">Seconds</option>
                     <option value="minutes">Minutes</option>
                     <option value="hours">Hours</option>

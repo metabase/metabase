@@ -1,5 +1,5 @@
 (ns metabase.query-processor.parameters
-  "Code for handling parameter substitution in MBQL & native queries."
+  "Code for handling parameter substitution in MBQL queries."
   (:require [clojure.core.match :refer [match]]
             [clojure.string :as s]
             (clj-time [core :as t]

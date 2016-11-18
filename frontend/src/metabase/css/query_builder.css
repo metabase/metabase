@@ -594,22 +594,6 @@
     border-radius: 2px;
 }
 
-.ace_gutter-cell {
-    padding-top: 2px;
-    font-size: 10px;
-    font-weight: 700;
-    color: color(var(--base-grey) shade(30%));
-    padding-left: 0;
-    padding-right: 0;
-    display: block;
-    text-align: center;
-}
-
-.ace_gutter-layer {
-    background-color: #F9FBFC;
-    border-right: 1px solid var(--border-color);
-}
-
 .PopoverBody.AddToDashboard {
     min-width: 25em;
 }

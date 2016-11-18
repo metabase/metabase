@@ -243,7 +243,7 @@
   "Execute F with DBDEF loaded as the current dataset. F takes a single argument, the `DatabaseInstance` that was loaded and synced from DBDEF."
   [^DatabaseDefinition dbdef, f]
   (let [loader *driver*
-        dbdef  (i/map->DatabaseDefinition (assoc dbdef :short-lived? true))]
+        dbdef  (i/map->DatabaseDefinition dbdef)]
     (swap! loader->loaded-db-def conj [loader dbdef])
     (binding [db/*disable-db-logging* true]
       (let [db (get-or-create-database! loader dbdef)]

@@ -114,7 +114,7 @@
         (update-dashboard-card-series! dashboard-card series))
       ;; fetch the fully updated dashboard card then return it (and fire off an event)
       (->> (retrieve-dashboard-card id)
-           (events/publish-event :dashboard-card-update)))))
+           (events/publish-event! :dashboard-card-update)))))
 
 (defn create-dashboard-card!
   "Create a new `DashboardCard` by inserting it into the database along with all associated pieces of data such as `DashboardCardSeries`.
@@ -133,8 +133,8 @@
                                               :card_id                card_id
                                               :sizeX                  sizeX
                                               :sizeY                  sizeY
-                                              :row                    row
-                                              :col                    col
+                                              :row                    (or row 0)
+                                              :col                    (or col 0)
                                               :parameter_mappings     (or parameter_mappings [])
                                               :visualization_settings (or visualization_settings {}))]
         ;; add series to the DashboardCard
@@ -142,7 +142,7 @@
         ;; return the full DashboardCard (and record our create event)
         (-> (retrieve-dashboard-card id)
             (assoc :actor_id creator_id)
-            (->> (events/publish-event :dashboard-card-create))
+            (->> (events/publish-event! :dashboard-card-create))
             (dissoc :actor_id))))))
 
 (defn delete-dashboard-card!
@@ -152,4 +152,4 @@
          (integer? user-id)]}
   (let [{:keys [id]} (dashboard dashboard-card)]
     (db/cascade-delete! DashboardCard :id (:id dashboard-card))
-    (events/publish-event :dashboard-remove-cards {:id id :actor_id user-id :dashcards [dashboard-card]})))
+    (events/publish-event! :dashboard-remove-cards {:id id :actor_id user-id :dashcards [dashboard-card]})))

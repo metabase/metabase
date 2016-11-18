@@ -2,8 +2,8 @@ import React, { Component, PropTypes } from "react";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
-import FilterList from "metabase/query_builder/filters/FilterList.jsx";
-import AggregationWidget from "metabase/query_builder/AggregationWidget.jsx";
+import FilterList from "metabase/query_builder/components/filters/FilterList.jsx";
+import AggregationWidget from "metabase/query_builder/components/AggregationWidget.jsx";
 
 import Query from "metabase/lib/query";
 

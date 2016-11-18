@@ -1,9 +1,9 @@
-import { createThunkAction, AngularResourceProxy } from "metabase/lib/redux";
+import { createThunkAction } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 
 import _ from "underscore";
 
-const SessionApi = new AngularResourceProxy("Session", ["properties"]);
+import { SessionApi } from "metabase/services";
 
 export const refreshSiteSettings = createThunkAction("REFRESH_SITE_SETTINGS", () =>
     async (dispatch, getState) => {

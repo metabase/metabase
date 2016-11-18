@@ -168,7 +168,7 @@
   {:pre [(string? pulse-name)
          (integer? creator-id)
          (sequential? card-ids)
-         (> (count card-ids) 0)
+         (seq card-ids)
          (every? integer? card-ids)
          (coll? channels)
          (every? map? channels)]}
@@ -181,7 +181,7 @@
       ;; add channels to the Pulse
       (update-pulse-channels! pulse channels)
       ;; return the full Pulse (and record our create event)
-      (events/publish-event :pulse-create (retrieve-pulse id)))))
+      (events/publish-event! :pulse-create (retrieve-pulse id)))))
 
 
 (defn update-pulse!
@@ -206,4 +206,4 @@
     (update-pulse-channels! pulse channels)
     ;; fetch the fully updated pulse and return it (and fire off an event)
     (->> (retrieve-pulse id)
-         (events/publish-event :pulse-update))))
+         (events/publish-event! :pulse-update))))

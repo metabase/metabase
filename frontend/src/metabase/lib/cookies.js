@@ -1,7 +1,7 @@
 
 import { clearGoogleAuthCredentials } from "metabase/lib/auth";
 
-// import Cookies from "js-cookie";
+import Cookies from "js-cookie";
 
 export const METABASE_SESSION_COOKIE = 'metabase.SESSION_ID';
 
@@ -9,8 +9,6 @@ export const METABASE_SESSION_COOKIE = 'metabase.SESSION_ID';
 var MetabaseCookies = {
     // set the session cookie.  if sessionId is null, clears the cookie
     setSessionCookie: function(sessionId) {
-        let ipCookie = angular.element(document.body).injector().get("ipCookie");
-
         const options = {
             path: '/',
             expires: 14,
@@ -20,15 +18,12 @@ var MetabaseCookies = {
         try {
             if (sessionId) {
                 // set a session cookie
-                // Cookies.set(METABASE_SESSION_COOKIE, sessionId);
-                ipCookie(METABASE_SESSION_COOKIE, sessionId, options);
+                Cookies.set(METABASE_SESSION_COOKIE, sessionId, options);
             } else {
-                // sessionId = Cookies.get(METABASE_SESSION_COOKIE);
-                sessionId = ipCookie(METABASE_SESSION_COOKIE);
+                sessionId = Cookies.get(METABASE_SESSION_COOKIE);
 
                 // delete the current session cookie and Google Auth creds
-                // Cookies.remove(METABASE_SESSION_COOKIE);
-                ipCookie.remove(METABASE_SESSION_COOKIE);
+                Cookies.remove(METABASE_SESSION_COOKIE);
                 clearGoogleAuthCredentials();
 
                 return sessionId;

@@ -97,20 +97,20 @@
 
 ;; Test input validations
 (expect
-  {:errors {:first_name "field is a required param."}}
+  {:errors {:first_name "value must be a non-blank string."}}
   ((user->client :crowberto) :post 400 "user" {}))
 
 (expect
-  {:errors {:last_name "field is a required param."}}
+  {:errors {:last_name "value must be a non-blank string."}}
   ((user->client :crowberto) :post 400 "user" {:first_name "whatever"}))
 
 (expect
-  {:errors {:email "field is a required param."}}
+  {:errors {:email "value must be a valid email address."}}
   ((user->client :crowberto) :post 400 "user" {:first_name "whatever"
                                                :last_name  "whatever"}))
 
 (expect
-  {:errors {:email "Invalid value 'whatever' for 'email': Not a valid email address."}}
+  {:errors {:email "value must be a valid email address."}}
   ((user->client :crowberto) :post 400 "user" {:first_name "whatever"
                                                :last_name  "whatever"
                                                :email      "whatever"}))
@@ -227,7 +227,7 @@
 
 ;; Test input validations on password change
 (expect
-  {:errors {:password "field is a required param."}}
+  {:errors {:password "Insufficient password strength"}}
   ((user->client :rasta) :put 400 (format "user/%d/password" (user->id :rasta)) {}))
 
 ;; Make sure that if current password doesn't match we get a 400

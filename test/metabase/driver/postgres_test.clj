@@ -16,7 +16,7 @@
             [metabase.util :as u])
   (:import metabase.driver.postgres.PostgresDriver))
 
-(def ^:private pg-driver (PostgresDriver.))
+(def ^:private ^PostgresDriver pg-driver (PostgresDriver.))
 
 ;; # Check that SSL params get added the connection details in the way we'd like
 ;; ## no SSL -- this should *not* include the key :ssl (regardless of its value) since that will cause the PG driver to use SSL anyway
@@ -25,7 +25,6 @@
    :classname   "org.postgresql.Driver"
    :subprotocol "postgresql"
    :subname     "//localhost:5432/bird_sightings"
-   :make-pool?  true
    :sslmode     "disable"}
   (sql/connection-details->spec pg-driver {:ssl    false
                                            :host   "localhost"
@@ -36,7 +35,6 @@
 ;; ## ssl - check that expected params get added
 (expect
   {:ssl         true
-   :make-pool?  true
    :sslmode     "require"
    :classname   "org.postgresql.Driver"
    :subprotocol "postgresql"
@@ -161,7 +159,7 @@
                    ["DROP DATABASE IF EXISTS materialized_views_test;
                      CREATE DATABASE materialized_views_test;"]
                    {:transaction? false})
-    (let [details (i/database->connection-details pg-driver :db {:database-name "materialized_views_test", :short-lived? true})]
+    (let [details (i/database->connection-details pg-driver :db {:database-name "materialized_views_test"})]
       (jdbc/execute! (sql/connection-details->spec pg-driver details)
                      ["DROP MATERIALIZED VIEW IF EXISTS test_mview;
                        CREATE MATERIALIZED VIEW test_mview AS
@@ -177,7 +175,7 @@
                    ["DROP DATABASE IF EXISTS fdw_test;
                      CREATE DATABASE fdw_test;"]
                    {:transaction? false})
-    (let [details (i/database->connection-details pg-driver :db {:database-name "fdw_test", :short-lived? true})]
+    (let [details (i/database->connection-details pg-driver :db {:database-name "fdw_test"})]
       (jdbc/execute! (sql/connection-details->spec pg-driver details)
                      [(str "CREATE EXTENSION IF NOT EXISTS postgres_fdw;
                             CREATE SERVER foreign_server
@@ -215,3 +213,12 @@
 (expect-with-engine :postgres
   (get-timezone-with-report-timezone nil)
   (get-timezone-with-report-timezone "Crunk Burger"))
+
+
+;; make sure connection details w/ extra params work as expected
+(expect
+  "//localhost:5432/cool?prepareThreshold=0"
+  (:subname (sql/connection-details->spec pg-driver {:host               "localhost"
+                                                     :port               "5432"
+                                                     :dbname             "cool"
+                                                     :additional-options "prepareThreshold=0"})))

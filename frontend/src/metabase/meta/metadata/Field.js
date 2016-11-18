@@ -3,6 +3,9 @@
 import Base from "./Base";
 import Table from "./Table";
 
+import type { FieldId, Field as FieldObject } from "metabase/meta/types/Field";
+import type { TableId } from "metabase/meta/types/Table";
+
 import { isDate, isNumeric, isBoolean, isString, isSummable, isCategory, isDimension, isMetric, getIconForField } from "metabase/lib/schema_metadata";
 import { isPK } from "metabase/lib/types";
 
@@ -10,10 +13,14 @@ export default class Field extends Base {
     static type = "fields";
     static schema = {};
 
-    id: number;
+    _object: FieldObject;
+
+    id: FieldId;
     display_name: string;
-    table_id: number;
-    fk_target_field_id: number;
+    table_id: TableId;
+    fk_target_field_id: FieldId;
+
+    base_type: string;
     special_type: string;
 
     table(): Table {

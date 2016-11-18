@@ -57,7 +57,7 @@ const MetabaseSettings = {
 
         if (versionInfo) versionInfo = versionInfo.value;
 
-        return (versionInfo && currentVersion !== versionInfo.latest.version);
+        return (versionInfo && MetabaseUtils.compareVersions(currentVersion, versionInfo.latest.version) < 0);
     },
 
     passwordComplexity: function(capitalize) {

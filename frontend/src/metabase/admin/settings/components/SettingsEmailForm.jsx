@@ -4,8 +4,7 @@ import _ from "underscore";
 
 import MetabaseAnalytics from 'metabase/lib/analytics';
 import MetabaseUtils from "metabase/lib/utils";
-import SettingsEmailFormElement from "./SettingsEmailFormElement.jsx";
-
+import SettingsSetting from "./SettingsSetting.jsx";
 
 export default class SettingsEmailForm extends Component {
 
@@ -23,7 +22,7 @@ export default class SettingsEmailForm extends Component {
     }
 
     static propTypes = {
-        elements: PropTypes.object,
+        elements: PropTypes.array.isRequired,
         formErrors: PropTypes.object,
         sendTestEmail: PropTypes.func.isRequired,
         updateEmailSettings: PropTypes.func.isRequired
@@ -184,10 +183,14 @@ export default class SettingsEmailForm extends Component {
             let errorMessage = (formErrors && formErrors.elements) ? formErrors.elements[element.key] : validationErrors[element.key];
             let value = formData[element.key] == null ? element.defaultValue : formData[element.key];
 
-            return <SettingsEmailFormElement
-                        key={element.key}
-                        element={{ ...element, value, errorMessage }}
-                        handleChangeEvent={this.handleChangeEvent.bind(this)} />
+            return (
+                <SettingsSetting
+                    key={element.key}
+                    setting={{ ...element, value }}
+                    updateSetting={this.handleChangeEvent.bind(this, element)}
+                    errorMessage={errorMessage}
+                />
+            );
         });
 
         let sendTestButtonStates = {

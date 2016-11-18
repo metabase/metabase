@@ -9,12 +9,11 @@
             [metabase.api.common.internal :refer :all]
             [metabase.db :as db]
             [metabase.models.interface :as models]
-            [metabase.util :as u]
-            [metabase.util.password :as password]))
+            [metabase.util :as u]))
 
 (declare check-403 check-404)
 
-;;; ## DYNAMIC VARIABLES
+;;; ------------------------------------------------------------ DYNAMIC VARIABLES ------------------------------------------------------------
 ;; These get bound by middleware for each HTTP request.
 
 (def ^:dynamic ^Integer *current-user-id*
@@ -35,7 +34,7 @@
   (atom #{}))
 
 
-;;; ## CONDITIONAL RESPONSE FUNCTIONS / MACROS
+;;; ------------------------------------------------------------ Precondition checking helper fns  ------------------------------------------------------------
 
 (defn check
   "Assertion mechanism for use inside API functions.
@@ -131,7 +130,7 @@
   (checkp-with (partial contains? valid-values-set) symb value (str "must be one of: " valid-values-set)))
 
 
-;;; #### api-let, api->, etc.
+;;; ------------------------------------------------------------ api-let, api->, etc. ------------------------------------------------------------
 
 ;; The following all work exactly like the corresponding Clojure versions
 ;; but take an additional arg at the beginning called RESPONSE-PAIR.
@@ -209,187 +208,7 @@
 (defmacro ->>500    "If form is `nil` or `false`, throw a 500; otherwise thread it through BODY via `->>`." [& body] `(api->>    ~generic-500 ~@body))
 
 
-;;; ## DEFENDPOINT AND RELATED FUNCTIONS
-
-
-;;; ### Arg annotation fns
-
-(defmulti ^{:doc "*Internal* - don't use this directly.
-
-                  Multimethod used internally to dispatch arg annotation functions.
-                  Dispatches on the arg annotation as a keyword.
-
-                   {id Required}
-                   -> ((-arg-annotation-fn :Required) 'id id)
-                   -> (annotation:Required 'id id)"} -arg-annotation-fn ; for some reason supplying a docstr the normal way doesn't assoc it with the metadata like we'd expect
-  (fn [annotation-kw]
-    {:pre [(keyword? annotation-kw)]}
-    annotation-kw))
-
-;; By default, throw an exception if we see an arg annotation we don't understand
-(defmethod -arg-annotation-fn :default [annotation-kw]
-  (throw (Exception. (format "Don't know what to do with arg annotation '%s'!" (name annotation-kw)))))
-
-;; ### defannotation
-
-(defmacro defannotation
-  "Convenience for defining a new `defendpoint` arg annotation.
-
-    (defannotation Required
-      \"Param must be non-nil.\"
-      [symb value]
-      (when-not value
-        (throw (ex-info (format \"'%s' is a required param.\" symb) {:status-code 400})))
-      value)
-
-   SYMBOL-BINDING is bound to the *symbol* of the annotated API arg (e.g., `'org`).
-   This is useful for returning relevant error messages to the user (see example above).
-
-   VALUE-BINDING is bound to the *value* of the annotated API arg (e.g., `1`).
-
-   You may optionally specify that the param is `:nillable`.
-   This means BODY will only be evaluated if VALUE is non-nil.
-
-    (defannotation CardFilterOption [symb value :nillable]
-      (checkp-contains? #{:all :mine :fav} symb (keyword value)))
-
-   Internally, `defannotation` creates a function with the name of the annotation prefixed by `annotation:`.
-   This can be used to test the annotation:
-
-    (annotation:Required org 100) -> 100
-    (annotation:Required org nil) -> exception: 'org' is a required param.
-
-   You can also use it inside the body of another annotation:
-
-    (defannotation PublicPerm [symb value :nillable]
-      (annotation:Integer symb value]
-      (checkp-contains? #{0 1 2} symb value))
-
-   Try to add a docstr for all annotations. When they exist, they'll be included in the API documentation for
-   all parameters that use them. A good annotation docstr should explain what the valid values for the param are."
-  {:arglists '([annotation-name docstr? [symbol-binding value-binding nillable?] & body])}
-  [annotation-name & args]
-  {:pre [(symbol? annotation-name)]}
-  (let [[docstr [[symbol-binding value-binding & [nillable?]] & body]] (u/optional string? args)]
-    (assert (symbol? symbol-binding))
-    (assert (symbol? value-binding))
-    (assert (or (nil? nillable?)
-                (= nillable? :nillable)))
-    (when-not docstr
-      (log/warn (format "Warning: annotation %s/%s does not have a docstring." (.getName *ns*) annotation-name)))
-    (let [fn-name (symbol (str "annotation:" annotation-name))]
-      `(do
-         (defn ~fn-name ~@(when docstr [docstr]) [~symbol-binding ~value-binding]
-           {:pre [(symbol? ~symbol-binding)]}
-           ~(if nillable?
-              `(when-not (nil? ~value-binding)
-                 ~@body)
-              `(do
-                 ~@body)))
-         (defmethod -arg-annotation-fn ~(keyword annotation-name) [~'_]
-           ~fn-name)))))
-
-;; ### common annotation definitions
-
-(defannotation Required
-  "Param may not be `nil`."
-  [symb value]
-  (u/prog1 value
-    (when (nil? value)
-      (throw-invalid-param-exception (name symb) "field is a required param."))))
-
-(defannotation Date
-  "Parse param string as an [ISO 8601 date](http://en.wikipedia.org/wiki/ISO_8601), e.g.
-   `2015-03-24T06:57:23+00:00`"
-  [symb value :nillable]
-  (try (u/->Timestamp value)
-       (catch Throwable _
-         (throw-invalid-param-exception (name symb) (format "'%s' is not a valid date." value)))))
-
-(defannotation String->Integer
-  "Param is converted from a string to an integer."
-  [symb value :nillable]
-  (try (Integer/parseInt value)
-       (catch java.lang.NumberFormatException _
-         (format "Invalid value '%s' for '%s': cannot parse as an integer." value symb)))) ; TODO - why aren't we re-throwing these exceptions ?
-
-(defannotation String->Dict
-  "Param is converted from a JSON string to a dictionary."
-  [symb value :nillable]
-  (try (walk/keywordize-keys (json/parse-string value))
-       (catch java.lang.Exception _
-         (format "Invalid value '%s' for '%s': cannot parse as json." value symb))))
-
-(defannotation String->Boolean
-  "Param is converted from `\"true\"` or `\"false\"` to the corresponding boolean."
-  [symb value :nillable]
-  (cond
-    (= value "true")  true
-    (= value "false") false
-    (nil? value)      nil
-    :else             (throw-invalid-param-exception (name symb) (format "'%s' is not a valid boolean." value))))
-
-(defannotation Integer
-  "Param must be an integer (this does *not* cast the param)."
-  [symb value :nillable]
-  (checkp-with integer? symb value "value must be an integer."))
-
-(defannotation Boolean
-  "Param must be a boolean (this does *not* cast the param)."
-  [symb value :nillable]
-  (checkp-with m/boolean? symb value "value must be a boolean."))
-
-(defannotation Dict
-  "Param must be a dictionary (this does *not* cast the param)."
-  [symb value :nillable]
-  (checkp-with map? symb value "value must be a dictionary."))
-
-(defannotation ArrayOfIntegers
-  "Param must be an array of integers (this does *not* cast the param)."
-  [symb value :nillable]
-  (checkp-with vector? symb value "value must be an array.")
-  (mapv #(checkp-with integer? symb % "array value must be a integer.") value))
-
-(defannotation ArrayOfStrings
-  "Param must be an array of strings (this does *not* cast the param)."
-  [symb value :nillable]
-  (checkp-with vector? symb value "value must be an array.")
-  (mapv #(checkp-with string? symb % "array value must be a string.") value))
-
-(defannotation ArrayOfMaps
-  "Param must be an array of maps (this does *not* cast the param)."
-  [symb value :nillable]
-  (checkp-with vector? symb value "value must be an array.")
-  (mapv #(checkp-with map? symb % "array value must be a map.") value))
-
-(defannotation NonEmptyString
-  "Param must be a non-empty string (strings that only contain whitespace are considered empty)."
-  [symb value :nillable]
-  (checkp-with (complement s/blank?) symb value "value must be a non-empty string."))
-
-(defannotation ^:deprecated PublicPerms
-  "Param must be an integer and either `0` (no public permissions), `1` (public may read), or `2` (public may read and write)."
-  [symb value :nillable]
-  (annotation:Integer symb value)
-  (checkp-contains? #{0 1 2} symb value))
-
-(defannotation Email
-  "Param must be a valid email address."
-  [symb value :nillable]
-  (checkp-with u/is-email? symb value "Not a valid email address."))
-
-(defannotation ComplexPassword
-  "Param must be a complex password (*what does this mean?*)"
-  [symb value]
-  (checkp (password/is-complex? value) symb "Insufficient password strength")
-  value)
-
-(defannotation FilterOptionAllOrMine
-  "Param must be either `all` or `mine`."
-  [symb value :nillable]
-  (checkp-contains? #{:all :mine} symb (keyword value)))
-
-;;; ### defendpoint
+;;; ------------------------------------------------------------ DEFENDPOINT AND RELATED FUNCTIONS ------------------------------------------------------------
 
 (defmacro defendpoint
   "Define an API function.
@@ -397,32 +216,34 @@
 
    -  calls `auto-parse` to automatically parse certain args. e.g. `id` is converted from `String` to `Integer` via `Integer/parseInt`
    -  converts ROUTE from a simple form like `\"/:id\"` to a typed one like `[\"/:id\" :id #\"[0-9]+\"]`
-   -  sequentially applies specified annotation functions on args to validate or cast them.
+   -  sequentially applies specified annotation functions on args to validate them.
    -  executes BODY inside a `try-catch` block that handles exceptions; if exception is an instance of `ExceptionInfo` and includes a `:status-code`,
       that code will be returned
    -  automatically calls `wrap-response-if-needed` on the result of BODY
    -  tags function's metadata in a way that subsequent calls to `define-routes` (see below)
       will automatically include the function in the generated `defroutes` form.
    -  Generates a super-sophisticated Markdown-formatted docstring"
-  {:arglists '([method route docstr? args annotations-map? & body])}
+  {:arglists '([method route docstr? args schemas-map? & body])}
   [method route & more]
   {:pre [(or (string? route)
              (vector? route))]}
-  (let [fn-name               (route-fn-name method route)
+  (let [fn-name                (route-fn-name method route)
         route                  (typify-route route)
         [docstr [args & more]] (u/optional string? more)
-        _                      (when-not docstr
-                                 (log/warn (format "Warning: endpoint %s/%s does not have a docstring." (ns-name *ns*) fn-name)))
-        [arg-annotations body] (u/optional #(and (map? %) (every? symbol? (keys %))) more)]
+        [arg->schema body]     (u/optional #(and (map? %) (every? symbol? (keys %))) more)
+        validate-param-calls   (validate-params arg->schema)]
+    (when-not docstr
+      (log/warn (format "Warning: endpoint %s/%s does not have a docstring." (ns-name *ns*) fn-name)))
     `(def ~(vary-meta fn-name assoc
-                      :doc (route-dox method route docstr args arg-annotations)
+                      ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document their API error messages
+                      :doc (route-dox method route docstr args (m/map-vals eval arg->schema) body)
                       :is-endpoint? true)
        (~method ~route ~args
-                (catch-api-exceptions
-                  (auto-parse ~args
-                    (let-annotated-args ~arg-annotations
-                                        (-> (do ~@body)
-                                            wrap-response-if-needed))))))))
+        (catch-api-exceptions
+          (auto-parse ~args
+            ~@validate-param-calls
+            (wrap-response-if-needed (do ~@body))))))))
+
 
 (defmacro define-routes
   "Create a `(defroutes routes ...)` form that automatically includes all functions created with
@@ -437,6 +258,9 @@
                                                            (s/replace #"\." "/"))
                                                        (u/pprint-to-str (concat api-routes additional-routes))))
        ~@api-routes ~@additional-routes)))
+
+
+;;; ------------------------------------------------------------ PERMISSIONS CHECKING HELPER FNS ------------------------------------------------------------
 
 (defn read-check
   "Check whether we can read an existing OBJ, or ENTITY with ID.

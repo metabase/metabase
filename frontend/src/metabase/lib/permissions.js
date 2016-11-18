@@ -28,8 +28,10 @@ export function getPermission(
         } else {
             return value;
         }
-    } else {
+    } else if (value) {
         return value;
+    } else {
+        return "none"
     }
 }
 
@@ -110,6 +112,7 @@ export function updateTablesPermission(permissions: GroupsPermissions, groupId: 
 
 export function updateSchemasPermission(permissions: GroupsPermissions, groupId: GroupId, { databaseId }: DatabaseEntityId, value: string, metadata: Metadata): GroupsPermissions {
     let database = metadata.database(databaseId);
+    // $FlowFixMe: not sure why Array<string> is incompatible with Array<string|number>
     let schemaNames = database && database.schemaNames();
 
     let currentSchemas = getSchemasPermission(permissions, groupId, { databaseId });

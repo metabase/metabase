@@ -1,32 +1,35 @@
 /* @flow */
 
 import type { DatabaseId } from "./Database";
-import type { StructuredQueryObject, NativeQueryObject } from "./Query";
+import type { StructuredQuery, NativeQuery } from "./Query";
 import type { ParameterInstance } from "./Dashboard";
 
 export type CardId = number;
 
-export type VisualizationSettings = { [key: string]: any }
-
-export type CardObject = {
+export type Card = {
     id: CardId,
-    dataset_query: DatasetQueryObject,
+    name: ?string,
+    dataset_query: DatasetQuery,
     display: string,
     visualization_settings: VisualizationSettings
 };
 
-export type StructuredDatasetQueryObject = {
+export type StructuredDatasetQuery = {
     type: "query",
     database: ?DatabaseId,
-    query: StructuredQueryObject,
+    query: StructuredQuery,
     parameters?: Array<ParameterInstance>
 };
 
-export type NativeDatasetQueryObject = {
+export type NativeDatasetQuery = {
     type: "native",
     database: ?DatabaseId,
-    native: NativeQueryObject,
+    native: NativeQuery,
     parameters?: Array<ParameterInstance>
 };
 
-export type DatasetQueryObject = StructuredDatasetQueryObject | NativeDatasetQueryObject;
+export type VisualizationSettings = {
+    [key: string]: any
+}
+
+export type DatasetQuery = StructuredDatasetQuery | NativeDatasetQuery;

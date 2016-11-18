@@ -1,21 +1,23 @@
 (ns metabase.api.segment
   "/api/segment endpoints."
   (:require [compojure.core :refer [defroutes GET PUT POST DELETE]]
+            [schema.core :as s]
             [metabase.api.common :refer :all]
             [metabase.db :as db]
             (metabase.models [hydrate :refer [hydrate]]
                              [interface :as models]
                              [revision :as revision]
                              [segment :refer [Segment], :as segment]
-                             [table :refer [Table]])))
+                             [table :refer [Table]])
+            [metabase.util.schema :as su]))
 
 
 (defendpoint POST "/"
   "Create a new `Segment`."
   [:as {{:keys [name description table_id definition]} :body}]
-  {name       [Required NonEmptyString]
-   table_id   [Required Integer]
-   definition [Required Dict]}
+  {name       su/NonBlankString
+   table_id   su/IntGreaterThanZero
+   definition su/Map}
   (check-superuser)
   (write-check Table table_id)
   (check-500 (segment/create-segment! table_id name description *current-user-id* definition)))
@@ -38,9 +40,9 @@
 (defendpoint PUT "/:id"
   "Update a `Segment` with ID."
   [id :as {{:keys [name description caveats points_of_interest show_in_getting_started definition revision_message]} :body}]
-  {name             [Required NonEmptyString]
-   revision_message [Required NonEmptyString]
-   definition       [Required Dict]}
+  {name             su/NonBlankString
+   revision_message su/NonBlankString
+   definition       su/Map}
   (check-superuser)
   (write-check Segment id)
   (segment/update-segment!
@@ -58,7 +60,7 @@
 (defendpoint DELETE "/:id"
   "Delete a `Segment`."
   [id revision_message]
-  {revision_message [Required NonEmptyString]}
+  {revision_message su/NonBlankString}
   (check-superuser)
   (write-check Segment id)
   (segment/delete-segment! id *current-user-id* revision_message)
@@ -76,7 +78,7 @@
 (defendpoint POST "/:id/revert"
   "Revert a `Segement` to a prior `Revision`."
   [id :as {{:keys [revision_id]} :body}]
-  {revision_id [Required Integer]}
+  {revision_id su/IntGreaterThanZero}
   (check-superuser)
   (write-check Segment id)
   (revision/revert!

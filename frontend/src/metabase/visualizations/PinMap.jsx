@@ -1,14 +1,20 @@
-/*global google*/
-
 import React, { Component, PropTypes } from "react";
-import ReactDOM from "react-dom";
 
 import { hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
-
 import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
+
+import LeafletMarkerPinMap from "./components/LeafletMarkerPinMap.jsx";
+import LeafletTilePinMap from "./components/LeafletTilePinMap.jsx";
 
 import _ from "underscore";
 import cx from "classnames";
+
+import L from "leaflet";
+
+const MAP_COMPONENTS_BY_TYPE = {
+    "markers": LeafletMarkerPinMap,
+    "tiles": LeafletTilePinMap,
+}
 
 export default class PinMap extends Component {
     static displayName = "Pin Map";
@@ -27,132 +33,80 @@ export default class PinMap extends Component {
         super(props, context);
         this.state = {
             lat: null,
-            lon: null,
-            zoom: null
+            lng: null,
+            zoom: null,
+            ...this._getPoints(props)
         };
         _.bindAll(this, "onMapZoomChange", "onMapCenterChange", "updateSettings");
     }
 
-    updateSettings() {
-        if (this.state.lat != null) {
-            this.props.onUpdateVisualizationSetting("map.center_latitude", this.state.lat);
+    componentWillReceiveProps(newProps) {
+        if (newProps.series[0].data !== this.props.series[0].data) {
+            this.setState(this._getPoints(newProps))
         }
-        if (this.state.lon != null) {
-            this.props.onUpdateVisualizationSetting("map.center_longitude", this.state.lon);
+    }
+
+    updateSettings() {
+        let newSettings = {};
+        if (this.state.lat != null) {
+            newSettings["map.center_latitude"] = this.state.lat;
+        }
+        if (this.state.lng != null) {
+            newSettings["map.center_longitude"] = this.state.lng;
         }
         if (this.state.zoom != null) {
-            this.props.onUpdateVisualizationSetting("map.zoom", this.state.zoom);
+            newSettings["map.zoom"] = this.state.zoom;
         }
-        this.setState({ lat: null, lon: null, zoom: null });
+        this.props.onUpdateVisualizationSettings(newSettings);
+        this.setState({ lat: null, lng: null, zoom: null });
     }
 
-    onMapCenterChange(lat, lon) {
-        this.setState({ lat, lon });
+    onMapCenterChange = (lat, lng) => {
+        this.setState({ lat, lng });
     }
 
-    onMapZoomChange(zoom) {
+    onMapZoomChange = (zoom) => {
         this.setState({ zoom });
     }
 
-    getLatLongIndexes() {
-        const { settings, series: [{ data: { cols }}] } = this.props;
-        return {
-            latitudeIndex: _.findIndex(cols, (col) => col.name === settings["map.latitude_column"]),
-            longitudeIndex: _.findIndex(cols, (col) => col.name === settings["map.longitude_column"])
-        };
-    }
-
-    getTileUrl = (coord, zoom) => {
-        const [{ card: { dataset_query }, data: { cols }}] = this.props.series;
-
-        const { latitudeIndex, longitudeIndex } = this.getLatLongIndexes();
-        const latitudeField = cols[latitudeIndex];
-        const longitudeField = cols[longitudeIndex];
-
-        if (!latitudeField || !longitudeField) {
-            return;
-        }
-
-        return '/api/tiles/' + zoom + '/' + coord.x + '/' + coord.y + '/' +
-            latitudeField.id + '/' + longitudeField.id + '/' +
-            latitudeIndex + '/' + longitudeIndex + '/' +
-            '?query=' + encodeURIComponent(JSON.stringify(dataset_query))
-    }
-
-    componentDidMount() {
-        if (typeof google === undefined) {
-            setTimeout(() => this.componentDidMount(), 500);
-            return;
-        }
-
-        try {
-            const element = ReactDOM.findDOMNode(this.refs.map);
-            const { settings, series: [{ data }] } = this.props;
-
-            const mapOptions = {
-                zoom: settings["map.zoom"],
-                center: new google.maps.LatLng(
-                    settings["map.center_latitude"],
-                    settings["map.center_longitude"]
-                ),
-                mapTypeId: google.maps.MapTypeId.MAP,
-                scrollwheel: false
-            };
-
-            const map = this.map = new google.maps.Map(element, mapOptions);
-
-            if (data.rows.length < 2000) {
-                let tooltip = new google.maps.InfoWindow();
-                let { latitudeIndex, longitudeIndex } = this.getLatLongIndexes();
-                for (let row of data.rows) {
-                    let marker = new google.maps.Marker({
-                        position: new google.maps.LatLng(row[latitudeIndex], row[longitudeIndex]),
-                        map: map,
-                        icon: "/app/img/pin.png"
-                    });
-                    marker.addListener("click", () => {
-                        let tooltipElement = document.createElement("div");
-                        ReactDOM.render(<ObjectDetailTooltip row={row} cols={data.cols} />, tooltipElement);
-                        tooltip.setContent(tooltipElement);
-                        tooltip.open(map, marker);
-                    });
-                }
-            } else {
-                map.overlayMapTypes.push(new google.maps.ImageMapType({
-                    getTileUrl: this.getTileUrl,
-                    tileSize: new google.maps.Size(256, 256)
-                }));
-            }
-
-            map.addListener("center_changed", () => {
-                let center = map.getCenter();
-                this.onMapCenterChange(center.lat(), center.lng());
-            });
-
-            map.addListener("zoom_changed", () => {
-                this.onMapZoomChange(map.getZoom());
-            });
-        } catch (err) {
-            console.error(err);
-            this.props.onRenderError(err.message || err);
-        }
-    }
-
-    componentDidUpdate() {
-        if (typeof google !== "undefined") {
-            google.maps.event.trigger(this.map, "resize");
-        }
+    _getPoints(props) {
+        const { settings, series: [{ data: { cols, rows }}] } = props;
+        const latitudeIndex = _.findIndex(cols, (col) => col.name === settings["map.latitude_column"]);
+        const longitudeIndex = _.findIndex(cols, (col) => col.name === settings["map.longitude_column"]);
+        const points = rows.map(row => [
+            row[longitudeIndex],
+            row[latitudeIndex]
+        ]);
+        const bounds = L.latLngBounds(points);
+        return { points, bounds };
     }
 
     render() {
-        const { className, isEditing } = this.props;
-        const { lat, lon, zoom } = this.state;
-        const disableUpdateButton = lat == null && lon == null && zoom == null;
+        const { className, settings, isEditing, isDashboard } = this.props;
+        let { lat, lng, zoom } = this.state;
+        const disableUpdateButton = lat == null && lng == null && zoom == null;
+
+        const Map = MAP_COMPONENTS_BY_TYPE[settings["map.pin_type"]];
+
+        const { points, bounds } = this.state;//this._getPoints(this.props);
+
         return (
             <div className={className + " PinMap relative"} onMouseDownCapture={(e) =>e.stopPropagation() /* prevent dragging */}>
-                <div className="absolute top left bottom right" ref="map"></div>
-                { isEditing ?
-                    <div className={cx("PinMapUpdateButton Button Button--small absolute top right m1", { "PinMapUpdateButton--disabled": disableUpdateButton })} onClick={this.updateSettings}>
+                { Map ?
+                    <Map
+                        {...this.props}
+                        className="absolute top left bottom right z1"
+                        onMapCenterChange={this.onMapCenterChange}
+                        onMapZoomChange={this.onMapZoomChange}
+                        lat={lat}
+                        lng={lng}
+                        zoom={zoom}
+                        points={points}
+                        bounds={bounds}
+                    />
+                : null }
+                { isEditing || !isDashboard ?
+                    <div className={cx("PinMapUpdateButton Button Button--small absolute top right m1 z2", { "PinMapUpdateButton--disabled": disableUpdateButton })} onClick={this.updateSettings}>
                         Save as default view
                     </div>
                 : null }
@@ -160,15 +114,3 @@ export default class PinMap extends Component {
         );
     }
 }
-
-const ObjectDetailTooltip = ({ row, cols }) =>
-    <table>
-        <tbody>
-            { cols.map((col, index) =>
-                <tr>
-                    <td>{col.display_name}</td>
-                    <td>{row[index]}</td>
-                </tr>
-            )}
-        </tbody>
-    </table>

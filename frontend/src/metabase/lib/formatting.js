@@ -4,7 +4,10 @@ import moment from "moment";
 import Humanize from "humanize";
 import React from "react";
 
+import ExternalLink from "metabase/components/ExternalLink.jsx";
+
 import { isDate, isNumber, isCoordinate } from "metabase/lib/schema_metadata";
+import { isa, TYPE } from "metabase/lib/types";
 import { parseTimestamp } from "metabase/lib/time";
 
 const PRECISION_NUMBER_FORMATTER      = d3.format(".2r");
@@ -15,7 +18,20 @@ const DECIMAL_DEGREES_FORMATTER       = d3.format(".08f");
 export function formatNumber(number, options = {}) {
     options = { comma: true, ...options};
     if (options.compact) {
-        return Humanize.compactInteger(number, 1);
+        if (number === 0) {
+            // 0 => 0
+            return "0"
+        } else if (number >= -0.01 && number <= 0.01) {
+            // 0.01 => ~0
+            return "~ 0";
+        } else if (number > -1 && number < 1) {
+            // 0.1 => 0.1
+            return PRECISION_NUMBER_FORMATTER(number).replace(/\.?0+$/, "");
+        } else {
+            // 1 => 1
+            // 1000 => 1K
+            return Humanize.compactInteger(number, 1);
+        }
     } else if (number > -1 && number < 1) {
         // numbers between 1 and -1 round to 2 significant digits with extra 0s stripped off
         return PRECISION_NUMBER_FORMATTER(number).replace(/\.?0+$/, "");
@@ -74,6 +90,8 @@ function formatTimeWithUnit(value, unit, options = {}) {
             return moment().hour(value).format("h A");
         case "day-of-week": // Sunday
             return moment().day(value - 1).format("dddd");
+        case "day-of-month":
+            return moment().date(value).format("D");
         case "week-of-year": // 1st
             return moment().week(value).format("wo");
         case "month-of-year": // January
@@ -82,6 +100,27 @@ function formatTimeWithUnit(value, unit, options = {}) {
             return moment().quarter(value).format("[Q]Q");
         default:
             return m.format("LLLL");
+    }
+}
+
+const EMAIL_WHITELIST_REGEX = /.+@.+/;
+
+export function formatEmail(value, { jsx } = {}) {
+    if (jsx && EMAIL_WHITELIST_REGEX.test(value)) {
+        return <ExternalLink href={"mailto:" + value}>{value}</ExternalLink>;
+    } else {
+        value;
+    }
+}
+
+// prevent `javascript:` etc URLs
+const URL_WHITELIST_REGEX = /^(https?|mailto):/;
+
+export function formatUrl(value, { jsx } = {}) {
+    if (jsx && URL_WHITELIST_REGEX.test(value)) {
+        return <ExternalLink href={value}>{value}</ExternalLink>;
+    } else {
+        return value;
     }
 }
 
@@ -94,6 +133,10 @@ export function formatValue(value, options = {}) {
     };
     if (value == undefined) {
         return null;
+    } else if (column && isa(column.special_type, TYPE.URL)) {
+        return formatUrl(value, options);
+    } else if (column && isa(column.special_type, TYPE.Email)) {
+        return formatEmail(value, options);
     } else if (column && column.unit != null) {
         return formatTimeWithUnit(value, column.unit, options);
     } else if (isDate(column) || moment.isDate(value) || moment.isMoment(value) || moment(value, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()) {

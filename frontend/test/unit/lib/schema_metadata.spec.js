@@ -30,6 +30,12 @@ describe('schema_metadata', () => {
         it('should know a string', () => {
             expect(getFieldType({ base_type: TYPE.Text })).toEqual(STRING)
         });
+        it('should know things that are types of strings', () => {
+            expect(getFieldType({ base_type: TYPE.Text, special_type: TYPE.Name })).toEqual(STRING)
+            expect(getFieldType({ base_type: TYPE.Text, special_type: TYPE.Description })).toEqual(STRING)
+            expect(getFieldType({ base_type: TYPE.Text, special_type: TYPE.UUID })).toEqual(STRING)
+            expect(getFieldType({ base_type: TYPE.Text, special_type: TYPE.URL })).toEqual(STRING)
+        });
         it('should know a bool', () => {
             expect(getFieldType({ base_type: TYPE.Boolean })).toEqual(BOOLEAN)
         });

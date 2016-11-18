@@ -1,10 +1,9 @@
-import { createAction, createThunkAction, handleActions, combineReducers, AngularResourceProxy } from "metabase/lib/redux";
+import { createAction, createThunkAction, handleActions, combineReducers } from "metabase/lib/redux";
 
 import { canEditPermissions } from "metabase/lib/groups";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
-const MetadataApi = new AngularResourceProxy("Metabase", ["db_list_with_tables"]);
-const PermissionsApi = new AngularResourceProxy("Permissions", ["groups", "graph", "updateGraph"]);
+import { MetabaseApi, PermissionsApi } from "metabase/services";
 
 const INITIALIZE = "metabase/admin/permissions/INITIALIZE";
 export const initialize = createThunkAction(INITIALIZE, () =>
@@ -24,7 +23,7 @@ const LOAD_GROUPS = "metabase/admin/permissions/LOAD_GROUPS";
 export const loadGroups = createAction(LOAD_GROUPS, () => PermissionsApi.groups());
 
 const LOAD_METADATA = "metabase/admin/permissions/LOAD_METADATA";
-export const loadMetadata = createAction(LOAD_METADATA, () => MetadataApi.db_list_with_tables());
+export const loadMetadata = createAction(LOAD_METADATA, () => MetabaseApi.db_list_with_tables());
 
 const UPDATE_PERMISSION = "metabase/admin/permissions/UPDATE_PERMISSION";
 export const updatePermission = createThunkAction(UPDATE_PERMISSION, ({ groupId, entityId, value, updater, postAction }) =>

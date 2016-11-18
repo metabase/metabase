@@ -3,12 +3,14 @@
             (clojure [set :as set]
                      [string :as s])
             [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
+            (honeysql [core :as hsql]
+                      [helpers :as h])
             [metabase.config :as config]
             [metabase.db :as db]
             [metabase.db.spec :as dbspec]
             [metabase.driver :as driver]
             [metabase.driver.generic-sql :as sql]
+            [metabase.driver.generic-sql.query-processor :as sqlqp]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]))
 
@@ -110,26 +112,52 @@
                                                       :seconds      field-or-value
                                                       :milliseconds (hx// field-or-value (hsql/raw 1000))))))
 
-(defn- apply-offset-and-limit
-  "Append SQL like `OFFSET 20 ROWS FETCH NEXT 10 ROWS ONLY` to the end of the query."
-  [honeysql-query offset limit]
-  (assoc honeysql-query
-    :offset (hsql/raw (format "%d ROWS FETCH NEXT %d ROWS ONLY" offset limit))))
+
+;; Oracle doesn't support `LIMIT n` syntax. Instead we have to use `WHERE ROWNUM <= n` (`NEXT n ROWS ONLY` isn't supported on Oracle versions older than 12).
+;; This has to wrap the actual query, e.g.
+;;
+;; SELECT *
+;; FROM (
+;;     SELECT *
+;;     FROM employees
+;;     ORDER BY employee_id
+;; )
+;; WHERE ROWNUM < 10;
+;;
+;; To do an offset we have to do something like:
+;;
+;; SELECT *
+;; FROM (
+;;     SELECT __table__.*, ROWNUM AS __rownum__
+;;     FROM (
+;;         SELECT *
+;;         FROM employees
+;;         ORDER BY employee_id
+;;     ) __table__
+;;     WHERE ROWNUM <= 150
+;; )
+;; WHERE __rownum__ >= 100;
+;;
+;; See issue #3568 and the Oracle documentation for more details: http://docs.oracle.com/cd/B19306_01/server.102/b14200/pseudocolumns009.htm
 
 (defn- apply-limit [honeysql-query {value :limit}]
-  ;; HoneySQL doesn't support ANSI SQL "OFFSET <n> ROWS FETCH NEXT <n> ROWS ONLY"
-  ;; The semi-official workaround as suggested by yours truly is just to pass a
-  ;; raw string as the `:offset` which HoneySQL puts in the appropriate place
-  ;; see my comment here: https://github.com/jkk/honeysql/issues/58#issuecomment-220450400
-  (apply-offset-and-limit honeysql-query 0 value))
+  {:pre [(integer? value)]}
+  {:select [:*]
+   :from   [honeysql-query]
+   :where  [:<= (hsql/raw "rownum") value]})
 
 (defn- apply-page [honeysql-query {{:keys [items page]} :page}]
-  ;; ex.:
-  ;; items | page | sql
-  ;; ------+------+------------------------
-  ;;     5 |    1 | OFFSET 0 ROWS FETCH FIRST 5 ROWS ONLY
-  ;;     5 |    2 | OFFSET 5 ROWS FETCH FIRST 5 ROWS ONLY
-  (apply-offset-and-limit honeysql-query (* (dec page) items) items))
+  (let [offset (* (dec page) items)]
+    (if (zero? offset)
+      ;; if there's no offset we can use use the single-nesting implementation for `apply-limit`
+      (apply-limit honeysql-query {:limit items})
+      ;; if we need to do an offset we have to do double-nesting
+      {:select [:*]
+       :from   [{:select [:__table__.* [(hsql/raw "rownum") :__rownum__]]
+                 :from   [[honeysql-query :__table__]]
+                 :where  [:<= (hsql/raw "rownum") (+ offset items)]}]
+       :where  [:> :__rownum__ offset]})))
+
 
 ;; Oracle doesn't support `TRUE`/`FALSE`; use `1`/`0`, respectively; convert these booleans to numbers.
 (defn- prepare-value [{value :value}]
@@ -140,6 +168,17 @@
 
 (defn- string-length-fn [field-key]
   (hsql/call :length field-key))
+
+
+(defn- remove-rownum-column
+  "Remove the `:__rownum__` column from results, if present."
+  [{:keys [columns rows], :as results}]
+  (if-not (contains? (set columns) :__rownum__)
+    results
+    ;; if we added __rownum__ it will always be the last column and value so we can just remove that
+    {:columns (butlast columns)
+     :rows    (for [row rows]
+                (butlast row))}))
 
 
 (defrecord OracleDriver []
@@ -168,7 +207,8 @@
                                        {:name         "password"
                                         :display-name "Database password"
                                         :type         :password
-                                        :placeholder  "*******"}])})
+                                        :placeholder  "*******"}])
+          :execute-query  (comp remove-rownum-column sqlqp/execute-query)})
 
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)

@@ -15,7 +15,8 @@
             [metabase.query-processor :as qp]
             [metabase.pulse :as p]
             [metabase.pulse.render :as render]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [metabase.util.schema :as su]))
 
 
 (defendpoint GET "/"
@@ -30,18 +31,18 @@
 
 
 (defn- check-card-read-permissions [cards]
-  (doseq [{card-id :id} cards
-          :when         card-id] ; for some reason, without explanation, the code below makes it look as though card IDs may randomly be `nil`
+  (doseq [{card-id :id} cards]
+    (assert (integer? card-id))
     (read-check Card card-id)))
 
 (defendpoint POST "/"
   "Create a new `Pulse`."
   [:as {{:keys [name cards channels]} :body}]
-  {name     [Required NonEmptyString]
-   cards    [Required ArrayOfMaps]
-   channels [Required ArrayOfMaps]}
+  {name     su/NonBlankString
+   cards    (su/non-empty [su/Map])
+   channels (su/non-empty [su/Map])}
   (check-card-read-permissions cards)
-  (check-500 (pulse/create-pulse! name *current-user-id* (filter identity (map :id cards)) channels)))
+  (check-500 (pulse/create-pulse! name *current-user-id* (map u/get-id cards) channels)))
 
 
 (defendpoint GET "/:id"
@@ -54,14 +55,14 @@
 (defendpoint PUT "/:id"
   "Update a `Pulse` with ID."
   [id :as {{:keys [name cards channels]} :body}]
-  {name     [Required NonEmptyString]
-   cards    [Required ArrayOfMaps]
-   channels [Required ArrayOfMaps]}
+  {name     su/NonBlankString
+   cards    (su/non-empty [su/Map])
+   channels (su/non-empty [su/Map])}
   (write-check Pulse id)
   (check-card-read-permissions cards)
   (pulse/update-pulse! {:id       id
                         :name     name
-                        :cards    (filter identity (map :id cards))
+                        :cards    (map u/get-id cards)
                         :channels channels})
   (pulse/retrieve-pulse id))
 
@@ -71,7 +72,7 @@
   [id]
   (let-404 [pulse (Pulse id)]
     (u/prog1 (db/cascade-delete! Pulse :id id)
-      (events/publish-event :pulse-delete (assoc pulse :actor_id *current-user-id*)))))
+      (events/publish-event! :pulse-delete (assoc pulse :actor_id *current-user-id*)))))
 
 
 (defendpoint GET "/form_input"
@@ -124,11 +125,11 @@
     {:status 200, :headers {"Content-Type" "image/png"}, :body (new java.io.ByteArrayInputStream ba)}))
 
 (defendpoint POST "/test"
-  "Test send an unsaved pulse"
+  "Test send an unsaved pulse."
   [:as {{:keys [name cards channels] :as body} :body}]
-  {name     [Required NonEmptyString]
-   cards    [Required ArrayOfMaps]
-   channels [Required ArrayOfMaps]}
+  {name     su/NonBlankString
+   cards    (su/non-empty [su/Map])
+   channels (su/non-empty [su/Map])}
   (check-card-read-permissions cards)
   (p/send-pulse! body)
   {:ok true})

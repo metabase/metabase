@@ -21,6 +21,7 @@
                           [setting :as setting]
                           [setup :as setup]
                           [slack :as slack]
+                          [card-cache :as card-cache]
                           [table :as table]
                           [tiles :as tiles]
                           [user :as user]
@@ -59,6 +60,7 @@
   (context "/setting"         [] (+auth setting/routes))
   (context "/setup"           [] setup/routes)
   (context "/slack"           [] (+auth slack/routes))
+  (context "/card_cache"      [] (+auth card-cache/routes))
   (context "/table"           [] (+auth table/routes))
   (context "/tiles"           [] (+auth tiles/routes))
   (context "/user"            [] (+auth user/routes))

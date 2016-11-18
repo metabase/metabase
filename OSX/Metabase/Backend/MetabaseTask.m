@@ -8,13 +8,7 @@
 
 #import "MetabaseTask.h"
 
-#define ENABLE_JAR_UNPACKING 0
-
 @interface MetabaseTask ()
-
-#if ENABLE_JAR_UNPACKING
-	@property (strong, readonly) NSString *unpack200Path;
-#endif
 
 @property (nonatomic) NSUInteger port;
 @end
@@ -43,24 +37,6 @@
 	NSLog(@"%@", message);
 }
 
-#if ENABLE_JAR_UNPACKING
-/// unpack the jars in the BG if needed the first time around
-- (void)unpackJars {
-	[self.packedJarPaths enumerateObjectsWithOptions:NSEnumerationConcurrent usingBlock:^(NSString *packedFilename, NSUInteger idx, BOOL *stop) {
-		NSString *jarName = [packedFilename stringByReplacingOccurrencesOfString:@".pack.gz" withString:@".jar"];
-		
-		if (![[NSFileManager defaultManager] fileExistsAtPath:jarName]) {
-			NSLog(@"Unpacking %@ ->\n\t%@...", packedFilename, jarName);
-			NSTask *task = [[NSTask alloc] init];
-			task.launchPath = self.unpack200Path;
-			task.arguments = @[packedFilename, jarName];
-			[task launch];
-			[task waitUntilExit];
-		}
-	}];
-}
-#endif
-
 - (void)deleteOldDBLockFilesIfNeeded {
 	NSString *lockFile	= [DBPath() stringByAppendingString:@".lock.db"];
 	NSString *traceFile = [DBPath() stringByAppendingString:@".trace.db"];
@@ -81,11 +57,6 @@
 
 - (void)launch {
 	dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
-		
-		#if ENABLE_JAR_UNPACKING
-			[self unpackJars];
-		#endif
-		
 		[self deleteOldDBLockFilesIfNeeded];
 				
 		NSLog(@"Starting MetabaseTask @ 0x%zx...", (size_t)self);
@@ -95,7 +66,9 @@
 		self.task.environment	= @{@"MB_DB_FILE": DBPath(),
 									@"MB_PLUGINS_DIR": PluginsDirPath(),
 									@"MB_JETTY_PORT": @(self.port)};
-		self.task.arguments		= @[@"-Djava.awt.headless=true",
+		self.task.arguments		= @[@"-Djava.awt.headless=true", // this prevents the extra java icon from popping up in the dock when running
+                                    @"-client",                  // make sure we're running in -client mode, which has a faster lanuch time
+                                    @"-Xverify:none",            // disable bytecode verification for faster launch speed, not really needed here since JAR is packaged as part of signed .app
 									@"-jar", UberjarPath()];
 				
 		__weak MetabaseTask *weakSelf = self;
@@ -131,15 +104,5 @@
 	}
 	return _port;
 }
-
-#if ENABLE_JAR_UNPACKING
-- (NSArray *)packedJarPaths {
-	return [[NSBundle mainBundle] pathsForResourcesOfType:@"pack.gz" inDirectory:@"jre/lib"];
-}
-
-- (NSString *)unpack200Path {
-	return [[NSBundle mainBundle] pathForResource:@"unpack200" ofType:nil inDirectory:@"jre/bin"];
-}
-#endif
 
 @end

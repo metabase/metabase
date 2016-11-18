@@ -160,8 +160,8 @@
                                                                         :card_id card-id
                                                                         :sizeX   4
                                                                         :sizeY   2
-                                                                        :row     nil
-                                                                        :col     nil
+                                                                        :row     0
+                                                                        :col     0
                                                                         :series  []}])
    :is_reversion false
    :is_creation  false}

@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import MetabaseAnalytics from 'metabase/lib/analytics';
 import MetabaseUtils from "metabase/lib/utils";
-import SettingsEmailFormElement from "./SettingsEmailFormElement.jsx";
+import SettingsSetting from "./SettingsSetting.jsx";
 
 export default class SettingsCacheForm extends Component {
     constructor(props, context) {
@@ -21,7 +21,7 @@ export default class SettingsCacheForm extends Component {
 
     static propTypes = {
         elements: PropTypes.array.isRequired,
-        updateSettings: PropTypes.func.isRequired
+        updateCacheSettings: PropTypes.func.isRequired
     };
 
     componentWillMount() {
@@ -38,8 +38,6 @@ export default class SettingsCacheForm extends Component {
     handleChangeEvent(element, value, event) {
         if (element.type === "boolean") {
             value = value === true || value === "true";
-        } else if (element.type === "duration"){
-            value = event.valueInSeconds.toString();
         } else {
             value = MetabaseUtils.isEmpty(value) ? null : value;
         }
@@ -62,7 +60,7 @@ export default class SettingsCacheForm extends Component {
 
         let {formData} = this.state;
 
-        this.props.updateSettings(formData).then(() => {
+        this.props.updateCacheSettings(formData).then(() => {
             this.setState({
                 submitting: "success"
             });
@@ -81,6 +79,22 @@ export default class SettingsCacheForm extends Component {
         });
     }
 
+    handleFormErrors(error) {
+        // parse and format
+        let formErrors = {};
+        if (error.data && error.data.message) {
+            formErrors.message = error.data.message;
+        } else {
+            formErrors.message = "Looks like we ran into some problems";
+        }
+
+        if (error.data && error.data.errors) {
+            formErrors.elements = error.data.errors;
+        }
+
+        return formErrors;
+    }
+
     render() {
         const {elements} = this.props;
         const {formData, formErrors, submitting, validationErrors, dirty} = this.state;
@@ -92,13 +106,17 @@ export default class SettingsCacheForm extends Component {
                 formData[element.key]
                 : (element.value != null ? element.value : element.defaultValue);
 
+            let component = <SettingsSetting
+                key={element.key}
+                setting={{ ...element, value }}
+                updateSetting={this.handleChangeEvent.bind(this, element)}
+                errorMessage={errorMessage}
+            />;
+
             return {
                 element: element,
                 value: value,
-                component: <SettingsEmailFormElement
-                    key={element.key}
-                    element={{...element, value, errorMessage}}
-                    handleChangeEvent={this.handleChangeEvent.bind(this)}/>
+                component: component
             };
         }).reduce((acc, element) => {
             return {...acc, [element.element.key]: element};

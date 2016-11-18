@@ -3,21 +3,23 @@
   (:require [clojure.data :as data]
             [clojure.tools.logging :as log]
             [compojure.core :refer [defroutes GET PUT POST DELETE]]
+            [schema.core :as s]
             [metabase.api.common :refer :all]
             [metabase.db :as db]
             (metabase.models [hydrate :refer [hydrate]]
                              [interface :as models]
                              [metric :refer [Metric], :as metric]
                              [revision :as revision]
-                             [table :refer [Table]])))
+                             [table :refer [Table]])
+            [metabase.util.schema :as su]))
 
 
 (defendpoint POST "/"
   "Create a new `Metric`."
   [:as {{:keys [name description table_id definition]} :body}]
-  {name       [Required NonEmptyString]
-   table_id   [Required Integer]
-   definition [Required Dict]}
+  {name       su/NonBlankString
+   table_id   su/IntGreaterThanZero
+   definition su/Map}
   (check-superuser)
   (write-check Table table_id)
   (check-500 (metric/create-metric! table_id name description *current-user-id* definition)))
@@ -40,9 +42,9 @@
 (defendpoint PUT "/:id"
   "Update a `Metric` with ID."
   [id :as {{:keys [name description caveats points_of_interest how_is_this_calculated show_in_getting_started definition revision_message]} :body}]
-  {name             [Required NonEmptyString]
-   revision_message [Required NonEmptyString]
-   definition       [Required Dict]}
+  {name             su/NonBlankString
+   revision_message su/NonBlankString
+   definition       su/Map}
   (check-superuser)
   (write-check Metric id)
   (metric/update-metric!
@@ -61,7 +63,7 @@
   "Update the important `Fields` for a `Metric` with ID.
    (This is used for the Getting Started guide)."
   [id :as {{:keys [important_field_ids]} :body}]
-  {important_field_ids [Required ArrayOfIntegers]}
+  {important_field_ids [su/IntGreaterThanZero]}
   (check-superuser)
   (write-check Metric id)
   (check (<= (count important_field_ids) 3)
@@ -75,14 +77,13 @@
     ;; add new fields as needed
     (db/insert-many! 'MetricImportantField (for [field-id fields-to-add]
                                              {:metric_id id, :field_id field-id}))
-    ;; we're done (TODO - Do we want to return anything here?)
     {:success true}))
 
 
 (defendpoint DELETE "/:id"
   "Delete a `Metric`."
   [id revision_message]
-  {revision_message [Required NonEmptyString]}
+  {revision_message su/NonBlankString}
   (check-superuser)
   (write-check Metric id)
   (metric/delete-metric! id *current-user-id* revision_message)
@@ -100,7 +101,7 @@
 (defendpoint POST "/:id/revert"
   "Revert a `Metric` to a prior `Revision`."
   [id :as {{:keys [revision_id]} :body}]
-  {revision_id [Required Integer]}
+  {revision_id su/IntGreaterThanZero}
   (check-superuser)
   (write-check Metric id)
   (revision/revert!
@@ -111,5 +112,3 @@
 
 
 (define-routes)
-
-[]

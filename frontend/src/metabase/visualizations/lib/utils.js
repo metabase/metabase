@@ -3,6 +3,8 @@ import React from "react";
 import _ from "underscore";
 import d3 from "d3";
 
+import crossfilter from "crossfilter";
+
 import * as colors from "metabase/lib/colors";
 
 const SPLIT_AXIS_UNSPLIT_COST = -100;
@@ -160,7 +162,6 @@ export function colorShade(hex, shade = 0) {
 }
 
 import { isDimension, isMetric } from "metabase/lib/schema_metadata";
-import crossfilter from "crossfilter";
 
 export const DIMENSION_METRIC = "DIMENSION_METRIC";
 export const DIMENSION_METRIC_METRIC = "DIMENSION_METRIC_METRIC";
@@ -184,24 +185,24 @@ export const isDimensionMetricMetric = (cols, strict = true) =>
     isDimension(cols[0]) &&
     cols.slice(1).reduce((acc, col) => acc && isMetric(col), true)
 
+// cache computed cardinalities in a weak map since they are computationally expensive
+const cardinalityCache = new WeakMap();
 
-function computeColumnCardinality(cols, rows) {
-    let dataset = crossfilter(rows);
-    for (const [index, col] of Object.entries(cols)) {
-        if (col.cardinality == null) {
-            col.cardinality = dataset.dimension(d => d[index]).group().size();
-        }
+export function getColumnCardinality(cols, rows, index) {
+    const col = cols[index];
+    if (!cardinalityCache.has(col)) {
+        let dataset = crossfilter(rows);
+        cardinalityCache.set(col, dataset.dimension(d => d[index]).group().size())
     }
+    return cardinalityCache.get(col);
 }
 
 export function getChartTypeFromData(cols, rows, strict = true) {
-    computeColumnCardinality(cols, rows);
-
     // this should take precendence for backwards compatibilty
     if (isDimensionMetricMetric(cols, strict)) {
         return DIMENSION_METRIC_METRIC;
     } else if (isDimensionDimensionMetric(cols, strict)) {
-        if (cols[0].cardinality < MAX_SERIES || cols[1].cardinality < MAX_SERIES) {
+        if (getColumnCardinality(cols, rows, 0) < MAX_SERIES || getColumnCardinality(cols, rows, 1) < MAX_SERIES) {
             return DIMENSION_DIMENSION_METRIC;
         }
     } else if (isDimensionMetric(cols, strict)) {
