@@ -1,6 +1,5 @@
 import React, { Component, PropTypes } from "react";
-import { findDOMNode } from "react-dom";
-import { pluralize } from "humanize-plus";
+import { pluralize, titleCase } from "humanize-plus";
 
 import Icon from "metabase/components/Icon";
 import NumericInput from "./NumericInput.jsx";
@@ -54,7 +53,7 @@ export const UnitPicker = ({ open, value, onChange, togglePicker, intervals }) =
            onClick={() => togglePicker()}
            className="flex align-center cursor-pointer text-purple-hover mb2"
        >
-           <h3>{pluralize(intervals || 1, value)}</h3>
+           <h3>{pluralize(intervals || 1, titleCase(value))}</h3>
            <Icon name='chevrondown' />
         </div>
         <ol style={{

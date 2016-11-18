@@ -22,13 +22,29 @@ const PreviousPicker =  (props) =>
 const NextPicker = (props) =>
     <RelativeDatePicker {...props} />
 
-const CurrentPicker = ({ filter: [operator, field, intervals, unit], onFilterChange }) =>
-    <div className="mx2">
-        <UnitPicker
-            value={unit}
-            onChange={(value) => onFilterChange([operator, field, intervals, value])}
-        />
-    </div>
+class CurrentPicker extends Component {
+    constructor() {
+        super();
+        this.state = { showUnits: false };
+    }
+    render() {
+        const { filter: [operator, field, intervals, unit], onFilterChange } = this.props
+        return (
+            <div className="mx2">
+                <UnitPicker
+                    value={unit}
+                    open={this.state.showUnits}
+                    onChange={(value) => {
+                        onFilterChange([operator, field, intervals, value]);
+                        this.setState({ showUnits: false });
+                    }}
+                    togglePicker={() => this.setState({ showUnits: !this.state.showUnits })}
+                />
+            </div>
+        )
+    }
+}
+
 
 const getIntervals = ([op, field, value, unit]) => op === "TIME_INTERVAL" && typeof value === "number" ? Math.abs(value) : 1;
 const getUnit      = ([op, field, value, unit]) => op === "TIME_INTERVAL" && unit ? unit : "day";
