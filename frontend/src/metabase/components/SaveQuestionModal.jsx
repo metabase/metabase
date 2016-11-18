@@ -60,8 +60,8 @@ export default class SaveQuestionModal extends Component {
 
         let valid = true;
 
-        // name is required
-        if (!details.name) {
+        // name is required for create
+        if (details.saveType === "create" && !details.name) {
             valid = false;
         }
 
@@ -89,8 +89,7 @@ export default class SaveQuestionModal extends Component {
                 // since description is optional, it can be null, so check for a description before trimming it
                 description: details.saveType === "overwrite" ?
                     originalCard.description :
-                    details.description ? details.description.trim() : null,
-                public_perms: 2
+                    details.description ? details.description.trim() : null
             };
 
             if (details.saveType === "create") {
@@ -158,6 +157,7 @@ export default class SaveQuestionModal extends Component {
 
         return (
             <ModalContent
+                id="SaveQuestionModal"
                 title={title}
                 closeFn={this.props.closeFn}
             >
