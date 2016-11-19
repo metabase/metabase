@@ -32,16 +32,3 @@
         new-settings  (email-settings)
         _             (setting/set-many! orig-settings)]
     new-settings))
-
-
-;; with-fake-inbox doesn't work in this case because of the api call
-;; /api/email/test - sends a test email to the given user
-;(expect
-;  [{:from "notifications@metabase.com",
-;    :to [(-> (fetch-user :crowberto) :email)],
-;    :subject "Metabase Test Email",
-;    :body [{:type    "text/plain; charset=utf-8"
-;            :content "Your Metabase emails are working — hooray!"}]}]
-;  (with-fake-inbox
-;    ((user->client :crowberto) :post 200 "email/test")
-;    (@inbox (-> (fetch-user :crowberto) :email))))

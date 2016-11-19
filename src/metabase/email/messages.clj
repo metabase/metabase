@@ -38,7 +38,7 @@
                         :quotationAuthor (:author data-quote)
                         :today           (u/format-date "MMM'&nbsp;'dd,'&nbsp;'yyyy")
                         :logoHeader      true})]
-    (email/send-message
+    (email/send-message!
       :subject      (str "You're invited to join " company "'s Metabase")
       :recipients   [(:email invited)]
       :message-type :html
@@ -54,7 +54,7 @@
              (and (map? invitor)
                   (u/is-email? (:email invitor))))]}
   (let [data-quote (quotation/random-quote)]
-    (email/send-message
+    (email/send-message!
       :subject      (format (if google-auth?
                               "%s created a Metabase account"
                               "%s accepted your Metabase invite")
@@ -90,7 +90,7 @@
                         :sso              google-auth?
                         :passwordResetUrl password-reset-url
                         :logoHeader       true})]
-    (email/send-message
+    (email/send-message!
       :subject      "[Metabase] Password Reset Request"
       :recipients   [email]
       :message-type :html
@@ -124,7 +124,7 @@
                                  :quotation (:quote data-quote)
                                  :quotationAuthor (:author data-quote)))
         message-body  (stencil/render-file "metabase/email/notification" context)]
-    (email/send-message
+    (email/send-message!
       :subject      "[Metabase] Notification"
       :recipients   [email]
       :message-type :html
@@ -153,7 +153,7 @@
                                 :callToAction "Would you mind taking a fast 6 question survey to tell us how it’s going?"
                                 :link         "http://www.metabase.com/feedback/active"}))
         message-body  (stencil/render-file "metabase/email/follow_up_email" context)]
-    (email/send-message
+    (email/send-message!
       :subject      subject
       :recipients   [email]
       :message-type :html

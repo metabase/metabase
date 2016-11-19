@@ -1,7 +1,8 @@
 (ns metabase.driver.generic-sql
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.math.numeric-tower :as math]
-            [clojure.set :as set]
+            (clojure [set :as set]
+                     [string :as str])
             [clojure.tools.logging :as log]
             (honeysql [core :as hsql]
                       [format :as hformat])
@@ -151,6 +152,16 @@
   [{:keys [engine details], :as database}]
   (db->pooled-connection-spec database))
 
+(defn handle-additional-options
+  "If DETAILS contains an `:addtional-options` key, append those options to the connection string in CONNECTION-SPEC.
+   (Some drivers like MySQL provide this details field to allow special behavior where needed)."
+  {:arglists '([connection-spec details])}
+  [{connection-string :subname, :as connection-spec} {additional-options :additional-options, :as details}]
+  (-> (dissoc connection-spec :additional-options)
+      (assoc :subname (str connection-string (when (seq additional-options)
+                                               (str (if (str/includes? connection-string "?") "&" "?")
+                                                    additional-options))))))
+
 
 (defn escape-field-name
   "Escape dots in a field name so HoneySQL doesn't get confused and separate them. Returns a keyword."
@@ -288,7 +299,8 @@
 (defn features
   "Default implementation of `IDriver` `features` for SQL drivers."
   [driver]
-  (cond-> #{:standard-deviation-aggregations
+  (cond-> #{:basic-aggregations
+            :standard-deviation-aggregations
             :foreign-keys
             :expressions
             :native-parameters}

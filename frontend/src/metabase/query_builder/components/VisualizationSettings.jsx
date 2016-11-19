@@ -73,6 +73,10 @@ export default class VisualizationSettings extends React.Component {
         );
     }
 
+    open = () => {
+        this.refs.popover.open();
+    }
+
     render() {
         if (this.props.result && this.props.result.error === undefined) {
             return (
@@ -82,6 +86,7 @@ export default class VisualizationSettings extends React.Component {
                         className="Modal Modal--wide Modal--tall"
                         triggerElement={<span data-metabase-event="Query Builder;Chart Settings"><Icon name="gear"/></span>}
                         triggerClasses="text-brand-hover"
+                        ref="popover"
                     >
                         <ChartSettings
                             series={[{ card: this.props.card, data: this.props.result.data }]}

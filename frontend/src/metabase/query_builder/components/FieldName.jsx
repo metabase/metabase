@@ -1,7 +1,5 @@
 import React, { Component, PropTypes } from "react";
 
-import i from 'icepick';
-
 import Icon from "metabase/components/Icon.jsx";
 
 import Query from "metabase/lib/query";
@@ -30,7 +28,9 @@ export default class FieldName extends Component {
 
         let parts = [];
 
-        if (fieldTarget) {
+        if (fieldTarget && !fieldTarget.field) {
+            parts.push(<span className="text-error" key="field">Missing Field</span>);
+        } else if (fieldTarget) {
             // fk path
             for (let [index, fkField] of Object.entries(fieldTarget.path)) {
                 parts.push(<span key={"fkName"+index}>{stripId(fkField.display_name)}</span>);
@@ -38,7 +38,7 @@ export default class FieldName extends Component {
             }
             // target field itself
             // using i.getIn to avoid exceptions when field is undefined
-            parts.push(<span key="field">{i.getIn(fieldTarget, ['field', 'display_name'])}</span>);
+            parts.push(<span key="field">{Query.getFieldPathName(fieldTarget.field.id, tableMetadata)}</span>);
             // datetime-field unit
             if (fieldTarget.unit != null) {
                 parts.push(<span key="unit">{": " + formatBucketing(fieldTarget.unit)}</span>);

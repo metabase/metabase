@@ -15,67 +15,66 @@
   (:import java.util.UUID
            org.postgresql.ssl.NonValidatingFactory))
 
-(defn- column->base-type
+(def ^:private ^:const column->base-type
   "Map of Postgres column types -> Field base types.
    Add more mappings here as you come across them."
-  [column-type]
-  ({:bigint        :type/BigInteger
-    :bigserial     :type/BigInteger
-    :bit           :type/*
-    :bool          :type/Boolean
-    :boolean       :type/Boolean
-    :box           :type/*
-    :bpchar        :type/Text       ; "blank-padded char" is the internal name of "character"
-    :bytea         :type/*          ; byte array
-    :cidr          :type/Text       ; IPv4/IPv6 network address
-    :circle        :type/*
-    :date          :type/Date
-    :decimal       :type/Decimal
-    :float4        :type/Float
-    :float8        :type/Float
-    :geometry      :type/*
-    :inet          :type/IPAddress
-    :int           :type/Integer
-    :int2          :type/Integer
-    :int4          :type/Integer
-    :int8          :type/BigInteger
-    :interval      :type/*          ; time span
-    :json          :type/Text
-    :jsonb         :type/Text
-    :line          :type/*
-    :lseg          :type/*
-    :macaddr       :type/Text
-    :money         :type/Decimal
-    :numeric       :type/Decimal
-    :path          :type/*
-    :pg_lsn        :type/Integer    ; PG Log Sequence #
-    :point         :type/*
-    :real          :type/Float
-    :serial        :type/Integer
-    :serial2       :type/Integer
-    :serial4       :type/Integer
-    :serial8       :type/BigInteger
-    :smallint      :type/Integer
-    :smallserial   :type/Integer
-    :text          :type/Text
-    :time          :type/Time
-    :timetz        :type/Time
-    :timestamp     :type/DateTime
-    :timestamptz   :type/DateTime
-    :tsquery       :type/*
-    :tsvector      :type/*
-    :txid_snapshot :type/*
-    :uuid          :type/UUID
-    :varbit        :type/*
-    :varchar       :type/Text
-    :xml           :type/Text
-    (keyword "bit varying")                :type/*
-    (keyword "character varying")          :type/Text
-    (keyword "double precision")           :type/Float
-    (keyword "time with time zone")        :type/Time
-    (keyword "time without time zone")     :type/Time
-    (keyword "timestamp with timezone")    :type/DateTime
-    (keyword "timestamp without timezone") :type/DateTime} column-type))
+  {:bigint        :type/BigInteger
+   :bigserial     :type/BigInteger
+   :bit           :type/*
+   :bool          :type/Boolean
+   :boolean       :type/Boolean
+   :box           :type/*
+   :bpchar        :type/Text ; "blank-padded char" is the internal name of "character"
+   :bytea         :type/*    ; byte array
+   :cidr          :type/Text ; IPv4/IPv6 network address
+   :circle        :type/*
+   :date          :type/Date
+   :decimal       :type/Decimal
+   :float4        :type/Float
+   :float8        :type/Float
+   :geometry      :type/*
+   :inet          :type/IPAddress
+   :int           :type/Integer
+   :int2          :type/Integer
+   :int4          :type/Integer
+   :int8          :type/BigInteger
+   :interval      :type/*               ; time span
+   :json          :type/Text
+   :jsonb         :type/Text
+   :line          :type/*
+   :lseg          :type/*
+   :macaddr       :type/Text
+   :money         :type/Decimal
+   :numeric       :type/Decimal
+   :path          :type/*
+   :pg_lsn        :type/Integer         ; PG Log Sequence #
+   :point         :type/*
+   :real          :type/Float
+   :serial        :type/Integer
+   :serial2       :type/Integer
+   :serial4       :type/Integer
+   :serial8       :type/BigInteger
+   :smallint      :type/Integer
+   :smallserial   :type/Integer
+   :text          :type/Text
+   :time          :type/Time
+   :timetz        :type/Time
+   :timestamp     :type/DateTime
+   :timestamptz   :type/DateTime
+   :tsquery       :type/*
+   :tsvector      :type/*
+   :txid_snapshot :type/*
+   :uuid          :type/UUID
+   :varbit        :type/*
+   :varchar       :type/Text
+   :xml           :type/Text
+   (keyword "bit varying")                :type/*
+   (keyword "character varying")          :type/Text
+   (keyword "double precision")           :type/Float
+   (keyword "time with time zone")        :type/Time
+   (keyword "time without time zone")     :type/Time
+   (keyword "timestamp with timezone")    :type/DateTime
+   (keyword "timestamp without timezone") :type/DateTime})
 
 (defn- column->special-type
   "Attempt to determine the special-type of a Field given its name and Postgres column type."
@@ -96,17 +95,21 @@
   "Params to include in the JDBC connection spec to disable SSL."
   {:sslmode "disable"})
 
-(defn- connection-details->spec [{:keys [ssl] :as details-map}]
+(defn- connection-details->spec [{ssl? :ssl, :as details-map}]
   (-> details-map
       (update :port (fn [port]
-                      (if (string? port) (Integer/parseInt port)
-                          port)))
-      (dissoc :ssl)               ; remove :ssl in case it's false; DB will still try (& fail) to connect if the key is there
-      (merge (if ssl
+                      (if (string? port)
+                        (Integer/parseInt port)
+                        port)))
+      ;; remove :ssl in case it's false; DB will still try (& fail) to connect if the key is there
+      (dissoc :ssl)
+      (merge (if ssl?
                ssl-params
                disable-ssl-params))
       (rename-keys {:dbname :db})
-      dbspec/postgres))
+      dbspec/postgres
+      (sql/handle-additional-options details-map)))
+
 
 (defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
   (case seconds-or-milliseconds
@@ -241,7 +244,10 @@
                                                           {:name         "ssl"
                                                            :display-name "Use a secure connection (SSL)?"
                                                            :type         :boolean
-                                                           :default      false}])
+                                                           :default      false}
+                                                          {:name         "additional-options"
+                                                           :display-name "Additional JDBC connection string options"
+                                                           :placeholder  "prepareThreshold=0"}])
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
 
   sql/ISQLDriver PostgresISQLDriverMixin)

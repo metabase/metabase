@@ -83,11 +83,12 @@
   (check-superuser)
   (db/query {:select    [:pg.id :pg.name [:%count.pgm.id :members]]
              :from      [[:permissions_group :pg]]
-             :left-join [[:permissions_group_membership :pgm]
-                         [:= :pg.id :pgm.group_id]]
-             :where     (if (metabot/metabot-enabled)
-                          true
-                          [:not= :pg.id (:id (group/metabot))])
+             :left-join [[:permissions_group_membership :pgm] [:= :pg.id :pgm.group_id]
+                         [:core_user :user]                   [:= :pgm.user_id :user.id]]
+             :where     [:and [:= :user.is_active true]
+                              (if (metabot/metabot-enabled)
+                                true
+                                [:not= :pg.id (:id (group/metabot))])]
              :group-by  [:pg.id :pg.name]
              :order-by  [:%lower.pg.name]}))
 

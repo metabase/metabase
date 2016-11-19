@@ -43,7 +43,7 @@
     :VARCHAR    :type/Text
     :YEAR       :type/Integer} (keyword (s/replace (name column-type) #"\sUNSIGNED$" "")))) ; strip off " UNSIGNED" from end if present
 
-(def ^:private ^:const connection-args
+(def ^:private ^:const default-connection-args
   "Map of args for the MySQL JDBC connection string.
    Full list of is options is available here: http://dev.mysql.com/doc/connector-j/6.0/en/connector-j-reference-configuration-properties.html"
   {:zeroDateTimeBehavior :convertToNull ; 0000-00-00 dates are valid in MySQL; convert these to `null` when they come back because they're illegal in Java
@@ -51,16 +51,25 @@
    :characterEncoding    :UTF8
    :characterSetResults  :UTF8})
 
-(def ^:private ^:const connection-args-string
-  (apply str "?" (interpose \& (for [[k v] connection-args]
-                                 (str (name k) \= (name v))))))
+(def ^:private ^:const ^String default-connection-args-string
+  (s/join \& (for [[k v] default-connection-args]
+               (str (name k) \= (name v)))))
+
+(defn- append-connection-args
+  "Append `default-connection-args-string` to the connection string in CONNECTION-DETAILS, and an additional option to explicitly disable SSL if appropriate.
+   (Newer versions of MySQL will complain if you don't explicitly disable SSL.)"
+  {:argslist '([connection-spec details])}
+  [{connection-string :subname, :as connection-spec} {ssl? :ssl}]
+  (assoc connection-spec
+    :subname (str connection-string "?" default-connection-args-string (when-not ssl?
+                                                                         "&useSSL=false"))))
 
 (defn- connection-details->spec [details]
   (-> details
       (set/rename-keys {:dbname :db})
       dbspec/mysql
-      (update :subname #(str % connection-args-string (when-not (:ssl details)
-                                                        "&useSSL=false"))))) ; newer versions of MySQL will complain if you don't explicitly disable SSL
+      (append-connection-args details)
+      (sql/handle-additional-options details)))
 
 (defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
   (hsql/call :from_unixtime (case seconds-or-milliseconds
@@ -161,7 +170,10 @@
                                                           {:name         "password"
                                                            :display-name "Database password"
                                                            :type         :password
-                                                           :placeholder  "*******"}])
+                                                           :placeholder  "*******"}
+                                                          {:name         "additional-options"
+                                                           :display-name "Additional JDBC connection string options"
+                                                           :placeholder  "tinyInt1isBit=false"}])
           :humanize-connection-error-message (u/drop-first-arg humanize-connection-error-message)})
 
   sql/ISQLDriver

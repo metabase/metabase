@@ -477,10 +477,10 @@
     (binding [*driver* driver]
       ((<<- wrap-catch-exceptions
             pre-add-settings
+            (driver/process-query-in-context driver)
             pre-expand-macros
             pre-substitute-parameters
             pre-expand-resolve
-            (driver/process-query-in-context driver)
             post-add-row-count-and-status
             post-format-rows
             pre-add-implicit-fields

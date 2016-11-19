@@ -97,11 +97,12 @@
           :expected-base-type->actual   (u/drop-first-arg expected-base-type->actual)
           :id-field-type                (constantly :type/Decimal)}))
 
-(defn- dbspec []
+(defn- dbspec [& _]
   (sql/connection-details->spec (OracleDriver.) @db-connection-details))
 
 (defn- non-session-schemas
-  "Return a set of the names of schemas (users) that are not meant for use in this test session (i.e., ones that should be ignored)."
+  "Return a set of the names of schemas (users) that are not meant for use in this test session (i.e., ones that should be ignored).
+   (This is used as part of the implementation of `excluded-schemas` for the Oracle driver during tests.)"
   []
   (set (map :username (jdbc/query (dbspec) ["SELECT username FROM dba_users WHERE username <> ?" session-schema]))))
 
@@ -109,7 +110,7 @@
 ;;; Clear out the sesion schema before and after tests run
 ;; TL;DR Oracle schema == Oracle user. Create new user for session-schema
 (def ^:private execute-when-testing-oracle!
-  (partial generic/execute-when-testing! :oracle (fn [& _] (dbspec))))
+  (partial generic/execute-when-testing! :oracle dbspec))
 
 (defn- create-session-user!
   {:expectations-options :before-run}

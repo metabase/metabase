@@ -90,13 +90,14 @@
 (defn ^:hydrate members
   "Return `Users` that belong to GROUP-OR-ID, ordered by their name (case-insensitive)."
   [group-or-id]
-  (db/query {:select    [:core_user.first_name
-                         :core_user.last_name
-                         :core_user.email
-                         [:core_user.id :user_id]
-                         [:permissions_group_membership.id :membership_id]]
-             :from      [:core_user]
-             :left-join [:permissions_group_membership [:= :core_user.id :permissions_group_membership.user_id]]
-             :where     [:= :permissions_group_membership.group_id (u/get-id group-or-id)]
-             :order-by  [[:%lower.core_user.first_name :asc]
-                         [:%lower.core_user.last_name :asc]]}))
+  (db/query {:select    [:user.first_name
+                         :user.last_name
+                         :user.email
+                         [:user.id :user_id]
+                         [:pgm.id :membership_id]]
+             :from      [[:core_user :user]]
+             :left-join [[:permissions_group_membership :pgm] [:= :user.id :pgm.user_id]]
+             :where     [:and [:= :user.is_active true]
+                              [:= :pgm.group_id (u/get-id group-or-id)]]
+             :order-by  [[:%lower.user.first_name :asc]
+                         [:%lower.user.last_name :asc]]}))
