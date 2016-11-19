@@ -274,16 +274,16 @@
   (run-query-for-card card-id parameters))
 
 (defendpoint POST "/:card-id/query/csv"
-  "Run the query associated with a Card, and return its results as CSV. Note that this expects the query as serialized JSON in the 'query' parameters."
-  [card-id query]
-  {query (s/maybe su/JSONString)}
-  (dataset-api/as-csv (run-query-for-card card-id (:parameters (json/parse-string query keyword)))))
+  "Run the query associated with a Card, and return its results as CSV. Note that this expects the parameters as serialized JSON in the 'parameters' parameter"
+  [card-id parameters]
+  {parameters (s/maybe su/JSONString)}
+  (dataset-api/as-csv (run-query-for-card card-id (json/parse-string parameters keyword))))
 
 (defendpoint POST "/:card-id/query/json"
-  "Run the query associated with a Card, and return its results as JSON. Note that this expects the query as serialized JSON in the 'query' parameters."
-  [card-id query]
-  {query (s/maybe su/JSONString)}
-  (dataset-api/as-json (run-query-for-card card-id (:parameters (json/parse-string query keyword)))))
+  "Run the query associated with a Card, and return its results as JSON. Note that this expects the parameters as serialized JSON in the 'parameters' parameter"
+  [card-id parameters]
+  {parameters (s/maybe su/JSONString)}
+  (dataset-api/as-json (run-query-for-card card-id (json/parse-string parameters keyword))))
 
 
 (define-routes)
