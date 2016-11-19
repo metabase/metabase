@@ -40,6 +40,8 @@
                                net.sourceforge.nekohtml/nekohtml
                                ring/ring-core]]
                  [com.draines/postal "2.0.1"]                         ; SMTP library
+                 [com.google.apis/google-api-services-analytics       ; Google Analytics Java Client Library
+                  "v3-rev135-1.22.0"]
                  [com.google.apis/google-api-services-bigquery        ; Google BigQuery Java Client Library
                   "v2-rev324-1.22.0"]
                  [com.h2database/h2 "1.4.192"]                        ; embedded SQL database
@@ -57,14 +59,14 @@
                                com.sun.jmx/jmxri]]
                  [medley "0.8.3"]                                     ; lightweight lib of useful functions
                  [metabase/throttle "1.0.1"]                          ; Tools for throttling access to API endpoints and other code pathways
-                 [mysql/mysql-connector-java "5.1.39"]                ; MySQL JDBC driver (don't upgrade to 6.0+ yet -- that's Java 8 only)
+                 [mysql/mysql-connector-java "5.1.39"]                ;  !!! Don't upgrade to 6.0+ yet -- that's Java 8 only !!!
                  [net.sf.cssbox/cssbox "4.12"                         ; HTML / CSS rendering
                   :exclusions [org.slf4j/slf4j-api]]
                  [net.sourceforge.jtds/jtds "1.3.1"]                  ; Open Source SQL Server driver
                  [org.liquibase/liquibase-core "3.5.2"]               ; migration management (Java lib)
                  [org.slf4j/slf4j-log4j12 "1.7.21"]                   ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
                  [org.yaml/snakeyaml "1.17"]                          ; YAML parser (required by liquibase)
-                 [org.xerial/sqlite-jdbc "3.14.2.1"]                  ; SQLite driver
+                 [org.xerial/sqlite-jdbc "3.8.11.2"]                  ; SQLite driver !!! DO NOT UPGRADE THIS UNTIL UPSTREAM BUG IS FIXED -- SEE https://github.com/metabase/metabase/issues/3753 !!!
                  [postgresql "9.3-1102.jdbc41"]                       ; Postgres driver
                  [io.crate/crate-jdbc "1.13.1"]                       ; Crate JDBC driver
                  [io.crate/crate-client "0.56.0"]                     ; Crate Java client (used by Crate JDBC)

@@ -75,7 +75,7 @@
   "Send a test email. You must be a superuser to do this."
   []
   (check-superuser)
-  (let [response (email/send-message
+  (let [response (email/send-message!
                    :subject      "Metabase Test Email"
                    :recipients   [(:email @*current-user*)]
                    :message-type :text

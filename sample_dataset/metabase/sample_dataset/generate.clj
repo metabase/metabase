@@ -370,9 +370,8 @@
    (io/delete-file (str filename ".mv.db") :silently)
    (io/delete-file (str filename ".trace.db") :silently)
    (println "Creating db...")
-   (let [db (dbspec/h2 {:db         (format "file:%s;UNDO_LOG=0;CACHE_SIZE=131072;QUERY_CACHE_SIZE=128;COMPRESS=TRUE;MULTI_THREADED=TRUE;MVCC=TRUE;DEFRAG_ALWAYS=TRUE;MAX_COMPACT_TIME=5000;ANALYZE_AUTO=100"
-                                            filename)
-                        :make-pool? false})]
+   (let [db (dbspec/h2 {:db (format "file:%s;UNDO_LOG=0;CACHE_SIZE=131072;QUERY_CACHE_SIZE=128;COMPRESS=TRUE;MULTI_THREADED=TRUE;MVCC=TRUE;DEFRAG_ALWAYS=TRUE;MAX_COMPACT_TIME=5000;ANALYZE_AUTO=100"
+                                    filename)})]
      (doseq [[table-name field->type] (seq tables)]
        (jdbc/execute! db [(create-table-sql table-name field->type)]))
 

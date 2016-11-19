@@ -12,6 +12,16 @@ function isEmpty(str) {
     return (!str || 0 === str.length);
 }
 
+const AUTH_URL_PREFIXES = {
+    bigquery: 'https://accounts.google.com/o/oauth2/auth?redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&scope=https://www.googleapis.com/auth/bigquery&client_id=',
+    googleanalytics: 'https://accounts.google.com/o/oauth2/auth?access_type=offline&redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&scope=https://www.googleapis.com/auth/analytics.readonly&client_id=',
+};
+
+const CREDENTIALS_URL_PREFIXES = {
+    bigquery: 'https://console.developers.google.com/apis/credentials/oauthclient?project=',
+    googleanalytics: 'https://console.developers.google.com/apis/credentials/oauthclient?project=',
+};
+
 /**
  * This is a form for capturing database details for a given `engine` supplied via props.
  * The intention is to encapsulate the entire <form> with standard MB form styling and allow a callback
@@ -153,14 +163,12 @@ export default class DatabaseDetailsForm extends Component {
                     </div>
                 </FormField>
             );
-        } else if (engine === 'bigquery' && field.name === 'client-id') {
-            const CREDENTIALS_URL_PREFIX = 'https://console.developers.google.com/apis/credentials/oauthclient?project=';
-
+        } else if (field.name === 'client-id' && CREDENTIALS_URL_PREFIXES[engine]) {
             let { details } = this.state;
             let projectID = details && details['project-id'];
             var credentialsURLLink;
-            if (projectID) {
-                let credentialsURL = CREDENTIALS_URL_PREFIX + projectID;
+            // if (projectID) {
+                let credentialsURL = CREDENTIALS_URL_PREFIXES[engine] + (projectID || "");
                 credentialsURLLink = (
                     <div className="flex align-center Form-offset">
                         <div className="Grid-cell--top">
@@ -168,7 +176,7 @@ export default class DatabaseDetailsForm extends Component {
                             Choose "Other" as the application type. Name it whatever you'd like.
                         </div>
                     </div>);
-            }
+            // }
 
             return (
                 <FormField key='client-id' field-name='client-id'>
@@ -177,14 +185,12 @@ export default class DatabaseDetailsForm extends Component {
                     {this.renderFieldInput(field, fieldIndex)}
                 </FormField>
             );
-        } else if (engine === 'bigquery' && field.name === 'auth-code') {
-            const AUTH_URL_PREFIX = 'https://accounts.google.com/o/oauth2/auth?redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&scope=https://www.googleapis.com/auth/bigquery&client_id=';
-
+        } else if (field.name === 'auth-code' && AUTH_URL_PREFIXES[engine]) {
             let { details } = this.state;
             let clientID = details && details['client-id'];
             var authURLLink;
             if (clientID) {
-                let authURL = AUTH_URL_PREFIX + clientID;
+                let authURL = AUTH_URL_PREFIXES[engine] + clientID;
                 authURLLink = (
                     <div className="flex align-center Form-offset">
                         <div className="Grid-cell--top">

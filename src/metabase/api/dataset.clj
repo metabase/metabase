@@ -69,8 +69,9 @@
   "Execute a query and download the result data as a CSV file."
   [query]
   {query su/JSONString}
-  (read-check Database (:database query))
-  (as-csv (qp/dataset-query (json/parse-string query keyword) {:executed-by *current-user-id*})))
+  (let [query (json/parse-string query keyword)]
+    (read-check Database (:database query))
+    (as-csv (qp/dataset-query query {:executed-by *current-user-id*}))))
 
 
 (define-routes)
