@@ -5,6 +5,7 @@ import Humanize from "humanize";
 import React from "react";
 
 import ExternalLink from "metabase/components/ExternalLink.jsx";
+import EntityValue from "metabase/containers/EntityValue.jsx";
 
 import { isDate, isNumber, isCoordinate } from "metabase/lib/schema_metadata";
 import { isa, TYPE } from "metabase/lib/types";
@@ -124,6 +125,14 @@ export function formatUrl(value, { jsx } = {}) {
     }
 }
 
+export function formatEntity(value, { jsx, column, ...rest } = {}) {
+    if (jsx) {
+        return <EntityValue value={value} column={column} {...rest} />;
+    } else {
+        return value;
+    }
+}
+
 export function formatValue(value, options = {}) {
     let column = options.column;
     options = {
@@ -133,6 +142,8 @@ export function formatValue(value, options = {}) {
     };
     if (value == undefined) {
         return null;
+    } else if (column && (isa(column.special_type, TYPE.PK) || isa(column.special_type, TYPE.FK))) {
+        return formatEntity(value, options);
     } else if (column && isa(column.special_type, TYPE.URL)) {
         return formatUrl(value, options);
     } else if (column && isa(column.special_type, TYPE.Email)) {
