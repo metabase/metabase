@@ -792,7 +792,8 @@ export const runQuery = createThunkAction(RUN_QUERY, (card, shouldUpdateUrl = tr
 
         // use the CardApi.query if the query is saved and not dirty so users with view but not create permissions can see it.
         if (card && card.id && !isDirty(state)) {
-            CardApi.query({ cardId: card.id, parameters: card.dataset_query.parameters }, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
+            let bypassCache = !cardIsDirty; // try to fetch from cache if card is dirty
+            CardApi.query({ cardId: card.id, bypassCache: bypassCache, parameters: card.dataset_query.parameters }, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
         } else {
             MetabaseApi.dataset(card.dataset_query, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
         }
