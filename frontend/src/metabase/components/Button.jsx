@@ -32,4 +32,21 @@ const Button = ({ className, icon, children, ...props }) => {
     );
 }
 
+Button.propTypes = {
+    className: PropTypes.string,
+    icon: PropTypes.string,
+    children: PropTypes.any,
+
+    small: PropTypes.bool,
+    medium: PropTypes.bool,
+    large: PropTypes.bool,
+
+    primary: PropTypes.bool,
+    warning: PropTypes.bool,
+    cancel: PropTypes.bool,
+    purple: PropTypes.bool,
+
+    borderless: PropTypes.bool
+};
+
 export default Button;
