@@ -3,39 +3,41 @@ import ReactDOM from "react-dom";
 
 import Button from "metabase/components/Button.jsx";
 
-export default class DownloadButton extends Component {
-    constructor(props, context) {
-        super(props, context);
-        this.state = {};
-    }
+const DownloadButton = ({ className, style, children, method, url, params, extensions, ...props }) =>
+    <form className={className} style={style} method={method} action={url}>
+        { Object.entries(params).map(([name, value]) =>
+            <input key={name} type="hidden" name={name} value={value} />
+        )}
+        <Button
+            onClick={(e) => {
+                if (window.OSX) {
+                    // prevent form from being submitted normally
+                    e.preventDefault();
+                    // download using the API provided by the OS X app
+                    window.OSX.download(method, url, params, extensions);
+                }
+            }}
+            {...props}
+        >
+            {children}
+        </Button>
+    </form>
 
-    static propTypes = {
-        url: PropTypes.string.isRequired,
-        method: PropTypes.string,
-        params: PropTypes.object,
-        icon: PropTypes.string,
-    };
+DownloadButton.propTypes = {
+    className: PropTypes.string,
+    style: PropTypes.object,
+    url: PropTypes.string.isRequired,
+    method: PropTypes.string,
+    params: PropTypes.object,
+    icon: PropTypes.string,
+    extensions: PropTypes.array,
+};
 
-    static defaultProps = {
-        icon: "downarrow",
-        method: "POST",
-        params: {}
-    };
+DownloadButton.defaultProps = {
+    icon: "downarrow",
+    method: "POST",
+    params: {},
+    extensions: []
+};
 
-    render() {
-        const { children, url, method, params, ...props } = this.props;
-        return (
-            <form ref={(c) => this._form = c} method={method} action={url}>
-                { Object.entries(params).map(([name, value]) =>
-                    <input key={name} type="hidden" name={name} value={value} />
-                )}
-                <Button
-                    onClick={() => ReactDOM.findDOMNode(this._form).submit()}
-                    {...props}
-                >
-                    {children}
-                </Button>
-            </form>
-        );
-    }
-}
+export default DownloadButton;

@@ -41,6 +41,7 @@ export default class DownloadWidget extends Component {
                                 params={{
                                     query: JSON.stringify(datasetQuery)
                                 }}
+                                extensions={[type]}
                             >
                                 {type}
                             </DownloadButton>
