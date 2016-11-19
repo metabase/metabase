@@ -38,9 +38,10 @@ export default class DownloadWidget extends Component {
                                     `/api/card/${card.id}/query/${type}`:
                                     `/api/dataset/${type}`
                                 }
-                                params={{
-                                    query: JSON.stringify(datasetQuery)
-                                }}
+                                params={card.id != null ?
+                                    { parameters: JSON.stringify(datasetQuery.parameters) } :
+                                    { query: JSON.stringify(datasetQuery) }
+                                }
                                 extensions={[type]}
                             >
                                 {type}
