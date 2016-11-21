@@ -18,7 +18,7 @@ export default class SpecificDatePicker extends Component {
         super();
 
         this.state = {
-            showCalendar: false
+            showCalendar: true
         }
 
         this.onChange = this.onChange.bind(this);
