@@ -42,19 +42,20 @@ export default class RelativeDatePicker extends Component {
                     }}
                     togglePicker={() => this.setState({ showUnits: !this.state.showUnits})}
                     intervals={intervals}
+                    formatter={formatter}
                 />
             </div>
         );
     }
 }
 
-export const UnitPicker = ({ open, value, onChange, togglePicker, intervals }) =>
+export const UnitPicker = ({ open, value, onChange, togglePicker, intervals, formatter }) =>
    <div>
        <div
            onClick={() => togglePicker()}
            className="flex align-center cursor-pointer text-purple-hover mb2"
        >
-           <h3>{pluralize(intervals || 1, titleCase(value))}</h3>
+           <h3>{pluralize(formatter(intervals) || 1, titleCase(value))}</h3>
            <Icon
                name='chevrondown'
                width="12"
@@ -79,7 +80,7 @@ export const UnitPicker = ({ open, value, onChange, togglePicker, intervals }) =
                    onClick={ () => onChange(unit.toLowerCase()) }
                >
                    <h4 className="List-item-title">
-                       {pluralize(intervals || 1, unit)}
+                       {pluralize(formatter(intervals) || 1, unit)}
                    </h4>
                </li>
              )

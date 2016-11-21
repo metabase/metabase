@@ -41,6 +41,7 @@ class CurrentPicker extends Component {
                         this.setState({ showUnits: false });
                     }}
                     togglePicker={() => this.setState({ showUnits: !this.state.showUnits })}
+                    formatter={(val) => val }
                 />
             </div>
         )
