@@ -1,5 +1,6 @@
 import React, { Component, PropTypes } from "react";
 import { pluralize, titleCase } from "humanize-plus";
+import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 import NumericInput from "./NumericInput.jsx";
@@ -25,7 +26,7 @@ export default class RelativeDatePicker extends Component {
         return (
             <div className="px2">
                 <NumericInput
-                    className="input h3 mb2"
+                    className="input h3 mb2 border-purple"
                     value={typeof intervals === "number" ? Math.abs(intervals) : intervals}
                     onChange={(value) =>
                         onFilterChange([op, field, formatter(value), unit])
@@ -54,19 +55,32 @@ export const UnitPicker = ({ open, value, onChange, togglePicker, intervals }) =
            className="flex align-center cursor-pointer text-purple-hover mb2"
        >
            <h3>{pluralize(intervals || 1, titleCase(value))}</h3>
-           <Icon name='chevrondown' />
+           <Icon
+               name='chevrondown'
+               width="12"
+               height="12"
+               className="ml1"
+           />
         </div>
-        <ol style={{
-            maxHeight: open ? 'none': 0,
-            overflow: 'hidden'
-        }}>
+        <ol
+            className="text-purple"
+            style={{
+                maxHeight: open ? 'none': 0,
+                overflow: 'hidden'
+            }}
+        >
            { ['Minute', 'Hour', 'Day', 'Month', 'Year',].map((unit, index) =>
                <li
-                   className="cursor-pointer mb1 text-bold text-purple-hover"
+                   className={cx(
+                       'List-item cursor-pointer p1',
+                       { 'List-item--selected': unit === value }
+                   )}
                    key={index}
                    onClick={ () => onChange(unit.toLowerCase()) }
                >
-                   {pluralize(intervals || 1, unit)}
+                   <h4 className="List-item-title">
+                       {pluralize(intervals || 1, unit)}
+                   </h4>
                </li>
              )
            }

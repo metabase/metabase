@@ -129,7 +129,7 @@ export default class DatePicker extends Component {
         const Widget = operator && operator.widget;
 
         return (
-            <div className="mt2">
+            <div className="mt1 pt2 border-top">
                 <OperatorSelector
                     operator={operator && operator.name}
                     operators={OPERATORS}
