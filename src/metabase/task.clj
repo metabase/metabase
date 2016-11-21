@@ -20,7 +20,7 @@
   []
   (doseq [ns-symb @u/metabase-namespace-symbols
           :when   (.startsWith (name ns-symb) "metabase.task.")]
-    (log/info "Loading tasks namespace:" (u/format-color 'blue ns-symb) "📆")
+    (log/info "Loading tasks namespace:" (u/format-color 'blue ns-symb) (u/emoji "📆"))
     (require ns-symb)
     ;; look for `task-init` function in the namespace and call it if it exists
     (when-let [init-fn (ns-resolve ns-symb 'task-init)]
