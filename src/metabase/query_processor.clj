@@ -2,6 +2,7 @@
   "Preprocessor that does simple transformations to all incoming queries, simplifing the driver-specific implementations."
   (:require [clojure.walk :as walk]
             [clojure.tools.logging :as log]
+            [cheshire.core :refer :all]
             [medley.core :as m]
             (schema [core :as s]
                     utils)
@@ -20,6 +21,7 @@
                                       [parameters :as params]
                                       [permissions :as perms]
                                       [resolve :as resolve])
+            [metabase.card-cache :as card-cache ]
             [metabase.util :as u])
   (:import (schema.utils NamedError ValidationError)))
 
@@ -503,7 +505,6 @@
         substitute-parameters
         expand-macros))
 
-
 ;;; +----------------------------------------------------------------------------------------------------+
 ;;; |                                     DATASET-QUERY PUBLIC API                                       |
 ;;; +----------------------------------------------------------------------------------------------------+
@@ -516,6 +517,11 @@
   (when (= :failed (:status query-result))
     (log/error (u/pprint-to-str 'red query-result))
     (throw (Exception. (str (get query-result :error "general error"))))))
+
+(defn- check-cache-params
+  "Validate if cache related params are valid"
+  [card bypass-cache]
+  (or bypass-cache (some? card)))
 
 (defn dataset-query
   "Process and run a json based dataset query and return results.
@@ -530,11 +536,12 @@
 
   Possible caller-options include:
 
-    :executed-by [int]  (User ID of caller)
-    :card-id     [int]  (ID of Card associated with this execution)"
+    :executed-by    [int]     (User ID of caller)
+    :card-id        [int]     (ID of Card associated with this execution)
+    :bypass-cache   [boolean] (flag to indicate if cache should be bypassed)"
   {:arglists '([query options])}
-  [query {:keys [executed-by card-id]}]
-  {:pre [(integer? executed-by) (u/maybe? integer? card-id)]}
+  [query {:keys [executed-by card-id card bypass-cache] :or {bypass-cache true card nil}}]
+  {:pre [(integer? executed-by) (u/maybe? integer? card-id) (check-cache-params card-id bypass-cache)]}
   (let [query-uuid      (str (java.util.UUID/randomUUID))
         query-hash      (hash query)
         query-execution {:uuid              query-uuid
@@ -559,9 +566,20 @@
                                             :query-hash  query-hash
                                             :query-type  (if (mbql-query? query) "MBQL" "native")})]
     (try
-      (let [result (process-query query)]
+      (let [cache-config (if (some? card)
+                           (card-cache/get-cache-config card)
+                           card-cache/no-cache)
+            from-cache (when-not (boolean bypass-cache)
+                         (card-cache/fetch-from-cache cache-config card-id query-hash))
+            result (if (some? from-cache)
+                     from-cache
+                     (process-query query))]
         (assert-valid-query-result result)
-        (query-complete query-execution result))
+        (when (nil? from-cache)
+          (query-complete query-execution result)
+          (when (:use-cache? cache-config)
+            (card-cache/update-cache! cache-config card-id query-hash result)))
+        result)
       (catch Throwable e
         (log/error (u/format-color 'red "Query failure: %s\n%s" (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e))))
         (query-fail query-execution (.getMessage e))))))

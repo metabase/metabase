@@ -43,6 +43,10 @@ export const SlackApi = {
     updateSettings:              PUT("/api/slack/settings"),
 };
 
+export const CardCacheApi = {
+    updateSettings:              PUT("/api/card_cache/settings"),
+};
+
 export const MetabaseApi = {
     db_list:                     GET("/api/database"),
     db_list_with_tables:         GET("/api/database?include_tables=true"),

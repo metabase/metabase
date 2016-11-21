@@ -7,13 +7,17 @@ import SettingPassword from "./widgets/SettingPassword.jsx";
 import SettingRadio from "./widgets/SettingRadio.jsx";
 import SettingToggle from "./widgets/SettingToggle.jsx";
 import SettingSelect from "./widgets/SettingSelect.jsx";
+import SettingNumber from "./widgets/SettingNumber.jsx";
+import SettingDuration from "./widgets/SettingDuration.jsx";
 
 const SETTING_WIDGET_MAP = {
     "string":   SettingInput,
     "password": SettingPassword,
     "select":   SettingSelect,
     "radio":    SettingRadio,
-    "boolean":  SettingToggle
+    "boolean":  SettingToggle,
+    "number":   SettingNumber,
+    "duration": SettingDuration
 };
 
 export default class SettingsSetting extends Component {

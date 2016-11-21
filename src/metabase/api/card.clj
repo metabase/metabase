@@ -257,32 +257,33 @@
 
 ;;; ------------------------------------------------------------ Running a Query ------------------------------------------------------------
 
-(defn- run-query-for-card [card-id parameters]
+(defn- run-query-for-card [card-id bypass-cache parameters]
   {:pre [(u/maybe? sequential? parameters)]}
   (let [card    (read-check Card card-id)
         query   (assoc (:dataset_query card)
                   :parameters  parameters
                   :constraints dataset-api/query-constraints)
-        options {:executed-by *current-user-id*
-                 :card-id     card-id}]
+        options {:executed-by   *current-user-id*
+                 :card-id       card-id
+                 :card          card
+                 :bypass-cache  bypass-cache}]
     (qp/dataset-query query options)))
 
 (defendpoint POST "/:card-id/query"
   "Run the query associated with a Card."
-  [card-id :as {{:keys [parameters]} :body}]
-  (run-query-for-card card-id parameters))
+  [card-id :as {{:keys [parameters bypassCache] :or {bypassCache false}} :body}]
+  (run-query-for-card card-id bypassCache parameters))
 
 (defendpoint POST "/:card-id/query/csv"
   "Run the query associated with a Card, and return its results as CSV."
   [card-id :as {{:keys [parameters]} :body}]
-  (dataset-api/as-csv (run-query-for-card card-id parameters)))
+  (dataset-api/as-csv (run-query-for-card card-id true parameters)))
 
 (defendpoint GET "/:card-id/json"
   "Fetch the results of a Card as JSON."
   [card-id]
-  (let [{{:keys [columns rows]} :data} (run-query-for-card card-id nil)]
+  (let [{{:keys [columns rows]} :data} (run-query-for-card card-id true nil)]
     (for [row rows]
       (zipmap columns row))))
-
 
 (define-routes)

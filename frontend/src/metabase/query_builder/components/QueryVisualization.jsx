@@ -97,6 +97,7 @@ export default class QueryVisualization extends Component {
                 </div>
                 <div className="absolute right z4 flex align-center">
                     {!this.queryIsDirty() && this.renderCount()}
+                    {this.renderLastExecution()}
                     {this.renderDownloadButton()}
                 </div>
             </div>
@@ -129,6 +130,32 @@ export default class QueryVisualization extends Component {
                 </div>
             );
         }
+    }
+
+    renderLastExecution() {
+        const { result } = this.props;
+
+        if (!result) return null;
+
+        let lastUpdateDate;
+
+        if (result.from_cache && result.cache_last_update && typeof(result.cache_last_update) === "string" ){
+            lastUpdateDate = new Date(Date.parse(result.cache_last_update));
+        } else {
+            lastUpdateDate = new Date();
+        }
+
+        let message = `${result.from_cache ? '⚡ ': ''}Last updated at ${lastUpdateDate}`;
+
+        let style = {
+            opacity : 0.7,
+            fontFamily: "Lato-Regular",
+            fontSize: "0.9em",
+            color: "#959595",
+            marginLeft: "5px"
+        };
+
+        return <div style={style}>{message}</div>;
     }
 
     onDownloadCSV() {

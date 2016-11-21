@@ -11,6 +11,7 @@ import SettingsSlackForm from "../components/SettingsSlackForm.jsx";
 import SettingsSetupList from "../components/SettingsSetupList.jsx";
 import SettingsUpdatesForm from "../components/SettingsUpdatesForm.jsx";
 import SettingsSingleSignOnForm from "../components/SettingsSingleSignOnForm.jsx";
+import SettingsCacheForm from "../components/SettingsCacheForm.jsx";
 
 import _ from "underscore";
 import cx from 'classnames';
@@ -50,6 +51,7 @@ export default class SettingsEditorApp extends Component {
         updateSetting: PropTypes.func.isRequired,
         updateEmailSettings: PropTypes.func.isRequired,
         updateSlackSettings: PropTypes.func.isRequired,
+        updateCacheSettings: PropTypes.func.isRequired,
         sendTestEmail: PropTypes.func.isRequired
     };
 
@@ -72,6 +74,7 @@ export default class SettingsEditorApp extends Component {
     }
 
     renderSettingsPane() {
+
         if (!this.props.activeSection) return null;
 
         let section = this.props.activeSection; // this.props.sections[this.state.currentSection];
@@ -112,6 +115,13 @@ export default class SettingsEditorApp extends Component {
                 <SettingsSingleSignOnForm
                     elements={section.settings}
                     updateSetting={this.updateSetting}
+                />
+            );
+        } else if (section.name === "Cache") {
+            return (
+                <SettingsCacheForm
+                    elements={section.settings}
+                    updateCacheSettings={this.props.updateCacheSettings}
                 />
             );
         } else {

@@ -1,7 +1,7 @@
 
 import { handleActions, combineReducers, createThunkAction } from "metabase/lib/redux";
 
-import { SettingsApi, EmailApi, SlackApi } from "metabase/services";
+import { SettingsApi, EmailApi, SlackApi, CardCacheApi } from "metabase/services";
 
 import { refreshSiteSettings } from "metabase/redux/settings";
 
@@ -84,6 +84,20 @@ export const updateSlackSettings = createThunkAction("UPDATE_SLACK_SETTINGS", fu
     };
 });
 
+// updateCacheSettings
+export const updateCacheSettings = createThunkAction("UPDATE_CACHE_SETTINGS", function(settings) {
+    return async function(dispatch, getState) {
+        try {
+            await CardCacheApi.updateSettings(settings);
+            await dispatch(refreshSiteSettings());
+            return await loadSettings();
+        } catch(error) {
+            console.log("error updating slack settings", settings, error);
+            throw error;
+        }
+    };
+});
+
 export const reloadSettings = createThunkAction("RELOAD_SETTINGS", function() {
     return async function(dispatch, getState) {
         await dispatch(refreshSiteSettings());
@@ -98,6 +112,7 @@ const settings = handleActions({
     ["UPDATE_SETTING"]: { next: (state, { payload }) => payload },
     ["UPDATE_EMAIL_SETTINGS"]: { next: (state, { payload }) => payload },
     ["UPDATE_SLACK_SETTINGS"]: { next: (state, { payload }) => payload },
+    ["UPDATE_CACHE_SETTINGS"]: { next: (state, { payload }) => payload },
     ["RELOAD_SETTINGS"]: { next: (state, { payload }) => payload }
 }, []);
 
