@@ -13,6 +13,7 @@ const SingleDatePicker = ({ filter: [op, field, value], onFilterChange }) =>
 const MultiDatePicker = ({ filter: [op, field, startValue, endValue], onFilterChange }) =>
     <div className="flex mx2">
         <SpecificDatePicker value={startValue} onChange={(value) => onFilterChange([op, field, value, endValue])} />
+        <span className="mx2 mt2">&ndash;</span>
         <SpecificDatePicker value={endValue} onChange={(value) => onFilterChange([op, field, startValue, value])} />
     </div>
 
@@ -27,6 +28,7 @@ class CurrentPicker extends Component {
         super();
         this.state = { showUnits: false };
     }
+
     render() {
         const { filter: [operator, field, intervals, unit], onFilterChange } = this.props
         return (
