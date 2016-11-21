@@ -5,8 +5,6 @@ import _ from "underscore";
 import { getTemplateTags } from "metabase/meta/Card";
 
 import { isCardDirty, isCardRunnable } from "metabase/lib/card";
-import * as DataGrid from "metabase/lib/data_grid";
-import Query from "metabase/lib/query";
 import { parseFieldTarget } from "metabase/lib/query_time";
 import { isPK } from "metabase/lib/types";
 import { applyParameters } from "metabase/meta/Card";
@@ -132,18 +130,8 @@ export const isObjectDetail = createSelector(
 );
 
 export const queryResult = createSelector(
-	[state => state.qb.queryResult, isObjectDetail],
-	(queryResult, isObjectDetail) => {
-		// if we are display bare rows, filter out columns with visibility_type = details-only
-        if (queryResult && queryResult.json_query && !isObjectDetail &&
-        		Query.isStructured(queryResult.json_query) &&
-                Query.isBareRowsAggregation(queryResult.json_query.query)) {
-        	// TODO: mutability?
-            queryResult.data = DataGrid.filterOnPreviewDisplay(queryResult.data);
-        }
-
-        return queryResult;
-	}
+	[state => state.qb.queryResult],
+	(queryResult) => queryResult
 );
 
 export const getImplicitParameters = createSelector(
@@ -172,6 +160,6 @@ export const getFullDatasetQuery = createSelector(
 )
 
 export const getIsRunnable = createSelector(
-	[card],
-	(card) => isCardRunnable(card)
+	[card, tableMetadata],
+	(card, tableMetadata) => isCardRunnable(card, tableMetadata)
 )

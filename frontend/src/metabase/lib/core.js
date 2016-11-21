@@ -36,6 +36,10 @@ export const field_special_types = [{
     'name': 'Description',
     'section': 'Common'
 }, {
+    'id': TYPE.Email,
+    'name': 'Email',
+    'section': 'Common'
+}, {
     'id': TYPE.ImageURL,
     'name': 'Image URL',
     'section': 'Common'

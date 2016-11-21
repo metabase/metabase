@@ -45,7 +45,7 @@ When you select the Map visualization setting, Metabase will automatically try a
 
 * **United States Map** — Creating a map of the United States from your data requires your results to contain a column field with states. This lets you do things like visualize the count of your users broken out by state.
 * **Country Map** — To visualize your results in the format of a map of the world broken out by country, your result must contain a field with countries.
-* **Pin Map** — If your table contains a latitude and longitude field, Metabase will try to display it as a pin map of the world. This will put one pin on the map for each row in your table, based on the latitude and longitude fields. *Note: this map option requires a [Google Maps API key](https://developers.google.com/maps/documentation/javascript/get-api-key).*
+* **Pin Map** — If your table contains a latitude and longitude field, Metabase will try to display it as a pin map of the world. This will put one pin on the map for each row in your table, based on the latitude and longitude fields.
 
 When you open up the Map options, you can manually switch between a region map (i.e., United States or world) and a pin map. (And don't worry — a flexible way to add custom maps of other countries and regions will be coming soon.) If you're using a region map, you can also choose which field to use as the measurement, and which to use as the region (i.e. State or Country).
 

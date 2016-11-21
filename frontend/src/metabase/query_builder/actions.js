@@ -16,10 +16,11 @@ import { createQuery } from "metabase/lib/query";
 import { loadTableAndForeignKeys } from "metabase/lib/table";
 import { isPK, isFK } from "metabase/lib/types";
 import Utils from "metabase/lib/utils";
+import { getEngineNativeType, formatJsonQuery } from "metabase/lib/engine";
 import { defer } from "metabase/lib/promise";
 import { applyParameters } from "metabase/meta/Card";
 
-import { getParameters, getNativeDatabases } from "./selectors";
+import { isDirty, getParameters, getNativeDatabases } from "./selectors";
 
 import { MetabaseApi, CardApi, UserApi } from "metabase/services";
 
@@ -91,9 +92,16 @@ export const updateUrl = createThunkAction(UPDATE_URL, (card, isDirty = false, r
     }
 );
 
+export const RESET_QB = "metabase/qb/RESET_QB";
+export const resetQB = createAction(RESET_QB);
+
 export const INITIALIZE_QB = "INITIALIZE_QB";
 export const initializeQB = createThunkAction(INITIALIZE_QB, (location, params) => {
     return async (dispatch, getState) => {
+        // do this immediately to ensure old state is cleared before the user sees it
+        dispatch(resetQB());
+        dispatch(cancelQuery());
+
         const { currentUser } = getState();
 
         let card, databases, originalCard, uiControls = {};
@@ -340,18 +348,18 @@ export const setCardVisualization = createThunkAction(SET_CARD_VISUALIZATION, (d
     }
 });
 
-export const SET_CARD_VISUALIZATION_SETTING = "SET_CARD_VISUALIZATION_SETTING";
-export const setCardVisualizationSetting = createThunkAction(SET_CARD_VISUALIZATION_SETTING, (key, value) => {
+export const UPDATE_CARD_VISUALIZATION_SETTINGS = "UPDATE_CARD_VISUALIZATION_SETTINGS";
+export const updateCardVisualizationSettings = createThunkAction(UPDATE_CARD_VISUALIZATION_SETTINGS, (settings) => {
     return (dispatch, getState) => {
         const { qb: { card, uiControls } } = getState();
-        let updatedCard = updateVisualizationSettings(card, uiControls.isEditing, card.display, i.assocIn(card.visualization_settings, key, value));
+        let updatedCard = updateVisualizationSettings(card, uiControls.isEditing, card.display, { ...card.visualization_settings, ...settings });
         dispatch(updateUrl(updatedCard, true));
         return updatedCard;
     };
 });
 
-export const SET_CARD_VISUALIZATION_SETTINGS = "SET_CARD_VISUALIZATION_SETTINGS";
-export const setCardVisualizationSettings = createThunkAction(SET_CARD_VISUALIZATION_SETTINGS, (settings) => {
+export const REPLACE_ALL_CARD_VISUALIZATION_SETTINGS = "REPLACE_ALL_CARD_VISUALIZATION_SETTINGS";
+export const replaceAllCardVisualizationSettings = createThunkAction(REPLACE_ALL_CARD_VISUALIZATION_SETTINGS, (settings) => {
     return (dispatch, getState) => {
         const { qb: { card, uiControls } } = getState();
         let updatedCard = updateVisualizationSettings(card, uiControls.isEditing, card.display, settings);
@@ -386,10 +394,6 @@ export const setParameterValue = createAction(SET_PARAMETER_VALUE, (parameterId,
 export const NOTIFY_CARD_CREATED = "NOTIFY_CARD_CREATED";
 export const notifyCardCreatedFn = createThunkAction(NOTIFY_CARD_CREATED, (card) => {
     return (dispatch, getState) => {
-        dispatch(loadMetadataForCard(card));
-
-        // we do this to force the indication of the fact that the card should not be considered dirty when the url is updated
-        dispatch(runQuery(card, false));
         dispatch(updateUrl(card, false));
 
         MetabaseAnalytics.trackEvent("QueryBuilder", "Create Card", card.dataset_query.type);
@@ -401,10 +405,6 @@ export const notifyCardCreatedFn = createThunkAction(NOTIFY_CARD_CREATED, (card)
 export const NOTIFY_CARD_UPDATED = "NOTIFY_CARD_UPDATED";
 export const notifyCardUpdatedFn = createThunkAction("NOTIFY_CARD_UPDATED", (card) => {
     return (dispatch, getState) => {
-        dispatch(loadMetadataForCard(card));
-
-        // we do this to force the indication of the fact that the card should not be considered dirty when the url is updated
-        dispatch(runQuery(card, false));
         dispatch(updateUrl(card, false));
 
         MetabaseAnalytics.trackEvent("QueryBuilder", "Update Card", card.dataset_query.type);
@@ -569,8 +569,8 @@ export const setQueryMode = createThunkAction(SET_QUERY_MODE, (type) => {
             let nativeQuery = _.pick(queryResult.data.native_form, "query", "collection");
 
             // when the driver requires JSON we need to stringify it because it's been parsed already
-            if (_.contains(["mongo", "druid"], tableMetadata.db.engine)) {
-                nativeQuery.query = JSON.stringify(queryResult.data.native_form.query);
+            if (getEngineNativeType(tableMetadata.db.engine) === "json") {
+                nativeQuery.query = formatJsonQuery(queryResult.data.native_form.query, tableMetadata.db.engine);
             } else {
                 nativeQuery.query = formatSQL(nativeQuery.query);
             }
@@ -790,7 +790,8 @@ export const runQuery = createThunkAction(RUN_QUERY, (card, shouldUpdateUrl = tr
             dispatch(queryErrored(startTime, error));
         }
 
-        if (card && card.id) {
+        // use the CardApi.query if the query is saved and not dirty so users with view but not create permissions can see it.
+        if (card && card.id && !isDirty(state)) {
             CardApi.query({ cardId: card.id, parameters: card.dataset_query.parameters }, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
         } else {
             MetabaseApi.dataset(card.dataset_query, { cancelled: cancelQueryDeferred.promise }).then(onQuerySuccess, onQueryError);
@@ -882,7 +883,7 @@ export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnInde
 
             newCard.dataset_query.query.source_table = coldef.table_id;
             newCard.dataset_query.query.aggregation = ["rows"];
-            newCard.dataset_query.query.filter = ["AND", ["=", fieldRefForm, value]];
+            newCard.dataset_query.query.filter = ["AND", ["=", coldef.id, value]];
 
             // run it
             dispatch(setCardAndRun(newCard));
@@ -905,7 +906,7 @@ export const cellClicked = createThunkAction(CELL_CLICKED, (rowIndex, columnInde
             let dataset_query = JSON.parse(JSON.stringify(card.dataset_query));
             Query.addFilter(dataset_query.query);
 
-            if (coldef.unit) {
+            if (coldef.unit && coldef.unit != "default" && filter === "=") {
                 // this is someone using quick filters on a datetime value
                 let start = moment(value).format("YYYY-MM-DD");
                 let end = start;
@@ -1029,7 +1030,7 @@ export const setDisplayFn = setCardVisualization;
 export const onSetCardAttribute = setCardAttribute;
 export const reloadCardFn = reloadCard;
 export const onRestoreOriginalQuery = reloadCard;
-export const onUpdateVisualizationSetting = setCardVisualizationSetting;
-export const onUpdateVisualizationSettings = setCardVisualizationSettings;
+export const onUpdateVisualizationSettings = updateCardVisualizationSettings;
+export const onReplaceAllVisualizationSettings = replaceAllCardVisualizationSettings;
 export const cellClickedFn = cellClicked;
 export const followForeignKeyFn = followForeignKey;

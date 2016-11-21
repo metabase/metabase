@@ -19,8 +19,9 @@
                      InetSocketAddress
                      InetAddress)
            (java.sql SQLException Timestamp)
-           (java.util Calendar TimeZone)
+           (java.util Calendar Date TimeZone)
            javax.xml.bind.DatatypeConverter
+           org.joda.time.DateTime
            org.joda.time.format.DateTimeFormatter))
 
 ;; This is the very first log message that will get printed.
@@ -33,6 +34,12 @@
 
 (declare pprint-to-str)
 
+(defmacro ignore-exceptions
+  "Simple macro which wraps the given expression in a try/catch block and ignores the exception if caught."
+  {:style/indent 0}
+  [& body]
+  `(try ~@body (catch Throwable ~'_)))
+
 ;;; ### Protocols
 
 (defprotocol ITimestampCoercible
@@ -42,20 +49,22 @@
      Strings are parsed as ISO-8601."))
 
 (extend-protocol ITimestampCoercible
-  nil            (->Timestamp [_]
-                   nil)
-  Timestamp      (->Timestamp [this]
-                   this)
-  java.util.Date (->Timestamp [this]
-                   (Timestamp. (.getTime this)))
+  nil       (->Timestamp [_]
+              nil)
+  Timestamp (->Timestamp [this]
+              this)
+  Date       (->Timestamp [this]
+               (Timestamp. (.getTime this)))
   ;; Number is assumed to be a UNIX timezone in milliseconds (UTC)
-  Number         (->Timestamp [this]
-                   (Timestamp. this))
-  Calendar       (->Timestamp [this]
-                   (->Timestamp (.getTime this)))
+  Number    (->Timestamp [this]
+              (Timestamp. this))
+  Calendar  (->Timestamp [this]
+              (->Timestamp (.getTime this)))
   ;; Strings are expected to be in ISO-8601 format. `YYYY-MM-DD` strings *are* valid ISO-8601 dates.
-  String         (->Timestamp [this]
-                   (->Timestamp (DatatypeConverter/parseDateTime this))))
+  String    (->Timestamp [this]
+              (->Timestamp (DatatypeConverter/parseDateTime this)))
+  DateTime  (->Timestamp [this]
+              (->Timestamp (.getMillis this))))
 
 
 (defprotocol IDateTimeFormatterCoercible
@@ -72,6 +81,15 @@
                                                     (throw (Exception. (format "Invalid formatter name, must be one of:\n%s"
                                                                                (pprint-to-str (sort (keys time/formatters)))))))))
 
+(defn parse-date
+  "Parse a datetime string S with a custom DATE-FORMAT, which can be a format string,
+   clj-time formatter keyword, or anything else that can be coerced to a `DateTimeFormatter`.
+
+     (parse-date \"yyyyMMdd\" \"20160201\") -> #inst \"2016-02-01\"
+     (parse-date :date-time \"2016-02-01T00:00:00.000Z\") -> #inst \"2016-02-01\""
+  ^java.sql.Timestamp [date-format, ^String s]
+  (->Timestamp (time/parse (->DateTimeFormatter date-format) s)))
+
 
 (defprotocol ISO8601
   "Protocol for converting objects to ISO8601 formatted strings."
@@ -79,10 +97,11 @@
     "Coerce object to an ISO8601 date-time string such as \"2015-11-18T23:55:03.841Z\" with a given TIMEZONE."))
 
 (def ^:private ISO8601Formatter
-  ;; memoize this because the formatters are static.  they must be distinct per timezone though.
+  ;; memoize this because the formatters are static. They must be distinct per timezone though.
   (memoize (fn [timezone-id]
-             (if timezone-id (time/with-zone (time/formatters :date-time) (t/time-zone-for-id timezone-id))
-                             (time/formatters :date-time)))))
+             (if timezone-id
+               (time/with-zone (time/formatters :date-time) (t/time-zone-for-id timezone-id))
+               (time/formatters :date-time)))))
 
 (extend-protocol ISO8601
   nil                    (->iso-8601-datetime [_ _] nil)
@@ -112,7 +131,8 @@
    DATE is anything that can coerced to a `Timestamp` via `->Timestamp`, such as a `Date`, `Timestamp`,
    `Long` (ms since the epoch), or an ISO-8601 `String`. DATE defaults to the current moment in time.
 
-   DATE-FORMAT is anything that can be passed to `->DateTimeFormatter`, such as `String` (using [the usual date format args](http://docs.oracle.com/javase/7/docs/api/java/text/SimpleDateFormat.html)),
+   DATE-FORMAT is anything that can be passed to `->DateTimeFormatter`, such as `String`
+   (using [the usual date format args](http://docs.oracle.com/javase/7/docs/api/java/text/SimpleDateFormat.html)),
    `Keyword`, or `DateTimeFormatter`.
 
 
@@ -132,8 +152,8 @@
   "Is S a valid ISO 8601 date string?"
   [^String s]
   (boolean (when (string? s)
-             (try (->Timestamp s)
-                  (catch Throwable e)))))
+             (ignore-exceptions
+               (->Timestamp s)))))
 
 
 (defn ->Date
@@ -209,7 +229,7 @@
 
 
 (def ^:private ^:const date-trunc-units
-  #{:minute :hour :day :week :month :quarter})
+  #{:minute :hour :day :week :month :quarter :year})
 
 (defn- trunc-with-format [format-string date timezone-id]
   (->Timestamp (format-date (time/with-zone (time/formatter format-string)
@@ -248,7 +268,8 @@
      :day     (trunc-with-format "yyyy-MM-ddZZ" date timezone-id)
      :week    (trunc-with-format "yyyy-MM-ddZZ" (->first-day-of-week date timezone-id) timezone-id)
      :month   (trunc-with-format "yyyy-MM-01ZZ" date timezone-id)
-     :quarter (trunc-with-format (format-string-for-quarter date timezone-id) date timezone-id))))
+     :quarter (trunc-with-format (format-string-for-quarter date timezone-id) date timezone-id)
+     :year    (trunc-with-format "yyyy-01-01ZZ" date timezone-id))))
 
 
 (defn date-trunc-or-extract
@@ -337,13 +358,6 @@
   [pred? args & [default]]
   (if (pred? (first args)) [(first args) (next args)]
       [default args]))
-
-
-(defmacro ignore-exceptions
-  "Simple macro which wraps the given expression in a try/catch block and ignores the exception if caught."
-  {:style/indent 0}
-  [& body]
-  `(try ~@body (catch Throwable ~'_)))
 
 
 ;; TODO - rename to `email?`
@@ -444,6 +458,7 @@
   "Return the index of the first item in COLL where `(pred item)` is logically `true`.
 
      (first-index-satisfying keyword? ['a 'b :c 3 \"e\"]) -> 2"
+  {:style/indent 1}
   [pred coll]
   (loop [i 0, [item & more] coll]
     (cond

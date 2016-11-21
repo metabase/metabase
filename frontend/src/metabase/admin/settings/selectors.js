@@ -4,6 +4,8 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import { slugify } from "metabase/lib/formatting";
 
+import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget.jsx";
+
 const SECTIONS = [
     {
         name: "Setup",
@@ -47,11 +49,6 @@ const SECTIONS = [
                 key: "enable-advanced-humanization",
                 display_name: "Friendly Table and Field Names",
                 type: "boolean"
-            },
-            {
-                key: "google-maps-api-key",
-                display_name: "Google Maps API Key",
-                type: "string"
             }
         ]
     },
@@ -151,10 +148,20 @@ const SECTIONS = [
         ]
     },
     {
-        name: "Custom Maps",
+        name: "Maps",
         settings: [
             {
-                key: "custom-geojson"
+                key: "map-tile-server-url",
+                display_name: "Map tile server URL",
+                note: "Metabase uses OpenStreetMaps by default.",
+                type: "string"
+            },
+            {
+                key: "custom-geojson",
+                display_name: "Custom Maps",
+                description: "Add your own GeoJSON files to enable different region map visualizations",
+                widget: CustomGeoJSONWidget,
+                noHeader: true
             }
         ]
     }

@@ -79,8 +79,16 @@ var Query = {
         return dataset_query && dataset_query.type === "native";
     },
 
-    canRun(query) {
-        return query && query.source_table != undefined && Query.hasValidAggregation(query);
+    canRun(query, tableMetadata) {
+        if (!query || query.source_table == null || !Query.hasValidAggregation(query)) {
+            return false;
+        }
+        // check that the table supports this aggregation, if we have tableMetadata
+        let agg = query.aggregation && query.aggregation[0] || "rows";
+        if (!mbqlCompare(agg, "metric") && tableMetadata && !_.findWhere(tableMetadata.aggregation_options, { short: agg })) {
+            return false;
+        }
+        return true;
     },
 
     cleanQuery(query) {
@@ -196,9 +204,9 @@ var Query = {
     },
 
     canSortByAggregateField(query) {
-        var SORTABLE_AGGREGATION_TYPES = new Set(["avg", "count", "distinct", "stddev", "sum", "min", "max"]);
+        var SORTABLE_AGGREGATION_TYPES = new Set(["avg", "count", "distinct", "stddev", "sum", "min", "max", "metric"]);
 
-        return Query.hasValidBreakout(query) && SORTABLE_AGGREGATION_TYPES.has(query.aggregation[0]);
+        return Query.hasValidBreakout(query) && SORTABLE_AGGREGATION_TYPES.has(query.aggregation && query.aggregation[0].toLowerCase());
     },
 
     addDimension(query) {
@@ -564,6 +572,20 @@ var Query = {
         }
 
         console.warn("Unknown field type: ", field);
+    },
+
+    getFieldPath(fieldId, tableDef) {
+        let path = [];
+        while (fieldId != null) {
+            let field = Table.getField(tableDef, fieldId);
+            path.unshift(field);
+            fieldId = field && field.parent_id;
+        }
+        return path;
+    },
+
+    getFieldPathName(fieldId, tableDef) {
+        return Query.getFieldPath(fieldId, tableDef).map(f => f && f.display_name).join(": ")
     },
 
     getDatetimeUnit(field) {

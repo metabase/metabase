@@ -67,11 +67,11 @@
 
 (defn- query-without-aggregations-or-limits?
   "Is the given query an MBQL query without a `:limit`, `:aggregation`, or `:page` clause?"
-  [{{{ag-type :aggregation-type} :aggregation, :keys [limit page]} :query}]
+  [{{aggregations :aggregation, :keys [limit page]} :query}]
   (and (not limit)
        (not page)
-       (or (not ag-type)
-           (= ag-type :rows))))
+       (or (empty? aggregations)
+           (= (:aggregation-type (first aggregations)) :rows))))
 
 (defn- fail [query, ^Throwable e, & [additional-info]]
   (merge {:status         :failed
@@ -219,9 +219,9 @@
         (update results :rows (partial format-rows settings))))))
 
 
-(defn- should-add-implicit-fields? [{{:keys [fields breakout], {ag-type :aggregation-type} :aggregation} :query, :as query}]
+(defn- should-add-implicit-fields? [{{:keys [fields breakout], aggregations :aggregation} :query, :as query}]
   (and (mbql-query? query)
-       (not (or ag-type
+       (not (or (seq aggregations)
                 (seq breakout)
                 (seq fields)))))
 
@@ -277,119 +277,59 @@
 (defn- pre-add-implicit-breakout-order-by [qp] (comp qp add-implicit-breakout-order-by))
 
 
-(defn- pre-cumulative-sum
-  "Rewrite queries containing a cumulative sum (`cum_sum`) aggregation to simply fetch the values of the aggregate field instead.
-   (Cumulative sum is a special case; it is implemented in post-processing).
-   Return a pair of [`cumulative-sum-field?` `query`]."
-  [{{{ag-type :aggregation-type, ag-field :field} :aggregation, breakout-fields :breakout} :query, :as query}]
-  (let [cum-sum?                    (= ag-type :cumulative-sum)
-        cum-sum-with-breakout?      (and cum-sum?
-                                         (seq breakout-fields))
-        cum-sum-with-same-breakout? (and cum-sum-with-breakout?
-                                         (= (count breakout-fields) 1)
-                                         (= (first breakout-fields) ag-field))]
+;;; ------------------------------------------------------------ CUMULATIVE-SUM & CUMULATIVE-COUNT ------------------------------------------------------------
 
-    ;; Cumulative sum is only applicable if it has breakout fields
-    ;; For these, store the cumulative sum field under the key :cumulative-sum so we know which one to sum later
-    ;; Cumulative summing happens in post-processing
-    (cond
-      ;; If there's only one breakout field that is the same as the cum_sum field, re-write this as a "rows" aggregation
-      ;; to just fetch all the values of the field in question.
-      cum-sum-with-same-breakout? [ag-field (update query :query (fn [query]
-                                                                   (-> query
-                                                                       (dissoc :breakout :aggregation)
-                                                                       (assoc :fields [ag-field]))))]
+(defn- cumulative-aggregation-clause
+  "Does QUERY have any aggregations of AGGREGATION-TYPE?"
+  [aggregation-type {{aggregations :aggregation} :query, :as query}]
+  (when (mbql-query? query)
+    (some (fn [{ag-type :aggregation-type, :as ag}]
+            (when (= ag-type aggregation-type)
+              ag))
+          aggregations)))
 
-      ;; Otherwise if we're breaking out on different fields, rewrite the query as a "sum" aggregation
-      cum-sum-with-breakout? [ag-field (assoc-in query [:query :aggregation] {:aggregation-type :sum, :field ag-field})]
+(defn- pre-cumulative-aggregation
+  "Rewrite queries containing a cumulative aggregation (e.g. `:cumulative-count`) as a different 'basic' aggregation (e.g. `:count`).
+   This lets various drivers handle the aggregation normallly; we implement actual behavior here in post-processing."
+  [cumlative-ag-type basic-ag-type ag-field {{aggregations :aggregation, breakout-fields :breakout} :query, :as query}]
+  (update-in query [:query :aggregation] (fn [aggregations]
+                                           (for [{ag-type :aggregation-type, :as ag} aggregations]
+                                             (if-not (= ag-type cumlative-ag-type)
+                                               ag
+                                               {:aggregation-type basic-ag-type, :field ag-field})))))
 
-      ;; Cumulative sum without any breakout fields should just be treated the same way as "sum". Rewrite query as such
-      cum-sum? [false (assoc-in query [:query :aggregation] {:aggregation-type :sum, :field ag-field})]
-
-      ;; Otherwise if this isn't a cumulative sum query return it as-is
-      :else [false query])))
-
-
-(defn- post-cumulative-sum
-  "Cumulative sum the values of the aggregate `Field` in RESULTS."
-  [cum-sum-field {rows :rows, cols :cols, :as results}]
+(defn- post-cumulative-aggregation [basic-ag-type ag-field {rows :rows, cols :cols, :as results}]
   (let [ ;; Determine the index of the field we need to cumulative sum
-        cum-sum-field-index (u/prog1 (u/first-index-satisfying (fn [{:keys [name id]}]
-                                                                 (or (= name "sum")
-                                                                     (= id   (:field-id cum-sum-field))))
-                                                               cols)
-                              (assert (integer? <>)))
+        field-index (u/prog1 (u/first-index-satisfying (comp (partial = (name basic-ag-type)) :name)
+                               cols)
+                      (assert (integer? <>)))
         ;; Now make a sequence of cumulative sum values for each row
-        values              (reductions + (for [row rows]
-                                            (nth row cum-sum-field-index)))
+        values      (reductions + (for [row rows]
+                                    (nth row field-index)))
         ;; Update the values in each row
-        rows                (map (fn [row value]
-                                   (assoc (vec row) cum-sum-field-index value))
-                                 rows values)]
+        rows        (map (fn [row value]
+                           (assoc (vec row) field-index value))
+                         rows values)]
     (assoc results :rows rows)))
 
-
-(defn- cumulative-sum [qp]
-  (fn [query]
-    (if (mbql-query? query)
-      (let [[cumulative-sum-field query] (pre-cumulative-sum query)]
-        (cond->> (qp query)
-                 cumulative-sum-field (post-cumulative-sum cumulative-sum-field)))
-      ;; for non-MBQL queries we do nothing
-      (qp query))))
-
-
-(defn- pre-cumulative-count
-  "Rewrite queries containing a cumulative count (`cum_count`) aggregation as `count` aggregation queries instead.
-   (Cumulative count is a special case; it is implemented in post-processing).
-
-   Returns a pair like `[is-cumulative-count-query? query]`."
-  [{{{ag-type :aggregation-type} :aggregation, breakout-fields :breakout} :query, :as query}]
-  (let [cum-count?               (= ag-type :cumulative-count)
-        cum-count-with-breakout? (and cum-count?
-                                    (seq breakout-fields))]
-
-    ;; Cumulative count is only applicable if it has breakout field(s)
-    ;; Cumulative counting happens in post-processing
-    (cond
-      ;; If we have breakout field(s), rewrite the query as a "count" aggregation
-      cum-count-with-breakout? [true (assoc-in query [:query :aggregation] {:aggregation-type :count})]
-
-      ;; Cumulative count without any breakout fields should just be treated the same way as "count". Rewrite query as such
-      cum-count? [false (assoc-in query [:query :aggregation] {:aggregation-type :count})]
-
-      ;; Otherwise if this isn't a cumulative count query return it as-is
-      :else [false query])))
+(defn- cumulative-aggregation [cumulative-ag-type basic-ag-type qp]
+  (let [cumulative-ag-clause (partial cumulative-aggregation-clause cumulative-ag-type)
+        pre-cumulative-ag    (partial pre-cumulative-aggregation cumulative-ag-type basic-ag-type)
+        post-cumulative-ag   (partial post-cumulative-aggregation basic-ag-type)]
+    (fn [query]
+      (if-let [{ag-field :field} (cumulative-ag-clause query)]
+        (post-cumulative-ag ag-field (qp (pre-cumulative-ag ag-field query)))
+        (qp query)))))
 
 
-(defn- post-cumulative-count
-  "Cumulative count the values of the aggregate `Field` in RESULTS."
-  [{rows :rows, cols :cols, :as results}]
-  (let [ ;; Determine the index of the count field; this is what we need to cumulative count
-        cum-count-field-index (u/prog1 (u/first-index-satisfying (comp (partial = "count") :name)
-                                                                 cols)
-                                (assert (integer? <>)))
-        ;; Now make a sequence of cumulative count values for each row
-        values                 (reductions + (for [row rows]
-                                               (nth row cum-count-field-index)))
-        ;; Update the values in each row
-        rows                   (map (fn [row value]
-                                      (assoc (vec row) cum-count-field-index value))
-                                    rows values)]
-    (assoc results :rows rows)))
+(def ^:private ^{:arglists '([qp])} cumulative-sum
+  (partial cumulative-aggregation :cumulative-sum :sum))
+
+(def ^:private ^{:arglists '([qp])} cumulative-count
+  (partial cumulative-aggregation :cumulative-count :count))
 
 
-(defn- cumulative-count [qp]
-  (fn [query]
-    (if (mbql-query? query)
-      (let [[is-cumulative-count? query] (pre-cumulative-count query)
-            results                      (qp query)]
-        (if is-cumulative-count?
-          (post-cumulative-count results)
-          results))
-      ;; for non-MBQL queries we do nothing
-      (qp query))))
-
+;;; ------------------------------------------------------------ LIMIT, &C. ------------------------------------------------------------
 
 (defn- limit
   "Add an implicit `limit` clause to MBQL queries without any aggregations, and limit the maximum number of rows that can be returned in post-processing."
@@ -537,10 +477,10 @@
     (binding [*driver* driver]
       ((<<- wrap-catch-exceptions
             pre-add-settings
+            (driver/process-query-in-context driver)
             pre-expand-macros
             pre-substitute-parameters
             pre-expand-resolve
-            (driver/process-query-in-context driver)
             post-add-row-count-and-status
             post-format-rows
             pre-add-implicit-fields

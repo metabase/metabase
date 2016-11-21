@@ -315,11 +315,11 @@
 (tu/resolve-private-vars metabase.query-processor query-without-aggregations-or-limits?)
 
 ;; query-without-aggregations-or-limits?
-(expect false (query-without-aggregations-or-limits? {:query {:aggregation {:aggregation-type :count}}}))
-(expect true  (query-without-aggregations-or-limits? {:query {:aggregation {:aggregation-type :rows}}}))
-(expect false (query-without-aggregations-or-limits? {:query {:aggregation {:aggregation-type :count}
+(expect false (query-without-aggregations-or-limits? {:query {:aggregation [{:aggregation-type :count}]}}))
+(expect true  (query-without-aggregations-or-limits? {:query {:aggregation [{:aggregation-type :rows}]}}))
+(expect false (query-without-aggregations-or-limits? {:query {:aggregation [{:aggregation-type :count}]
                                                               :limit       10}}))
-(expect false (query-without-aggregations-or-limits? {:query {:aggregation {:aggregation-type :count}
+(expect false (query-without-aggregations-or-limits? {:query {:aggregation [{:aggregation-type :count}]
                                                               :page        1}}))
 
 
@@ -657,7 +657,7 @@
 ;;; "BREAKOUT" - MULTIPLE COLUMNS W/ EXPLICIT "ORDER_BY"
 ;; `breakout` should not implicitly order by any fields specified in `order_by`
 (qp-expect-with-all-engines
-    {:rows    [[15 2 1] [15 3 1] [15 7 1] [15 14 1] [15 16 1] [15 18 1] [15 22 1] [15 23 2] [15 24 1] [15 27 1]],
+    {:rows    [[15 2 1] [15 3 1] [15 7 1] [15 14 1] [15 16 1] [15 18 1] [15 22 1] [15 23 2] [15 24 1] [15 27 1]]
      :columns [(format-name "user_id")
                (format-name "venue_id")
                "count"]
@@ -685,28 +685,28 @@
 ;; Apply an arbitrary max-results on the query and ensure our results size is appropriately constrained
 (expect 1234
   (->> (((resolve 'metabase.query-processor/limit) identity) {:constraints {:max-results 1234}
-                                                              :query       {:aggregation {:aggregation-type :count}}
+                                                              :query       {:aggregation [{:aggregation-type :count}]}
                                                               :rows        (repeat [:ok])})
        :rows
        count))
 
 ;; Apply a max-results-bare-rows limit specifically on :rows type query
 (expect [46 46]
-  (let [res (((resolve 'metabase.query-processor/limit) identity) {:constraints {:max-results 46}
-                                                                   :query       {:aggregation {:aggregation-type :rows}}
-                                                                   :rows        (repeat [:ok])})]
-    [(->> res :rows count)
-     (->> res :query :limit)]))
+        (let [res (((resolve 'metabase.query-processor/limit) identity) {:constraints {:max-results 46}
+                                                                         :query       {:aggregation [{:aggregation-type :rows}]}
+                                                                         :rows        (repeat [:ok])})]
+          [(->> res :rows count)
+           (->> res :query :limit)]))
 
 
 ;;; ------------------------------------------------------------ CUMULATIVE SUM ------------------------------------------------------------
 
 ;;; cum_sum w/o breakout should be treated the same as sum
 (qp-expect-with-all-engines
-    {:rows    [[120]]
-     :columns ["sum"]
-     :cols    [(aggregate-col :sum (users-col :id))]
-     :native_form true}
+  {:rows        [[120]]
+   :columns     ["sum"]
+   :cols        [(aggregate-col :sum (users-col :id))]
+   :native_form true}
   (->> (run-query users
          (ql/aggregation (ql/cum-sum $id)))
        booleanize-native-form
@@ -715,15 +715,31 @@
 
 ;;; Simple cumulative sum where breakout field is same as cum_sum field
 (qp-expect-with-all-engines
-    {:rows    [[1] [3] [6] [10] [15] [21] [28] [36] [45] [55] [66] [78] [91] [105] [120]]
-     :columns (->columns "id")
-     :cols    [(users-col :id)]
-     :native_form true}
-    (->> (run-query users
-           (ql/aggregation (ql/cum-sum $id))
-           (ql/breakout $id))
-         booleanize-native-form
-         (format-rows-by [int])))
+  {:rows        [[ 1   1]
+                 [ 2   3]
+                 [ 3   6]
+                 [ 4  10]
+                 [ 5  15]
+                 [ 6  21]
+                 [ 7  28]
+                 [ 8  36]
+                 [ 9  45]
+                 [10  55]
+                 [11  66]
+                 [12  78]
+                 [13  91]
+                 [14 105]
+                 [15 120]]
+   :columns     [(format-name "id")
+                 "sum"]
+   :cols        [(breakout-col (users-col :id))
+                 (aggregate-col :sum (users-col :id))]
+   :native_form true}
+  (->> (run-query users
+         (ql/aggregation (ql/cum-sum $id))
+         (ql/breakout $id))
+       booleanize-native-form
+       (format-rows-by [int int])))
 
 
 ;;; Cumulative sum w/ a different breakout field
@@ -1434,7 +1450,7 @@
      ["2015-06-02 08:20:00" 1]
      ["2015-06-02 11:11:00" 1]]
 
-    (contains? #{:redshift :sqlserver :bigquery :mongo :postgres :h2 :oracle} *engine*)
+    (contains? #{:redshift :sqlserver :bigquery :mongo :postgres :vertica :h2 :oracle} *engine*)
     [["2015-06-01T10:31:00.000Z" 1]
      ["2015-06-01T16:06:00.000Z" 1]
      ["2015-06-01T17:23:00.000Z" 1]
@@ -1643,7 +1659,7 @@
     (contains? #{:sqlserver :sqlite :crate :oracle} *engine*)
     [[23 54] [24 46] [25 39] [26 61]]
 
-    (contains? #{:mongo :redshift :bigquery :postgres :h2} *engine*)
+    (contains? #{:mongo :redshift :bigquery :postgres :vertica :h2} *engine*)
     [[23 46] [24 47] [25 40] [26 60] [27 7]]
 
     :else
@@ -2024,6 +2040,10 @@
             (ql/breakout (ql/expression :x))))))
 
 
+;;; +----------------------------------------------------------------------------------------------------------------------+
+;;; |                                                    MULTIPLE JOINS                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------------+
+
 ;;; CAN WE JOIN AGAINST THE SAME TABLE TWICE (MULTIPLE FKS TO A SINGLE TABLE!?)
 ;; Query should look something like:
 ;; SELECT USERS__via__SENDER_ID.NAME AS NAME, count(*) AS count
@@ -2047,3 +2067,22 @@
               (ql/aggregation (ql/count))
               (ql/breakout $sender_id->users.name)
               (ql/filter (ql/= $reciever_id->users.name "Rasta Toucan")))))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------------+
+;;; |                                                 MULTIPLE AGGREGATIONS                                                |
+;;; +----------------------------------------------------------------------------------------------------------------------+
+
+;; can we run a simple query with *two* aggregations?
+(expect-with-non-timeseries-dbs
+  [[100 203]]
+  (format-rows-by [int int]
+    (rows (run-query venues
+            (ql/aggregation (ql/count) (ql/sum $price))))))
+
+;; how about with *three* aggregations?
+(expect-with-non-timeseries-dbs
+  [[2 100 203]]
+  (format-rows-by [int int int]
+    (rows (run-query venues
+            (ql/aggregation (ql/avg $price) (ql/count) (ql/sum $price))))))

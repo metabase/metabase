@@ -14,6 +14,8 @@ import { getVisualizationTransformed } from "metabase/visualizations";
 import { getSettings } from "metabase/lib/visualization_settings";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 
+import { MinRowsError, ChartSettingsError } from "metabase/visualizations/lib/errors";
+
 import { assoc, getIn, setIn } from "icepick";
 import _ from "underscore";
 import cx from "classnames";
@@ -66,13 +68,15 @@ export default class Visualization extends Component {
         // used by TableInteractive
         setSortFn: PropTypes.func,
         cellIsClickableFn: PropTypes.func,
-        cellClickedFn: PropTypes.func
+        cellClickedFn: PropTypes.func,
+
+        onOpenChartSettings: PropTypes.func,
     };
 
     static defaultProps = {
         isDashboard: false,
         isEditing: false,
-        onUpdateVisualizationSetting: (...args) => console.warn("onUpdateVisualizationSetting", args)
+        onUpdateVisualizationSettings: (...args) => console.warn("onUpdateVisualizationSettings", args)
     };
 
     componentWillMount() {
@@ -137,11 +141,21 @@ export default class Visualization extends Component {
                         CardVisualization.checkRenderable(series[0].data.cols, series[0].data.rows, settings);
                     }
                 } catch (e) {
-                    // MinRowsError
-                    if (e.actualRows === 0) {
+                    error = e.message || "Could not display this chart with this data.";
+                    if (e instanceof ChartSettingsError && this.props.onOpenChartSettings) {
+                        error = (
+                            <div>
+                                <div>{error}</div>
+                                <div className="mt2">
+                                    <button className="Button Button--primary Button--small" onClick={this.props.onOpenChartSettings}>
+                                        Edit Settings
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    } else if (e instanceof MinRowsError) {
                         noResults = true;
                     }
-                    error = e.message || "Could not display this chart with this data.";
                 }
             }
         }

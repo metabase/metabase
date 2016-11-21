@@ -1,6 +1,7 @@
 import React, { Component, PropTypes } from "react";
 
 import MetabaseSettings from "metabase/lib/settings";
+import MetabaseUtils from "metabase/lib/utils";
 import SettingsSetting from "./SettingsSetting.jsx";
 
 import _ from "underscore";
@@ -68,7 +69,7 @@ export default class SettingsUpdatesForm extends Component {
 
         */
 
-        if (!versionInfo || currentVersion === versionInfo.latest.version) {
+        if (!versionInfo || MetabaseUtils.compareVersions(currentVersion, versionInfo.latest.version) >= 0) {
             return (
                 <div className="p2 bg-brand bordered rounded border-brand text-white text-bold">
                     You're running Metabase {this.removeVersionPrefixIfNeeded(currentVersion)} which is the latest and greatest!
@@ -95,11 +96,16 @@ export default class SettingsUpdatesForm extends Component {
     }
 
     render() {
-        let { elements } = this.props;
+        let { elements, updateSetting } = this.props;
 
-        let settings = elements.map((setting, index) => {
-            return <SettingsSetting key={setting.key} setting={setting} updateSetting={this.props.updateSetting} handleChangeEvent={this.props.handleChangeEvent} autoFocus={index === 0}/>
-        });
+        let settings = elements.map((setting, index) =>
+            <SettingsSetting
+                key={setting.key}
+                setting={setting}
+                updateSetting={(value) => updateSetting(setting, value)}
+                autoFocus={index === 0}
+            />
+        );
 
         return (
             <div style={{width: "585px"}}>

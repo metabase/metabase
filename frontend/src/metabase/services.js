@@ -2,6 +2,9 @@
 
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 
+// $FlowFixMe: Flow doesn't understand webpack loader syntax
+import getGAMetadata from "promise?global!metabase/lib/ga-metadata";
+
 export const ActivityApi = {
     list:                        GET("/api/activity"),
     recent_views:                GET("/api/activity/recent_views"),
@@ -60,7 +63,16 @@ export const MetabaseApi = {
     // table_fields:                GET("/api/table/:tableId/fields"),
     table_fks:                   GET("/api/table/:tableId/fks"),
     // table_reorder_fields:       POST("/api/table/:tableId/reorder"),
-    table_query_metadata:        GET("/api/table/:tableId/query_metadata"),
+    table_query_metadata:        GET("/api/table/:tableId/query_metadata", async (table) => {
+                                    // HACK: inject GA metadata that we don't have intergrated on the backend yet
+                                    if (table && table.db && table.db.engine === "googleanalytics") {
+                                        let GA = await getGAMetadata();
+                                        table.fields = table.fields.map(f => ({ ...f, ...GA.fields[f.name] }));
+                                        table.metrics.push(...GA.metrics);
+                                        table.segments.push(...GA.segments);
+                                    }
+                                    return table;
+                                 }),
     // table_sync_metadata:        POST("/api/table/:tableId/sync"),
     // field_get:                   GET("/api/field/:fieldId"),
     // field_summary:               GET("/api/field/:fieldId/summary"),

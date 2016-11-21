@@ -36,6 +36,7 @@ For more information check out [metabase.com](http://www.metabase.com)
 - H2
 - Crate
 - Oracle
+- Vertica
 
 Don't see your favorite database? File an issue to let us know.
 

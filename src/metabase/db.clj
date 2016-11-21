@@ -49,7 +49,10 @@
   "Parse a DB connection URI like `postgres://cam@localhost.com:5432/cams_cool_db?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory` and return a broken-out map."
   [uri]
   (when-let [[_ protocol user pass host port db query] (re-matches #"^([^:/@]+)://(?:([^:/@]+)(?::([^:@]+))?@)?([^:@]+)(?::(\d+))?/([^/?]+)(?:\?(.*))?$" uri)]
-    (merge {:type     (keyword protocol)
+    (merge {:type     (case (keyword protocol)
+                        :postgres   :postgres
+                        :postgresql :postgres
+                        :mysql      :mysql)
             :user     user
             :password pass
             :host     host
@@ -265,7 +268,7 @@
                  (.setTestConnectionOnCheckout     false)
                  (.setPreferredTestQuery           nil)
                  (.setProperties                   (u/prog1 (java.util.Properties.)
-                                                     (doseq [[k v] (dissoc spec :make-pool? :classname :subprotocol :subname :naming :delimiters :alias-delimiter
+                                                     (doseq [[k v] (dissoc spec :classname :subprotocol :subname :naming :delimiters :alias-delimiter
                                                                                 :excess-timeout :minimum-pool-size :idle-connection-test-period)]
                                                        (.setProperty <> (name k) (str v))))))})
 
