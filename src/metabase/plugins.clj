@@ -34,5 +34,5 @@
             :when (and (.isFile file)
                        (.canRead file)
                        (re-find #"\.jar$" (.getPath file)))]
-      (log/info (u/format-color 'magenta "Loading plugin %s... 🔌" file))
+      (log/info (u/format-color 'magenta "Loading plugin %s... %s" file (u/emoji "🔌")))
       (add-jar-to-classpath! file))))

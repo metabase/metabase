@@ -11,6 +11,7 @@
 *  [Customizing the Metabase Jetty Webserver](#customizing-the-metabase-jetty-webserver)
 *  [Changing password complexity](#changing-metabase-password-complexity)
 *  [Handling Timezones](#handling-timezones-in-metabase)
+*  [Configuring Emoji Logging](#configuring-emoji-logging)
 
 # Installing and Running Metabase
 
@@ -290,3 +291,11 @@ To ensure proper reporting it's important that timezones be set consistently in 
 Common Pitfalls:
 1. Your database is using date/time columns without any timezone information.  Typically when this happens your database will assume all the data is from whatever timezone the database is configured in or possible just default to UTC (check your database vendor to be sure).
 2. Your JVM timezone is not the same as your Metabase `Report Timezone` choice.  This is a very common issue and can be corrected by launching java with the `-Duser.timezone=<timezone>` option properly set to match your Metabase report timezone.
+
+
+# Configuring Emoji Logging
+
+By default Metabase will include emoji characters in logs. You can disable this by using the following environment variable:
+
+    export MB_EMOJI_IN_LOGS="false"
+    java -jar metabase.jar

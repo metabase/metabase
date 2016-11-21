@@ -152,7 +152,7 @@
     (u/prog1 (macros/expand-macros query)
       (when (and (not *disable-qp-logging*)
                  (not= <> query))
-        (log/debug (u/format-color 'cyan "\n\nMACRO/SUBSTITUTED: 😻\n%s" (u/pprint-to-str <>)))))))
+        (log/debug (u/format-color 'cyan "\n\nMACRO/SUBSTITUTED: %s\n%s" (u/emoji "😻") (u/pprint-to-str <>)))))))
 
 (defn- pre-expand-macros [qp] (comp qp expand-macros))
 
@@ -163,7 +163,7 @@
   (u/prog1 (params/expand-parameters query)
     (when (and (not *disable-qp-logging*)
                (not= <> query))
-      (log/debug (u/format-color 'cyan "\n\nPARAMS/SUBSTITUTED: 😻\n%s" (u/pprint-to-str <>))))))
+      (log/debug (u/format-color 'cyan "\n\nPARAMS/SUBSTITUTED: %s\n%s" (u/emoji "😻") (u/pprint-to-str <>))))))
 
 (defn- pre-substitute-parameters [qp] (comp qp substitute-parameters))
 
@@ -347,7 +347,8 @@
   (u/prog1 query
     (when (and (mbql-query? query)
                (not *disable-qp-logging*))
-      (log/debug (u/format-color 'magenta "\nPREPROCESSED/EXPANDED: 😻\n%s"
+      (log/debug (u/format-color 'magenta "\nPREPROCESSED/EXPANDED: %s\n%s"
+                   (u/emoji "😻")
                    (u/pprint-to-str
                     ;; Remove empty kv pairs because otherwise expanded query is HUGE
                     (walk/prewalk
@@ -356,7 +357,7 @@
                                (m/filter-vals identity (into {} f))))
                      ;; obscure DB details when logging. Just log the name of driver because we don't care about its properties
                      (-> query
-                         (assoc-in [:database :details] "😋 ") ; :yum:
+                         (assoc-in [:database :details] (u/emoji "😋 ")) ; :yum:
                          (update :driver name)))))))))
 
 (defn- pre-log-query [qp] (comp qp log-query))
@@ -423,7 +424,7 @@
                                 (:native query)
                                 (driver/mbql->native (:driver query) query))
                        (when-not *disable-qp-logging*
-                         (log/debug (u/format-color 'green "NATIVE FORM: 😳\n%s\n" (u/pprint-to-str <>)))))
+                         (log/debug (u/format-color 'green "NATIVE FORM: %s\n%s\n" (u/emoji "😳") (u/pprint-to-str <>)))))
         native-query (if-not (mbql-query? query)
                        query
                        (assoc query :native native-form))
@@ -471,7 +472,7 @@
   {:style/indent 0}
   [query]
   (when-not *disable-qp-logging*
-    (log/debug (u/format-color 'blue "\nQUERY: 😎\n%s"  (u/pprint-to-str query))))
+    (log/debug (u/format-color 'blue "\nQUERY: %s\n%s"  (u/emoji "😎") (u/pprint-to-str query))))
   ;; TODO: it probably makes sense to throw an error or return a failure response here if we can't get a driver
   (let [driver (driver/database-id->driver (:database query))]
     (binding [*driver* driver]
