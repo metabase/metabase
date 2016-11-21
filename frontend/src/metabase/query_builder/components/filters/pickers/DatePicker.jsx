@@ -2,7 +2,7 @@ import React, { Component, PropTypes } from "react";
 
 import SpecificDatePicker from "./SpecificDatePicker";
 import RelativeDatePicker, { UnitPicker } from "./RelativeDatePicker";
-import OperatorSelector from "../OperatorSelector";
+import DateOperatorSelector from "../DateOperatorSelector";
 import moment from "moment";
 
 import _ from "underscore";
@@ -131,7 +131,7 @@ export default class DatePicker extends Component {
 
         return (
             <div className="mt1 pt2 border-top">
-                <OperatorSelector
+                <DateOperatorSelector
                     operator={operator && operator.name}
                     operators={OPERATORS}
                     onOperatorChange={operator => onFilterChange(operator.init(filter))}

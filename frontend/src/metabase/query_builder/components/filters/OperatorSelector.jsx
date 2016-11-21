@@ -1,16 +1,18 @@
 import React, { Component, PropTypes } from "react";
-import ReactCSSTransitionGroup from "react-addons-css-transition-group";
-import cx from "classnames";
-import { titleCase } from "humanize-plus";
 
-import Icon from "metabase/components/Icon";
+import Icon from "metabase/components/Icon.jsx";
+
+import cx from "classnames";
+import _ from "underscore";
 
 export default class OperatorSelector extends Component {
-    constructor() {
-        super();
-        this.state = { expanded: false };
-
-        this.toggleExpanded = this.toggleExpanded.bind(this);
+    constructor(props, context) {
+        super(props, context);
+        // if the initial operator is "advanced" expand the list
+        let operator = _.find(props.operators, o => o.name === props.operator);
+        this.state = {
+            expanded: operator && operator.advanced
+        };
     }
 
     static propTypes = {
@@ -19,51 +21,37 @@ export default class OperatorSelector extends Component {
         onOperatorChange: PropTypes.func.isRequired
     };
 
-    toggleExpanded () {
-        this.setState({ expanded: !this.state.expanded });
-    }
-
     render() {
-        const { operator, operators, onOperatorChange } = this.props;
-        const { expanded } = this.state;
+        let { operator, operators } = this.props;
+        let { expanded } = this.state;
+
+        let defaultOperators = operators.filter(o => !o.advanced);
+        let expandedOperators = operators.filter(o => o.advanced);
+
+        let visibleOperators = defaultOperators;
+        if (expanded) {
+            visibleOperators = visibleOperators.concat(expandedOperators);
+        }
 
         return (
-            <div className="mx2">
-                <div
-                    className="flex align-center cursor-pointer text-purple-hover mb2"
-                    onClick={() => this.toggleExpanded()}
-                >
-                    <h3>{operator && titleCase(operator)}</h3>
-                    <Icon
-                        name='chevrondown'
-                        width="12"
-                        height="12"
-                        className="ml1"
-                    />
-                </div>
-                <ul
-                    className="text-purple"
-                    style={{
-                        height: expanded ? 'auto' : 0,
-                        overflow: 'hidden',
-                        display: 'block',
-                    }}
-                >
-                    { operators.map(o =>
-                        <li
-                            className={cx('List-item cursor-pointer p1', {
-                                'List-item--selected': o.name === operator
-                            })}
-                            key={o.name}
-                            onClick={() => {
-                                onOperatorChange(o);
-                                this.toggleExpanded();
-                            }}
-                        >
-                            <h4 className="List-item-title">{o.name}</h4>
-                        </li>
-                    )}
-                </ul>
+            <div id="OperatorSelector" className="border-bottom p1" style={{
+                maxWidth: 300
+            }}>
+                { visibleOperators.map(o =>
+                    <button
+                        key={o.name}
+                        className={cx("Button Button-normal Button--medium mr1 mb1", { "Button--purple": o.name === operator })}
+                        onClick={() => this.props.onOperatorChange(o.name)}
+                    >
+                        {o.verboseName}
+                    </button>
+                )}
+                { !expanded && expandedOperators.length > 0 ?
+                    <div className="text-grey-3 cursor-pointer" onClick={() => this.setState({ expanded: true })}>
+                        <Icon className="px1" name="chevrondown" size={14} />
+                        More Options
+                    </div>
+                : null }
             </div>
         );
     }
