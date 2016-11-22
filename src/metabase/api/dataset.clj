@@ -77,7 +77,7 @@
      :headers {"Content-Disposition" (str "attachment; filename=\"query_result_" (u/date->iso-8601) ".json\"")}}
     ;; failed query, send error message
     {:status 500
-     :body   { :error (:error response) }}))
+     :body   {:error (:error response)}}))
 
 (defendpoint POST "/csv"
   "Execute a query and download the result data as a CSV file."
