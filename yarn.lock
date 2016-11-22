@@ -1434,7 +1434,7 @@ clap@^1.0.9:
   dependencies:
     chalk "^1.1.3"
 
-classnames@^2.1.3, classnames@^2.2.0, classnames@^2.2.3, classnames@^2.2.5:
+classnames@^2.1.3, classnames@^2.2.3, classnames@^2.2.5:
   version "2.2.5"
   resolved "https://registry.yarnpkg.com/classnames/-/classnames-2.2.5.tgz#fb3801d453467649ef3603c7d61a02bd129bde6d"
 
@@ -2679,10 +2679,6 @@ fined@^1.0.1:
     lodash.isstring "^4.0.1"
     lodash.pick "^4.2.1"
     parse-filepath "^1.0.1"
-
-fixed-data-table@^0.6.0:
-  version "0.6.3"
-  resolved "https://registry.yarnpkg.com/fixed-data-table/-/fixed-data-table-0.6.3.tgz#e0bba85bc84a065dea71f0fb3a46d61441ad81e8"
 
 flagged-respawn@^0.3.2:
   version "0.3.2"
@@ -5518,13 +5514,7 @@ react-ansi-style@^1.0.0:
   version "15.3.2"
   resolved "https://registry.yarnpkg.com/react-dom/-/react-dom-15.3.2.tgz#c46b0aa5380d7b838e7a59c4a7beff2ed315531f"
 
-react-draggable@^1.1.3:
-  version "1.3.7"
-  resolved "https://registry.yarnpkg.com/react-draggable/-/react-draggable-1.3.7.tgz#729bde4bd1e717c395b228c775e837695d50c2b2"
-  dependencies:
-    classnames "^2.2.0"
-
-react-draggable@^2.1.0:
+react-draggable, react-draggable@^2.1.0:
   version "2.2.2"
   resolved "https://registry.yarnpkg.com/react-draggable/-/react-draggable-2.2.2.tgz#80932da5ad81795bdfd141e846d7a9309680e270"
   dependencies:

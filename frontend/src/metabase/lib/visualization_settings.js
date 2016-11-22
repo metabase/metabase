@@ -549,6 +549,8 @@ const SETTINGS = {
             columnNames: cols.reduce((o, col) => ({ ...o, [col.name]: getFriendlyName(col)}), {})
         })
     },
+    "table.column_widths": {
+    },
     "map.type": {
         title: "Map type",
         widget: ChartSettingSelect,
