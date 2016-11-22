@@ -8,7 +8,7 @@ const Warnings = ({ warnings, className, size = 16 }) => {
         return null;
     }
     const tooltip = (
-        <ul className="px2 pt2 pb1">
+        <ul className="px2 pt2 pb1" style={{ maxWidth: 350 }}>
             {warnings.map((warning) =>
                 <li className="pb1" key={warning}>
                     <Icon name="warning" size={16} />

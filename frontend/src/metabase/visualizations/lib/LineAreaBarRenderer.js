@@ -44,7 +44,7 @@ const VORONOI_TARGET_RADIUS = 50;
 const VORONOI_MAX_POINTS = 300;
 
 
-const UNAGGREGATED_DATA_WARNING = "Data includes an unaggregated dimension.";
+const UNAGGREGATED_DATA_WARNING = (col) => `"${getFriendlyName(col)}" is an unaggregated field: if it has more than one value at a point on the x-axis, the values will be summed.`
 const NULL_DIMENSION_WARNING = "Data includes missing dimension values.";
 
 function adjustTicksIfNeeded(axis, axisSize, minPixelsPerTick) {
@@ -578,14 +578,14 @@ function lineAndBarOnRender(chart, settings, onGoalHover, isSplitAxis) {
     chart.render();
 }
 
-function reduceGroup(group, key, warn) {
+function reduceGroup(group, key, warnUnaggregated) {
     return group.reduce(
         (acc, d) => {
             if (acc == null && d[key] == null) {
                 return null;
             } else {
                 if (acc != null) {
-                    warn(UNAGGREGATED_DATA_WARNING);
+                    warnUnaggregated();
                     return acc + (d[key] || 0);
                 } else {
                     return (d[key] || 0);
@@ -597,7 +597,7 @@ function reduceGroup(group, key, warn) {
                 return null;
             } else {
                 if (acc != null) {
-                    warn(UNAGGREGATED_DATA_WARNING);
+                    warnUnaggregated();
                     return acc - (d[key] || 0);
                 } else {
                     return - (d[key] || 0);
@@ -782,8 +782,8 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
 
         dimension = dataset.dimension(d => d[0]);
         groups = [
-            datas.map((data, i) =>
-                reduceGroup(dimension.group(), i + 1, warn)
+            datas.map((data, seriesIndex) =>
+                reduceGroup(dimension.group(), seriesIndex + 1, () => warn(UNAGGREGATED_DATA_WARNING(series[seriesIndex].data.cols[0])))
             )
         ];
     } else {
@@ -791,10 +791,10 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
         datas.map(data => dataset.add(data));
 
         dimension = dataset.dimension(d => d[0]);
-        groups = datas.map(data => {
+        groups = datas.map((data, seriesIndex) => {
             let dim = crossfilter(data).dimension(d => d[0]);
-            return data[0].slice(1).map((_, i) =>
-                reduceGroup(dim.group(), i + 1, warn)
+            return data[0].slice(1).map((_, metricIndex) =>
+                reduceGroup(dim.group(), metricIndex + 1, () => warn(UNAGGREGATED_DATA_WARNING(series[seriesIndex].data.cols[0])))
             );
         });
     }
