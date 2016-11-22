@@ -139,7 +139,7 @@
   "Functions that should be used to coerce string values in responses to the appropriate type for their column."
   {"BOOLEAN"   #(Boolean/parseBoolean %)
    "FLOAT"     #(Double/parseDouble %)
-   "INTEGER"   #(Integer/parseInt %)
+   "INTEGER"   #(Long/parseLong %)
    "RECORD"    identity
    "STRING"    identity
    "TIMESTAMP" parse-timestamp-str})
