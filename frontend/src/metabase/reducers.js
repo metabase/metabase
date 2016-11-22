@@ -6,6 +6,7 @@ import auth from "metabase/auth/auth";
 /* ducks */
 import metadata from "metabase/redux/metadata";
 import requests from "metabase/redux/requests";
+import entitynames from "metabase/redux/entitynames";
 
 /* admin */
 import settings from "metabase/admin/settings/settings";
@@ -43,6 +44,7 @@ const reducers = {
     currentUser,
     metadata,
     requests,
+    entitynames,
 
     // main app reducers
     dashboard,
