@@ -117,7 +117,7 @@
 
 (defn- field-or-expression [f]
   (if (instance? Expression f)
-    f
+    (update f :args (partial map field-or-expression)) ; recursively call field-or-expression on all the args of the expression
     (field f)))
 
 (s/defn ^:private ^:always-validate ag-with-field :- i/Aggregation [ag-type f]
@@ -173,13 +173,12 @@
      (map? ag-or-ags)  (recur query [ag-or-ags])
      (empty? ag-or-ags) query
      :else              (assoc query :aggregation (vec (for [ag ag-or-ags]
-                                                         (do (println "ag:" ag) ; NOCOMMIT
-                                                             (u/prog1 (let [ag (update ag :aggregation-type normalize-token)]
-                                                                        ((cond
-                                                                           (core/= (:aggregation-type ag) :math) i/map->MathAggregation
-                                                                           (:field ag)                           i/map->AggregationWithField
-                                                                           :else                                 i/map->AggregationWithoutField) ag))
-                                                               (s/validate i/Aggregation <>))))))))
+                                                         (u/prog1 (let [ag (update ag :aggregation-type normalize-token)]
+                                                                    ((cond
+                                                                       (core/= (:aggregation-type ag) :math) i/map->MathAggregation
+                                                                       (:field ag)                           i/map->AggregationWithField
+                                                                       :else                                 i/map->AggregationWithoutField) ag))
+                                                           (s/validate i/Aggregation <>)))))))
 
   ;; also handle varargs for convenience
   ([query ag & more]

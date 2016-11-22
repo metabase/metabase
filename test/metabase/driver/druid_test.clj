@@ -66,7 +66,7 @@
 ;;; |                                  "POST-AGGREGATION MATH", AKA THE FEATURE FROM HELL D:                                 |
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 
-(defn- x []
+#_(defn- x []
   (require 'metabase.query-processor.interface 'metabase.query-processor.expand :reload)
   (datasets/with-engine :druid
     (timeseries-qp-test/with-flattened-dbdef
@@ -75,5 +75,39 @@
                          :query    (data/query checkins
                                      (ql/aggregation (ql/math (ql/+ (ql/sum (ql// $venue_price $id))
                                                                     (ql/avg $id))))
+                                     (ql/breakout $venue_price)
+                                     (ql/limit 10))}))))
+
+#_(defn- y []
+  (require 'metabase.query-processor.interface 'metabase.query-processor.expand :reload)
+  (datasets/with-engine :druid
+    (timeseries-qp-test/with-flattened-dbdef
+      (qp/process-query {:database (data/id)
+                         :type     :query
+                         :query    (data/query checkins
+                                     (ql/aggregation (ql/math (ql/sum (ql// $venue_price $id))))
+                                     (ql/breakout $venue_price)
+                                     (ql/limit 10))}))))
+
+#_(defn- z []
+  (require 'metabase.query-processor.interface 'metabase.query-processor.expand :reload)
+  (datasets/with-engine :druid
+    (timeseries-qp-test/with-flattened-dbdef
+      (qp/process-query {:database (data/id)
+                         :type     :query
+                         :query    (data/query checkins
+                                     (ql/aggregation (ql/math (ql/+ (ql/count $venue_price)
+                                                                    (ql/avg $id))))
+                                     (ql/breakout $venue_price)
+                                     (ql/limit 10))}))))
+
+(defn- a []
+  (require 'metabase.query-processor.interface 'metabase.query-processor.expand 'metabase.query-processor.resolve 'metabase.driver.druid 'metabase.driver.druid.query-processor :reload)
+  (datasets/with-engine :druid
+    (timeseries-qp-test/with-flattened-dbdef
+      (qp/process-query {:database (data/id)
+                         :type     :query
+                         :query    (data/query checkins
+                                     (ql/aggregation (ql/sum (ql/* $id $venue_price)))
                                      (ql/breakout $venue_price)
                                      (ql/limit 10))}))))
