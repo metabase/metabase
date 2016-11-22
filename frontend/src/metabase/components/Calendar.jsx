@@ -25,7 +25,8 @@ export default class Calendar extends Component {
         onChange: PropTypes.func.isRequired,
         onAfterClick: PropTypes.func,
         onBeforeClick: PropTypes.func,
-        isRangePicker: PropTypes.bool
+        isRangePicker: PropTypes.bool,
+        isDual: PropTypes.bool,
     };
 
     static defaultProps = {
@@ -73,20 +74,24 @@ export default class Calendar extends Component {
         this.setState({ month: month });
     }
 
-    renderMonthHeader() {
+    renderMonthHeader(current, side) {
         return (
             <div className="Calendar-header flex align-center">
-                <div className="bordered rounded p1 cursor-pointer transition-border border-hover px1" onClick={this.previous}>
-                    <Icon name="chevronleft" size={10} />
-                </div>
+                { side !=="right" &&
+                    <div className="bordered rounded p1 cursor-pointer transition-border border-hover px1" onClick={this.previous}>
+                        <Icon name="chevronleft" size={10} />
+                    </div>
+                }
                 <span className="flex-full" />
                 <h4 className="cursor-pointer rounded p1">
-                    {this.state.current.format("MMMM YYYY")}
+                    {current.format("MMMM YYYY")}
                 </h4>
                 <span className="flex-full" />
-                <div className="bordered border-hover rounded p1 transition-border cursor-pointer px1" onClick={this.next}>
-                    <Icon name="chevronright" size={10} />
-                </div>
+                { side !=="left" &&
+                    <div className="bordered border-hover rounded p1 transition-border cursor-pointer px1" onClick={this.next}>
+                        <Icon name="chevronright" size={10} />
+                    </div>
+                }
             </div>
         )
     }
@@ -100,10 +105,10 @@ export default class Calendar extends Component {
         );
     }
 
-    renderWeeks() {
+    renderWeeks(current) {
         var weeks = [],
             done = false,
-            date = moment(this.state.current).startOf("month").add("w" -1).day("Sunday"),
+            date = moment(current).startOf("month").add("w" -1).day("Sunday"),
             monthIndex = date.month(),
             count = 0;
 
@@ -112,9 +117,10 @@ export default class Calendar extends Component {
                 <Week
                     key={date.toString()}
                     date={moment(date)}
-                    month={this.state.current}
+                    month={current}
                     onClickDay={this.onClickDay}
                     selected={this.props.selected}
+                    selectedEnd={this.props.selectedEnd}
                 />
             );
             date.add(1, "w");
@@ -128,15 +134,30 @@ export default class Calendar extends Component {
             </div>
         );
     }
-    render() {
+
+    renderCalender(current, side) {
         return (
             <div className={
                 cx("Calendar", { "Calendar--range": this.props.selected && this.props.selectedEnd })}>
-                {this.renderMonthHeader()}
-                {this.renderDayNames()}
-                {this.renderWeeks()}
+                {this.renderMonthHeader(current, side)}
+                {this.renderDayNames(current)}
+                {this.renderWeeks(current)}
             </div>
         );
+    }
+
+    render() {
+        const { current } = this.state;
+        if (this.props.isDual) {
+            return (
+                <div className="flex">
+                    {this.renderCalender(current, "left")}
+                    {this.renderCalender(moment(current).add(1, "month"), "right")}
+                </div>
+            )
+        } else {
+            return this.renderCalender(current);
+        }
     }
 }
 
@@ -145,10 +166,6 @@ class Week extends Component {
         selected: PropTypes.object,
         selectedEnd: PropTypes.object,
         onClickDay: PropTypes.func.isRequired
-    }
-
-    _dayIsSelected(day) {
-        return
     }
 
     render() {

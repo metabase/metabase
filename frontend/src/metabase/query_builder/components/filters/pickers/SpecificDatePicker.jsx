@@ -53,7 +53,7 @@ export default class SpecificDatePicker extends Component {
     }
 
     render() {
-        const { value } = this.props;
+        const { value, calendar } = this.props;
         const { showCalendar } = this.state;
 
         let date, hours, minutes;
@@ -87,29 +87,34 @@ export default class SpecificDatePicker extends Component {
                             ref="value"
                         />
                     </div>
-                    <div className="border-right border-bottom border-top p2">
-                        <Tooltip
-                            tooltip={
-                                showCalendar ? "Hide calendar" : "Show calendar"
-                            }
-                            children={
-                                <Icon
-                                    className="text-purple-hover cursor-pointer"
-                                    name='calendar'
-                                    onClick={() => this.setState({ showCalendar: !this.state.showCalendar })}
-                                />
-                            }
-                        />
-                    </div>
+                    { calendar &&
+                        <div className="border-right border-bottom border-top p2">
+                            <Tooltip
+                                tooltip={
+                                    showCalendar ? "Hide calendar" : "Show calendar"
+                                }
+                                children={
+                                    <Icon
+                                        className="text-purple-hover cursor-pointer"
+                                        name='calendar'
+                                        onClick={() => this.setState({ showCalendar: !this.state.showCalendar })}
+                                    />
+                                }
+                            />
+                        </div>
+                    }
                 </div>
-                <ExpandingContent open={showCalendar}>
-                    <Calendar
-                        selected={date}
-                        initial={date || moment()}
-                        onChange={(value) => this.onChange(value, hours, minutes)}
-                        isRangePicker={false}
-                    />
-                </ExpandingContent>
+
+                { calendar &&
+                    <ExpandingContent open={showCalendar}>
+                        <Calendar
+                            selected={date}
+                            initial={date || moment()}
+                            onChange={(value) => this.onChange(value, hours, minutes)}
+                            isRangePicker={false}
+                        />
+                    </ExpandingContent>
+                }
 
                 <div className="py2 mx1">
                     { hours == null || minutes == null ?
