@@ -3,8 +3,7 @@
             [clojure.set :as set]
             [honeysql.core :as hsql]
             [metabase.driver :as driver]
-            (metabase.driver.crate [query-processor :as qp]
-                                   [util :as crate-util])
+            [metabase.driver.crate.util :as crate-util]
             [metabase.driver.generic-sql :as sql]
             [metabase.util :as u]))
 
@@ -77,7 +76,6 @@
          {:connection-details->spec  (u/drop-first-arg crate-spec)
           :column->base-type         (u/drop-first-arg column->base-type)
           :string-length-fn          (u/drop-first-arg string-length-fn)
-          :apply-filter              qp/apply-filter
           :date                      crate-util/date
           :unix-timestamp->timestamp crate-util/unix-timestamp->timestamp
           :current-datetime-fn       (constantly now)}))
