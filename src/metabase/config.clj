@@ -28,7 +28,8 @@
    ;:mb-password-length "8"
    :mb-version-info-url "http://static.metabase.com/version-info.json"
    :max-session-age "20160"                     ; session length in minutes (14 days)
-   :mb-colorize-logs "true"})
+   :mb-colorize-logs "true"
+   :mb-emoji-in-logs "true"})
 
 
 (defn config-str
