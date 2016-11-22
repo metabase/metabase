@@ -4,6 +4,7 @@
             [clojure.string :as s]
             [clojure.tools.logging :as log]
             [cheshire.core :as json]
+            [metabase.driver.druid.js :as js]
             [metabase.query-processor :as qp]
             [metabase.query-processor.interface :as i]
             [metabase.util :as u])
@@ -11,6 +12,7 @@
            (metabase.query_processor.interface AgFieldRef
                                                DateTimeField
                                                DateTimeValue
+                                               Expression
                                                Field
                                                RelativeDateTimeValue
                                                Value)))
@@ -60,7 +62,7 @@
 
 (defprotocol ^:private IDimensionOrMetric
   (^:private dimension-or-metric? [this]
-   "Is this `Field`/`DateTimeField` a `:dimension` or `:metric`?"))
+   "Is this `Field`/`DateTimeField` a `:dimension`, `:metric`?"))
 
 (extend-protocol IDimensionOrMetric
   Field         (dimension-or-metric? [{:keys [base-type]}]
@@ -100,18 +102,69 @@
 
 (declare filter:not filter:nil?)
 
+(defn- field? [arg]
+  (or (instance? Field arg)
+      (instance? DateTimeField arg)))
+
+(defn- expression->field-names [{:keys [args]}]
+  {:post [(every? u/string-or-keyword? %)]}
+  (flatten (for [arg   args
+                 :when (or (field? arg)
+                           (instance? Expression arg))]
+             (cond
+               (instance? Expression arg) (expression->field-names arg)
+               (field? arg)               (->rvalue arg)))))
+
+(defn- expression-arg->js [arg default-value]
+  (println "arg:" arg) ; NOCOMMIT
+  (if-not (field? arg)
+    arg
+    (js/or (js/parse-float (->rvalue arg))
+           default-value)))
+
+(defn- expression->js [{:keys [operator args]}]
+  (apply (case operator
+           :+ js/+
+           :- js/-
+           :* js/*
+           :/ js//)
+         ;; use 0 as the default value if the field is null everywhere except for division,
+         ;; because you can't divide by zero (TODO -- I think this only makes for the denominator)
+         (let [default-value (if (= operator :/) 1 0)]
+           (for [arg args]
+             (expression-arg->js arg default-value)))))
+
+(defn- ag:doubleSum:expression [expression output-name]
+  (let [field-names (expression->field-names expression)]
+    (println "field-names:" field-names) ; NOCOMMIT
+    {:type        :javascript
+     :name        output-name
+     :fieldNames  field-names
+     :fnReset     (js/function []
+                    (js/return 0))
+     :fnAggregate (js/function (cons :current field-names)
+                    (js/return (js/+ :current (expression->js expression))))
+     :fnCombine   (js/function [:x :y]
+                    (js/return (js/+ :x :y)))}))
+
+;; TODO - avg
+;; TODO - min
+;; TODO - max
+
 (defn- ag:doubleSum [field output-name]
-  ;; metrics can use the built-in :doubleSum aggregator, but for dimensions we have to roll something that does the same thing in JS
-  (case (dimension-or-metric? field)
-    :metric    {:type      :doubleSum
-                :name      output-name
-                :fieldName (->rvalue field)}
-    :dimension {:type        :javascript
-                :name        output-name
-                :fieldNames  [(->rvalue field)]
-                :fnReset     "function() { return 0 ; }"
-                :fnAggregate "function(current, x) { return current + (parseFloat(x) || 0); }"
-                :fnCombine   "function(x, y) { return x + y; }"}))
+  (if (instance? Expression field)
+    (ag:doubleSum:expression field output-name)
+    ;; metrics can use the built-in :doubleSum aggregator, but for dimensions we have to roll something that does the same thing in JS
+    (case (dimension-or-metric? field)
+      :metric    {:type      :doubleSum
+                  :name      output-name
+                  :fieldName (->rvalue field)}
+      :dimension {:type        :javascript
+                  :name        output-name
+                  :fieldNames  [(->rvalue field)]
+                  :fnReset     "function() { return 0 ; }"
+                  :fnAggregate "function(current, x) { return current + (parseFloat(x) || 0); }"
+                  :fnCombine   "function(x, y) { return x + y; }"})))
 
 (defn- ag:doubleMin [field]
   (case (dimension-or-metric? field)
@@ -144,12 +197,14 @@
   ([field output-name] (ag:filtered (filter:not (filter:nil? field))
                                     (ag:count output-name))))
 
+
 (defn- handle-aggregation [query-type {ag-type :aggregation-type, ag-field :field} druid-query]
   (when (isa? query-type ::ag-query)
     (merge-with concat
       druid-query
       (let [ag-type (when-not (= ag-type :rows) ag-type)]
         (match [ag-type ag-field]
+          ;; [:math   nil] (handle-math-aggregation ag)
           ;; For 'distinct values' queries (queries with a breakout by no aggregation) just aggregate by count, but name it :___count so it gets discarded automatically
           [nil     nil] {:aggregations [(ag:count :___count)]}
 
@@ -633,6 +688,7 @@
         query      (if (string? query)
                      (json/parse-string query keyword)
                      query)
+        _ (println "(u/pprint-to-str 'yellow query):" (u/pprint-to-str 'yellow query)) ; NOCOMMIT
         query-type (or query-type (keyword "metabase.driver.druid.query-processor" (name (:queryType query))))
         results    (->> (do-query details query)
                         (post-process query-type)

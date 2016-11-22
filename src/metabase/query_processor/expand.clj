@@ -16,9 +16,10 @@
                                                ComparisonFilter
                                                CompoundFilter
                                                EqualityFilter
+                                               Expression
                                                ExpressionRef
                                                FieldPlaceholder
-                                               Expression
+                                               MathAggregation
                                                NotFilter
                                                RelativeDatetime
                                                StringFilter
@@ -114,8 +115,13 @@
 
 ;;; ## aggregation
 
+(defn- field-or-expression [f]
+  (if (instance? Expression f)
+    (update f :args (partial map field-or-expression)) ; recursively call field-or-expression on all the args of the expression
+    (field f)))
+
 (s/defn ^:private ^:always-validate ag-with-field :- i/Aggregation [ag-type f]
-  (i/strict-map->AggregationWithField {:aggregation-type ag-type, :field (field f)}))
+  (i/strict-map->AggregationWithField {:aggregation-type ag-type, :field (field-or-expression f)}))
 
 (def ^:ql ^{:arglists '([f])} avg      "Aggregation clause. Return the average value of F."                (partial ag-with-field :avg))
 (def ^:ql ^{:arglists '([f])} distinct "Aggregation clause. Return the number of distinct values of F."    (partial ag-with-field :distinct))
@@ -146,6 +152,11 @@
   []
   (log/warn (u/format-color 'yellow "Specifying :rows as the aggregation type is deprecated in MBQL '98. This is the default behavior, so you don't need to specify it.")))
 
+(s/defn ^:ql ^:always-validate ^{:added "0.22.0"} math :- MathAggregation
+  "An aggregation that performs various math operations on columns."
+  [expression :- Expression]
+  (i/strict-map->MathAggregation {:aggregation-type :math, :expression expression}))
+
 (s/defn ^:ql ^:always-validate aggregation
   "Specify the aggregation to be performed for this query.
 
@@ -162,9 +173,11 @@
      (map? ag-or-ags)  (recur query [ag-or-ags])
      (empty? ag-or-ags) query
      :else              (assoc query :aggregation (vec (for [ag ag-or-ags]
-                                                         (u/prog1 ((if (:field ag)
-                                                                     i/map->AggregationWithField
-                                                                     i/map->AggregationWithoutField) (update ag :aggregation-type normalize-token))
+                                                         (u/prog1 (let [ag (update ag :aggregation-type normalize-token)]
+                                                                    ((cond
+                                                                       (core/= (:aggregation-type ag) :math) i/map->MathAggregation
+                                                                       (:field ag)                           i/map->AggregationWithField
+                                                                       :else                                 i/map->AggregationWithoutField) ag))
                                                            (s/validate i/Aggregation <>)))))))
 
   ;; also handle varargs for convenience
@@ -214,6 +227,7 @@
      (!= f v)
      (!= f v1 v2) ; same as (and (!= f v1) (!= f v2))"
   (partial equality-filter :!= and))
+
 
 (defn ^:ql is-null  "Filter subclause. Return results where F is `nil`."     [f] (=  f nil)) ; TODO - Should we deprecate these? They're syntactic sugar, and not particualarly useful.
 (defn ^:ql not-null "Filter subclause. Return results where F is not `nil`." [f] (!= f nil)) ; not-null is doubly unnecessary since you could just use `not` instead.

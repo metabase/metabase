@@ -2,6 +2,7 @@
   (:require [cheshire.core :as json]
             [expectations :refer :all]
             [metabase.query-processor :as qp]
+            [metabase.query-processor.expand :as ql]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets, :refer [expect-with-engine]]
             [metabase.timeseries-query-processor-test :as timeseries-qp-test]))
@@ -59,3 +60,19 @@
 (expect-with-engine :druid
   :completed
   (:status (process-native-query native-query-2)))
+
+
+;;; +------------------------------------------------------------------------------------------------------------------------+
+;;; |                                  "POST-AGGREGATION MATH", AKA THE FEATURE FROM HELL D:                                 |
+;;; +------------------------------------------------------------------------------------------------------------------------+
+
+(defn- a []
+  (require 'metabase.query-processor.interface 'metabase.query-processor.expand 'metabase.query-processor.resolve 'metabase.driver.druid 'metabase.driver.druid.query-processor :reload)
+  (datasets/with-engine :druid
+    (timeseries-qp-test/with-flattened-dbdef
+      (qp/process-query {:database (data/id)
+                         :type     :query
+                         :query    (data/query checkins
+                                     (ql/aggregation (ql/sum (ql/* $id $venue_price)))
+                                     (ql/breakout $venue_price)
+                                     (ql/limit 10))}))))
