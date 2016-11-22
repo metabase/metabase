@@ -19,9 +19,9 @@ const MultiDatePicker = ({ filter: [op, field, startValue, endValue], onFilterCh
             <span className="mx2 mt2">&ndash;</span>
             <SpecificDatePicker value={endValue} onChange={(value) => onFilterChange([op, field, startValue, value])} />
         </div>
-        <div>
+        <div className="Calendar--noContext">
             <Calendar
-                initial={moment(startValue)}
+                initial={startValue ? moment(startValue) : moment()}
                 selected={startValue && moment(startValue)}
                 selectedEnd={endValue && moment(endValue)}
                 onChange={(startValue, endValue) => onFilterChange([op, field, startValue, endValue])}
@@ -105,7 +105,7 @@ const OPERATORS = [
     },
     {
         name: "Between",
-        init: (filter) => ["BETWEEN", filter[1], getDate(filter[2]), getDate(filter[3])],
+        init: (filter) => ["BETWEEN", filter[1], null, null],
         test: ([op]) => op === "BETWEEN",
         widget: MultiDatePicker,
     },
