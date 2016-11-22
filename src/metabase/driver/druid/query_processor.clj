@@ -115,14 +115,12 @@
                (instance? Expression arg) (expression->field-names arg)
                (field? arg)               (->rvalue arg)))))
 
-(defn- expression-arg->js [arg]
+(defn- expression-arg->js [arg default-value]
   (println "arg:" arg) ; NOCOMMIT
   (if-not (field? arg)
     arg
     (js/or (js/parse-float (->rvalue arg))
-           0)))
-
-
+           default-value)))
 
 (defn- expression->js [{:keys [operator args]}]
   (apply (case operator
@@ -130,7 +128,11 @@
            :- js/-
            :* js/*
            :/ js//)
-         (mapv expression-arg->js args)))
+         ;; use 0 as the default value if the field is null everywhere except for division,
+         ;; because you can't divide by zero (TODO -- I think this only makes for the denominator)
+         (let [default-value (if (= operator :/) 1 0)]
+           (for [arg args]
+             (expression-arg->js arg default-value)))))
 
 (defn- ag:doubleSum:expression [expression output-name]
   (let [field-names (expression->field-names expression)]
@@ -145,38 +147,9 @@
      :fnCombine   (js/function [:x :y]
                     (js/return (js/+ :x :y)))}))
 
-(defn- x []
-  #_(require 'metabase.query-processor.interface 'metabase.query-processor.expand 'metabase.query-processor.resolve :reload)
-  (ag:doubleSum:expression {:operator :*
-                            :args     [#metabase.query_processor.interface.Field{:field-id           6066,
-                                                                                 :field-name         "id",
-                                                                                 :field-display-name "ID",
-                                                                                 :base-type          :type/Text,
-                                                                                 :special-type       :type/PK,
-                                                                                 :visibility-type    :normal,
-                                                                                 :table-id           2468,
-                                                                                 :schema-name        nil,
-                                                                                 :table-name         "checkins",
-                                                                                 :position           nil,
-                                                                                 :fk-field-id        nil,
-                                                                                 :description        nil,
-                                                                                 :parent-id          nil,
-                                                                                 :parent             nil}
-                                       #metabase.query_processor.interface.Field{:field-id           6075,
-                                                                                 :field-name         "venue_price",
-                                                                                 :field-display-name "Venue Price",
-                                                                                 :base-type          :type/Text,
-                                                                                 :special-type       :type/Category,
-                                                                                 :visibility-type    :normal,
-                                                                                 :table-id           2468,
-                                                                                 :schema-name        nil,
-                                                                                 :table-name         "checkins",
-                                                                                 :position           nil,
-                                                                                 :fk-field-id        nil,
-                                                                                 :description        nil,
-                                                                                 :parent-id          nil,
-                                                                                 :parent             nil}]}
-                           :wow))
+;; TODO - avg
+;; TODO - min
+;; TODO - max
 
 (defn- ag:doubleSum [field output-name]
   (if (instance? Expression field)

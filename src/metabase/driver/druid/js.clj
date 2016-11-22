@@ -14,7 +14,7 @@
 
 (defn argslist [args]
   (println "arglist" args) ; NOCOMMIT
-  (parens (s/join ", " (mapv ->js args))))
+  (parens (s/join ", " (map ->js args))))
 
 (defn return [& statement-parts]
   (str "return " (apply str statement-parts) ";"))
@@ -26,7 +26,7 @@
 
 (defn- arthitmetic-operator [operator & args]
   (parens (s/join (str " " (name operator) " ")
-                  (mapv ->js args))))
+                  (map ->js args))))
 
 (def ^{:arglists '([& args])} + (partial arthitmetic-operator :+))
 (def ^{:arglists '([& args])} - (partial arthitmetic-operator :-))
@@ -41,4 +41,4 @@
 
 
 (defn or [& args]
-  (parens (s/join " || " (mapv ->js args))))
+  (parens (s/join " || " (map ->js args))))
