@@ -53,7 +53,41 @@ export default class TableInteractive extends Component {
     };
 
     componentWillMount() {
-        this.componentWillReceiveProps(this.props);
+        // for measuring cells:
+        this._div = document.createElement("div");
+        this._div.className = "MB-DataTable";
+        this._div.style.display = "inline-block"
+        this._div.style.position = "absolute"
+        this._div.style.visibility = "hidden"
+        this._div.style.zIndex = -1
+        document.body.appendChild(this._div);
+
+        this._measure();
+    }
+
+    componentWillUnmount() {
+        this._div.parent.removeChild(this._div);
+    }
+
+    componentWillReceiveProps(newProps) {
+        if (JSON.stringify(this.props.data && this.props.data.cols) !== JSON.stringify(newProps.data && newProps.data.cols)) {
+            this.resetColumnWidths();
+        }
+    }
+
+    shouldComponentUpdate(nextProps, nextState) {
+        const PROP_KEYS = ["width", "height", "settings", "data"];
+        // compare specific props and state to determine if we should re-render
+        return (
+            !_.isEqual(_.pick(this.props, PROP_KEYS), _.pick(nextProps, PROP_KEYS)) ||
+            !_.isEqual(this.state, nextState)
+        );
+    }
+
+    componentDidUpdate() {
+        if (!this.state.contentWidths) {
+            this._measure();
+        }
     }
 
     resetColumnWidths() {
@@ -65,56 +99,71 @@ export default class TableInteractive extends Component {
         this.props.onUpdateVisualizationSettings({ "table.column_widths": [] });
     }
 
-    componentWillReceiveProps(newProps) {
-        if (JSON.stringify(this.props.data && this.props.data.cols) !== JSON.stringify(newProps.data && newProps.data.cols)) {
-            this.resetColumnWidths();
-        }
-    }
+    _measure() {
+        const { data: { cols } } = this.props;
 
-    shouldComponentUpdate(nextProps, nextState) {
-        // compare props (excluding card) and state to determine if we should re-render
-        // NOTE: this is essentially the same as React.addons.PureRenderMixin but
-        // we currently need to recalculate the container size here.
-        return (
-            !_.isEqual({ ...this.props, card: null }, { ...nextProps, card: null }) ||
-            !_.isEqual(this.state, nextState)
+        let contentWidths = cols.map((col, index) =>
+            this._measureColumn(index)
         );
+
+        let columnWidths = cols.map((col, index) => {
+            if (this.columnNeedsResize) {
+                if (this.columnNeedsResize[index] && !this.columnHasResized[index]) {
+                    this.columnHasResized[index] = true;
+                    return contentWidths[index] + 1; // + 1 to make sure it doen't wrap?
+                } else if (this.state.columnWidths[index]) {
+                    return this.state.columnWidths[index];
+                }
+            } else {
+                return contentWidths[index] + 1;
+            }
+        });
+
+        delete this.columnNeedsResize;
+
+        this.setState({ contentWidths, columnWidths }, this.recomputeGridSize);
     }
 
-    componentDidUpdate() {
-        const element = ReactDOM.findDOMNode(this);
-        if (!this.state.contentWidths && element) {
-            let contentWidths = [];
-            let cellElements = element.querySelectorAll(".MB-DataTable-cellContent");
-            for (let cellElement of cellElements) {
-                let columnIndex = cellElement.dataset.column;
-                contentWidths[columnIndex] = Math.max(contentWidths[columnIndex] || 0, cellElement.offsetWidth);
+    _measureColumn(columnIndex) {
+        const { data: { rows } } = this.props;
+        let width = MIN_COLUMN_WIDTH;
+
+        // measure column header
+        width = Math.max(width, this._measureCell(this.tableHeaderRenderer(columnIndex)));
+
+        // measure up to 10 non-nil cells
+        let remaining = 10;
+        for (let rowIndex = 0; rowIndex < rows.length && remaining > 0; rowIndex++) {
+            if (rows[rowIndex][columnIndex] != null) {
+                const cellWidth = this._measureCell(this.cellRenderer({ rowIndex, columnIndex }));
+                width = Math.max(width, cellWidth);
+                remaining--;
             }
-
-            const { data: { cols } } = this.props;
-
-            let columnWidths = cols.map((col, index) => {
-                if (this.columnNeedsResize) {
-                    if (this.columnNeedsResize[index] && !this.columnHasResized[index]) {
-                        this.columnHasResized[index] = true;
-                        return contentWidths[index] + 1; // + 1 to make sure it doen't wrap?
-                    } else if (this.state.columnWidths[index]) {
-                        return this.state.columnWidths[index];
-                    }
-                } else {
-                    return contentWidths[index] + 1;
-                }
-            });
-
-            delete this.columnNeedsResize;
-
-            this.setState({ contentWidths, columnWidths }, this.recomputeGridSize);
         }
+
+        return width;
+    }
+
+    _measureCell(cell) {
+        ReactDOM.unstable_renderSubtreeIntoContainer(this,
+            <div className="MB-DataTable-cellContent">
+                {cell}
+            </div>
+        , this._div);
+
+        // 2px for border?
+        const width = this._div.clientWidth + 2;
+
+        ReactDOM.unmountComponentAtNode(this._div);
+
+        return width;
     }
 
     recomputeGridSize = () => {
-        this.header.recomputeGridSize();
-        this.grid.recomputeGridSize();
+        if (this.header && this.grid) {
+            this.header.recomputeGridSize();
+            this.grid.recomputeGridSize();
+        }
     }
 
     recomputeColumnSizes = _.debounce(() => {
@@ -287,17 +336,13 @@ export default class TableInteractive extends Component {
                                     axis="x"
                                     bounds={{ left: RESIZE_HANDLE_WIDTH }}
                                     position={{ x: this.getColumnWidth({ index: columnIndex }), y: 0 }}
-                                    onStart={() => {
-                                        this.setState({ draggingIndex: columnIndex })
-                                    }}
                                     onStop={(e, { x }) => {
-                                        this.setState({ draggingIndex: null })
                                         this.onColumnResize(columnIndex, x)}
                                     }
                                 >
                                     <div
+                                        className="bg-brand-hover bg-brand-active"
                                         style={{ zIndex: 99, position: "absolute", width: RESIZE_HANDLE_WIDTH, top: 0, bottom: 0, left: -RESIZE_HANDLE_WIDTH - 1, cursor: "ew-resize" }}
-                                        className={cx("bg-brand-hover", { "bg-brand": this.state.draggingIndex === columnIndex })}
                                     />
                                 </Draggable>
                             </div>
