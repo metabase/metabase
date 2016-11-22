@@ -146,7 +146,7 @@ export default class TableInteractive extends Component {
 
     _measureCell(cell) {
         ReactDOM.unstable_renderSubtreeIntoContainer(this,
-            <div className="MB-DataTable-cellContent">
+            <div className="MB-DataTable-cellWrapper">
                 {cell}
             </div>
         , this._div);
@@ -313,6 +313,7 @@ export default class TableInteractive extends Component {
             <ScrollSync>
             {({ clientHeight, clientWidth, onScroll, scrollHeight, scrollLeft, scrollTop, scrollWidth }) =>
                 <div className={cx(className, 'MB-DataTable relative', { 'MB-DataTable--pivot': this.props.isPivoted, 'MB-DataTable--ready': this.state.contentWidths })}>
+                    {/* <canvas className="spread" style={{ pointerEvents: "none", zIndex: 999 }} width={width} height={height} /> */}
                     <Grid
                         ref={(ref) => this.header = ref}
                         style={{ top: 0, left: 0, right: 0, height: HEADER_HEIGHT, position: "absolute" }}
@@ -329,9 +330,7 @@ export default class TableInteractive extends Component {
                                 style={{ ...style, overflow: "visible" /* ensure resize handle is visible */ }}
                                 className="MB-DataTable-cellWrapper"
                             >
-                                <div className="MB-DataTable-cellContent" data-column={columnIndex}>
-                                    {this.tableHeaderRenderer(columnIndex)}
-                                </div>
+                                {this.tableHeaderRenderer(columnIndex)}
                                 <Draggable
                                     axis="x"
                                     bounds={{ left: RESIZE_HANDLE_WIDTH }}
@@ -363,15 +362,13 @@ export default class TableInteractive extends Component {
                         rowHeight={ROW_HEIGHT}
                         cellRenderer={({ key, style, rowIndex, columnIndex }) =>
                             <div key={key} style={style} className="MB-DataTable-cellWrapper">
-                                <div className="MB-DataTable-cellContent" data-column={columnIndex}>
-                                    {this.cellRenderer({ rowIndex, columnIndex })}
-                                </div>
+                                {this.cellRenderer({ rowIndex, columnIndex })}
                             </div>
                         }
                         onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
                         scrollLeft={scrollLeft}
                         tabIndex={null}
-                        overscanRowCount={10}
+                        overscanRowCount={20}
                     />
                 </div>
             }

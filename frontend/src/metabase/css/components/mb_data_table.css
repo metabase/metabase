@@ -37,6 +37,11 @@
     border-bottom: 1px solid #e8e8e8;
     border-top: 1px solid transparent;
     border-left: 1px solid transparent;
+
+    padding: 8px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
 }
 
 .MB-DataTable .MB-DataTable-cellWrapper:hover {
@@ -59,23 +64,10 @@
     border-color: #e8e8e8;
 }
 
-.MB-DataTable .MB-DataTable-cellContent {
-    padding: 8px;
-}
-
 /* cell overflow ellipsis */
 .MB-DataTable .cellData {
   display: block;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    overflow-x: hidden;
-}
-
-.MB-DataTable .MB-DataTable-cellWrapper {
-  display: flex;
-  align-items: center;
-}
-
-.MB-DataTable.MB-DataTable--ready .MB-DataTable-cellContent {
-  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow-x: hidden;
 }
