@@ -3,18 +3,31 @@ import React, { Component, PropTypes } from "react";
 import SpecificDatePicker from "./SpecificDatePicker";
 import RelativeDatePicker, { UnitPicker } from "./RelativeDatePicker";
 import DateOperatorSelector from "../DateOperatorSelector";
+import Calendar from "metabase/components/Calendar";
+
 import moment from "moment";
 
 import _ from "underscore";
 
 const SingleDatePicker = ({ filter: [op, field, value], onFilterChange }) =>
-    <SpecificDatePicker value={value} onChange={(value) => onFilterChange([op, field, value])} />
+    <SpecificDatePicker value={value} onChange={(value) => onFilterChange([op, field, value])} calendar />
 
 const MultiDatePicker = ({ filter: [op, field, startValue, endValue], onFilterChange }) =>
-    <div className="flex mx2">
-        <SpecificDatePicker value={startValue} onChange={(value) => onFilterChange([op, field, value, endValue])} />
-        <span className="mx2 mt2">&ndash;</span>
-        <SpecificDatePicker value={endValue} onChange={(value) => onFilterChange([op, field, startValue, value])} />
+    <div className="mx2 mb1">
+        <div className="flex">
+            <SpecificDatePicker value={startValue} onChange={(value) => onFilterChange([op, field, value, endValue])}  />
+            <span className="mx2 mt2">&ndash;</span>
+            <SpecificDatePicker value={endValue} onChange={(value) => onFilterChange([op, field, startValue, value])} />
+        </div>
+        <div>
+            <Calendar
+                initial={moment(startValue)}
+                selected={startValue && moment(startValue)}
+                selectedEnd={endValue && moment(endValue)}
+                onChange={(startValue, endValue) => onFilterChange([op, field, startValue, endValue])}
+                isDual
+            />
+        </div>
     </div>
 
 const PreviousPicker =  (props) =>
