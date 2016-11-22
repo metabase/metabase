@@ -65,6 +65,20 @@
     {:status 500
      :body   (:error response)}))
 
+(defn as-json
+  "Return a JSON response containing the RESULTS of a query."
+  {:arglists '([results])}
+  [{{:keys [columns rows]} :data, :keys [status], :as response}]
+  (if (= status :completed)
+    ;; successful query, send CSV file
+    {:status  200
+     :body    (for [row rows]
+                (zipmap columns row))
+     :headers {"Content-Disposition" (str "attachment; filename=\"query_result_" (u/date->iso-8601) ".json\"")}}
+    ;; failed query, send error message
+    {:status 500
+     :body   {:error (:error response)}}))
+
 (defendpoint POST "/csv"
   "Execute a query and download the result data as a CSV file."
   [query]
@@ -72,6 +86,14 @@
   (let [query (json/parse-string query keyword)]
     (read-check Database (:database query))
     (as-csv (qp/dataset-query query {:executed-by *current-user-id*}))))
+
+(defendpoint POST "/json"
+  "Execute a query and download the result data as a JSON file."
+  [query]
+  {query su/JSONString}
+  (let [query (json/parse-string query keyword)]
+    (read-check Database (:database query))
+    (as-json (qp/dataset-query query {:executed-by *current-user-id*}))))
 
 
 (define-routes)
