@@ -37,16 +37,16 @@
        (apply str body)
        " }"))
 
-(defn- arthitmetic-operator
+(defn- arithmetic-operator
   "Interpose artihmetic OPERATOR between ARGS, and wrap the entire expression in parens."
   ^String [operator & args]
   (parens (s/join (str " " (name operator) " ")
                   (map ->js args))))
 
-(def ^{:arglists '([& args])} ^String + "Interpose `+` between ARGS, and wrap the entire expression in parens." (partial arthitmetic-operator :+))
-(def ^{:arglists '([& args])} ^String - "Interpose `-` between ARGS, and wrap the entire expression in parens." (partial arthitmetic-operator :-))
-(def ^{:arglists '([& args])} ^String * "Interpose `*` between ARGS, and wrap the entire expression in parens." (partial arthitmetic-operator :*))
-(def ^{:arglists '([& args])} ^String / "Interpose `/` between ARGS, and wrap the entire expression in parens." (partial arthitmetic-operator :/))
+(def ^{:arglists '([& args])} ^String + "Interpose `+` between ARGS, and wrap the entire expression in parens." (partial arithmetic-operator :+))
+(def ^{:arglists '([& args])} ^String - "Interpose `-` between ARGS, and wrap the entire expression in parens." (partial arithmetic-operator :-))
+(def ^{:arglists '([& args])} ^String * "Interpose `*` between ARGS, and wrap the entire expression in parens." (partial arithmetic-operator :*))
+(def ^{:arglists '([& args])} ^String / "Interpose `/` between ARGS, and wrap the entire expression in parens." (partial arithmetic-operator :/))
 
 (defn fn-call
   "Generate a JavaScript function call.
