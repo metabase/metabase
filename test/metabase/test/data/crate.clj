@@ -51,8 +51,7 @@
       (insert! rows))))
 
 (def ^:private database->connection-details
-  (constantly {:host "localhost"
-               :port 4300}))
+  (constantly {:hosts "localhost:5200"}))
 
 (extend CrateDriver
   generic/IGenericSQLDatasetLoader

@@ -43,16 +43,15 @@
 
 (defn- crate-spec
   [{:keys [hosts]
-    :or   {hosts "//localhost:5432/"}
     :as   opts}]
   (merge {:classname   "io.crate.client.jdbc.CrateDriver" ; must be in classpath
           :subprotocol "crate"
-          :subname     (str hosts)}
+          :subname     (str "//" hosts "/")}
          (dissoc opts :hosts)))
 
 (defn- can-connect? [details]
   (let [connection-spec (crate-spec details)]
-    (= 1 (first (vals (first (jdbc/query connection-spec ["select 1 from sys.cluster"])))))))
+    (= 1 (first (vals (first (jdbc/query connection-spec ["select 1"])))))))
 
 (defn- string-length-fn [field-key]
   (hsql/call :char_length field-key))
@@ -69,7 +68,7 @@
           :date-interval  crate-util/date-interval
           :details-fields (constantly [{:name         "hosts"
                                         :display-name "Hosts"
-                                        :default      "//localhost:5432/"}])
+                                        :default      "localhost:5432"}])
           :features       (comp (u/rpartial set/difference #{:foreign-keys}) sql/features)})
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
