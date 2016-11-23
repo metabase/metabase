@@ -303,6 +303,7 @@
             :standard-deviation-aggregations
             :foreign-keys
             :expressions
+            :expression-aggregations
             :native-parameters}
     (set-timezone-sql driver) (conj :set-timezone)))
 

@@ -98,7 +98,6 @@
   "Return an appropriate name for an expression aggregation, e.g. `sum + count`."
   ^String [ag]
   (cond
-    ;;
     (instance? Expression ag) (let [{:keys [operator args]} ag]
                                 (str/join (str " " (name operator) " ")
                                           (for [arg args]
@@ -106,7 +105,6 @@
                                               (str "(" (expression-aggregation-name arg) ")")
                                               (expression-aggregation-name arg)))))
     (:aggregation-type ag)    (name (:aggregation-type ag))
-    ;; a constant like
     :else                     ag))
 
 (defn- expression-aggregate-field-info [expression]
