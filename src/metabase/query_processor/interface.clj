@@ -177,12 +177,13 @@
                                unit   :- DatetimeValueUnit])
 
 
-(declare RValue)
+(declare RValue Aggregation)
 
 (def ^:private ExpressionOperator (s/named (s/enum :+ :- :* :/) "Valid expression operator"))
 
 (s/defrecord Expression [operator        :- ExpressionOperator
-                         args            :- [(s/recursive #'RValue)]])
+                         args            :- [(s/cond-pre (s/recursive #'RValue)
+                                                         (s/recursive #'Aggregation))]])
 
 (def AnyField
   "Schema for a `FieldPlaceholder`, `AgRef`, or `Expression`."
@@ -244,7 +245,8 @@
 
 (s/defrecord AggregationWithField [aggregation-type :- (s/named (s/enum :avg :count :cumulative-sum :distinct :max :min :stddev :sum)
                                                                 "Valid aggregation type")
-                                   field            :- FieldPlaceholderOrExpressionRef])
+                                   field            :- (s/cond-pre FieldPlaceholderOrExpressionRef
+                                                                   Expression)])
 
 (defn- valid-aggregation-for-driver? [{:keys [aggregation-type]}]
   (when (= aggregation-type :stddev)
@@ -254,7 +256,7 @@
 (def Aggregation
   "Schema for an `aggregation` subclause in an MBQL query."
   (s/constrained
-   (s/cond-pre AggregationWithField AggregationWithoutField)
+   (s/cond-pre AggregationWithField AggregationWithoutField Expression)
    valid-aggregation-for-driver?
    "standard-deviation-aggregations is not supported by this driver."))
 
