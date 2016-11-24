@@ -1,9 +1,8 @@
 import React, { Component, PropTypes } from "react";
 
-import { Route, Redirect, IndexRedirect, IndexRoute, Link } from 'react-router';
+import { Route, Redirect, IndexRedirect, IndexRoute } from 'react-router';
 import { routerActions } from 'react-router-redux';
 import { UserAuthWrapper } from 'redux-auth-wrapper';
-import { connect } from "react-redux";
 
 import { refreshCurrentUser } from "metabase/user";
 import MetabaseSettings from "metabase/lib/settings";
@@ -22,6 +21,7 @@ import DashboardApp from "metabase/dashboard/containers/DashboardApp.jsx";
 import HomepageApp from "metabase/home/containers/HomepageApp.jsx";
 import EntityBrowser from "metabase/questions/containers/EntityBrowser.jsx";
 import Archive from "metabase/questions/containers/Archive.jsx";
+import QuestionIndex from "metabase/questions/containers/QuestionIndex.jsx";
 import EntityList from "metabase/questions/containers/EntityList.jsx";
 import EditLabels from "metabase/questions/containers/EditLabels.jsx";
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp.jsx";
@@ -133,7 +133,7 @@ export const getRoutes = (store) =>
                 <Route path="/q" component={QueryBuilder} />
 
                 {/* QUESTIONS */}
-                <Route path="/questions" component={QuestionHome} />
+                <Route path="/questions" component={QuestionIndex} />
                 <Route path="/questions/archive" component={Archive} />
                 <Route path="/questions/permissions" component={QuestionPermissions} />
                 <Route path="/questions/collection/:collectionName" component={CollectionPage} />
@@ -217,120 +217,7 @@ export const getRoutes = (store) =>
         </Route>
     </Route>
 
-import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
-import Input from "metabase/components/Input";
 
-
-class Search extends Component {
-    constructor () {
-        super();
-    }
-
-    componentDidMount () {
-        /* search things here */
-    }
-
-    render () {
-        return (
-            <div
-                className="bordered border-dark flex align-center pr2"
-                style={{
-                    borderRadius: 99,
-                }}
-            >
-                <Icon
-                    className="ml2"
-                    name="search"
-                />
-                <Input
-                    className="input borderless"
-                    placeholder="Search for a question..."
-                />
-            </div>
-        );
-    }
-}
-
-const NewCollection = () =>
-    <Link
-        className="block p4 text-centered text-brand-hover rounded"
-        style={{
-            backgroundColor: '#FAFAFB',
-            textDecoration: 'none'
-        }}
-    >
-        <Icon
-            name="add"
-            width="32"
-            height="32"
-        />
-        <h3>New collection</h3>
-    </Link>
-
-const Collection = ({ name, color }) =>
-    <Link
-        className="block p4 text-centered text-brand-hover rounded"
-        style={{
-            backgroundColor: '#FAFAFB',
-            textDecoration: 'none'
-        }}
-        to={`/questions/collections/${name}`}i
-    >
-        { /* TODO rename this icon name  to collections or something more appropriate */ }
-        <Icon
-            className="mb4"
-            name="all"
-            width="32"
-            height="32"
-            style={{ color }}
-        />
-        <h3>{ name }</h3>
-    </Link>
-
-const QuestionCollections = ({
-    collections = [
-        { name: 'Collection 1', color: '#212121' },
-        { name: 'Collection 2', color: 'blue'}
-    ]
-}) =>
-    <ol className="flex">
-        {
-            collections.map(collection => <li><Collection {...collection} /></li>)
-        }
-        <li><NewCollection /></li>
-    </ol>
-
-const QuestionHome = () =>
-    <div className="mx4">
-        <div className="flex align-center py4">
-            { /* TODO - check if user is an admin before showing */}
-            <h2>Collections of Questions</h2>
-
-            <div className="flex align-center ml-auto">
-                <Search />
-                <Link to="/questions/permissions" className="mx2">
-                    <Tooltip tooltip="Set permissions for collections">
-                        <Icon name="lock" />
-                    </Tooltip>
-                </Link>
-
-                <Link to="/questions/archive" className="mx2">
-                    <Tooltip tooltip="Archive">
-                        <Icon name="archive" />
-                    </Tooltip>
-                </Link>
-            </div>
-        </div>
-        <QuestionCollections />
-        <div className="mt4">
-            { /* TODO we need to conditionally show 'Questions' if the user is not an admin and there are no collections  */ }
-            <h2>Everything else</h2>
-            <EntityList
-                sectionId="'all'"
-            />
-        </div>
-    </div>
 
 const CollectionPage = ({ params }) =>
     <div>
@@ -341,3 +228,4 @@ const QuestionPermissions = () =>
     <div>
         Question permissions
     </div>
+

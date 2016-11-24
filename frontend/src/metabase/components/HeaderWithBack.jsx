@@ -6,7 +6,7 @@ const HeaderWithBack = ({ name }) =>
     <div className="flex align-center">
         { /* TODO - is this this the way we should do this? maybe makes more sense to just usa a link to the question index since you can navigate here from other spots potentially */ }
         <div
-            className="mr2"
+            className="cursor-pointer text-brand-hover mr2"
             onClick={() => window.history.back()}
         >
             { /* TODO - this should be an arrow */ }
