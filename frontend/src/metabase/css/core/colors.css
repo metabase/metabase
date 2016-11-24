@@ -172,6 +172,10 @@
 
 .bg-light-blue { background-color: #F5FAFC; }
 
+.bg-light-blue-hover:hover {
+  background-color: #E4F0FA;
+}
+
 .text-light-blue,
 .text-light-blue-hover:hover {
   color: #CFE4F5

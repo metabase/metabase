@@ -1,0 +1,2 @@
+.hover-child { display: none; }
+.hover-parent:hover .hover-child { display: block; }

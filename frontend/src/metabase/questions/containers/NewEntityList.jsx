@@ -3,17 +3,20 @@ import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 import { connect } from "react-redux";
 
+import Icon from "metabase/components/Icon";
+import EmptyState from "metabase/components/EmptyState";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+
 import S from "../components/List.css";
 
-import List from "../components/List.jsx";
-import SearchHeader from "../components/SearchHeader.jsx";
-import ActionHeader from "../components/ActionHeader.jsx";
-import EmptyState from "metabase/components/EmptyState.jsx";
-import UndoListing from "./UndoListing.jsx";
+import NewList from "../components/NewList";
+import SearchHeader from "../components/SearchHeader";
+import ActionHeader from "../components/ActionHeader";
+import UndoListing from "./UndoListing";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
-import { setSearchText, setItemSelected, setAllSelected, setArchived } from "../questions";
+import { selectSection, setSearchText, setItemSelected, setAllSelected, setArchived } from "../questions";
 import {
     getSection, getEntityType, getEntityIds,
     getSectionName, getSectionLoading, getSectionError,
@@ -21,6 +24,7 @@ import {
     getVisibleCount, getSelectedCount, getAllAreSelected, getSectionIsArchive,
     getLabelsWithSelectedState
 } from "../selectors";
+
 
 const mapStateToProps = (state, props) => {
   return {
@@ -46,7 +50,8 @@ const mapDispatchToProps = {
     setItemSelected,
     setAllSelected,
     setSearchText,
-    setArchived
+    setArchived,
+    selectSection
 }
 
 @connect(mapStateToProps, mapDispatchToProps)
@@ -126,18 +131,60 @@ export default class EntityList extends Component {
             entityType, entityIds,
             searchText, setSearchText,
             visibleCount, selectedCount, allAreSelected, sectionIsArchive, labels,
-            setItemSelected, setAllSelected, setArchived
+            setItemSelected, setAllSelected, setArchived, selectSection
         } = this.props;
         const empty = this.emptyState();
         return (
             <div className="full">
-                  <div>
-                      <h2>{name}</h2>
-                  </div>
-                  <LoadingAndErrorWrapper loading={!error && loading} error={error}>
+                <div className="flex align-center">
+                    <h2>{name}</h2>
+                    <PopoverWithTrigger
+                        triggerClasses="block ml-auto"
+                        triggerElement={
+                            <div className="flex align-center text-brand">
+                                { /* TODO - this should be the current "section" */ }
+                                <h3>All questions</h3>
+                                <Icon
+                                    className="ml1"
+                                    name="chevrondown"
+                                    width="12"
+                                    height="12"
+                                />
+                            </div>
+                        }
+                    >
+                        <ol className="List text-brand">
+                            {
+                                [
+                                    { section: 'all', name: 'All questions' },
+                                    { section: 'favorites', name: 'Favorites' },
+                                    { section: 'recents', name: 'Recently viewed' },
+                                    { section: 'me', name: 'Saved by me' },
+                                    { section: 'popular', name: 'Most popular' },
+                                ].map((item, index) =>
+                                        <li key={index}>
+                                            <a
+                                                className="List-item"
+                                                onClick={() => {
+                                                    // this should just link to a section and the component should handle it
+                                                    selectSection(item.section)
+                                                }}
+                                            >
+                                                <Icon name={item.name} />
+                                                <h4 className="List-item-title">
+                                                    {item.name}
+                                                </h4>
+                                            </a>
+                                        </li>
+                                )
+                            }
+                        </ol>
+                    </PopoverWithTrigger>
+                </div>
+                <LoadingAndErrorWrapper className="full" loading={!error && loading} error={error}>
                   { () =>
                         entityIds.length > 0 ? (
-                          <div>
+                          <div className="full">
                             <div className="flex align-center my1" style={{height: 40}}>
                               { selectedCount > 0 ?
                                 <ActionHeader
@@ -153,7 +200,7 @@ export default class EntityList extends Component {
                                 <SearchHeader searchText={searchText} setSearchText={setSearchText} />
                               }
                             </div>
-                            <List
+                            <NewList
                                 entityType={entityType}
                                 entityIds={entityIds}
                                 setItemSelected={setItemSelected}
@@ -165,7 +212,7 @@ export default class EntityList extends Component {
                           </div>
                         )
                   }
-                  </LoadingAndErrorWrapper>
+                </LoadingAndErrorWrapper>
                 <UndoListing />
 
             </div>

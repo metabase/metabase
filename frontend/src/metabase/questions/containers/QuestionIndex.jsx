@@ -10,6 +10,8 @@ import NewEntityList from "./NewEntityList";
 
 import { selectSection } from "../questions";
 
+const COLLECTION_ICON_SIZE = 64;
+
 const mapStateToProps = (state, props) => ({
     items: state.questions.entities.cards,
     sectionId: state.questions.section
@@ -53,40 +55,77 @@ const NewCollection = () =>
             textDecoration: 'none'
         }}
     >
-        <Icon
-            name="add"
-            width="32"
-            height="32"
-        />
-        <h3>New collection</h3>
+        <div
+            className="flex align-center justify-center text-brand"
+            style={{
+                border: '2px solid #D8E8F5',
+                borderRadius: COLLECTION_ICON_SIZE,
+                height: COLLECTION_ICON_SIZE,
+                width: COLLECTION_ICON_SIZE,
+            }}
+        >
+            <Icon
+                name="add"
+                width="32"
+                height="32"
+            />
+        </div>
+        <h3 className="text-brand">New collection</h3>
     </Link>
 
+const COLLECTION_ACTION_SIZE = 16;
 
-const Collection = ({ name, color }) =>
+const COLLECTION_ACTIONS_SIZES = {
+    width: COLLECTION_ACTION_SIZE,
+    height: COLLECTION_ACTION_SIZE,
+};
+
+const CollectionActions = () =>
+    <div>
+        <Icon
+            className="mx1"
+            name="lock"
+            {...COLLECTION_ACTIONS_SIZES}
+        />
+        <Icon
+            className="mx1"
+            name="archive"
+            {...COLLECTION_ACTIONS_SIZES}
+        />
+    </div>
+
+const Collection = ({ color, name, slug }) =>
     <Link
-        className="block p4 text-centered text-brand-hover rounded"
+        className="relative block p4 hover-parent text-centered text-brand-hover bg-light-blue-hover rounded mr4"
         style={{
             backgroundColor: '#FAFAFB',
-            textDecoration: 'none'
+            minWidth: 240,
+            textDecoration: 'none',
         }}
-        to={`/questions/collections/${name}`}i
+        to={`/questions/collections/${slug}`}i
     >
+        <div className="absolute top right mt2 mr2 hover-child">
+            <CollectionActions />
+        </div>
         { /* TODO rename this icon name  to collections or something more appropriate */ }
         <Icon
-            className="mb4"
+            className="mb4 mt2"
             name="all"
-            width="32"
-            height="32"
+            width={COLLECTION_ICON_SIZE}
+            height={COLLECTION_ICON_SIZE}
             style={{ color }}
         />
         <h3>{ name }</h3>
     </Link>
 
 
+// TODO - clearly collections should come from real data
 const QuestionCollections = ({
     collections = [
-        { name: 'Collection 1', color: '#212121' },
-        { name: 'Collection 2', color: 'blue'}
+        { name: 'Important metrics', color: '#509EE3', slug: 'important-metrics' },
+        { name: 'Quarterly marketing presentations', color: '#9CC177', slug: 'quarterly-marketing-presentations' },
+        { name: 'Reports for execs', color: '#A989C5', slug: 'reports-for-execs' },
+        { name: 'Shared marketing items', color: '#EF8C8C', slug: 'shared-marketing-items' }
     ]
 }) =>
     <ol className="flex">
@@ -155,10 +194,12 @@ class QuestionIndex extends Component {
                         </Link>
                     </div>
                 </div>
-                <QuestionCollections />
+                <div className="mb2">
+                    <QuestionCollections />
+                </div>
                 <div className="mt4">
                     { /* TODO we need to conditionally show 'Questions' if the user is not an admin and there are no collections  */ }
-                    <EntityList />
+                    <NewEntityList />
                 </div>
                 { this.state.showPermissions && (
                     <PageModal
