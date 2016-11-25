@@ -76,6 +76,35 @@
     (> x 10000) "10000+")
   )
 
+(defn get-value-frequencies 
+  "go through a bunch of maps and count the frequency a given key's values"
+  [many-maps k]
+  (frequencies (map k many-maps))
+  )
+
+(defn histogram 
+  "Bin some frequencies using a passed in binning function"
+  [binning-fn many-maps k]
+  (frequencies (map binning-fn (vals (get-value-frequencies many-maps k))))
+  )
+
+(def micro-histogram
+  "return a histogram for micro numbers"
+  (partial histogram bin-micro-number))
+
+(def small-histogram
+  "return a histogram for small numbers"
+  (partial histogram bin-small-number))
+
+(def medium-histogram
+  "return a histogram for medium numbers"
+  (partial histogram bin-medium-number))
+
+(def large-histogram
+  "return a histogram for large numbers"
+  (partial histogram bin-large-number))
+
+
 
 (defn- get-settings 
   "Figure out global info aboutt his instance"
@@ -133,7 +162,6 @@
   "characterize a saved question
   TODO: characterize by whether it has params, # of revisions, created by an admin"
   [question]
-  (print question)
     {:total 1
      :native (if (= (question :iquery_type) "native") 1 0)
      :gui (if (not= (question :iquery_type) "native") 1 0)}
@@ -141,49 +169,58 @@
 
 (defn get-question-metrics 
   "Get metrics based on questions
-  TODO characterize by # of labels
-       characterize by # executions and avg latency"
+  TODO characterize by # executions and avg latency"
   []
   (let [questions (db/select 'Card)]
-    {:questions (count questions)}))
+    {:questions (apply add-summaries (map question-dims questions))}))
 
 (defn get-dashboard-metrics 
   "Get metrics based on dashboards
-  TODO characterize by # of cards, # of revisions, and created by an admin"
+  TODO characterize by # of revisions, and created by an admin"
   []
-  (let [dashboards (db/select 'Dashboard)]
-    {:dashboards (count dashboards)}))
+  (let [dashboards (db/select 'Dashboard)
+        dashcards (db/select 'DashboardCard)]
+    {:dashboards (count dashboards)
+     :num_dashs_per_user (medium-histogram dashboards :creator_id)
+     :num_cards_per_dash (medium-histogram dashcards :dashboard_id)
+     :num_dashs_per_card (medium-histogram dashcards :card_id)}))
 
 (defn get-pulse-metrics 
   "Get metrics based on pulses
-  TODO: characterize by # of cards, non-user account emails, slack vs email, # emails"
+  TODO: characterize by non-user account emails, # emails"
   []
-  (let [pulses (db/select 'Pulse)]
-    {:pulses (count pulses)}))
+  (let [pulses (db/select 'Pulse)
+        pulsecards (db/select 'PulseCard)
+        pulsechannels (db/select 'PulseChannel)]
+    {:pulses (count pulses)
+     :pulse-types (frequencies (map :channel_type pulsechannels))
+     :pulse-schedules (frequencies (map :schedule_type pulsechannels))
+     :num_pulses_per_user (medium-histogram pulses :creator_id)
+     :num_pulses_per_card (medium-histogram pulsecards :card_id)
+     :num_cards_per_pulses (medium-histogram pulsecards :pulse_id)}))
+
 
 (defn get-label-metrics 
-  "Get metrics based on labels
-  TODO: characterize by the # of cards each label has + how many cards are unlabeled"
+  "Get metrics based on labels"
   []
   (let [labels (db/select 'CardLabel)]
-    {:labels (count labels)}))
+    {:labels (count labels)
+     :num_labels_per_card (micro-histogram labels :card_id)
+     :num_cards_per_label (medium-histogram labels :label_id)}))
 
 ;; Metadata Metrics
+(defn database-dims 
+  "characterize a database record"
+  [database]
+  {:total 1
+   :analysed (if (database :is_full_sync) 1 0)}
+  )
+
 (defn get-database-metrics 
-  "Get metrics based on databases
-  TODO: characterize by # of schemas, tables, fields
-        characterize by in-depth analysis enabled "
+  "Get metrics based on databases"
   []
   (let [databases (db/select 'Database)]
-    {:databases (count databases)}))
-
-(defn get-schema-metrics 
-  "Get metrics based on schemas
-  TODO merge this w/ tables?
-       characterize by # tables"
-  []
-  (let [schemas (db/select 'Table)]
-    {:schemas (count schemas)}))
+    {:databases (apply add-summaries (map database-dims databases))}))
 
 
 (defn get-table-metrics 
@@ -191,14 +228,18 @@
   TODO characterize by # fields"
   []
   (let [tables (db/select 'Table)]
-    {:tables (count tables)}))
+    {:tables (count tables)
+     :num_per_database (medium-histogram tables :db_id)
+     :num_per_schema (medium-histogram tables :schema)
+     }))
 
 
 (defn get-field-metrics 
   "Get metrics based on fields"
   []
   (let [fields (db/select 'Field)]
-    {:fields (count fields)}))
+    {:fields (count fields)
+     :num_per_table (medium-histogram fields :table_id)}))
 
 
 
@@ -225,7 +266,10 @@
         characterize by error status"
   []
   (let [executions (db/select 'QueryExecution)]
-    {:executions (count executions)}))
+    {:executions (count executions)
+     :by_status (frequencies (map :status executions))
+     :num_per_user (large-histogram executions :executor_id)
+     :num_per_card (large-histogram executions :table_id)}))
 
 (defn get-map-metrics 
   "Get metrics based on custom geojson maps
