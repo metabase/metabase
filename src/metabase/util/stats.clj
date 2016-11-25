@@ -63,11 +63,12 @@
   )
 
 
-(defn- bin-large-number 
+(defn bin-large-number 
   "Return large bin number. Assumes positive inputs"
   [x]
   (cond
     (= 0 x) "0"
+    (< x 1) "< 1"
     (<= 1 x 10) "1-10"
     (<= 11 x 50) "11-50"
     (<= 51 x 250) "51-250"  
@@ -228,8 +229,7 @@
 
 
 (defn get-table-metrics 
-  "Get metrics based on tables
-  TODO characterize by # fields"
+  "Get metrics based on tables"
   []
   (let [tables (db/select 'Table)]
     {:tables (count tables)
@@ -260,20 +260,25 @@
   (let [metrics (db/select 'Metric)]
     {:metrics (count metrics)}))
 
+(defn bin-latencies 
+  "Bin latencies, which are in milliseconds"
+  [query-executions]
+  (let [latency-vals (map #(/ %1 1000) (map :running_time query-executions))]
+    (frequencies (map bin-large-number latency-vals))))
+
 ;; Execution Metrics
 (defn get-execution-metrics 
   "Get metrics based on executions. 
   This should be done in a single pass, as there might 
   be a LOT of query executions in a normal instance
-  TODO: characterize by ad hoc vs cards
-        characterize by latency
-        characterize by error status"
+  TODO: characterize by ad hoc vs cards"
   []
   (let [executions (db/select 'QueryExecution)]
     {:executions (count executions)
      :by_status (frequencies (map :status executions))
      :num_per_user (large-histogram executions :executor_id)
-     :num_per_card (large-histogram executions :table_id)}))
+     :num_per_card (large-histogram executions :table_id)
+     :num_by_latency (bin-latencies executions)}))
 
 (defn get-map-metrics 
   "Get metrics based on custom geojson maps
