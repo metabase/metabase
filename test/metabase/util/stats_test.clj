@@ -55,4 +55,3 @@
 (expect "1001-10000" (bin-large-number 10000))
 (expect "10000+" (bin-large-number 10001))
 (expect "10000+" (bin-large-number 100000))
-
