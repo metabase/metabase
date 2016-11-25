@@ -1,6 +1,7 @@
 import React, { Component, PropTypes } from "react";
 import { connect } from "react-redux";
 import { Link } from "react-router";
+import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
@@ -21,15 +22,48 @@ const mapDispatchToProps = ({
     selectSection
 })
 
+const SEARCH_TRIGGER_KEYCODE = 191;
+const SEARCH_ESCAPE_KEYCODE = 27;
+
 class Search extends Component {
     constructor () {
         super();
+        this.state = { active: false }
+    }
+
+    componentDidMount () {
+        this.listenToSearchKeyDown();
+    }
+
+    componentWillUnMount () {
+        this.stopListenToSearchKeyDown();
+    }
+
+    handleSearchKeyDown (event) {
+        console.log('ey?', event);
+        if(event.keyCode === SEARCH_TRIGGER_KEYCODE) {
+            this.setState({ active: true });
+        } else if (event.keyKode === SEARCH_ESCAPE_KEYCODE) {
+            this.setState({ active: false });
+        }
+    }
+
+    listenToSearchKeyDown () {
+        window.addEventListener('keydown', this.handleSearchKeydown)
+    }
+
+    stopListenToSearchKeyDown() {
+        window.removeEventListener('keydown', this.handleSearchKeydown)
     }
 
     render () {
+        const { active } = this.state;
         return (
             <div
-                className="bordered border-dark flex align-center pr2"
+                className={cx(
+                    'bordered border-dark flex align-center pr2 transition-border',
+                    { 'border-brand' : active }
+                )}
                 style={{
                     borderRadius: 99,
                 }}
@@ -102,7 +136,7 @@ const Collection = ({ color, name, slug }) =>
             minWidth: 240,
             textDecoration: 'none',
         }}
-        to={`/questions/collections/${slug}`}i
+        to={`/questions/collections/1`}i
     >
         <div className="absolute top right mt2 mr2 hover-child">
             <CollectionActions />
@@ -130,7 +164,7 @@ const QuestionCollections = ({
 }) =>
     <ol className="flex">
         {
-            collections.map(collection => <li><Collection {...collection} /></li>)
+            collections.map((collection, index) => <li key={index}><Collection {...collection} /></li>)
         }
         <li><NewCollection /></li>
     </ol>

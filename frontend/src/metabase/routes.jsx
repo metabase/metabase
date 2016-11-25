@@ -19,11 +19,9 @@ import GoogleNoAccount from "metabase/auth/components/GoogleNoAccount.jsx";
 // main app containers
 import DashboardApp from "metabase/dashboard/containers/DashboardApp.jsx";
 import HomepageApp from "metabase/home/containers/HomepageApp.jsx";
-import EntityBrowser from "metabase/questions/containers/EntityBrowser.jsx";
-import Archive from "metabase/questions/containers/Archive.jsx";
 import QuestionIndex from "metabase/questions/containers/QuestionIndex.jsx";
-import EntityList from "metabase/questions/containers/EntityList.jsx";
-import EditLabels from "metabase/questions/containers/EditLabels.jsx";
+import Archive from "metabase/questions/containers/Archive.jsx";
+import CollectionPage from "metabase/questions/containers/CollectionPage.jsx";
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp.jsx";
 import PulseListApp from "metabase/pulse/containers/PulseListApp.jsx";
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder.jsx";
@@ -136,7 +134,7 @@ export const getRoutes = (store) =>
                 <Route path="/questions" component={QuestionIndex} />
                 <Route path="/questions/archive" component={Archive} />
                 <Route path="/questions/permissions" component={QuestionPermissions} />
-                <Route path="/questions/collection/:collectionName" component={CollectionPage} />
+                <Route path="/questions/collections/:collectionName" component={CollectionPage} />
 
                 {/* REFERENCE */}
                 <Route path="/reference" component={ReferenceApp}>
@@ -217,12 +215,6 @@ export const getRoutes = (store) =>
         </Route>
     </Route>
 
-
-
-const CollectionPage = ({ params }) =>
-    <div>
-        { name }
-    </div>
 
 const QuestionPermissions = () =>
     <div>
