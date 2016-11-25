@@ -104,7 +104,11 @@
   "return a histogram for large numbers"
   (partial histogram bin-large-number))
 
-
+(defn instance-start-date? 
+  "Pull up the first user account and use that date"
+  []
+  ((first (db/select 'User {:limit 1} {:order-by [[:date_joined :desc]]})) :date_joined)
+  )
 
 (defn- get-settings 
   "Figure out global info aboutt his instance"
@@ -119,7 +123,7 @@
    :email_configured      ((resolve 'metabase.email/email-configured?))
    :slack_configured      ((resolve 'metabase.integrations.slack/slack-configured?))
    :sso_configured        (not (nil? metabase.api.session/google-auth-client-id))
-   :instance_started      (new java.util.Date) ;; HOW DO I GET THIS?
+   :instance_started      instance-start-date?
    :has_sample_data       (db/exists? 'Database, :is_sample true)
    }
   )
