@@ -2,6 +2,7 @@
   "Functions which summarize the usage of an instance"
   (:require [clojure.tools.logging :as log]
             [clj-http.client :as client]
+            [environ.core :as environ]
             (metabase [config :as config]
                       [db :as db])
             [metabase.public-settings :as settings]
@@ -63,7 +64,7 @@
   )
 
 
-(defn bin-large-number 
+(defn- bin-large-number 
   "Return large bin number. Assumes positive inputs"
   [x]
   (cond
@@ -77,13 +78,13 @@
     (> x 10000) "10000+")
   )
 
-(defn get-value-frequencies 
+(defn- get-value-frequencies 
   "go through a bunch of maps and count the frequency a given key's values"
   [many-maps k]
   (frequencies (map k many-maps))
   )
 
-(defn histogram 
+(defn- histogram 
   "Bin some frequencies using a passed in binning function"
   [binning-fn many-maps k]
   (frequencies (map binning-fn (vals (get-value-frequencies many-maps k))))
@@ -105,12 +106,17 @@
   "return a histogram for large numbers"
   (partial histogram bin-large-number))
 
-(defn instance-start-date? 
+(defn- instance-start-date? 
   "Pull up the first user account and use that date"
   []
   ((first (db/select 'User {:limit 1} {:order-by [[:date_joined :desc]]})) :date_joined)
   )
 
+(defn- where-am-i-running? 
+  "Figure out what we're running under"
+  []
+  
+  )
 (defn- get-settings 
   "Figure out global info aboutt his instance"
   []
@@ -136,7 +142,7 @@
   )
 
 ;; User metrics
-(defn user-dims 
+(defn- user-dims 
   "characterize a user record"
   [user]
   {:total 1
@@ -147,7 +153,7 @@
   )
 
 
-(defn get-user-metrics 
+(defn- get-user-metrics 
   "Get metrics based on user records
   TODO: get activity in terms of created questions, pulses and dashboards"
   []
@@ -155,7 +161,7 @@
     {:users (apply add-summaries (map user-dims users))}))
 
 
-(defn get-group-metrics 
+(defn- get-group-metrics 
   "Get metrics based on groups:
   TODO characterize by # w/ sql access, # of users, no self-serve data access"
   []
@@ -163,7 +169,7 @@
     {:groups (count groups)}))
 
 ;; Artifact Metrics
-(defn question-dims 
+(defn- question-dims 
   "characterize a saved question
   TODO: characterize by whether it has params, # of revisions, created by an admin"
   [question]
@@ -172,14 +178,14 @@
      :gui (if (not= (question :iquery_type) "native") 1 0)}
   )
 
-(defn get-question-metrics 
+(defn- get-question-metrics 
   "Get metrics based on questions
   TODO characterize by # executions and avg latency"
   []
   (let [questions (db/select 'Card)]
     {:questions (apply add-summaries (map question-dims questions))}))
 
-(defn get-dashboard-metrics 
+(defn- get-dashboard-metrics 
   "Get metrics based on dashboards
   TODO characterize by # of revisions, and created by an admin"
   []
@@ -190,7 +196,7 @@
      :num_cards_per_dash (medium-histogram dashcards :dashboard_id)
      :num_dashs_per_card (medium-histogram dashcards :card_id)}))
 
-(defn get-pulse-metrics 
+(defn- get-pulse-metrics 
   "Get metrics based on pulses
   TODO: characterize by non-user account emails, # emails"
   []
@@ -205,7 +211,7 @@
      :num_cards_per_pulses (medium-histogram pulsecards :pulse_id)}))
 
 
-(defn get-label-metrics 
+(defn- get-label-metrics 
   "Get metrics based on labels"
   []
   (let [labels (db/select 'CardLabel)]
@@ -214,21 +220,21 @@
      :num_cards_per_label (medium-histogram labels :label_id)}))
 
 ;; Metadata Metrics
-(defn database-dims 
+(defn- database-dims 
   "characterize a database record"
   [database]
   {:total 1
    :analysed (if (database :is_full_sync) 1 0)}
   )
 
-(defn get-database-metrics 
+(defn- get-database-metrics 
   "Get metrics based on databases"
   []
   (let [databases (db/select 'Database)]
     {:databases (apply add-summaries (map database-dims databases))}))
 
 
-(defn get-table-metrics 
+(defn- get-table-metrics 
   "Get metrics based on tables"
   []
   (let [tables (db/select 'Table)]
@@ -238,7 +244,7 @@
      }))
 
 
-(defn get-field-metrics 
+(defn- get-field-metrics 
   "Get metrics based on fields"
   []
   (let [fields (db/select 'Field)]
@@ -247,27 +253,27 @@
 
 
 
-(defn get-segment-metrics 
+(defn- get-segment-metrics 
   "Get metrics based on segments"
   []
   (let [segments (db/select 'Segment)]
     {:segments (count segments)}))
 
 
-(defn get-metric-metrics 
+(defn- get-metric-metrics 
   "Get metrics based on metrics"
   []
   (let [metrics (db/select 'Metric)]
     {:metrics (count metrics)}))
 
-(defn bin-latencies 
+(defn- bin-latencies 
   "Bin latencies, which are in milliseconds"
   [query-executions]
   (let [latency-vals (map #(/ %1 1000) (map :running_time query-executions))]
     (frequencies (map bin-large-number latency-vals))))
 
 ;; Execution Metrics
-(defn get-execution-metrics 
+(defn- get-execution-metrics 
   "Get metrics based on executions. 
   This should be done in a single pass, as there might 
   be a LOT of query executions in a normal instance
@@ -280,7 +286,7 @@
      :num_per_card (large-histogram executions :table_id)
      :num_by_latency (bin-latencies executions)}))
 
-(defn get-map-metrics 
+(defn- get-map-metrics 
   "Get metrics based on custom geojson maps
   TODO figure out how to get at these"
   []
