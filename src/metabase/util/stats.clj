@@ -115,10 +115,10 @@
    :check_for_updates     (setting/get :check-for-updates)
    :site_name             (not= settings/site-name "Metabase")
    :report_timezone       (setting/get :report-timezone)
-   :friendly_names        true ;; HOW DO I GET THIS?
+   :friendly_names        (metabase.models.humanization/enable-advanced-humanization)
    :email_configured      ((resolve 'metabase.email/email-configured?))
    :slack_configured      ((resolve 'metabase.integrations.slack/slack-configured?))
-   :sso_configured        true ;; HOW DO I GET THIS?
+   :sso_configured        (not (nil? metabase.api.session/google-auth-client-id))
    :instance_started      (new java.util.Date) ;; HOW DO I GET THIS?
    :has_sample_data       (db/exists? 'Database, :is_sample true)
    }
