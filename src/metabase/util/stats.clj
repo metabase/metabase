@@ -2,7 +2,6 @@
   "Functions which summarize the usage of an instance"
   (:require [clojure.tools.logging :as log]
             [clj-http.client :as client]
-            [environ.core :as environ]
             (metabase [config :as config]
                       [db :as db])
             [metabase.public-settings :as settings]
@@ -116,9 +115,9 @@
   "Figure out what we're running under"
   []
   (cond
-    (not (nil? (environ :database-url))) :heroku
-    (not (nil? (environ :rds-hostname))) :elastic-beanstalk
-    (not (= (environ :mb-client) :osx)) :osx
+    (= (config/config-str :mb-client) :osx) :osx
+    (not (nil? (config/config-str :rds-hostname))) :elastic-beanstalk
+    (not (nil? (config/config-str :database-url))) :heroku ;; Putting this last as 'database-url' seems least specific
     :default "unknown")
   
   )
@@ -126,7 +125,7 @@
   "Figure out global info aboutt his instance"
   []
   {:version               (config/mb-version-info :tag)
-   :running_on            "unknown" ;; HOW DO I GET THIS? beanstalk vs heroku vs mac vs 'unknown'
+   :running_on            (where-am-i-running?)
    :application_database  (config/config-str :mb-db-type)
    :check_for_updates     (setting/get :check-for-updates)
    :site_name             (not= settings/site-name "Metabase")
