@@ -115,6 +115,11 @@
 (defn- where-am-i-running? 
   "Figure out what we're running under"
   []
+  (cond
+    (not (nil? (environ :database-url))) :heroku
+    (not (nil? (environ :rds-hostname))) :elastic-beanstalk
+    (not (= (environ :mb-client) :osx)) :osx
+    :default "unknown")
   
   )
 (defn- get-settings 
