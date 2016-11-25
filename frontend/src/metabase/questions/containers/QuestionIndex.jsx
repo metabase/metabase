@@ -1,11 +1,13 @@
 import React, { Component, PropTypes } from "react";
 import { connect } from "react-redux";
 import { Link } from "react-router";
+import { Motion, spring } from "react-motion";
 import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
 import Input from "metabase/components/Input";
+import OnClickOutsideWrapper from "metabase/components//OnClickOutsideWrapper";
+import Tooltip from "metabase/components/Tooltip";
 
 import NewEntityList from "./NewEntityList";
 
@@ -29,6 +31,7 @@ class Search extends Component {
     constructor () {
         super();
         this.state = { active: false }
+        this.handleSearchKeydown = this.handleSearchKeydown.bind(this);
     }
 
     componentDidMount () {
@@ -39,44 +42,62 @@ class Search extends Component {
         this.stopListenToSearchKeyDown();
     }
 
-    handleSearchKeyDown (event) {
-        console.log('ey?', event);
+    handleSearchKeydown (event) {
         if(event.keyCode === SEARCH_TRIGGER_KEYCODE) {
-            this.setState({ active: true });
+            this.setActive();
         } else if (event.keyKode === SEARCH_ESCAPE_KEYCODE) {
-            this.setState({ active: false });
+            this.setInactive();
         }
     }
 
+    setActive () {
+        this.setState({ active: true });
+    }
+
+    setInactive() {
+        this.setState({ active: false });
+    }
+
     listenToSearchKeyDown () {
-        window.addEventListener('keydown', this.handleSearchKeydown)
+        window.addEventListener('keydown', this.handleSearchKeydown);
     }
 
     stopListenToSearchKeyDown() {
-        window.removeEventListener('keydown', this.handleSearchKeydown)
+        window.removeEventListener('keydown', this.handleSearchKeydown);
     }
 
     render () {
         const { active } = this.state;
         return (
-            <div
-                className={cx(
-                    'bordered border-dark flex align-center pr2 transition-border',
-                    { 'border-brand' : active }
-                )}
-                style={{
-                    borderRadius: 99,
-                }}
-            >
-                <Icon
-                    className="ml2"
-                    name="search"
-                />
-                <Input
-                    className="input borderless"
-                    placeholder="Search for a question..."
-                />
-            </div>
+            <OnClickOutsideWrapper handleDismissal={this.setInactive.bind(this)}>
+                <div
+                    className={cx(
+                        'bordered border-dark flex align-center pr2 transition-border',
+                        { 'border-brand' : active }
+                    )}
+                    onClick={ () => this.setActive() }
+                    style={{
+                        borderRadius: 99,
+                    }}
+                >
+                    <Icon
+                        className={cx('ml2', { 'text-brand': active })}
+                        name="search"
+                    />
+                    <Motion
+                        style={{width: active ? spring(400) : spring(200) }}
+                    >
+                        { interpolatingStyle =>
+                            <Input
+                                autofocus={active}
+                                className="input borderless"
+                                placeholder="Search for a question..."
+                                style={interpolatingStyle}
+                            />
+                        }
+                    </Motion>
+                </div>
+            </OnClickOutsideWrapper>
         );
     }
 }
