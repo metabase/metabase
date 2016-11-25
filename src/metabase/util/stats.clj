@@ -133,7 +133,7 @@
    :friendly_names        (metabase.models.humanization/enable-advanced-humanization)
    :email_configured      ((resolve 'metabase.email/email-configured?))
    :slack_configured      ((resolve 'metabase.integrations.slack/slack-configured?))
-   :sso_configured        (not (nil? metabase.api.session/google-auth-client-id))
+   :sso_configured        (not (nil? (resolve 'metabase.api.session/google-auth-client-id)))
    :instance_started      instance-start-date?
    :has_sample_data       (db/exists? 'Database, :is_sample true)
    }
