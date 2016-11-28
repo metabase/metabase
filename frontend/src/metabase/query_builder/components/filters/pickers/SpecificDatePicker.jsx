@@ -69,7 +69,7 @@ export default class SpecificDatePicker extends Component {
         return (
             <div className="px1">
                 <div className="flex align-center mb1">
-                    <div className="border-top border-bottom full border-left">
+                    <div className={cx('border-top border-bottom full border-left', { 'border-right': !calendar })}>
                         <Input
                             className="borderless full p2 h3"
                             style={{
@@ -116,7 +116,7 @@ export default class SpecificDatePicker extends Component {
                     </ExpandingContent>
                 }
 
-                <div className="py2 mx1">
+                <div className={cx({ 'py2': calendar }, { 'mb3': !calendar })}>
                     { hours == null || minutes == null ?
                         <div
                             className="text-purple-hover cursor-pointer flex align-center"
