@@ -151,7 +151,9 @@ export default class Calendar extends Component {
         if (this.props.isDual) {
             return (
                 <div className="flex">
-                    {this.renderCalender(current, "left")}
+                    <div className="mr3">
+                        {this.renderCalender(current, "left")}
+                    </div>
                     {this.renderCalender(moment(current).add(1, "month"), "right")}
                 </div>
             )
