@@ -205,5 +205,4 @@
   (merge i/IDatasetLoaderDefaultsMixin
          {:engine                       (constantly :bigquery)
           :database->connection-details (u/drop-first-arg database->connection-details)
-          :create-db!                   (u/drop-first-arg create-db!)
-          :destroy-db!                  (constantly nil)}))
+          :create-db!                   (u/drop-first-arg create-db!)}))

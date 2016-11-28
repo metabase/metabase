@@ -5,10 +5,20 @@
   (:require [clojure.set :as set]
             [expectations :refer :all]
             [metabase.driver :as driver]
-            #_[metabase.query-processor :refer :all]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
+            metabase.test.data.interface
             [metabase.util :as u]))
+
+;; make sure all the driver test extension namespaces are loaded <3
+;; if this isn't done some things will get loaded at the wrong time which can end up causing test databases to be created more than once, which fails
+(doseq [engine (keys (driver/available-drivers))]
+  (let [test-ns (symbol (str "metabase.test.data." (name engine)))]
+    (try
+      (require test-ns)
+      (catch Throwable e
+        (println (format "Error loading %s: %s" test-ns (.getMessage e)))))))
+
 
 ;;; ------------------------------------------------------------ Helper Fns + Macros ------------------------------------------------------------
 
