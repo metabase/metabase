@@ -42,6 +42,20 @@
   ;; take up to last 30 characters because databases like Oracle have limits on the lengths of identifiers
   (apply str (take-last 30 (str/replace (str/lower-case (str database-name \_ table-name)) #"-" "_"))))
 
+(defn single-db-qualified-name-components
+  "Implementation of `qualified-name-components` for drivers like Oracle and Redshift that must use a single existing DB for testing.
+   This implementation simulates separate databases by doing two things:
+
+     1.  Using a \"session schema\" to make sure each test run is isolated from other test runs
+     2.  Embedding the name of the database into table names, e.g. to differentiate \"test_data_categories\" and \"tupac_sightings_categories\".
+
+   To use this implementation, partially bind this function with a SESSION-SCHEMA:
+
+     {:qualified-name-components (partial i/single-db-qualified-name-components my-session-schema-name)}"
+  ([_              _ db-name]                       [db-name])
+  ([session-schema _ db-name table-name]            [session-schema (db-qualified-table-name db-name table-name)])
+  ([session-schema _ db-name table-name field-name] [session-schema (db-qualified-table-name db-name table-name) field-name]))
+
 
 (defprotocol IMetabaseInstance
   (metabase-instance [this context]
@@ -87,11 +101,6 @@
     "Create a new database from DATABASE-DEFINITION, including adding tables, fields, and foreign key constraints,
      and add the appropriate data. This method should drop existing databases with the same name if applicable.
      (This refers to creating the actual *DBMS* database itself, *not* a Metabase `Database` object.)")
-
-  (destroy-db! [this, ^DatabaseDefinition database-definition]
-    "Destroy database, if any, associated with DATABASE-DEFINITION.
-     This refers to destroying a *DBMS* database -- removing an H2 file, dropping a Postgres database, etc.
-     This does not need to remove corresponding Metabase definitions -- this is handled by `DatasetLoader`.")
 
   ;; TODO - this would be more useful if DATABASE-DEFINITION was a parameter
   (default-schema ^String [this]

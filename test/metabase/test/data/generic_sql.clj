@@ -129,12 +129,9 @@
             (quot (pk-field-name driver)))))
 
 (defn- default-qualified-name-components
-  ([_ db-name]
-   [db-name])
-  ([_ db-name table-name]
-   [table-name])
-  ([_ db-name table-name field-name]
-   [table-name field-name]))
+  ([_ db-name]                       [db-name])
+  ([_ db-name table-name]            [table-name])
+  ([_ db-name table-name field-name] [table-name field-name]))
 
 (defn- default-quote-name [_ nm]
   (str \" nm \"))
@@ -321,14 +318,10 @@
   (doseq [tabledef table-definitions]
     (load-data! driver dbdef tabledef)))
 
-(defn- destroy-db! [driver dbdef]
-  (execute-sql! driver :server dbdef (drop-db-if-exists-sql driver dbdef)))
-
 (def IDatasetLoaderMixin
-  "Mixin for `IGenericSQLDatasetLoader` types to implemnt `create-db!` and `destroy-db!` from `IDatasetLoader`."
+  "Mixin for `IGenericSQLDatasetLoader` types to implement `create-db!` from `IDatasetLoader`."
   (merge i/IDatasetLoaderDefaultsMixin
-         {:create-db!  create-db!
-          :destroy-db! destroy-db!}))
+         {:create-db! create-db!}))
 
 
 ;;; ## Various Util Fns

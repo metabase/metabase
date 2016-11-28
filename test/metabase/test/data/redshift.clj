@@ -49,13 +49,6 @@
 (defonce ^:const session-schema-name
   (str "schema_" session-schema-number))
 
-(defn- qualified-name-components
-  ([_ db-name]
-   [db-name])
-  ([_ _ table-name]
-   [session-schema-name table-name])
-  ([_ _ table-name field-name]
-   [session-schema-name table-name field-name]))
 
 (u/strict-extend RedshiftDriver
   generic/IGenericSQLDatasetLoader
@@ -65,7 +58,7 @@
           :drop-table-if-exists-sql  generic/drop-table-if-exists-cascade-sql
           :field-base-type->sql-type (u/drop-first-arg field-base-type->sql-type)
           :pk-sql-type               (constantly "INTEGER IDENTITY(1,1)")
-          :qualified-name-components qualified-name-components})
+          :qualified-name-components (partial i/single-db-qualified-name-components session-schema-name)})
 
   i/IDatasetLoader
   (merge generic/IDatasetLoaderMixin
