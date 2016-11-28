@@ -119,7 +119,7 @@ export default class EntityList extends Component {
         default:
           return {
             icon: 'label',
-            message: 'There aren\'t any questions with this label.'
+            message: 'There aren\'t any questions with this label.' // TODO - this shouldn't say label
           }
       }
     }
@@ -131,55 +131,14 @@ export default class EntityList extends Component {
             entityType, entityIds,
             searchText, setSearchText,
             visibleCount, selectedCount, allAreSelected, sectionIsArchive, labels,
-            setItemSelected, setAllSelected, setArchived, selectSection
+            setItemSelected, setAllSelected, setArchived, selectSection,
+            collectionsCount
         } = this.props;
         const empty = this.emptyState();
         return (
             <div className="full">
                 <div className="flex align-center">
                     <h2>{name}</h2>
-                    <PopoverWithTrigger
-                        triggerClasses="block ml-auto"
-                        triggerElement={
-                            <div className="flex align-center text-brand">
-                                { /* TODO - this should be the current "section" */ }
-                                <h3>All questions</h3>
-                                <Icon
-                                    className="ml1"
-                                    name="chevrondown"
-                                    width="12"
-                                    height="12"
-                                />
-                            </div>
-                        }
-                    >
-                        <ol className="List text-brand">
-                            {
-                                [
-                                    { section: 'all', name: 'All questions' },
-                                    { section: 'favorites', name: 'Favorites' },
-                                    { section: 'recents', name: 'Recently viewed' },
-                                    { section: 'me', name: 'Saved by me' },
-                                    { section: 'popular', name: 'Most popular' },
-                                ].map((item, index) =>
-                                        <li key={index}>
-                                            <a
-                                                className="List-item"
-                                                onClick={() => {
-                                                    // this should just link to a section and the component should handle it
-                                                    selectSection(item.section)
-                                                }}
-                                            >
-                                                <Icon name={item.name} />
-                                                <h4 className="List-item-title">
-                                                    {item.name}
-                                                </h4>
-                                            </a>
-                                        </li>
-                                )
-                            }
-                        </ol>
-                    </PopoverWithTrigger>
                 </div>
                 <LoadingAndErrorWrapper className="full" loading={!error && loading} error={error}>
                   { () =>
@@ -197,8 +156,50 @@ export default class EntityList extends Component {
                                   labels={labels}
                                   />
                                 :
-                                <SearchHeader searchText={searchText} setSearchText={setSearchText} />
+                                  <SearchHeader searchText={searchText} setSearchText={setSearchText} />
                               }
+                                <PopoverWithTrigger
+                                    triggerClasses="block ml-auto"
+                                    triggerElement={
+                                        <div className="flex align-center text-brand">
+                                            { /* TODO - this should be the current "section" */ }
+                                            <h3>All questions</h3>
+                                            <Icon
+                                                className="ml1"
+                                                name="chevrondown"
+                                                width="12"
+                                                height="12"
+                                            />
+                                        </div>
+                                    }
+                                >
+                                    <ol className="List text-brand">
+                                        {
+                                            [
+                                                { section: 'all', name: 'All questions' },
+                                                { section: 'favorites', name: 'Favorites' },
+                                                { section: 'recents', name: 'Recently viewed' },
+                                                { section: 'me', name: 'Saved by me' },
+                                                { section: 'popular', name: 'Most popular' },
+                                            ].map((item, index) =>
+                                                    <li key={index}>
+                                                        <a
+                                                            className="List-item"
+                                                            onClick={() => {
+                                                                // this should just link to a section and the component should handle it
+                                                                selectSection(item.section)
+                                                            }}
+                                                        >
+                                                            <Icon name={item.name} />
+                                                            <h4 className="List-item-title">
+                                                                {item.name}
+                                                            </h4>
+                                                        </a>
+                                                    </li>
+                                            )
+                                        }
+                                    </ol>
+                                </PopoverWithTrigger>
                             </div>
                             <NewList
                                 entityType={entityType}

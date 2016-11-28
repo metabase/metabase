@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { Motion, spring } from "react-motion";
 import cx from "classnames";
 
+// import ActionGroup from "metabase/components/ActionGroup";
 import Icon from "metabase/components/Icon";
 import Input from "metabase/components/Input";
 import OnClickOutsideWrapper from "metabase/components//OnClickOutsideWrapper";
@@ -43,14 +44,14 @@ class Search extends Component {
         this.stopListenToSearchKeyDown();
     }
 
-    handleSearchKeydown ({ event: { keyCode }}) {
-        if(this.state.active && keyCode === SEARCH_ENTER_KEYCODE) {
+    handleSearchKeydown (event) {
+        if(this.state.active && event.keyCode === SEARCH_ENTER_KEYCODE) {
             alert('This would search if it worked');
         }
 
-        if(keyCode === SEARCH_TRIGGER_KEYCODE) {
+        if(event.keyCode === SEARCH_TRIGGER_KEYCODE) {
             this.setActive();
-        } else if (keyCode === SEARCH_ESCAPE_KEYCODE) {
+        } else if (event.keyCode === SEARCH_ESCAPE_KEYCODE) {
             this.setInactive();
         }
     }
@@ -95,7 +96,7 @@ class Search extends Component {
                         { interpolatingStyle =>
                             <Input
                                 autofocus={active}
-                                className="input borderless"
+                                className="input text-bold borderless"
                                 placeholder="Search for a question..."
                                 style={interpolatingStyle}
                             />
@@ -115,20 +116,22 @@ const NewCollection = () =>
             textDecoration: 'none'
         }}
     >
-        <div
-            className="flex align-center justify-center text-brand"
-            style={{
-                border: '2px solid #D8E8F5',
-                borderRadius: COLLECTION_ICON_SIZE,
-                height: COLLECTION_ICON_SIZE,
-                width: COLLECTION_ICON_SIZE,
-            }}
-        >
-            <Icon
-                name="add"
-                width="32"
-                height="32"
-            />
+        <div>
+            <div
+                className="flex align-center justify-center text-brand ml-auto mr-auto mb4 mt2"
+                style={{
+                    border: '2px solid #D8E8F5',
+                    borderRadius: COLLECTION_ICON_SIZE,
+                    height: COLLECTION_ICON_SIZE,
+                    width: COLLECTION_ICON_SIZE,
+                }}
+            >
+                <Icon
+                    name="add"
+                    width="32"
+                    height="32"
+                />
+            </div>
         </div>
         <h3 className="text-brand">New collection</h3>
     </Link>
@@ -139,6 +142,14 @@ const COLLECTION_ACTIONS_SIZES = {
     width: COLLECTION_ACTION_SIZE,
     height: COLLECTION_ACTION_SIZE,
 };
+
+ /*
+    <ActionGroup
+        actions={[
+            { name: 'Set collection permissions', icon: 'lock', onClick: () => console.log('lock'), test: 'derp === 'derp' }
+        ]}
+        />
+*/
 
 const CollectionActions = () =>
     <div>
@@ -188,11 +199,26 @@ const QuestionCollections = ({
         { name: 'Shared marketing items', color: '#EF8C8C', slug: 'shared-marketing-items' }
     ]
 }) =>
-    <ol className="flex">
+    <ol className="Grid">
         {
-            collections.map((collection, index) => <li key={index}><Collection {...collection} /></li>)
+            collections.map((collection, index) =>
+                <li
+                    className="Grid-cell"
+                    key={index}
+                >
+                    <Collection {...collection} />
+                </li>
+            )
         }
-        <li><NewCollection /></li>
+        <li
+            className="Grid-cell"
+            onClick={
+                // TODO - create a new collection
+                () => console.log('New collection yo!')
+            }
+        >
+            <NewCollection />
+        </li>
     </ol>
 
 class PageModal extends Component {
@@ -222,7 +248,8 @@ class QuestionIndex extends Component {
     constructor () {
         super();
         this.state = {
-            showPermissions: false
+            showPermissions: false,
+            questionsExpanded: false
         }
     }
     componentWillMount () {
@@ -259,7 +286,7 @@ class QuestionIndex extends Component {
                 </div>
                 <div className="mt4">
                     { /* TODO we need to conditionally show 'Questions' if the user is not an admin and there are no collections  */ }
-                    <NewEntityList />
+                        <NewEntityList />
                 </div>
                 { this.state.showPermissions && (
                     <PageModal
@@ -271,5 +298,6 @@ class QuestionIndex extends Component {
         )
     }
 }
+
 
 export default QuestionIndex;
