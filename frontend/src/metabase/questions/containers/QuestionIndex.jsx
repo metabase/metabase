@@ -26,6 +26,7 @@ const mapDispatchToProps = ({
 
 const SEARCH_TRIGGER_KEYCODE = 191;
 const SEARCH_ESCAPE_KEYCODE = 27;
+const SEARCH_ENTER_KEYCODE = 13;
 
 class Search extends Component {
     constructor () {
@@ -42,10 +43,14 @@ class Search extends Component {
         this.stopListenToSearchKeyDown();
     }
 
-    handleSearchKeydown (event) {
-        if(event.keyCode === SEARCH_TRIGGER_KEYCODE) {
+    handleSearchKeydown ({ event: { keyCode }}) {
+        if(this.state.active && keyCode === SEARCH_ENTER_KEYCODE) {
+            alert('This would search if it worked');
+        }
+
+        if(keyCode === SEARCH_TRIGGER_KEYCODE) {
             this.setActive();
-        } else if (event.keyKode === SEARCH_ESCAPE_KEYCODE) {
+        } else if (keyCode === SEARCH_ESCAPE_KEYCODE) {
             this.setInactive();
         }
     }
