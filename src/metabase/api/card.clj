@@ -1,5 +1,6 @@
 (ns metabase.api.card
   (:require [clojure.data :as data]
+            [cheshire.core :as json]
             [compojure.core :refer [GET POST DELETE PUT]]
             [schema.core :as s]
             (metabase.api [common :refer :all]
@@ -273,16 +274,16 @@
   (run-query-for-card card-id parameters))
 
 (defendpoint POST "/:card-id/query/csv"
-  "Run the query associated with a Card, and return its results as CSV."
-  [card-id :as {{:keys [parameters]} :body}]
-  (dataset-api/as-csv (run-query-for-card card-id parameters)))
+  "Run the query associated with a Card, and return its results as CSV. Note that this expects the parameters as serialized JSON in the 'parameters' parameter"
+  [card-id parameters]
+  {parameters (s/maybe su/JSONString)}
+  (dataset-api/as-csv (run-query-for-card card-id (json/parse-string parameters keyword))))
 
-(defendpoint GET "/:card-id/json"
-  "Fetch the results of a Card as JSON."
-  [card-id]
-  (let [{{:keys [columns rows]} :data} (run-query-for-card card-id nil)]
-    (for [row rows]
-      (zipmap columns row))))
+(defendpoint POST "/:card-id/query/json"
+  "Run the query associated with a Card, and return its results as JSON. Note that this expects the parameters as serialized JSON in the 'parameters' parameter"
+  [card-id parameters]
+  {parameters (s/maybe su/JSONString)}
+  (dataset-api/as-json (run-query-for-card card-id (json/parse-string parameters keyword))))
 
 
 (define-routes)

@@ -16,9 +16,9 @@
                                                ComparisonFilter
                                                CompoundFilter
                                                EqualityFilter
+                                               Expression
                                                ExpressionRef
                                                FieldPlaceholder
-                                               Expression
                                                NotFilter
                                                RelativeDatetime
                                                StringFilter
@@ -114,8 +114,13 @@
 
 ;;; ## aggregation
 
+(defn- field-or-expression [f]
+  (if (instance? Expression f)
+    (update f :args (partial map field-or-expression)) ; recursively call field-or-expression on all the args of the expression
+    (field f)))
+
 (s/defn ^:private ^:always-validate ag-with-field :- i/Aggregation [ag-type f]
-  (i/strict-map->AggregationWithField {:aggregation-type ag-type, :field (field f)}))
+  (i/strict-map->AggregationWithField {:aggregation-type ag-type, :field (field-or-expression f)}))
 
 (def ^:ql ^{:arglists '([f])} avg      "Aggregation clause. Return the average value of F."                (partial ag-with-field :avg))
 (def ^:ql ^{:arglists '([f])} distinct "Aggregation clause. Return the number of distinct values of F."    (partial ag-with-field :distinct))
@@ -162,9 +167,11 @@
      (map? ag-or-ags)  (recur query [ag-or-ags])
      (empty? ag-or-ags) query
      :else              (assoc query :aggregation (vec (for [ag ag-or-ags]
-                                                         (u/prog1 ((if (:field ag)
-                                                                     i/map->AggregationWithField
-                                                                     i/map->AggregationWithoutField) (update ag :aggregation-type normalize-token))
+                                                         ;; make sure the ag map is still typed correctly
+                                                         (u/prog1 (cond
+                                                                    (:operator ag) (i/map->Expression ag)
+                                                                    (:field ag)    (i/map->AggregationWithField    (update ag :aggregation-type normalize-token))
+                                                                    :else          (i/map->AggregationWithoutField (update ag :aggregation-type normalize-token)))
                                                            (s/validate i/Aggregation <>)))))))
 
   ;; also handle varargs for convenience

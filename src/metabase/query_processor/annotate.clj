@@ -7,7 +7,8 @@
             [metabase.models.field :refer [Field]]
             [metabase.query-processor.interface :as i]
             [metabase.util :as u])
-  (:import metabase.query_processor.interface.ExpressionRef))
+  (:import (metabase.query_processor.interface Expression
+                                               ExpressionRef)))
 
 ;; Fields should be returned in the following order:
 ;; 1.  Breakout Fields
@@ -93,29 +94,57 @@
     :count
     ag-type))
 
+(defn expression-aggregation-name
+  "Return an appropriate name for an expression aggregation, e.g. `sum + count`."
+  ^String [ag]
+  (cond
+    ;;
+    (instance? Expression ag) (let [{:keys [operator args]} ag]
+                                (str/join (str " " (name operator) " ")
+                                          (for [arg args]
+                                            (if (instance? Expression arg)
+                                              (str "(" (expression-aggregation-name arg) ")")
+                                              (expression-aggregation-name arg)))))
+    (:aggregation-type ag)    (name (:aggregation-type ag))
+    ;; a constant like
+    :else                     ag))
+
+(defn- expression-aggregate-field-info [expression]
+  (let [ag-name (expression-aggregation-name expression)]
+    {:source             :aggregation
+     :field-name         ag-name
+     :field-display-name ag-name
+     :base-type          :type/Number
+     :special-type       :type/Number}))
+
+(defn- aggregate-field-info [{ag-type :aggregation-type, ag-field :field}]
+  (merge (let [field-name (ag-type->field-name ag-type)]
+           {:source             :aggregation
+            :field-name         field-name
+            :field-display-name field-name
+            :base-type          (:base-type ag-field)
+            :special-type       (:special-type ag-field)})
+         ;; Always treat count or distinct count as an integer even if the DB in question returns it as something wacky like a BigDecimal or Float
+         (when (contains? #{:count :distinct} ag-type)
+           {:base-type    :type/Integer
+            :special-type :type/Number})
+         ;; For the time being every Expression is an arithmetic operator and returns a floating-point number, so hardcoding these types is fine;
+         ;; In the future when we extend Expressions to handle more functionality we'll want to introduce logic that associates a return type with a given expression.
+         ;; But this will work for the purposes of a patch release.
+         (when (instance? ExpressionRef ag-field)
+           {:base-type    :type/Float
+            :special-type :type/Number})))
+
 (defn- add-aggregate-field-if-needed
   "Add a Field containing information about an aggregate column such as `:count` or `:distinct` if needed."
   [{aggregations :aggregation} fields]
   (if (or (empty? aggregations)
           (= (:aggregation-type (first aggregations)) :rows))
     fields
-    (concat fields (for [{ag-type :aggregation-type, ag-field :field} aggregations]
-                     (merge (let [field-name (ag-type->field-name ag-type)]
-                              {:source             :aggregation
-                               :field-name         field-name
-                               :field-display-name field-name
-                               :base-type          (:base-type ag-field)
-                               :special-type       (:special-type ag-field)})
-                            ;; Always treat count or distinct count as an integer even if the DB in question returns it as something wacky like a BigDecimal or Float
-                            (when (contains? #{:count :distinct} ag-type)
-                              {:base-type    :type/Integer
-                               :special-type :type/Number})
-                            ;; For the time being every Expression is an arithmetic operator and returns a floating-point number, so hardcoding these types is fine;
-                            ;; In the future when we extend Expressions to handle more functionality we'll want to introduce logic that associates a return type with a given expression.
-                            ;; But this will work for the purposes of a patch release.
-                            (when (instance? ExpressionRef ag-field)
-                              {:base-type    :type/Float
-                               :special-type :type/Number}))))))
+    (concat fields (for [ag aggregations]
+                     (if (instance? Expression ag)
+                       (expression-aggregate-field-info ag)
+                       (aggregate-field-info ag))))))
 
 (defn- add-unknown-fields-if-needed
   "When create info maps for any fields we didn't expect to come back from the query.
