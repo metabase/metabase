@@ -123,7 +123,7 @@
     "webpack-postcss-tools": "^1.1.1"
   },
   "scripts": {
-    "dev": "concurrently --kill-others \"lein ring server\" \"yarn run build-hot\"",
+    "dev" : "yarn && concurrently --kill-others -p name -n 'backend,frontend' -c 'blue,green' 'lein ring server' 'yarn run build-hot'",
     "lint": "eslint --ext .js --ext .jsx --max-warnings 0 frontend/src",
     "flow": "flow check",
     "test": "karma start frontend/test/karma.conf.js --single-run",
