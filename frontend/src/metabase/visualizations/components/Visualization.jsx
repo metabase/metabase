@@ -108,7 +108,7 @@ export default class Visualization extends Component {
         // don't warn about truncated data for table since we show a warning in the row count
         if (state.series[0].card.display !== "table") {
             warnings = warnings.concat(props.series
-                .filter(s => s.data.rows_truncated != null)
+                .filter(s => s.data && s.data.rows_truncated != null)
                 .map(s => `Data truncated to ${formatNumber(s.data.rows_truncated)} rows.`));
         }
         return warnings;
@@ -229,7 +229,7 @@ export default class Visualization extends Component {
                     replacementContent
                 // on dashboards we should show the "No results!" warning if there are no rows or there's a MinRowsError and actualRows === 0
                 : isDashboard && noResults ?
-                    <div className="flex-full px1 pb1 text-centered text-slate flex flex-column layout-centered">
+                    <div className={"flex-full px1 pb1 text-centered flex flex-column layout-centered " + (isDashboard ? "text-slate-light" : "text-slate")}>
                         <Tooltip tooltip="No results!" isEnabled={small}>
                             <img src="/app/img/no_results.svg" />
                         </Tooltip>
@@ -240,7 +240,7 @@ export default class Visualization extends Component {
                         }
                     </div>
                 : error ?
-                    <div className="flex-full px1 pb1 text-centered text-slate flex flex-column layout-centered">
+                    <div className={"flex-full px1 pb1 text-centered flex flex-column layout-centered " + (isDashboard ? "text-slate-light" : "text-slate")}>
                         <Tooltip tooltip={error} isEnabled={small}>
                             <Icon className="mb2" name={errorIcon || "warning"} size={50} />
                         </Tooltip>
