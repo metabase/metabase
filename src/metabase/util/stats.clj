@@ -279,14 +279,6 @@
      :num_by_latency (bin-latencies executions)}))
 
 
-(defn- get-map-metrics
-  "Get metrics based on custom geojson maps
-  TODO figure out how to get at these"
-  []
-  (let [maps (db/select 'Segment)]
-    {:maps (count maps)}))
-
-
 (defn get-anonymous-usage-stats
   "generate a map of the usage stats for this instance"
   []
