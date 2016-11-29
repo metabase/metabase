@@ -4,10 +4,10 @@
             (clojurewerkz.quartzite [jobs :as jobs]
                                     [triggers :as triggers])
             [clojurewerkz.quartzite.schedule.cron :as cron]
+            [metabase.util.stats :as stats]
             (metabase [config :as config]
                       [public-settings :as public-settings]
-                      [task :as task]
-                      [util.stats :as stats])))
+                      [task :as task])))
 
 (def ^:private ^:const job-key     "metabase.task.anonymous-stats.job")
 (def ^:private ^:const trigger-key "metabase.task.anonymous-stats.trigger")
