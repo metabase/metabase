@@ -130,7 +130,7 @@
     "test-e2e-sauce": "USE_SAUCE=true yarn run test-e2e",
     "build": "webpack --bail",
     "build-watch": "webpack --watch",
-    "build-hot": "NODE_ENV=hot webpack && NODE_ENV=hot webpack-dev-server",
+    "build-hot": "NODE_ENV=hot webpack --bail && NODE_ENV=hot webpack-dev-server",
     "start": "yarn run build && lein ring server",
     "storybook": "start-storybook -p 9001",
     "preinstall": "ps -fp $PPID | grep -q yarn || echo '\\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\\033[0m'"
