@@ -73,17 +73,15 @@
     (<= 1001 x 10000) "1001-10000"
     (> x 10000) "10000+"))
 
-(defn- get-value-frequencies
+(defn- value-frequencies
   "go through a bunch of maps and count the frequency a given key's values"
   [many-maps k]
-  (frequencies (map k many-maps))
-  )
+  (frequencies (map k many-maps)))
 
 (defn- histogram
   "Bin some frequencies using a passed in binning function"
   [binning-fn many-maps k]
-  (frequencies (map binning-fn (vals (get-value-frequencies many-maps k))))
-  )
+  (frequencies (map binning-fn (vals (value-frequencies many-maps k)))))
 
 (def micro-histogram
   "Return a histogram for micro numbers"
@@ -104,19 +102,19 @@
 (defn- instance-start-date
   "Pull up the first user account and use that date"
   []
-  ((first (db/select 'User {:limit 1} {:order-by [[:date_joined :desc]]})) :date_joined))
+  (db/select-one-field :date_joined 'User {:order-by [[:date_joined :desc]]})
 
 (defn- environment-type
   "Figure out what we're running under"
   []
   (cond
-    (= (config/config-str :mb-client) :osx) :osx
+    (= (config/config-str :mb-client) "OSX") :osx
     (config/config-str :rds-hostname) :elastic-beanstalk
     (config/config-str :database-url) :heroku ;; Putting this last as 'database-url' seems least specific
-    :default "unknown"))
+    :default :unknown))
 
-(defn- get-settings
-  "Figure out global info aboutt his instance"
+(defn- instance-settings
+  "Figure out global info about his instance"
   []
   {:version               (config/mb-version-info :tag)
    :running_on            (environment-type)
@@ -147,7 +145,7 @@
    :sso (if (nil? (user :google_auth)) 0 1)})
 
 
-(defn- get-user-metrics
+(defn- user-metrics
   "Get metrics based on user records
   TODO: get activity in terms of created questions, pulses and dashboards"
   []
@@ -155,7 +153,7 @@
     {:users (apply add-summaries (map user-dims users))}))
 
 
-(defn- get-group-metrics
+(defn- group-metrics
   "Get metrics based on groups:
   TODO characterize by # w/ sql access, # of users, no self-serve data access"
   []
@@ -171,14 +169,14 @@
      :native (if (= (question :iquery_type) "native") 1 0)
      :gui (if (not= (question :iquery_type) "native") 1 0)})
 
-(defn- get-question-metrics
+(defn- question-metrics
   "Get metrics based on questions
   TODO characterize by # executions and avg latency"
   []
   (let [questions (db/select 'Card)]
     {:questions (apply add-summaries (map question-dims questions))}))
 
-(defn- get-dashboard-metrics
+(defn- dashboard-metrics
   "Get metrics based on dashboards
   TODO characterize by # of revisions, and created by an admin"
   []
@@ -189,8 +187,8 @@
      :num_cards_per_dash (medium-histogram dashcards :dashboard_id)
      :num_dashs_per_card (medium-histogram dashcards :card_id)}))
 
-(defn- get-pulse-metrics
-  "Get metrics based on pulses
+(defn- pulse-metrics
+  "Get mes based on pulses
   TODO: characterize by non-user account emails, # emails"
   []
   (let [pulses (db/select 'Pulse)
@@ -204,7 +202,7 @@
      :num_cards_per_pulses (medium-histogram pulsecards :pulse_id)}))
 
 
-(defn- get-label-metrics
+(defn- label-metrics
   "Get metrics based on labels"
   []
   (let [labels (db/select 'CardLabel)]
@@ -217,16 +215,16 @@
   "characterize a database record"
   [database]
   {:total 1
-   :analysed (if (database :is_full_sync) 1 0)})
+   :analysed (if (:is_full_sync database) 1 0)})
 
-(defn- get-database-metrics
+(defn- database-metrics
   "Get metrics based on databases"
   []
   (let [databases (db/select 'Database)]
     {:databases (apply add-summaries (map database-dims databases))}))
 
 
-(defn- get-table-metrics
+(defn- table-metrics
   "Get metrics based on tables"
   []
   (let [tables (db/select 'Table)]
@@ -235,22 +233,21 @@
      :num_per_schema (medium-histogram tables :schema)}))
 
 
-(defn- get-field-metrics
+(defn- field-metrics
   "Get metrics based on fields"
   []
   (let [fields (db/select 'Field)]
     {:fields (count fields)
      :num_per_table (medium-histogram fields :table_id)}))
 
-
-(defn- get-segment-metrics
+(defn- segment-metrics
   "Get metrics based on segments"
   []
   (let [segments (db/select 'Segment)]
     {:segments (count segments)}))
 
 
-(defn- get-metric-metrics
+(defn- metric-metrics
   "Get metrics based on metrics"
   []
   (let [metrics (db/select 'Metric)]
@@ -260,12 +257,12 @@
 (defn- bin-latencies
   "Bin latencies, which are in milliseconds"
   [query-executions]
-  (let [latency-vals (map #(/ %1 1000) (map :running_time query-executions))]
+  (let [latency-vals (map #(/ % 1000) (map :running_time query-executions))]
     (frequencies (map bin-large-number latency-vals))))
 
 
 ;; Execution Metrics
-(defn- get-execution-metrics
+(defn- execution-metrics
   "Get metrics based on executions.
   This should be done in a single pass, as there might
   be a LOT of query executions in a normal instance
@@ -278,31 +275,31 @@
      :num_by_latency (bin-latencies executions)}))
 
 
-(defn get-anonymous-usage-stats
+(defn anonymous-usage-stats
   "generate a map of the usage stats for this instance"
   []
-  (merge (get-settings)
+  (merge (instance-settings)
            {:uuid anonymous-id :timestamp (new java.util.Date)}
             {:stats {
-               :user (get-user-metrics)
-               :question (get-question-metrics)
-               :dashboard (get-dashboard-metrics)
-               :database (get-database-metrics)
-               :table (get-table-metrics)
-               :field (get-field-metrics)
-               :pulse (get-pulse-metrics)
-               :segment (get-segment-metrics)
-               :metric (get-metric-metrics)
-               :group (get-group-metrics)
-               :label (get-label-metrics)
-               :execution (get-execution-metrics)}}))
+               :user (user-metrics)
+               :question (question-metrics)
+               :dashboard (dashboard-metrics)
+               :database (database-metrics)
+               :table (table-metrics)
+               :field (field-metrics)
+               :pulse (pulse-metrics)
+               :segment (segment-metrics)
+               :metric (metric-metrics)
+               :group (group-metrics)
+               :label (label-metrics)
+               :execution (execution-metrics)}}))
 
 
 (defn- send-stats!
   "send stats to Metabase tracking server"
   [stats]
    (try
-      (client/post metabase-usage-url {:form-params stats :content-type :json :throw-entire-message? true})
+      (client/post metabase-usage-url {:form-params stats, :content-type :json, :throw-entire-message? true})
       (catch Throwable e
        (log/error "Sending usage stats FAILED: " (.getMessage e)))))
 
@@ -311,5 +308,5 @@
   "Collect usage stats and phone them home"
   []
   (when (anon-tracking-enabled?)
-    (let [stats (get-anonymous-usage-stats)]
+    (let [stats (anonymous-usage-stats)]
       (send-stats! stats))))
