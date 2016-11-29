@@ -11,7 +11,7 @@
             [metabase.public-settings :as public-settings]
             [metabase.util :as u]))
 
-(def ^:private ^:const ^String metabase-usage-url "https://kqatai1z3c.execute-api.us-east-1.amazonaws.com/prod/ServerStatsCollector")
+(def ^:private ^:const ^String metabase-usage-url "https://xuq0fbkk0j.execute-api.us-east-1.amazonaws.com/prod")
 
 (def ^:private ^:const ^Integer anonymous-id
   "Generate an anonymous id. Don't worry too much about hash collisions or localhost cases, etc.
@@ -128,7 +128,7 @@
    :email_configured      ((resolve 'metabase.email/email-configured?))
    :slack_configured      ((resolve 'metabase.integrations.slack/slack-configured?))
    :sso_configured        (boolean ((resolve 'metabase.api.session/google-auth-client-id)))
-   :instance_started      instance-start-date
+   :instance_started      (instance-start-date)
    :has_sample_data       (db/exists? 'Database, :is_sample true)})
 
 ;; util function
@@ -302,7 +302,7 @@
   "send stats to Metabase tracking server"
   [stats]
    (try
-     (print (client/post metabase-usage-url {:form-params stats :content-type :json :throw-entire-message? true}))
+      (client/post metabase-usage-url {:form-params stats :content-type :json :throw-entire-message? true})
       (catch Throwable e
        (log/error "Sending usage stats FAILED: " (.getMessage e)))))
 
@@ -311,4 +311,5 @@
   "Collect usage stats and phone them home"
   []
   (when (anon-tracking-enabled?)
-      (send-stats! (get-anonymous-usage-stats))))
+    (let [stats (get-anonymous-usage-stats)]
+      (send-stats! stats))))
