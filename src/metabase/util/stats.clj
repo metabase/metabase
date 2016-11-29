@@ -232,8 +232,7 @@
   (let [tables (db/select 'Table)]
     {:tables (count tables)
      :num_per_database (medium-histogram tables :db_id)
-     :num_per_schema (medium-histogram tables :schema)
-     }))
+     :num_per_schema (medium-histogram tables :schema)}))
 
 
 (defn- get-field-metrics
