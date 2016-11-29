@@ -3,6 +3,7 @@ import ReactDOM from "react-dom";
 import { connect } from "react-redux";
 import cx from "classnames";
 import _ from "underscore";
+import Helmet from "react-helmet";
 
 import { loadTableAndForeignKeys } from "metabase/lib/table";
 import { isPK, isFK } from "metabase/lib/types";
@@ -201,6 +202,7 @@ export default class QueryBuilder extends Component {
         const showDrawer = uiControls.isShowingDataReference || uiControls.isShowingTemplateTagsEditor;
         return (
             <div className="flex-full relative">
+                <Helmet title={card.name ? card.name : 'New question'} />
                 <div className={cx("QueryBuilder flex flex-column bg-white spread", {"QueryBuilder--showSideDrawer": showDrawer})}>
                     <div id="react_qb_header">
                         <QueryHeader {...this.props}/>

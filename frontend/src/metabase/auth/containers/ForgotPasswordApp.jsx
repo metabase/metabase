@@ -2,6 +2,7 @@ import React, { Component, PropTypes } from "react";
 
 import _ from "underscore";
 import cx from "classnames";
+import Helmet from "react-helmet";
 
 import AuthScene from "../components/AuthScene.jsx";
 import BackToLogin from "../components/BackToLogin.jsx"
@@ -48,6 +49,7 @@ export default class ForgotPasswordApp extends Component {
 
         return (
             <div className="full-height bg-white flex flex-column flex-full md-layout-centered">
+                <Helmet title="Forgot password?" />
                 <div className="Login-wrapper wrapper Grid Grid--full md-Grid--1of2">
                       <div className="Grid-cell flex layout-centered text-brand">
                           <LogoIcon className="Logo my4 sm-my0" width={66} height={85} />

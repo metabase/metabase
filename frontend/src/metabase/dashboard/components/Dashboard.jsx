@@ -1,5 +1,6 @@
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
+import Helmet from "react-helmet";
 
 import DashboardHeader from "../components/DashboardHeader.jsx";
 import DashboardGrid from "../components/DashboardGrid.jsx";
@@ -330,6 +331,7 @@ export default class Dashboard extends Component {
             <LoadingAndErrorWrapper style={{ minHeight: "100%" }} className={cx("Dashboard flex-full", { "Dashboard--fullscreen": isFullscreen, "Dashboard--night": isNightMode})} loading={!dashboard} error={error}>
             {() =>
                 <div className="full" style={{ overflowX: "hidden" }}>
+                    <Helmet title={dashboard.name} />
                     <header className="DashboardHeader relative z2">
                         <DashboardHeader
                             {...this.props}

@@ -1,4 +1,5 @@
 import React, { Component, PropTypes } from "react";
+import Helmet from "react-helmet";
 
 import PulseListItem from "./PulseListItem.jsx";
 import WhatsAPulse from "./WhatsAPulse.jsx";
@@ -41,6 +42,7 @@ export default class PulseList extends Component {
         let { pulses, user } = this.props;
         return (
             <div className="PulseList pt3">
+                <Helmet title="Pulses" />
                 <div className="border-bottom mb2">
                     <div className="wrapper wrapper--trim flex align-center mb2">
                         <h1>Pulses</h1>

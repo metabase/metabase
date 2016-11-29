@@ -1,6 +1,7 @@
 
 import React, { Component, PropTypes } from "react";
 import { connect } from "react-redux";
+import Helmet from "react-helmet";
 
 import Greeting from "metabase/lib/greeting";
 import Modal from "metabase/components/Modal.jsx";
@@ -75,6 +76,8 @@ export default class HomepageApp extends Component {
                         />
                     </Modal>
                 : null }
+
+                <Helmet title="Home" />
 
                 <div className="CheckBg bg-brand text-white md-pl4">
                     <div style={{marginRight: 346}}>
