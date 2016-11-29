@@ -176,8 +176,8 @@ export default class Visualization extends Component {
                             <div>
                                 <div>{error}</div>
                                 <div className="mt2">
-                                    <button className="Button Button--primary Button--small" onClick={this.props.onOpenChartSettings}>
-                                        Edit Settings
+                                    <button className="Button Button--primary Button--medium" onClick={this.props.onOpenChartSettings}>
+                                        {e.buttonText}
                                     </button>
                                 </div>
                             </div>
@@ -240,7 +240,7 @@ export default class Visualization extends Component {
                         }
                     </div>
                 : error ?
-                    <div className="flex-full px1 pb1 text-centered text-slate-light flex flex-column layout-centered">
+                    <div className="flex-full px1 pb1 text-centered text-slate flex flex-column layout-centered">
                         <Tooltip tooltip={error} isEnabled={small}>
                             <Icon className="mb2" name={errorIcon || "warning"} size={50} />
                         </Tooltip>
