@@ -18,7 +18,7 @@
   (logger/get-messages))
 
 (defendpoint GET "/stats"
-  "Anonymous usage stats. Endpoint for testing, and eventually exposing this to instance admins to let them see 
+  "Anonymous usage stats. Endpoint for testing, and eventually exposing this to instance admins to let them see
   what is being phoned home."
   []
   (check-superuser)

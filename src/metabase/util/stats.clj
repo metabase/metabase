@@ -7,18 +7,18 @@
             [metabase.public-settings :as settings]
             (metabase.models [field :as field]
                              [table :as table]
-                             [setting :as setting])           
+                             [setting :as setting])
             [metabase.util :as u]))
 
 (def ^:private ^:const ^String metabase-usage-url "https://kqatai1z3c.execute-api.us-east-1.amazonaws.com/prod/ServerStatsCollector")
 
 (def ^:private ^Integer anonymous-id
   "Generate an anonymous id. Don't worry too much about hash collisions or localhost cases, etc.
-   The goal is to be able to get a rough sense for how many different hosts are throwing a specific error/event." 
+   The goal is to be able to get a rough sense for how many different hosts are throwing a specific error/event."
   (hash (str (java.net.InetAddress/getLocalHost))))
 
 
-(defn- anon-tracking-enabled? 
+(defn- anon-tracking-enabled?
   "To avoid a circular reference"
   []
   (require 'metabase.public-settings)
@@ -26,7 +26,7 @@
 
 
 
-(defn- bin-micro-number 
+(defn- bin-micro-number
   "Return really small bin number. Assumes positive inputs"
   [x]
   (cond
@@ -37,7 +37,7 @@
   )
 
 
-(defn- bin-small-number 
+(defn- bin-small-number
   "Return small bin number. Assumes positive inputs"
   [x]
   (cond
@@ -48,14 +48,14 @@
     (> x 25) "25+")
   )
 
-(defn- bin-medium-number 
+(defn- bin-medium-number
   "Return medium bin number. Assumes positive inputs"
   [x]
   (cond
     (= 0 x) "0"
     (<= 1 x 5) "1-5"
     (<= 6 x 10) "6-10"
-    (<= 11 x 25) "11-25"  
+    (<= 11 x 25) "11-25"
     (<= 26 x 50) "26-50"
     (<= 51 x 100) "51-100"
     (<= 101 x 250) "101-250"
@@ -63,7 +63,7 @@
   )
 
 
-(defn- bin-large-number 
+(defn- bin-large-number
   "Return large bin number. Assumes positive inputs"
   [x]
   (cond
@@ -71,19 +71,19 @@
     (< x 1) "< 1"
     (<= 1 x 10) "1-10"
     (<= 11 x 50) "11-50"
-    (<= 51 x 250) "51-250"  
+    (<= 51 x 250) "51-250"
     (<= 251 x 1000) "251-1000"
     (<= 1001 x 10000) "1001-10000"
     (> x 10000) "10000+")
   )
 
-(defn- get-value-frequencies 
+(defn- get-value-frequencies
   "go through a bunch of maps and count the frequency a given key's values"
   [many-maps k]
   (frequencies (map k many-maps))
   )
 
-(defn- histogram 
+(defn- histogram
   "Bin some frequencies using a passed in binning function"
   [binning-fn many-maps k]
   (frequencies (map binning-fn (vals (get-value-frequencies many-maps k))))
@@ -105,13 +105,13 @@
   "return a histogram for large numbers"
   (partial histogram bin-large-number))
 
-(defn- instance-start-date? 
+(defn- instance-start-date?
   "Pull up the first user account and use that date"
   []
   ((first (db/select 'User {:limit 1} {:order-by [[:date_joined :desc]]})) :date_joined)
   )
 
-(defn- where-am-i-running? 
+(defn- where-am-i-running?
   "Figure out what we're running under"
   []
   (cond
@@ -119,9 +119,9 @@
     (not (nil? (config/config-str :rds-hostname))) :elastic-beanstalk
     (not (nil? (config/config-str :database-url))) :heroku ;; Putting this last as 'database-url' seems least specific
     :default "unknown")
-  
   )
-(defn- get-settings 
+
+(defn- get-settings
   "Figure out global info aboutt his instance"
   []
   {:version               (config/mb-version-info :tag)
@@ -140,13 +140,13 @@
   )
 
 ;; util function
-(def add-summaries 
+(def add-summaries
   "add up some dictionaries"
   (partial merge-with +)
   )
 
 ;; User metrics
-(defn- user-dims 
+(defn- user-dims
   "characterize a user record"
   [user]
   {:total 1
@@ -157,15 +157,15 @@
   )
 
 
-(defn- get-user-metrics 
+(defn- get-user-metrics
   "Get metrics based on user records
   TODO: get activity in terms of created questions, pulses and dashboards"
   []
-  (let [users (db/select 'User)]   
+  (let [users (db/select 'User)]
     {:users (apply add-summaries (map user-dims users))}))
 
 
-(defn- get-group-metrics 
+(defn- get-group-metrics
   "Get metrics based on groups:
   TODO characterize by # w/ sql access, # of users, no self-serve data access"
   []
@@ -173,7 +173,7 @@
     {:groups (count groups)}))
 
 ;; Artifact Metrics
-(defn- question-dims 
+(defn- question-dims
   "characterize a saved question
   TODO: characterize by whether it has params, # of revisions, created by an admin"
   [question]
@@ -182,14 +182,14 @@
      :gui (if (not= (question :iquery_type) "native") 1 0)}
   )
 
-(defn- get-question-metrics 
+(defn- get-question-metrics
   "Get metrics based on questions
   TODO characterize by # executions and avg latency"
   []
   (let [questions (db/select 'Card)]
     {:questions (apply add-summaries (map question-dims questions))}))
 
-(defn- get-dashboard-metrics 
+(defn- get-dashboard-metrics
   "Get metrics based on dashboards
   TODO characterize by # of revisions, and created by an admin"
   []
@@ -200,7 +200,7 @@
      :num_cards_per_dash (medium-histogram dashcards :dashboard_id)
      :num_dashs_per_card (medium-histogram dashcards :card_id)}))
 
-(defn- get-pulse-metrics 
+(defn- get-pulse-metrics
   "Get metrics based on pulses
   TODO: characterize by non-user account emails, # emails"
   []
@@ -215,7 +215,7 @@
      :num_cards_per_pulses (medium-histogram pulsecards :pulse_id)}))
 
 
-(defn- get-label-metrics 
+(defn- get-label-metrics
   "Get metrics based on labels"
   []
   (let [labels (db/select 'CardLabel)]
@@ -224,21 +224,21 @@
      :num_cards_per_label (medium-histogram labels :label_id)}))
 
 ;; Metadata Metrics
-(defn- database-dims 
+(defn- database-dims
   "characterize a database record"
   [database]
   {:total 1
    :analysed (if (database :is_full_sync) 1 0)}
   )
 
-(defn- get-database-metrics 
+(defn- get-database-metrics
   "Get metrics based on databases"
   []
   (let [databases (db/select 'Database)]
     {:databases (apply add-summaries (map database-dims databases))}))
 
 
-(defn- get-table-metrics 
+(defn- get-table-metrics
   "Get metrics based on tables"
   []
   (let [tables (db/select 'Table)]
@@ -248,7 +248,7 @@
      }))
 
 
-(defn- get-field-metrics 
+(defn- get-field-metrics
   "Get metrics based on fields"
   []
   (let [fields (db/select 'Field)]
@@ -257,29 +257,29 @@
 
 
 
-(defn- get-segment-metrics 
+(defn- get-segment-metrics
   "Get metrics based on segments"
   []
   (let [segments (db/select 'Segment)]
     {:segments (count segments)}))
 
 
-(defn- get-metric-metrics 
+(defn- get-metric-metrics
   "Get metrics based on metrics"
   []
   (let [metrics (db/select 'Metric)]
     {:metrics (count metrics)}))
 
-(defn- bin-latencies 
+(defn- bin-latencies
   "Bin latencies, which are in milliseconds"
   [query-executions]
   (let [latency-vals (map #(/ %1 1000) (map :running_time query-executions))]
     (frequencies (map bin-large-number latency-vals))))
 
 ;; Execution Metrics
-(defn- get-execution-metrics 
-  "Get metrics based on executions. 
-  This should be done in a single pass, as there might 
+(defn- get-execution-metrics
+  "Get metrics based on executions.
+  This should be done in a single pass, as there might
   be a LOT of query executions in a normal instance
   TODO: characterize by ad hoc vs cards"
   []
@@ -290,7 +290,7 @@
      :num_per_card (large-histogram executions :table_id)
      :num_by_latency (bin-latencies executions)}))
 
-(defn- get-map-metrics 
+(defn- get-map-metrics
   "Get metrics based on custom geojson maps
   TODO figure out how to get at these"
   []
@@ -298,7 +298,7 @@
     {:maps (count maps)}))
 
 
-(defn get-anonymous-usage-stats 
+(defn get-anonymous-usage-stats
   "generate a map of the usage stats for this instance"
   []
   (merge (get-settings)
@@ -317,15 +317,15 @@
              :label (get-label-metrics)
              :execution (get-execution-metrics)}}))
 
-(defn- send-stats! 
+(defn- send-stats!
   "send stats to Metabase tracking server"
   [stats]
-   (try 
+   (try
      (print (client/post metabase-usage-url {:form-params stats :content-type :json :throw-entire-message? true}))
       (catch Throwable e
        (log/error "Sending usage stats FAILED: " (.getMessage e)))))
 
-(defn phone-home-stats! 
+(defn phone-home-stats!
   "Collect usage stats and phone them home"
   []
   (when (anon-tracking-enabled?)
