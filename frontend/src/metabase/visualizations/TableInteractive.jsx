@@ -8,6 +8,7 @@ import QuickFilterPopover from "metabase/query_builder/components/QuickFilterPop
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { capitalize } from "metabase/lib/formatting";
+import { getFriendlyName } from "metabase/visualizations/lib/utils";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -34,7 +35,7 @@ export default class TableInteractive extends Component {
         };
         this.columnHasResized = {};
 
-        _.bindAll(this, "onClosePopover", "cellRenderer");
+        _.bindAll(this, "onClosePopover", "cellRenderer", "tableHeaderRenderer");
     }
 
     static propTypes = {
@@ -129,7 +130,7 @@ export default class TableInteractive extends Component {
         let width = MIN_COLUMN_WIDTH;
 
         // measure column header
-        width = Math.max(width, this._measureCell(this.tableHeaderRenderer(columnIndex)));
+        width = Math.max(width, this._measureCell(this.tableHeaderRenderer({ columnIndex })));
 
         // measure up to 10 non-nil cells
         let remaining = 10;
@@ -145,11 +146,7 @@ export default class TableInteractive extends Component {
     }
 
     _measureCell(cell) {
-        ReactDOM.unstable_renderSubtreeIntoContainer(this,
-            <div className="MB-DataTable-cellWrapper">
-                {cell}
-            </div>
-        , this._div);
+        ReactDOM.unstable_renderSubtreeIntoContainer(this, cell, this._div);
 
         // 2px for border?
         const width = this._div.clientWidth + 2;
@@ -216,26 +213,27 @@ export default class TableInteractive extends Component {
         this.setState({ popover: null });
     }
 
-    cellRenderer({ rowIndex, columnIndex }) {
+    cellRenderer({ key, style, rowIndex, columnIndex }) {
         const { data: { cols, rows }} = this.props;
         const column = cols[columnIndex];
         const cellData = rows[rowIndex][columnIndex];
-
         if (this.props.cellIsClickableFn(rowIndex, columnIndex)) {
             return (
-                <a
-                    className="link cellData"
+                <div
+                    key={key} style={style}
+                    className="MB-DataTable-cellWrapper cellData"
                     onClick={this.cellClicked.bind(this, rowIndex, columnIndex)}
                 >
-                    <Value value={cellData} column={column} onResize={this.onCellResize.bind(this, columnIndex)} />
-                </a>
+                    <Value className="link" value={cellData} column={column} onResize={this.onCellResize.bind(this, columnIndex)} />
+                </div>
             );
         } else {
             const { popover } = this.state;
             const isFilterable = column.source !== "aggregation";
             return (
                 <div
-                    className={cx("cellData", { "cursor-pointer": isFilterable })}
+                    key={key} style={style}
+                    className={cx("MB-DataTable-cellWrapper cellData", { "cursor-pointer": isFilterable })}
                     onClick={isFilterable && this.showPopover.bind(this, rowIndex, columnIndex)}
                 >
                     <Value value={cellData} column={column} onResize={this.onCellResize.bind(this, columnIndex)} />
@@ -251,48 +249,55 @@ export default class TableInteractive extends Component {
         }
     }
 
-    tableHeaderRenderer(columnIndex) {
-        var column = this.props.data.cols[columnIndex],
-            colVal = (column && column.display_name && String(column.display_name)) ||
-                     (column && column.name && String(column.name)) || "";
+    tableHeaderRenderer({ key, style, columnIndex }) {
+        const { sort, data: { cols }} = this.props;
+        const isSortable = this.isSortable();
+        const column = cols[columnIndex];
 
+        let columnTitle = getFriendlyName(column);
         if (column.unit && column.unit !== "default") {
-            colVal += ": " + capitalize(column.unit.replace(/-/g, " "))
+            columnTitle += ": " + capitalize(column.unit.replace(/-/g, " "))
+        }
+        if (!columnTitle && this.props.isPivoted && columnIndex !== 0) {
+            columnTitle = "Unset";
         }
 
-        if (!colVal && this.props.isPivoted && columnIndex !== 0) {
-            colVal = "Unset";
-        }
-
-        var headerClasses = cx('MB-DataTable-headerCellData cellData align-center', {
-            'MB-DataTable-headerCellData--sorted': (this.props.sort && (this.props.sort[0][0] === column.id)),
-        });
-
-        // set the initial state of the sorting indicator chevron
-        var sortChevron = (<Icon name="chevrondown" size={8}></Icon>);
-
-        if(this.props.sort && this.props.sort[0][1] === 'ascending') {
-            sortChevron = (<Icon name="chevronup" size={8}></Icon>);
-        }
-
-        if (this.isSortable()) {
-            return (
-                <div key={columnIndex} className={headerClasses} onClick={this.setSort.bind(this, column)}>
-                    <span>
-                        {colVal}
-                    </span>
-                    <span className="ml1">
-                        {sortChevron}
-                    </span>
+        return (
+            <div
+                key={key}
+                style={{ ...style, overflow: "visible" /* ensure resize handle is visible */ }}
+                className={cx("MB-DataTable-cellWrapper MB-DataTable-headerCellData", {
+                    'MB-DataTable-headerCellData--sorted': (sort && sort[0] && sort[0][0] === column.id),
+                })}
+            >
+                <div
+                    className={cx("cellData", { "cursor-pointer": isSortable })}
+                    onClick={isSortable && this.setSort.bind(this, column)}
+                >
+                    {columnTitle}
+                    {isSortable &&
+                        <Icon
+                            className="Icon ml1"
+                            name={sort && sort[0] && sort[0][1] === "ascending" ? "chevronup" : "chevrondown"}
+                            size={8}
+                        />
+                    }
                 </div>
-            );
-        } else {
-            return (
-                <span className={headerClasses}>
-                    {colVal}
-                </span>
-            );
-        }
+                <Draggable
+                    axis="x"
+                    bounds={{ left: RESIZE_HANDLE_WIDTH }}
+                    position={{ x: this.getColumnWidth({ index: columnIndex }), y: 0 }}
+                    onStop={(e, { x }) => {
+                        this.onColumnResize(columnIndex, x)}
+                    }
+                >
+                    <div
+                        className="bg-brand-hover bg-brand-active"
+                        style={{ zIndex: 99, position: "absolute", width: RESIZE_HANDLE_WIDTH, top: 0, bottom: 0, left: -RESIZE_HANDLE_WIDTH - 1, cursor: "ew-resize" }}
+                    />
+                </Draggable>
+            </div>
+        )
     }
 
     getColumnWidth = ({ index }) => {
@@ -324,28 +329,7 @@ export default class TableInteractive extends Component {
                         columnWidth={this.getColumnWidth}
                         rowCount={1}
                         rowHeight={HEADER_HEIGHT}
-                        cellRenderer={({ key, style, rowIndex, columnIndex }) =>
-                            <div
-                                key={key}
-                                style={{ ...style, overflow: "visible" /* ensure resize handle is visible */ }}
-                                className="MB-DataTable-cellWrapper"
-                            >
-                                {this.tableHeaderRenderer(columnIndex)}
-                                <Draggable
-                                    axis="x"
-                                    bounds={{ left: RESIZE_HANDLE_WIDTH }}
-                                    position={{ x: this.getColumnWidth({ index: columnIndex }), y: 0 }}
-                                    onStop={(e, { x }) => {
-                                        this.onColumnResize(columnIndex, x)}
-                                    }
-                                >
-                                    <div
-                                        className="bg-brand-hover bg-brand-active"
-                                        style={{ zIndex: 99, position: "absolute", width: RESIZE_HANDLE_WIDTH, top: 0, bottom: 0, left: -RESIZE_HANDLE_WIDTH - 1, cursor: "ew-resize" }}
-                                    />
-                                </Draggable>
-                            </div>
-                        }
+                        cellRenderer={this.tableHeaderRenderer}
                         onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
                         scrollLeft={scrollLeft}
                         tabIndex={null}
@@ -360,11 +344,7 @@ export default class TableInteractive extends Component {
                         columnWidth={this.getColumnWidth}
                         rowCount={rows.length}
                         rowHeight={ROW_HEIGHT}
-                        cellRenderer={({ key, style, rowIndex, columnIndex }) =>
-                            <div key={key} style={style} className="MB-DataTable-cellWrapper">
-                                {this.cellRenderer({ rowIndex, columnIndex })}
-                            </div>
-                        }
+                        cellRenderer={this.cellRenderer}
                         onScroll={({ scrollLeft }) => onScroll({ scrollLeft })}
                         scrollLeft={scrollLeft}
                         tabIndex={null}
