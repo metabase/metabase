@@ -58,7 +58,6 @@
 
 
 (expect "unknown" ((get-anonymous-usage-stats) :running_on))
-(expect "h2" ((get-anonymous-usage-stats) :application_database))
 (expect true ((get-anonymous-usage-stats) :check_for_updates))
 (expect true ((get-anonymous-usage-stats) :site_name))
 (expect true ((get-anonymous-usage-stats) :friendly_names))
