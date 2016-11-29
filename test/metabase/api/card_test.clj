@@ -1,6 +1,7 @@
 (ns metabase.api.card-test
   "Tests for /api/card endpoints."
-  (:require [expectations :refer :all]
+  (:require [cheshire.core :as json]
+            [expectations :refer :all]
             [metabase.db :as db]
             [metabase.http-client :refer :all, :as http]
             [metabase.middleware :as middleware]
@@ -317,8 +318,7 @@
                Table     [{table-id :id}    {:db_id database-id, :name "CATEGORIES"}]
                Card      [card              {:dataset_query {:database database-id
                                                              :type     :native
-                                                             :native   {:query "SELECT COUNT(*) FROM CATEGORIES;"}
-                                                             :query    {:source-table table-id, :aggregation {:aggregation-type :count}}}}]]
+                                                             :native   {:query "SELECT COUNT(*) FROM CATEGORIES;"}}}]]
     ;; delete all permissions for this DB
     (perms/delete-related-permissions! (perms-group/all-users) (perms/object-path database-id))
     (f database-id card)))
@@ -349,4 +349,40 @@
   (do-with-temp-native-card
     (fn [database-id card]
       (perms/grant-native-read-permissions! (perms-group/all-users) database-id)
-      ((user->client :rasta) :get 200 (format "card/%d/json" (u/get-id card))))))
+      ((user->client :rasta) :post 200 (format "card/%d/query/json" (u/get-id card))))))
+
+
+;;; Test GET /api/card/:id/query/csv & GET /api/card/:id/json **WITH PARAMETERS**
+
+(defn- do-with-temp-native-card-with-params {:style/indent 0} [f]
+  (with-temp* [Database  [{database-id :id} {:details (:details (Database (id))), :engine :h2}]
+               Table     [{table-id :id}    {:db_id database-id, :name "VENUES"}]
+               Card      [card              {:dataset_query {:database database-id
+                                                             :type     :native
+                                                             :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE CATEGORY_ID = {{category}};"
+                                                                        :template_tags {:category {:id           "a9001580-3bcc-b827-ce26-1dbc82429163"
+                                                                                                   :name         "category"
+                                                                                                   :display_name "Category"
+                                                                                                   :type         "number"
+                                                                                                   :required     true}}}}}]]
+    (f database-id card)))
+
+(def ^:private ^:const ^String encoded-params
+  (json/generate-string [{:type   :category
+                          :target [:variable [:template-tag :category]]
+                          :value  2}]))
+
+;; CSV
+(expect
+  (str "COUNT(*)\n"
+       "8\n")
+  (do-with-temp-native-card-with-params
+    (fn [database-id card]
+      ((user->client :rasta) :post 200 (format "card/%d/query/csv?parameters=%s" (u/get-id card) encoded-params)))))
+
+;; JSON
+(expect
+  [{(keyword "COUNT(*)") 8}]
+  (do-with-temp-native-card-with-params
+    (fn [database-id card]
+      ((user->client :rasta) :post 200 (format "card/%d/query/json?parameters=%s" (u/get-id card) encoded-params)))))

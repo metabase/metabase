@@ -43,3 +43,4 @@ bin/release/aws-eb/metabase-aws-eb.zip
 /plugins
 /build.xml
 /test-report-*
+/crate-*

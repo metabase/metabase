@@ -2,15 +2,13 @@ import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 import { Link } from "react-router";
 
-import Icon from "metabase/components/Icon.jsx";
 import LoadingSpinner from 'metabase/components/LoadingSpinner.jsx';
 import RunButton from './RunButton.jsx';
 import VisualizationSettings from './VisualizationSettings.jsx';
 
 import VisualizationError from "./VisualizationError.jsx";
 import VisualizationResult from "./VisualizationResult.jsx";
-
-import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
+import DownloadWidget from "./DownloadWidget.jsx";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -80,7 +78,7 @@ export default class QueryVisualization extends Component {
     }
 
     renderHeader() {
-        const { isObjectDetail, isRunning } = this.props;
+        const { isObjectDetail, isRunning, card, result } = this.props;
         return (
             <div className="relative flex flex-no-shrink mt3 mb1" style={{ minHeight: "2em" }}>
                 <span className="relative z4">
@@ -96,8 +94,15 @@ export default class QueryVisualization extends Component {
                     />
                 </div>
                 <div className="absolute right z4 flex align-center">
-                    {!this.queryIsDirty() && this.renderCount()}
-                    {this.renderDownloadButton()}
+                    { !this.queryIsDirty() && this.renderCount() }
+                    { !this.queryIsDirty() && result && !result.error ?
+                        <DownloadWidget
+                            className="mx1"
+                            card={card}
+                            datasetQuery={result.json_query}
+                            isLarge={result.data.rows_truncated != null}
+                        />
+                    : null }
                 </div>
             </div>
         );
@@ -130,81 +135,6 @@ export default class QueryVisualization extends Component {
             );
         }
     }
-
-    onDownloadCSV() {
-        const form = ReactDOM.findDOMNode(this._downloadCsvForm);
-        form.query.value = JSON.stringify(this.props.fullDatasetQuery);
-        form.submit();
-    }
-
-    renderDownloadButton() {
-        const { card, result } = this.props;
-
-        const csvUrl = card.id != null ? `/api/card/${card.id}/query/csv`: "/api/dataset/csv";
-
-        if (result && !result.error) {
-            if (result && result.data && result.data.rows_truncated) {
-                // this is a "large" dataset, so show a modal to inform users about this and make them click again to d/l
-                let downloadButton;
-                if (window.OSX) {
-                    downloadButton = (<button className="Button Button--primary" onClick={() => {
-                            window.OSX.saveCSV(JSON.stringify(card.dataset_query));
-                            this.refs.downloadModal.toggle()
-                        }}>Download CSV</button>);
-                } else {
-                    downloadButton = (
-                        <form ref={(c) => this._downloadCsvForm = c} method="POST" action={csvUrl}>
-                            <input type="hidden" name="query" value="" />
-                            <a className="Button Button--primary" onClick={() => {this.onDownloadCSV(); this.refs.downloadModal.toggle();}}>
-                                Download CSV
-                            </a>
-                        </form>
-                    );
-                }
-
-                return (
-                    <ModalWithTrigger
-                        key="download"
-                        ref="downloadModal"
-                        className="Modal Modal--small"
-                        triggerElement={<Icon className="mx1" title="Download this data" name='download' size={16} />}
-                    >
-                        <div style={{width: "480px"}} className="Modal--small p4 text-centered relative">
-                            <span className="absolute top right p4 text-normal text-grey-3 cursor-pointer" onClick={() => this.refs.downloadModal.toggle()}>
-                                <Icon name={'close'} size={16} />
-                            </span>
-                            <div className="p3 text-strong">
-                                <h2 className="text-bold">Download large data set</h2>
-                                <div className="pt2">Your answer has a large amount of data so we wanted to let you know it could take a while to download.</div>
-                                <div className="py4">The maximum download amount is 1 million rows.</div>
-                                {downloadButton}
-                            </div>
-                        </div>
-                    </ModalWithTrigger>
-                );
-            } else {
-                if (window.OSX) {
-                    return (
-                        <a className="mx1" title="Download this data" onClick={function() {
-                            window.OSX.saveCSV(JSON.stringify(card.dataset_query));
-                        }}>
-                            <Icon name='download' size={16} />
-                        </a>
-                    );
-                } else {
-                    return (
-                        <form ref={(c) => this._downloadCsvForm = c} method="POST" action={csvUrl}>
-                            <input type="hidden" name="query" value="" />
-                            <a className="mx1" title="Download this data" onClick={() => this.onDownloadCSV()}>
-                                <Icon name='download' size={16} />
-                            </a>
-                        </form>
-                    );
-                }
-            }
-        }
-    }
-
 
     render() {
         const { card, databases, isObjectDetail, isRunning, result } = this.props
