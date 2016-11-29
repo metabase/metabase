@@ -318,11 +318,11 @@ export default class TableInteractive extends Component {
             <ScrollSync>
             {({ clientHeight, clientWidth, onScroll, scrollHeight, scrollLeft, scrollTop, scrollWidth }) =>
                 <div className={cx(className, 'MB-DataTable relative', { 'MB-DataTable--pivot': this.props.isPivoted, 'MB-DataTable--ready': this.state.contentWidths })}>
-                    {/* <canvas className="spread" style={{ pointerEvents: "none", zIndex: 999 }} width={width} height={height} /> */}
+                    { window.localStorage.tableCanvasHack && <canvas className="spread" style={{ pointerEvents: "none", zIndex: 999 }} width={width} height={height} /> }
                     <Grid
                         ref={(ref) => this.header = ref}
-                        style={{ top: 0, left: 0, right: 0, height: HEADER_HEIGHT, position: "absolute" }}
-                        className=" MB-DataTable-header scroll-hide-all"
+                        style={{ top: 0, left: 0, right: 0, height: HEADER_HEIGHT, position: "absolute", overflow: "hidden" }}
+                        className="MB-DataTable-header scroll-hide-all"
                         width={width || 0}
                         height={HEADER_HEIGHT}
                         columnCount={cols.length}
