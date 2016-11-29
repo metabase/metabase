@@ -8,7 +8,7 @@
                              [humanization :as humanization]
                              [table :as table]
                              [setting :as setting])
-            [metabase.public-settings :as settings]
+            [metabase.public-settings :as public-settings]
             [metabase.util :as u]))
 
 (def ^:private ^:const ^String metabase-usage-url "https://kqatai1z3c.execute-api.us-east-1.amazonaws.com/prod/ServerStatsCollector")
@@ -122,12 +122,12 @@
    :running_on            (environment-type)
    :application_database  (config/config-str :mb-db-type)
    :check_for_updates     (setting/get :check-for-updates)
-   :site_name             (not= settings/site-name "Metabase")
+   :site_name             (not= (public-settings/site-name) "Metabase")
    :report_timezone       (setting/get :report-timezone)
    :friendly_names        (humanization/enable-advanced-humanization)
    :email_configured      ((resolve 'metabase.email/email-configured?))
    :slack_configured      ((resolve 'metabase.integrations.slack/slack-configured?))
-   :sso_configured        (boolean (resolve 'metabase.api.session/google-auth-client-id))
+   :sso_configured        (boolean ((resolve 'metabase.api.session/google-auth-client-id)))
    :instance_started      instance-start-date
    :has_sample_data       (db/exists? 'Database, :is_sample true)})
 

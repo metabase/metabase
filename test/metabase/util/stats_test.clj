@@ -55,3 +55,14 @@
 (expect "1001-10000" (bin-large-number 10000))
 (expect "10000+" (bin-large-number 10001))
 (expect "10000+" (bin-large-number 100000))
+
+
+(expect "unknown" ((get-anonymous-usage-stats) :running_on))
+(expect "h2" ((get-anonymous-usage-stats) :application_database))
+(expect true ((get-anonymous-usage-stats) :check_for_updates))
+(expect true ((get-anonymous-usage-stats) :site_name))
+(expect true ((get-anonymous-usage-stats) :friendly_names))
+(expect false ((get-anonymous-usage-stats) :email_configured))
+(expect false ((get-anonymous-usage-stats) :slack_configured))
+(expect false ((get-anonymous-usage-stats) :sso_configured))
+(expect false ((get-anonymous-usage-stats) :has_sample_data))
