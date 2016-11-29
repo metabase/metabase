@@ -78,7 +78,8 @@ export default class VisualizationSettings extends React.Component {
     }
 
     render() {
-        if (this.props.result && this.props.result.error === undefined) {
+        const { tableMetadata, addField, removeField, result } = this.props;
+        if (result && result.error === undefined) {
             return (
                 <div className="VisualizationSettings flex align-center">
                     {this.renderChartTypePicker()}
@@ -89,8 +90,11 @@ export default class VisualizationSettings extends React.Component {
                         ref="popover"
                     >
                         <ChartSettings
-                            series={[{ card: this.props.card, data: this.props.result.data }]}
+                            series={[{ card: this.props.card, data: result.data }]}
                             onChange={this.props.onReplaceAllVisualizationSettings}
+                            tableMetadata={tableMetadata}
+                            addField={(field) => addField(field, true, result && result.data && result.data.cols)}
+                            removeField={(field) => removeField(field, true, result && result.data && result.data.cols)}
                         />
                     </ModalWithTrigger>
                 </div>

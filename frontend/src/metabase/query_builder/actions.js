@@ -1014,6 +1014,45 @@ export const loadObjectDetailFKReferences = createThunkAction(LOAD_OBJECT_DETAIL
     };
 });
 
+const getExistingFields = (query, cols) =>
+    (query.fields && query.fields > 0) ?
+        query.fields
+    : Query.isBareRowsAggregation(query) ?
+        cols.map(col => col.id).filter(id => id != null)
+    :
+        []
+
+const ADD_FIELD = "query_builder/ADD_FIELD";
+export const addField = createThunkAction(ADD_FIELD, (field, run = true, cols = []) => {
+    return (dispatch, getState) => {
+        const { qb: { card } } = getState();
+        if (card.dataset_query.type === "query") {
+            dispatch(setQuery({
+                ...card.dataset_query,
+                query: {
+                    ...card.dataset_query.query,
+                    fields: getExistingFields(card.dataset_query.query, cols).concat([field])
+                }
+            }, true));
+        }
+    }
+});
+
+const REMOVE_FIELD = "query_builder/REMOVE_FIELD";
+export const removeField = createThunkAction(REMOVE_FIELD, (field, run = true, cols = []) => {
+    return (dispatch, getState) => {
+        const { qb: { card } } = getState();
+        if (card.dataset_query.type === "query") {
+            dispatch(setQuery({
+                ...card.dataset_query,
+                query: {
+                    ...card.dataset_query.query,
+                    fields: getExistingFields(card.dataset_query.query, cols).filter(f => !_.isEqual(f, field))
+                }
+            }, run));
+        }
+    }
+});
 
 // these are just temporary mappings to appease the existing QB code and it's naming prefs
 export const toggleDataReferenceFn = toggleDataReference;
