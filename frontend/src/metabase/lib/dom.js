@@ -33,3 +33,24 @@ export function findPosition(element, excludeScroll = false) {
     }
     return offset;
 }
+
+// based on http://stackoverflow.com/a/38039019/113
+export function elementIsInView(element, percentX = 1, percentY = 1) {
+    const tolerance = 0.01;   //needed because the rects returned by getBoundingClientRect provide the position up to 10 decimals
+
+    const elementRect = element.getBoundingClientRect();
+    const parentRects = [];
+
+    while (element.parentElement != null) {
+        parentRects.push(element.parentElement.getBoundingClientRect());
+        element = element.parentElement;
+    }
+
+    return parentRects.every((parentRect) => {
+        const visiblePixelX = Math.min(elementRect.right, parentRect.right) - Math.max(elementRect.left, parentRect.left);
+        const visiblePixelY = Math.min(elementRect.bottom, parentRect.bottom) - Math.max(elementRect.top, parentRect.top);
+        const visiblePercentageX = visiblePixelX / elementRect.width;
+        const visiblePercentageY = visiblePixelY / elementRect.height;
+        return visiblePercentageX + tolerance > percentX && visiblePercentageY + tolerance > percentY;
+    });
+}

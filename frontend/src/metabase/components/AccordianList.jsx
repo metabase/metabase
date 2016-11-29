@@ -3,6 +3,7 @@ import ReactDOM from "react-dom";
 
 import cx from "classnames";
 import _ from "underscore";
+import { elementIsInView } from "metabase/lib/dom";
 
 import Icon from "metabase/components/Icon.jsx";
 import ListSearchField from "metabase/components/ListSearchField.jsx";
@@ -64,7 +65,7 @@ export default class AccordianList extends Component {
     componentDidMount() {
         // when the component is mounted and an item is selected then scroll to it
         const element = this.refs.selected && ReactDOM.findDOMNode(this.refs.selected);
-        if (element) {
+        if (element && !elementIsInView(element)) {
             element.scrollIntoView();
         }
     }
