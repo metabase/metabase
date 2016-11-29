@@ -71,6 +71,7 @@ export default class SpecificDatePicker extends Component {
                 <div className="flex align-center mb1">
                     <div className={cx('border-top border-bottom full border-left', { 'border-right': !calendar })}>
                         <Input
+                            placeholder={moment().format("MM/DD/YYYY")}
                             className="borderless full p2 h3"
                             style={{
                                 outline: 'none'
