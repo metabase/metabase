@@ -5,6 +5,7 @@
             (metabase [config :as config]
                       [db :as db])
             (metabase.models [field :as field]
+                             [humanization :as humanization]
                              [table :as table]
                              [setting :as setting])
             [metabase.public-settings :as settings]
@@ -12,7 +13,7 @@
 
 (def ^:private ^:const ^String metabase-usage-url "https://kqatai1z3c.execute-api.us-east-1.amazonaws.com/prod/ServerStatsCollector")
 
-(def ^:private ^Integer anonymous-id
+(def ^:private ^:const ^Integer anonymous-id
   "Generate an anonymous id. Don't worry too much about hash collisions or localhost cases, etc.
    The goal is to be able to get a rough sense for how many different hosts are throwing a specific error/event."
   (hash (str (java.net.InetAddress/getLocalHost))))
@@ -28,11 +29,11 @@
 (defn- bin-micro-number
   "Return really small bin number. Assumes positive inputs"
   [x]
-  (cond
-    (= 0 x) "0"
-    (= 1 x) "1"
-    (= 2 x) "2"
-    (> x 2) "3+"))
+  (case x
+    0 "0"
+    1 "1"
+    2 "2"
+    "3+"))
 
 
 (defn- bin-small-number
@@ -123,7 +124,7 @@
    :check_for_updates     (setting/get :check-for-updates)
    :site_name             (not= settings/site-name "Metabase")
    :report_timezone       (setting/get :report-timezone)
-   :friendly_names        (metabase.models.humanization/enable-advanced-humanization)
+   :friendly_names        (humanization/enable-advanced-humanization)
    :email_configured      ((resolve 'metabase.email/email-configured?))
    :slack_configured      ((resolve 'metabase.integrations.slack/slack-configured?))
    :sso_configured        (boolean (resolve 'metabase.api.session/google-auth-client-id))
