@@ -4,10 +4,10 @@
             [clj-http.client :as client]
             (metabase [config :as config]
                       [db :as db])
-            [metabase.public-settings :as settings]
             (metabase.models [field :as field]
                              [table :as table]
                              [setting :as setting])
+            [metabase.public-settings :as settings]
             [metabase.util :as u]))
 
 (def ^:private ^:const ^String metabase-usage-url "https://kqatai1z3c.execute-api.us-east-1.amazonaws.com/prod/ServerStatsCollector")
@@ -25,7 +25,6 @@
   (resolve 'metabase.public-settings/anon-tracking-enabled))
 
 
-
 (defn- bin-micro-number
   "Return really small bin number. Assumes positive inputs"
   [x]
@@ -33,8 +32,7 @@
     (= 0 x) "0"
     (= 1 x) "1"
     (= 2 x) "2"
-    (> x 2) "3+")
-  )
+    (> x 2) "3+"))
 
 
 (defn- bin-small-number
@@ -45,8 +43,7 @@
     (<= 1 x 5) "1-5"
     (<= 6 x 10) "6-10"
     (<= 11 x 25) "11-25"
-    (> x 25) "25+")
-  )
+    (> x 25) "25+"))
 
 (defn- bin-medium-number
   "Return medium bin number. Assumes positive inputs"
@@ -59,8 +56,7 @@
     (<= 26 x 50) "26-50"
     (<= 51 x 100) "51-100"
     (<= 101 x 250) "101-250"
-    (> x 250) "250+")
-  )
+    (> x 250) "250+"))
 
 
 (defn- bin-large-number
@@ -74,8 +70,7 @@
     (<= 51 x 250) "51-250"
     (<= 251 x 1000) "251-1000"
     (<= 1001 x 10000) "1001-10000"
-    (> x 10000) "10000+")
-  )
+    (> x 10000) "10000+"))
 
 (defn- get-value-frequencies
   "go through a bunch of maps and count the frequency a given key's values"
@@ -90,42 +85,40 @@
   )
 
 (def micro-histogram
-  "return a histogram for micro numbers"
+  "Return a histogram for micro numbers"
   (partial histogram bin-micro-number))
 
 (def small-histogram
-  "return a histogram for small numbers"
+  "Return a histogram for small numbers"
   (partial histogram bin-small-number))
 
 (def medium-histogram
-  "return a histogram for medium numbers"
+  "Return a histogram for medium numbers"
   (partial histogram bin-medium-number))
 
 (def large-histogram
-  "return a histogram for large numbers"
+  "Return a histogram for large numbers"
   (partial histogram bin-large-number))
 
-(defn- instance-start-date?
+(defn- instance-start-date
   "Pull up the first user account and use that date"
   []
-  ((first (db/select 'User {:limit 1} {:order-by [[:date_joined :desc]]})) :date_joined)
-  )
+  ((first (db/select 'User {:limit 1} {:order-by [[:date_joined :desc]]})) :date_joined))
 
-(defn- where-am-i-running?
+(defn- environment-type
   "Figure out what we're running under"
   []
   (cond
     (= (config/config-str :mb-client) :osx) :osx
-    (not (nil? (config/config-str :rds-hostname))) :elastic-beanstalk
-    (not (nil? (config/config-str :database-url))) :heroku ;; Putting this last as 'database-url' seems least specific
-    :default "unknown")
-  )
+    (config/config-str :rds-hostname) :elastic-beanstalk
+    (config/config-str :database-url) :heroku ;; Putting this last as 'database-url' seems least specific
+    :default "unknown"))
 
 (defn- get-settings
   "Figure out global info aboutt his instance"
   []
   {:version               (config/mb-version-info :tag)
-   :running_on            (where-am-i-running?)
+   :running_on            (environment-type)
    :application_database  (config/config-str :mb-db-type)
    :check_for_updates     (setting/get :check-for-updates)
    :site_name             (not= settings/site-name "Metabase")
@@ -133,17 +126,14 @@
    :friendly_names        (metabase.models.humanization/enable-advanced-humanization)
    :email_configured      ((resolve 'metabase.email/email-configured?))
    :slack_configured      ((resolve 'metabase.integrations.slack/slack-configured?))
-   :sso_configured        (not (nil? (resolve 'metabase.api.session/google-auth-client-id)))
-   :instance_started      instance-start-date?
-   :has_sample_data       (db/exists? 'Database, :is_sample true)
-   }
-  )
+   :sso_configured        (boolean (resolve 'metabase.api.session/google-auth-client-id))
+   :instance_started      instance-start-date
+   :has_sample_data       (db/exists? 'Database, :is_sample true)})
 
 ;; util function
 (def add-summaries
   "add up some dictionaries"
-  (partial merge-with +)
-  )
+  (partial merge-with +))
 
 ;; User metrics
 (defn- user-dims
@@ -153,8 +143,7 @@
    :active (if (user :is_active) 1 0) ;; HOW DO I GET THE LIST OF ALL USERS INCLUDING INACTIVES?
    :admin (if (user :is_superuser) 1 0)
    :logged-in (if (nil? (user :last_login)) 0 1)
-   :sso (if (nil? (user :google_auth)) 0 1)}
-  )
+   :sso (if (nil? (user :google_auth)) 0 1)})
 
 
 (defn- get-user-metrics
@@ -179,8 +168,7 @@
   [question]
     {:total 1
      :native (if (= (question :iquery_type) "native") 1 0)
-     :gui (if (not= (question :iquery_type) "native") 1 0)}
-  )
+     :gui (if (not= (question :iquery_type) "native") 1 0)})
 
 (defn- get-question-metrics
   "Get metrics based on questions
@@ -228,8 +216,7 @@
   "characterize a database record"
   [database]
   {:total 1
-   :analysed (if (database :is_full_sync) 1 0)}
-  )
+   :analysed (if (database :is_full_sync) 1 0)})
 
 (defn- get-database-metrics
   "Get metrics based on databases"
@@ -256,7 +243,6 @@
      :num_per_table (medium-histogram fields :table_id)}))
 
 
-
 (defn- get-segment-metrics
   "Get metrics based on segments"
   []
@@ -270,11 +256,13 @@
   (let [metrics (db/select 'Metric)]
     {:metrics (count metrics)}))
 
+
 (defn- bin-latencies
   "Bin latencies, which are in milliseconds"
   [query-executions]
   (let [latency-vals (map #(/ %1 1000) (map :running_time query-executions))]
     (frequencies (map bin-large-number latency-vals))))
+
 
 ;; Execution Metrics
 (defn- get-execution-metrics
@@ -283,12 +271,12 @@
   be a LOT of query executions in a normal instance
   TODO: characterize by ad hoc vs cards"
   []
-  (let [executions (db/select 'QueryExecution)]
+  (let [executions (db/select ['QueryExecution :executor_id :running_time :status])]
     {:executions (count executions)
      :by_status (frequencies (map :status executions))
      :num_per_user (large-histogram executions :executor_id)
-     :num_per_card (large-histogram executions :table_id)
      :num_by_latency (bin-latencies executions)}))
+
 
 (defn- get-map-metrics
   "Get metrics based on custom geojson maps
@@ -304,18 +292,19 @@
   (merge (get-settings)
            {:uuid anonymous-id :timestamp (new java.util.Date)}
             {:stats {
-             :user (get-user-metrics)
-             :question (get-question-metrics)
-             :dashboard (get-dashboard-metrics)
-             :database (get-database-metrics)
-             :table (get-table-metrics)
-             :field (get-field-metrics)
-             :pulse (get-pulse-metrics)
-             :segment (get-segment-metrics)
-             :metric (get-metric-metrics)
-             :group (get-group-metrics)
-             :label (get-label-metrics)
-             :execution (get-execution-metrics)}}))
+               :user (get-user-metrics)
+               :question (get-question-metrics)
+               :dashboard (get-dashboard-metrics)
+               :database (get-database-metrics)
+               :table (get-table-metrics)
+               :field (get-field-metrics)
+               :pulse (get-pulse-metrics)
+               :segment (get-segment-metrics)
+               :metric (get-metric-metrics)
+               :group (get-group-metrics)
+               :label (get-label-metrics)
+               :execution (get-execution-metrics)}}))
+
 
 (defn- send-stats!
   "send stats to Metabase tracking server"
@@ -324,6 +313,7 @@
      (print (client/post metabase-usage-url {:form-params stats :content-type :json :throw-entire-message? true}))
       (catch Throwable e
        (log/error "Sending usage stats FAILED: " (.getMessage e)))))
+
 
 (defn phone-home-stats!
   "Collect usage stats and phone them home"

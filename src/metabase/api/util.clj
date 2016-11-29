@@ -2,8 +2,8 @@
   (:require [compojure.core :refer [defroutes GET POST]]
             [metabase.api.common :refer :all]
             [metabase.logger :as logger]
-            [metabase.util.stats :as stats]
-            [metabase.util.schema :as su]))
+            [metabase.util.schema :as su]
+            [metabase.util.stats :as stats]))
 
 (defendpoint POST "/password_check"
   "Endpoint that checks if the supplied password meets the currently configured password complexity rules."
