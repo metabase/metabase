@@ -301,25 +301,23 @@
 (defn get-anonymous-usage-stats 
   "generate a map of the usage stats for this instance"
   []
-  (when [setting/get :anon-tracking-enabled]
-    ;do stuff
-    (merge (get-settings)
+  (merge (get-settings)
            {:uuid anonymous-id :timestamp (new java.util.Date)}
             {:stats {
-              :user (get-user-metrics)
-              :question (get-question-metrics)
-              :dashboard (get-dashboard-metrics)
-              :database (get-database-metrics)
-              :table (get-table-metrics)
-              :field (get-field-metrics)
-              :pulse (get-pulse-metrics)
-              :segment (get-segment-metrics)
-              :metric (get-metric-metrics)
-              :group (get-group-metrics)
-              :label (get-label-metrics)
-              :execution (get-execution-metrics)}})))
+             :user (get-user-metrics)
+             :question (get-question-metrics)
+             :dashboard (get-dashboard-metrics)
+             :database (get-database-metrics)
+             :table (get-table-metrics)
+             :field (get-field-metrics)
+             :pulse (get-pulse-metrics)
+             :segment (get-segment-metrics)
+             :metric (get-metric-metrics)
+             :group (get-group-metrics)
+             :label (get-label-metrics)
+             :execution (get-execution-metrics)}}))
 
-(defn- send-stats 
+(defn- send-stats! 
   "send stats to Metabase tracking server"
   [stats]
    (try 
@@ -327,8 +325,8 @@
       (catch Throwable e
        (log/error "Sending usage stats FAILED: " (.getMessage e)))))
 
-(defn phone-home-stats 
-  "doc-string"
+(defn phone-home-stats! 
+  "Collect usage stats and phone them home"
   []
   (when (anon-tracking-enabled?)
-      (send-stats (get-anonymous-usage-stats))))
+      (send-stats! (get-anonymous-usage-stats))))
