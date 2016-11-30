@@ -3,9 +3,9 @@
   (:require [clojure.tools.logging :as log]
             (clj-time [coerce :as c]
                       [core :as t])
-            (clojurewerkz.quartzite [jobs :as jobs]
-                                    [triggers :as triggers])
+            [clojurewerkz.quartzite.jobs :as jobs]
             [clojurewerkz.quartzite.schedule.cron :as cron]
+            [clojurewerkz.quartzite.triggers :as triggers]
             (metabase [db :as db]
                       [email :as email])
             [metabase.email.messages :as messages]

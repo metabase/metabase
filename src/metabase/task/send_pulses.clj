@@ -1,9 +1,9 @@
 (ns metabase.task.send-pulses
   "Tasks related to running `Pulses`."
   (:require [clojure.tools.logging :as log]
-            (clojurewerkz.quartzite [jobs :as jobs]
-                                    [triggers :as triggers])
+            [clojurewerkz.quartzite.jobs :as jobs]
             [clojurewerkz.quartzite.schedule.cron :as cron]
+            [clojurewerkz.quartzite.triggers :as triggers]
             (clj-time [core :as time]
                       [predicates :as timepr])
             (metabase.models [pulse :refer [Pulse], :as pulse]
