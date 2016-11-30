@@ -22,6 +22,6 @@
   what is being phoned home."
   []
   (check-superuser)
-  (stats/get-anonymous-usage-stats))
+  (stats/anonymous-usage-stats))
 
 (define-routes)
