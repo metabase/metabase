@@ -12,7 +12,7 @@ describeE2E("admin/settings", () => {
     );
 
     describe("admin settings", () => {
-        fit("should persist a setting", async () => {
+        it("should persist a setting", async () => {
             const siteName = "Metabase" + Math.random();
 
             await d.get(`${server.host}/admin/settings/general`);
