@@ -141,7 +141,7 @@
   {:total 1
    :active (if (user :is_active) 1 0) ;; HOW DO I GET THE LIST OF ALL USERS INCLUDING INACTIVES?
    :admin (if (user :is_superuser) 1 0)
-   :logged-in (if (nil? (user :last_login)) 0 1)
+   :logged_in (if (nil? (user :last_login)) 0 1)
    :sso (if (nil? (user :google_auth)) 0 1)})
 
 
@@ -195,8 +195,8 @@
         pulsecards (db/select 'PulseCard)
         pulsechannels (db/select 'PulseChannel)]
     {:pulses (count pulses)
-     :pulse-types (frequencies (map :channel_type pulsechannels))
-     :pulse-schedules (frequencies (map :schedule_type pulsechannels))
+     :pulse_types (frequencies (map :channel_type pulsechannels))
+     :pulse_schedules (frequencies (map :schedule_type pulsechannels))
      :num_pulses_per_user (medium-histogram pulses :creator_id)
      :num_pulses_per_card (medium-histogram pulsecards :card_id)
      :num_cards_per_pulses (medium-histogram pulsecards :pulse_id)}))
