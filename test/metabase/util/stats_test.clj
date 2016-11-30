@@ -57,7 +57,7 @@
 (expect "10000+" (bin-large-number 100000))
 
 
-(expect "unknown" ((anonymous-usage-stats) :running_on))
+(expect :unknown ((anonymous-usage-stats) :running_on))
 (expect true ((anonymous-usage-stats) :check_for_updates))
 (expect true ((anonymous-usage-stats) :site_name))
 (expect true ((anonymous-usage-stats) :friendly_names))
