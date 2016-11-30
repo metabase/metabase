@@ -63,18 +63,9 @@ export function momentifyObjectsTimestamps(objects, keys) {
     return _.mapObject(objects, o => momentifyTimestamps(o, keys));
 }
 
-//filters out angular cruft in resource list
-export const cleanResources = (resources) => resources
-    .filter(resource => resource.id !== undefined);
-
-//filters out angular cruft and turns into id indexed map
-export const resourceListToMap = (resources) => cleanResources(resources)
-    .reduce((map, resource) => Object.assign({}, map, {[resource.id]: resource}), {});
-
-//filters out angular cruft in resource
-export const cleanResource = (resource) => Object.keys(resource)
-    .filter(key => key.charAt(0) !== "$")
-    .reduce((map, key) => Object.assign({}, map, {[key]: resource[key]}), {});
+// turns into id indexed map
+export const resourceListToMap = (resources) =>
+    resources.reduce((map, resource) => ({ ...map, [resource.id]: resource }), {});
 
 export const fetchData = async ({
     dispatch,

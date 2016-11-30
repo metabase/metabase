@@ -10,6 +10,8 @@ declare module icepick {
     declare function assocIn<O:Object, K:Key, V:Value>(object: O, path: Array<K>, value: V): O;
     declare function updateIn<O:Object, K:Key, V:Value>(object: O, path: Array<K>, callback: ((value: V) => V)): O;
 
+    declare function merge<O:Object>(object: O, other: O): O;
+
     // TODO: improve this
     declare function chain<O:Object>(object: O): any;
 }

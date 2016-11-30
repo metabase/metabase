@@ -598,7 +598,7 @@
     min-width: 25em;
 }
 
-.MB-DataTable.MB-DataTable--pivot .public_fixedDataTableCell_main:first-child {
+.MB-DataTable.MB-DataTable--pivot .MB-DataTable-cellWrapper:first-child {
     font-weight: bold;
     border-right: 1px solid color(var(--base-grey) shade(40%));
 }
