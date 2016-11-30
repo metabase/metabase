@@ -280,19 +280,18 @@
   []
   (merge (instance-settings)
            {:uuid anonymous-id :timestamp (new java.util.Date)}
-            {:stats {
-               :user (user-metrics)
-               :question (question-metrics)
-               :dashboard (dashboard-metrics)
-               :database (database-metrics)
-               :table (table-metrics)
-               :field (field-metrics)
-               :pulse (pulse-metrics)
-               :segment (segment-metrics)
-               :metric (metric-metrics)
-               :group (group-metrics)
-               :label (label-metrics)
-               :execution (execution-metrics)}}))
+            {:stats {:user (user-metrics)
+                     :question (question-metrics)
+                     :dashboard (dashboard-metrics)
+                     :database (database-metrics)
+                     :table (table-metrics)
+                     :field (field-metrics)
+                     :pulse (pulse-metrics)
+                     :segment (segment-metrics)
+                     :metric (metric-metrics)
+                     :group (group-metrics)
+                     :label (label-metrics)
+                     :execution (execution-metrics)}}))
 
 
 (defn- send-stats!
