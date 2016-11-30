@@ -126,3 +126,13 @@
   position: absolute;
   right: -12px;
 }
+
+.Calendar--noContext .Calendar-day {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.Calendar--noContext .Calendar-day--this-month {
+  visibility: visible;
+  pointer-events: all;
+}
