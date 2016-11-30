@@ -139,10 +139,10 @@
   "characterize a user record"
   [user]
   {:total 1
-   :active (if (user :is_active) 1 0) ;; HOW DO I GET THE LIST OF ALL USERS INCLUDING INACTIVES?
-   :admin (if (user :is_superuser) 1 0)
-   :logged_in (if (nil? (user :last_login)) 0 1)
-   :sso (if (nil? (user :google_auth)) 0 1)})
+   :active (if (:is_active user) 1 0) ;; HOW DO I GET THE LIST OF ALL USERS INCLUDING INACTIVES?
+   :admin (if (:is_superuser user) 1 0)
+   :logged_in (if (nil? (:last_login user)) 0 1)
+   :sso (if (nil? (:google_auth user)) 0 1)})
 
 
 (defn- user-metrics
@@ -166,8 +166,8 @@
   TODO: characterize by whether it has params, # of revisions, created by an admin"
   [question]
     {:total 1
-     :native (if (= (question :iquery_type) "native") 1 0)
-     :gui (if (not= (question :iquery_type) "native") 1 0)})
+     :native (if (= (:query_type question) "native") 1 0)
+     :gui (if (not= (:query_type question) "native") 1 0)})
 
 (defn- question-metrics
   "Get metrics based on questions
