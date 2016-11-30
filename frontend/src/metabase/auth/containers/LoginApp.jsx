@@ -2,6 +2,7 @@ import React, { Component, PropTypes } from "react";
 import { findDOMNode } from "react-dom";
 import { Link } from "react-router";
 import { connect } from "react-redux";
+import Helmet from "react-helmet";
 
 import cx from "classnames";
 
@@ -108,6 +109,7 @@ export default class LoginApp extends Component {
 
         return (
             <div className="full-height full bg-white flex flex-column flex-full md-layout-centered">
+                <Helmet title="Login" />
                 <div className="Login-wrapper wrapper Grid Grid--full md-Grid--1of2 relative z2">
                     <div className="Grid-cell flex layout-centered text-brand">
                         <LogoIcon className="Logo my4 sm-my0" width={66} height={85} />
