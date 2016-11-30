@@ -77,20 +77,34 @@
 ;;; |                                                             PERMISSIONS GROUP ENDPOINTS                                                              |
 ;;; +------------------------------------------------------------------------------------------------------------------------------------------------------+
 
+(defn- group-id->num-members
+  "Return a map of `PermissionsGroup` ID -> number of members in the group.
+  (This doesn't include entries for empty groups.)"
+  []
+  (into {} (for [{:keys [group_id members]} (db/query {:select    [[:pgm.group_id :group_id] [:%count.pgm.id :members]]
+                                                       :from      [[:permissions_group_membership :pgm]]
+                                                       :left-join [[:core_user :user] [:= :pgm.user_id :user.id]]
+                                                       :where     [:= :user.is_active true]
+                                                       :group-by  [:pgm.group_id]})]
+             {group_id members})))
+
+(defn- ordered-groups
+  "Return a sequence of ordered `PermissionsGroups`, including the `MetaBot` group only if MetaBot is enabled."
+  []
+  (db/select PermissionsGroup
+    {:where    (if (metabot/metabot-enabled)
+                 true
+                 [:not= :id (u/get-id (group/metabot))])
+     :order-by [:%lower.name]}))
+
 (defendpoint GET "/group"
-  "Fetch all `PermissionsGroups`."
+  "Fetch all `PermissionsGroups`, including a count of the number of `:members` in that group."
   []
   (check-superuser)
-  (db/query {:select    [:pg.id :pg.name [:%count.pgm.id :members]]
-             :from      [[:permissions_group :pg]]
-             :left-join [[:permissions_group_membership :pgm] [:= :pg.id :pgm.group_id]
-                         [:core_user :user]                   [:= :pgm.user_id :user.id]]
-             :where     [:and [:= :user.is_active true]
-                              (if (metabot/metabot-enabled)
-                                true
-                                [:not= :pg.id (:id (group/metabot))])]
-             :group-by  [:pg.id :pg.name]
-             :order-by  [:%lower.pg.name]}))
+  (let [group-id->members (group-id->num-members)]
+    (for [group (ordered-groups)]
+      (assoc group :members (or (group-id->members (u/get-id group))
+                                0)))))
 
 (defendpoint GET "/group/:id"
   "Fetch the details for a certain permissions group."
