@@ -14,7 +14,7 @@
             (metabase.query-processor [annotate :as annotate]
                                       [interface :refer [qualified-name-components map->DateTimeField map->DateTimeValue]])
             [metabase.util :as u]
-            [clj-time.core :refer [date-time]]
+            [clj-time.core :as t]
             [clj-time.coerce :as c])
   (:import java.sql.Timestamp
            java.util.Date
@@ -213,7 +213,7 @@
         :month-of-year   (extract :month)
         :quarter         (stringify "yyyy-MM" (u/date-trunc :quarter value))
         :quarter-of-year (extract :quarter-of-year)
-        :year            (extract :year))))
+        :year            (stringify "yyyy" (u/date-trunc :year value)))))
 
   RelativeDateTimeValue
   (->rvalue [{:keys [amount unit field]}]
@@ -234,30 +234,45 @@
 
 ;;; ### filter
 
-;; omf: adds one day to date
-(defn- add-one-day [date]
-  (c/from-long (+ (c/to-long date) 86400000))
+;; omf: 'max' date in a date range is next day at 00:00:00.000
+(defn- resolve-between [basetype minvalue maxvalue]
+  (cond (= basetype :type/DateTime)
+    {$gte minvalue
+     $lt (t/plus maxvalue (t/days 1))}
+  :else
+    {$gte minvalue
+     $lte maxvalue})
+)
+
+;; omf: a single day ends before next day at 00:00:00.000
+(defn- resolve-equal [basetype value unit]
+  (cond (= basetype :type/DateTime)
+    {$gte value
+     $lt (case unit
+           :year (t/plus value (t/years 1))
+           :month (t/plus value (t/months 1))
+           :week (t/plus value (t/weeks 1))
+           (t/plus value (t/days 1)))}
+  :else
+    {"$eq" value})
 )
 
 (defn- parse-filter-subclause [{:keys [filter-type field value] :as filter} & [negate?]]
   ;; omf: Maybe there is a better way to do this. 'field' is being received as field: {...} or as field:{field: {...}}
   ;; We need basetype so we can do a specific setup for 'between' and '=' for datetimes
+  ;; We need unit so we can do a specific setup for '=' for relative datetimes
   (let [basetype (when field (or (:base-type field) (:base-type (:field field))))
+        unit (when field (or (:unit field) (:unit (:field field))))
         field (when field (or (:field-name field) (:field-name (:field field))))
         value (when value (->rvalue value))
         v     (case filter-type
-                ;; omf: 'max' date in a date range is next day at 00:00:00.000
-                :between     (cond (= basetype :type/DateTime)
-                               {$gte (->rvalue (:min-val filter))
-                                $lt (add-one-day (->rvalue (:max-val filter)))}
-                             :else 
-                               {$gte (->rvalue (:min-val filter))
-                                $lte (->rvalue (:max-val filter))})
+                :between     (resolve-between basetype 
+                                              (->rvalue (:min-val filter))
+                                              (->rvalue (:max-val filter)))
                 :contains    (re-pattern value)
                 :starts-with (re-pattern (str \^ value))
                 :ends-with   (re-pattern (str value \$))
-                ;; omf: a single day ends before next day at 00:00:00.000
-                :=           (if (= basetype :type/DateTime) {$gte value $lt (add-one-day value)} {"$eq" value})
+                :=           (resolve-equal basetype value unit)
                 :!=          {$ne  value}
                 :<           {$lt  value}
                 :>           {$gt  value}
