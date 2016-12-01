@@ -12,8 +12,7 @@ import App from "metabase/App.jsx";
 // auth containers
 import ForgotPasswordApp from "metabase/auth/containers/ForgotPasswordApp.jsx";
 import LoginApp from "metabase/auth/containers/LoginApp.jsx";
-import LogoutApp from "metabase/auth/containers/LogoutApp.jsx";
-import PasswordResetApp from "metabase/auth/containers/PasswordResetApp.jsx";
+import LogoutApp from "metabase/auth/containers/LogoutApp.jsx"; import PasswordResetApp from "metabase/auth/containers/PasswordResetApp.jsx";
 import GoogleNoAccount from "metabase/auth/components/GoogleNoAccount.jsx";
 
 // main app containers
@@ -22,6 +21,7 @@ import HomepageApp from "metabase/home/containers/HomepageApp.jsx";
 import QuestionIndex from "metabase/questions/containers/QuestionIndex.jsx";
 import Archive from "metabase/questions/containers/Archive.jsx";
 import CollectionPage from "metabase/questions/containers/CollectionPage.jsx";
+import NewCollection from "metabase/questions/containers/NewCollection.jsx";
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp.jsx";
 import PulseListApp from "metabase/pulse/containers/PulseListApp.jsx";
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder.jsx";
@@ -134,6 +134,7 @@ export const getRoutes = (store) =>
                 <Route path="/questions" component={QuestionIndex} />
                 <Route path="/questions/archive" component={Archive} />
                 <Route path="/questions/permissions" component={QuestionPermissions} />
+                <Route path="/questions/collections/new" component={NewCollection} />
                 <Route path="/questions/collections/:collectionName" component={CollectionPage} />
 
                 {/* REFERENCE */}
@@ -215,6 +216,9 @@ export const getRoutes = (store) =>
         </Route>
     </Route>
 
+const NewCollectionPage = () =>
+    <div>
+    </div>
 
 const QuestionPermissions = () =>
     <div>
