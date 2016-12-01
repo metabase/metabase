@@ -222,7 +222,9 @@ export default class TableInteractive extends Component {
             return (
                 <div
                     key={key} style={style}
-                    className="TableInteractive-cellWrapper cellData"
+                    className={cx("TableInteractive-cellWrapper cellData", {
+                        "TableInteractive-cellWrapper--firstColumn": columnIndex === 0
+                    })}
                     onClick={this.cellClicked.bind(this, rowIndex, columnIndex)}
                 >
                     <Value className="link" value={cellData} column={column} onResize={this.onCellResize.bind(this, columnIndex)} />
@@ -234,7 +236,10 @@ export default class TableInteractive extends Component {
             return (
                 <div
                     key={key} style={style}
-                    className={cx("TableInteractive-cellWrapper cellData", { "cursor-pointer": isFilterable })}
+                    className={cx("TableInteractive-cellWrapper cellData", {
+                        "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
+                        "cursor-pointer": isFilterable
+                    })}
                     onClick={isFilterable && this.showPopover.bind(this, rowIndex, columnIndex)}
                 >
                     <Value value={cellData} column={column} onResize={this.onCellResize.bind(this, columnIndex)} />
@@ -268,7 +273,8 @@ export default class TableInteractive extends Component {
                 key={key}
                 style={{ ...style, overflow: "visible" /* ensure resize handle is visible */ }}
                 className={cx("TableInteractive-cellWrapper TableInteractive-headerCellData", {
-                    'TableInteractive-headerCellData--sorted': (sort && sort[0] && sort[0][0] === column.id),
+                    "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
+                    "TableInteractive-headerCellData--sorted": (sort && sort[0] && sort[0][0] === column.id),
                 })}
             >
                 <div

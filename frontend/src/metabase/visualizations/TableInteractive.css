@@ -44,6 +44,10 @@
     align-items: center;
 }
 
+.TableInteractive.TableInteractive--pivot .TableInteractive-cellWrapper--firstColumn {
+    border-right: 1px solid rgb(205, 205, 205);
+}
+
 .TableInteractive .TableInteractive-cellWrapper:hover {
     border-color: var(--brand-color);
     color: var(--brand-color);
