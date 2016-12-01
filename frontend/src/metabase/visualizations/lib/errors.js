@@ -22,8 +22,9 @@ export class LatitudeLongitudeError {
 }
 
 export class ChartSettingsError {
-    constructor(message, section) {
+    constructor(message, section, buttonText) {
         this.message = message || "Please configure this chart in the chart settings";
         this.section = section;
+        this.buttonText = buttonText || "Edit Settings";
     }
 }

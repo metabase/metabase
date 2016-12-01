@@ -1,71 +1,157 @@
 import React, { Component, PropTypes } from "react";
 
-import SpecificDatePicker from "./SpecificDatePicker.jsx";
-import RelativeDatePicker from "./RelativeDatePicker.jsx";
-import OperatorSelector from "../OperatorSelector.jsx";
+import SpecificDatePicker from "./SpecificDatePicker";
+import RelativeDatePicker, { UnitPicker } from "./RelativeDatePicker";
+import DateOperatorSelector from "../DateOperatorSelector";
+import Calendar from "metabase/components/Calendar";
 
-export default class DatePicker extends Component {
-    constructor(props, context) {
-        super(props, context);
-        this.state = {
-            pane: this._detectPane(props)
-        };
-    }
+import moment from "moment";
 
-    static propTypes = {
-        filter: PropTypes.array.isRequired,
-        onFilterChange: PropTypes.func.isRequired,
-        onOperatorChange: PropTypes.func.isRequired,
-        tableMetadata: PropTypes.object.isRequired
-    };
+import _ from "underscore";
 
-    _detectPane(props) {
-        if (props.filter[0] === "IS_NULL" || props.filter[0] === "NOT_NULL") {
-            return props.filter[0]
-        } else if (props.filter[0] !== "TIME_INTERVAL" && typeof props.filter[2] === "string") {
-            return "specific";
-        } else {
-            return "relative";
-        }
-    }
+const SingleDatePicker = ({ filter: [op, field, value], onFilterChange }) =>
+    <SpecificDatePicker value={value} onChange={(value) => onFilterChange([op, field, value])} calendar />
 
-    selectPane(pane) {
-        this.props.onFilterChange([null, this.props.filter[1]]);
-        this.setState({ pane });
+const MultiDatePicker = ({ filter: [op, field, startValue, endValue], onFilterChange }) =>
+    <div className="mx2 mb1">
+        <div className="flex">
+            <SpecificDatePicker value={startValue} onChange={(value) => onFilterChange([op, field, value, endValue])}  />
+            <span className="mx2 mt2">&ndash;</span>
+            <SpecificDatePicker value={endValue} onChange={(value) => onFilterChange([op, field, startValue, value])} />
+        </div>
+        <div className="Calendar--noContext">
+            <Calendar
+                initial={startValue ? moment(startValue) : moment()}
+                selected={startValue && moment(startValue)}
+                selectedEnd={endValue && moment(endValue)}
+                onChange={(startValue, endValue) => onFilterChange([op, field, startValue, endValue])}
+                isDual
+            />
+        </div>
+    </div>
+
+const PreviousPicker =  (props) =>
+    <RelativeDatePicker {...props} formatter={(value) => value * -1} />
+
+const NextPicker = (props) =>
+    <RelativeDatePicker {...props} />
+
+class CurrentPicker extends Component {
+    constructor() {
+        super();
+        this.state = { showUnits: false };
     }
 
     render() {
-        var operators = [
-            { name: "relative", verboseName: "Relative date" },
-            { name: "specific", verboseName: "Specific date" },
-            { name: "IS_NULL", verboseName: "Is Empty", advanced: true },
-            { name: "NOT_NULL", verboseName: "Not Empty", advanced: true }
-        ];
+        const { filter: [operator, field, intervals, unit], onFilterChange } = this.props
+        return (
+            <div className="mx2">
+                <UnitPicker
+                    value={unit}
+                    open={this.state.showUnits}
+                    onChange={(value) => {
+                        onFilterChange([operator, field, intervals, value]);
+                        this.setState({ showUnits: false });
+                    }}
+                    togglePicker={() => this.setState({ showUnits: !this.state.showUnits })}
+                    formatter={(val) => val }
+                />
+            </div>
+        )
+    }
+}
+
+
+const getIntervals = ([op, field, value, unit]) => op === "TIME_INTERVAL" && typeof value === "number" ? Math.abs(value) : 1;
+const getUnit      = ([op, field, value, unit]) => op === "TIME_INTERVAL" && unit ? unit : "day";
+const getDate      = (value) => typeof value === "string" && moment(value).isValid() ? value : moment().format("YYYY-MM-DD");
+
+const OPERATORS = [
+    {
+        name: "Previous",
+        init: (filter) => ["TIME_INTERVAL", filter[1], -getIntervals(filter), getUnit(filter)],
+        test: ([op, field, value]) => op === "TIME_INTERVAL" && value < 0 || Object.is(value, -0),
+        widget: PreviousPicker,
+    },
+    {
+        name: "Next",
+        init: (filter) => ["TIME_INTERVAL", filter[1], getIntervals(filter), getUnit(filter)],
+        test: ([op, field, value]) => op === "TIME_INTERVAL" && value >= 0,
+        widget: NextPicker,
+    },
+    {
+        name: "Current",
+        init: (filter) => ["TIME_INTERVAL", filter[1], "current", getUnit(filter)],
+        test: ([op, field, value]) => op === "TIME_INTERVAL" && value === "current",
+        widget: CurrentPicker,
+    },
+    {
+        name: "Before",
+        init: (filter) => ["<", filter[1], getDate(filter[2])],
+        test: ([op]) => op === "<",
+        widget: SingleDatePicker,
+    },
+    {
+        name: "After",
+        init: (filter) => [">", filter[1], getDate(filter[2])],
+        test: ([op]) => op === ">",
+        widget: SingleDatePicker,
+    },
+    {
+        name: "On",
+        init: (filter) => ["=", filter[1], getDate(filter[2])],
+        test: ([op]) => op === "=",
+        widget: SingleDatePicker,
+    },
+    {
+        name: "Between",
+        init: (filter) => ["BETWEEN", filter[1], null, null],
+        test: ([op]) => op === "BETWEEN",
+        widget: MultiDatePicker,
+    },
+    {
+        name: "Is Empty",
+        init: (filter) => ["IS_NULL", filter[1]],
+        test: ([op]) => op === "IS_NULL"
+    },
+    {
+        name: "Not Empty",
+        init: (filter) => ["NOT_NULL", filter[1]],
+        test: ([op]) => op === "NOT_NULL"
+    }
+];
+
+export default class DatePicker extends Component {
+    static propTypes = {
+        filter: PropTypes.array.isRequired,
+        onFilterChange: PropTypes.func.isRequired,
+        tableMetadata: PropTypes.object.isRequired
+    };
+
+    componentWillMount() {
+        const operator = this._getOperator() || OPERATORS[0];
+        this.props.onFilterChange(operator.init(this.props.filter));
+    }
+
+    _getOperator() {
+        return _.find(OPERATORS, (o) => o.test(this.props.filter));
+    }
+
+    render() {
+        let { filter, onFilterChange } = this.props;
+        const operator = this._getOperator();
+        const Widget = operator && operator.widget;
 
         return (
-            <div>
-                <OperatorSelector
-                    operator={this.state.pane}
-                    operators={operators}
-                    onOperatorChange={(operator) => {
-                        this.setState({ pane: operator });
-                        if (operator === "IS_NULL" || operator === "NOT_NULL") {
-                            this.props.onOperatorChange(operator);
-                        }
-                    }}
+            <div className="mt1 pt2 border-top">
+                <DateOperatorSelector
+                    operator={operator && operator.name}
+                    operators={OPERATORS}
+                    onOperatorChange={operator => onFilterChange(operator.init(filter))}
                 />
-                { this.state.pane === "relative" ?
-                    <RelativeDatePicker
-                        filter={this.props.filter}
-                        onFilterChange={this.props.onFilterChange}
-                    />
-                : this.state.pane === "specific" ?
-                    <SpecificDatePicker
-                        filter={this.props.filter}
-                        onFilterChange={this.props.onFilterChange}
-                        onOperatorChange={this.props.onOperatorChange}
-                    />
-                : null }
+                { Widget &&
+                    <Widget {...this.props} filter={filter} />
+                }
             </div>
         )
     }

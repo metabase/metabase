@@ -8,11 +8,12 @@ import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 
-import { duration } from "metabase/lib/formatting";
+import { duration, formatNumber } from "metabase/lib/formatting";
 
 import { getVisualizationTransformed } from "metabase/visualizations";
 import { getSettings } from "metabase/lib/visualization_settings";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
+import Utils from "metabase/lib/utils";
 
 import { MinRowsError, ChartSettingsError } from "metabase/visualizations/lib/errors";
 
@@ -29,9 +30,10 @@ export default class Visualization extends Component {
         super(props, context)
 
         this.state = {
-            renderInfo: null,
             hovered: null,
-            error: null
+            error: null,
+            warnings: [],
+            yAxisSplit: null,
         };
 
         _.bindAll(this, "onRender", "onRenderError", "onHoverChange");
@@ -70,6 +72,8 @@ export default class Visualization extends Component {
         cellIsClickableFn: PropTypes.func,
         cellClickedFn: PropTypes.func,
 
+        // misc
+        onUpdateWarnings: PropTypes.func,
         onOpenChartSettings: PropTypes.func,
     };
 
@@ -84,35 +88,60 @@ export default class Visualization extends Component {
     }
 
     componentWillReceiveProps(newProps) {
-        if (isSameSeries(newProps.series, this.props.series)) {
-            // clear the error so we can try to render again
-            this.setState({ error: null });
-        } else {
+        if (!isSameSeries(newProps.series, this.props.series) || !Utils.equals(newProps.settings, this.props.settings)) {
             this.transform(newProps);
+        }
+    }
+
+    componentDidMount() {
+        this.updateWarnings();
+    }
+
+    componentDidUpdate(prevProps, prevState) {
+        if (!Utils.equals(this.getWarnings(prevProps, prevState), this.getWarnings())) {
+            this.updateWarnings();
+        }
+    }
+
+    getWarnings(props = this.props, state = this.state) {
+        let warnings = state.warnings || [];
+        // don't warn about truncated data for table since we show a warning in the row count
+        if (state.series[0].card.display !== "table") {
+            warnings = warnings.concat(props.series
+                .filter(s => s.data && s.data.rows_truncated != null)
+                .map(s => `Data truncated to ${formatNumber(s.data.rows_truncated)} rows.`));
+        }
+        return warnings;
+    }
+
+    updateWarnings() {
+        if (this.props.onUpdateWarnings) {
+            this.props.onUpdateWarnings(this.getWarnings() || []);
         }
     }
 
     transform(newProps) {
         this.setState({
-            error: null,
+            yAxisSplit: null,
+            warnings: [],
             ...getVisualizationTransformed(newProps.series)
         });
     }
 
     onHoverChange(hovered) {
-        const { renderInfo } = this.state;
+        const { yAxisSplit } = this.state;
         if (hovered) {
             // if we have Y axis split info then find the Y axis index (0 = left, 1 = right)
-            if (renderInfo && renderInfo.yAxisSplit) {
-                const axisIndex = _.findIndex(renderInfo.yAxisSplit, (indexes) => _.contains(indexes, hovered.index));
+            if (yAxisSplit) {
+                const axisIndex = _.findIndex(yAxisSplit, (indexes) => _.contains(indexes, hovered.index));
                 hovered = assoc(hovered, "axisIndex", axisIndex);
             }
         }
         this.setState({ hovered });
     }
 
-    onRender(renderInfo) {
-        this.setState({ renderInfo });
+    onRender({ yAxisSplit, warnings = [] } = {}) {
+        this.setState({ yAxisSplit, warnings });
     }
 
     onRenderError(error) {
@@ -147,8 +176,8 @@ export default class Visualization extends Component {
                             <div>
                                 <div>{error}</div>
                                 <div className="mt2">
-                                    <button className="Button Button--primary Button--small" onClick={this.props.onOpenChartSettings}>
-                                        Edit Settings
+                                    <button className="Button Button--primary Button--medium" onClick={this.props.onOpenChartSettings}>
+                                        {e.buttonText}
                                     </button>
                                 </div>
                             </div>
@@ -200,7 +229,7 @@ export default class Visualization extends Component {
                     replacementContent
                 // on dashboards we should show the "No results!" warning if there are no rows or there's a MinRowsError and actualRows === 0
                 : isDashboard && noResults ?
-                    <div className="flex-full px1 pb1 text-centered text-slate flex flex-column layout-centered">
+                    <div className={"flex-full px1 pb1 text-centered flex flex-column layout-centered " + (isDashboard ? "text-slate-light" : "text-slate")}>
                         <Tooltip tooltip="No results!" isEnabled={small}>
                             <img src="/app/img/no_results.svg" />
                         </Tooltip>
@@ -211,7 +240,7 @@ export default class Visualization extends Component {
                         }
                     </div>
                 : error ?
-                    <div className="flex-full px1 pb1 text-centered text-slate-light flex flex-column layout-centered">
+                    <div className={"flex-full px1 pb1 text-centered flex flex-column layout-centered " + (isDashboard ? "text-slate-light" : "text-slate")}>
                         <Tooltip tooltip={error} isEnabled={small}>
                             <Icon className="mb2" name={errorIcon || "warning"} size={50} />
                         </Tooltip>

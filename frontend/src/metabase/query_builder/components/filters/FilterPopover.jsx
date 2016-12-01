@@ -52,7 +52,9 @@ export default class FilterPopover extends Component {
 
             // default to the first operator
             let { field } = Query.getFieldTarget(filter[1], this.props.tableMetadata);
-            let operator = field.valid_operators[0].name;
+
+            // let the DatePicker choose the default operator, otherwise use the first one
+            let operator = isDate(field) ? null : field.valid_operators[0].name;
 
             filter = this._updateOperator(filter, operator);
         }
@@ -209,7 +211,9 @@ export default class FilterPopover extends Component {
             let { table, field } = Query.getFieldTarget(filter[1], this.props.tableMetadata);
 
             return (
-                <div style={{width: 300}}>
+                <div style={{
+                    minWidth: 300
+                }}>
                     <div className="FilterPopover-header text-grey-3 p1 mt1 flex align-center">
                         <a className="cursor-pointer flex align-center" onClick={this.clearField}>
                             <Icon name="chevronleft" size={18}/>

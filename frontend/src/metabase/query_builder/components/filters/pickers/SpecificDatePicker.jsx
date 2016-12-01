@@ -1,104 +1,173 @@
 import React, { Component, PropTypes } from 'react';
 
-import Calendar from "metabase/components/Calendar.jsx";
-import Input from "metabase/components/Input.jsx";
+import Calendar from "metabase/components/Calendar";
+import Input from "metabase/components/Input";
+import Icon from "metabase/components/Icon";
+import ExpandingContent from "metabase/components/ExpandingContent";
+import Tooltip from "metabase/components/Tooltip";
+import NumericInput from "./NumericInput.jsx";
 
-import { computeFilterTimeRange } from "metabase/lib/query_time";
-
-import _ from "underscore";
 import moment from "moment";
+import cx from "classnames";
+
+const DATE_FORMAT = "YYYY-MM-DD";
+const DATE_TIME_FORMAT = "YYYY-MM-DDTHH:mm:ss";
 
 export default class SpecificDatePicker extends Component {
-    constructor(props, context) {
-        super(props, context);
+    constructor() {
+        super();
 
-        _.bindAll(this, "onChange");
+        this.state = {
+            showCalendar: true
+        }
+
+        this.onChange = this.onChange.bind(this);
     }
 
     static propTypes = {
-        filter: PropTypes.array.isRequired,
-        onFilterChange: PropTypes.func.isRequired,
-        onOperatorChange: PropTypes.func.isRequired
+        value: PropTypes.string,
+        onChange: PropTypes.func.isRequired,
     };
 
-    toggleOperator(operator) {
-        if (this.props.filter[0] === operator) {
-            this.props.onOperatorChange("=");
-        } else {
-            this.props.onOperatorChange(operator);
+    onChange(date, hours, minutes) {
+        let m = moment(date);
+        if (!m.isValid()) {
+            this.props.onChange(null);
         }
-    }
 
-    onChange(start, end) {
-        let { filter } = this.props;
-        if (start && end && !moment(start).isSame(end)) {
-            this.props.onFilterChange(["BETWEEN", filter[1], start, end]);
+        let hasTime = false;
+        if (hours != null) {
+            m.hours(hours);
+            hasTime = true;
+        }
+        if (minutes != null) {
+            m.minutes(minutes);
+            hasTime = true;
+        }
+
+        if (hasTime) {
+            this.props.onChange(m.format(DATE_TIME_FORMAT));
         } else {
-            this.props.onFilterChange(["=", filter[1], start || end]);
+            this.props.onChange(m.format(DATE_FORMAT));
         }
     }
 
     render() {
-        let { filter } = this.props;
-        let [start, end] = computeFilterTimeRange(filter);
+        const { value, calendar } = this.props;
+        const { showCalendar } = this.state;
 
-        let initial;
-        if (start && end) {
-            initial = Math.abs(moment().diff(start)) < Math.abs(moment().diff(end)) ? start : end;
-        } else if (start) {
-            initial = start;
-        }
-
-        let singleDay = start && start.isSame(end, "day");
-        if (singleDay) {
-            end = null;
-        }
-
-        let startValue, startPlaceholder, endValue, endPlaceholder;
-        if (filter[0] === "<") {
-            startPlaceholder = "∞";
-            endValue = filter[2];
-        } else if (filter[0] === ">") {
-            startValue = filter[2];
-            endPlaceholder = "∞";
-        } else if (filter[0] === "BETWEEN") {
-            startValue = filter[2];
-            endValue = filter[3];
-        } else {
-            startValue = filter[2];
-            endValue = filter[2];
+        let date, hours, minutes;
+        if (moment(value, DATE_TIME_FORMAT, true).isValid()) {
+            date = moment(value, DATE_TIME_FORMAT, true);
+            hours = date.hours();
+            minutes = date.minutes();
+            date.startOf("day");
+        } else if (moment(value, DATE_FORMAT, true).isValid()) {
+            date = moment(value, DATE_FORMAT, true);
         }
 
         return (
-            <div>
-                <div className="mx2 mt2">
-                    <Calendar
-                        initial={initial}
-                        selected={start}
-                        selectedEnd={end}
-                        onChange={this.onChange}
-                        onBeforeClick={singleDay ? this.toggleOperator.bind(this, "<") : undefined}
-                        onAfterClick={singleDay ? this.toggleOperator.bind(this, ">") : undefined}
-                    />
-                    <div className="py2 text-centered">
+            <div className="px1">
+                <div className="flex align-center mb1">
+                    <div className={cx('border-top border-bottom full border-left', { 'border-right': !calendar })}>
                         <Input
-                            className="input input--small text-bold text-grey-4 text-centered"
-                            style={{width: "100px"}}
-                            value={startValue && moment(startValue).format("MM/DD/YYYY")}
-                            placeholder={startPlaceholder}
-                            onBlurChange={(e) => this.onChange(moment(e.target.value).format("YYYY-MM-DD"), singleDay ? null : endValue)}
-                        />
-                        <span className="px1">–</span>
-                        <Input
-                            className="input input--small text-bold text-grey-4 text-centered"
-                            style={{width: "100px"}}
-                            value={endValue && moment(endValue).format("MM/DD/YYYY")}
-                            placeholder={endPlaceholder}
-                            onBlurChange={(e) => this.onChange(startValue, moment(e.target.value).format("YYYY-MM-DD"))}
+                            placeholder={moment().format("MM/DD/YYYY")}
+                            className="borderless full p2 h3"
+                            style={{
+                                outline: 'none'
+                            }}
+                            value={date ? date.format("MM/DD/YYYY") : ""}
+                            onBlurChange={({ target: { value } }) => {
+                                let date = moment(value, "MM/DD/YYYY");
+                                if (date.isValid()) {
+                                    this.onChange(date, hours, minutes)
+                                } else {
+                                    this.onChange(null)
+                                }
+                            }}
+                            ref="value"
                         />
                     </div>
+                    { calendar &&
+                        <div className="border-right border-bottom border-top p2">
+                            <Tooltip
+                                tooltip={
+                                    showCalendar ? "Hide calendar" : "Show calendar"
+                                }
+                                children={
+                                    <Icon
+                                        className="text-purple-hover cursor-pointer"
+                                        name='calendar'
+                                        onClick={() => this.setState({ showCalendar: !this.state.showCalendar })}
+                                    />
+                                }
+                            />
+                        </div>
+                    }
+                </div>
+
+                { calendar &&
+                    <ExpandingContent open={showCalendar}>
+                        <Calendar
+                            selected={date}
+                            initial={date || moment()}
+                            onChange={(value) => this.onChange(value, hours, minutes)}
+                            isRangePicker={false}
+                        />
+                    </ExpandingContent>
+                }
+
+                <div className={cx({ 'py2': calendar }, { 'mb3': !calendar })}>
+                    { hours == null || minutes == null ?
+                        <div
+                            className="text-purple-hover cursor-pointer flex align-center"
+                            onClick={() => this.onChange(date, 12, 30) }
+                        >
+                            <Icon
+                                className="mr1"
+                                name='clock'
+                            />
+                            Add a time
+                        </div>
+                    :
+                        <HoursMinutes
+                            clear={() => this.onChange(date, null, null)}
+                            hours={hours}
+                            minutes={minutes}
+                            onChangeHours={hours => this.onChange(date, hours, minutes)}
+                            onChangeMinutes={minutes => this.onChange(date, hours, minutes)}
+                        />
+                    }
                 </div>
             </div>
         )
     }
 }
+
+const HoursMinutes = ({ hours, minutes, onChangeHours, onChangeMinutes, clear }) =>
+    <div className="flex align-center">
+        <NumericInput
+            className="input"
+            size={2}
+            maxLength={2}
+            value={(hours % 12) === 0 ? "12" : String(hours % 12)}
+            onChange={(value) => onChangeHours((hours >= 12 ? 12 : 0) + value) }
+        />
+        <span className="px1">:</span>
+        <NumericInput
+            className="input"
+            size={2}
+            maxLength={2}
+            value={minutes}
+            onChange={(value) => onChangeMinutes(value) }
+        />
+        <div className="flex align-center pl1">
+            <span className={cx("text-purple-hover mr1", { "text-purple": hours < 12, "cursor-pointer": hours >= 12 })} onClick={hours >= 12 ? () => onChangeHours(hours - 12) : null}>AM</span>
+            <span className={cx("text-purple-hover mr1", { "text-purple": hours >= 12, "cursor-pointer": hours < 12 })} onClick={hours < 12 ? () => onChangeHours(hours + 12) : null}>PM</span>
+        </div>
+        <Icon
+            className="text-grey-2 cursor-pointer text-grey-4-hover ml-auto"
+            name="close"
+            onClick={() => clear() }
+        />
+    </div>
