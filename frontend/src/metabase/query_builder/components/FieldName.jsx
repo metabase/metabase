@@ -38,7 +38,7 @@ export default class FieldName extends Component {
             }
             // target field itself
             // using i.getIn to avoid exceptions when field is undefined
-            parts.push(<span key="field">{Query.getFieldPathName(fieldTarget.field.id, tableMetadata)}</span>);
+            parts.push(<span key="field">{Query.getFieldPathName(fieldTarget.field.id, fieldTarget.table)}</span>);
             // datetime-field unit
             if (fieldTarget.unit != null) {
                 parts.push(<span key="unit">{": " + formatBucketing(fieldTarget.unit)}</span>);
