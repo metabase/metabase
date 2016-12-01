@@ -2,37 +2,37 @@
     border: 1px solid #ddd;
 }
 
-.MB-DataTable-headerCellData {
+.TableInteractive-headerCellData {
   font-weight: 700;
 }
 
-.MB-DataTable-headerCellData:hover {
+.TableInteractive-headerCellData:hover {
     cursor: pointer;
 }
 
-.MB-DataTable-headerCellData .Icon       { opacity: 0; }
-.MB-DataTable-headerCellData:hover .Icon,
-.MB-DataTable-headerCellData--sorted .Icon     {
+.TableInteractive-headerCellData .Icon       { opacity: 0; }
+.TableInteractive-headerCellData:hover .Icon,
+.TableInteractive-headerCellData--sorted .Icon     {
     opacity: 1;
     transition: opacity .3s linear;
 }
 
 /* if the column is the one that is being sorted*/
-.MB-DataTable-headerCellData--sorted {
+.TableInteractive-headerCellData--sorted {
      color: var(--brand-color);
 }
 
 /* what follows is a war crime but such is the state of FE development */
-.MB-DataTable {
+.TableInteractive {
     border: 1px solid rgb(205, 205, 205);
 }
-.MB-DataTable-header {
+.TableInteractive-header {
     border-bottom: 1px solid rgb(205, 205, 205);
     border-right: 1px solid rgb(205, 205, 205);
     box-sizing: border-box;
 }
 
-.MB-DataTable .MB-DataTable-cellWrapper {
+.TableInteractive .TableInteractive-cellWrapper {
     border-right: 1px solid #e8e8e8;
     border-bottom: 1px solid #e8e8e8;
     border-top: 1px solid transparent;
@@ -44,28 +44,28 @@
     align-items: center;
 }
 
-.MB-DataTable .MB-DataTable-cellWrapper:hover {
+.TableInteractive .TableInteractive-cellWrapper:hover {
     border-color: var(--brand-color);
     color: var(--brand-color);
 }
 
-.MB-DataTable .MB-DataTable-header,
-.MB-DataTable .MB-DataTable-header .MB-DataTable-cellWrapper {
+.TableInteractive .TableInteractive-header,
+.TableInteractive .TableInteractive-header .TableInteractive-cellWrapper {
     background-color: #fff;
     background-image: none;
 }
 
-.MB-DataTable .MB-DataTable-header,
-.MB-DataTable .MB-DataTable-header .MB-DataTable-cellWrapper {
+.TableInteractive .TableInteractive-header,
+.TableInteractive .TableInteractive-header .TableInteractive-cellWrapper {
     background-color: #fff;
 }
 
-.MB-DataTable .MB-DataTable-header .MB-DataTable-cellWrapper:hover {
+.TableInteractive .TableInteractive-header .TableInteractive-cellWrapper:hover {
     border-color: #e8e8e8;
 }
 
 /* cell overflow ellipsis */
-.MB-DataTable .cellData {
+.TableInteractive .cellData {
   display: block;
   white-space: nowrap;
   text-overflow: ellipsis;

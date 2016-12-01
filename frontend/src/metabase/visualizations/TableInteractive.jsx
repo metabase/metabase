@@ -1,6 +1,8 @@
 import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 
+import "./TableInteractive.css";
+
 import Icon from "metabase/components/Icon.jsx";
 
 import Value from "metabase/components/Value.jsx";
@@ -15,7 +17,6 @@ import cx from "classnames";
 
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 import { Grid, ScrollSync } from "react-virtualized";
-
 import Draggable from "react-draggable";
 
 const HEADER_HEIGHT = 50;
@@ -56,7 +57,7 @@ export default class TableInteractive extends Component {
     componentWillMount() {
         // for measuring cells:
         this._div = document.createElement("div");
-        this._div.className = "MB-DataTable";
+        this._div.className = "TableInteractive";
         this._div.style.display = "inline-block"
         this._div.style.position = "absolute"
         this._div.style.visibility = "hidden"
@@ -221,7 +222,7 @@ export default class TableInteractive extends Component {
             return (
                 <div
                     key={key} style={style}
-                    className="MB-DataTable-cellWrapper cellData"
+                    className="TableInteractive-cellWrapper cellData"
                     onClick={this.cellClicked.bind(this, rowIndex, columnIndex)}
                 >
                     <Value className="link" value={cellData} column={column} onResize={this.onCellResize.bind(this, columnIndex)} />
@@ -233,7 +234,7 @@ export default class TableInteractive extends Component {
             return (
                 <div
                     key={key} style={style}
-                    className={cx("MB-DataTable-cellWrapper cellData", { "cursor-pointer": isFilterable })}
+                    className={cx("TableInteractive-cellWrapper cellData", { "cursor-pointer": isFilterable })}
                     onClick={isFilterable && this.showPopover.bind(this, rowIndex, columnIndex)}
                 >
                     <Value value={cellData} column={column} onResize={this.onCellResize.bind(this, columnIndex)} />
@@ -266,8 +267,8 @@ export default class TableInteractive extends Component {
             <div
                 key={key}
                 style={{ ...style, overflow: "visible" /* ensure resize handle is visible */ }}
-                className={cx("MB-DataTable-cellWrapper MB-DataTable-headerCellData", {
-                    'MB-DataTable-headerCellData--sorted': (sort && sort[0] && sort[0][0] === column.id),
+                className={cx("TableInteractive-cellWrapper TableInteractive-headerCellData", {
+                    'TableInteractive-headerCellData--sorted': (sort && sort[0] && sort[0][0] === column.id),
                 })}
             >
                 <div
@@ -317,12 +318,12 @@ export default class TableInteractive extends Component {
         return (
             <ScrollSync>
             {({ clientHeight, clientWidth, onScroll, scrollHeight, scrollLeft, scrollTop, scrollWidth }) =>
-                <div className={cx(className, 'MB-DataTable relative', { 'MB-DataTable--pivot': this.props.isPivoted, 'MB-DataTable--ready': this.state.contentWidths })}>
+                <div className={cx(className, 'TableInteractive relative', { 'TableInteractive--pivot': this.props.isPivoted, 'TableInteractive--ready': this.state.contentWidths })}>
                     <canvas className="spread" style={{ pointerEvents: "none", zIndex: 999 }} width={width} height={height} />
                     <Grid
                         ref={(ref) => this.header = ref}
                         style={{ top: 0, left: 0, right: 0, height: HEADER_HEIGHT, position: "absolute", overflow: "hidden" }}
-                        className="MB-DataTable-header scroll-hide-all"
+                        className="TableInteractive-header scroll-hide-all"
                         width={width || 0}
                         height={HEADER_HEIGHT}
                         rowCount={1}
