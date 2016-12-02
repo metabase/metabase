@@ -4,7 +4,6 @@ import {
     handleActions,
     createAction,
     createThunkAction,
-    cleanResource,
     fetchData
 } from 'metabase/lib/redux';
 
@@ -18,8 +17,7 @@ export const fetchGuide = createThunkAction(FETCH_GUIDE, (reload = false) => {
         const requestStatePath = ["reference", 'guide'];
         const existingStatePath = requestStatePath;
         const getData = async () => {
-            const guide = await GettingStartedApi.get();
-            return cleanResource(guide);
+            return await GettingStartedApi.get();
         };
 
         return await fetchData({
