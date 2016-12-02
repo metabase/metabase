@@ -35,7 +35,7 @@ export default class DateOperatorSelector extends Component {
                 >
                     <h3>{operator && titleCase(operator)}</h3>
                     <Icon
-                        name='chevrondown'
+                        name={expanded ? 'chevronup' : 'chevrondown'}
                         width="12"
                         height="12"
                         className="ml1"
