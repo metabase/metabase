@@ -115,6 +115,7 @@ const NewCollection = () =>
             backgroundColor: '#FAFAFB',
             textDecoration: 'none'
         }}
+        to="/questions/collections/new"
     >
         <div>
             <div
