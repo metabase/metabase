@@ -181,6 +181,7 @@ export default class GuiQueryEditor extends Component {
                         triggerElement={addFilterButton}
                         triggerClasses="flex align-center"
                         getTarget={() => this.refs.addFilterTarget}
+                        horizontalAttachments={["left"]}
                     >
                         <FilterPopover
                             isNew={true}

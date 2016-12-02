@@ -76,13 +76,13 @@ export function generateTimeIntervalDescription(n, unit) {
         switch (n) {
             case "current":
             case 0:
-                return "Today";
+                return ["Today"];
             case "next":
             case 1:
-                return "Tomorrow";
+                return ["Tomorrow"];
             case "last":
             case -1:
-                return "Yesterday";
+                return ["Yesterday"];
         }
     }
 
@@ -107,7 +107,12 @@ export function generateTimeIntervalDescription(n, unit) {
 
 export function generateTimeValueDescription(value, bucketing) {
     if (typeof value === "string") {
-        return moment(value).format("MMMM D, YYYY");
+        let m = moment(value);
+        if(m.hours() || m.minutes()) {
+            return m.format("MMMM D, YYYY hh:mm a");
+        } else {
+            return m.format("MMMM D, YYYY");
+        }
     } else if (Array.isArray(value) && value[0] === "relative_datetime") {
         let n = value[1];
         let unit = value[2];

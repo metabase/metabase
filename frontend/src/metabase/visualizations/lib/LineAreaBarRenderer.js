@@ -3,6 +3,7 @@ import d3 from "d3";
 import dc from "dc";
 import moment from "moment";
 import _ from "underscore";
+import { updateIn } from "icepick";
 
 import {
     getAvailableCanvasWidth,
@@ -41,6 +42,10 @@ const DOT_OVERLAP_DISTANCE = 8;
 
 const VORONOI_TARGET_RADIUS = 50;
 const VORONOI_MAX_POINTS = 300;
+
+
+const UNAGGREGATED_DATA_WARNING = (col) => `"${getFriendlyName(col)}" is an unaggregated field: if it has more than one value at a point on the x-axis, the values will be summed.`
+const NULL_DIMENSION_WARNING = "Data includes missing dimension values.";
 
 function adjustTicksIfNeeded(axis, axisSize, minPixelsPerTick) {
     let numTicks = axis.ticks();
@@ -217,6 +222,10 @@ function applyChartYAxis(chart, settings, series, yExtent, axisName) {
     }
 
     if (axis.setting("axis_enabled")) {
+        // special case for normalized stacked charts
+        if (settings["stackable.stack_type"] === "normalized") {
+            axis.axis().tickFormat(value => (value * 100) + "%");
+        }
         chart.renderHorizontalGridLines(true);
         adjustTicksIfNeeded(axis.axis(), chart.height(), MIN_PIXELS_PER_TICK.y);
     } else {
@@ -569,10 +578,32 @@ function lineAndBarOnRender(chart, settings, onGoalHover, isSplitAxis) {
     chart.render();
 }
 
-function reduceGroup(group, key) {
+function reduceGroup(group, key, warnUnaggregated) {
     return group.reduce(
-        (acc, d) => (acc == null && d[key] == null) ? null : (acc || 0) + (d[key] || 0),
-        (acc, d) => (acc == null && d[key] == null) ? null : (acc || 0) - (d[key] || 0),
+        (acc, d) => {
+            if (acc == null && d[key] == null) {
+                return null;
+            } else {
+                if (acc != null) {
+                    warnUnaggregated();
+                    return acc + (d[key] || 0);
+                } else {
+                    return (d[key] || 0);
+                }
+            }
+        },
+        (acc, d) => {
+            if (acc == null && d[key] == null) {
+                return null;
+            } else {
+                if (acc != null) {
+                    warnUnaggregated();
+                    return acc - (d[key] || 0);
+                } else {
+                    return - (d[key] || 0);
+                }
+            }
+        },
         () => null
     );
 }
@@ -610,10 +641,15 @@ function fillMissingValues(datas, xValues, fillValue, getKey = (v) => v) {
 // Crossfilter calls toString on each moment object, which calls format(), which is very slow.
 // Replace toString with a function that just returns the unparsed ISO input date, since that works
 // just as well and is much faster
-let HACK_parseTimestamp = (value, unit) => {
-    let m = parseTimestamp(value, unit);
-    m.toString = moment_fast_toString
-    return m;
+let HACK_parseTimestamp = (value, unit, warn) => {
+    if (value == null) {
+        warn(NULL_DIMENSION_WARNING);
+        return null;
+    } else {
+        let m = parseTimestamp(value, unit);
+        m.toString = moment_fast_toString
+        return m;
+    }
 }
 
 function moment_fast_toString() {
@@ -625,6 +661,7 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
 
     const isTimeseries = settings["graph.x_axis.scale"] === "timeseries";
     const isQuantitative = ["linear", "log", "pow"].indexOf(settings["graph.x_axis.scale"]) >= 0;
+    const isOrdinal = !isTimeseries && !isQuantitative;
 
     const isDimensionTimeseries = dimensionIsTimeseries(series[0].data);
     const isDimensionNumeric = dimensionIsNumeric(series[0].data);
@@ -637,11 +674,16 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
         throw "This chart type doesn't support more than 20 series";
     }
 
+    const warnings = {};
+    const warn = (id) => {
+        warnings[id] = (warnings[id] || 0) + 1;
+    }
+
     let datas = series.map((s, index) =>
         s.data.rows.map(row => [
             // don't parse as timestamp if we're going to display as a quantitative scale, e.x. years and Unix timestamps
             (isDimensionTimeseries && !isQuantitative) ?
-                HACK_parseTimestamp(row[0], s.data.cols[0].unit)
+                HACK_parseTimestamp(row[0], s.data.cols[0].unit, warn)
             : isDimensionNumeric ?
                 row[0]
             :
@@ -699,7 +741,8 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
     let dimension, groups, yAxisSplit;
 
     const isScatter = chartType === "scatter";
-    const isStacked = settings["stackable.stacked"] && datas.length > 1
+    const isStacked = settings["stackable.stack_type"] && datas.length > 1;
+    const isNormalized = isStacked && settings["stackable.stack_type"] === "normalized";
 
     if (isScatter) {
         let dataset = crossfilter();
@@ -714,17 +757,33 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
         });
     } else if (isStacked) {
         let dataset = crossfilter();
+
+        // get the sum of the metric for each dimension value in order to scale
+        let scaleFactors = {};
+        if (isNormalized) {
+            for (let data of datas) {
+                for (let [d, m] of data) {
+                    scaleFactors[d] = (scaleFactors[d] || 0) + m;
+                }
+            }
+
+            series = series.map(s => updateIn(s, ["data", "cols", 1], (col) => ({
+                ...col,
+                display_name: "% " + getFriendlyName(col)
+            })));
+        }
+
         datas.map((data, i) =>
             dataset.add(data.map(d => ({
                 [0]: d[0],
-                [i + 1]: d[1]
+                [i + 1]: isNormalized ? (d[1] / scaleFactors[d[0]]) : d[1]
             })))
         );
 
         dimension = dataset.dimension(d => d[0]);
         groups = [
-            datas.map((data, i) =>
-                reduceGroup(dimension.group(), i + 1)
+            datas.map((data, seriesIndex) =>
+                reduceGroup(dimension.group(), seriesIndex + 1, () => warn(UNAGGREGATED_DATA_WARNING(series[seriesIndex].data.cols[0])))
             )
         ];
     } else {
@@ -732,10 +791,10 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
         datas.map(data => dataset.add(data));
 
         dimension = dataset.dimension(d => d[0]);
-        groups = datas.map(data => {
+        groups = datas.map((data, seriesIndex) => {
             let dim = crossfilter(data).dimension(d => d[0]);
-            return data[0].slice(1).map((_, i) =>
-                reduceGroup(dim.group(), i + 1)
+            return data[0].slice(1).map((_, metricIndex) =>
+                reduceGroup(dim.group(), metricIndex + 1, () => warn(UNAGGREGATED_DATA_WARNING(series[seriesIndex].data.cols[0])))
             );
         });
     }
@@ -934,7 +993,15 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
     // apply any on-rendering functions
     lineAndBarOnRender(chart, settings, onGoalHover, isSplitAxis);
 
-    onRender && onRender({ yAxisSplit });
+    // only ordinal axis can display "null" values
+    if (isOrdinal) {
+        delete warnings[NULL_DIMENSION_WARNING];
+    }
+
+    onRender && onRender({
+        yAxisSplit,
+        warnings: Object.keys(warnings)
+    });
 
     return chart;
 }

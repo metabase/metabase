@@ -33,8 +33,9 @@
   :type   :boolean
   :default true)
 
-(defsetting google-maps-api-key
-  "A Google Maps API key is required to enable certain map visualizations.")
+(defsetting map-tile-server-url
+  "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox."
+  :default "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
 
 (defn site-url
   "Fetch the site base URL that should be used for password reset emails, etc.
@@ -81,6 +82,6 @@
    :timezone_short        (short-timezone-name (setting/get :report-timezone))
    :has_sample_dataset    (db/exists? 'Database, :is_sample true)
    :google_auth_client_id (setting/get :google-auth-client-id)
-   :google_maps_api_key   (google-maps-api-key)
+   :map_tile_server_url   (map-tile-server-url)
    :custom_geojson        (setting/get :custom-geojson)
    :types                 (types/types->parents)})

@@ -69,12 +69,9 @@
     (format "IF object_id('%s.dbo.%s') IS NOT NULL DROP TABLE \"%s\".dbo.\"%s\";" db-name table-name db-name table-name)))
 
 (defn- qualified-name-components
-  ([db-name]
-   [(+suffix db-name)])
-  ([db-name table-name]
-   [(+suffix db-name) "dbo" table-name])
-  ([db-name table-name field-name]
-   [(+suffix db-name) "dbo" table-name field-name]))
+  ([db-name]                       [(+suffix db-name)])
+  ([db-name table-name]            [(+suffix db-name) "dbo" table-name])
+  ([db-name table-name field-name] [(+suffix db-name) "dbo" table-name field-name]))
 
 
 (u/strict-extend SQLServerDriver

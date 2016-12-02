@@ -4,20 +4,13 @@ import ReactDOM from "react-dom";
 import { Table, Column } from "fixed-data-table";
 
 import Icon from "metabase/components/Icon.jsx";
-import Popover from "metabase/components/Popover.jsx";
+import QuickFilterPopover from "metabase/query_builder/components/QuickFilterPopover.jsx";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { formatValue, capitalize } from "metabase/lib/formatting";
 
 import _ from "underscore";
 import cx from "classnames";
-
-const QUICK_FILTERS = [
-    { name: "<", value: "<" },
-    { name: "=", value: "=" },
-    { name: "≠", value: "!=" },
-    { name: ">", value: ">" }
-];
 
 export default class TableInteractive extends Component {
     constructor(props, context) {
@@ -168,7 +161,8 @@ export default class TableInteractive extends Component {
     }
 
     cellRenderer(cellData, cellDataKey, rowData, rowIndex, columnData, width) {
-        cellData = cellData != null ? formatValue(cellData, { column: this.props.data.cols[cellDataKey], jsx: true }) : null;
+        const column = this.props.data.cols[cellDataKey];
+        cellData = cellData != null ? formatValue(cellData, { column: column, jsx: true }) : null;
 
         var key = 'cl'+rowIndex+'_'+cellDataKey;
         if (this.props.cellIsClickableFn(rowIndex, cellDataKey)) {
@@ -179,26 +173,16 @@ export default class TableInteractive extends Component {
             var popover = null;
             if (this.state.popover && this.state.popover.rowIndex === rowIndex && this.state.popover.cellDataKey === cellDataKey) {
                 popover = (
-                    <Popover
-                        hasArrow={false}
-                        tetherOptions={{
-                            targetAttachment: "middle center",
-                            attachment: "middle center"
-                        }}
+                    <QuickFilterPopover
+                        column={this.props.data.cols[this.state.popover.cellDataKey]}
+                        onFilter={this.popoverFilterClicked.bind(this, rowIndex, cellDataKey)}
                         onClose={this.onClosePopover}
-                    >
-                        <div className="bg-white bordered shadowed p1">
-                            <ul className="h1 flex align-center">
-                                { QUICK_FILTERS.map(({ name, value }) =>
-                                    <li key={value} className="p2 text-brand-hover" onClick={this.popoverFilterClicked.bind(this, rowIndex, cellDataKey, value)}>{name}</li>
-                                )}
-                            </ul>
-                        </div>
-                    </Popover>
+                    />
                 );
             }
+            const isFilterable = column.source !== "aggregation";
             return (
-                <div key={key} onClick={this.showPopover.bind(this, rowIndex, cellDataKey)}>
+                <div key={key} className={cx({ "cursor-pointer": isFilterable })} onClick={isFilterable && this.showPopover.bind(this, rowIndex, cellDataKey)}>
                     <span className="cellData">{cellData}</span>
                     {popover}
                 </div>

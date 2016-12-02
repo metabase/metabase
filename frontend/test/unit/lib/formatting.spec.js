@@ -1,4 +1,8 @@
-import { formatNumber, formatValue } from 'metabase/lib/formatting';
+
+import { isElementOfType } from "react-addons-test-utils";
+
+import { formatNumber, formatValue, formatUrl } from 'metabase/lib/formatting';
+import ExternalLink from "metabase/components/ExternalLink.jsx";
 import { TYPE } from "metabase/lib/types";
 
 describe('formatting', () => {
@@ -54,4 +58,19 @@ describe('formatting', () => {
             expect(formatValue(-122.4194, { column: { base_type: TYPE.Number, special_type: TYPE.Longitude }})).toEqual("-122.41940000");
         });
     });
+
+    describe("formatUrl", () => {
+        it("should return a string when not in jsx mode", () => {
+            expect(formatUrl("http://metabase.com/")).toEqual("http://metabase.com/")
+        });
+        it("should return a component for http:, https:, and mailto: links in jsx mode", () => {
+            expect(isElementOfType(formatUrl("http://metabase.com/", { jsx: true }), ExternalLink)).toEqual(true);
+            expect(isElementOfType(formatUrl("https://metabase.com/", { jsx: true }), ExternalLink)).toEqual(true);
+            expect(isElementOfType(formatUrl("mailto:tom@metabase.com", { jsx: true }), ExternalLink)).toEqual(true);
+        });
+        it("should return a string for javascript:, data:, and other links in jsx mode", () => {
+            expect(formatUrl("javascript:alert('pwnd')", { jsx: true })).toEqual("javascript:alert('pwnd')");
+            expect(formatUrl("data:text/plain;charset=utf-8,hello%20world", { jsx: true })).toEqual("data:text/plain;charset=utf-8,hello%20world");
+        });
+    })
 });

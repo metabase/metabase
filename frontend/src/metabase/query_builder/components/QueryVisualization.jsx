@@ -2,7 +2,6 @@ import React, { Component, PropTypes } from "react";
 import ReactDOM from "react-dom";
 import { Link } from "react-router";
 
-import Icon from "metabase/components/Icon.jsx";
 import LoadingSpinner from 'metabase/components/LoadingSpinner.jsx';
 import RunButton from './RunButton.jsx';
 import VisualizationSettings from './VisualizationSettings.jsx';
@@ -10,14 +9,14 @@ import VisualizationSettings from './VisualizationSettings.jsx';
 import VisualizationError from "./VisualizationError.jsx";
 import VisualizationResult from "./VisualizationResult.jsx";
 
-import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
+import Warnings from "./Warnings.jsx";
+import DownloadWidget from "./DownloadWidget.jsx";
 
-import Query from "metabase/lib/query";
+import { formatNumber, inflect } from "metabase/lib/formatting";
+import Utils from "metabase/lib/utils";
 
 import cx from "classnames";
 import _ from "underscore";
-
-const isEqualsDeep = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 export default class QueryVisualization extends Component {
     constructor(props, context) {
@@ -35,8 +34,8 @@ export default class QueryVisualization extends Component {
         tableForeignKeys: PropTypes.array,
         tableForeignKeyReferences: PropTypes.object,
         setDisplayFn: PropTypes.func.isRequired,
-        onUpdateVisualizationSetting: PropTypes.func.isRequired,
         onUpdateVisualizationSettings: PropTypes.func.isRequired,
+        onReplaceAllVisualizationSettings: PropTypes.func.isRequired,
         setSortFn: PropTypes.func.isRequired,
         cellIsClickableFn: PropTypes.func,
         cellClickedFn: PropTypes.func,
@@ -68,8 +67,8 @@ export default class QueryVisualization extends Component {
     queryIsDirty() {
         // a query is considered dirty if ANY part of it has been changed
         return (
-            !isEqualsDeep(this.props.card.dataset_query, this.state.lastRunDatasetQuery) ||
-            !isEqualsDeep(this.props.parameterValues, this.state.lastRunParameterValues)
+            !Utils.equals(this.props.card.dataset_query, this.state.lastRunDatasetQuery) ||
+            !Utils.equals(this.props.parameterValues, this.state.lastRunParameterValues)
         );
     }
 
@@ -82,11 +81,11 @@ export default class QueryVisualization extends Component {
     }
 
     renderHeader() {
-        const { isObjectDetail, isRunning } = this.props;
+        const { isObjectDetail, isRunning, card, result } = this.props;
         return (
             <div className="relative flex flex-no-shrink mt3 mb1" style={{ minHeight: "2em" }}>
                 <span className="relative z4">
-                  { !isObjectDetail && <VisualizationSettings {...this.props}/> }
+                  { !isObjectDetail && <VisualizationSettings ref="settings" {...this.props} /> }
                 </span>
                 <div className="absolute flex layout-centered left right z3">
                     <RunButton
@@ -97,114 +96,36 @@ export default class QueryVisualization extends Component {
                         cancelFn={this.props.cancelQueryFn}
                     />
                 </div>
-                <div className="absolute right z4 flex align-center">
-                    {!this.queryIsDirty() && this.renderCount()}
-                    {this.renderDownloadButton()}
+                <div className="absolute right z4 flex align-center" style={{ lineHeight: 0 /* needed to align icons :-/ */ }}>
+                    { !this.queryIsDirty() && this.renderCount() }
+                    { !isObjectDetail &&
+                        <Warnings warnings={this.state.warnings} className="mx2" size={18} />
+                    }
+                    { !this.queryIsDirty() && result && !result.error ?
+                        <DownloadWidget
+                            className="mx1"
+                            card={card}
+                            datasetQuery={result.json_query}
+                            isLarge={result.data.rows_truncated != null}
+                        />
+                    : null }
                 </div>
             </div>
         );
     }
 
-    hasTooManyRows() {
-        const dataset_query = this.props.card.dataset_query,
-              rows = this.props.result.data.rows;
-
-        if (this.props.result.data.rows_truncated ||
-            (dataset_query.type === "query" && Query.isBareRows(dataset_query.query) && rows.length === 2000))
-        {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
     renderCount() {
         let { result, isObjectDetail, card } = this.props;
-        if (result &&  result.data && !isObjectDetail && card.display === "table") {
+        if (result && result.data && !isObjectDetail && card.display === "table") {
             return (
                 <div>
-                    { this.hasTooManyRows() ? ("Showing max of ") : ("Showing ")}
-                    <b>{result.row_count}</b>
-                    { (result.data.rows.length !== 1) ? (" rows") : (" row")}.
+                    { result.data.rows_truncated != null ? ("Showing first ") : ("Showing ")}
+                    <b>{formatNumber(result.row_count)}</b>
+                    { " " + inflect("row", result.data.rows.length) }.
                 </div>
             );
         }
     }
-
-    onDownloadCSV() {
-        const form = ReactDOM.findDOMNode(this._downloadCsvForm);
-        form.query.value = JSON.stringify(this.props.fullDatasetQuery);
-        form.submit();
-    }
-
-    renderDownloadButton() {
-        const { card, result } = this.props;
-
-        const csvUrl = card.id != null ? `/api/card/${card.id}/query/csv`: "/api/dataset/csv";
-
-        if (result && !result.error) {
-            if (result && result.data && result.data.rows_truncated) {
-                // this is a "large" dataset, so show a modal to inform users about this and make them click again to d/l
-                let downloadButton;
-                if (window.OSX) {
-                    downloadButton = (<button className="Button Button--primary" onClick={() => {
-                            window.OSX.saveCSV(JSON.stringify(card.dataset_query));
-                            this.refs.downloadModal.toggle()
-                        }}>Download CSV</button>);
-                } else {
-                    downloadButton = (
-                        <form ref={(c) => this._downloadCsvForm = c} method="POST" action={csvUrl}>
-                            <input type="hidden" name="query" value="" />
-                            <a className="Button Button--primary" onClick={() => {this.onDownloadCSV(); this.refs.downloadModal.toggle();}}>
-                                Download CSV
-                            </a>
-                        </form>
-                    );
-                }
-
-                return (
-                    <ModalWithTrigger
-                        key="download"
-                        ref="downloadModal"
-                        className="Modal Modal--small"
-                        triggerElement={<Icon className="mx1" title="Download this data" name='download' size={16} />}
-                    >
-                        <div style={{width: "480px"}} className="Modal--small p4 text-centered relative">
-                            <span className="absolute top right p4 text-normal text-grey-3 cursor-pointer" onClick={() => this.refs.downloadModal.toggle()}>
-                                <Icon name={'close'} size={16} />
-                            </span>
-                            <div className="p3 text-strong">
-                                <h2 className="text-bold">Download large data set</h2>
-                                <div className="pt2">Your answer has a large amount of data so we wanted to let you know it could take a while to download.</div>
-                                <div className="py4">The maximum download amount is 1 million rows.</div>
-                                {downloadButton}
-                            </div>
-                        </div>
-                    </ModalWithTrigger>
-                );
-            } else {
-                if (window.OSX) {
-                    return (
-                        <a className="mx1" title="Download this data" onClick={function() {
-                            window.OSX.saveCSV(JSON.stringify(card.dataset_query));
-                        }}>
-                            <Icon name='download' size={16} />
-                        </a>
-                    );
-                } else {
-                    return (
-                        <form ref={(c) => this._downloadCsvForm = c} method="POST" action={csvUrl}>
-                            <input type="hidden" name="query" value="" />
-                            <a className="mx1" title="Download this data" onClick={() => this.onDownloadCSV()}>
-                                <Icon name='download' size={16} />
-                            </a>
-                        </form>
-                    );
-                }
-            }
-        }
-    }
-
 
     render() {
         const { card, databases, isObjectDetail, isRunning, result } = this.props
@@ -219,7 +140,14 @@ export default class QueryVisualization extends Component {
             if (error) {
                 viz = <VisualizationError error={error} card={card} duration={result.duration} />
             } else if (result.data) {
-                viz = <VisualizationResult lastRunDatasetQuery={this.state.lastRunDatasetQuery} {...this.props} />
+                viz = (
+                    <VisualizationResult
+                        lastRunDatasetQuery={this.state.lastRunDatasetQuery}
+                        onUpdateWarnings={(warnings) => this.setState({ warnings })}
+                        onOpenChartSettings={() => this.refs.settings.open()}
+                        {...this.props}
+                    />
+                );
             }
         }
 

@@ -28,7 +28,8 @@
    ;:mb-password-length "8"
    :mb-version-info-url "http://static.metabase.com/version-info.json"
    :max-session-age "20160"                     ; session length in minutes (14 days)
-   :mb-colorize-logs "true"})
+   :mb-colorize-logs "true"
+   :mb-emoji-in-logs "true"})
 
 
 (defn config-str
@@ -60,8 +61,12 @@
 ;; Metabase version is of the format `GIT-TAG (GIT-SHORT-HASH GIT-BRANCH)`
 
 (defn- version-info-from-shell-script []
-  (let [[tag hash branch date] (-> (shell/sh "./bin/version") :out s/trim (s/split #" "))]
-    {:tag tag, :hash hash, :branch branch, :date date}))
+  (try
+    (let [[tag hash branch date] (-> (shell/sh "./bin/version") :out s/trim (s/split #" "))]
+      {:tag tag, :hash hash, :branch branch, :date date})
+    ;; if ./bin/version fails (e.g., if we are developing on Windows) just return something so the whole thing doesn't barf
+    (catch Throwable _
+      {:tag "?", :hash "?", :branch "?", :date "?"})))
 
 (defn- version-info-from-properties-file []
   (when-let [props-file (io/resource "version.properties")]

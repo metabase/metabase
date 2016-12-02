@@ -35,7 +35,7 @@
   (log/debug (format "Sending Pulse (%d: %s) via Channel :email" id name))
   (let [email-subject    (str "Pulse: " name)
         email-recipients (filterv u/is-email? (map :email recipients))]
-    (email/send-message
+    (email/send-message!
       :subject      email-subject
       :recipients   email-recipients
       :message-type :attachments

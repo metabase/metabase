@@ -4,7 +4,7 @@ import { Link } from "react-router";
 import FormLabel from "../components/FormLabel.jsx";
 import FormInput from "../components/FormInput.jsx";
 import FormTextArea from "../components/FormTextArea.jsx";
-import FieldSet from "../components/FieldSet.jsx";
+import FieldSet from "metabase/components/FieldSet.jsx";
 import PartialQueryBuilder from "../components/PartialQueryBuilder.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
@@ -13,7 +13,7 @@ import { formatValue } from "metabase/lib/formatting";
 import { metricFormSelectors } from "../selectors";
 import { reduxForm } from "redux-form";
 
-import Query from "metabase/lib/Query";
+import Query from "metabase/lib/query";
 
 import cx from "classnames";
 

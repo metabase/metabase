@@ -50,8 +50,8 @@ export const SET_DASHBOARD_ATTRIBUTES = "metabase/dashboard/SET_DASHBOARD_ATTRIB
 export const ADD_CARD_TO_DASH = "metabase/dashboard/ADD_CARD_TO_DASH";
 export const REMOVE_CARD_FROM_DASH = "metabase/dashboard/REMOVE_CARD_FROM_DASH";
 export const SET_DASHCARD_ATTRIBUTES = "metabase/dashboard/SET_DASHCARD_ATTRIBUTES";
-export const SET_DASHCARD_VISUALIZATION_SETTING = "metabase/dashboard/SET_DASHCARD_VISUALIZATION_SETTING";
-export const SET_DASHCARD_VISUALIZATION_SETTINGS = "metabase/dashboard/SET_DASHCARD_VISUALIZATION_SETTINGS";
+export const UPDATE_DASHCARD_VISUALIZATION_SETTINGS = "metabase/dashboard/UPDATE_DASHCARD_VISUALIZATION_SETTINGS";
+export const REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS = "metabase/dashboard/REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS";
 export const UPDATE_DASHCARD_ID = "metabase/dashboard/UPDATE_DASHCARD_ID"
 export const SAVE_DASHCARD = "metabase/dashboard/SAVE_DASHCARD";
 
@@ -373,8 +373,8 @@ export const revertToRevision = createThunkAction(REVERT_TO_REVISION, function({
     };
 });
 
-export const setDashCardVisualizationSetting = createAction(SET_DASHCARD_VISUALIZATION_SETTING);
-export const setDashCardVisualizationSettings = createAction(SET_DASHCARD_VISUALIZATION_SETTINGS);
+export const onUpdateDashCardVisualizationSettings = createAction(UPDATE_DASHCARD_VISUALIZATION_SETTINGS, (id, settings) => ({ id, settings }));
+export const onReplaceAllDashCardVisualizationSettings = createAction(REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS, (id, settings) => ({ id, settings }));
 
 export const setEditingParameterId = createAction(SET_EDITING_PARAMETER_ID);
 export const setParameterMapping = createThunkAction(SET_PARAMETER_MAPPING, (parameter_id, dashcard_id, card_id, target) =>
@@ -441,14 +441,14 @@ const dashcards = handleActions({
             [id]: { ...state[id], ...attributes, isDirty: true }
         })
     },
-    [SET_DASHCARD_VISUALIZATION_SETTING]: {
-        next: (state, { payload: { id, key, value } }) =>
+    [UPDATE_DASHCARD_VISUALIZATION_SETTINGS]: {
+        next: (state, { payload: { id, settings } }) =>
             i.chain(state)
-                .assocIn([id, "visualization_settings", key], value)
+                .updateIn([id, "visualization_settings"], (value = {}) => ({ ...value, ...settings }))
                 .assocIn([id, "isDirty"], true)
                 .value()
     },
-    [SET_DASHCARD_VISUALIZATION_SETTINGS]: {
+    [REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS]: {
         next: (state, { payload: { id, settings } }) =>
             i.chain(state)
                 .assocIn([id, "visualization_settings"], settings)

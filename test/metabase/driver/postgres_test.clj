@@ -16,7 +16,7 @@
             [metabase.util :as u])
   (:import metabase.driver.postgres.PostgresDriver))
 
-(def ^:private pg-driver (PostgresDriver.))
+(def ^:private ^PostgresDriver pg-driver (PostgresDriver.))
 
 ;; # Check that SSL params get added the connection details in the way we'd like
 ;; ## no SSL -- this should *not* include the key :ssl (regardless of its value) since that will cause the PG driver to use SSL anyway
@@ -25,7 +25,6 @@
    :classname   "org.postgresql.Driver"
    :subprotocol "postgresql"
    :subname     "//localhost:5432/bird_sightings"
-   :make-pool?  true
    :sslmode     "disable"}
   (sql/connection-details->spec pg-driver {:ssl    false
                                            :host   "localhost"
@@ -36,7 +35,6 @@
 ;; ## ssl - check that expected params get added
 (expect
   {:ssl         true
-   :make-pool?  true
    :sslmode     "require"
    :classname   "org.postgresql.Driver"
    :subprotocol "postgresql"
@@ -215,3 +213,12 @@
 (expect-with-engine :postgres
   (get-timezone-with-report-timezone nil)
   (get-timezone-with-report-timezone "Crunk Burger"))
+
+
+;; make sure connection details w/ extra params work as expected
+(expect
+  "//localhost:5432/cool?prepareThreshold=0"
+  (:subname (sql/connection-details->spec pg-driver {:host               "localhost"
+                                                     :port               "5432"
+                                                     :dbname             "cool"
+                                                     :additional-options "prepareThreshold=0"})))

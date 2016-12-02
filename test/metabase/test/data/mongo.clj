@@ -44,9 +44,9 @@
   i/IDatasetLoader
   (merge i/IDatasetLoaderDefaultsMixin
          {:create-db!                   (u/drop-first-arg create-db!)
-          :destroy-db!                  (u/drop-first-arg destroy-db!)
           :database->connection-details database->connection-details
           :engine                       (constantly :mongo)
           :format-name                  (fn [_ table-or-field-name]
-                                          (if (= table-or-field-name "id") "_id"
-                                              table-or-field-name))}))
+                                          (if (= table-or-field-name "id")
+                                            "_id"
+                                            table-or-field-name))}))

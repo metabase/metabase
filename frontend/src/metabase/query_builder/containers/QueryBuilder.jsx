@@ -35,7 +35,6 @@ import {
     getParameters,
     getDatabaseFields,
     getSampleDatasetId,
-    getFullDatasetQuery,
     getNativeDatabases,
     getIsRunnable,
 } from "../selectors";
@@ -43,7 +42,7 @@ import {
 import * as actions from "../actions";
 import { push } from "react-router-redux";
 
-import { CardApi, DashboardApi, RevisionApi, MetabaseApi } from "metabase/services";
+import { MetabaseApi } from "metabase/services";
 
 function cellIsClickable(queryResult, rowIndex, columnIndex) {
     if (!queryResult) return false;
@@ -89,7 +88,6 @@ const mapStateToProps = (state, props) => {
         parameters:                getParameters(state),
         databaseFields:            getDatabaseFields(state),
         sampleDatasetId:           getSampleDatasetId(state),
-        fullDatasetQuery:          getFullDatasetQuery(state),
 
         isShowingDataReference:    state.qb.uiControls.isShowingDataReference,
         isShowingTutorial:         state.qb.uiControls.isShowingTutorial,
@@ -97,9 +95,6 @@ const mapStateToProps = (state, props) => {
         isRunning:                 state.qb.uiControls.isRunning,
         isRunnable:                getIsRunnable(state),
 
-        cardApi:                   CardApi,
-        dashboardApi:              DashboardApi,
-        revisionApi:               RevisionApi,
         loadTableAndForeignKeysFn: loadTableAndForeignKeys,
         autocompleteResultsFn:     (prefix) => autocompleteResults(state.qb.card, prefix),
         cellIsClickableFn:         (rowIndex, columnIndex) => cellIsClickable(state.qb.queryResult, rowIndex, columnIndex)
@@ -159,6 +154,9 @@ export default class QueryBuilder extends Component {
     }
 
     componentWillUnmount() {
+        // cancel the query if one is running
+        this.props.cancelQuery();
+
         window.removeEventListener("resize", this.handleResize);
         document.addEventListener("keydown", this.handleKeyDown);
     }

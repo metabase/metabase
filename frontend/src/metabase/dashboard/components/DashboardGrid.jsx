@@ -5,6 +5,7 @@ import GridLayout from "./grid/GridLayout.jsx";
 import DashCard from "./DashCard.jsx";
 
 import Modal from "metabase/components/Modal.jsx";
+import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 import RemoveFromDashboardModal from "./RemoveFromDashboardModal.jsx";
 import AddSeriesModal from "./AddSeriesModal.jsx";
 
@@ -23,6 +24,7 @@ import cx from "classnames";
 
 const MOBILE_ASPECT_RATIO = 3 / 2;
 
+@ExplicitSize
 export default class DashboardGrid extends Component {
     constructor(props, context) {
         super(props, context);
@@ -32,11 +34,10 @@ export default class DashboardGrid extends Component {
             dashcards: this.getSortedDashcards(props),
             removeModalDashCard: null,
             addSeriesModalDashCard: null,
-            width: 0,
             isDragging: false
         };
 
-        _.bindAll(this, "calculateSizing", "onDashCardMouseDown");
+        _.bindAll(this, "onDashCardMouseDown");
     }
 
     static propTypes = {
@@ -51,10 +52,18 @@ export default class DashboardGrid extends Component {
         markNewCardSeen: PropTypes.func.isRequired,
         fetchCardData: PropTypes.func.isRequired,
 
+        onUpdateDashCardVisualizationSettings: PropTypes.func.isRequired,
+        onReplaceAllDashCardVisualizationSettings: PropTypes.func.isRequired,
+
         onChangeLocation: PropTypes.func.isRequired
     };
 
+    static defaultProps = {
+        width: 0
+    };
+
     shouldComponentUpdate(nextProps, nextState) {
+        console.log("shouldComponentUpdate", !_.isEqual(this.props, nextProps), !_.isEqual(this.state, nextState));
         return !(_.isEqual(this.props, nextProps) && _.isEqual(this.state, nextState));
     }
 
@@ -145,27 +154,6 @@ export default class DashboardGrid extends Component {
         );
     }
 
-    // make grid square by getting the container width, then dividing by 6
-    calculateSizing() {
-        let width = ReactDOM.findDOMNode(this).offsetWidth;
-        if (this.state.width !== width) {
-            this.setState({ width });
-        }
-    }
-
-    componentDidMount() {
-        window.addEventListener('resize', this.calculateSizing);
-        this.calculateSizing();
-    }
-
-    componentWillUnmount() {
-        window.removeEventListener('resize', this.calculateSizing);
-    }
-
-    componentDidUpdate() {
-        this.calculateSizing();
-    }
-
     // we need to track whether or not we're dragging so we can disable pointer events on action buttons :-/
     onDrag() {
         if (!this.state.isDragging) {
@@ -191,21 +179,6 @@ export default class DashboardGrid extends Component {
         this.setState({ addSeriesModalDashCard: dc });
     }
 
-    onUpdateVisualizationSetting(dc, key, value) {
-        this.props.setDashCardVisualizationSetting({
-            id: dc.id,
-            key: key,
-            value: value
-        });
-    }
-
-    onUpdateVisualizationSettings(dc, settings) {
-        this.props.setDashCardVisualizationSettings({
-            id: dc.id,
-            settings: settings
-        });
-    }
-
     renderDashCard(dc, isMobile) {
         return (
             <DashCard
@@ -221,15 +194,15 @@ export default class DashboardGrid extends Component {
                 isMobile={isMobile}
                 onRemove={this.onDashCardRemove.bind(this, dc)}
                 onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
-                onUpdateVisualizationSetting={this.onUpdateVisualizationSetting.bind(this, dc)}
-                onUpdateVisualizationSettings={this.onUpdateVisualizationSettings.bind(this, dc)}
+                onUpdateVisualizationSettings={this.props.onUpdateDashCardVisualizationSettings.bind(this, dc.id)}
+                onReplaceAllVisualizationSettings={this.props.onReplaceAllDashCardVisualizationSettings.bind(this, dc.id)}
             />
         )
     }
 
     renderMobile() {
-        const { isEditing, isEditingParameter } = this.props;
-        const { width, dashcards } = this.state;
+        const { isEditing, isEditingParameter, width } = this.props;
+        const { dashcards } = this.state;
         return (
             <div
                 className={cx("DashboardGrid", { "Dash--editing": isEditing, "Dash--editingParameter": isEditingParameter, "Dash--dragging": this.state.isDragging })}
@@ -245,8 +218,7 @@ export default class DashboardGrid extends Component {
     }
 
     renderGrid() {
-        const { dashboard, isEditing, isEditingParameter } = this.props;
-        const { width } = this.state;
+        const { dashboard, isEditing, isEditingParameter, width } = this.props;
         const rowHeight = Math.floor(width / GRID_WIDTH / GRID_ASPECT_RATIO);
         return (
             <GridLayout
@@ -270,7 +242,7 @@ export default class DashboardGrid extends Component {
     }
 
     render() {
-        const { width } = this.state;
+        const { width } = this.props;
         return (
             <div className="flex layout-centered">
                 { width === 0 ?

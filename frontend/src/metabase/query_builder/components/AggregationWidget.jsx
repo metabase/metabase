@@ -50,6 +50,10 @@ export default class AggregationWidget extends Component {
         const fieldId = AggregationClause.getField(aggregation);
 
         let selectedAggregation = getAggregator(AggregationClause.getOperator(aggregation));
+        if (!_.findWhere(tableMetadata.aggregation_options, { short: selectedAggregation.short })) {
+            // if this table doesn't support the selected aggregation, prompt the user to select a different one
+            selectedAggregation = null;
+        }
         return (
             <div id="Query-section-aggregation" onClick={this.open} className="Query-section Query-section-aggregation cursor-pointer px1">
                 <span className="View-section-aggregation QueryOption py1">
