@@ -85,9 +85,19 @@ var Query = {
             return false;
         }
         // check that the table supports this aggregation, if we have tableMetadata
-        let agg = query.aggregation && query.aggregation[0] || "rows";
-        if (!mbqlCompare(agg, "metric") && tableMetadata && !_.findWhere(tableMetadata.aggregation_options, { short: agg })) {
-            return false;
+        if (tableMetadata) {
+            let aggs = Query.getAggregations(query);
+            if (aggs.length === 0) {
+                if (!_.findWhere(tableMetadata.aggregation_options, { short: "rows" })) {
+                    return false;
+                }
+            } else {
+                for (const [agg] of aggs) {
+                    if (!mbqlCompare(agg, "metric") && !_.findWhere(tableMetadata.aggregation_options, { short: agg })) {
+                        return false;
+                    }
+                }
+            }
         }
         return true;
     },
