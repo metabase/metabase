@@ -53,7 +53,7 @@ describe('utils', () => {
     });
 
     describe("compareVersions", () => {
-        fit ("should compare versions correctly", () => {
+        it ("should compare versions correctly", () => {
             let expected = [
                 "0.0.9",
                 "0.0.10-snapshot",
