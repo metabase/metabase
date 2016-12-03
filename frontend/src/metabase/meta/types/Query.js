@@ -38,7 +38,8 @@ export type StructuredQuery = {
     filter?:      FilterClause,
     order_by?:    OrderByClause,
     limit?:       LimitClause,
-    expressions?: ExpressionClause
+    expressions?: ExpressionClause,
+    fields?:      FieldsClause,
 };
 
 export type AggregationClause =
@@ -156,5 +157,9 @@ export type ExpressionClause = {
 export type Expression =
     [ExpressionOperator, ExpressionOperand, ExpressionOperand];
 
+<<<<<<< HEAD
 export type ExpressionOperator = "+" | "-" | "*" | "/";
 export type ExpressionOperand = ConcreteField | NumericLiteral | Expression;
+=======
+export type FieldsClause = FieldId[];
+>>>>>>> ab2357e88fa90b6b11a44e72f23d17db366ab2a7

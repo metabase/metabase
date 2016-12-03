@@ -1,9 +1,9 @@
 // type definitions for (some of) underscore
 
 declare module "underscore" {
-  declare function find<T>(list: T[], predicate: (val: T)=>boolean): ?T;
-  declare function findWhere<T>(list: T[], properties: {[key:string]: any}): ?T;
-  declare function findIndex<T>(list: T[], predicate: (val: T)=>boolean): number;
+  declare function find<T>(list: ?T[], predicate: (val: T)=>boolean): ?T;
+  declare function findWhere<T>(list: ?T[], properties: {[key:string]: any}): ?T;
+  declare function findIndex<T>(list: ?T[], predicate: (val: T)=>boolean): number;
 
   declare function clone<T>(obj: T): T;
 
