@@ -133,7 +133,7 @@ export default class DashboardsDropdown extends Component {
                                     </div>
                                 :
                                     <ul className="NavDropdown-content-layer">
-                                        { dashboards.map(dash =>
+                                        { dashboards.sort((dash1, dash2) => dash1.name.localeCompare(dash2.name)).map(dash =>
                                             <li key={dash.id} className="block">
                                                 <Link to={"/dash/"+dash.id} data-metabase-event={"Navbar;Dashboard Dropdown;Open Dashboard;"+dash.id} className="Dropdown-item block text-white no-decoration" onClick={this.closeDropdown}>
                                                     <div className="flex text-bold">
