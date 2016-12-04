@@ -21,6 +21,7 @@ import HomepageApp from "metabase/home/containers/HomepageApp.jsx";
 import QuestionIndex from "metabase/questions/containers/QuestionIndex.jsx";
 import Archive from "metabase/questions/containers/Archive.jsx";
 import CollectionPage from "metabase/questions/containers/CollectionPage.jsx";
+import MoveToCollection from "metabase/questions/containers/MoveToCollection.jsx";
 import NewCollection from "metabase/questions/containers/NewCollection.jsx";
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp.jsx";
 import PulseListApp from "metabase/pulse/containers/PulseListApp.jsx";
@@ -135,6 +136,7 @@ export const getRoutes = (store) =>
                 <Route path="/questions/archive" component={Archive} />
                 <Route path="/questions/permissions" component={QuestionPermissions} />
                 <Route path="/questions/collections/new" component={NewCollection} />
+                <Route path="/questions/:id/move" component={MoveToCollection} />
                 <Route path="/questions/collections/:collectionName" component={CollectionPage} />
 
                 {/* REFERENCE */}

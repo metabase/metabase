@@ -17,6 +17,7 @@ export const getItemsBySection      = (state) => state.questions.itemsBySection
 
 export const getSearchText          = (state) => state.questions.searchText;
 export const getSelectedIds         = (state) => state.questions.selectedIds;
+export const getCollections         = (state) => state.questions.collections;
 
 const getSectionData = createSelector(
     [getItemsBySection, getEntityType, getSection],

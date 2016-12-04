@@ -40,6 +40,16 @@ const Item = ({ id, description, name, created, by, selected, favorite, archived
                 created={created}
             />
             <div className="hover-child ml-auto">
+                <Tooltip tooltip="Move to a collection">
+                    <Link to={`/questions/${id}/move`}>
+                        <Icon
+                            className="cursor-pointer text-brand-hover transition-color"
+                            name={ archived ? "unarchive" : "archive"}
+                            onClick={() => setArchived(id, !archived, true)}
+                            size={20}
+                        />
+                    </Link>
+                </Tooltip>
                 <Tooltip tooltip={archived ? "Unarchive" : "Archive"}>
                     <Icon
                         className="cursor-pointer text-brand-hover transition-color"

@@ -182,7 +182,13 @@ const initialState = {
     itemsBySection: {},
     searchText: "",
     selectedIds: {},
-    undos: []
+    undos: [],
+    collections: [
+        { name: 'Important metrics', color: '#509EE3', slug: 'important-metrics' },
+        { name: 'Quarterly marketing presentations', color: '#9CC177', slug: 'quarterly-marketing-presentations' },
+        { name: 'Reports for execs', color: '#A989C5', slug: 'reports-for-execs' },
+        { name: 'Shared marketing items', color: '#EF8C8C', slug: 'shared-marketing-items' }
+    ]
 };
 
 export default function(state = initialState, { type, payload, error }) {
