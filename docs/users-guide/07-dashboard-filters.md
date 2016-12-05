@@ -12,7 +12,13 @@ To add a filter to a dashboard, first enter dashboard editing mode, then click t
 
 ![Add a Filter](images/dashboard-filters/01-add-filter.png)
 
-You can choose from a number of filter types: time, location, ID, or other categories. The type of filter you choose will determine what the filter widget will look like, and will also determine what fields you’ll be able to filter your cards by. Let’s try a time filter, and then select the Month and Year option.
+You can choose from a number of filter types: Time, Location, ID, or Other Categories. The type of filter you choose will determine what the filter widget will look like, and will also determine what fields you’ll be able to filter your cards by:
+* **Time:** when picking a Time filter, you'll also be prompted to pick a specific type of filter widget: Month and Year, Quarter and Year, Single Date, Date Range, or Relative Date. Single Date and Date Range will provide a calendar widget, while the other options all provide slightly different dropdown interfaces for picking values.
+* **Location:** there are four types of Location filters to choose from: City, State, ZIP or Postal Code, and Country. These will all show up as input box widgets unless the field(s) you're filtering contain fewer than 40 distinct possible values, in which case the widget will be a dropdown.
+* **ID:** this filter provides a simple input box where you can type the ID of a user, order, etc.
+* **Other Categories:** this is a flexible filter type that will let you create either a dropdown or input box to filter on any category field in your cards. Whether the filter widget is displayed as a dropdown or an input box is dependent on the field(s) you pick to filter on: if there are fewer than 40 distinct possible values for that field, you'll see a dropdown; otherwise you'll see an input box. (A future version of Metabase will include type-ahead search suggestions for the input box widget.)
+
+For our example, we'll select a Time filter, and then select the Month and Year option.
 
 ![Choose filter type](images/dashboard-filters/02-filter-type.png)
 
@@ -21,6 +27,10 @@ Now we’ve entered a new mode where we’ll need to wire up each card on our da
 ![Wiring up the cards](images/dashboard-filters/03-wiring-cards.png)
 
 So here’s what we’re doing — when we pick a month and year with our new filter, the filter needs to know which field in the card to filter on. For example, if we have a `Total Orders` card, and each order has a `Date Ordered` as well as a `Date Delivered`, we have to pick which of those fields to filter — do we want to see all the orders *placed* in January, or do we want to see all the orders *delivered* in January? So, for each card on our dashboard, we’ll pick a date field to connect to the filter. If one of your cards says there aren’t any valid fields, that just means that card doesn’t contain any fields that match the kind of filter you chose.
+
+#### Filtering SQL-based cards
+Note that if your dashboard includes cards that were created using the SQL/native query editor, you'll need to add a bit of additional markup to the SQL in those cards in order to use a dashboard filter on them. [Using SQL parameters](12-sql-parameters.md)
+
 
 ![Select fields](images/dashboard-filters/04-select-fields.png)
 
@@ -57,9 +67,9 @@ Here are a few tips to get the most out of dashboard filters:
 ### Some things to keep in mind
 
 - When you activate a dashboard filter, any card that isn’t wired up to the filter will fade out to indicate it’s not being filtered. If you activate more than one filter at the same time, cards will fade out unless they’re wired up to *every* active filter.
-- If you have a card with multiple series on it that you want to use with a dashboard filter, then just make sure to select a filtering field for each of the series in the card.
-- While connecting cards to a filter, you might see a warning message that says, `The values in this field don’t overlap with the values of any other fields you’ve chosen`. For example, maybe you selected the `Type of Pants` field for one card, but the `Types of Boats` field for another card; if you’re using those fields for the same filter, this is problematic because the filter would then give options to the user that don’t work for both cards.
-- You can’t use a dashboard filter with a field in a question if that field is already being used in the definition of the question. For example, say you have a question called `Orders in January`, which counts all the orders and has a filter on the `Date Order Was Placed` field to only select the orders placed January — you can’t then connect a dashboard filter to the `Orders in January` card through the `Date Order Was Placed` field, because that field is already being used to filter the underlying question.
+- If you have a card with multiple series on it that you want to use with a dashboard filter, then just make sure to select a field to be filtered for each of the series in the card.
+- While connecting cards to a filter, you might see a warning message that says, `The values in this field don’t overlap with the values of any other fields you’ve chosen`. For example, maybe you selected the `Type of Pants` field for one card, but the `Types of Boats` field for another card; if you’re using those fields for the same filter, this is problematic because the filter would then give options to the user that wouldn't work for both cards (like, `Chinos, Jeans, Kayak, Slacks, Yacht`). Metabase prefers to prevent such silliness.
+- You can’t use a dashboard filter with a field in a question if that field is already being used in the definition of the question. For example, say you have a question called `Orders in January`, which counts all the orders and has a filter on the `Date Order Was Placed` field to only select the orders placed January — you can’t then connect a dashboard filter to the `Orders in January` card through the `Date Order Was Placed` field, because that field is already being used to filter the underlying question's data.
 
 ---
 
