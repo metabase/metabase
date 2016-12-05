@@ -181,7 +181,7 @@
   "Get `Card` with ID."
   [id]
   (-> (read-check Card id)
-      (hydrate :creator :dashboard_count :labels)
+      (hydrate :creator :dashboard_count :labels :can_write)
       (assoc :actor_id *current-user-id*)
       (->> (events/publish-event! :card-read))
       (dissoc :actor_id)))
