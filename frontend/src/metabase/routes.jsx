@@ -24,6 +24,7 @@ import CollectionPage from "metabase/questions/containers/CollectionPage.jsx";
 import MoveToCollection from "metabase/questions/containers/MoveToCollection.jsx";
 import NewCollection from "metabase/questions/containers/NewCollection.jsx";
 import AddToDashboard from "metabase/questions/containers/AddToDashboard.jsx";
+import SearchResults from "metabase/questions/containers/SearchResults.jsx";
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp.jsx";
 import PulseListApp from "metabase/pulse/containers/PulseListApp.jsx";
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder.jsx";
@@ -140,6 +141,7 @@ export const getRoutes = (store) =>
                 <Route path="/questions/:id/move" component={MoveToCollection} />
                 { /* TODO - These are temporary routes for templating purposes and should be removed */}
                 <Route path="/questions/dashadd" component={AddToDashboard} />
+                <Route path="/questions/search/:searchString" component={SearchResults} />
                 { /* end template routes */}
                 <Route path="/questions/collections/:collectionName" component={CollectionPage} />
 

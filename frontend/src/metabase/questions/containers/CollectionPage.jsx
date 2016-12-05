@@ -5,6 +5,7 @@ import HeaderWithBack from "metabase/components/HeaderWithBack";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
+import CollectionActions from "../components/CollectionActions";
 import NewEntityList from "./NewEntityList";
 import { selectSection } from "../questions";
 
@@ -13,19 +14,6 @@ const mapStateToProps = (state, props) => ({})
 const mapDispatchToProps = ({
     selectSection
 })
-
-const CollectionActions = ({ actions }) =>
-    <div>
-        {actions.map(({ action, icon, name }, index) =>
-            <Tooltip tooltip={name} key={index}>
-                <Icon
-                    className="cursor-pointer text-brand-hover ml3"
-                    name={icon}
-                    onClick={ () => action() }
-                />
-            </Tooltip>
-        )}
-    </div>
 
 @connect(mapStateToProps, mapDispatchToProps)
 class CollectionPage extends Component {
