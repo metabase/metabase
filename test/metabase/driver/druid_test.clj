@@ -182,3 +182,13 @@
     (ql/aggregation (ql/+ (ql/max $venue_price)
                           (ql/min (ql/- $venue_price $id))))
     (ql/breakout $venue_price)))
+
+;; aggregation w/o field
+(expect-with-engine :druid
+  [["1" 222.0]
+   ["2" 616.0]
+   ["3" 116.0]
+   ["4"  50.0]]
+  (druid-query-returning-rows
+    (ql/aggregation (ql/+ 1 (ql/count)))
+    (ql/breakout $venue_price)))

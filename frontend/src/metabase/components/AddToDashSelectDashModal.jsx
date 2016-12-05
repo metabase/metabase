@@ -68,7 +68,7 @@ export default class AddToDashSelectDashModal extends Component {
                         onClick={() => this.setState({ shouldCreateDashboard: true })}
                     >
                         <div
-                            className="flex align-center absolute"
+                            className="mt1 flex align-center absolute"
                             style={ { right: 40 } }
                         >
                             <Icon name="add" size={16} />
