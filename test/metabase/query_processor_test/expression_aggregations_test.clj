@@ -134,3 +134,14 @@
             (ql/aggregation (ql/+ (ql/max $price)
                                   (ql/min (ql/- $price $id))))
             (ql/breakout $price)))))
+
+;; aggregation w/o field
+(datasets/expect-with-engines (engines-that-support :expression-aggregations)
+  [[1 23]
+   [2 60]
+   [3 14]
+   [4  7]]
+  (format-rows-by [int int]
+    (rows (data/run-query venues
+            (ql/aggregation (ql/+ 1 (ql/count)))
+            (ql/breakout $price)))))

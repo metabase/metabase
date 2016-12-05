@@ -18,6 +18,7 @@
             [metabase.util.honeysql-extensions :as hx])
   (:import java.sql.Timestamp
            java.util.Date
+           clojure.lang.Keyword
            (metabase.query_processor.interface AgFieldRef
                                                DateTimeField
                                                DateTimeValue
@@ -65,7 +66,8 @@
   nil                    (formatted [_] nil)
   Number                 (formatted [this] this)
   String                 (formatted [this] this)
-  honeysql.types.SqlCall (formatted [this] this)
+  Keyword                (formatted [this] this) ; HoneySQL fn calls and keywords (e.g. `:%count.*`) are
+  honeysql.types.SqlCall (formatted [this] this) ; already converted to HoneySQL so just return them as-is
 
   Expression
   (formatted [{:keys [operator args]}]
