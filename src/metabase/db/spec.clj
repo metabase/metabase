@@ -24,6 +24,18 @@
           :subname (str "//" host ":" port "/" db)}
          (dissoc opts :host :port :db)))
 
+(defn clickhouse
+  "Create a database specification for a clichouse database. Opts should include
+   keys for :db, :user and :password.
+   You can also optionally set host and port."
+  [{:keys [host port db]
+    :or {host "localhost", port 9000, db ""}
+    :as opts}]
+  (merge {:classname "org.postgresql.Driver" ; must be in classpath
+          :subprotocol "clickhouse"
+          :subname (str "//" host ":" port "/" db)}
+         (dissoc opts :host :port :db)))
+
 (defn mysql
   "Create a database specification for a mysql database. Opts should include keys
   for :db, :user, and :password. You can also optionally set host and port.
