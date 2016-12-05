@@ -68,7 +68,9 @@ export default class TableInteractive extends Component {
     }
 
     componentWillUnmount() {
-        this._div.parent.removeChild(this._div);
+        if (this._div) {
+            this._div.parentNode.removeChild(this._div);
+        }
     }
 
     componentWillReceiveProps(newProps) {
