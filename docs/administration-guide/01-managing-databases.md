@@ -18,8 +18,13 @@ Now you’ll see a list of your databases. To connect another database to Metaba
 * Postgres
 * SQLite
 * SQL Server
+<<<<<<< HEAD
 * Druid
 * Crate
+=======
+* Driud
+* [CrateDB](databases/cratedb.md)
+>>>>>>> 4edea959ea604ffafd2f3970dc86bf1c6d8b68af
 * [Oracle](databases/oracle.md)
 * [Vertica](databases/vertica.md)
 
