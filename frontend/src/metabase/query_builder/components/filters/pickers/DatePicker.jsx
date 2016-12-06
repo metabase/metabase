@@ -105,7 +105,7 @@ const OPERATORS = [
     },
     {
         name: "Between",
-        init: (filter) => ["BETWEEN", filter[1], null, null],
+        init: (filter) => ["BETWEEN", filter[1], getDate(filter[2]), getDate(filter[3])],
         test: ([op]) => op === "BETWEEN",
         widget: MultiDatePicker,
     },
