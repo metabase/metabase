@@ -51,7 +51,7 @@
   [id :- su/IntGreaterThanZero]
   (i/map->FieldPlaceholder {:field-id id}))
 
-(s/defn ^:private ^:always-validate field :- i/AnyField
+(s/defn ^:private ^:always-validate field :- i/AnyFieldOrExpression
   "Generic reference to a `Field`. F can be an integer Field ID, or various other forms like `fk->` or `aggregation`."
   [f]
   (if (integer? f)
@@ -116,7 +116,13 @@
 
 (defn- field-or-expression [f]
   (if (instance? Expression f)
-    (update f :args (partial map field-or-expression)) ; recursively call field-or-expression on all the args of the expression
+    ;; recursively call field-or-expression on all the args inside the expression unless they're numbers
+    ;; plain numbers are always assumed to be numeric literals here; you must use MBQL '98 `:field-id` syntax to refer to Fields inside an expression <3
+    (update f :args #(for [arg %]
+                       (if (number? arg)
+                         arg
+                         (field-or-expression arg))))
+    ;; otherwise if it's not an Expression it's a a
     (field f)))
 
 (s/defn ^:private ^:always-validate ag-with-field :- i/Aggregation [ag-type f]
