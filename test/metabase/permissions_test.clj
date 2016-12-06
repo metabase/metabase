@@ -23,8 +23,7 @@
             [metabase.test.data :as data]
             [metabase.test.data.users :as test-users]
             [metabase.test.util :as tu]
-            [metabase.util :as u]
-            [clj-time.core :as t]))
+            [metabase.util :as u]))
 
 ;; 3 users:
 ;; crowberto, member of Admin, All Users
@@ -470,7 +469,7 @@
 ;; Only Admin should be able to ask SQL questions against DB 2. Error message is slightly different for Rasta & Lucky because Rasta has no permissions whatsoever for DB 2 while Lucky has partial perms
 (expect-with-test-data [[100]] (sql-query :crowberto *db2*))
 (expect-with-test-data "You don't have permissions to do that." (sql-query :rasta *db2*))
-(expect-with-test-data "You do not have permissions to run new native queries against database 'DB Two'." (sql-query :lucky *db2*))
+(expect-with-test-data #"You do not have read permissions for /db/\d+/native/\." (sql-query :lucky *db2*))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
