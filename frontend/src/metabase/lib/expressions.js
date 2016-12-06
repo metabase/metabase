@@ -5,14 +5,38 @@ import _ from "underscore";
 // |                                                                      PREDICATE FUNCTIONS                                                                       |
 // +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
-const VALID_OPERATORS = new Set(['+', '-', '*', '/']);
+export const VALID_OPERATORS = new Set([
+    '+',
+    '-',
+    '*',
+    '/'
+]);
+
+export const VALID_AGGREGATIONS = new Set([
+    "count",
+    "cum_count",
+    "sum",
+    "cum_sum",
+    "distinct",
+    "avg",
+    "min",
+    "max"
+])
 
 function isField(arg) {
     return arg && arg.constructor === Array && arg.length === 2 && arg[0] === 'field-id' && typeof arg[1] === 'number';
 }
 
-export function isExpression(arg) {
-    return arg && arg.constructor === Array && arg.length === 3 && VALID_OPERATORS.has(arg[0]) && isValidArg(arg[1]) && isValidArg(arg[2]);
+export function isExpression(expr) {
+    return isMath(expr) || isAggregation(expr);
+}
+
+export function isMath(expr) {
+    return Array.isArray(expr) && VALID_OPERATORS.has(expr[0]) && _.all(expr.slice(1), isValidArg);
+}
+
+export function isAggregation(expr) {
+    return Array.isArray(expr) && VALID_AGGREGATIONS.has(expr[0]) && _.all(expr.slice(1), isValidArg);
 }
 
 function isValidArg(arg) {
@@ -34,15 +58,20 @@ function formatField(fieldRef, fields) {
     return displayName.indexOf(' ') === -1 ? displayName : ('"' + displayName + '"');
 }
 
-function formatNestedExpression(expression, fields) {
-    return '(' + formatExpression(expression, fields) + ')';
+function formatNestedExpression(expression, fields, parens = false) {
+    let formattedExpression = formatExpression(expression, fields);
+    if (VALID_OPERATORS.has(expression[0]) && parens) {
+        return '(' + formattedExpression + ')';
+    } else {
+        return formattedExpression;
+    }
 }
 
-function formatArg(arg, fields) {
+function formatArg(arg, fields, parens = false) {
     if (!isValidArg(arg)) throw 'Invalid expression argument:' + arg;
 
     return isField(arg)            ? formatField(arg, fields)            :
-           isExpression(arg)       ? formatNestedExpression(arg, fields) :
+           isExpression(arg)       ? formatNestedExpression(arg, fields, parens) :
            typeof arg === 'number' ? arg                                 :
                                      null;
 }
@@ -52,10 +81,12 @@ export function formatExpression(expression, fields) {
     if (!expression)               return null;
     if (!isExpression(expression)) throw 'Invalid expression: ' + expression;
 
-    let [operator, arg1, arg2] = expression;
-    let output = formatArg(arg1, fields) + ' ' + operator + ' ' + formatArg(arg2, fields);
-
-    return output;
+    const [op, ...args] = expression;
+    if (VALID_OPERATORS.has(op)) {
+        return args.map(arg => formatArg(arg, fields, true)).join(` ${op} `)
+    } else {
+        return `${op}(${args.map(arg => formatArg(arg, fields, false)).join(", ")})`;
+    }
 }
 
 
@@ -208,6 +239,7 @@ function tokenToMBQL(token, fields, operators) {
 
 // Add extra info about the tokens, like errors + suggestions
 function annotateTokens(tokens, fields, operators) {
+    console.log("tokens", tokens)
     // unnest excess parens
     if (tokens.length === 1 && tokens[0].isParent) return annotateTokens(tokens[0].value, fields, operators);
 

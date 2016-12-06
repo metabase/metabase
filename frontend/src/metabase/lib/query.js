@@ -94,7 +94,7 @@ var Query = {
             } else {
                 for (const [agg] of aggs) {
                     if (!mbqlCompare(agg, "metric") && !_.findWhere(tableMetadata.aggregation_options, { short: agg })) {
-                        return false;
+                        // return false;
                     }
                 }
             }
@@ -618,6 +618,8 @@ for (const prop in Q) {
     Query[prop] = Q[prop];
 }
 
+import { isMath } from "metabase/lib/expressions";
+
 export const AggregationClause = {
 
     // predicate function to test if a given aggregation clause is fully formed
@@ -640,6 +642,10 @@ export const AggregationClause = {
         return AggregationClause.isValid(aggregation) && aggregation[0] !== "METRIC";
     },
 
+    getAggregation(aggregation) {
+        return aggregation && mbqlCanonicalize(aggregation[0]);
+    },
+
     // predicate function to test if a given aggregation clause represents a metric
     isMetric(aggregation) {
         return AggregationClause.isValid(aggregation) && aggregation[0] === "METRIC";
@@ -652,6 +658,12 @@ export const AggregationClause = {
         } else {
             return null;
         }
+    },
+
+    isCustom(aggregation) {
+        return aggregation && isMath(aggregation) || (
+            !AggregationClause.isStandard(aggregation) && _.any(aggregation.slice(1), (arg) => isMath(arg))
+        );
     },
 
     // get the operator from a standard aggregation clause

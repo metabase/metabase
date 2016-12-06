@@ -9,6 +9,7 @@ import Popover from "metabase/components/Popover.jsx";
 import Query from "metabase/lib/query";
 import { AggregationClause } from "metabase/lib/query";
 import { getAggregator } from "metabase/lib/schema_metadata";
+import { formatExpression, isExpression } from "metabase/lib/expressions";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -55,23 +56,21 @@ export default class AggregationWidget extends Component {
             selectedAggregation = null;
         }
         return (
-            <div id="Query-section-aggregation" onClick={this.open} className="Query-section Query-section-aggregation cursor-pointer px1">
-                <span className="View-section-aggregation QueryOption py1">
-                    {selectedAggregation ? selectedAggregation.name.replace(" of ...", "") : "Choose an aggregation"}
-                </span>
-                {aggregation.length > 1 &&
-                    <div className="View-section-aggregation flex align-center">
-                        <span style={{paddingRight: "4px", paddingLeft: "4px"}} className="text-bold">of</span>
-                        <FieldName
-                            className="View-section-aggregation-target SelectionModule py1"
-                            tableMetadata={tableMetadata}
-                            field={fieldId}
-                            fieldOptions={Query.getFieldOptions(tableMetadata.fields, true)}
-                            customFieldOptions={this.props.customFields}
-                        />
-                    </div>
+            <span className="View-section-aggregation QueryOption py1 mx1 flex align-center">
+                {selectedAggregation ? selectedAggregation.name.replace(" of ...", "") : "Choose an aggregation"}
+                { aggregation.length > 1 &&
+                    <span style={{paddingRight: "4px", paddingLeft: "4px"}} className="text-bold">of</span>
                 }
-            </div>
+                { aggregation.length > 1 &&
+                    <FieldName
+                        className="View-section-aggregation-target SelectionModule py1"
+                        tableMetadata={tableMetadata}
+                        field={fieldId}
+                        fieldOptions={Query.getFieldOptions(tableMetadata.fields, true)}
+                        customFieldOptions={this.props.customFields}
+                    />
+                }
+            </span>
         );
     }
 
@@ -81,9 +80,14 @@ export default class AggregationWidget extends Component {
 
         let selectedMetric = _.findWhere(tableMetadata.metrics, { id: metricId });
         return (
-            <div id="Query-section-aggregation" onClick={this.open} className="Query-section Query-section-aggregation cursor-pointer">
-                <span className="View-section-aggregation QueryOption p1">{selectedMetric ? selectedMetric.name.replace(" of ...", "") : "Choose an aggregation"}</span>
-            </div>
+            <span className="View-section-aggregation QueryOption p1">{selectedMetric ? selectedMetric.name.replace(" of ...", "") : "Choose an aggregation"}</span>
+        );
+    }
+
+    renderCustomAggregation() {
+        const { aggregation, tableMetadata } = this.props;
+        return (
+            <span className="View-section-aggregation QueryOption p1">{aggregation ? formatExpression(aggregation, tableMetadata.fields) : "Choose an aggregation"}</span>
         );
     }
 
@@ -119,11 +123,15 @@ export default class AggregationWidget extends Component {
                 <div className={cx("Query-section Query-section-aggregation", { "selected": this.state.isOpen })}>
                     <div>
                         <Clearable onClear={this.props.removeAggregation}>
-                        {AggregationClause.isMetric(aggregation) ?
-                            this.renderMetricAggregation()
-                        :
-                            this.renderStandardAggregation()
-                        }
+                            <div id="Query-section-aggregation" onClick={this.open} className="Query-section Query-section-aggregation cursor-pointer">
+                            { AggregationClause.isCustom(aggregation) ?
+                                this.renderCustomAggregation()
+                            : AggregationClause.isMetric(aggregation) ?
+                                this.renderMetricAggregation()
+                            :
+                                this.renderStandardAggregation()
+                            }
+                            </div>
                         </Clearable>
                         {this.renderPopover()}
                     </div>

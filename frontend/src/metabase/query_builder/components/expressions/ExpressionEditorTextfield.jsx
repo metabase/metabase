@@ -5,28 +5,17 @@ import S from "./ExpressionEditorTextfield.css";
 import _ from "underscore";
 import cx from "classnames";
 
+import { parse } from "metabase/lib/expressions/aggregation"
+
 import Popover from "metabase/components/Popover.jsx";
 
-import { parseExpressionString, tokenAtPosition, tokensToExpression, formatExpression, isExpression } from "metabase/lib/expressions";
+import { formatExpression, isExpression } from "metabase/lib/expressions";
 
 
 const KEYCODE_TAB   =  9;
 const KEYCODE_ENTER = 13;
 const KEYCODE_UP    = 38;
 const KEYCODE_DOWN  = 40;
-
-
-// return the first token with a non-empty error message
-function getErrorToken(tokens) {
-    for (var i = 0; i < tokens.length; i++) {
-        let token = tokens[i];
-        if (token.error && token.error.length) return token;
-        if (!token.isParent) continue;
-        let childError = getErrorToken(token.value);
-        if (childError) return childError;
-    }
-    return null;
-}
 
 
 export default class ExpressionEditorTextfield extends Component {
@@ -54,49 +43,48 @@ export default class ExpressionEditorTextfield extends Component {
     componentWillReceiveProps(newProps) {
         // we only refresh our state if we had no previous state OR if our expression or table has changed
         if (!this.state || this.props.expression != newProps.expression || this.props.tableMetadata != newProps.tableMetadata) {
-            let parsedExpression = newProps.expression,
-                expression       = formatExpression(newProps.expression, this.props.tableMetadata.fields),
-                tokens           = [];
-
-            let errorMessage = null;
+            let parsedExpression = newProps.expression;
+            let expressionString = formatExpression(newProps.expression, this.props.tableMetadata.fields);
+            let expressionErrorMessage = null;
             try {
-                tokens = expression && expression.length ? tokensToExpression(parseExpressionString(expression, newProps.tableMetadata.fields)) : [];
+                if (expressionString) {
+                    parse(expressionString, { fields: newProps.tableMetadata.fields });
+                }
             } catch (e) {
-                errorMessage = e;
+                expressionErrorMessage = e;
             }
 
             this.setState({
-                parsedExpression:       parsedExpression,
-                expressionString:       expression,
-                tokens:                 tokens,
-                expressionErrorMessage: errorMessage,
-                suggestions:            [],
-                highlightedSuggestion:  0,
-                suggestionsTitle:       null
+                parsedExpression,
+                expressionString,
+                expressionErrorMessage,
+                suggestions:           [],
+                highlightedSuggestion: 0,
+                suggestionsTitle:      null
             });
         }
     }
 
     onSuggestionAccepted() {
-        let inputElement = ReactDOM.findDOMNode(this.refs.input),
-            displayName  = this.state.suggestions[this.state.highlightedSuggestion].display_name,
-            // wrap field names with spaces in them in quotes
-            needsQuotes  = displayName.indexOf(' ') > -1,
-            suggestion   = needsQuotes ? ('"' + displayName + '"') : displayName,
-            tokenAtPoint = tokenAtPosition(this.state.tokens, inputElement.selectionStart);
-
-        let expression = this.state.expressionString.substring(0, tokenAtPoint.start) + suggestion + this.state.expressionString.substring(tokenAtPoint.end, this.state.expressionString.length);
-
-        // Remove extra quotation marks in case we accidentally inserted duplicates when accepting a suggestion already inside some
-        expression = expression.replace(/"+/, '"');
-
-        // hand off to the code that deals with text change events which will trigger parsing and new autocomplete suggestions
-        inputElement.value = expression + ' ';
-        this.onInputChange(); // add a blank space after end of token
-
-        this.setState({
-            highlightedSuggestion: 0
-        });
+        // let inputElement = ReactDOM.findDOMNode(this.refs.input),
+        //     displayName  = this.state.suggestions[this.state.highlightedSuggestion].display_name,
+        //     // wrap field names with spaces in them in quotes
+        //     needsQuotes  = displayName.indexOf(' ') > -1,
+        //     suggestion   = needsQuotes ? ('"' + displayName + '"') : displayName,
+        //     tokenAtPoint = tokenAtPosition(this.state.tokens, inputElement.selectionStart);
+        //
+        // let expression = this.state.expressionString.substring(0, tokenAtPoint.start) + suggestion + this.state.expressionString.substring(tokenAtPoint.end, this.state.expressionString.length);
+        //
+        // // Remove extra quotation marks in case we accidentally inserted duplicates when accepting a suggestion already inside some
+        // expression = expression.replace(/"+/, '"');
+        //
+        // // hand off to the code that deals with text change events which will trigger parsing and new autocomplete suggestions
+        // inputElement.value = expression + ' ';
+        // this.onInputChange(); // add a blank space after end of token
+        //
+        // this.setState({
+        //     highlightedSuggestion: 0
+        // });
     }
 
     onSuggestionMouseDown(event) {
@@ -140,49 +128,29 @@ export default class ExpressionEditorTextfield extends Component {
     }
 
     onInputChange() {
-        let inputElement = ReactDOM.findDOMNode(this.refs.input),
-            expression   = inputElement.value;
+        let expressionString = ReactDOM.findDOMNode(this.refs.input).value;
 
-        var errorMessage          = null,
-            tokens                = [],
-            suggestions           = [],
-            suggestionsTitle      = null,
-            highlightedSuggestion = this.state.highlightedSuggestion,
-            parsedExpression;
+        let expressionErrorMessage = null;
+        let suggestions           = [];
+        let suggestionsTitle      = null;
+        let highlightedSuggestion = this.state.highlightedSuggestion;
+        let parsedExpression;
 
         try {
-            tokens = parseExpressionString(expression, this.props.tableMetadata.fields);
-
-            let errorToken = getErrorToken(tokens);
-            if (errorToken) errorMessage = errorToken.error;
-
-            let cursorPosition = inputElement.selectionStart;
-            let tokenAtPoint = tokenAtPosition(tokens, cursorPosition);
-
-            if (tokenAtPoint && tokenAtPoint.suggestions) {
-                suggestions = tokenAtPoint.suggestions;
-                suggestionsTitle = tokenAtPoint.suggestionsTitle;
-            }
-
-            if (highlightedSuggestion >= suggestions.length) highlightedSuggestion = suggestions.length - 1;
-            if (highlightedSuggestion < 0)                   highlightedSuggestion = 0;
-
-            parsedExpression = tokensToExpression(tokens);
-
+            parsedExpression = parse(expressionString, { fields: this.props.tableMetadata.fields })
         } catch (e) {
-            errorMessage = e;
+            expressionErrorMessage = e;
         }
 
-        if (errorMessage) console.error('expression error message:', errorMessage);
+        if (expressionErrorMessage) console.error('expression error message:', expressionErrorMessage);
 
         this.setState({
-            expressionErrorMessage: errorMessage,
-            expressionString: expression,
-            parsedExpression: parsedExpression,
-            suggestions: suggestions,
-            suggestionsTitle: suggestionsTitle,
-            highlightedSuggestion: highlightedSuggestion,
-            tokens: tokens
+            expressionErrorMessage,
+            expressionString,
+            parsedExpression,
+            suggestions,
+            suggestionsTitle,
+            highlightedSuggestion
         });
     }
 
@@ -192,11 +160,12 @@ export default class ExpressionEditorTextfield extends Component {
 
         const { placeholder } = this.props;
 
+        console.log("error", this.state.expressionErrorMessage, "expression", this.state.parsedExpression)
         return (
             <div className={cx(S.editor, "relative")}>
                 <input
                     ref="input"
-                    className={cx(S.input, "my1 p1 input block full h4 text-dark")}
+                    className={cx(S.input, "my1 p1 input block full h4 text-dark", { "border-error": errorMessage })}
                     type="text"
                     placeholder={placeholder}
                     value={this.state.expressionString}

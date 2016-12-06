@@ -48,6 +48,13 @@ describe("parseExpressionString", () => {
         ]);
     });
 
+    it("can parse function with no arguments", () => {
+        expect(stripStartEnd(parseExpressionString("count()", mockFields, mathOperators)))
+        .toEqual([
+            { value: 'count', parsedValue: [ 'count' ] }
+        ]);
+    });
+
     // quoted field name w/ a space in it
     it("can parse a field with quotes and spaces", () => {
         expect(stripStartEnd(parseExpressionString("\"Toucan Sam\" + B", mockFields, mathOperators)))
@@ -97,5 +104,20 @@ describe("formatExpression", () => {
 
     it("quotes fields with spaces in them", () => {
         expect(formatExpression(["+", ["/", ["field-id", 1], ["field-id", 10]], ["field-id", 3]], mockFields)).toEqual("(A / \"Toucan Sam\") + C");
+    });
+
+    it("format aggregations", () => {
+        expect(formatExpression(["count"], mockFields)).toEqual("count()");
+        expect(formatExpression(["sum", ["field-id", 1]], mockFields)).toEqual("sum(A)");
+    });
+
+    it("nested aggregation", () => {
+        expect(formatExpression(["+", 1, ["count"]], mockFields)).toEqual("1 + count()");
+        expect(formatExpression(["/", ["sum", ["field-id", 1]], ["count"]], mockFields)).toEqual("sum(A) / count()");
+    });
+
+    it("aggregation with expressions", () => {
+        // TODO: get rid of the extra parens
+        expect(formatExpression(["sum", ["/", ["field-id", 1], ["field-id", 2]]], mockFields)).toEqual("sum((A / B))");
     });
 });
