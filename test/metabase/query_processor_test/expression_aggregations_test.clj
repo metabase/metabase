@@ -145,3 +145,14 @@
     (rows (data/run-query venues
             (ql/aggregation (ql/+ 1 (ql/count)))
             (ql/breakout $price)))))
+
+;; aggregation with math inside the aggregation :scream_cat:
+(datasets/expect-with-engines (engines-that-support :expression-aggregations)
+  [[1  44]
+   [2 177]
+   [3  52]
+   [4  30]]
+  (format-rows-by [int int]
+    (rows (data/run-query venues
+            (ql/aggregation (ql/sum (ql/+ $price 1)))
+            (ql/breakout $price)))))

@@ -185,10 +185,10 @@
                          args     :- [(s/cond-pre (s/recursive #'RValue)
                                                   (s/recursive #'Aggregation))]])
 
-(def AnyField
+(def AnyFieldOrExpression
   "Schema for a `FieldPlaceholder`, `AgRef`, or `Expression`."
   (s/named (s/cond-pre ExpressionRef Expression FieldPlaceholderOrAgRef)
-           "Valid field, ag field reference, or expression reference."))
+           "Valid field, ag field reference, expression, or expression reference."))
 
 
 (def LiteralDatetimeString
@@ -302,7 +302,7 @@
 
 (def OrderBy
   "Schema for top-level `order-by` clause in an MBQL query."
-  (s/named {:field     AnyField
+  (s/named {:field     AnyFieldOrExpression
             :direction OrderByDirection}
            "Valid order-by subclause"))
 
@@ -317,7 +317,7 @@
   "Schema for an MBQL query."
   {(s/optional-key :aggregation) [Aggregation]
    (s/optional-key :breakout)    [FieldPlaceholderOrExpressionRef]
-   (s/optional-key :fields)      [AnyField]
+   (s/optional-key :fields)      [AnyFieldOrExpression]
    (s/optional-key :filter)      Filter
    (s/optional-key :limit)       su/IntGreaterThanZero
    (s/optional-key :order-by)    [OrderBy]
