@@ -76,10 +76,56 @@ export const getIsDirty = createSelector(
 
 export const getSaveError = (state) => state.permissions.saveError;
 
-const DEFAULT_PERMISSIONS_WARNING = "The All Users group has a higher level of access than this, which is overriding this setting. You should limit or revoke the All Users group's access to this item."
 
-function hasGreaterPermissions(a, b, levels = ["all", "controlled", "none"]) {
-    return (levels.indexOf(a) - levels.indexOf(b)) > 0
+// these are all the permission levels ordered by level of access
+const PERM_LEVELS = ["write", "read", "all", "controlled", "none"];
+function hasGreaterPermissions(a, b) {
+    return (PERM_LEVELS.indexOf(a) - PERM_LEVELS.indexOf(b)) < 0
+}
+
+function getPermissionWarning(getter, entityType, defaultGroup, permissions, groupId, entityId, value) {
+    if (!defaultGroup || groupId === defaultGroup.id) {
+        return null;
+    }
+    let perm = value || getter(permissions, groupId, entityId);
+    let defaultPerm = getter(permissions, defaultGroup.id, entityId);
+    if (perm === "controlled" && defaultPerm === "controlled") {
+        return `The "${defaultGroup.name}" group may have access to a different set of ${entityType} than this group, which may give this group additional access to some ${entityType}.`;
+    }
+    if (hasGreaterPermissions(defaultPerm, perm)) {
+        return `The "${defaultGroup.name}" group has a higher level of access than this, which will override this setting. You should limit or revoke the "${defaultGroup.name}" group's access to this item.`;
+    }
+    return null;
+}
+
+function getPermissionWarningModal(entityType, getter, defaultGroup, permissions, groupId, entityId, value) {
+    let permissionWarning = getPermissionWarning(entityType, getter, defaultGroup, permissions, groupId, entityId, value);
+    if (permissionWarning) {
+        return {
+            title: `${value === "controlled" ? "Limit" : "Revoke"} access even though "${defaultGroup.name}" has greater access?`,
+            message: permissionWarning
+        };
+    }
+}
+
+function getControlledDatabaseWarningModal(permissions, groupId, entityId) {
+    if (getSchemasPermission(permissions, groupId, entityId) !== "controlled") {
+        return {
+            title: "Changing this database to limited access"
+        };
+    }
+}
+
+function getRawQueryWarningModal(permissions, groupId, entityId, value) {
+    if (value === "write" &&
+        getNativePermission(permissions, groupId, entityId) !== "write" &&
+        getSchemasPermission(permissions, groupId, entityId) !== "all"
+    ) {
+        return {
+            title: "Allow Raw Query Writing",
+            message: "This will also change this group's data access to Unrestricted for this database."
+        };
+    }
 }
 
 export const getTablesPermissionsGrid = createSelector(
@@ -92,7 +138,7 @@ export const getTablesPermissionsGrid = createSelector(
         }
 
         const tables = database.tablesInSchema(schemaName || null);
-        const defaultGroupId = _.find(groups, isDefaultGroup).id;
+        const defaultGroup = _.find(groups, isDefaultGroup);
 
         return {
             type: "table",
@@ -118,16 +164,13 @@ export const getTablesPermissionsGrid = createSelector(
                         return updateFieldsPermission(permissions, groupId, entityId, value, metadata);
                     },
                     confirm(groupId, entityId, value) {
-                        if (getSchemasPermission(permissions, groupId, entityId) !== "controlled") {
-                            return {
-                                title: "Changing this database to limited access"
-                            };
-                        }
+                        return [
+                            getPermissionWarningModal(getFieldsPermission, "fields", defaultGroup, permissions, groupId, entityId, value),
+                            getControlledDatabaseWarningModal(permissions, groupId, entityId)
+                        ];
                     },
                     warning(groupId, entityId) {
-                        if (hasGreaterPermissions(getTablesPermission(permissions, groupId, entityId), getTablesPermission(permissions, defaultGroupId, entityId))) {
-                            return DEFAULT_PERMISSIONS_WARNING;
-                        }
+                        return getPermissionWarning(getFieldsPermission, "fields", defaultGroup, permissions, groupId, entityId);
                     }
                 }
             },
@@ -154,7 +197,7 @@ export const getSchemasPermissionsGrid = createSelector(
         }
 
         const schemaNames = database.schemaNames();
-        const defaultGroupId = _.find(groups, isDefaultGroup).id;
+        const defaultGroup = _.find(groups, isDefaultGroup);
 
         return {
             type: "schema",
@@ -181,16 +224,13 @@ export const getSchemasPermissionsGrid = createSelector(
                         }
                     },
                     confirm(groupId, entityId, value) {
-                        if (getSchemasPermission(permissions, groupId, entityId) !== "controlled") {
-                            return {
-                                title: "Changing this database to limited access"
-                            };
-                        }
+                        return [
+                            getPermissionWarningModal(getTablesPermission, "tables", defaultGroup, permissions, groupId, entityId, value),
+                            getControlledDatabaseWarningModal(permissions, groupId, entityId)
+                        ];
                     },
                     warning(groupId, entityId) {
-                        if (hasGreaterPermissions(getTablesPermission(permissions, groupId, entityId), getTablesPermission(permissions, defaultGroupId, entityId))) {
-                            return DEFAULT_PERMISSIONS_WARNING;
-                        }
+                        return getPermissionWarning(getTablesPermission, "tables", defaultGroup, permissions, groupId, entityId);
                     }
                 }
             },
@@ -214,7 +254,7 @@ export const getDatabasesPermissionsGrid = createSelector(
         }
 
         const databases = metadata.databases();
-        const defaultGroupId = _.find(groups, isDefaultGroup).id;
+        const defaultGroup = _.find(groups, isDefaultGroup);
 
         return {
             type: "database",
@@ -244,10 +284,13 @@ export const getDatabasesPermissionsGrid = createSelector(
                             }
                         }
                     },
+                    confirm(groupId, entityId, value) {
+                        return [
+                            getPermissionWarningModal(getSchemasPermission, "schemas", defaultGroup, permissions, groupId, entityId, value)
+                        ];
+                    },
                     warning(groupId, entityId) {
-                        if (hasGreaterPermissions(getSchemasPermission(permissions, groupId, entityId), getSchemasPermission(permissions, defaultGroupId, entityId))) {
-                            return DEFAULT_PERMISSIONS_WARNING;
-                        }
+                        return getPermissionWarning(getSchemasPermission, "schemas", defaultGroup, permissions, groupId, entityId);
                     }
                 },
                 "native": {
@@ -266,20 +309,13 @@ export const getDatabasesPermissionsGrid = createSelector(
                         return updateNativePermission(permissions, groupId, entityId, value, metadata);
                     },
                     confirm(groupId, entityId, value) {
-                        if (value === "write" &&
-                            getNativePermission(permissions, groupId, entityId) !== "write" &&
-                            getSchemasPermission(permissions, groupId, entityId) !== "all"
-                        ) {
-                            return {
-                                title: "Allow Raw Query Writing",
-                                message: "This will also change this group's data access to Unrestricted for this database."
-                            };
-                        }
+                        return [
+                            getPermissionWarningModal(getNativePermission, null, defaultGroup, permissions, groupId, entityId, value),
+                            getRawQueryWarningModal(permissions, groupId, entityId, value)
+                        ];
                     },
                     warning(groupId, entityId) {
-                        if (hasGreaterPermissions(getNativePermission(permissions, groupId, entityId), getNativePermission(permissions, defaultGroupId, entityId), ["write", "read", "none"])) {
-                            return DEFAULT_PERMISSIONS_WARNING;
-                        }
+                        return getPermissionWarning(getNativePermission, null, defaultGroup, permissions, groupId, entityId);
                     }
                 },
             },

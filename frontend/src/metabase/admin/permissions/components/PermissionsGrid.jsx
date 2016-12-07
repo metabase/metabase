@@ -137,7 +137,7 @@ class GroupPermissionCell extends Component {
     constructor(props, context) {
         super(props, context);
         this.state = {
-            confirmText: null,
+            confirmations: null,
             confirmAction: null,
             hovered: false
         }
@@ -158,6 +158,7 @@ class GroupPermissionCell extends Component {
     }
     render() {
         const { permission, group, entity, onUpdatePermission } = this.props;
+        const { confirmations } = this.state;
 
         const value = permission.getter(group.id, entity.id);
         const options = permission.options(group.id, entity.id);
@@ -190,12 +191,18 @@ class GroupPermissionCell extends Component {
                                     size={28}
                                     style={{ color: this.state.hovered ? '#fff' : getOptionUi(value).iconColor }}
                                 />
-                                { this.state.confirmText &&
+                                { confirmations && confirmations.length > 0 &&
                                     <Modal>
                                         <ConfirmContent
-                                            {...this.state.confirmText}
-                                            onAction={this.state.confirmAction}
-                                            onClose={() => this.setState({ confirmText: null, confirmAction: null })}
+                                            {...confirmations[0]}
+                                            onAction={() =>
+                                                // if it's the last one call confirmAction, otherwise remove the confirmation that was just confirmed
+                                                confirmations.length === 1 ?
+                                                    this.setState({ confirmations: null, confirmAction: null }, this.state.confirmAction)
+                                                :
+                                                    this.setState({ confirmations: confirmations.slice(1) })
+                                            }
+                                            onCancel={() => this.setState({ confirmations: null, confirmAction: null })}
                                         />
                                     </Modal>
                                 }
@@ -224,9 +231,14 @@ class GroupPermissionCell extends Component {
                                     postAction: permission.postAction
                                 })
                             }
-                            let confirmText = permission.confirm && permission.confirm(group.id, entity.id, value);
-                            if (confirmText) {
-                                this.setState({ confirmText, confirmAction });
+                            let confirmations = permission.confirm && permission.confirm(group.id, entity.id, value);
+                            if (Array.isArray(confirmations)) {
+                                confirmations = confirmations.filter(c => c);
+                            } else if (confirmations) {
+                                confirmations = [confirmations];
+                            }
+                            if (confirmations && confirmations.length > 0) {
+                                this.setState({ confirmations, confirmAction });
                             } else {
                                 confirmAction();
                             }
