@@ -145,7 +145,7 @@ export default class SaveQuestionModal extends Component {
                         onChange={(value) => this.onChange("saveType", value)}
                         options={[
                             { name: `Replace original question, "${this.props.originalCard.name}"`, value: "overwrite" },
-                            { name: "Save as new question", value: "replace" },
+                            { name: "Save as new question", value: "create" },
                         ]}
                         isVertical
                     />

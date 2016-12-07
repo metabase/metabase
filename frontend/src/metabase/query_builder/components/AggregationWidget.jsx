@@ -27,7 +27,7 @@ export default class AggregationWidget extends Component {
     }
 
     static propTypes = {
-        aggregation: PropTypes.array.isRequired,
+        aggregation: PropTypes.array,
         tableMetadata: PropTypes.object.isRequired,
         customFields: PropTypes.object,
         updateAggregation: PropTypes.func.isRequired,
@@ -51,7 +51,7 @@ export default class AggregationWidget extends Component {
         const fieldId = AggregationClause.getField(aggregation);
 
         let selectedAggregation = getAggregator(AggregationClause.getOperator(aggregation));
-        if (!_.findWhere(tableMetadata.aggregation_options, { short: selectedAggregation.short })) {
+        if (selectedAggregation && !_.findWhere(tableMetadata.aggregation_options, { short: selectedAggregation.short })) {
             // if this table doesn't support the selected aggregation, prompt the user to select a different one
             selectedAggregation = null;
         }

@@ -192,3 +192,13 @@
   (druid-query-returning-rows
     (ql/aggregation (ql/+ 1 (ql/count)))
     (ql/breakout $venue_price)))
+
+;; aggregation with math inside the aggregation :scream_cat:
+(expect-with-engine :druid
+  [["1"  442.0]
+   ["2" 1845.0]
+   ["3"  460.0]
+   ["4"  245.0]]
+  (druid-query-returning-rows
+    (ql/aggregation (ql/sum (ql/+ $venue_price 1)))
+    (ql/breakout $venue_price)))
