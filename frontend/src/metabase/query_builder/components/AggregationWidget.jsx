@@ -25,7 +25,7 @@ export default class AggregationWidget extends Component {
     }
 
     static propTypes = {
-        aggregation: PropTypes.array.isRequired,
+        aggregation: PropTypes.array,
         tableMetadata: PropTypes.object.isRequired,
         customFields: PropTypes.object,
         updateAggregation: PropTypes.func.isRequired
