@@ -76,6 +76,12 @@ export const getIsDirty = createSelector(
 
 export const getSaveError = (state) => state.permissions.saveError;
 
+const DEFAULT_PERMISSIONS_WARNING = "The All Users group has a higher level of access than this, which is overriding this setting. You should limit or revoke the All Users group's access to this item."
+
+function hasGreaterPermissions(a, b, levels = ["all", "controlled", "none"]) {
+    return (levels.indexOf(a) - levels.indexOf(b)) > 0
+}
+
 export const getTablesPermissionsGrid = createSelector(
     getMetadata, getGroups, getPermissions, getDatabaseId, getSchemaName,
     (metadata: Metadata, groups: Array<Group>, permissions: GroupsPermissions, databaseId: DatabaseId, schemaName: SchemaName) => {
@@ -86,6 +92,7 @@ export const getTablesPermissionsGrid = createSelector(
         }
 
         const tables = database.tablesInSchema(schemaName || null);
+        const defaultGroupId = _.find(groups, isDefaultGroup).id;
 
         return {
             type: "table",
@@ -116,6 +123,11 @@ export const getTablesPermissionsGrid = createSelector(
                                 title: "Changing this database to limited access"
                             };
                         }
+                    },
+                    warning(groupId, entityId) {
+                        if (hasGreaterPermissions(getTablesPermission(permissions, groupId, entityId), getTablesPermission(permissions, defaultGroupId, entityId))) {
+                            return DEFAULT_PERMISSIONS_WARNING;
+                        }
                     }
                 }
             },
@@ -142,6 +154,7 @@ export const getSchemasPermissionsGrid = createSelector(
         }
 
         const schemaNames = database.schemaNames();
+        const defaultGroupId = _.find(groups, isDefaultGroup).id;
 
         return {
             type: "schema",
@@ -173,6 +186,11 @@ export const getSchemasPermissionsGrid = createSelector(
                                 title: "Changing this database to limited access"
                             };
                         }
+                    },
+                    warning(groupId, entityId) {
+                        if (hasGreaterPermissions(getTablesPermission(permissions, groupId, entityId), getTablesPermission(permissions, defaultGroupId, entityId))) {
+                            return DEFAULT_PERMISSIONS_WARNING;
+                        }
                     }
                 }
             },
@@ -196,6 +214,7 @@ export const getDatabasesPermissionsGrid = createSelector(
         }
 
         const databases = metadata.databases();
+        const defaultGroupId = _.find(groups, isDefaultGroup).id;
 
         return {
             type: "database",
@@ -225,6 +244,11 @@ export const getDatabasesPermissionsGrid = createSelector(
                             }
                         }
                     },
+                    warning(groupId, entityId) {
+                        if (hasGreaterPermissions(getSchemasPermission(permissions, groupId, entityId), getSchemasPermission(permissions, defaultGroupId, entityId))) {
+                            return DEFAULT_PERMISSIONS_WARNING;
+                        }
+                    }
                 },
                 "native": {
                     options(groupId, entityId) {
@@ -250,6 +274,11 @@ export const getDatabasesPermissionsGrid = createSelector(
                                 title: "Allow Raw Query Writing",
                                 message: "This will also change this group's data access to Unrestricted for this database."
                             };
+                        }
+                    },
+                    warning(groupId, entityId) {
+                        if (hasGreaterPermissions(getNativePermission(permissions, groupId, entityId), getNativePermission(permissions, defaultGroupId, entityId), ["write", "read", "none"])) {
+                            return DEFAULT_PERMISSIONS_WARNING;
                         }
                     }
                 },

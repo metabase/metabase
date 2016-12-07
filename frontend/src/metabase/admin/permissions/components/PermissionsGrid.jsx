@@ -161,6 +161,7 @@ class GroupPermissionCell extends Component {
 
         const value = permission.getter(group.id, entity.id);
         const options = permission.options(group.id, entity.id);
+        const warning = permission.warning && permission.warning(group.id, entity.id);
 
         let isEditable = this.props.isEditable && options.filter(option => option !== value).length > 0;
 
@@ -173,7 +174,7 @@ class GroupPermissionCell extends Component {
                         <Tooltip tooltip={getOptionUi(value).tooltip}>
                             <div
                                 className={cx(
-                                    'flex-full flex layout-centered',
+                                    'flex-full flex layout-centered relative',
                                     { 'cursor-pointer' : isEditable }
                                 )}
                                 style={{
@@ -197,6 +198,13 @@ class GroupPermissionCell extends Component {
                                             onClose={() => this.setState({ confirmText: null, confirmAction: null })}
                                         />
                                     </Modal>
+                                }
+                                { warning &&
+                                    <div className="absolute top right p1">
+                                        <Tooltip tooltip={warning} maxWidth="24em">
+                                            <Icon name="warning2" className="text-slate" />
+                                        </Tooltip>
+                                    </div>
                                 }
                             </div>
                         </Tooltip>
