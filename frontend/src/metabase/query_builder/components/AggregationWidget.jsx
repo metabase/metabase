@@ -57,11 +57,15 @@ export default class AggregationWidget extends Component {
         }
         return (
             <span className="View-section-aggregation QueryOption py1 mx1 flex align-center">
-                {selectedAggregation ? selectedAggregation.name.replace(" of ...", "") : "Choose an aggregation"}
-                { aggregation.length > 1 &&
+                { selectedAggregation ?
+                    selectedAggregation.name.replace(" of ...", "")
+                :
+                    "Choose an aggregation"
+                }
+                { selectedAggregation && fieldId &&
                     <span style={{paddingRight: "4px", paddingLeft: "4px"}} className="text-bold">of</span>
                 }
-                { aggregation.length > 1 &&
+                { selectedAggregation && fieldId &&
                     <FieldName
                         className="View-section-aggregation-target SelectionModule py1"
                         tableMetadata={tableMetadata}

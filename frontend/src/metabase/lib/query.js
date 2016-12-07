@@ -10,6 +10,7 @@ import { isFK, TYPE } from "metabase/lib/types";
 
 
 import * as Q from "./query/query";
+import { mbql, mbqlEq } from "./query/util";
 
 export const NEW_QUERY_TEMPLATES = {
     query: {
@@ -67,8 +68,6 @@ const METRIC_TYPE_BY_AGGREGATION = {
 
 const SORTABLE_AGGREGATION_TYPES = new Set(["avg", "count", "distinct", "stddev", "sum", "min", "max"]);
 
-const mbqlCanonicalize = (a) => typeof a === "string" ? a.toLowerCase().replace(/_/g, "-") : a;
-const mbqlCompare = (a, b) => mbqlCanonicalize(a) === mbqlCanonicalize(b)
 
 var Query = {
 
@@ -93,7 +92,7 @@ var Query = {
                 }
             } else {
                 for (const [agg] of aggs) {
-                    if (!mbqlCompare(agg, "metric") && !_.findWhere(tableMetadata.aggregation_options, { short: agg })) {
+                    if (!mbqlEq(agg, "metric") && !_.findWhere(tableMetadata.aggregation_options, { short: agg })) {
                         // return false;
                     }
                 }
@@ -211,7 +210,7 @@ var Query = {
         const aggregations = Query.getAggregations(query);
         return (
             aggregations[index] && aggregations[index][0] &&
-            SORTABLE_AGGREGATION_TYPES.has(mbqlCanonicalize(aggregations[index][0]))
+            SORTABLE_AGGREGATION_TYPES.has(mbql(aggregations[index][0]))
         );
     },
 
@@ -310,23 +309,23 @@ var Query = {
     },
 
     isLocalField(field) {
-        return Array.isArray(field) && mbqlCompare(field[0], "field-id");
+        return Array.isArray(field) && mbqlEq(field[0], "field-id");
     },
 
     isForeignKeyField(field) {
-        return Array.isArray(field) && mbqlCompare(field[0], "fk->");
+        return Array.isArray(field) && mbqlEq(field[0], "fk->");
     },
 
     isDatetimeField(field) {
-        return Array.isArray(field) && mbqlCompare(field[0], "datetime-field");
+        return Array.isArray(field) && mbqlEq(field[0], "datetime-field");
     },
 
     isExpressionField(field) {
-        return Array.isArray(field) && field.length === 2 && mbqlCompare(field[0], "expression");
+        return Array.isArray(field) && field.length === 2 && mbqlEq(field[0], "expression");
     },
 
     isAggregateField(field) {
-        return Array.isArray(field) && mbqlCompare(field[0], "aggregation");
+        return Array.isArray(field) && mbqlEq(field[0], "aggregation");
     },
 
     isValidField(field) {
@@ -634,21 +633,21 @@ export const AggregationClause = {
 
     // predicate function to test if the given aggregation clause represents a Bare Rows aggregation
     isBareRows(aggregation) {
-        return AggregationClause.isValid(aggregation) && aggregation[0] === "rows";
+        return AggregationClause.isValid(aggregation) && mbqlEq(aggregation[0], "rows");
     },
 
     // predicate function to test if a given aggregation clause represents a standard aggregation
     isStandard(aggregation) {
-        return AggregationClause.isValid(aggregation) && aggregation[0] !== "METRIC";
+        return AggregationClause.isValid(aggregation) && !mbqlEq(aggregation[0], "metric");
     },
 
     getAggregation(aggregation) {
-        return aggregation && mbqlCanonicalize(aggregation[0]);
+        return aggregation && mbql(aggregation[0]);
     },
 
     // predicate function to test if a given aggregation clause represents a metric
     isMetric(aggregation) {
-        return AggregationClause.isValid(aggregation) && aggregation[0] === "METRIC";
+        return AggregationClause.isValid(aggregation) && mbqlEq(aggregation[0], "metric");
     },
 
     // get the metricId from a metric aggregation clause
@@ -662,13 +661,13 @@ export const AggregationClause = {
 
     isCustom(aggregation) {
         return aggregation && isMath(aggregation) || (
-            !AggregationClause.isStandard(aggregation) && _.any(aggregation.slice(1), (arg) => isMath(arg))
+            AggregationClause.isStandard(aggregation) && _.any(aggregation.slice(1), (arg) => isMath(arg))
         );
     },
 
     // get the operator from a standard aggregation clause
     getOperator(aggregation) {
-        if (aggregation && aggregation.length > 0 && aggregation[0] !== "METRIC") {
+        if (aggregation && aggregation.length > 0 && !mbqlEq(aggregation[0], "metric")) {
             return aggregation[0];
         } else {
             return null;
@@ -677,7 +676,7 @@ export const AggregationClause = {
 
     // get the fieldId from a standard aggregation clause
     getField(aggregation) {
-        if (aggregation && aggregation.length > 1 && aggregation[0] !== "METRIC") {
+        if (aggregation && aggregation.length > 1 && !mbqlEq(aggregation[0], "metric")) {
             return aggregation[1];
         } else {
             return null;
