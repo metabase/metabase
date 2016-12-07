@@ -368,7 +368,7 @@
 ;;; ------------------------------------------------------------ with everything! ------------------------------------------------------------
 
 
-(defn- -do-with-test-data [f]
+(defn -do-with-test-data [f]
   (((comp with-ops-group
           with-db-2
           with-db-1
@@ -378,11 +378,11 @@
           with-metrics
           with-segments) f)))
 
-(defmacro ^:private with-test-data {:style/indent 0} [& body]
+(defmacro with-test-data {:style/indent 0} [& body]
   `(-do-with-test-data (fn []
                          ~@body)))
 
-(defmacro ^:private expect-with-test-data {:style/indent 0} [expected actual]
+(defmacro expect-with-test-data {:style/indent 0} [expected actual]
   `(expect
      ~expected
      (with-test-data
