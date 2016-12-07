@@ -48,7 +48,6 @@ export default class AggregationWidget extends Component {
         const fieldId = AggregationClause.getField(aggregation);
 
         let selectedAggregation = getAggregator(AggregationClause.getOperator(aggregation));
-        console.log("Selected Aggregation", selectedAggregation)
         if (selectedAggregation && !_.findWhere(tableMetadata.aggregation_options, { short: selectedAggregation.short })) {
             // if this table doesn't support the selected aggregation, prompt the user to select a different one
             selectedAggregation = null;
