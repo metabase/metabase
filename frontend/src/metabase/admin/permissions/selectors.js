@@ -40,6 +40,17 @@ const getMetadata = createSelector(
 // reorder groups to be in this order
 const SPECIAL_GROUP_FILTERS = [isAdminGroup, isDefaultGroup, isMetaBotGroup].reverse();
 
+function getTooltipForGroup(group) {
+    if (isAdminGroup(group)) {
+        return "Administrators always have the highest level of acess to everything in Metabase."
+    } else if (isDefaultGroup(group)) {
+        return "Every Metabase user belongs to the All Users group. If you want to limit or restrict a group's access to something, make sure the All Users group has an equal or lower level of access.";
+    } else if (isMetaBotGroup(group)) {
+        return "Metabot is Metabase's Slack bot. You can choose what it has access to here.";
+    }
+    return null;
+}
+
 export const getGroups = createSelector(
     (state) => state.permissions.groups,
     (groups) => {
@@ -50,7 +61,10 @@ export const getGroups = createSelector(
                 orderedGroups.unshift(...orderedGroups.splice(index, 1))
             }
         }
-        return orderedGroups;
+        return orderedGroups.map(group => ({
+            ...group,
+            tooltip: getTooltipForGroup(group)
+        }))
     }
 );
 
