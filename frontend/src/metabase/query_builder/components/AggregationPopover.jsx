@@ -155,7 +155,7 @@ export default class AggregationPopover extends Component {
 
         sections[0].items.push({
             name: "Custom Aggregation",
-            value: aggregation,
+            value: aggregation !== "rows" && !_.isEqual(aggregation, ["rows"]) ? aggregation : null,
             custom: true,
             isSelected: (aggregation) => AggregationClause.isCustom(aggregation)
         })
