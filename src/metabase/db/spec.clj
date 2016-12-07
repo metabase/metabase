@@ -29,11 +29,12 @@
    keys for :db, :user and :password.
    You can also optionally set host and port."
   [{:keys [host port db]
-    :or {host "localhost", port 9000, db ""}
+    :or {host "localhost", port 8123, db "default"}
     :as opts}]
-  (merge {:classname "org.postgresql.Driver" ; must be in classpath
+  (merge {:classname "ru.yandex.clickhouse.ClickHouseDriver" ; must be in classpath
           :subprotocol "clickhouse"
-          :subname (str "//" host ":" port "/" db)}
+          ; :subname (str "//" host ":" port "/" db)}
+          :subname (str "//" host ":" port)}
          (dissoc opts :host :port :db)))
 
 (defn mysql
