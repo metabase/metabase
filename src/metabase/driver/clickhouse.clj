@@ -100,6 +100,14 @@
     :quarter-of-year (to-quarter-of-year expr)
     :year (hsql/call :toYear expr)))
 
+(defn- string-length-fn [field-key]
+  (hsql/call :lengthUTF8 field-key))
+
+(defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
+  (case seconds-or-milliseconds
+    :seconds      (hsql/call :toDateTime expr)
+    :milliseconds (recur (hx// expr 1000) :seconds)))
+
 
 (defrecord ClickHouseDriver []
   clojure.lang.Named
@@ -109,12 +117,43 @@
 (u/strict-extend ClickHouseDriver
   driver/IDriver
   (merge (sql/IDriverSQLDefaultsMixin)
-         {})
+         {:details-fields (constantly [{:name "host"
+                                        :display-name "Host"
+                                        :default      "localhost"}
+                                       {:name         "port"
+                                        :display-name "Port"
+                                        :type         :integer
+                                        :default      8123}
+                                       {:name         "dbname"
+                                        :display-name "Database name"
+                                        :placeholder  "database_name"
+                                        :required     true}
+                                       {:name         "user"
+                                        :display-name "Database username"
+                                        :placeholder  "What username do you use to login to the database?"
+                                        :default      "default"
+                                        :required     false}
+                                       {:name         "password"
+                                        :display-name "Database password"
+                                        :type         :password
+                                        :placeholder  "*******"}
+                                       {:name         "additional-options"
+                                        :display-name "Additional JDBC connection string options"
+                                        :placeholder  "connection_timeout=50"}])
+          :features (constantly #{:basic-aggregations
+                                  :standard-deviation-aggregations
+                                  :expressions
+                                  :expression-aggregations})})
   sql/ISQLDriver
   (merge (sql/ISQLDriverDefaultsMixin)
-         {:column->base-type         (u/drop-first-arg column->base-type)
+         {:active-tables             sql/post-filtered-active-tables
+          :column->base-type         (u/drop-first-arg column->base-type)
           :connection-details->spec  (u/drop-first-arg connection-details->spec)
           :date                      (u/drop-first-arg date)
-          }))
+          :excluded-schemas          (constantly #{"system"})
+          :quote-style               (constantly :mysql)
+          :string-length-fn          (u/drop-first-arg string-length-fn)
+          :stddev-fn                 (constantly :stddevPop)
+          :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)}))
 
 (driver/register-driver! :clickhouse (ClickHouseDriver.))
