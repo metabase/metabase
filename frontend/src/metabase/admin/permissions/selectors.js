@@ -103,7 +103,9 @@ function getPermissionWarningModal(entityType, getter, defaultGroup, permissions
     if (permissionWarning) {
         return {
             title: `${value === "controlled" ? "Limit" : "Revoke"} access even though "${defaultGroup.name}" has greater access?`,
-            message: permissionWarning
+            message: permissionWarning,
+            confirmButtonText: (value === "controlled" ? "Limit" : "Revoke") + " access",
+            cancelButtonText: "Cancel"
         };
     }
 }
@@ -111,7 +113,9 @@ function getPermissionWarningModal(entityType, getter, defaultGroup, permissions
 function getControlledDatabaseWarningModal(permissions, groupId, entityId) {
     if (getSchemasPermission(permissions, groupId, entityId) !== "controlled") {
         return {
-            title: "Changing this database to limited access"
+            title: "Changing this database to limited access",
+            confirmButtonText: "Change",
+            cancelButtonText: "Cancel"
         };
     }
 }
@@ -122,8 +126,10 @@ function getRawQueryWarningModal(permissions, groupId, entityId, value) {
         getSchemasPermission(permissions, groupId, entityId) !== "all"
     ) {
         return {
-            title: "Allow Raw Query Writing",
-            message: "This will also change this group's data access to Unrestricted for this database."
+            title: "Allow Raw Query Writing?",
+            message: "This will also change this group's data access to Unrestricted for this database.",
+            confirmButtonText: "Allow",
+            cancelButtonText: "Cancel"
         };
     }
 }

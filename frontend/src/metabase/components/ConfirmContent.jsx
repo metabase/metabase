@@ -4,7 +4,16 @@ import ModalContent from "metabase/components/ModalContent.jsx";
 
 const nop = () => {};
 
-const ConfirmContent = ({ title, content, onClose = nop, onAction = nop, onCancel = nop, message = "Are you sure you want to do this?" }) =>
+const ConfirmContent = ({
+    title,
+    content,
+    message = "Are you sure you want to do this?",
+    onClose = nop,
+    onAction = nop,
+    onCancel = nop,
+    confirmButtonText = "Yes",
+    cancelButtonText = "No"
+}) =>
     <ModalContent
         title={title}
         closeFn={() => { onCancel(); onClose(); }}
@@ -16,8 +25,8 @@ const ConfirmContent = ({ title, content, onClose = nop, onAction = nop, onCance
         </div>
 
         <div className="Form-actions">
-            <button className="Button Button--danger" onClick={() => { onAction(); onClose(); }}>Yes</button>
-            <button className="Button ml1" onClick={() => { onCancel(); onClose(); }}>No</button>
+            <button className="Button Button--danger" onClick={() => { onAction(); onClose(); }}>{confirmButtonText}</button>
+            <button className="Button ml1" onClick={() => { onCancel(); onClose(); }}>{cancelButtonText}</button>
         </div>
     </ModalContent>
 

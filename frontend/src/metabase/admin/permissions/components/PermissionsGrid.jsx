@@ -231,13 +231,8 @@ class GroupPermissionCell extends Component {
                                     postAction: permission.postAction
                                 })
                             }
-                            let confirmations = permission.confirm && permission.confirm(group.id, entity.id, value);
-                            if (Array.isArray(confirmations)) {
-                                confirmations = confirmations.filter(c => c);
-                            } else if (confirmations) {
-                                confirmations = [confirmations];
-                            }
-                            if (confirmations && confirmations.length > 0) {
+                            let confirmations = (permission.confirm && permission.confirm(group.id, entity.id, value) || []).filter(c => c);
+                            if (confirmations.length > 0) {
                                 this.setState({ confirmations, confirmAction });
                             } else {
                                 confirmAction();
