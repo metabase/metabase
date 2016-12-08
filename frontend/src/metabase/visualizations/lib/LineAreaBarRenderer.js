@@ -803,7 +803,9 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
     let yExtents = groups.map(group => d3.extent(group[0].all(), d => d.value));
     let yExtent = d3.extent([].concat(...yExtents));
 
-    if (!isScalarSeries && !isScatter && !isStacked && settings["graph.y_axis.auto_split"] !== false) {
+    // don't auto-split if the metric columns are all identical, i.e. it's a breakout multiseries
+    const hasDifferentYAxisColumns = _.uniq(series.map(s => s.data.cols[1])).length > 1;
+    if (!isScalarSeries && !isScatter && !isStacked && hasDifferentYAxisColumns && settings["graph.y_axis.auto_split"] !== false) {
         yAxisSplit = computeSplit(yExtents);
     } else {
         yAxisSplit = [series.map((s,i) => i)];
