@@ -139,8 +139,6 @@ var config = module.exports = {
             'ace/snippets/pgsql':   __dirname + '/node_modules/ace-builds/src-min-noconflict/snippets/pgsql.js',
             'ace/snippets/sqlserver':   __dirname + '/node_modules/ace-builds/src-min-noconflict/snippets/sqlserver.js',
             'ace/snippets/json':    __dirname + '/node_modules/ace-builds/src-min-noconflict/snippets/json.js',
-            // react
-            'fixed-data-table':     __dirname + '/node_modules/fixed-data-table/dist/fixed-data-table.min.js',
             // misc
             'moment':               __dirname + '/node_modules/moment/min/moment.min.js',
             'tether':               __dirname + '/node_modules/tether/dist/js/tether.min.js',

@@ -40,6 +40,17 @@ const getMetadata = createSelector(
 // reorder groups to be in this order
 const SPECIAL_GROUP_FILTERS = [isAdminGroup, isDefaultGroup, isMetaBotGroup].reverse();
 
+function getTooltipForGroup(group) {
+    if (isAdminGroup(group)) {
+        return "Administrators always have the highest level of acess to everything in Metabase."
+    } else if (isDefaultGroup(group)) {
+        return "Every Metabase user belongs to the All Users group. If you want to limit or restrict a group's access to something, make sure the All Users group has an equal or lower level of access.";
+    } else if (isMetaBotGroup(group)) {
+        return "Metabot is Metabase's Slack bot. You can choose what it has access to here.";
+    }
+    return null;
+}
+
 export const getGroups = createSelector(
     (state) => state.permissions.groups,
     (groups) => {
@@ -50,7 +61,10 @@ export const getGroups = createSelector(
                 orderedGroups.unshift(...orderedGroups.splice(index, 1))
             }
         }
-        return orderedGroups;
+        return orderedGroups.map(group => ({
+            ...group,
+            tooltip: getTooltipForGroup(group)
+        }))
     }
 );
 
@@ -62,6 +76,64 @@ export const getIsDirty = createSelector(
 
 export const getSaveError = (state) => state.permissions.saveError;
 
+
+// these are all the permission levels ordered by level of access
+const PERM_LEVELS = ["write", "read", "all", "controlled", "none"];
+function hasGreaterPermissions(a, b) {
+    return (PERM_LEVELS.indexOf(a) - PERM_LEVELS.indexOf(b)) < 0
+}
+
+function getPermissionWarning(getter, entityType, defaultGroup, permissions, groupId, entityId, value) {
+    if (!defaultGroup || groupId === defaultGroup.id) {
+        return null;
+    }
+    let perm = value || getter(permissions, groupId, entityId);
+    let defaultPerm = getter(permissions, defaultGroup.id, entityId);
+    if (perm === "controlled" && defaultPerm === "controlled") {
+        return `The "${defaultGroup.name}" group may have access to a different set of ${entityType} than this group, which may give this group additional access to some ${entityType}.`;
+    }
+    if (hasGreaterPermissions(defaultPerm, perm)) {
+        return `The "${defaultGroup.name}" group has a higher level of access than this, which will override this setting. You should limit or revoke the "${defaultGroup.name}" group's access to this item.`;
+    }
+    return null;
+}
+
+function getPermissionWarningModal(entityType, getter, defaultGroup, permissions, groupId, entityId, value) {
+    let permissionWarning = getPermissionWarning(entityType, getter, defaultGroup, permissions, groupId, entityId, value);
+    if (permissionWarning) {
+        return {
+            title: `${value === "controlled" ? "Limit" : "Revoke"} access even though "${defaultGroup.name}" has greater access?`,
+            message: permissionWarning,
+            confirmButtonText: (value === "controlled" ? "Limit" : "Revoke") + " access",
+            cancelButtonText: "Cancel"
+        };
+    }
+}
+
+function getControlledDatabaseWarningModal(permissions, groupId, entityId) {
+    if (getSchemasPermission(permissions, groupId, entityId) !== "controlled") {
+        return {
+            title: "Changing this database to limited access",
+            confirmButtonText: "Change",
+            cancelButtonText: "Cancel"
+        };
+    }
+}
+
+function getRawQueryWarningModal(permissions, groupId, entityId, value) {
+    if (value === "write" &&
+        getNativePermission(permissions, groupId, entityId) !== "write" &&
+        getSchemasPermission(permissions, groupId, entityId) !== "all"
+    ) {
+        return {
+            title: "Allow Raw Query Writing?",
+            message: "This will also change this group's data access to Unrestricted for this database.",
+            confirmButtonText: "Allow",
+            cancelButtonText: "Cancel"
+        };
+    }
+}
+
 export const getTablesPermissionsGrid = createSelector(
     getMetadata, getGroups, getPermissions, getDatabaseId, getSchemaName,
     (metadata: Metadata, groups: Array<Group>, permissions: GroupsPermissions, databaseId: DatabaseId, schemaName: SchemaName) => {
@@ -72,6 +144,7 @@ export const getTablesPermissionsGrid = createSelector(
         }
 
         const tables = database.tablesInSchema(schemaName || null);
+        const defaultGroup = _.find(groups, isDefaultGroup);
 
         return {
             type: "table",
@@ -97,11 +170,13 @@ export const getTablesPermissionsGrid = createSelector(
                         return updateFieldsPermission(permissions, groupId, entityId, value, metadata);
                     },
                     confirm(groupId, entityId, value) {
-                        if (getSchemasPermission(permissions, groupId, entityId) !== "controlled") {
-                            return {
-                                title: "Changing this database to limited access"
-                            };
-                        }
+                        return [
+                            getPermissionWarningModal(getFieldsPermission, "fields", defaultGroup, permissions, groupId, entityId, value),
+                            getControlledDatabaseWarningModal(permissions, groupId, entityId)
+                        ];
+                    },
+                    warning(groupId, entityId) {
+                        return getPermissionWarning(getFieldsPermission, "fields", defaultGroup, permissions, groupId, entityId);
                     }
                 }
             },
@@ -128,6 +203,7 @@ export const getSchemasPermissionsGrid = createSelector(
         }
 
         const schemaNames = database.schemaNames();
+        const defaultGroup = _.find(groups, isDefaultGroup);
 
         return {
             type: "schema",
@@ -154,11 +230,13 @@ export const getSchemasPermissionsGrid = createSelector(
                         }
                     },
                     confirm(groupId, entityId, value) {
-                        if (getSchemasPermission(permissions, groupId, entityId) !== "controlled") {
-                            return {
-                                title: "Changing this database to limited access"
-                            };
-                        }
+                        return [
+                            getPermissionWarningModal(getTablesPermission, "tables", defaultGroup, permissions, groupId, entityId, value),
+                            getControlledDatabaseWarningModal(permissions, groupId, entityId)
+                        ];
+                    },
+                    warning(groupId, entityId) {
+                        return getPermissionWarning(getTablesPermission, "tables", defaultGroup, permissions, groupId, entityId);
                     }
                 }
             },
@@ -182,6 +260,7 @@ export const getDatabasesPermissionsGrid = createSelector(
         }
 
         const databases = metadata.databases();
+        const defaultGroup = _.find(groups, isDefaultGroup);
 
         return {
             type: "database",
@@ -211,6 +290,14 @@ export const getDatabasesPermissionsGrid = createSelector(
                             }
                         }
                     },
+                    confirm(groupId, entityId, value) {
+                        return [
+                            getPermissionWarningModal(getSchemasPermission, "schemas", defaultGroup, permissions, groupId, entityId, value)
+                        ];
+                    },
+                    warning(groupId, entityId) {
+                        return getPermissionWarning(getSchemasPermission, "schemas", defaultGroup, permissions, groupId, entityId);
+                    }
                 },
                 "native": {
                     options(groupId, entityId) {
@@ -228,15 +315,13 @@ export const getDatabasesPermissionsGrid = createSelector(
                         return updateNativePermission(permissions, groupId, entityId, value, metadata);
                     },
                     confirm(groupId, entityId, value) {
-                        if (value === "write" &&
-                            getNativePermission(permissions, groupId, entityId) !== "write" &&
-                            getSchemasPermission(permissions, groupId, entityId) !== "all"
-                        ) {
-                            return {
-                                title: "Allow Raw Query Writing",
-                                message: "This will also change this group's data access to Unrestricted for this database."
-                            };
-                        }
+                        return [
+                            getPermissionWarningModal(getNativePermission, null, defaultGroup, permissions, groupId, entityId, value),
+                            getRawQueryWarningModal(permissions, groupId, entityId, value)
+                        ];
+                    },
+                    warning(groupId, entityId) {
+                        return getPermissionWarning(getNativePermission, null, defaultGroup, permissions, groupId, entityId);
                     }
                 },
             },

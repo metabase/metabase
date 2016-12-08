@@ -192,6 +192,9 @@
                                                            :display-name "Database password"
                                                            :type         :password
                                                            :placeholder  "******"}
+                                                          {:name         "authdb"
+                                                           :display-name "Authentication Database"
+                                                           :placeholder  "Optional database to use when authenticating"}
                                                           {:name         "ssl"
                                                            :display-name "Use a secure connection (SSL)?"
                                                            :type         :boolean

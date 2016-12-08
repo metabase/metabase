@@ -100,7 +100,14 @@ const getOptionUi = (option) =>
 
 const GroupColumnHeader = ({ group, permissions, isLastColumn, isFirstColumn }) =>
     <div className="absolute bottom left right">
-        <h4 className="text-centered full my1">{ group.name }</h4>
+        <h4 className="text-centered full my1 flex layout-centered">
+            { group.name }
+            { group.tooltip &&
+                <Tooltip tooltip={group.tooltip} maxWidth="24em">
+                    <Icon className="ml1" name="question" />
+                </Tooltip>
+            }
+        </h4>
         <div className="flex" style={getBorderStyles({ isLastColumn, isFirstColumn, isFirstRow: true, isLastRow: false })}>
             { permissions.map((permission, index) =>
                 <div key={permission.id} className="flex-full py1 border-column-divider" style={{
@@ -130,7 +137,7 @@ class GroupPermissionCell extends Component {
     constructor(props, context) {
         super(props, context);
         this.state = {
-            confirmText: null,
+            confirmations: null,
             confirmAction: null,
             hovered: false
         }
@@ -138,22 +145,24 @@ class GroupPermissionCell extends Component {
     hoverEnter () {
         // only change the hover state if the group is not the admin
         // this helps indicate to users that the admin group is different
-        if (this.props.group.name !== "Admin" ) {
+        if (this.props.isEditable) {
             return this.setState({ hovered: true });
         }
         return false
     }
     hoverExit () {
-        if (this.props.group.name !== "Admin" ) {
+        if (this.props.isEditable) {
             return this.setState({ hovered: false });
         }
         return false
     }
     render() {
         const { permission, group, entity, onUpdatePermission } = this.props;
+        const { confirmations } = this.state;
 
         const value = permission.getter(group.id, entity.id);
         const options = permission.options(group.id, entity.id);
+        const warning = permission.warning && permission.warning(group.id, entity.id);
 
         let isEditable = this.props.isEditable && options.filter(option => option !== value).length > 0;
 
@@ -166,9 +175,8 @@ class GroupPermissionCell extends Component {
                         <Tooltip tooltip={getOptionUi(value).tooltip}>
                             <div
                                 className={cx(
-                                    'flex-full flex layout-centered',
-                                    { 'cursor-pointer' : group.name !== 'Admin' },
-                                    { 'disabled' : group.name === 'Admin'}
+                                    'flex-full flex layout-centered relative',
+                                    { 'cursor-pointer' : isEditable }
                                 )}
                                 style={{
                                     borderColor: LIGHT_BORDER,
@@ -183,14 +191,27 @@ class GroupPermissionCell extends Component {
                                     size={28}
                                     style={{ color: this.state.hovered ? '#fff' : getOptionUi(value).iconColor }}
                                 />
-                                { this.state.confirmText &&
+                                { confirmations && confirmations.length > 0 &&
                                     <Modal>
                                         <ConfirmContent
-                                            {...this.state.confirmText}
-                                            onAction={this.state.confirmAction}
-                                            onClose={() => this.setState({ confirmText: null, confirmAction: null })}
+                                            {...confirmations[0]}
+                                            onAction={() =>
+                                                // if it's the last one call confirmAction, otherwise remove the confirmation that was just confirmed
+                                                confirmations.length === 1 ?
+                                                    this.setState({ confirmations: null, confirmAction: null }, this.state.confirmAction)
+                                                :
+                                                    this.setState({ confirmations: confirmations.slice(1) })
+                                            }
+                                            onCancel={() => this.setState({ confirmations: null, confirmAction: null })}
                                         />
                                     </Modal>
+                                }
+                                { warning &&
+                                    <div className="absolute top right p1">
+                                        <Tooltip tooltip={warning} maxWidth="24em">
+                                            <Icon name="warning2" className="text-slate" />
+                                        </Tooltip>
+                                    </div>
                                 }
                             </div>
                         </Tooltip>
@@ -210,9 +231,9 @@ class GroupPermissionCell extends Component {
                                     postAction: permission.postAction
                                 })
                             }
-                            let confirmText = permission.confirm && permission.confirm(group.id, entity.id, value);
-                            if (confirmText) {
-                                this.setState({ confirmText, confirmAction });
+                            let confirmations = (permission.confirm && permission.confirm(group.id, entity.id, value) || []).filter(c => c);
+                            if (confirmations.length > 0) {
+                                this.setState({ confirmations, confirmAction });
                             } else {
                                 confirmAction();
                             }
