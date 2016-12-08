@@ -711,7 +711,8 @@ export default function lineAreaBar(element, { series, onHoverChange, onRender, 
         if (isTimeseries) {
             // replace xValues with
             xValues = d3.time[xInterval.interval]
-                .range(xDomain[0], moment(xDomain[1]).add(1, "ms"), xInterval.count);
+                .range(xDomain[0], moment(xDomain[1]).add(1, "ms"), xInterval.count)
+                .map(d => moment(d));
             datas = fillMissingValues(
                 datas,
                 xValues,
