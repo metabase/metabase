@@ -7,8 +7,6 @@ import { Driver } from "webchauffeur";
 
 const DEFAULT_TIMEOUT = 50000;
 
-const delay = (timeout = 0) => new Promise((resolve) => setTimeout(resolve, timeout));
-
 const log = (message) => {
     console.log(message);
 };

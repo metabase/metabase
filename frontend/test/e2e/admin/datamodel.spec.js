@@ -1,16 +1,9 @@
-
-import { By, until } from "selenium-webdriver";
-
 import {
-    waitForElement,
     waitForElementText,
-    waitForElementRemoved,
     findElement,
     waitForElementAndClick,
     waitForElementAndSendKeys,
-    waitForUrl,
     screenshot,
-    loginMetabase,
     ensureLoggedIn,
     describeE2E
 } from "../support/utils";
