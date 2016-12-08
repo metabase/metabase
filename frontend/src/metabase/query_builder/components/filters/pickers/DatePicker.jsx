@@ -62,7 +62,7 @@ class CurrentPicker extends Component {
 }
 
 
-const getIntervals = ([op, field, value, unit]) => op === "TIME_INTERVAL" && typeof value === "number" ? Math.abs(value) : 1;
+const getIntervals = ([op, field, value, unit]) => op === "TIME_INTERVAL" && typeof value === "number" ? Math.abs(value) : 30;
 const getUnit      = ([op, field, value, unit]) => op === "TIME_INTERVAL" && unit ? unit : "day";
 const getDate      = (value) => typeof value === "string" && moment(value).isValid() ? value : moment().format("YYYY-MM-DD");
 
