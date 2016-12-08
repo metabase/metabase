@@ -326,6 +326,25 @@
             :created_at   $}))
   ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (id :users))))
 
+;; Check that FK fields belonging to Tables we don't have permissions for don't come back as hydrated `:target`(#3867)
+(expect
+  #{{:name "id", :target false}
+    {:name "fk", :target false}}
+  ;; create a temp DB with two tables; table-2 has an FK to table-1
+  (tu/with-temp* [Database [db]
+                  Table    [table-1    {:db_id (u/get-id db)}]
+                  Table    [table-2    {:db_id (u/get-id db)}]
+                  Field    [table-1-id {:table_id (u/get-id table-1), :name "id", :base_type :type/Integer, :special_type :type/PK}]
+                  Field    [table-2-id {:table_id (u/get-id table-2), :name "id", :base_type :type/Integer, :special_type :type/PK}]
+                  Field    [table-2-fk {:table_id (u/get-id table-2), :name "fk", :base_type :type/Integer, :special_type :type/FK, :fk_target_field_id (u/get-id table-1-id)}]]
+    ;; grant permissions only to table-2
+    (perms/revoke-permissions! (perms-group/all-users) (u/get-id db))
+    (perms/grant-permissions! (perms-group/all-users) (u/get-id db) (:schema table-2) (u/get-id table-2))
+    ;; metadata for table-2 should show all fields for table-2, but the FK target info shouldn't be hydrated
+    (set (for [field (:fields ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (u/get-id table-2))))]
+           (-> (select-keys field [:name :target])
+               (update :target boolean))))))
+
 
 ;; ## PUT /api/table/:id
 (tu/expect-with-temp [Table [table {:rows 15}]]

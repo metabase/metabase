@@ -311,7 +311,7 @@
       (db/cascade-delete! Permissions where))))
 
 (defn revoke-permissions!
-  "Revoke permissions for GROUP-OR-ID to object with PATH-COMPONENTS."
+  "Revoke all permissions for GROUP-OR-ID to object with PATH-COMPONENTS, *including* related permissions."
   [group-or-id & path-components]
   (delete-related-permissions! group-or-id (apply object-path path-components)))
 
@@ -345,7 +345,7 @@
   (grant-permissions! group-or-id (native-readwrite-path database-id)))
 
 (defn revoke-db-schema-permissions!
-  "Remove all permissions entires for a DB and any child objects.
+  "Remove all permissions entires for a DB and *any* child objects.
    This does *not* revoke native permissions; use `revoke-native-permssions!` to do that."
   [group-or-id database-id]
   ;; TODO - if permissions for this DB are DB root entries like `/db/1/` won't this end up removing our native perms?
@@ -375,10 +375,10 @@
     :none (revoke-permissions! group-id db-id schema table-id)))
 
 (s/defn ^:private ^:always-validate update-schema-perms! [group-id :- s/Int, db-id :- s/Int, schema :- s/Str, new-schema-perms :- SchemaPermissionsGraph]
-  (revoke-permissions! group-id db-id schema)
   (cond
-    (= new-schema-perms :all)  (grant-permissions! group-id db-id schema)
-    (= new-schema-perms :none) nil
+    (= new-schema-perms :all)  (do (revoke-permissions! group-id db-id schema) ; clear out any existing related permissions
+                                   (grant-permissions! group-id db-id schema)) ; then grant full perms for the schema
+    (= new-schema-perms :none) (revoke-permissions! group-id db-id schema)
     (map? new-schema-perms)    (doseq [[table-id table-perms] new-schema-perms]
                                  (update-table-perms! group-id db-id schema table-id table-perms))))
 
@@ -400,10 +400,10 @@
   (when-let [new-native-perms (:native new-db-perms)]
     (update-native-permissions! group-id db-id new-native-perms))
   (when-let [schemas (:schemas new-db-perms)]
-    (revoke-db-schema-permissions! group-id db-id)
     (cond
-      (= schemas :all)  (grant-permissions-for-all-schemas! group-id db-id)
-      (= schemas :none) nil
+      (= schemas :all)  (do (revoke-db-schema-permissions! group-id db-id)
+                            (grant-permissions-for-all-schemas! group-id db-id))
+      (= schemas :none) (revoke-db-schema-permissions! group-id db-id)
       (map? schemas)    (doseq [schema (keys schemas)]
                           (update-schema-perms! group-id db-id schema (get-in new-db-perms [:schemas schema]))))))
 
@@ -444,13 +444,13 @@
          [old new] (data/diff (:groups old-graph) (:groups new-graph))]
      (when (or (seq old) (seq new))
        (log/debug (format "Changing permissions: 🔏\nFROM:\n%s\nTO:\n%s"
-                         (u/pprint-to-str 'magenta old)
-                         (u/pprint-to-str 'blue new)))
+                          (u/pprint-to-str 'magenta old)
+                          (u/pprint-to-str 'blue new)))
        (check-revision-numbers old-graph new-graph)
        (db/transaction
-        (doseq [group-id (keys new)]
-          (update-group-permissions! group-id (get new group-id)))
-        (save-perms-revision! (:revision old-graph) old new)))))
+         (doseq [group-id (keys new)]
+           (update-group-permissions! group-id (get new group-id)))
+         (save-perms-revision! (:revision old-graph) old new)))))
   ;; The following arity is provided soley for convenience for tests/REPL usage
   ([ks new-value]
    {:pre [(sequential? ks)]}
