@@ -74,8 +74,8 @@ export default class PinMap extends Component {
         const latitudeIndex = _.findIndex(cols, (col) => col.name === settings["map.latitude_column"]);
         const longitudeIndex = _.findIndex(cols, (col) => col.name === settings["map.longitude_column"]);
         const points = rows.map(row => [
-            row[longitudeIndex],
-            row[latitudeIndex]
+            row[latitudeIndex],
+            row[longitudeIndex]
         ]);
         const bounds = L.latLngBounds(points);
         return { points, bounds };
