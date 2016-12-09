@@ -10,7 +10,7 @@
 (defsetting slack-token "Slack API bearer token obtained from https://api.slack.com/web#authentication")
 
 (def ^:private ^:const ^String slack-api-base-url "https://slack.com/api")
-(def ^:private ^:const ^String files-channel-name "metabase_files")
+(def ^:private ^:const ^String files-channel-name "metabasefiles")
 
 (defn slack-configured?
   "Is Slack integration configured?"
