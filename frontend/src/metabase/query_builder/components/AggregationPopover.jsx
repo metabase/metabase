@@ -225,7 +225,7 @@ export default class AggregationPopover extends Component {
                         if (index === customExpressionIndex) {
                             this.onPickAggregation({
                                 custom: true,
-                                value: aggregation
+                                value: aggregation !== "rows" && !_.isEqual(aggregation, ["rows"]) ? aggregation : null
                             })
                         }
                     }}
