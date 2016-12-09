@@ -65,6 +65,7 @@
     "@kadira/storybook": "^1.16.0",
     "@slack/client": "^3.5.4",
     "babel-cli": "^6.11.4",
+    "babel-core": "^6.20.0",
     "babel-eslint": "^6.1.2",
     "babel-loader": "^6.2.4",
     "babel-plugin-transform-decorators-legacy": "^1.3.4",
