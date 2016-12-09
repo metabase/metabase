@@ -1,7 +1,7 @@
 const { Lexer, Parser, extendToken, getImage } = require("chevrotain");
 const _ = require("underscore");
 
-import { VALID_AGGREGATIONS } from "metabase/lib/expressions";
+import { VALID_AGGREGATIONS } from "../expressions";
 
 export const AGGREGATION_ARITY = new Map([
     ["Count", 0],
@@ -43,7 +43,7 @@ const aggregationsTokens = Array.from(VALID_AGGREGATIONS).map(([short, expressio
 const aggregationsMap = new Map(Array.from(VALID_AGGREGATIONS).map(([a,b]) => [b,a]));
 
 // whitespace is normally very common so it is placed first to speed up the lexer
-const allTokens = [
+export const allTokens = [
     WhiteSpace, LParen, RParen, Comma,
     Plus, Minus, Multi, Div,
     AdditiveOperator, MultiplicativeOperator,
