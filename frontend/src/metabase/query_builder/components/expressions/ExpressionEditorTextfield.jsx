@@ -72,7 +72,7 @@ export default class ExpressionEditorTextfield extends Component {
 
     componentDidMount() {
         // causes the autocomplete widget to open immediately
-        // this.onInputChange();
+        this.onInputChange();
     }
 
     onSuggestionAccepted() {
@@ -91,8 +91,9 @@ export default class ExpressionEditorTextfield extends Component {
             }
 
             inputElement.value = prefix + suggestion.text + postfix;
+            inputElement.focus();
             setCaretPosition(inputElement, (prefix + suggestion.text).length);
-            this.onInputChange(); // add a blank space after end of token
+            this.onInputChange();
         }
 
         this.setState({
@@ -100,9 +101,10 @@ export default class ExpressionEditorTextfield extends Component {
         });
     }
 
-    onSuggestionMouseDown(index) {
+    onSuggestionMouseDown(event, index) {
         // when a suggestion is clicked, we'll highlight the clicked suggestion and then hand off to the same code that deals with ENTER / TAB keydowns
         event.preventDefault();
+        event.stopPropagation();
         this.setState({ highlightedSuggestion: index }, this.onSuggestionAccepted);
     }
 
@@ -158,6 +160,9 @@ export default class ExpressionEditorTextfield extends Component {
 
     onInputChange() {
         let inputElement = ReactDOM.findDOMNode(this.refs.input);
+        if (!inputElement) {
+            return;
+        }
         let expressionString = inputElement.value;
 
         let expressionErrorMessage = null;
@@ -211,27 +216,25 @@ export default class ExpressionEditorTextfield extends Component {
                 />
                 <div className={cx(S.equalSign, "spread flex align-center h4 text-dark", { [S.placeholder]: !this.state.expressionString })}>=</div>
                 { suggestions.length ?
-                 <Popover
-                     className="px2 pb1 not-rounded border-dark"
-                     hasArrow={false}
-                     tetherOptions={{
-                             attachment: 'top left',
-                             targetAttachment: 'bottom left'
-                         }}
-                 >
-                     <div style={{minWidth: 150, maxHeight: 342, overflow: "hidden"}}>
-                         {/* <h5 style={{marginBottom: 2}} className="h6 text-grey-2">{this.state.suggestionsTitle}</h5> */}
-                         <ul>
+                    <Popover
+                        className="px2 pb1 not-rounded border-dark"
+                        hasArrow={false}
+                        tetherOptions={{
+                            attachment: 'top left',
+                            targetAttachment: 'bottom left'
+                        }}
+                    >
+                        <ul style={{minWidth: 150, maxHeight: 342, overflow: "hidden"}}>
                             {suggestions.map((suggestion, i) =>
-                                [(suggestions[i - 1] || {}).type !== suggestion.type &&
+                                // insert section title. assumes they're sorted by type
+                                [(i === 0 || suggestion.type !== suggestions[i - 1].type) &&
                                     <li className="h6 text-uppercase text-bold text-grey-3 py1 pt2">
                                         {suggestion.type}
                                     </li>
-                                 ,
+                                ,
                                     <li style={{ paddingTop: "2px", paddingBottom: "2px" }}
                                         className={cx("cursor-pointer", {"text-bold text-brand": i === this.state.highlightedSuggestion})}
-                                        data-i={i}
-                                        onMouseDown={() => this.onSuggestionMouseDown(i)}
+                                        onMouseDownCapture={(e) => this.onSuggestionMouseDown(e, i)}
                                     >
                                         { suggestion.prefixLength ?
                                             <span>
@@ -244,10 +247,9 @@ export default class ExpressionEditorTextfield extends Component {
                                     </li>
                                 ]
                             )}
-                         </ul>
-                     </div>
-                 </Popover>
-                 : null}
+                        </ul>
+                    </Popover>
+                : null}
             </div>
         );
     }

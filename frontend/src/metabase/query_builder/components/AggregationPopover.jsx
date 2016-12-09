@@ -181,9 +181,14 @@ export default class AggregationPopover extends Component {
                             onChange={(parsedExpression) => this.setState({aggregation: parsedExpression, error: null})}
                             onError={(errorMessage) => this.setState({error: errorMessage})}
                         />
-                        { this.state.error != null &&
-                            <div className="text-error mb1">{this.state.error.message}</div>
-                        }
+                        { this.state.error != null && (
+                            Array.isArray(this.state.error) ?
+                                this.state.error.map(error =>
+                                    <div className="text-error mb1" style={{ whiteSpace: "pre-wrap" }}>{error.message}</div>
+                                )
+                            :
+                                <div className="text-error mb1">{this.state.error.message}</div>
+                        )}
                         <Button className="full" primary disabled={this.state.error} onClick={() => this.commitAggregation(this.state.aggregation)}>
                             {isNew ? "Add" : "Update"} Aggregation
                         </Button>

@@ -3,6 +3,17 @@ const _ = require("underscore");
 
 import { VALID_AGGREGATIONS } from "metabase/lib/expressions";
 
+export const AGGREGATION_ARITY = new Map([
+    ["Count", 0],
+    ["CumulativeCount", 0],
+    ["Sum", 1],
+    ["CumulativeSum", 1],
+    ["Distinct", 1],
+    ["Average", 1],
+    ["Min", 1],
+    ["Max", 1]
+]);
+
 const AdditiveOperator = extendToken("AdditiveOperator", Lexer.NA);
 const Plus = extendToken("Plus", /\+/, AdditiveOperator);
 const Minus = extendToken("Minus", /-/, AdditiveOperator);
@@ -52,18 +63,24 @@ class ExpressionsParser extends Parser {
 
         let $ = this;
 
-        $.RULE("expression", function () {
-            return $.SUBRULE($.additionExpression)
+        // an expression without aggregations in it
+        $.RULE("expression", function (allowAggregations = false) {
+            return $.SUBRULE($.additionExpression, [allowAggregations])
+        });
+
+        // an expression with aggregations in it
+        $.RULE("aggregation", function () {
+            return $.SUBRULE($.additionExpression, [true])
         });
 
         // Lowest precedence thus it is first in the rule chain
         // The precedence of binary expressions is determined by
         // how far down the Parse Tree the binary expression appears.
-        $.RULE("additionExpression", () => {
-            let value = $.SUBRULE($.multiplicationExpression);
+        $.RULE("additionExpression", (allowAggregations) => {
+            let value = $.SUBRULE($.multiplicationExpression, [allowAggregations]);
             $.MANY(() => {
                 const op = $.CONSUME(AdditiveOperator);
-                const rhsVal = $.SUBRULE2($.multiplicationExpression);
+                const rhsVal = $.SUBRULE2($.multiplicationExpression, [allowAggregations]);
 
                 if (Array.isArray(value) && value[0] === op.image) {
                     value.push(rhsVal);
@@ -74,11 +91,11 @@ class ExpressionsParser extends Parser {
             return value
         });
 
-        $.RULE("multiplicationExpression", () => {
-            let value = $.SUBRULE($.atomicExpression);
+        $.RULE("multiplicationExpression", (allowAggregations) => {
+            let value = $.SUBRULE($.atomicExpression, [allowAggregations]);
             $.MANY(() => {
                 const op = $.CONSUME(MultiplicativeOperator);
-                const rhsVal = $.SUBRULE2($.atomicExpression);
+                const rhsVal = $.SUBRULE2($.atomicExpression, [allowAggregations]);
 
                 if (Array.isArray(value) && value[0] === op.image) {
                     value.push(rhsVal);
@@ -89,15 +106,16 @@ class ExpressionsParser extends Parser {
             return value
         });
 
-        $.RULE("aggregationExpression", () => {
+        $.RULE("aggregationExpression", (allowAggregations) => {
             const agg = $.CONSUME(Aggregation).image;
             let value = [aggregationsMap.get(agg)]
             $.CONSUME(LParen);
             $.OPTION(() => {
-                value.push($.SUBRULE($.expression));
+                // aggregations cannot be nested, so pass false to the expression subrule
+                value.push($.SUBRULE($.expression, [false]));
                 $.MANY(() => {
                     $.CONSUME(Comma);
-                    value.push($.SUBRULE2($.expression));
+                    value.push($.SUBRULE2($.expression, [false]));
                 });
             });
             $.CONSUME(RParen);
@@ -112,20 +130,20 @@ class ExpressionsParser extends Parser {
             return ["field-id", this.getFieldIdForName(fieldName)];
         });
 
-        $.RULE("atomicExpression", () => {
+        $.RULE("atomicExpression", (allowAggregations) => {
             return $.OR([
-                {ALT: () => $.SUBRULE($.parenthesisExpression) },
-                {ALT: () => $.SUBRULE($.aggregationExpression) },
-                {ALT: () => $.SUBRULE($.fieldExpression) },
+                {GATE: () => allowAggregations, ALT: () => $.SUBRULE($.aggregationExpression, [false]) },
+                {ALT: () => $.SUBRULE($.parenthesisExpression, [allowAggregations]) },
+                {ALT: () => $.SUBRULE($.fieldExpression, [allowAggregations]) },
                 {ALT: () => parseFloat($.CONSUME(NumberLiteral).image) }
-            ]);
+            ], "a number or field name");
         });
 
-        $.RULE("parenthesisExpression", () => {
+        $.RULE("parenthesisExpression", (allowAggregations) => {
             let expValue;
 
             $.CONSUME(LParen);
-            expValue = $.SUBRULE($.expression);
+            expValue = $.SUBRULE($.expression, [allowAggregations]);
             $.CONSUME(RParen);
 
             return expValue
@@ -161,7 +179,7 @@ export function compile(source, { fields } = {}) {
         return [];
     }
     const parser = new ExpressionsParser(ExpressionsLexer.tokenize(source).tokens, fields);
-    const expression = parser.expression();
+    const expression = parser.aggregation();
     if (parser.errors.length > 0) {
         throw parser.errors;
     }
@@ -186,7 +204,7 @@ export function suggest(source, { index = source.length, fields } = {}) {
         partialSuggestionMode = true
     }
 
-    const syntacticSuggestions = parserInstance.computeContentAssist("expression", assistanceTokenVector)
+    const syntacticSuggestions = parserInstance.computeContentAssist("aggregation", assistanceTokenVector)
 
     let finalSuggestions = []
 
@@ -196,7 +214,7 @@ export function suggest(source, { index = source.length, fields } = {}) {
         if (nextTokenType === MultiplicativeOperator || nextTokenType === AdditiveOperator) {
             let tokens = getSubTokenTypes(nextTokenType);
             finalSuggestions.push(...tokens.map(token => ({
-                type: "operator",
+                type: "operators",
                 name: getTokenSource(token),
                 text: " " + getTokenSource(token) + " ",
                 prefixTrim: /\s+$/,
@@ -206,7 +224,7 @@ export function suggest(source, { index = source.length, fields } = {}) {
             finalSuggestions.push({
                 type: "other",
                 name: "(",
-                "text": "(",
+                text: " (",
                 postfixText: ")",
                 prefixTrim: /\s+$/,
                 postfixTrim: /^\s+/
@@ -215,31 +233,39 @@ export function suggest(source, { index = source.length, fields } = {}) {
             finalSuggestions.push({
                 type: "other",
                 name: ")",
-                text: ")",
+                text: ") ",
                 prefixTrim: /\s+$/,
                 postfixTrim: /^\s+/
             });
         } else if (nextTokenType === Identifier || nextTokenType === StringLiteral) {
             finalSuggestions.push(...fields.map(field => ({
-                type: "field",
+                type: "fields",
                 name: field.display_name,
                 text: /^\w+$/.test(field.display_name) ?
-                    field.display_name + " " : JSON.stringify(field.display_name),
+                    field.display_name + " " : // need a space to terminate identifier
+                    JSON.stringify(field.display_name),
                 prefixTrim: /\w+$/,
                 postfixTrim: /^\w+\s*/
             })))
         } else if (nextTokenType === Aggregation) {
             // no nesting of aggregations
+            // we have a predicate in the grammar to prevent nested aggregations but chevrotain
+            // doesn't support predicates in content-assist mode, so we need this extra check
             if (ruleStack.slice(0, -1).indexOf("aggregationExpression") < 0) {
                 let tokens = getSubTokenTypes(nextTokenType);
-                finalSuggestions.push(...tokens.map(token => ({
-                    type: "aggregation",
-                    name: getTokenSource(token),
-                    text: getTokenSource(token) + "(",
-                    postfixText: ")",
-                    prefixTrim: /\w+$/,
-                    postfixTrim: /^\w+\(/
-                })))
+                finalSuggestions.push(...tokens.map(token => {
+                    let text = getTokenSource(token);
+                    let arity = AGGREGATION_ARITY.get(text);
+                    console.log("arity", arity, text)
+                    return {
+                        type: "aggregations",
+                        name: text,
+                        text: text + "(" + (arity > 0 ? "" : ")"),
+                        postfixText: arity > 0 ? ")" : "",
+                        prefixTrim: /\w+$/,
+                        postfixTrim: /^\w+\(\)?/
+                    }
+                }));
             }
         } else if (nextTokenType === NumberLiteral) {
             // skip number literal
@@ -257,7 +283,6 @@ export function suggest(source, { index = source.length, fields } = {}) {
         );
 
         let prefixLength = partial.length;
-
         for (const suggestion of finalSuggestions) {
             suggestion.prefixLength = prefixLength;
         }
@@ -269,7 +294,7 @@ export function suggest(source, { index = source.length, fields } = {}) {
         }
     }
 
-    // we could have duplication because each suggestion also includes a Path, and the same Token may appear in multiple suggested paths.
+    // deduplicate suggestions and sort by type then name
     return _.chain(finalSuggestions)
         .uniq(suggestion => suggestion.text)
         .sortBy("name")
