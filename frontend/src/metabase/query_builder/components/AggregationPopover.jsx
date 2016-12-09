@@ -176,6 +176,7 @@ export default class AggregationPopover extends Component {
                     </div>
                     <div className="p1">
                         <ExpressionEditorTextfield
+                            startRule="aggregation"
                             expression={aggregation}
                             tableMetadata={tableMetadata}
                             onChange={(parsedExpression) => this.setState({aggregation: parsedExpression, error: null})}

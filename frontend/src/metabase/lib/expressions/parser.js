@@ -176,19 +176,19 @@ function getTokenSource(TokenClass) {
     return TokenClass.PATTERN.source.replace(/^\\/, "");
 }
 
-export function compile(source, { fields } = {}) {
+export function compile(source, { startRule, fields } = {}) {
     if (!source) {
         return [];
     }
     const parser = new ExpressionsParser(ExpressionsLexer.tokenize(source).tokens, fields);
-    const expression = parser.aggregation();
+    const expression = parser[startRule]();
     if (parser.errors.length > 0) {
         throw parser.errors;
     }
     return expression;
 }
 
-export function suggest(source, { index = source.length, fields } = {}) {
+export function suggest(source, { startRule, index = source.length, fields } = {}) {
     const partialSource = source.slice(0, index);
     const lexResult = ExpressionsLexer.tokenize(partialSource);
     if (lexResult.errors.length > 0) {
@@ -206,7 +206,7 @@ export function suggest(source, { index = source.length, fields } = {}) {
         partialSuggestionMode = true
     }
 
-    const syntacticSuggestions = parserInstance.computeContentAssist("aggregation", assistanceTokenVector)
+    const syntacticSuggestions = parserInstance.computeContentAssist(startRule, assistanceTokenVector)
 
     let finalSuggestions = []
 
@@ -215,7 +215,7 @@ export function suggest(source, { index = source.length, fields } = {}) {
         // no nesting of aggregations or field references outside of aggregations
         // we have a predicate in the grammar to prevent nested aggregations but chevrotain
         // doesn't support predicates in content-assist mode, so we need this extra check
-        const outsideAggregation = ruleStack.slice(0, -1).indexOf("aggregationExpression") < 0;
+        const outsideAggregation = startRule === "aggregation" && ruleStack.slice(0, -1).indexOf("aggregationExpression") < 0;
 
         if (nextTokenType === MultiplicativeOperator || nextTokenType === AdditiveOperator) {
             let tokens = getSubTokenTypes(nextTokenType);

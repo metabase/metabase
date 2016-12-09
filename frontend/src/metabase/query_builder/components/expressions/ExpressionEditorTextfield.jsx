@@ -33,11 +33,13 @@ export default class ExpressionEditorTextfield extends Component {
         expression: PropTypes.array,      // should be an array like [parsedExpressionObj, expressionString]
         tableMetadata: PropTypes.object.isRequired,
         onChange: PropTypes.func.isRequired,
-        onError: PropTypes.func.isRequired
+        onError: PropTypes.func.isRequired,
+        startRule: PropTypes.string.isRequired
     };
 
     static defaultProps = {
         expression: [null, ""],
+        startRule: "expression",
         placeholder: "write some math!"
     }
 
@@ -54,7 +56,10 @@ export default class ExpressionEditorTextfield extends Component {
             let suggestions = [];
             try {
                 if (expressionString) {
-                    compile(expressionString, { fields: newProps.tableMetadata.fields });
+                    compile(expressionString, {
+                        startRule: newProps.startRule,
+                        fields: newProps.tableMetadata.fields
+                    });
                 }
             } catch (e) {
                 expressionErrorMessage = e;
@@ -170,13 +175,17 @@ export default class ExpressionEditorTextfield extends Component {
         let parsedExpression;
 
         try {
-            parsedExpression = compile(expressionString, { fields: this.props.tableMetadata.fields })
+            parsedExpression = compile(expressionString, {
+                startRule: this.props.startRule,
+                fields: this.props.tableMetadata.fields
+            })
         } catch (e) {
             expressionErrorMessage = e;
             console.error("expression error:", expressionErrorMessage);
         }
         try {
             suggestions = suggest(expressionString, {
+                startRule: this.props.startRule,
                 index: inputElement.selectionStart,
                 fields: this.props.tableMetadata.fields
             })
