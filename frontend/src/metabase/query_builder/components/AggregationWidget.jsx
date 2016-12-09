@@ -9,7 +9,7 @@ import Popover from "metabase/components/Popover.jsx";
 import Query from "metabase/lib/query";
 import { AggregationClause } from "metabase/lib/query";
 import { getAggregator } from "metabase/lib/schema_metadata";
-import { formatExpression, isExpression } from "metabase/lib/expressions";
+import { format } from "metabase/lib/expressions/formatter";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -91,7 +91,7 @@ export default class AggregationWidget extends Component {
     renderCustomAggregation() {
         const { aggregation, tableMetadata } = this.props;
         return (
-            <span className="View-section-aggregation QueryOption p1">{aggregation ? formatExpression(aggregation, tableMetadata.fields) : "Choose an aggregation"}</span>
+            <span className="View-section-aggregation QueryOption p1">{aggregation ? format(aggregation, { fields: tableMetadata.fields }) : "Choose an aggregation"}</span>
         );
     }
 

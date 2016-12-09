@@ -54,3 +54,16 @@ export function elementIsInView(element, percentX = 1, percentY = 1) {
         return visiblePercentageX + tolerance > percentX && visiblePercentageY + tolerance > percentY;
     });
 }
+
+export function setCaretPosition(element, position) {
+    if (element.setSelectionRange) {
+        element.focus();
+        element.setSelectionRange(position, position);
+    } else if (element.createTextRange) {
+        const range = element.createTextRange();
+        range.collapse(true);
+        range.moveEnd("character", position);
+        range.moveStart("character", position);
+        range.select();
+    }
+}

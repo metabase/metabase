@@ -1427,6 +1427,10 @@ change-emitter@^0.1.2:
   version "0.1.2"
   resolved "https://registry.yarnpkg.com/change-emitter/-/change-emitter-0.1.2.tgz#6b88ca4d5d864e516f913421b11899a860aee8db"
 
+chevrotain@^0.19.0:
+  version "0.19.0"
+  resolved "https://registry.yarnpkg.com/chevrotain/-/chevrotain-0.19.0.tgz#3319bedf0f9426831be870ffa2162be733f4369b"
+
 chokidar@^1.0.0, chokidar@^1.4.1:
   version "1.6.0"
   resolved "https://registry.yarnpkg.com/chokidar/-/chokidar-1.6.0.tgz#90c32ad4802901d7713de532dc284e96a63ad058"
@@ -5557,13 +5561,7 @@ react-ansi-style@^1.0.0:
   version "15.3.2"
   resolved "https://registry.yarnpkg.com/react-dom/-/react-dom-15.3.2.tgz#c46b0aa5380d7b838e7a59c4a7beff2ed315531f"
 
-react-draggable@^2.1.0:
-  version "2.2.2"
-  resolved "https://registry.yarnpkg.com/react-draggable/-/react-draggable-2.2.2.tgz#80932da5ad81795bdfd141e846d7a9309680e270"
-  dependencies:
-    classnames "^2.2.5"
-
-react-draggable@^2.2.3:
+react-draggable@^2.1.0, react-draggable@^2.2.3:
   version "2.2.3"
   resolved "https://registry.yarnpkg.com/react-draggable/-/react-draggable-2.2.3.tgz#17628cb8aaefed639d38e0021b978a685d80b08b"
   dependencies:

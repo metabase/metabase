@@ -1,6 +1,6 @@
 import * as Query from "metabase/lib/query/query";
 
-fdescribe("Query", () => {
+describe("Query", () => {
     describe("isBareRowsAggregation", () => {
         it("should return true for all bare rows variation", () => {
             expect(Query.isBareRows({})).toBe(true);

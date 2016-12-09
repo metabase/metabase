@@ -15,6 +15,8 @@ import _ from "underscore";
 
 import ExpressionEditorTextfield from "./expressions/ExpressionEditorTextfield.jsx"
 
+const CUSTOM_SECTION_NAME = "Custom Expression";
+
 export default class AggregationPopover extends Component {
     constructor(props, context) {
         super(props, context);
@@ -153,12 +155,11 @@ export default class AggregationPopover extends Component {
             });
         }
 
-        sections[0].items.push({
-            name: "Custom Aggregation",
-            value: aggregation !== "rows" && !_.isEqual(aggregation, ["rows"]) ? aggregation : null,
-            custom: true,
-            isSelected: (aggregation) => AggregationClause.isCustom(aggregation)
-        })
+        let customExpressionIndex = sections.length;
+        sections.push({
+            name: CUSTOM_SECTION_NAME,
+            icon: "star-outline"
+        });
 
         if (sections.length === 1) {
             sections[0].name = null
@@ -170,7 +171,7 @@ export default class AggregationPopover extends Component {
                     <div className="text-grey-3 p1 py2 border-bottom flex align-center">
                         <a className="cursor-pointer flex align-center" onClick={this.onClearAggregation}>
                             <Icon name="chevronleft" size={18}/>
-                            <h3 className="inline-block pl1">Custom Aggregation</h3>
+                            <h3 className="inline-block pl1">{CUSTOM_SECTION_NAME}</h3>
                         </a>
                     </div>
                     <div className="p1">
@@ -220,6 +221,14 @@ export default class AggregationPopover extends Component {
                     renderSectionIcon={(s) => <Icon name={s.icon} size={18} />}
                     renderItemExtra={this.renderItemExtra.bind(this)}
                     getItemClasses={(item) => item.metric && !item.metric.is_active ? "text-grey-3" : null }
+                    onChangeSection={(index) => {
+                        if (index === customExpressionIndex) {
+                            this.onPickAggregation({
+                                custom: true,
+                                value: aggregation
+                            })
+                        }
+                    }}
                 />
             );
         }
