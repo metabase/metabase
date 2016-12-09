@@ -64,8 +64,8 @@ class ExpressionsParser extends Parser {
         let $ = this;
 
         // an expression without aggregations in it
-        $.RULE("expression", function (allowAggregations = false) {
-            return $.SUBRULE($.additionExpression, [allowAggregations])
+        $.RULE("expression", function (outsideAggregation = false) {
+            return $.SUBRULE($.additionExpression, [outsideAggregation])
         });
 
         // an expression with aggregations in it
@@ -76,11 +76,11 @@ class ExpressionsParser extends Parser {
         // Lowest precedence thus it is first in the rule chain
         // The precedence of binary expressions is determined by
         // how far down the Parse Tree the binary expression appears.
-        $.RULE("additionExpression", (allowAggregations) => {
-            let value = $.SUBRULE($.multiplicationExpression, [allowAggregations]);
+        $.RULE("additionExpression", (outsideAggregation) => {
+            let value = $.SUBRULE($.multiplicationExpression, [outsideAggregation]);
             $.MANY(() => {
                 const op = $.CONSUME(AdditiveOperator);
-                const rhsVal = $.SUBRULE2($.multiplicationExpression, [allowAggregations]);
+                const rhsVal = $.SUBRULE2($.multiplicationExpression, [outsideAggregation]);
 
                 if (Array.isArray(value) && value[0] === op.image) {
                     value.push(rhsVal);
@@ -91,11 +91,11 @@ class ExpressionsParser extends Parser {
             return value
         });
 
-        $.RULE("multiplicationExpression", (allowAggregations) => {
-            let value = $.SUBRULE($.atomicExpression, [allowAggregations]);
+        $.RULE("multiplicationExpression", (outsideAggregation) => {
+            let value = $.SUBRULE($.atomicExpression, [outsideAggregation]);
             $.MANY(() => {
                 const op = $.CONSUME(MultiplicativeOperator);
-                const rhsVal = $.SUBRULE2($.atomicExpression, [allowAggregations]);
+                const rhsVal = $.SUBRULE2($.atomicExpression, [outsideAggregation]);
 
                 if (Array.isArray(value) && value[0] === op.image) {
                     value.push(rhsVal);
@@ -106,7 +106,7 @@ class ExpressionsParser extends Parser {
             return value
         });
 
-        $.RULE("aggregationExpression", (allowAggregations) => {
+        $.RULE("aggregationExpression", (outsideAggregation) => {
             const agg = $.CONSUME(Aggregation).image;
             let value = [aggregationsMap.get(agg)]
             $.CONSUME(LParen);
@@ -130,20 +130,22 @@ class ExpressionsParser extends Parser {
             return ["field-id", this.getFieldIdForName(fieldName)];
         });
 
-        $.RULE("atomicExpression", (allowAggregations) => {
+        $.RULE("atomicExpression", (outsideAggregation) => {
             return $.OR([
-                {GATE: () => allowAggregations, ALT: () => $.SUBRULE($.aggregationExpression, [false]) },
-                {ALT: () => $.SUBRULE($.parenthesisExpression, [allowAggregations]) },
-                {ALT: () => $.SUBRULE($.fieldExpression, [allowAggregations]) },
+                // aggregations not allowed inside other aggregations
+                {GATE: () => outsideAggregation, ALT: () => $.SUBRULE($.aggregationExpression, [false]) },
+                // fields not allowed outside aggregations
+                {GATE: () => !outsideAggregation, ALT: () => $.SUBRULE($.fieldExpression) },
+                {ALT: () => $.SUBRULE($.parenthesisExpression, [outsideAggregation]) },
                 {ALT: () => parseFloat($.CONSUME(NumberLiteral).image) }
             ], "a number or field name");
         });
 
-        $.RULE("parenthesisExpression", (allowAggregations) => {
+        $.RULE("parenthesisExpression", (outsideAggregation) => {
             let expValue;
 
             $.CONSUME(LParen);
-            expValue = $.SUBRULE($.expression, [allowAggregations]);
+            expValue = $.SUBRULE($.expression, [outsideAggregation]);
             $.CONSUME(RParen);
 
             return expValue
@@ -210,6 +212,10 @@ export function suggest(source, { index = source.length, fields } = {}) {
 
     for (const suggestion of syntacticSuggestions) {
         const { nextTokenType, ruleStack } = suggestion;
+        // no nesting of aggregations or field references outside of aggregations
+        // we have a predicate in the grammar to prevent nested aggregations but chevrotain
+        // doesn't support predicates in content-assist mode, so we need this extra check
+        const outsideAggregation = ruleStack.slice(0, -1).indexOf("aggregationExpression") < 0;
 
         if (nextTokenType === MultiplicativeOperator || nextTokenType === AdditiveOperator) {
             let tokens = getSubTokenTypes(nextTokenType);
@@ -238,25 +244,23 @@ export function suggest(source, { index = source.length, fields } = {}) {
                 postfixTrim: /^\s+/
             });
         } else if (nextTokenType === Identifier || nextTokenType === StringLiteral) {
-            finalSuggestions.push(...fields.map(field => ({
-                type: "fields",
-                name: field.display_name,
-                text: /^\w+$/.test(field.display_name) ?
-                    field.display_name + " " : // need a space to terminate identifier
-                    JSON.stringify(field.display_name),
-                prefixTrim: /\w+$/,
-                postfixTrim: /^\w+\s*/
-            })))
+            if (!outsideAggregation) {
+                finalSuggestions.push(...fields.map(field => ({
+                    type: "fields",
+                    name: field.display_name,
+                    text: /^\w+$/.test(field.display_name) ?
+                        field.display_name + " " : // need a space to terminate identifier
+                        JSON.stringify(field.display_name),
+                    prefixTrim: /\w+$/,
+                    postfixTrim: /^\w+\s*/
+                })))
+            }
         } else if (nextTokenType === Aggregation) {
-            // no nesting of aggregations
-            // we have a predicate in the grammar to prevent nested aggregations but chevrotain
-            // doesn't support predicates in content-assist mode, so we need this extra check
-            if (ruleStack.slice(0, -1).indexOf("aggregationExpression") < 0) {
+            if (outsideAggregation) {
                 let tokens = getSubTokenTypes(nextTokenType);
                 finalSuggestions.push(...tokens.map(token => {
                     let text = getTokenSource(token);
                     let arity = AGGREGATION_ARITY.get(text);
-                    console.log("arity", arity, text)
                     return {
                         type: "aggregations",
                         name: text,
