@@ -1,5 +1,7 @@
 
 import _ from "underscore";
+import { mbqlEq } from "../query/util";
+import { titleize } from "metabase/lib/formatting";
 
 export const VALID_OPERATORS = new Set([
     '+',
@@ -19,14 +21,23 @@ export const VALID_AGGREGATIONS = new Map(Object.entries({
     "max": "Max"
 }));
 
-// move to query lib
 
-export function isField(arg) {
-    return arg && arg.constructor === Array && arg.length === 2 && arg[0] === 'field-id' && typeof arg[1] === 'number';
+export function normalizeName(name) {
+    return titleize(name).replace(/\W+/g, "")
 }
 
+// move to query lib
+
 export function isExpression(expr) {
-    return isMath(expr) || isAggregation(expr);
+    return isMath(expr) || isAggregation(expr) || isMetric(expr);
+}
+
+export function isField(expr) {
+    return Array.isArray(expr) && expr.length === 2 && mbqlEq(expr[0], 'field-id') && typeof expr[1] === 'number';
+}
+
+export function isMetric(expr) {
+    return Array.isArray(expr) && expr.length === 2 && mbqlEq(expr[0], 'metric') && typeof expr[1] === 'number';
 }
 
 export function isMath(expr) {

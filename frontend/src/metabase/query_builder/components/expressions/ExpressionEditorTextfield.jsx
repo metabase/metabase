@@ -51,14 +51,13 @@ export default class ExpressionEditorTextfield extends Component {
         // we only refresh our state if we had no previous state OR if our expression or table has changed
         if (!this.state || this.props.expression != newProps.expression || this.props.tableMetadata != newProps.tableMetadata) {
             let parsedExpression = newProps.expression;
-            let expressionString = format(newProps.expression, { fields: this.props.tableMetadata.fields });
+            let expressionString = format(newProps.expression, this.props.tableMetadata);
             let expressionErrorMessage = null;
             let suggestions = [];
             try {
                 if (expressionString) {
-                    compile(expressionString, {
-                        startRule: newProps.startRule,
-                        fields: newProps.tableMetadata.fields
+                    compile(expressionString, newProps.tableMetadata, {
+                        startRule: newProps.startRule
                     });
                 }
             } catch (e) {
@@ -133,12 +132,12 @@ export default class ExpressionEditorTextfield extends Component {
             event.preventDefault();
         } else if (event.keyCode === KEYCODE_UP) {
             this.setState({
-                highlightedSuggestion: (highlightedSuggestion - 1) % suggestions.length
+                highlightedSuggestion: (highlightedSuggestion + suggestions.length - 1) % suggestions.length
             });
             event.preventDefault();
         } else if (event.keyCode === KEYCODE_DOWN) {
             this.setState({
-                highlightedSuggestion: (highlightedSuggestion + 1) % suggestions.length
+                highlightedSuggestion: (highlightedSuggestion + suggestions.length + 1) % suggestions.length
             });
             event.preventDefault();
         }
@@ -155,8 +154,13 @@ export default class ExpressionEditorTextfield extends Component {
         this.clearSuggestions();
 
         // whenever our input blurs we push the updated expression to our parent if valid
-        if (isExpression(this.state.parsedExpression)) this.props.onChange(this.state.parsedExpression)
-            else if (this.state.expressionErrorMessage)    this.props.onError(this.state.expressionErrorMessage);
+        if (isExpression(this.state.parsedExpression)) {
+            this.props.onChange(this.state.parsedExpression);
+        } else if (this.state.expressionErrorMessage) {
+            this.props.onError(this.state.expressionErrorMessage);
+        } else {
+            this.props.onError({ message: "Invalid expression" });
+        }
     }
 
     onInputClick = () => {
@@ -175,19 +179,17 @@ export default class ExpressionEditorTextfield extends Component {
         let parsedExpression;
 
         try {
-            parsedExpression = compile(expressionString, {
-                startRule: this.props.startRule,
-                fields: this.props.tableMetadata.fields
+            parsedExpression = compile(expressionString, this.props.tableMetadata, {
+                startRule: this.props.startRule
             })
         } catch (e) {
             expressionErrorMessage = e;
             console.error("expression error:", expressionErrorMessage);
         }
         try {
-            suggestions = suggest(expressionString, {
+            suggestions = suggest(expressionString, this.props.tableMetadata, {
                 startRule: this.props.startRule,
-                index: inputElement.selectionStart,
-                fields: this.props.tableMetadata.fields
+                index: inputElement.selectionStart
             })
         } catch (e) {
             console.error("suggest error:", e);
