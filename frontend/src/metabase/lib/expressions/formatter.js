@@ -15,6 +15,9 @@ export function format(expr, {
     aggregations = VALID_AGGREGATIONS
 }, parens = false) {
     const info = { tableMetadata, customFields, operators, aggregations };
+    if (expr == null) {
+        return "";
+    }
     if (typeof expr === "number") {
         return formatLiteral(expr);
     }

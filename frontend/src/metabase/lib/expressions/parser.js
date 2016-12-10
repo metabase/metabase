@@ -287,7 +287,7 @@ export function suggest(source, {
                     prefixTrim: /\w+$/,
                     postfixTrim: /^\w+\s*/
                 })))
-                finalSuggestions.push(...Object.keys(customFields).map(expressionName => ({
+                finalSuggestions.push(...Object.keys(customFields || {}).map(expressionName => ({
                     type: "fields",
                     name: expressionName,
                     text: formatExpressionName(expressionName) + " ",
