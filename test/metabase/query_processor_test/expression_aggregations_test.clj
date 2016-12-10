@@ -1,10 +1,13 @@
 (ns metabase.query-processor-test.expression-aggregations-test
   "Tests for expression aggregations."
   (:require [expectations :refer :all]
+            [metabase.models.metric :refer [Metric]]
+            [metabase.query-processor :as qp]
             [metabase.query-processor.expand :as ql]
             [metabase.query-processor-test :refer :all]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets, :refer [*engine*]]
+            [metabase.test.util :as tu]
             [metabase.util :as u]))
 
 ;; sum, *
@@ -182,3 +185,19 @@
     (rows+column-names (data/run-query venues
                          (ql/aggregation (ql/named (ql/- (ql/sum $price) 41) "Sum-41"))
                          (ql/breakout $price)))))
+
+;; check that we can handle METRICS (ick) inside expression aggregation clauses
+(datasets/expect-with-engines (engines-that-support :expression-aggregations)
+  [[2 119]
+   [3  40]
+   [4  25]]
+  (tu/with-temp Metric [metric {:table_id   (data/id :venues)
+                                :definition {:aggregation [:sum [:field-id (data/id :venues :price)]]
+                                             :filter      [:> [:field-id (data/id :venues :price)] 1]}}]
+    (format-rows-by [int int]
+      (rows (qp/process-query
+              {:database (data/id)
+               :type     :query
+               :query    {:source-table (data/id :venues)
+                          :aggregation  [:+ ["METRIC" (u/get-id metric)] 1]
+                          :breakout     [(ql/breakout (ql/field-id (data/id :venues :price)))]}})))))

@@ -1,13 +1,15 @@
 (ns metabase.driver.druid-test
   (:require [cheshire.core :as json]
             [expectations :refer :all]
+            [metabase.models.metric :refer [Metric]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.expand :as ql]
             [metabase.query-processor-test :refer [rows rows+column-names]]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets, :refer [expect-with-engine]]
+            [metabase.test.util :as tu]
             [metabase.timeseries-query-processor-test :as timeseries-qp-test]
-            [metabase.query :as q]))
+            [metabase.util :as u]))
 
 (def ^:const ^:private ^String native-query-1
   (json/generate-string
@@ -230,3 +232,18 @@
     (druid-query
       (ql/aggregation (ql/named (ql/- (ql/sum $venue_price) 41) "Sum-41"))
       (ql/breakout $venue_price))))
+
+;; check that we can handle METRICS (ick) inside expression aggregation clauses
+(expect-with-engine :druid
+  [["2" 1231.0]
+   ["3"  346.0]
+   ["4" 197.0]]
+  (timeseries-qp-test/with-flattened-dbdef
+    (tu/with-temp Metric [metric {:definition {:aggregation [:sum [:field-id (data/id :checkins :venue_price)]]
+                                               :filter      [:> [:field-id (data/id :checkins :venue_price)] 1]}}]
+      (rows (qp/process-query
+              {:database (data/id)
+               :type     :query
+               :query    {:source-table (data/id :checkins)
+                          :aggregation  [:+ ["METRIC" (u/get-id metric)] 1]
+                          :breakout     [(ql/breakout (ql/field-id (data/id :checkins :venue_price)))]}})))))

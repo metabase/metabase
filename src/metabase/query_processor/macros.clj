@@ -1,5 +1,8 @@
 (ns metabase.query-processor.macros
+  "TODO - this namespace is ancient and written with MBQL '95 in mind, e.g. it is case-sensitive.
+   At some point this ought to be reworked to be case-insensitive and cleaned up."
   (:require [clojure.core.match :refer [match]]
+            [clojure.walk :as walk]
             [metabase.db :as db]
             [metabase.util :as u]))
 
@@ -46,56 +49,39 @@
 
 ;;; ------------------------------------------------------------ Metrics ------------------------------------------------------------
 
-(defn- merge-aggregation [aggregations new-ag]
-  (if (map? aggregations)
-    (recur [aggregations] new-ag)
-    (conj aggregations new-ag)))
-
-(defn- is-metric? [aggregation]
+(defn- metric? [aggregation]
   (match aggregation
     ["METRIC" (_ :guard integer?)] true
     _                              false))
 
 (defn- metric-id [metric]
-  (when (is-metric? metric)
+  (when (metric? metric)
     (second metric)))
 
-(defn- merge-aggregations {:style/indent 0} [query-dict [aggregation & more]]
-  (if-not aggregation
-    ;; no more aggregations? we're done
-    query-dict
-    ;; otherwise determine if this aggregation is a METRIC and recur
-    (let [metric-def (when (is-metric? aggregation)
-                       (db/select-one-field :definition 'Metric, :id (metric-id aggregation)))]
-      (recur (if-not metric-def
-               ;; not a metric, move to next aggregation
-               query-dict
-               ;; it *is* a metric, insert it into the query appropriately
-               (-> query-dict
-                   (update-in [:query :aggregation] merge-aggregation (:aggregation metric-def))
-                   (update-in [:query :filter] merge-filter-clauses (:filter metric-def))))
-             more))))
+(defn- expand-metric [metric-clause filter-clauses-atom]
+  (let [{filter-clause :filter, ag-clause :aggregation} (db/select-one-field :definition 'Metric, :id (metric-id metric-clause))]
+    (when filter-clause
+      (swap! filter-clauses-atom conj filter-clause))
+    ag-clause))
 
-(defn- remove-metrics [aggregations]
-  (if-not (and (sequential? aggregations)
-               (every? coll? aggregations))
-    (recur [aggregations])
-    (vec (for [ag    aggregations
-               :when (not (is-metric? ag))]
-           ag))))
+(defn- expand-metrics-in-ag-clause [query-dict filter-clauses-atom]
+  (walk/postwalk (fn [form]
+                   (if-not (metric? form)
+                     form
+                     (expand-metric form filter-clauses-atom)))
+                 query-dict))
+
+(defn- expand-metrics [query-dict]
+  (let [filter-clauses-atom (atom [])
+        query-dict          (expand-metrics-in-ag-clause query-dict filter-clauses-atom)]
+    (update-in query-dict [:query :filter] merge-filter-clauses @filter-clauses-atom)))
 
 (defn- macroexpand-metric [{{aggregations :aggregation} :query, :as query-dict}]
   (if-not (seq aggregations)
     ;; :aggregation is empty, so no METRIC to expand
     query-dict
-    ;; we have an aggregation clause, so lets see if we are using a METRIC
-    ;; (since `:aggregation` can be either single or multiple, wrap single ones so `merge-aggregations` can always assume input is multiple)
-    (merge-aggregations
-      (update-in query-dict [:query :aggregation] remove-metrics)
-      (if (and (sequential? aggregations)
-               (every? coll? aggregations))
-        aggregations
-        [aggregations]))))
+    ;; otherwise walk the query dict and expand METRIC clauses
+    (expand-metrics query-dict)))
 
 
 ;;; ------------------------------------------------------------ Middleware ------------------------------------------------------------
