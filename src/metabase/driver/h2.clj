@@ -101,8 +101,7 @@
   "Add Metabase Security Settings™ to this CONNECTION-STRING (i.e. try to keep shady users from writing nasty SQL)."
   [connection-string]
   (let [[file options] (connection-string->file+options connection-string)]
-    (file+options->connection-string file (merge options {"IFEXISTS"         "TRUE"
-                                                          "ACCESS_MODE_DATA" "r"}))))
+    (file+options->connection-string file (merge options {"IFEXISTS" "TRUE"}))))
 
 (defn- connection-details->spec [details]
   (dbspec/h2 (if db/*allow-potentailly-unsafe-connections*
