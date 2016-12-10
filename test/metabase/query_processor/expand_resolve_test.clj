@@ -222,9 +222,10 @@
     :type     :query
     :query    {:source-table (id :checkins)
                :aggregation  [{:aggregation-type :sum
-                                :field            {:field-id      (id :venues :price)
-                                                   :fk-field-id   (id :checkins :venue_id)
-                                                   :datetime-unit nil}}]
+                               :custom-name      nil
+                               :field            {:field-id      (id :venues :price)
+                                                  :fk-field-id   (id :checkins :venue_id)
+                                                  :datetime-unit nil}}]
                :breakout     [{:field-id      (id :checkins :date)
                                :fk-field-id   nil
                                :datetime-unit :day-of-week}]}}
@@ -235,20 +236,21 @@
                                   :name   "CHECKINS"
                                   :id     (id :checkins)}
                    :aggregation  [{:aggregation-type :sum
-                                    :field            {:description        nil
-                                                       :base-type          :type/Integer
-                                                       :parent             nil
-                                                       :table-id           (id :venues)
-                                                       :special-type       :type/Category
-                                                       :field-name         "PRICE"
-                                                       :field-display-name "Price"
-                                                       :parent-id          nil
-                                                       :visibility-type    :normal
-                                                       :position           nil
-                                                       :field-id           (id :venues :price)
-                                                       :fk-field-id        (id :checkins :venue_id)
-                                                       :table-name         "VENUES__via__VENUE_ID"
-                                                       :schema-name        nil}}]
+                                   :custom-name      nil
+                                   :field            {:description        nil
+                                                      :base-type          :type/Integer
+                                                      :parent             nil
+                                                      :table-id           (id :venues)
+                                                      :special-type       :type/Category
+                                                      :field-name         "PRICE"
+                                                      :field-display-name "Price"
+                                                      :parent-id          nil
+                                                      :visibility-type    :normal
+                                                      :position           nil
+                                                      :field-id           (id :venues :price)
+                                                      :fk-field-id        (id :checkins :venue_id)
+                                                      :table-name         "VENUES__via__VENUE_ID"
+                                                      :schema-name        nil}}]
                    :breakout     [{:field {:description        nil
                                            :base-type          :type/Date
                                            :parent             nil
@@ -275,7 +277,7 @@
     :fk-field-ids #{(id :checkins :venue_id)}
     :table-ids    #{(id :venues) (id :checkins)}}]
   (let [expanded-form (ql/expand (wrap-inner-query (query checkins
-                                                        (ql/aggregation (ql/sum $venue_id->venues.price))
-                                                        (ql/breakout (ql/datetime-field $checkins.date :day-of-week)))))]
+                                                     (ql/aggregation (ql/sum $venue_id->venues.price))
+                                                     (ql/breakout (ql/datetime-field $checkins.date :day-of-week)))))]
     (mapv obj->map [expanded-form
                     (resolve/resolve expanded-form)])))

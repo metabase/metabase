@@ -94,18 +94,24 @@
     :count
     ag-type))
 
+;; TODO - rename to something like `aggregation-name` or `aggregation-subclause-name` now that this handles any sort of aggregation
 (defn expression-aggregation-name
-  "Return an appropriate name for an expression aggregation, e.g. `sum + count`."
-  ^String [ag]
+  "Return an appropriate name for an `:aggregation` subclause (an aggregation or expression)."
+  ^String [{custom-name :custom-name, aggregation-type :aggregation-type, :as ag}]
   (cond
+    ;; if a custom name was provided use it
+    custom-name               custom-name
+    ;; for unnamed expressions, just compute a name like "sum + count"
     (instance? Expression ag) (let [{:keys [operator args]} ag]
                                 (str/join (str " " (name operator) " ")
                                           (for [arg args]
                                             (if (instance? Expression arg)
                                               (str "(" (expression-aggregation-name arg) ")")
                                               (expression-aggregation-name arg)))))
-    (:aggregation-type ag)    (name (:aggregation-type ag))
-    :else                     ag))
+    ;; for unnamed normal aggregations, the column alias is always the same as the ag type except for `:distinct` with is called `:count` (WHY?)
+    aggregation-type          (if (= (keyword aggregation-type) :distinct)
+                                "count"
+                                (name aggregation-type))))
 
 (defn- expression-aggregate-field-info [expression]
   (let [ag-name (expression-aggregation-name expression)]

@@ -40,6 +40,14 @@ export default class Bar extends Component {
         }
     }
 
+    cellClicked = (rowIndex, columnIndex, ...args) => {
+        this.props.cellClickedFn(rowIndex, this.state.columnIndexes[columnIndex], ...args);
+    }
+
+    cellIsClickable = (rowIndex, columnIndex, ...args) => {
+        return this.props.cellIsClickableFn(rowIndex, this.state.columnIndexes[columnIndex], ...args);
+    }
+
     _updateData({ data, settings }) {
         if (settings["table.pivot"]) {
             this.setState({
@@ -47,23 +55,24 @@ export default class Bar extends Component {
             });
         } else {
             const { cols, rows, columns } = data;
-            const colIndexes = settings["table.columns"]
+            const columnIndexes = settings["table.columns"]
                 .filter(f => f.enabled)
                 .map(f => _.findIndex(cols, (c) => c.name === f.name))
                 .filter(i => i >= 0 && i < cols.length);
 
             this.setState({
                 data: {
-                    cols: colIndexes.map(i => cols[i]),
-                    columns: colIndexes.map(i => columns[i]),
-                    rows: rows.map(row => colIndexes.map(i => row[i]))
+                    cols: columnIndexes.map(i => cols[i]),
+                    columns: columnIndexes.map(i => columns[i]),
+                    rows: rows.map(row => columnIndexes.map(i => row[i]))
                 },
+                columnIndexes
             });
         }
     }
 
     render() {
-        const { card, cellClickedFn, setSortFn, isDashboard, settings } = this.props;
+        const { card, cellClickedFn, cellIsClickableFn, setSortFn, isDashboard, settings } = this.props;
         const { data } = this.state;
         const sort = card.dataset_query.query && card.dataset_query.query.order_by || null;
         const isPivoted = settings["table.pivot"];
@@ -75,7 +84,8 @@ export default class Bar extends Component {
                 isPivoted={isPivoted}
                 sort={sort}
                 setSortFn={isPivoted ? undefined : setSortFn}
-                cellClickedFn={isPivoted ? undefined : cellClickedFn}
+                cellClickedFn={(!cellClickedFn || isPivoted) ? undefined : this.cellClicked}
+                cellIsClickableFn={(!cellIsClickableFn || isPivoted) ? undefined : this.cellIsClickable}
             />
         );
     }

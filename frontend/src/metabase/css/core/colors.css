@@ -50,7 +50,8 @@
 }
 
 .bg-brand,
-.bg-brand-hover:hover { background-color: var(--brand-color); }
+.bg-brand-hover:hover,
+.bg-brand-active:active { background-color: var(--brand-color); }
 
 
 /* success */

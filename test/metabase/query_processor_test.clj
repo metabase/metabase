@@ -288,15 +288,22 @@
 
 
 (defn rows
-  "Return the result rows from query results, or throw an Exception if they're missing."
+  "Return the result rows from query RESULTS, or throw an Exception if they're missing."
   {:style/indent 0}
   [results]
-  (vec (or (-> results :data :rows)
+  (vec (or (get-in results [:data :rows])
            (println (u/pprint-to-str 'red results))
            (throw (Exception. "Error!")))))
 
+(defn rows+column-names
+  "Return the result rows and column names from query RESULTS, or throw an Exception if they're missing."
+  {:style/indent 0}
+  [results]
+  {:rows    (rows results)
+   :columns (get-in results [:data :columns])})
+
 (defn first-row
-  "Return the first row in the results of a query, or throw an Exception if they're missing."
+  "Return the first row in the RESULTS of a query, or throw an Exception if they're missing."
   {:style/indent 0}
   [results]
   (first (rows results)))
