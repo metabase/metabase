@@ -179,6 +179,7 @@ export default class AggregationPopover extends Component {
                             startRule="aggregation"
                             expression={aggregation}
                             tableMetadata={tableMetadata}
+                            customFields={this.props.customFields}
                             onChange={(parsedExpression) => this.setState({aggregation: parsedExpression, error: null})}
                             onError={(errorMessage) => this.setState({error: errorMessage})}
                         />

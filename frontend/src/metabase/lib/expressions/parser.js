@@ -1,7 +1,7 @@
 const { Lexer, Parser, extendToken, getImage } = require("chevrotain");
 const _ = require("underscore");
 
-import { VALID_AGGREGATIONS, normalizeName } from "../expressions";
+import { VALID_AGGREGATIONS, formatFieldName, formatMetricName, formatExpressionName } from "../expressions";
 
 export const AGGREGATION_ARITY = new Map([
     ["Count", 0],
@@ -54,10 +54,10 @@ const ExpressionsLexer = new Lexer(allTokens);
 
 
 class ExpressionsParser extends Parser {
-    constructor(input, tableMetadata) {
+    constructor(input, options) {
         super(input, allTokens, { recoveryEnabled: false });
 
-        this._tableMetadata = tableMetadata;
+        this._options = options;
 
         let $ = this;
 
@@ -131,7 +131,11 @@ class ExpressionsParser extends Parser {
             let metricName = $.CONSUME(Identifier).image;
             $.CONSUME(LParen);
             $.CONSUME(RParen);
-            return ["METRIC", this.getMetricIdForName(metricName)];
+            const metric = this.getMetricForName(metricName);
+            if (metric != null) {
+                return ["METRIC", metric.id];
+            }
+            throw new Error("Unknown metric \"" + metricName + "\"");
         });
 
         $.RULE("fieldExpression", () => {
@@ -139,7 +143,15 @@ class ExpressionsParser extends Parser {
                 {ALT: () => JSON.parse($.CONSUME(StringLiteral).image) },
                 {ALT: () => $.CONSUME(Identifier).image }
             ]);
-            return ["field-id", this.getFieldIdForName(fieldName)];
+            const field = this.getFieldForName(fieldName);
+            if (field != null) {
+                return ["field-id", field.id];
+            }
+            const expression = this.getExpressionForName(fieldName);
+            if (expression != null) {
+                return ["expression", fieldName];
+            }
+            throw new Error("Unknown field \"" + fieldName + "\"");
         });
 
         $.RULE("atomicExpression", (outsideAggregation) => {
@@ -166,24 +178,19 @@ class ExpressionsParser extends Parser {
         Parser.performSelfAnalysis(this);
     }
 
-    getFieldIdForName(fieldName) {
-        const fields = this._tableMetadata && this._tableMetadata.fields || [];
-        for (const field of fields) {
-            if (field.display_name.toLowerCase() === fieldName.toLowerCase()) {
-                return field.id;
-            }
-        }
-        throw new Error("Unknown field \"" + fieldName + "\"");
+    getFieldForName(fieldName) {
+        const fields = this._options.tableMetadata && this._options.tableMetadata.fields;
+        return _.findWhere(fields, { display_name: fieldName });
     }
 
-    getMetricIdForName(metricName) {
-        const metrics = this._tableMetadata && this._tableMetadata.metrics || [];
-        for (const metric of metrics) {
-            if (normalizeName(metric.name).toLowerCase() === metricName.toLowerCase()) {
-                return metric.id;
-            }
-        }
-        throw new Error("Unknown metric \"" + metricName + "\"");
+    getExpressionForName(expressionName) {
+        const customFields = this._options && this._options.customFields;
+        return customFields[expressionName];
+    }
+
+    getMetricForName(metricName) {
+        const metrics = this._options.tableMetadata && this._options.tableMetadata.metrics;
+        return _.find(metrics, (metric) => formatMetricName(metric.name) === metricName);
     }
 }
 
@@ -196,11 +203,12 @@ function getTokenSource(TokenClass) {
     return TokenClass.PATTERN.source.replace(/^\\/, "");
 }
 
-export function compile(source, tableMetadata, { startRule } = {}) {
+export function compile(source, options = {}) {
     if (!source) {
         return [];
     }
-    const parser = new ExpressionsParser(ExpressionsLexer.tokenize(source).tokens, tableMetadata);
+    const { startRule } = options;
+    const parser = new ExpressionsParser(ExpressionsLexer.tokenize(source).tokens, options);
     const expression = parser[startRule]();
     if (parser.errors.length > 0) {
         throw parser.errors;
@@ -210,7 +218,12 @@ export function compile(source, tableMetadata, { startRule } = {}) {
 
 // No need for more than one instance.
 const parserInstance = new ExpressionsParser([])
-export function suggest(source, tableMetadata, { startRule, index = source.length } = {}) {
+export function suggest(source, {
+    tableMetadata,
+    customFields,
+    startRule,
+    index = source.length
+} = {}) {
     const partialSource = source.slice(0, index);
     const lexResult = ExpressionsLexer.tokenize(partialSource);
     if (lexResult.errors.length > 0) {
@@ -270,9 +283,14 @@ export function suggest(source, tableMetadata, { startRule, index = source.lengt
                 finalSuggestions.push(...tableMetadata.fields.map(field => ({
                     type: "fields",
                     name: field.display_name,
-                    text: /^\w+$/.test(field.display_name) ?
-                        field.display_name + " " : // need a space to terminate identifier
-                        JSON.stringify(field.display_name),
+                    text: formatFieldName(field.display_name) + " ",
+                    prefixTrim: /\w+$/,
+                    postfixTrim: /^\w+\s*/
+                })))
+                finalSuggestions.push(...Object.keys(customFields).map(expressionName => ({
+                    type: "fields",
+                    name: expressionName,
+                    text: formatExpressionName(expressionName) + " ",
                     prefixTrim: /\w+$/,
                     postfixTrim: /^\w+\s*/
                 })))
@@ -295,7 +313,7 @@ export function suggest(source, tableMetadata, { startRule, index = source.lengt
                 finalSuggestions.push(...tableMetadata.metrics.map(metric => ({
                     type: "metrics",
                     name: metric.name,
-                    text: normalizeName(metric.name) + "() ",
+                    text: formatMetricName(metric.name) + "() ",
                     prefixTrim: /\w+$/,
                     postfixTrim: /^\w+\(\)?/
                 })))

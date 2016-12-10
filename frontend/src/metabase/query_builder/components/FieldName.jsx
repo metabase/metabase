@@ -37,9 +37,12 @@ export default class FieldName extends Component {
                 parts.push(<span key={"fkName"+index}>{stripId(fkField.display_name)}</span>);
                 parts.push(<span key={"fkIcon"+index} className="px1"><Icon name="connections" size={10} /></span>);
             }
-            // target field itself
-            // using i.getIn to avoid exceptions when field is undefined
-            parts.push(<span key="field">{Query.getFieldPathName(fieldTarget.field.id, fieldTarget.table)}</span>);
+            if (fieldTarget.field.id != null) {
+                parts.push(<span key="field">{Query.getFieldPathName(fieldTarget.field.id, fieldTarget.table)}</span>);
+            } else {
+                // expressions, etc
+                parts.push(<span key="field">{fieldTarget.field.display_name}</span>);
+            }
             // datetime-field unit
             if (fieldTarget.unit != null) {
                 parts.push(<span key="unit">{": " + formatBucketing(fieldTarget.unit)}</span>);

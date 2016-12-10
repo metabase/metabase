@@ -21,15 +21,24 @@ export const VALID_AGGREGATIONS = new Map(Object.entries({
     "max": "Max"
 }));
 
+export function formatMetricName(metricName) {
+    return titleize(metricName).replace(/\W+/g, "")
+}
 
-export function normalizeName(name) {
-    return titleize(name).replace(/\W+/g, "")
+export function formatFieldName(fieldName) {
+    return /^\w+$/.test(fieldName) ?
+        fieldName :
+        JSON.stringify(fieldName);
+}
+
+export function formatExpressionName(name) {
+    return formatFieldName(name);
 }
 
 // move to query lib
 
 export function isExpression(expr) {
-    return isMath(expr) || isAggregation(expr) || isMetric(expr);
+    return isMath(expr) || isAggregation(expr) || isField(expr) || isMetric(expr) || isExpressionReference(expr);
 }
 
 export function isField(expr) {
@@ -37,7 +46,8 @@ export function isField(expr) {
 }
 
 export function isMetric(expr) {
-    return Array.isArray(expr) && expr.length === 2 && mbqlEq(expr[0], 'metric') && typeof expr[1] === 'number';
+    // case sensitive, unlike most mbql
+    return Array.isArray(expr) && expr.length === 2 && expr[0] === "METRIC" && typeof expr[1] === 'number';
 }
 
 export function isMath(expr) {
@@ -46,6 +56,10 @@ export function isMath(expr) {
 
 export function isAggregation(expr) {
     return Array.isArray(expr) && VALID_AGGREGATIONS.has(expr[0]) && _.all(expr.slice(1), isValidArg);
+}
+
+export function isExpressionReference(expr) {
+    return Array.isArray(expr) && expr.length === 2 && mbqlEq(expr[0], 'expression') && typeof expr[1] === 'string';
 }
 
 export function isValidArg(arg) {

@@ -89,9 +89,9 @@ export default class AggregationWidget extends Component {
     }
 
     renderCustomAggregation() {
-        const { aggregation, tableMetadata } = this.props;
+        const { aggregation, tableMetadata, customFields } = this.props;
         return (
-            <span className="View-section-aggregation QueryOption p1">{aggregation ? format(aggregation, tableMetadata) : "Choose an aggregation"}</span>
+            <span className="View-section-aggregation QueryOption p1">{aggregation ? format(aggregation, { tableMetadata, customFields }) : "Choose an aggregation"}</span>
         );
     }
 

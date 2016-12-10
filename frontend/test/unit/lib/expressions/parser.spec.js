@@ -8,7 +8,7 @@ const mockFields = [
     {id: 10, display_name: "Toucan Sam"}
 ];
 
-fdescribe("lib/expressions/parser", () => {
+describe("lib/expressions/parser", () => {
     describe("compile()", () => {
         it("should return empty array for null or empty string", () => {
             expect(compile()).toEqual([]);

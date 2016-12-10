@@ -32,6 +32,7 @@ export default class ExpressionEditorTextfield extends Component {
     static propTypes = {
         expression: PropTypes.array,      // should be an array like [parsedExpressionObj, expressionString]
         tableMetadata: PropTypes.object.isRequired,
+        customFields: PropTypes.object,
         onChange: PropTypes.func.isRequired,
         onError: PropTypes.func.isRequired,
         startRule: PropTypes.string.isRequired
@@ -51,12 +52,17 @@ export default class ExpressionEditorTextfield extends Component {
         // we only refresh our state if we had no previous state OR if our expression or table has changed
         if (!this.state || this.props.expression != newProps.expression || this.props.tableMetadata != newProps.tableMetadata) {
             let parsedExpression = newProps.expression;
-            let expressionString = format(newProps.expression, this.props.tableMetadata);
+            let expressionString = format(newProps.expression, {
+                tableMetadata: newProps.tableMetadata,
+                customFields: newProps.customFields,
+            });
             let expressionErrorMessage = null;
             let suggestions = [];
             try {
                 if (expressionString) {
-                    compile(expressionString, newProps.tableMetadata, {
+                    compile(expressionString, {
+                        tableMetadata: newProps.tableMetadata,
+                        customFields: newProps.customFields,
                         startRule: newProps.startRule
                     });
                 }
@@ -179,7 +185,9 @@ export default class ExpressionEditorTextfield extends Component {
         let parsedExpression;
 
         try {
-            parsedExpression = compile(expressionString, this.props.tableMetadata, {
+            parsedExpression = compile(expressionString, {
+                tableMetadata: this.props.tableMetadata,
+                customFields: this.props.customFields,
                 startRule: this.props.startRule
             })
         } catch (e) {
@@ -187,7 +195,9 @@ export default class ExpressionEditorTextfield extends Component {
             console.error("expression error:", expressionErrorMessage);
         }
         try {
-            suggestions = suggest(expressionString, this.props.tableMetadata, {
+            suggestions = suggest(expressionString, {
+                tableMetadata: this.props.tableMetadata,
+                customFields: this.props.customFields,
                 startRule: this.props.startRule,
                 index: inputElement.selectionStart
             })
@@ -244,7 +254,7 @@ export default class ExpressionEditorTextfield extends Component {
                                     </li>
                                 ,
                                     <li style={{ paddingTop: "2px", paddingBottom: "2px" }}
-                                        className={cx("cursor-pointer", {"text-bold text-brand": i === this.state.highlightedSuggestion})}
+                                        className={cx("cursor-pointer text-brand-hover", {"text-bold text-brand": i === this.state.highlightedSuggestion})}
                                         onMouseDownCapture={(e) => this.onSuggestionMouseDown(e, i)}
                                     >
                                         { suggestion.prefixLength ?

@@ -32,7 +32,10 @@ export default class Expressions extends Component {
                 { sortedNames && sortedNames.map(name =>
                     <div key={name} className="pb1 text-brand text-bold cursor-pointer flex flex-row align-center justify-between" onClick={() => onEditExpression(name)}>
                         <span>{name}</span>
-                        <Tooltip tooltip={format(expressions[name], this.props.tableMetadata)}>
+                        <Tooltip tooltip={format(expressions[name], {
+                            tableMetadata: this.props.tableMetadata,
+                            customFields: expressions
+                        })}>
                             <span className="QuestionTooltipTarget" />
                         </Tooltip>
                     </div>
