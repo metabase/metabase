@@ -11,6 +11,7 @@
                              [card :refer [Card], :as card]
                              [card-favorite :refer [CardFavorite]]
                              [card-label :refer [CardLabel]]
+                             [collection :refer [Collection]]
                              [common :as common]
                              [database :refer [Database]]
                              [interface :as models]
@@ -25,7 +26,7 @@
 
 ;;; ------------------------------------------------------------ Hydration ------------------------------------------------------------
 
-(defn- hydrate-labels
+(defn- ^:deprecated hydrate-labels
   "Efficiently hydrate the `Labels` for a large collection of `Cards`."
   [cards]
   (let [card-labels          (db/select [CardLabel :card_id :label_id])
@@ -50,12 +51,12 @@
 (defn- cards:all
   "Return all `Cards`."
   []
-  (db/select Card, :archived false, {:order-by [[:name :asc]]}))
+  (db/select Card, :archived false, {:order-by [[:%lower.name :asc]]}))
 
 (defn- cards:mine
   "Return all `Cards` created by current user."
   []
-  (db/select Card, :creator_id *current-user-id*, :archived false, {:order-by [[:name :asc]]}))
+  (db/select Card, :creator_id *current-user-id*, :archived false, {:order-by [[:%lower.name :asc]]}))
 
 (defn- cards:fav
   "Return all `Cards` favorited by the current user."
@@ -69,12 +70,12 @@
 (defn- cards:database
   "Return all `Cards` belonging to `Database` with DATABASE-ID."
   [database-id]
-  (db/select Card, :database_id database-id, :archived false, {:order-by [[:name :asc]]}))
+  (db/select Card, :database_id database-id, :archived false, {:order-by [[:%lower.name :asc]]}))
 
 (defn- cards:table
   "Return all `Cards` belonging to `Table` with TABLE-ID."
   [table-id]
-  (db/select Card, :table_id table-id, :archived false, {:order-by [[:name :asc]]}))
+  (db/select Card, :table_id table-id, :archived false, {:order-by [[:%lower.name :asc]]}))
 
 (defn- cards-with-ids
   "Return unarchived `Cards` with CARD-IDS.
@@ -106,34 +107,44 @@
 (defn- cards:archived
   "`Cards` that have been archived."
   []
-  (db/select Card, :archived true, {:order-by [[:name :asc]]}))
+  (db/select Card, :archived true, {:order-by [[:%lower.name :asc]]}))
+
+(defn- cards:no-collection
+  "`Cards` that don't belong to a `Collection`."
+  []
+  (db/select Card, :archived false, :collection_id nil, {:order-by [[:%lower.name :asc]]}))
 
 (def ^:private filter-option->fn
   "Functions that should be used to return cards for a given filter option. These functions are all be called with `model-id` as the sole paramenter;
    functions that don't use the param discard it via `u/drop-first-arg`.
 
      ((filter->option->fn :recent) model-id) -> (cards:recent)"
-  {:all      (u/drop-first-arg cards:all)
-   :mine     (u/drop-first-arg cards:mine)
-   :fav      (u/drop-first-arg cards:fav)
-   :database cards:database
-   :table    cards:table
-   :recent   (u/drop-first-arg cards:recent)
-   :popular  (u/drop-first-arg cards:popular)
-   :archived (u/drop-first-arg cards:archived)})
+  {:all           (u/drop-first-arg cards:all)
+   :mine          (u/drop-first-arg cards:mine)
+   :fav           (u/drop-first-arg cards:fav)
+   :database      cards:database
+   :table         cards:table
+   :recent        (u/drop-first-arg cards:recent)
+   :popular       (u/drop-first-arg cards:popular)
+   :archived      (u/drop-first-arg cards:archived)
+   :no-collection (u/drop-first-arg cards:no-collection)})
 
-(defn- card-has-label? [label-slug card]
+(defn- ^:deprecated card-has-label? [label-slug card]
   (contains? (set (map :slug (:labels card))) label-slug))
 
-(defn- cards-for-filter-option [filter-option model-id label]
+;; TODO - do we need to hydrate the cards' collections as well?
+(defn- cards-for-filter-option [filter-option model-id label collection]
   (let [cards (-> ((filter-option->fn (or filter-option :all)) model-id)
                   (hydrate :creator)
                   hydrate-labels
                   hydrate-favorites)]
-    ;; Since labels are hydrated in Clojure-land we need to wait until this point to apply label filtering if applicable
-    (if-not (seq label)
-      cards
-      (filter (partial card-has-label? label) cards))))
+    ;; Since labels and collections are hydrated in Clojure-land we need to wait until this point to apply label/collection filtering if applicable
+    (filter (cond
+              (seq collection) (let [collection-id (check-404 (db/select-one-id Collection :slug collection))]
+                                 (comp (partial = collection-id) :collection_id))
+              (seq label)      (partial card-has-label? label)
+              :else            identity)
+            cards)))
 
 
 ;;; ------------------------------------------------------------ /api/card & /api/card/:id endpoints ------------------------------------------------------------
@@ -144,36 +155,50 @@
 
 (defendpoint GET "/"
   "Get all the `Cards`. Option filter param `f` can be used to change the set of Cards that are returned; default is `all`,
-   but other options include `mine`, `fav`, `database`, `table`, `recent`, `popular`, and `archived`. See corresponding implementation
+   but other options include `mine`, `fav`, `database`, `table`, `recent`, `popular`, `archived`, and `no-collection`. See corresponding implementation
    functions above for the specific behavior of each filter option. :card_index:
 
-   Optionally filter cards by LABEL slug."
-  [f model_id label]
-  {f (s/maybe CardFilterOption), model_id (s/maybe su/IntGreaterThanZero), label (s/maybe su/NonBlankString)}
+   Optionally filter cards by LABEL or COLLECTION slug.
+
+   NOTES:
+
+   *  Filtering by LABEL is considered *deprecated*, as `Labels` will be removed from an upcoming version of Metabase in favor of `Collections`.
+   *  LABEL and COLLECTION params are mutually exclusive; if both are specified, LABEL will be ignored and Cards will only be filtered by their `Collection`.
+   *  If no `Collection` exists with the slug COLLECTION, this endpoint will return a 404."
+  [f model_id label collection]
+  {f (s/maybe CardFilterOption), model_id (s/maybe su/IntGreaterThanZero), label (s/maybe su/NonBlankString), collection (s/maybe su/NonBlankString)}
   (let [f (keyword f)]
     (when (contains? #{:database :table} f)
       (checkp (integer? model_id) "id" (format "id is required parameter when filter mode is '%s'" (name f)))
       (case f
         :database (read-check Database model_id)
         :table    (read-check Database (db/select-one-field :db_id Table, :id model_id))))
-    (->> (cards-for-filter-option f model_id label)
+    (->> (cards-for-filter-option f model_id label collection)
          (filterv models/can-read?)))) ; filterv because we want make sure all the filtering is done while current user perms set is still bound
 
 
 (defendpoint POST "/"
   "Create a new `Card`."
-  [:as {{:keys [dataset_query description display name visualization_settings]} :body}]
+  [:as {{:keys [dataset_query description display name visualization_settings collection_id]} :body}]
   {name                   su/NonBlankString
+   description            (s/maybe su/NonBlankString)
    display                su/NonBlankString
-   visualization_settings su/Map}
+   visualization_settings su/Map
+   collection_id          (s/maybe su/IntGreaterThanZero)}
+  ;; check that we have permissions to run the query that we're trying to save
   (check-403 (perms/set-has-full-permissions-for-set? @*current-user-permissions-set* (card/query-perms-set dataset_query :write)))
+  ;; check that we have permissions for the collection we're trying to save this card to, if applicable
+  (when collection_id
+    (check-403 (perms/set-has-full-permissions? @*current-user-permissions-set* (perms/collection-readwrite-path collection_id))))
+  ;; everything is g2g, now save the card
   (->> (db/insert! Card
          :creator_id             *current-user-id*
          :dataset_query          dataset_query
          :description            description
          :display                display
          :name                   name
-         :visualization_settings visualization_settings)
+         :visualization_settings visualization_settings
+         :collection_id          collection_id)
        (events/publish-event! :card-create)))
 
 
@@ -189,26 +214,32 @@
 
 (defendpoint PUT "/:id"
   "Update a `Card`."
-  [id :as {{:keys [dataset_query description display name visualization_settings archived], :as body} :body}]
+  [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id], :as body} :body}]
   {name                   (s/maybe su/NonBlankString)
    display                (s/maybe su/NonBlankString)
+   description            (s/maybe su/NonBlankString)
    visualization_settings (s/maybe su/Map)
-   archived               (s/maybe s/Bool)}
+   archived               (s/maybe s/Bool)
+   collection_id          (s/maybe su/IntGreaterThanZero)}
   (let [card (write-check Card id)]
-    (db/update-non-nil-keys! Card id
-      :dataset_query          dataset_query
-      :description            description
-      :display                display
-      :name                   name
-      :visualization_settings visualization_settings
-      :archived               archived)
+    ;; if we're changing the `collection_id` of the Card, make sure we have write permissions for the new group
+    (when (not= (:collection_id card) collection_id)
+      (check-403 (perms/set-has-full-permissions? @*current-user-permissions-set* (perms/collection-readwrite-path collection_id))))
+    ;; ok, now save the Card
+    (db/update! Card id
+      (merge {:collection_id collection_id}
+             (when-not (nil? dataset_query)          {:dataset_query          dataset_query})
+             (when-not (nil? description)            {:description            description})
+             (when-not (nil? display)                {:display                display})
+             (when-not (nil? name)                   {:name                   name})
+             (when-not (nil? visualization_settings) {:visualization_settings visualization_settings})
+             (when-not (nil? archived)               {:archived               archived})))
     (let [event (cond
                   ;; card was archived
                   (and archived
                        (not (:archived card))) :card-archive
                   ;; card was unarchived
-                  (and (not (nil? archived))
-                       (not archived)
+                  (and (false? archived)
                        (:archived card))       :card-unarchive
                   :else                        :card-update)]
       (events/publish-event! event (assoc (Card id) :actor_id *current-user-id*)))))
