@@ -5,6 +5,7 @@ import FieldName from './FieldName.jsx';
 import Clearable from './Clearable.jsx';
 
 import Popover from "metabase/components/Popover.jsx";
+import NamedColumn from "metabase/hoc/NamedColumn.jsx";
 
 import Query from "metabase/lib/query";
 import { AggregationClause } from "metabase/lib/query";
@@ -14,7 +15,11 @@ import { format } from "metabase/lib/expressions/formatter";
 import cx from "classnames";
 import _ from "underscore";
 
-
+@NamedColumn({
+    valueProp: "aggregation",
+    updaterProp: "updateAggregation",
+    nameIsEditable: (props) => props.aggregation && props.aggregation[0] && props.aggregation[0] != "rows"
+})
 export default class AggregationWidget extends Component {
     constructor(props, context) {
         super(props, context);

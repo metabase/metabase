@@ -619,6 +619,18 @@ for (const prop in Q) {
 
 import { isMath } from "metabase/lib/expressions";
 
+export const NamedClause = {
+    isNamed(clause) {
+        return Array.isArray(clause) && mbqlEq(clause[0], "named");
+    },
+    getName(clause) {
+        return NamedClause.isNamed(clause) ? clause[2] : null;
+    },
+    getContent(clause) {
+        return NamedClause.isNamed(clause) ? clause[1] : clause;
+    }
+}
+
 export const AggregationClause = {
 
     // predicate function to test if a given aggregation clause is fully formed
