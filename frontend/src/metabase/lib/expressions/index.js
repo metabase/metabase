@@ -16,23 +16,30 @@ export const VALID_AGGREGATIONS = new Map(Object.entries({
     "sum": "Sum",
     "cum_sum": "CumulativeSum",
     "distinct": "Distinct",
+    "stddev": "StandardDeviation",
     "avg": "Average",
     "min": "Min",
     "max": "Max"
 }));
 
-export function formatMetricName(metricName) {
-    return titleize(metricName).replace(/\W+/g, "")
+export function formatAggregationName(aggregationOption) {
+    return VALID_AGGREGATIONS.get(aggregationOption.short);
 }
 
-export function formatFieldName(fieldName) {
-    return /^\w+$/.test(fieldName) ?
-        fieldName :
-        JSON.stringify(fieldName);
+export function formatMetricName(metric) {
+    return titleize(metric.name).replace(/\W+/g, "")
+}
+
+export function formatFieldName(field) {
+    return /^\w+$/.test(field.display_name) ?
+        field.display_name :
+        JSON.stringify(field.display_name);
 }
 
 export function formatExpressionName(name) {
-    return formatFieldName(name);
+    return /^\w+$/.test(name) ?
+        name :
+        JSON.stringify(name);
 }
 
 // move to query lib

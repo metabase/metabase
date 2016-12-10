@@ -1,18 +1,7 @@
 const { Lexer, Parser, extendToken, getImage } = require("chevrotain");
 const _ = require("underscore");
 
-import { VALID_AGGREGATIONS, formatFieldName, formatMetricName, formatExpressionName } from "../expressions";
-
-export const AGGREGATION_ARITY = new Map([
-    ["Count", 0],
-    ["CumulativeCount", 0],
-    ["Sum", 1],
-    ["CumulativeSum", 1],
-    ["Distinct", 1],
-    ["Average", 1],
-    ["Min", 1],
-    ["Max", 1]
-]);
+import { VALID_AGGREGATIONS, formatFieldName, formatMetricName, formatExpressionName, formatAggregationName } from "../expressions";
 
 const AdditiveOperator = extendToken("AdditiveOperator", Lexer.NA);
 const Plus = extendToken("Plus", /\+/, AdditiveOperator);
@@ -190,7 +179,7 @@ class ExpressionsParser extends Parser {
 
     getMetricForName(metricName) {
         const metrics = this._options.tableMetadata && this._options.tableMetadata.metrics;
-        return _.find(metrics, (metric) => formatMetricName(metric.name) === metricName);
+        return _.find(metrics, (metric) => formatMetricName(metric) === metricName);
     }
 }
 
@@ -245,6 +234,9 @@ export function suggest(source, {
 
     let finalSuggestions = []
 
+    // TODO: is there a better way to figure out which aggregation we're inside of?
+    const currentAggregationToken = _.find(assistanceTokenVector.slice().reverse(), (t) => t instanceof Aggregation);
+
     for (const suggestion of syntacticSuggestions) {
         const { nextTokenType, ruleStack } = suggestion;
         // no nesting of aggregations or field references outside of aggregations
@@ -258,8 +250,8 @@ export function suggest(source, {
                 type: "operators",
                 name: getTokenSource(token),
                 text: " " + getTokenSource(token) + " ",
-                prefixTrim: /\s+$/,
-                postfixTrim: /^\s+/
+                prefixTrim: /\s*$/,
+                postfixTrim: /^\s*[*/+-]?\s*/
             })))
         } else if (nextTokenType === LParen) {
             finalSuggestions.push({
@@ -267,53 +259,55 @@ export function suggest(source, {
                 name: "(",
                 text: " (",
                 postfixText: ")",
-                prefixTrim: /\s+$/,
-                postfixTrim: /^\s+/
+                prefixTrim: /\s*$/,
+                postfixTrim: /^\s*\(?\s*/
             });
         } else if (nextTokenType === RParen) {
             finalSuggestions.push({
                 type: "other",
                 name: ")",
                 text: ") ",
-                prefixTrim: /\s+$/,
-                postfixTrim: /^\s+/
+                prefixTrim: /\s*$/,
+                postfixTrim: /^\s*\)?\s*/
             });
         } else if (nextTokenType === Identifier || nextTokenType === StringLiteral) {
-            if (!outsideAggregation) {
-                finalSuggestions.push(...tableMetadata.fields.map(field => ({
-                    type: "fields",
-                    name: field.display_name,
-                    text: formatFieldName(field.display_name) + " ",
-                    prefixTrim: /\w+$/,
-                    postfixTrim: /^\w+\s*/
-                })))
-                finalSuggestions.push(...Object.keys(customFields || {}).map(expressionName => ({
-                    type: "fields",
-                    name: expressionName,
-                    text: formatExpressionName(expressionName) + " ",
-                    prefixTrim: /\w+$/,
-                    postfixTrim: /^\w+\s*/
-                })))
+            if (!outsideAggregation && currentAggregationToken) {
+                let aggregationShort = aggregationsMap.get(getImage(currentAggregationToken));
+                let aggregationOption = _.findWhere(tableMetadata.aggregation_options, { short: aggregationShort });
+                if (aggregationOption && aggregationOption.fields.length > 0) {
+                    finalSuggestions.push(...aggregationOption.fields[0].map(field => ({
+                        type: "fields",
+                        name: field.display_name,
+                        text: formatFieldName(field) + " ",
+                        prefixTrim: /\w+$/,
+                        postfixTrim: /^\w+\s*/
+                    })))
+                    finalSuggestions.push(...Object.keys(customFields || {}).map(expressionName => ({
+                        type: "fields",
+                        name: expressionName,
+                        text: formatExpressionName(expressionName) + " ",
+                        prefixTrim: /\w+$/,
+                        postfixTrim: /^\w+\s*/
+                    })))
+                }
             }
         } else if (nextTokenType === Aggregation) {
             if (outsideAggregation) {
-                let tokens = getSubTokenTypes(nextTokenType);
-                finalSuggestions.push(...tokens.map(token => {
-                    let text = getTokenSource(token);
-                    let arity = AGGREGATION_ARITY.get(text);
+                finalSuggestions.push(...tableMetadata.aggregation_options.filter(a => formatAggregationName(a)).map(aggregationOption => {
+                    const arity = aggregationOption.fields.length;
                     return {
                         type: "aggregations",
-                        name: text,
-                        text: text + "(" + (arity > 0 ? "" : ")"),
+                        name: formatAggregationName(aggregationOption),
+                        text: formatAggregationName(aggregationOption) + "(" + (arity > 0 ? "" : ")"),
                         postfixText: arity > 0 ? ")" : "",
                         prefixTrim: /\w+$/,
                         postfixTrim: /^\w+\(\)?/
-                    }
+                    };
                 }));
                 finalSuggestions.push(...tableMetadata.metrics.map(metric => ({
                     type: "metrics",
                     name: metric.name,
-                    text: formatMetricName(metric.name) + "() ",
+                    text: formatMetricName(metric) + "() ",
                     prefixTrim: /\w+$/,
                     postfixTrim: /^\w+\(\)?/
                 })))

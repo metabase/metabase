@@ -245,7 +245,7 @@ export default class ExpressionEditorTextfield extends Component {
                             targetAttachment: 'bottom left'
                         }}
                     >
-                        <ul style={{minWidth: 150, maxHeight: 342, overflow: "hidden"}}>
+                        <ul style={{minWidth: 150, overflow: "hidden"}}>
                             {suggestions.map((suggestion, i) =>
                                 // insert section title. assumes they're sorted by type
                                 [(i === 0 || suggestion.type !== suggestions[i - 1].type) &&

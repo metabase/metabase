@@ -48,7 +48,7 @@ function formatField([, fieldId], { tableMetadata: { fields } }) {
     if (!field) {
         throw 'field with ID does not exist: ' + fieldId;
     }
-    return formatFieldName(field.display_name);
+    return formatFieldName(field);
 }
 
 function formatMetric([, metricId], { tableMetadata: { metrics } }) {
@@ -56,7 +56,7 @@ function formatMetric([, metricId], { tableMetadata: { metrics } }) {
     if (!metric) {
         throw 'metric with ID does not exist: ' + metricId;
     }
-    return formatMetricName(metric.name) + "()";
+    return formatMetricName(metric) + "()";
 }
 
 function formatExpressionReference([, expressionName]) {
