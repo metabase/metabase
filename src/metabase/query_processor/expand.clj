@@ -64,7 +64,7 @@
    (This will probably be extended to support Fields in the future, but for now, only the `:aggregation` clause is supported.)"
   {:added "0.22.0"}
   [aggregation-or-expression :- i/Aggregation, custom-name :- su/NonBlankString]
-  (assoc aggregation-or-expression :name custom-name))
+  (assoc aggregation-or-expression :custom-name custom-name))
 
 (s/defn ^:ql ^:always-validate datetime-field :- FieldPlaceholder
   "Reference to a `DateTimeField`. This is just a `Field` reference with an associated datetime UNIT."

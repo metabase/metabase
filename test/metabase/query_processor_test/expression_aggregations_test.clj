@@ -167,7 +167,7 @@
              [3  52]
              [4  30]]
    :columns [(data/format-name "price")
-             "New Price"]}
+             (if (= *engine* :redshift) "new price" "New Price")]} ; Redshift annoyingly always lowercases column aliases
   (format-rows-by [int int]
     (rows+column-names (data/run-query venues
                          (ql/aggregation (ql/named (ql/sum (ql/+ $price 1)) "New Price"))
@@ -180,7 +180,7 @@
              [3  -2]
              [4 -17]]
    :columns [(data/format-name "price")
-             "Sum-41"]}
+             (if (= *engine* :redshift) "sum-41" "Sum-41")]}
   (format-rows-by [int int]
     (rows+column-names (data/run-query venues
                          (ql/aggregation (ql/named (ql/- (ql/sum $price) 41) "Sum-41"))

@@ -94,10 +94,10 @@
     :count
     ag-type))
 
-;; TODO - rename to `aggregation-name` now that this handles any sort of aggregation
+;; TODO - rename to something like `aggregation-name` or `aggregation-subclause-name` now that this handles any sort of aggregation
 (defn expression-aggregation-name
-  "Return an appropriate name for an AGGREGATION, e.g. `sum + count`."
-  ^String [{custom-name :name, aggregation-type :aggregation-type, :as ag}]
+  "Return an appropriate name for an `:aggregation` subclause (an aggregation or expression)."
+  ^String [{custom-name :custom-name, aggregation-type :aggregation-type, :as ag}]
   (cond
     ;; if a custom name was provided use it
     custom-name               custom-name

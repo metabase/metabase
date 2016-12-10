@@ -181,10 +181,10 @@
 
 (def ^:private ExpressionOperator (s/named (s/enum :+ :- :* :/) "Valid expression operator"))
 
-(s/defrecord Expression [operator :- ExpressionOperator
-                         args     :- [(s/cond-pre (s/recursive #'RValue)
-                                                  (s/recursive #'Aggregation))]
-                         name     :- (s/maybe su/NonBlankString)])
+(s/defrecord Expression [operator   :- ExpressionOperator
+                         args       :- [(s/cond-pre (s/recursive #'RValue)
+                                                    (s/recursive #'Aggregation))]
+                         custom-name :- (s/maybe su/NonBlankString)])
 
 (def AnyFieldOrExpression
   "Schema for a `FieldPlaceholder`, `AgRef`, or `Expression`."
@@ -243,13 +243,13 @@
 
 (s/defrecord AggregationWithoutField [aggregation-type :- (s/named (s/enum :count :cumulative-count)
                                                                    "Valid aggregation type")
-                                      name             :- (s/maybe su/NonBlankString)])
+                                      custom-name      :- (s/maybe su/NonBlankString)])
 
 (s/defrecord AggregationWithField [aggregation-type :- (s/named (s/enum :avg :count :cumulative-sum :distinct :max :min :stddev :sum)
                                                                 "Valid aggregation type")
                                    field            :- (s/cond-pre FieldPlaceholderOrExpressionRef
                                                                    Expression)
-                                   name             :- (s/maybe su/NonBlankString)])
+                                   custom-name      :- (s/maybe su/NonBlankString)])
 
 (defn- valid-aggregation-for-driver? [{:keys [aggregation-type]}]
   (when (= aggregation-type :stddev)

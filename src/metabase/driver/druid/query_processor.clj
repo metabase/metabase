@@ -218,7 +218,7 @@
                                     (ag:count output-name))))
 
 
-(defn- handle-aggregation [query-type {ag-type :aggregation-type, ag-field :field, output-name :output-name, custom-name :name, :as ag} druid-query]
+(defn- handle-aggregation [query-type {ag-type :aggregation-type, ag-field :field, output-name :output-name, custom-name :custom-name, :as ag} druid-query]
   (let [output-name (or custom-name output-name)]
     (when (isa? query-type ::ag-query)
       (merge-with concat

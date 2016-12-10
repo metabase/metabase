@@ -71,10 +71,15 @@
                      (expand-metric form filter-clauses-atom)))
                  query-dict))
 
+(defn- add-metrics-filter-clauses [query-dict filter-clauses]
+  (update-in query-dict [:query :filter] merge-filter-clauses (if (> (count filter-clauses) 1)
+                                                                (cons "AND" filter-clauses)
+                                                                (first filter-clauses))))
+
 (defn- expand-metrics [query-dict]
   (let [filter-clauses-atom (atom [])
         query-dict          (expand-metrics-in-ag-clause query-dict filter-clauses-atom)]
-    (update-in query-dict [:query :filter] merge-filter-clauses @filter-clauses-atom)))
+    (add-metrics-filter-clauses query-dict @filter-clauses-atom)))
 
 (defn- macroexpand-metric [{{aggregations :aggregation} :query, :as query-dict}]
   (if-not (seq aggregations)
