@@ -271,7 +271,7 @@
    :model       "segment"
    :model_id    (:id segment)
    :database_id (id)
-   :table_id    (id :venues)
+   :table_id    (id :checkins)
    :details     {:name        (:name segment)
                  :description (:description segment)}}
   (with-temp-activities
@@ -288,7 +288,7 @@
    :model       "segment"
    :model_id    (:id segment)
    :database_id (id)
-   :table_id    (id :venues)
+   :table_id    (id :checkins)
    :details     {:name             (:name segment)
                  :description      (:description segment)
                  :revision_message "update this mofo"}}
@@ -310,7 +310,7 @@
    :model       "segment"
    :model_id    (:id segment)
    :database_id (id)
-   :table_id    (id :venues)
+   :table_id    (id :checkins)
    :details     {:name             (:name segment)
                  :description      (:description segment)
                  :revision_message "deleted"}}

@@ -17,9 +17,10 @@
 
 
 (defn- dashboards-list [filter-option]
-  (filter models/can-read? (-> (db/select Dashboard {:where (case (or (keyword filter-option) :all)
-                                                              :all  true
-                                                              :mine [:= :creator_id *current-user-id*])})
+  (filter models/can-read? (-> (db/select Dashboard {:where    (case (or (keyword filter-option) :all)
+                                                                 :all  true
+                                                                 :mine [:= :creator_id *current-user-id*])
+                                                     :order-by [:%lower.name]})
                                (hydrate :creator))))
 
 (defendpoint GET "/"
