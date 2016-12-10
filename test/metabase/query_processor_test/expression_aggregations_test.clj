@@ -156,3 +156,29 @@
     (rows (data/run-query venues
             (ql/aggregation (ql/sum (ql/+ $price 1)))
             (ql/breakout $price)))))
+
+;; check that we can name an expression aggregation w/ aggregation at top-level
+(datasets/expect-with-engines (engines-that-support :expression-aggregations)
+  {:rows    [[1  44]
+             [2 177]
+             [3  52]
+             [4  30]]
+   :columns [(data/format-name "price")
+             "New Price"]}
+  (format-rows-by [int int]
+    (rows+column-names (data/run-query venues
+                         (ql/aggregation (ql/named (ql/sum (ql/+ $price 1)) "New Price"))
+                         (ql/breakout $price)))))
+
+;; check that we can name an expression aggregation w/ expression at top-level
+(datasets/expect-with-engines (engines-that-support :expression-aggregations)
+  {:rows    [[1 -19]
+             [2  77]
+             [3  -2]
+             [4 -17]]
+   :columns [(data/format-name "price")
+             "Sum-41"]}
+  (format-rows-by [int int]
+    (rows+column-names (data/run-query venues
+                         (ql/aggregation (ql/named (ql/- (ql/sum $price) 41) "Sum-41"))
+                         (ql/breakout $price)))))

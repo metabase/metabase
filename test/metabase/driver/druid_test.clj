@@ -3,7 +3,7 @@
             [expectations :refer :all]
             [metabase.query-processor :as qp]
             [metabase.query-processor.expand :as ql]
-            [metabase.query-processor-test :refer [rows]]
+            [metabase.query-processor-test :refer [rows rows+column-names]]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets, :refer [expect-with-engine]]
             [metabase.timeseries-query-processor-test :as timeseries-qp-test]
@@ -68,12 +68,15 @@
 ;;; |                                                EXPRESSION AGGREGATIONS                                                 |
 ;;; +------------------------------------------------------------------------------------------------------------------------+
 
+(defmacro ^:private druid-query {:style/indent 0} [& body]
+  `(timeseries-qp-test/with-flattened-dbdef
+     (qp/process-query {:database (data/id)
+                        :type     :query
+                        :query    (data/query ~'checkins
+                                    ~@body)})))
+
 (defmacro ^:private druid-query-returning-rows {:style/indent 0} [& body]
-  `(rows (timeseries-qp-test/with-flattened-dbdef
-           (qp/process-query {:database (data/id)
-                              :type     :query
-                              :query    (data/query ~'checkins
-                                          ~@body)}))))
+  `(rows (druid-query ~@body)))
 
 ;; sum, *
 (expect-with-engine :druid
@@ -202,3 +205,28 @@
   (druid-query-returning-rows
     (ql/aggregation (ql/sum (ql/+ $venue_price 1)))
     (ql/breakout $venue_price)))
+
+;; check that we can name an expression aggregation w/ aggregation at top-level
+(expect-with-engine :druid
+  {:rows    [["1"  442.0]
+             ["2" 1845.0]
+             ["3"  460.0]
+             ["4"  245.0]]
+   :columns ["venue_price"
+             "New Price"]}
+  (rows+column-names
+    (druid-query
+      (ql/aggregation (ql/named (ql/sum (ql/+ $venue_price 1)) "New Price"))
+      (ql/breakout $venue_price))))
+
+;; check that we can name an expression aggregation w/ expression at top-level
+(expect-with-engine :druid
+  {:rows    [["1"  180.0]
+             ["2" 1189.0]
+             ["3"  304.0]
+             ["4"  155.0]]
+   :columns ["venue_price" "Sum-41"]}
+  (rows+column-names
+    (druid-query
+      (ql/aggregation (ql/named (ql/- (ql/sum $venue_price) 41) "Sum-41"))
+      (ql/breakout $venue_price))))

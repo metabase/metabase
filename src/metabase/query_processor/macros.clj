@@ -18,6 +18,9 @@
          ~@match-forms
          form# (throw (Exception. (format ~(format "%s failed: invalid clause: %%s" fn-name) form#)))))))
 
+
+;;; ------------------------------------------------------------ Segments ------------------------------------------------------------
+
 (defparser segment-parse-filter-subclause
   ["SEGMENT" (segment-id :guard integer?)] (:filter (db/select-one-field :definition 'Segment, :id segment-id))
   subclause  subclause)
@@ -40,19 +43,30 @@
     (seq addtl)       addtl
     :else             []))
 
+
+;;; ------------------------------------------------------------ Metrics ------------------------------------------------------------
+
 (defn- merge-aggregation [aggregations new-ag]
   (if (map? aggregations)
     (recur [aggregations] new-ag)
     (conj aggregations new-ag)))
+
+(defn- is-metric? [aggregation]
+  (match aggregation
+    ["METRIC" (_ :guard integer?)] true
+    _                              false))
+
+(defn- metric-id [metric]
+  (when (is-metric? metric)
+    (second metric)))
 
 (defn- merge-aggregations {:style/indent 0} [query-dict [aggregation & more]]
   (if-not aggregation
     ;; no more aggregations? we're done
     query-dict
     ;; otherwise determine if this aggregation is a METRIC and recur
-    (let [metric-def (match aggregation
-                       ["METRIC" (metric-id :guard integer?)] (db/select-one-field :definition 'Metric, :id metric-id)
-                       _                                      nil)]
+    (let [metric-def (when (is-metric? aggregation)
+                       (db/select-one-field :definition 'Metric, :id (metric-id aggregation)))]
       (recur (if-not metric-def
                ;; not a metric, move to next aggregation
                query-dict
@@ -67,9 +81,7 @@
                (every? coll? aggregations))
     (recur [aggregations])
     (vec (for [ag    aggregations
-               :when (match ag
-                       ["METRIC" (_ :guard integer?)] false
-                       _                              true)]
+               :when (not (is-metric? ag))]
            ag))))
 
 (defn- macroexpand-metric [{{aggregations :aggregation} :query, :as query-dict}]
@@ -84,6 +96,9 @@
                (every? coll? aggregations))
         aggregations
         [aggregations]))))
+
+
+;;; ------------------------------------------------------------ Middleware ------------------------------------------------------------
 
 (defn expand-macros "Expand the macros (SEGMENT, METRIC) in a QUERY-DICT."
   [query-dict]
