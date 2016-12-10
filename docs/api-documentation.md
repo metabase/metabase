@@ -1,4 +1,4 @@
-# API Documentation for Metabase v0.21.0-snapshot
+# API Documentation for Metabase v0.22.0-snapshot
 
 ## `GET /api/activity/`
 

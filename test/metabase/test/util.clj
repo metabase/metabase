@@ -130,7 +130,7 @@
   {:with-temp-defaults (fn [_] {:base_type :type/Text
                                 :name      (random-name)
                                 :position  1
-                                :table_id  (data/id :venues)})})
+                                :table_id  (data/id :checkins)})})
 
 (u/strict-extend (class Metric)
   WithTempDefaults
@@ -138,7 +138,7 @@
                                 :definition  {}
                                 :description "Lookin' for a blueberry"
                                 :name        "Toucans in the rainforest"
-                                :table_id    (data/id :venues)})})
+                                :table_id    (data/id :checkins)})})
 
 (u/strict-extend (class PermissionsGroup)
   WithTempDefaults
@@ -178,7 +178,7 @@
                                 :definition  {}
                                 :description "Lookin' for a blueberry"
                                 :name        "Toucans in the rainforest"
-                                :table_id    (data/id :venues)})})
+                                :table_id    (data/id :checkins)})})
 
 ;; TODO - `with-temp` doesn't return `Sessions`, probably because their ID is a string?
 
