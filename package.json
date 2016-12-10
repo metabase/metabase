@@ -79,6 +79,7 @@
     "eslint": "^3.5.0",
     "eslint-loader": "^1.6.0",
     "eslint-plugin-flowtype": "^2.22.0",
+    "eslint-plugin-jasmine": "^2.2.0",
     "eslint-plugin-react": "^6.3.0",
     "exports-loader": "^0.6.3",
     "extract-text-webpack-plugin": "^1.0.1",
@@ -124,7 +125,7 @@
   },
   "scripts": {
     "dev": "yarn && concurrently --kill-others -p name -n 'backend,frontend' -c 'blue,green' 'lein ring server' 'yarn run build-hot'",
-    "lint": "eslint --ext .js --ext .jsx --max-warnings 0 frontend/src",
+    "lint": "eslint --ext .js --ext .jsx --max-warnings 0 frontend/src frontend/test",
     "flow": "flow check",
     "test": "karma start frontend/test/karma.conf.js --single-run",
     "test-watch": "karma start frontend/test/karma.conf.js --auto-watch --reporters nyan",

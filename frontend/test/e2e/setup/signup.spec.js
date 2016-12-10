@@ -1,17 +1,12 @@
 import path from "path";
 
-import { By, until } from "selenium-webdriver";
-
 import {
     waitForElement,
-    waitForElementText,
-    waitForElementRemoved,
     findElement,
     waitForElementAndClick,
     waitForElementAndSendKeys,
     waitForUrl,
     screenshot,
-    loginMetabase,
     describeE2E
 } from "../support/utils";
 
