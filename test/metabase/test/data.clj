@@ -105,6 +105,7 @@
   "Call `driver/process-query` on expanded inner QUERY, looking up the `Database` ID for the `source-table.`
 
      (run-query* (query (source-table 5) ...))"
+  {:style/indent 0}
   [query :- qi/Query]
   (qp/process-query (wrap-inner-query query)))
 
