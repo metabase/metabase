@@ -51,31 +51,26 @@ export default class AggregationWidget extends Component {
         const fieldId = AggregationClause.getField(aggregation);
 
         let selectedAggregation = getAggregator(AggregationClause.getOperator(aggregation));
-        if (selectedAggregation && !_.findWhere(tableMetadata.aggregation_options, { short: selectedAggregation.short })) {
-            // if this table doesn't support the selected aggregation, prompt the user to select a different one
-            selectedAggregation = null;
+        // if this table doesn't support the selected aggregation, prompt the user to select a different one
+        if (selectedAggregation && _.findWhere(tableMetadata.aggregation_options, { short: selectedAggregation.short })) {
+            return (
+                <span className="flex align-center">
+                    { selectedAggregation.name.replace(" of ...", "") }
+                    { fieldId &&
+                        <span style={{paddingRight: "4px", paddingLeft: "4px"}} className="text-bold">of</span>
+                    }
+                    { fieldId &&
+                        <FieldName
+                            className="View-section-aggregation-target SelectionModule py1"
+                            tableMetadata={tableMetadata}
+                            field={fieldId}
+                            fieldOptions={Query.getFieldOptions(tableMetadata.fields, true)}
+                            customFieldOptions={this.props.customFields}
+                        />
+                    }
+                </span>
+            );
         }
-        return (
-            <span className="View-section-aggregation QueryOption py1 mx1 flex align-center">
-                { selectedAggregation ?
-                    selectedAggregation.name.replace(" of ...", "")
-                :
-                    "Choose an aggregation"
-                }
-                { selectedAggregation && fieldId &&
-                    <span style={{paddingRight: "4px", paddingLeft: "4px"}} className="text-bold">of</span>
-                }
-                { selectedAggregation && fieldId &&
-                    <FieldName
-                        className="View-section-aggregation-target SelectionModule py1"
-                        tableMetadata={tableMetadata}
-                        field={fieldId}
-                        fieldOptions={Query.getFieldOptions(tableMetadata.fields, true)}
-                        customFieldOptions={this.props.customFields}
-                    />
-                }
-            </span>
-        );
     }
 
     renderMetricAggregation() {
@@ -83,16 +78,14 @@ export default class AggregationWidget extends Component {
         const metricId = AggregationClause.getMetric(aggregation);
 
         let selectedMetric = _.findWhere(tableMetadata.metrics, { id: metricId });
-        return (
-            <span className="View-section-aggregation QueryOption p1">{selectedMetric ? selectedMetric.name.replace(" of ...", "") : "Choose an aggregation"}</span>
-        );
+        if (selectedMetric) {
+            return selectedMetric.name.replace(" of ...", "")
+        }
     }
 
     renderCustomAggregation() {
         const { aggregation, tableMetadata, customFields } = this.props;
-        return (
-            <span className="View-section-aggregation QueryOption p1">{aggregation ? format(aggregation, { tableMetadata, customFields }) : "Choose an aggregation"}</span>
-        );
+        return format(aggregation, { tableMetadata, customFields });
     }
 
     renderPopover() {
@@ -121,20 +114,29 @@ export default class AggregationWidget extends Component {
     }
 
     render() {
-        const { aggregation, addButton } = this.props;
+        const { aggregation, addButton, name } = this.props;
         if (aggregation && aggregation.length > 0) {
+            let aggregationName = AggregationClause.isCustom(aggregation) ?
+                this.renderCustomAggregation()
+            : AggregationClause.isMetric(aggregation) ?
+                this.renderMetricAggregation()
+            :
+                this.renderStandardAggregation()
+
             return (
                 <div className={cx("Query-section Query-section-aggregation", { "selected": this.state.isOpen })}>
                     <div>
                         <Clearable onClear={this.props.removeAggregation}>
                             <div id="Query-section-aggregation" onClick={this.open} className="Query-section Query-section-aggregation cursor-pointer">
-                            { AggregationClause.isCustom(aggregation) ?
-                                this.renderCustomAggregation()
-                            : AggregationClause.isMetric(aggregation) ?
-                                this.renderMetricAggregation()
-                            :
-                                this.renderStandardAggregation()
-                            }
+                                <span className="View-section-aggregation QueryOption py1 mx1">
+                                    { aggregationName == null ?
+                                        "Choose an aggregation"
+                                    : name ?
+                                        name
+                                    :
+                                        aggregationName
+                                    }
+                                </span>
                             </div>
                         </Clearable>
                         {this.renderPopover()}
