@@ -31,10 +31,10 @@ Delete a `Card`.
 ## `GET /api/card/`
 
 Get all the `Cards`. Option filter param `f` can be used to change the set of Cards that are returned; default is `all`,
-   but other options include `mine`, `fav`, `database`, `table`, `recent`, `popular`, `archived`, and `no-collection`. See corresponding implementation
+   but other options include `mine`, `fav`, `database`, `table`, `recent`, `popular`, and `archived`. See corresponding implementation
    functions above for the specific behavior of each filter option. :card_index:
 
-   Optionally filter cards by LABEL or COLLECTION slug.
+   Optionally filter cards by LABEL or COLLECTION slug. (COLLECTION can be a blank string, to signify cards with *no collection* should be returned.)
 
    NOTES:
 
@@ -44,13 +44,13 @@ Get all the `Cards`. Option filter param `f` can be used to change the set of Ca
 
 ##### PARAMS:
 
-*  **`f`** value may be nil, or if non-nil, value must be one of: `all`, `archived`, `database`, `fav`, `mine`, `no-collection`, `popular`, `recent`, `table`.
+*  **`f`** value may be nil, or if non-nil, value must be one of: `all`, `archived`, `database`, `fav`, `mine`, `popular`, `recent`, `table`.
 
 *  **`model_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
 *  **`label`** value may be nil, or if non-nil, value must be a non-blank string.
 
-*  **`collection`** value may be nil, or if non-nil, value must be a non-blank string.
+*  **`collection`** value may be nil, or if non-nil, value must be a string.
 
 
 ## `GET /api/card/:id`
