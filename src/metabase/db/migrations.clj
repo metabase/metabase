@@ -337,7 +337,7 @@
       (println (u/format-color 'green "Creating a new collection for label '%s'..." label-name))
       (db/insert! Collection
         :name  label-name
-        :color (or (second (re-matches collection/hex-color-regex icon))
+        :color (or (re-matches collection/hex-color-regex icon)
                    (random-color)))))
 
 (defn- add-label-cards-to-collection!
