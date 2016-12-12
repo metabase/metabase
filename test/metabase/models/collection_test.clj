@@ -43,7 +43,6 @@
                   Collection [_ {:name "my_favorite Cards"}]]
     :ok))
 
-
 ;; check that archiving a collection archives its cards as well
 (expect
   true
@@ -61,3 +60,16 @@
     (db/update! Collection (u/get-id collection)
       :archived false)
     (db/select-one-field :archived Card :id (u/get-id card))))
+
+;; check that collections' names cannot be blank
+(expect
+  Exception
+  (tu/with-temp Collection [collection {:name ""}]
+    collection))
+
+;; check we can't change the name of a Collection to a blank string
+(expect
+  Exception
+  (tu/with-temp Collection [collection]
+    (db/update! Collection (u/get-id collection)
+      :name "")))
