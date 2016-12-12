@@ -469,14 +469,14 @@
     (db/select-one-field :collection_id Card :id (u/get-id card))))
 
 
-;;; Test GET /api/card?f=no-collection -- Test that we can use filter to return Cards not in any collection
+;;; Test GET /api/card?collection= -- Test that we can use empty string to return Cards not in any collection
 (tu/expect-with-temp [Collection [collection]
                       Card       [card-1     {:collection_id (u/get-id collection)}]
                       Card       [card-2]]
   [(u/get-id card-2)]
   (do
     (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-    (map :id ((user->client :rasta) :get 200 "card/" :f :no-collection))))
+    (map :id ((user->client :rasta) :get 200 "card/" :collection ""))))
 
 ;; Test GET /api/card?collection=<slug> filters by collection with slug
 (tu/expect-with-temp [Collection [collection {:name "Favorite Places"}]
