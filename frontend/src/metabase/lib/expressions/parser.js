@@ -69,13 +69,14 @@ class ExpressionsParser extends Parser {
                 const op = $.CONSUME(AdditiveOperator);
                 const rhsVal = $.SUBRULE2($.multiplicationExpression, [outsideAggregation]);
 
+                // collapse multiple consecutive operators into a single MBQL statement
                 if (Array.isArray(value) && value[0] === op.image) {
                     value.push(rhsVal);
                 } else {
                     value = [op.image, value, rhsVal]
                 }
             });
-            return value
+            return value;
         });
 
         $.RULE("multiplicationExpression", (outsideAggregation) => {
@@ -84,13 +85,14 @@ class ExpressionsParser extends Parser {
                 const op = $.CONSUME(MultiplicativeOperator);
                 const rhsVal = $.SUBRULE2($.atomicExpression, [outsideAggregation]);
 
+                // collapse multiple consecutive operators into a single MBQL statement
                 if (Array.isArray(value) && value[0] === op.image) {
                     value.push(rhsVal);
                 } else {
                     value = [op.image, value, rhsVal]
                 }
             });
-            return value
+            return value;
         });
 
         $.RULE("aggregationOrMetricExpression", (outsideAggregation) => {

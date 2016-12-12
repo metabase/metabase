@@ -1,7 +1,7 @@
 
 import _ from "underscore";
 import { mbqlEq } from "../query/util";
-import { titleize } from "metabase/lib/formatting";
+import { titleize } from "../formatting";
 
 export const VALID_OPERATORS = new Set([
     '+',
