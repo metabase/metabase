@@ -511,10 +511,10 @@
   (get-in (perms/graph) [:groups (u/get-id group) (data/id) :schemas "PUBLIC"]))
 
 ;; Test that setting partial permissions for a table retains permissions for other tables -- #3888
-(tu/expect-with-temp [PermissionsGroup [group]]
+(expect
   [{(data/id :categories) :none, (data/id :checkins) :none, (data/id :users) :none, (data/id :venues) :all}
    {(data/id :categories) :all,  (data/id :checkins) :none, (data/id :users) :none, (data/id :venues) :all}]
-  (do
+  (tu/with-temp PermissionsGroup [group]
     ;; first, graph permissions only for VENUES
     (perms/grant-permissions! group (perms/object-path (data/id) "PUBLIC" (data/id :venues)))
     [(test-data-graph group)

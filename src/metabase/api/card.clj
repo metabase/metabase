@@ -109,11 +109,6 @@
   []
   (db/select Card, :archived true, {:order-by [[:%lower.name :asc]]}))
 
-(defn- cards:no-collection
-  "`Cards` that don't belong to a `Collection`."
-  []
-  (db/select Card, :archived false, :collection_id nil, {:order-by [[:%lower.name :asc]]}))
-
 (def ^:private filter-option->fn
   "Functions that should be used to return cards for a given filter option. These functions are all be called with `model-id` as the sole paramenter;
    functions that don't use the param discard it via `u/drop-first-arg`.
@@ -126,8 +121,7 @@
    :table         cards:table
    :recent        (u/drop-first-arg cards:recent)
    :popular       (u/drop-first-arg cards:popular)
-   :archived      (u/drop-first-arg cards:archived)
-   :no-collection (u/drop-first-arg cards:no-collection)})
+   :archived      (u/drop-first-arg cards:archived)})
 
 (defn- ^:deprecated card-has-label? [label-slug card]
   (contains? (set (map :slug (:labels card))) label-slug))
@@ -139,11 +133,13 @@
                   hydrate-labels
                   hydrate-favorites)]
     ;; Since labels and collections are hydrated in Clojure-land we need to wait until this point to apply label/collection filtering if applicable
+    ;; COLLECTION can optionally be an empty string which is used to repre
     (filter (cond
-              (seq collection) (let [collection-id (check-404 (db/select-one-id Collection :slug collection))]
-                                 (comp (partial = collection-id) :collection_id))
-              (seq label)      (partial card-has-label? label)
-              :else            identity)
+              collection  (let [collection-id (when (seq collection)
+                                                (check-404 (db/select-one-id Collection :slug collection)))]
+                            (comp (partial = collection-id) :collection_id))
+              (seq label) (partial card-has-label? label)
+              :else       identity)
             cards)))
 
 
@@ -155,10 +151,10 @@
 
 (defendpoint GET "/"
   "Get all the `Cards`. Option filter param `f` can be used to change the set of Cards that are returned; default is `all`,
-   but other options include `mine`, `fav`, `database`, `table`, `recent`, `popular`, `archived`, and `no-collection`. See corresponding implementation
+   but other options include `mine`, `fav`, `database`, `table`, `recent`, `popular`, and `archived`. See corresponding implementation
    functions above for the specific behavior of each filter option. :card_index:
 
-   Optionally filter cards by LABEL or COLLECTION slug.
+   Optionally filter cards by LABEL or COLLECTION slug. (COLLECTION can be a blank string, to signify cards with *no collection* should be returned.)
 
    NOTES:
 
@@ -166,7 +162,7 @@
    *  LABEL and COLLECTION params are mutually exclusive; if both are specified, LABEL will be ignored and Cards will only be filtered by their `Collection`.
    *  If no `Collection` exists with the slug COLLECTION, this endpoint will return a 404."
   [f model_id label collection]
-  {f (s/maybe CardFilterOption), model_id (s/maybe su/IntGreaterThanZero), label (s/maybe su/NonBlankString), collection (s/maybe su/NonBlankString)}
+  {f (s/maybe CardFilterOption), model_id (s/maybe su/IntGreaterThanZero), label (s/maybe su/NonBlankString), collection (s/maybe s/Str)}
   (let [f (keyword f)]
     (when (contains? #{:database :table} f)
       (checkp (integer? model_id) "id" (format "id is required parameter when filter mode is '%s'" (name f)))

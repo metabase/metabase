@@ -1,5 +1,6 @@
 (ns metabase.models.collection
-  (:require [clojure.data :as data]
+  (:require (clojure [data :as data]
+                     [string :as str])
             [schema.core :as s]
             [metabase.api.common :refer [*current-user-id*]]
             [metabase.db :as db]
@@ -28,11 +29,18 @@
   (when (or (not (string? hex-color))
             (not (re-matches hex-color-regex hex-color)))
     (throw (ex-info "Invalid color"
-             {:status-code 400, :erros {:color "must be a valid 6-character hex color code"}}))))
+             {:status-code 400, :errors {:color "must be a valid 6-character hex color code"}}))))
+
+(defn- slugify [collection-name]
+  ;; double-check that someone isn't trying to use a blank string as the collection name
+  (when (str/blank? collection-name)
+    (throw (ex-info "Collection name cannot be blank!"
+             {:status-code 400, :errors {:name "cannot be blank"}})))
+  (u/slugify collection-name collection-slug-max-length))
 
 (defn- pre-insert [{collection-name :name, color :color, :as collection}]
   (assert-valid-hex-color color)
-  (assoc collection :slug (u/prog1 (u/slugify collection-name collection-slug-max-length)
+  (assoc collection :slug (u/prog1 (slugify collection-name)
                             (assert-unique-slug <>))))
 
 (defn- pre-update [{collection-name :name, id :id, color :color, archived? :archived, :as collection}]
@@ -45,7 +53,7 @@
   ;; slugify the collection name and make sure it's unique
   (if-not collection-name
     collection
-    (assoc collection :slug (u/prog1 (u/slugify collection-name collection-slug-max-length)
+    (assoc collection :slug (u/prog1 (slugify collection-name)
                               (or (db/exists? Collection, :slug <>, :id id) ; if slug hasn't changed no need to check for uniqueness
                                   (assert-unique-slug <>))))))              ; otherwise check to make sure the new slug is unique
 
