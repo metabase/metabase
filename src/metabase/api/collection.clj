@@ -44,7 +44,9 @@
     :description description
     :archived    (if (nil? archived)
                    false
-                   archived)))
+                   archived))
+  ;; return the updated object
+  (Collection id))
 
 
 ;;; ------------------------------------------------------------ GRAPH ENDPOINTS ------------------------------------------------------------

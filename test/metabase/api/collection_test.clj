@@ -30,6 +30,19 @@
 
 ;; TODO - test that non-admins aren't allowed to create a collection
 
-;; TODO - test that we can update a collection (PUT /api/collection/:id)
+;; test that we can update a collection (PUT /api/collection/:id)
+(tu/expect-with-temp [Collection [collection]]
+  {:id          (u/get-id collection)
+   :name        "My Beautiful Collection"
+   :slug        "my_beautiful_collection"
+   :description nil
+   :color       "#ABCDEF"
+   :archived    false}
+  ((user->client :crowberto) :put 200 (str "collection/" (u/get-id collection))
+   {:name "My Beautiful Collection", :color "#ABCDEF"}))
 
-;; TODO - check that non-admins aren't allowed to update a collection
+;; check that non-admins aren't allowed to update a collection
+(tu/expect-with-temp [Collection [collection]]
+  "You don't have permissions to do that."
+  ((user->client :rasta) :put 403 (str "collection/" (u/get-id collection))
+   {:name "My Beautiful Collection", :color "#ABCDEF"}))
