@@ -1,10 +1,10 @@
 import React from "react";
 
-import Button from "metabase/components/Button";
-import Icon from "metabase/components/Icon";
+import Button from "metabase/components/Button.jsx";
+import Icon from "metabase/components/Icon.jsx";
 
 import Collections from "./CollectionList";
-import Search from "./Search";
+import ExpandingSearchField from "../components/ExpandingSearchField.jsx";
 
 const AddToDashboard = () =>
     <div>
@@ -20,9 +20,9 @@ const AddToDashboard = () =>
             </div>
             <div>
                 <div className="py1 flex align-center">
-                    <Search />
+                    <ExpandingSearchField />
                     <div className="ml-auto flex align-center">
-                        <h5>Sory by</h5>
+                        <h5>Sort by</h5>
                         <Button borderless>
                             Last modified
                         </Button>

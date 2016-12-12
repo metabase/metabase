@@ -4,7 +4,7 @@ import { Link } from "react-router";
 
 // import ActionGroup from "metabase/components/ActionGroup";
 import Icon from "metabase/components/Icon";
-import Search from "./Search";
+import ExpandingSearchField from "../components/ExpandingSearchField";
 import Tooltip from "metabase/components/Tooltip";
 
 import NewEntityList from "./NewEntityList";
@@ -180,7 +180,7 @@ class QuestionIndex extends Component {
                     <h2>Collections of Questions</h2>
 
                     <div className="flex align-center ml-auto">
-                        <Search />
+                        <ExpandingSearchField />
                         <div
                             className="mx2"
                             onClick={() => this.setState({ showPermissions: true })}
