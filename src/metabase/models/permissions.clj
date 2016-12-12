@@ -243,7 +243,7 @@
   {su/IntGreaterThanZero StrictDBPermissionsGraph})
 
 (def ^:private StrictPermissionsGraph
-  {:revision su/IntGreaterThanZero
+  {:revision s/Int
    :groups   {su/IntGreaterThanZero StrictGroupPermissionsGraph}})
 
 
@@ -407,7 +407,6 @@
     :none (revoke-permissions! group-id db-id schema table-id)))
 
 (s/defn ^:private ^:always-validate update-schema-perms! [group-id :- su/IntGreaterThanZero, db-id :- su/IntGreaterThanZero, schema :- s/Str, new-schema-perms :- SchemaPermissionsGraph]
-  (revoke-permissions! group-id db-id schema)
   (cond
     (= new-schema-perms :all)  (do (revoke-permissions! group-id db-id schema) ; clear out any existing related permissions
                                    (grant-permissions! group-id db-id schema)) ; then grant full perms for the schema
@@ -469,9 +468,10 @@
 (defn log-permissions-changes
   "Log changes to the permissions graph."
   [old new]
-  (log/debug (format "Changing permissions: 🔏\nFROM:\n%s\nTO:\n%s"
-                     (u/pprint-to-str 'magenta old)
-                     (u/pprint-to-str 'blue new))))
+  ;; NOCOMMIT
+  (printf "Changing permissions: 🔏\nFROM:\n%s\nTO:\n%s\n"
+          (u/pprint-to-str 'magenta old)
+          (u/pprint-to-str 'blue new)))
 
 (s/defn ^:always-validate update-graph!
   "Update the permissions graph, making any changes neccesary to make it match NEW-GRAPH.
