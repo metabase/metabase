@@ -320,36 +320,3 @@
     :base_type "type/*")
   (db/update-where! 'Field {:special_type [:not-like "type/%"]}
     :special_type nil))
-
-
-;;; +------------------------------------------------------------------------------------------------------------------------+
-;;; |                                                PEMISSIONS COLLECTIONS                                                  |
-;;; +------------------------------------------------------------------------------------------------------------------------+
-
-(s/defn ^:private ^:always-validate random-color :- collection/hex-color-regex
-  []
-  (format "#%06X" (rand-int (Math/pow 256 3))))
-
-(defn- get-or-create-collection!
-  "Create a new Collection for LABEL (if needed). If label had a color, keep it, otherwise give it a random new one."
-  [{label-name :name, icon :icon}]
-  (or (Collection :name label-name)
-      (println (u/format-color 'green "Creating a new collection for label '%s'..." label-name))
-      (db/insert! Collection
-        :name  label-name
-        :color (or (re-matches collection/hex-color-regex icon)
-                   (random-color)))))
-
-(defn- add-label-cards-to-collection!
-  "Add cards that have LABEL to COLLECTION, if they're not already in a Collection."
-  [{label-name :name, :as label} collection]
-  (doseq [card-label (db/select CardLabel :label_id (u/get-id label))]
-    (when-let [card (db/select-one Card :id (:card_id card-label), :collection_id nil)]
-      (println (u/format-color 'blue "Adding card '%s' to collection '%s'..." (:name card) label-name))
-      (db/update! Card (u/get-id card)
-        :collection_id (u/get-id collection)))))
-
-;; create new Collections for existing Labels, and add cards to the one of the newly created collections for them
-(defmigration ^{:author "camsaul", :added "0.22.0"} create-collections-for-labels
-  (doseq [label (db/select Label {:order-by [:%lower.name]})]
-    (add-label-cards-to-collection! label (get-or-create-collection! label))))
