@@ -93,6 +93,8 @@
    "INTEGER"   :type/Integer
    "RECORD"    :type/Dictionary ; RECORD -> field has a nested schema
    "STRING"    :type/Text
+   "DATE"      :type/Date
+   "DATETIME"  :type/DateTime
    "TIMESTAMP" :type/DateTime})
 
 (defn- table-schema->metabase-field-info [^TableSchema schema]
@@ -142,6 +144,8 @@
    "INTEGER"   #(Long/parseLong %)
    "RECORD"    identity
    "STRING"    identity
+   "DATE"      parse-timestamp-str
+   "DATETIME"  parse-timestamp-str
    "TIMESTAMP" parse-timestamp-str})
 
 (defn- post-process-native
