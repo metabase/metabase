@@ -21,6 +21,7 @@ import * as home from "metabase/home/reducers";
 /* questions / query builder */
 import questions from "metabase/questions/questions";
 import labels from "metabase/questions/labels";
+import collections from "metabase/questions/collections";
 import undo from "metabase/questions/undo";
 import * as qb from "metabase/query_builder/reducers";
 
@@ -47,13 +48,14 @@ const reducers = {
     // main app reducers
     dashboard,
     home: combineReducers(home),
-    labels,
     pulse: combineReducers(pulse),
     qb: combineReducers(qb),
     questions,
+    collections,
+    labels,
+    undo,
     reference,
     setup: combineReducers(setup),
-    undo,
     user: combineReducers(user),
 
     // admin reducers

@@ -10,14 +10,14 @@ import cx from "classnames";
 
 @reduxForm({
     form: 'label',
-    fields: ['icon', 'name', 'id'],
+    fields: ['color', 'name', 'id'],
     validate: (values) => {
         const errors = {};
         if (!values.name) {
             errors.name = true;
         }
-        if (!values.icon) {
-            errors.icon = "Icon is required";
+        if (!values.color) {
+            errors.color = "Icon is required";
         }
         return errors;
     }
@@ -33,13 +33,13 @@ export default class LabelEditorForm extends Component {
     };
 
     render() {
-        const { fields: { icon, name }, error, handleSubmit, invalid, className, submitButtonText } = this.props;
+        const { fields: { color, name }, error, handleSubmit, invalid, className, submitButtonText } = this.props;
         const nameInvalid = name.invalid && ((name.active && name.value) || (!name.active && name.visited));
         const errorMessage = name.error || error;
         return (
             <form className={className} onSubmit={handleSubmit}>
                 <div className="flex">
-                    <LabelIconPicker {...icon} />
+                    <LabelIconPicker {...color} />
                     <div className="full">
                         <div className="flex">
                           <input className={cx(S.nameInput, "input", { [S.invalid]: nameInvalid })} type="text" placeholder="Name" {...name}/>

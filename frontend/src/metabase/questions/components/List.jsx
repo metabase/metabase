@@ -1,7 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component, PropTypes } from "react";
 
-import S from "../components/List.css";
+import S from "./List.css";
 import pure from "recompose/pure";
 
 import EntityItem from "../containers/EntityItem.jsx";

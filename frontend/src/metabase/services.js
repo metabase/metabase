@@ -34,6 +34,13 @@ export const DashboardApi = {
     reposition_cards:            PUT("/api/dashboard/:dashId/cards"),
 };
 
+export const CollectionsApi = {
+    list:                        GET("/api/collection"),
+    create:                     POST("/api/collection"),
+    update:                      PUT("/api/collection/:id"),
+    delete:                   DELETE("/api/collection/:id"),
+};
+
 export const EmailApi = {
     updateSettings:              PUT("/api/email"),
     sendTest:                   POST("/api/email/test"),
@@ -120,13 +127,6 @@ export const RevisionsApi = {
     get:                         GET("/api/:entity/:id/revisions"),
 };
 
-export const LabelApi = {
-    list:                        GET("/api/label"),
-    create:                     POST("/api/label"),
-    update:                      PUT("/api/label/:id"),
-    delete:                   DELETE("/api/label/:id"),
-};
-
 export const SessionApi = {
     create:                     POST("/api/session"),
     createWithGoogleAuth:       POST("/api/session/google_auth"),
@@ -181,3 +181,5 @@ export const UserApi = {
 export const UtilApi = {
     password_check:             POST("/api/util/password_check"),
 };
+
+global.services = exports;

@@ -45,7 +45,6 @@ const Item = ({ id, description, name, created, by, selected, favorite, archived
                         <Icon
                             className="cursor-pointer text-brand-hover transition-color"
                             name={ archived ? "unarchive" : "archive"}
-                            onClick={() => setArchived(id, !archived, true)}
                             size={20}
                         />
                     </Link>

@@ -26,14 +26,14 @@ const ColorSquare = ({ color }) =>
 
 class ColorPicker extends Component {
     render () {
-        const { currentColor, onChange } = this.props;
+        const { value, onChange } = this.props;
         return (
             <div className="inline-block">
                 <PopoverWithTrigger
                     ref="colorPopover"
                     triggerElement={
                         <div className="bordered p1 rounded flex align-center">
-                            <ColorSquare color={currentColor} />
+                            <ColorSquare color={value} />
                             <Icon
                                 className="ml1"
                                 name="chevrondown"

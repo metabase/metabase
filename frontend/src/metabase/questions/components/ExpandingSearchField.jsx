@@ -65,10 +65,11 @@ export default class ExpandingSearchField extends Component {
     }
 
     render () {
+        const { className } = this.props;
         const { active } = this.state;
         return (
             <div
-                className={cx('bordered border-dark flex align-center pr2 transition-border', { 'border-brand' : active })}
+                className={cx(className, 'bordered border-dark flex align-center pr2 transition-border', { 'border-brand' : active })}
                 onClick={this.setActive}
                 style={{ borderRadius: 99 }}
             >

@@ -6,7 +6,7 @@ import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
 import CollectionActions from "../components/CollectionActions";
-import NewEntityList from "./NewEntityList";
+import EntityList from "./EntityList";
 import { selectSection } from "../questions";
 
 const mapStateToProps = (state, props) => ({})
@@ -18,7 +18,7 @@ const mapDispatchToProps = ({
 @connect(mapStateToProps, mapDispatchToProps)
 class CollectionPage extends Component {
     componentWillMount () {
-        this.props.selectSection('all');
+        this.props.selectSection('all', this.props.params.collectionName);
     }
     render () {
         return (
@@ -37,7 +37,7 @@ class CollectionPage extends Component {
                     </div>
                 </div>
                 <div className="mt4">
-                    <NewEntityList />
+                    <EntityList />
                 </div>
             </div>
         );

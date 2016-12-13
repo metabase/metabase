@@ -70,7 +70,7 @@ export default class EditLabels extends Component {
                                 </li>
                             :
                                 <li key={label.id} className={S.label}>
-                                    <LabelIcon icon={label.icon} size={28} />
+                                    <LabelIcon icon={label.color} size={28} />
                                     <span className={S.name}>{label.name}</span>
                                     <a className={S.edit} onClick={() => editLabel(label.id)}>Edit</a>
                                     <Confirm title={`Delete label "${label.name}"`} action={() => deleteLabel(label.id)}>

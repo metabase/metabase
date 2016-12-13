@@ -1,7 +1,6 @@
 @import '../Questions.css';
 
 :local(.list) {
-  max-width: var(--md-width);
   composes: ml-auto mr-auto from "style";
   padding-bottom: 40px;
 }

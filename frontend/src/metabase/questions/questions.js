@@ -27,38 +27,13 @@ const SET_ALL_SELECTED = 'metabase/questions/SET_ALL_SELECTED';
 const SET_FAVORITED = 'metabase/questions/SET_FAVORITED';
 const SET_ARCHIVED = 'metabase/questions/SET_ARCHIVED';
 const SET_LABELED = 'metabase/questions/SET_LABELED';
+const SET_COLLECTION = 'metabase/collections/SET_COLLECTION';
 
 export const selectSection = createThunkAction(SELECT_SECTION, (section = "all", slug = null, type = "cards") => {
     return async (dispatch, getState) => {
-        let response;
-        switch (section) {
-            case "all":
-                dispatch(setRequestState({ statePath: ['questions', 'fetch'], state: "LOADING" }));
-                response = await CardApi.list({ f: "all" });
-                dispatch(setRequestState({ statePath: ['questions', 'fetch'], state: "LOADED" }));
-                break;
-            case "favorites":
-                response = await CardApi.list({ f: "fav" });
-                break;
-            case "saved":
-                response = await CardApi.list({ f: "mine" });
-                break;
-            case "popular":
-                response = await CardApi.list({ f: "popular" });
-                break;
-            case "recent":
-                response = await CardApi.list({ f: "recent" });
-                break;
-            case "archived":
-                response = await CardApi.list({ f: "archived" });
-                break;
-            case "label":
-                response = await CardApi.list({ label: slug });
-                break;
-            default:
-                console.warn("unknown section " + section);
-                response = [];
-        }
+        dispatch(setRequestState({ statePath: ['questions', 'fetch'], state: "LOADING" }));
+        let response = await CardApi.list({ f: section, collection: slug });
+        dispatch(setRequestState({ statePath: ['questions', 'fetch'], state: "LOADED" }));
 
         if (slug) {
             section += "-" + slug;
@@ -158,6 +133,10 @@ export const setLabeled = createThunkAction(SET_LABELED, (cardId, labelId, label
     }
 });
 
+export const setCollection = createAction(SET_COLLECTION, (cardId, collectionId) =>
+    CardApi.update({ id: cardId, collection_id: collectionId })
+);
+
 export const setSearchText = createAction(SET_SEARCH_TEXT);
 export const setItemSelected = createAction(SET_ITEM_SELECTED);
 
@@ -182,13 +161,7 @@ const initialState = {
     itemsBySection: {},
     searchText: "",
     selectedIds: {},
-    undos: [],
-    collections: [
-        { name: 'Important metrics', color: '#509EE3', slug: 'important-metrics' },
-        { name: 'Quarterly marketing presentations', color: '#9CC177', slug: 'quarterly-marketing-presentations' },
-        { name: 'Reports for execs', color: '#A989C5', slug: 'reports-for-execs' },
-        { name: 'Shared marketing items', color: '#EF8C8C', slug: 'shared-marketing-items' }
-    ]
+    undos: []
 };
 
 export default function(state = initialState, { type, payload, error }) {

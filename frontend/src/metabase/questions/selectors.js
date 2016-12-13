@@ -17,7 +17,8 @@ export const getItemsBySection      = (state) => state.questions.itemsBySection
 
 export const getSearchText          = (state) => state.questions.searchText;
 export const getSelectedIds         = (state) => state.questions.selectedIds;
-export const getCollections         = (state) => state.questions.collections;
+
+export const getCollections         = (state) => state.collections.collections;
 
 const getSectionData = createSelector(
     [getItemsBySection, getEntityType, getSection],
@@ -70,7 +71,7 @@ export const makeGetItem = () => {
     return getItem;
 }
 
-const getAllEntities = createSelector(
+export const getAllEntities = createSelector(
     [getEntityIds, getEntityType, getEntities],
     (entityIds, entityType, entities) =>
         entityIds.map(entityId => entities[entityType][entityId])
@@ -112,9 +113,9 @@ export const getSectionIsArchive = createSelector(
 
 const sections = [
     { id: "all",       name: "All questions",   icon: "all" },
-    { id: "favorites", name: "Favorites",       icon: "star" },
+    { id: "fav",       name: "Favorites",       icon: "star" },
     { id: "recent",    name: "Recently viewed", icon: "recents" },
-    { id: "saved",     name: "Saved by me",     icon: "mine" },
+    { id: "mine",      name: "Saved by me",     icon: "mine" },
     { id: "popular",   name: "Most popular",    icon: "popular" }
 ];
 

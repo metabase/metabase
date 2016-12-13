@@ -6,9 +6,9 @@ import Tooltip from "metabase/components/Tooltip";
 const CollectionActions = ({ actions }) =>
     <div>
         {actions.map(({ action, icon, name }, index) =>
-            <Tooltip tooltip={name} key={index}>
+            <Tooltip tooltip={name} key={index} >
                 <Icon
-                    className="cursor-pointer text-brand-hover ml3"
+                    className="cursor-pointer text-brand-hover ml2"
                     name={icon}
                     onClick={ () => action() }
                 />

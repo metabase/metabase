@@ -18,13 +18,17 @@ import GoogleNoAccount from "metabase/auth/components/GoogleNoAccount.jsx";
 // main app containers
 import DashboardApp from "metabase/dashboard/containers/DashboardApp.jsx";
 import HomepageApp from "metabase/home/containers/HomepageApp.jsx";
+
 import QuestionIndex from "metabase/questions/containers/QuestionIndex.jsx";
 import Archive from "metabase/questions/containers/Archive.jsx";
 import CollectionPage from "metabase/questions/containers/CollectionPage.jsx";
 import MoveToCollection from "metabase/questions/containers/MoveToCollection.jsx";
-import NewCollection from "metabase/questions/containers/NewCollection.jsx";
+import CollectionCreate from "metabase/questions/containers/CollectionCreate.jsx";
 import AddToDashboard from "metabase/questions/containers/AddToDashboard.jsx";
 import SearchResults from "metabase/questions/containers/SearchResults.jsx";
+import EditLabels from "metabase/questions/containers/EditLabels.jsx";
+import CollectionPermissions from "metabase/admin/permissions/containers/CollectionPermissionsApp.jsx";
+
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp.jsx";
 import PulseListApp from "metabase/pulse/containers/PulseListApp.jsx";
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder.jsx";
@@ -134,16 +138,22 @@ export const getRoutes = (store) =>
                 <Route path="/q" component={QueryBuilder} />
 
                 {/* QUESTIONS */}
-                <Route path="/questions" component={QuestionIndex} />
-                <Route path="/questions/archive" component={Archive} />
-                <Route path="/questions/permissions" component={QuestionPermissions} />
-                <Route path="/questions/collections/new" component={NewCollection} />
-                <Route path="/questions/:id/move" component={MoveToCollection} />
-                { /* TODO - These are temporary routes for templating purposes and should be removed */}
-                <Route path="/questions/dashadd" component={AddToDashboard} />
-                <Route path="/questions/search/:searchString" component={SearchResults} />
-                { /* end template routes */}
-                <Route path="/questions/collections/:collectionName" component={CollectionPage} />
+                <Route path="/questions">
+                    <IndexRoute component={QuestionIndex} />
+                    <Route path="archive" component={Archive} />
+                    <Route path=":questionId/move" component={MoveToCollection} />
+                    { /* TODO - These are temporary routes for templating purposes and should be removed */}
+                    <Route path="dashadd" component={AddToDashboard} />
+                    <Route path="search/:searchString" component={SearchResults} />
+                    { /* end template routes */}
+                    <Route path="collections/:collectionName" component={CollectionPage} />
+                </Route>
+
+                <Route path="/collections" >
+                    <IndexRoute component={EditLabels} />
+                    <Route path="create" component={CollectionCreate} />
+                    <Route path="permissions" component={CollectionPermissions} />
+                </Route>
 
                 {/* REFERENCE */}
                 <Route path="/reference" component={ReferenceApp}>
@@ -223,13 +233,3 @@ export const getRoutes = (store) =>
             <Redirect from="/q/:serializedCard" to="/q#:serializedCard" />
         </Route>
     </Route>
-
-const NewCollectionPage = () =>
-    <div>
-    </div>
-
-const QuestionPermissions = () =>
-    <div>
-        Question permissions
-    </div>
-
