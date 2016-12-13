@@ -106,7 +106,7 @@
    :fields (set (table-schema->metabase-field-info (.getSchema (get-table database table-name))))})
 
 
-(def ^:private ^:const query-timeout-seconds 60)
+(def ^:private ^:const ^Integer query-timeout-seconds 60)
 
 (defn- ^QueryResponse execute-bigquery
   ([{{:keys [project-id]} :details, :as database} query-string]
@@ -235,6 +235,9 @@
                                      3))
     :quarter-of-year (hx/quarter expr)
     :year            (hx/year expr)))
+
+(defn- date-string->literal [^String date-string]
+  (hx/->timestamp (hx/literal (u/format-date "yyyy-MM-dd 00:00" (u/->Date date-string)))))
 
 (defn- unix-timestamp->timestamp [expr seconds-or-milliseconds]
   (case seconds-or-milliseconds
@@ -381,6 +384,7 @@
           :connection-details->spec  (constantly nil)                           ; since we don't use JDBC
           :current-datetime-fn       (constantly :%current_timestamp)
           :date                      (u/drop-first-arg date)
+          :date-string->literal      (u/drop-first-arg date-string->literal)
           :field->alias              (u/drop-first-arg field->alias)
           :prepare-value             (u/drop-first-arg prepare-value)
           :quote-style               (constantly :sqlserver)                    ; we want identifiers quoted [like].[this]
@@ -421,8 +425,10 @@
           ;; TODO - either write BigQuery-speciifc tests for FK functionality or add additional code to manually set up these FK relationships for FK tables
           :features              (constantly (set/union #{:basic-aggregations
                                                           :standard-deviation-aggregations
-                                                          :expression-aggregations
-                                                          :native-parameters}
+                                                          :native-parameters
+                                                          ;; Expression aggregations *would* work, but BigQuery doesn't support the auto-generated column names. BQ column names
+                                                          ;; can only be alphanumeric or underscores. If we slugified the auto-generated column names, we could enable this feature.
+                                                          #_:expression-aggregations}
                                                         (when-not config/is-test?
                                                           ;; during unit tests don't treat bigquery as having FK support
                                                           #{:foreign-keys})))

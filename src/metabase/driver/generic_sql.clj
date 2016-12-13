@@ -58,6 +58,11 @@
   (date [this, ^Keyword unit, field-or-value]
     "Return a HoneySQL form for truncating a date or timestamp field or value to a given resolution, or extracting a date component.")
 
+  (date-string->literal [this, ^String date-string]
+    "*OPTIONAL*. Return an appropriate HoneySQL form to represent a DATE-STRING literal.
+     The default implementation is just `hx/literal`; in other words, it just single-quotes DATE-STRING. Some drivers like BigQuery or Oracle need to do something more advanced.
+     (This is used for the implementation of SQL parameters).")
+
   (excluded-schemas ^java.util.Set [this]
     "*OPTIONAL*. Set of string names of schemas to skip syncing tables from.")
 
@@ -202,6 +207,7 @@
    (hx/qualify-and-escape-dots (:schema table) (:name table)))
   ([table field]
    (hx/qualify-and-escape-dots (:schema table) (:name table) (:name field))))
+
 
 (defn- query
   "Execute a HONEYSQL-FROM query against DATABASE, DRIVER, and optionally TABLE."
@@ -412,6 +418,7 @@
    :apply-page           (resolve 'metabase.driver.generic-sql.query-processor/apply-page)
    :column->special-type (constantly nil)
    :current-datetime-fn  (constantly :%now)
+   :date-string->literal (u/drop-first-arg hx/literal)
    :excluded-schemas     (constantly nil)
    :field->alias         (u/drop-first-arg name)
    :field-percent-urls   fast-field-percent-urls
