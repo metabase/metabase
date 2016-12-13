@@ -189,7 +189,7 @@ describe('Query', () => {
                 filter: []
             };
             Query.removeBreakout(query, 0);
-            expect(query.breakout.length).toBe(0);
+            expect(query.breakout).toBe(undefined);
         });
         it('should remove sort clauses for the dimension that was removed', () => {
             let query = {

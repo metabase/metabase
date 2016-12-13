@@ -1,0 +1,56 @@
+
+/*
+.TokenizedExpression .aggregation { border: 3px solid rgb(255,0,0) !important; }
+.TokenizedExpression .group       { border: 3px solid rgb(0,255,0) !important; }
+.TokenizedExpression .identifier  { border: 3px solid rgb(0,0,255) !important; }
+.TokenizedExpression .string-literal { border: 3px solid rgb(0,255,255) !important; }
+.TokenizedExpression .open-paren  { border: 3px solid rgb(255,255,0) !important; }
+.TokenizedExpression .close-paren { border: 3px solid rgb(0,255,255) !important; } /**/
+
+.TokenizedExpression .aggregation,
+.TokenizedExpression .group,
+.TokenizedExpression .identifier,
+.TokenizedExpression .open-paren,
+.TokenizedExpression .close-paren,
+.TokenizedExpression .string-literal {
+  display: inline-block;
+  border-radius: 4px;
+/*   display: flex;
+  align-items: center; */
+}
+
+.TokenizedExpression .string-literal > .open-quote,
+.TokenizedExpression .string-literal > .close-quote {
+  /* don't use `display: none;` `visibility: hidden;` `width: 0;` or `height: 0;` as text won't appear when copied */
+  /* display: inline-block; */
+  opacity: 0.5;
+  /*width: 1px;
+  height: 1px; */
+  /* overflow: hidden; */
+}
+
+.TokenizedExpression .identifier {
+  border: 1px solid #84BB4C;
+  background-color: #bfe49b;
+  padding: 0px 2px;
+  margin: 1px 1px;
+}
+
+.TokenizedExpression .aggregation .identifier {
+  border: 1px solid #2D86D4;
+  background-color: #6ab9ff;
+}
+
+.TokenizedExpression .aggregation {
+  border: 1px solid #84BB4C;
+  background-color: #bfe49b;
+  padding: 0px 2px;
+  /* height: 25px; */
+}
+
+.TokenizedExpression .aggregation > .identifier {
+  border: none;
+  background-color: transparent;
+  padding: 0;
+  margin: 0;
+}

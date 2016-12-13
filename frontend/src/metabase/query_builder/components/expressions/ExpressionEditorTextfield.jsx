@@ -7,9 +7,11 @@ import cx from "classnames";
 
 import { compile, suggest } from "metabase/lib/expressions/parser";
 import { format } from "metabase/lib/expressions/formatter";
-import { setCaretPosition } from "metabase/lib/dom";
+import { setCaretPosition, getCaretPosition } from "metabase/lib/dom";
 
 import Popover from "metabase/components/Popover.jsx";
+
+import TokenizedInput from "./TokenizedInput.jsx";
 
 import { isExpression } from "metabase/lib/expressions";
 
@@ -26,7 +28,7 @@ const KEYCODE_DOWN  = 40;
 export default class ExpressionEditorTextfield extends Component {
     constructor(props, context) {
         super(props, context);
-        _.bindAll(this, 'onInputChange', 'onInputKeyDown', 'onInputBlur', 'onSuggestionAccepted', 'onSuggestionMouseDown');
+        _.bindAll(this, '_triggerAutosuggest', 'onInputKeyDown', 'onInputBlur', 'onSuggestionAccepted', 'onSuggestionMouseDown');
     }
 
     static propTypes = {
@@ -81,12 +83,10 @@ export default class ExpressionEditorTextfield extends Component {
     }
 
     componentDidMount() {
-        // causes the autocomplete widget to open immediately
-        this.onInputChange();
+        this._setCaretPosition(this.state.expressionString.length, this.state.expressionString.length === 0)
     }
 
     onSuggestionAccepted() {
-        let inputElement = ReactDOM.findDOMNode(this.refs.input);
         const { expressionString } = this.state;
         const suggestion = this.state.suggestions[this.state.highlightedSuggestion];
 
@@ -99,11 +99,12 @@ export default class ExpressionEditorTextfield extends Component {
             if (suggestion.postfixTrim) {
                 postfix = postfix.replace(suggestion.postfixTrim, "");
             }
+            if (!postfix && suggestion.postfixText) {
+                postfix = suggestion.postfixText;
+            }
 
-            inputElement.value = prefix + suggestion.text + postfix;
-            inputElement.focus();
-            setCaretPosition(inputElement, (prefix + suggestion.text).length);
-            this.onInputChange();
+            this.onExpressionChange(prefix + suggestion.text + postfix)
+            setTimeout(() => this._setCaretPosition((prefix + suggestion.text).length, true))
         }
 
         this.setState({
@@ -122,7 +123,7 @@ export default class ExpressionEditorTextfield extends Component {
         const { suggestions, highlightedSuggestion } = this.state;
 
         if (event.keyCode === KEYCODE_LEFT || event.keyCode === KEYCODE_RIGHT) {
-            setTimeout(() => this.onInputChange());
+            setTimeout(() => this._triggerAutosuggest());
             return;
         }
         if (event.keyCode === KEYCODE_ESC) {
@@ -170,15 +171,25 @@ export default class ExpressionEditorTextfield extends Component {
     }
 
     onInputClick = () => {
-        this.onInputChange();
+        this._triggerAutosuggest();
     }
 
-    onInputChange() {
+    _triggerAutosuggest = () => {
+        this.onExpressionChange(this.state.expressionString);
+    }
+
+    _setCaretPosition = (position, autosuggest) => {
+        setCaretPosition(ReactDOM.findDOMNode(this.refs.input), position);
+        if (autosuggest) {
+            setTimeout(() => this._triggerAutosuggest());
+        }
+    }
+
+    onExpressionChange(expressionString) {
         let inputElement = ReactDOM.findDOMNode(this.refs.input);
         if (!inputElement) {
             return;
         }
-        let expressionString = inputElement.value;
 
         let expressionErrorMessage = null;
         let suggestions           = [];
@@ -199,7 +210,7 @@ export default class ExpressionEditorTextfield extends Component {
                 tableMetadata: this.props.tableMetadata,
                 customFields: this.props.customFields,
                 startRule: this.props.startRule,
-                index: inputElement.selectionStart
+                index: getCaretPosition(inputElement)
             })
         } catch (e) {
             console.error("suggest error:", e);
@@ -222,16 +233,16 @@ export default class ExpressionEditorTextfield extends Component {
 
         return (
             <div className={cx(S.editor, "relative")}>
-                <input
+                <TokenizedInput
                     ref="input"
                     className={cx(S.input, "my1 p1 input block full h4 text-dark", { "border-error": errorMessage })}
                     type="text"
                     placeholder={placeholder}
                     value={this.state.expressionString}
-                    onChange={this.onInputChange}
+                    onChange={(e) => this.onExpressionChange(e.target.value)}
                     onKeyDown={this.onInputKeyDown}
                     onBlur={this.onInputBlur}
-                    onFocus={this.onInputChange}
+                    onFocus={(e) => this._triggerAutosuggest()}
                     onClick={this.onInputClick}
                     autoFocus
                 />

@@ -55,6 +55,18 @@ export function elementIsInView(element, percentX = 1, percentY = 1) {
     });
 }
 
+export function getCaretPosition(element) {
+    if (element.nodeName.toLowerCase() === "input" || element.nodeName.toLowerCase() === "textarea") {
+        return element.selectionStart;
+    } else {
+        // contenteditable
+        const selection = window.getSelection();
+        const range = selection.getRangeAt(0);
+        range.setStart(element, 0);
+        return range.toString().length;
+    }
+}
+
 export function setCaretPosition(element, position) {
     if (element.setSelectionRange) {
         element.focus();
@@ -65,5 +77,33 @@ export function setCaretPosition(element, position) {
         range.moveEnd("character", position);
         range.moveStart("character", position);
         range.select();
+    } else {
+        // contenteditable
+        const selection = window.getSelection();
+        const pos = getTextNodeAtPosition(element, position);
+        selection.removeAllRanges();
+        const range = new Range();
+        range.setStart(pos.node ,pos.position);
+        selection.addRange(range);
     }
+}
+
+export function saveCaretPosition(context) {
+    let position = getCaretPosition(context);
+    return () => setCaretPosition(context, position);
+}
+
+function getTextNodeAtPosition(root, index) {
+    let treeWalker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, (elem) => {
+        if (index > elem.textContent.length){
+            index -= elem.textContent.length;
+            return NodeFilter.FILTER_REJECT
+        }
+        return NodeFilter.FILTER_ACCEPT;
+    });
+    var c = treeWalker.nextNode();
+    return {
+        node: c ? c : root,
+        position: c ? index :  0
+    };
 }

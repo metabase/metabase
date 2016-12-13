@@ -14,7 +14,7 @@ const mockMetadata = {
     }
 }
 
-fdescribe("lib/expressions/parser", () => {
+describe("lib/expressions/parser", () => {
     describe("format", () => {
         it("can format simple expressions", () => {
             expect(format(["+", ["field-id", 1], ["field-id", 2]], mockMetadata)).toEqual("A + B");

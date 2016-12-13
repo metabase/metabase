@@ -1444,9 +1444,9 @@ change-emitter@^0.1.2:
   version "0.1.2"
   resolved "https://registry.yarnpkg.com/change-emitter/-/change-emitter-0.1.2.tgz#6b88ca4d5d864e516f913421b11899a860aee8db"
 
-chevrotain@^0.19.0:
-  version "0.19.0"
-  resolved "https://registry.yarnpkg.com/chevrotain/-/chevrotain-0.19.0.tgz#3319bedf0f9426831be870ffa2162be733f4369b"
+chevrotain@^0.20.0:
+  version "0.20.0"
+  resolved "https://registry.yarnpkg.com/chevrotain/-/chevrotain-0.20.0.tgz#b814daf9e15c134bf421ff54b429b818c6648a9e"
 
 chokidar@^1.0.0, chokidar@^1.4.1:
   version "1.6.0"
