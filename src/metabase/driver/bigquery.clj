@@ -329,6 +329,12 @@
                     ag-type)))
     :else (str schema-name \. table-name \. field-name)))
 
+;; TODO - Making 2 DB calls for each field to fetch its dataset is inefficient and makes me cry, but this method is currently only used for SQL params so it's not a huge deal at this point
+(defn- field->identifier [{table-id :table_id, :as field}]
+  (let [db-id   (db/select-one-field :db_id 'Table :id table-id)
+        dataset (:dataset-id (db/select-one-field :details Database, :id db-id))]
+    (hsql/raw (apply format "[%s.%s.%s]" dataset (field/qualified-name-components field)))))
+
 ;; We have to override the default SQL implementations of breakout and order-by because BigQuery propogates casting functions in SELECT
 ;; BAD:
 ;; SELECT msec_to_timestamp([sad_toucan_incidents.incidents.timestamp]) AS [sad_toucan_incidents.incidents.timestamp], count(*) AS [count]
@@ -386,8 +392,9 @@
           :date                      (u/drop-first-arg date)
           :date-string->literal      (u/drop-first-arg date-string->literal)
           :field->alias              (u/drop-first-arg field->alias)
+          :field->identifier         (u/drop-first-arg field->identifier)
           :prepare-value             (u/drop-first-arg prepare-value)
-          :quote-style               (constantly :sqlserver)                    ; we want identifiers quoted [like].[this]
+          :quote-style               (constantly :sqlserver)                    ; we want identifiers quoted [like].[this] initially (we have to convert them to [like.this] before executing)
           :string-length-fn          (u/drop-first-arg string-length-fn)
           :unix-timestamp->timestamp (u/drop-first-arg unix-timestamp->timestamp)})
 

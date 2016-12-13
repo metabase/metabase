@@ -62,7 +62,7 @@
 
   FieldInstance
   (->sql [this]
-    (->sql (let [identifier (apply hsql/qualify (field/qualified-name-components this))]
+    (->sql (let [identifier ((resolve 'metabase.driver.generic-sql/field->identifier) *driver* this)]
              (if (re-find #"^date/" (:type this))
                ((resolve 'metabase.driver.generic-sql/date) *driver* :day identifier)
                identifier))))
