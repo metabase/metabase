@@ -15,6 +15,9 @@ var _ = require('underscore');
 var glob = require('glob');
 var fs = require('fs');
 
+var chevrotain = require("chevrotain");
+var allTokens = require("./frontend/src/metabase/lib/expressions/tokens").allTokens;
+
 function hasArg(arg) {
     var regex = new RegExp("^" + ((arg.length === 2) ? ("-\\w*"+arg[1]+"\\w*") : (arg)) + "$");
     return process.argv.filter(regex.test.bind(regex)).length > 0;
@@ -245,14 +248,11 @@ if (NODE_ENV !== "production") {
 } else {
     // this is required to ensure we don't minify Chevrotain token identifiers
     // https://github.com/SAP/chevrotain/tree/master/examples/parser/minification
-    var chevrotain = require("chevrotain");
-    var allTokens = require("./frontend/src/metabase/lib/expressions/parser").allTokens;
-    var tokenNames = allTokens.map(function(currTok) {
-        return chevrotain.tokenName(currTok);
-    })
     config.plugins.push(new webpack.optimize.UglifyJsPlugin({
         mangle: {
-            except: tokenNames
+            except: allTokens.map(function(currTok) {
+                return chevrotain.tokenName(currTok);
+            })
         }
     }))
 

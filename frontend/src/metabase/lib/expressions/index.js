@@ -3,24 +3,9 @@ import _ from "underscore";
 import { mbqlEq } from "../query/util";
 import { titleize } from "../formatting";
 
-export const VALID_OPERATORS = new Set([
-    '+',
-    '-',
-    '*',
-    '/'
-]);
+import { VALID_OPERATORS, VALID_AGGREGATIONS } from "./tokens";
 
-export const VALID_AGGREGATIONS = new Map(Object.entries({
-    "count": "Count",
-    "cum_count": "CumulativeCount",
-    "sum": "Sum",
-    "cum_sum": "CumulativeSum",
-    "distinct": "Distinct",
-    "stddev": "StandardDeviation",
-    "avg": "Average",
-    "min": "Min",
-    "max": "Max"
-}));
+export { VALID_OPERATORS, VALID_AGGREGATIONS } from "./tokens";
 
 export function formatAggregationName(aggregationOption) {
     return VALID_AGGREGATIONS.get(aggregationOption.short);

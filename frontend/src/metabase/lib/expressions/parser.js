@@ -1,46 +1,22 @@
-const { Lexer, Parser, extendToken, getImage } = require("chevrotain");
-const _ = require("underscore");
+import { Lexer, Parser, getImage } from "chevrotain";
 
-import { VALID_AGGREGATIONS, formatFieldName, formatMetricName, formatExpressionName, formatAggregationName } from "../expressions";
+import _ from "underscore";
 
-const AdditiveOperator = extendToken("AdditiveOperator", Lexer.NA);
-const Plus = extendToken("Plus", /\+/, AdditiveOperator);
-const Minus = extendToken("Minus", /-/, AdditiveOperator);
+import { formatFieldName, formatMetricName, formatExpressionName, formatAggregationName } from "../expressions";
 
-const MultiplicativeOperator = extendToken("MultiplicativeOperator", Lexer.NA);
-const Multi = extendToken("Multi", /\*/, MultiplicativeOperator);
-const Div = extendToken("Div", /\//, MultiplicativeOperator);
-
-const Aggregation = extendToken("Aggregation", Lexer.NA);
-const aggregationsTokens = Array.from(VALID_AGGREGATIONS).map(([short, expressionName]) =>
-    extendToken(expressionName, new RegExp(expressionName), Aggregation)
-);
-
-const Identifier = extendToken('Identifier', /\w+/);
-var NumberLiteral = extendToken("NumberLiteral", /-?(0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?/);
-var StringLiteral = extendToken("StringLiteral", /"(?:[^\\"]+|\\(?:[bfnrtv"\\/]|u[0-9a-fA-F]{4}))*"/);
-
-const Comma = extendToken('Comma', /,/);
-const LParen = extendToken('LParen', /\(/);
-const RParen = extendToken('RParen', /\)/);
-
-const WhiteSpace = extendToken("WhiteSpace", /\s+/);
-WhiteSpace.GROUP = Lexer.SKIPPED;
-
-const aggregationsMap = new Map(Array.from(VALID_AGGREGATIONS).map(([a,b]) => [b,a]));
-
-// whitespace is normally very common so it is placed first to speed up the lexer
-export const allTokens = [
-    WhiteSpace, LParen, RParen, Comma,
-    Plus, Minus, Multi, Div,
+import {
+    VALID_AGGREGATIONS,
+    allTokens,
+    LParen, RParen, Comma,
     AdditiveOperator, MultiplicativeOperator,
-    Aggregation, ...aggregationsTokens,
+    Aggregation,
     StringLiteral, NumberLiteral,
     Identifier
-];
+} from "./tokens";
 
 const ExpressionsLexer = new Lexer(allTokens);
 
+const aggregationsMap = new Map(Array.from(VALID_AGGREGATIONS).map(([a,b]) => [b,a]));
 
 class ExpressionsParser extends Parser {
     constructor(input, options = {}) {
@@ -246,7 +222,7 @@ class ExpressionsParserSyntax extends ExpressionsParser {
     }
     _aggregation(aggregation, lParen, args, rParen) {
         let argsAndCommas = [];
-        for (var i = 0; i < args.values.length; i++) {
+        for (let i = 0; i < args.values.length; i++) {
             argsAndCommas.push(args.values[i]);
             if (i < args.separators.length) {
                 argsAndCommas.push(args.separators[i]);
