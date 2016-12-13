@@ -1,10 +1,6 @@
-
-import { By, until } from "selenium-webdriver";
-
 import {
     waitForElement,
     waitForElementText,
-    waitForElementRemoved,
     findElement,
     waitForElementAndClick,
     waitForElementAndSendKeys,
