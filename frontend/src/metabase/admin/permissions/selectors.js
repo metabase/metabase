@@ -13,6 +13,7 @@ import type { Group, GroupsPermissions } from "metabase/meta/types/Permissions";
 
 import { isDefaultGroup, isAdminGroup, isMetaBotGroup } from "metabase/lib/groups";
 import _ from "underscore";
+import { getIn, assocIn } from "icepick";
 
 import {
     getNativePermission,
@@ -344,6 +345,49 @@ export const getDatabasesPermissionsGrid = createSelector(
         }
     }
 );
+
+const getCollections = (state) => state.permissions.collections;
+
+export const getCollectionsPermissionsGrid = createSelector(
+    getCollections, getGroups, getPermissions,
+    (collections, groups: Array<Group>, permissions: GroupsPermissions) => {
+        if (!groups || !permissions || !collections) {
+            return null;
+        }
+
+        return {
+            type: "collection",
+            groups,
+            permissions: {
+                "access": {
+                    options(groupId, entityId) {
+                        return ["write", "read", "none"];
+                    },
+                    getter(groupId, { collectionId }) {
+                        return getIn(permissions, [groupId, collectionId]);
+                    },
+                    updater(groupId, { collectionId }, value) {
+                        return assocIn(permissions, [groupId, collectionId], value);
+                    },
+                    confirm(groupId, entityId, value) {
+                        return [];
+                    },
+                    warning(groupId, entityId) {
+                    }
+                },
+            },
+            entities: collections.map(collection => {
+                return {
+                    id: {
+                        collectionId: collection.id
+                    },
+                    name: collection.name
+                }
+            })
+        }
+    }
+);
+
 
 export const getDiff = createSelector(
     getMetadata, getGroups, getPermissions, getOriginalPermissions,

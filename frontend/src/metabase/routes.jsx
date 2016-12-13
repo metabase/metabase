@@ -27,7 +27,7 @@ import CollectionCreate from "metabase/questions/containers/CollectionCreate.jsx
 import AddToDashboard from "metabase/questions/containers/AddToDashboard.jsx";
 import SearchResults from "metabase/questions/containers/SearchResults.jsx";
 import EditLabels from "metabase/questions/containers/EditLabels.jsx";
-import CollectionPermissions from "metabase/admin/permissions/containers/CollectionPermissionsApp.jsx";
+import CollectionPermissions from "metabase/admin/permissions/containers/CollectionsPermissionsApp.jsx";
 
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp.jsx";
 import PulseListApp from "metabase/pulse/containers/PulseListApp.jsx";

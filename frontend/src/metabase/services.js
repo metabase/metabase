@@ -39,6 +39,8 @@ export const CollectionsApi = {
     create:                     POST("/api/collection"),
     update:                      PUT("/api/collection/:id"),
     delete:                   DELETE("/api/collection/:id"),
+    graph:                       GET("/api/collection/graph"),
+    updateGraph:                 PUT("/api/collection/graph"),
 };
 
 export const EmailApi = {
