@@ -1,4 +1,0 @@
-{
-  "AWSEBDockerrunVersion": "1",
-  "Logging": "/var/log/metabase"
-}
