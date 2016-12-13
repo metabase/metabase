@@ -6,9 +6,12 @@ import S from "./Sidebar.css";
 import Icon from "metabase/components/Icon.jsx";
 import LabelIcon from "metabase/components/LabelIcon.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import Tooltip from "metabase/components/Tooltip.jsx";
 
 import cx from 'classnames';
 import pure from "recompose/pure";
+
+const LABEL_LINK = "/questions/edit/labels";
 
 const Sidebar = ({ sections, labels, labelsLoading, labelsError, style, className }) =>
     <div className={cx(S.sidebar, className)} style={style}>
@@ -16,7 +19,7 @@ const Sidebar = ({ sections, labels, labelsLoading, labelsError, style, classNam
             {sections.map(section =>
                 <QuestionSidebarItem key={section.id} href={"/questions/" + section.id} {...section} />
             )}
-            <QuestionSidebarSectionTitle name="Labels" href="/questions/edit/labels" />
+            <QuestionSidebarSectionTitle name="Labels" href={LABEL_LINK} />
         </ul>
         <LoadingAndErrorWrapper loading={labelsLoading} error={labelsError} noBackground noWrapper>
         { () => labels.length > 0 ? // eslint-disable-line
@@ -27,10 +30,10 @@ const Sidebar = ({ sections, labels, labelsLoading, labelsError, style, classNam
             </ul>
         :
             <div className={S.noLabelsMessage}>
-                <div>
-                  <Icon name="label" />
-                </div>
-                Create labels to group and manage questions.
+                <b>Create labels to group and manage questions.</b>
+                <Link to={LABEL_LINK} className="link block mt2">
+                    Create a label
+                </Link>
             </div>
         }
         </LoadingAndErrorWrapper>
@@ -50,8 +53,13 @@ Sidebar.propTypes = {
 };
 
 const QuestionSidebarSectionTitle = ({ name, href }) =>
-    <li>
-        <Link to={href} className={S.sectionTitle} activeClassName={S.selected}>{name}</Link>
+    <li className="flex align-center">
+        <span className={S.sectionTitle}>{name}</span>
+        <Tooltip tooltip="Manage labels">
+            <Link to={href} className="ml1 text-brand-hover">
+                <Icon name="gear" style={{ marginTop: 4 }} />
+           </Link>
+        </Tooltip>
     </li>
 
 QuestionSidebarSectionTitle.propTypes = {
