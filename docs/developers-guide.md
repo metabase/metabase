@@ -53,11 +53,9 @@ Both components are built and assembled together into a single jar file which ru
 
 ### 3rd party dependencies
 
-Metabase depends on lots of other 3rd party libraries to run, so as you are developing you'll need to keep those up to date.  These don't run automatically during development, so kick them off manually when needed.
+Metabase depends on lots of other 3rd party libraries to run, so as you are developing you'll need to keep those up to date. Leiningen will automatically fetch Clojure dependencies when needed, but for JavaScript dependencies you'll need to kick off the installation process manually when needed.
 
 ```sh
-# clojure dependencies
-$ lein deps
 # javascript dependencies
 $ yarn
 ```

@@ -22,7 +22,7 @@ export default function createSharedResource(resourceName, {
         return Promise.all(exitPromises);
     })
 
-    async function kill(entry) {
+    function kill(entry) {
         if (entriesByKey.has(entry.key)) {
             entriesByKey.delete(entry.key);
             entriesByResource.delete(entry.resource);
