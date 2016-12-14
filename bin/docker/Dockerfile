@@ -15,8 +15,8 @@ RUN apk add --update java-cacerts && \
 COPY ./metabase.jar /app/
 
 # add our run script to the image
-COPY ./run_metabase.sh /app/
-RUN chmod 755 /app/run_metabase.sh
+COPY ../start.sh /app/
+RUN chmod 755 /app/start
 
 # tidy up
 RUN rm -rf /tmp/* /var/cache/apk/*
@@ -25,4 +25,5 @@ RUN rm -rf /tmp/* /var/cache/apk/*
 EXPOSE 3000
 
 # run it
-ENTRYPOINT ["/app/run_metabase.sh"]
+WORKDIR /app
+ENTRYPOINT ["/app/start"]
