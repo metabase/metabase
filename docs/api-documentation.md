@@ -93,6 +93,7 @@ Favorite a Card.
 ## `POST /api/card/:card-id/labels`
 
 Update the set of `Labels` that apply to a `Card`.
+   (This endpoint is considered DEPRECATED as Labels will be removed in a future version of Metabase.)
 
 ##### PARAMS:
 
@@ -132,6 +133,18 @@ Run the query associated with a Card, and return its results as JSON. Note that 
 *  **`card-id`** 
 
 *  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
+
+
+## `POST /api/card/collections`
+
+Bulk update endpoint for Card Collections. Move a set of `Cards` with CARD_IDS into a `Collection` with COLLECTION_ID,
+   or remove them from any Collections by passing a `null` COLLECTION_ID.
+
+##### PARAMS:
+
+*  **`card_ids`** value must be an array. Each value must be an integer greater than zero.
+
+*  **`collection_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
 
 ## `PUT /api/card/:id`

@@ -207,6 +207,10 @@
       (->> (events/publish-event! :card-read))
       (dissoc :actor_id)))
 
+(defn- check-permissions-for-collection
+  "Check that we have permissions to add or remove cards from `Collection` with COLLECTION-ID."
+  [collection-id]
+  (check-403 (perms/set-has-full-permissions? @*current-user-permissions-set* (perms/collection-readwrite-path collection-id))))
 
 (defendpoint PUT "/:id"
   "Update a `Card`."
@@ -220,7 +224,7 @@
   (let [card (write-check Card id)]
     ;; if we're changing the `collection_id` of the Card, make sure we have write permissions for the new group
     (when (not= (:collection_id card) collection_id)
-      (check-403 (perms/set-has-full-permissions? @*current-user-permissions-set* (perms/collection-readwrite-path collection_id))))
+      (check-permissions-for-collection collection_id))
     ;; ok, now save the Card
     (db/update! Card id
       (merge {:collection_id collection_id}
@@ -270,7 +274,8 @@
 
 
 (defendpoint POST "/:card-id/labels"
-  "Update the set of `Labels` that apply to a `Card`."
+  "Update the set of `Labels` that apply to a `Card`.
+   (This endpoint is considered DEPRECATED as Labels will be removed in a future version of Metabase.)"
   [card-id :as {{:keys [label_ids]} :body}]
   {label_ids [su/IntGreaterThanZero]}
   (write-check Card card-id)
@@ -280,6 +285,38 @@
       (db/cascade-delete! CardLabel, :label_id [:in labels-to-remove], :card_id card-id))
     (doseq [label-id labels-to-add]
       (db/insert! CardLabel :label_id label-id, :card_id card-id)))
+  {:status :ok})
+
+
+;;; ------------------------------------------------------------ Bulk Collections Update ------------------------------------------------------------
+
+(defn- move-cards-to-collection! [new-collection-id-or-nil card-ids]
+  ;; if moving to a collection, make sure we have write perms for it
+  (when new-collection-id-or-nil
+    (write-check Collection new-collection-id-or-nil))
+  ;; for each affected card...
+  (when (seq card-ids)
+    (let [cards (db/select [Card :id :collection_id :dataset_query]
+                  {:where [:and [:in :id (set card-ids)]
+                                [:or [:not= :collection_id new-collection-id-or-nil]
+                                     (when new-collection-id-or-nil
+                                       [:= :collection_id nil])]]})] ; poisioned NULLs = ick
+      ;; ...check that we have write permissions for it...
+      (doseq [card cards]
+        (write-check card))
+      ;; ...and check that we have write permissions for the old collections if applicable
+      (doseq [old-collection-id (set (filter identity (map :collection_id cards)))]
+        (write-check Collection old-collection-id)))
+    ;; ok, everything checks out. Set the new `collection_id` for all the Cards
+    (db/update-where! Card {:id [:in (set card-ids)]}
+      :collection_id new-collection-id-or-nil)))
+
+(defendpoint POST "/collections"
+  "Bulk update endpoint for Card Collections. Move a set of `Cards` with CARD_IDS into a `Collection` with COLLECTION_ID,
+   or remove them from any Collections by passing a `null` COLLECTION_ID."
+  [:as {{:keys [card_ids collection_id]} :body}]
+  {card_ids [su/IntGreaterThanZero], collection_id (s/maybe su/IntGreaterThanZero)}
+  (move-cards-to-collection! collection_id card_ids)
   {:status :ok})
 
 

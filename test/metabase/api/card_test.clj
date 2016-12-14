@@ -132,6 +132,10 @@
   [card-2-id]
   (map :id ((user->client :rasta) :get 200 "card", :label "more_toucans")))                 ; filtering is done by slug
 
+(defn- mbql-count-query [database-id table-id]
+  {:database database-id
+   :type     "query"
+   :query    {:source-table table-id, :aggregation {:aggregation-type "count"}}})
 
 ;; ## POST /api/card
 ;; Test that we can make a card
@@ -141,9 +145,7 @@
     {:description            nil
      :name                   card-name
      :creator_id             (user->id :rasta)
-     :dataset_query          {:database database-id
-                              :type     "query"
-                              :query    {:source-table table-id, :aggregation {:aggregation-type "count"}}}
+     :dataset_query          (mbql-count-query database-id table-id)
      :display                "scalar"
      :visualization_settings {:global {:title nil}}
      :database_id            database-id ; these should be inferred automatically
@@ -154,9 +156,7 @@
     ;; make sure we clean up after ourselves as well and delete the Card we create
     (dissoc (u/prog1 ((user->client :rasta) :post 200 "card" {:name                   card-name
                                                               :display                "scalar"
-                                                              :dataset_query          {:database database-id
-                                                                                       :type     :query
-                                                                                       :query    {:source-table table-id, :aggregation {:aggregation-type :count}}}
+                                                              :dataset_query          (mbql-count-query database-id table-id)
                                                               :visualization_settings {:global {:title nil}}})
               (db/cascade-delete! Card :id (u/get-id <>)))
             :created_at :updated_at :id)))
@@ -165,9 +165,7 @@
 ;; Test that we can fetch a card
 (expect-with-temp [Database  [{database-id :id}]
                    Table     [{table-id :id}   {:db_id database-id}]
-                   Card      [card             {:dataset_query {:database database-id
-                                                                :type     :query
-                                                                :query    {:source-table table-id, :aggregation {:aggregation-type :count}}}}]]
+                   Card      [card             {:dataset_query (mbql-count-query database-id table-id)}]]
   (match-$ card
     {:description            nil
      :dashboard_count        0
@@ -200,9 +198,7 @@
 ;; Check that a user without permissions isn't allowed to fetch the card
 (expect-with-temp [Database  [{database-id :id}]
                    Table     [{table-id :id}   {:db_id database-id}]
-                   Card      [card             {:dataset_query {:database database-id
-                                                                :type     :query
-                                                                :query    {:source-table table-id, :aggregation {:aggregation-type :count}}}}]]
+                   Card      [card             {:dataset_query (mbql-count-query database-id table-id)}]]
   "You don't have permissions to do that."
   (do
     ;; revoke permissions for default group to this database
@@ -405,9 +401,7 @@
     (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
     (let [{card-id :id} ((user->client :rasta) :post 200 "card" {:name                   "My Cool Card"
                                                                  :display                "scalar"
-                                                                 :dataset_query          {:database (id)
-                                                                                          :type     :query
-                                                                                          :query    {:source-table (id :venues), :aggregation {:aggregation-type :count}}}
+                                                                 :dataset_query          (mbql-count-query (id) (id :venues))
                                                                  :visualization_settings {:global {:title nil}}
                                                                  :collection_id          (u/get-id collection)})]
       ;; make sure we clean up after ourselves and delete the newly created Card
@@ -419,9 +413,7 @@
   "You don't have permissions to do that."
   ((user->client :rasta) :post 403 "card" {:name                   "My Cool Card"
                                            :display                "scalar"
-                                           :dataset_query          {:database (id)
-                                                                    :type     :query
-                                                                    :query    {:source-table (id :venues), :aggregation {:aggregation-type :count}}}
+                                           :dataset_query          (mbql-count-query (id) (id :venues))
                                            :visualization_settings {:global {:title nil}}
                                            :collection_id          (u/get-id collection)}))
 
@@ -491,3 +483,74 @@
 (expect
   "Not found."
   ((user->client :rasta) :get 404 "card/" :collection :some_fake_collection_slug))
+
+
+;;; ------------------------------------------------------------ Bulk Collections Update (POST /api/card/collections) ------------------------------------------------------------
+
+(defn- collection-ids [cards-or-card-ids]
+  (map :collection_id (db/select [Card :collection_id]
+                        :id [:in (map u/get-id cards-or-card-ids)])))
+
+(defn- POST-card-collections!
+  "Update the Collection of CARDS-OR-CARD-IDS via the `POST /api/card/collections` endpoint using USERNAME;
+   return the response of this API request and the latest Collection IDs from the database."
+  [username expected-status-code collection-or-collection-id-or-nil cards-or-card-ids]
+  [((user->client username) :post expected-status-code "card/collections"
+     {:collection_id (when collection-or-collection-id-or-nil
+                       (u/get-id collection-or-collection-id-or-nil))
+      :card_ids      (map u/get-id cards-or-card-ids)})
+   (collection-ids cards-or-card-ids)])
+
+;; Test that we can bulk move some Cards with no collection into a collection
+(tu/expect-with-temp [Collection [collection]
+                      Card       [card-1]
+                      Card       [card-2]]
+  [{:status "ok"}
+   [(u/get-id collection) (u/get-id collection)]]
+  (POST-card-collections! :crowberto 200 collection [card-1 card-2]))
+
+;; Test that we can bulk move some Cards from one collection to another
+(tu/expect-with-temp [Collection [old-collection]
+                      Collection [new-collection]
+                      Card       [card-1         {:collection_id (u/get-id old-collection)}]
+                      Card       [card-2         {:collection_id (u/get-id old-collection)}]]
+  [{:status "ok"}
+   [(u/get-id new-collection) (u/get-id new-collection)]]
+  (POST-card-collections! :crowberto 200 new-collection [card-1 card-2]))
+
+;; Test that we can bulk remove some Cards from a collection
+(tu/expect-with-temp [Collection [collection]
+                      Card       [card-1     {:collection_id (u/get-id collection)}]
+                      Card       [card-2     {:collection_id (u/get-id collection)}]]
+  [{:status "ok"}
+   [nil nil]]
+  (POST-card-collections! :crowberto 200 nil [card-1 card-2]))
+
+;; Check that we aren't allowed to move Cards if we don't have permissions for destination collection
+(tu/expect-with-temp [Collection [collection]
+                      Card       [card-1]
+                      Card       [card-2]]
+  ["You don't have permissions to do that."
+   [nil nil]]
+  (POST-card-collections! :rasta 403 collection [card-1 card-2]))
+
+;; Check that we aren't allowed to move Cards if we don't have permissions for source collection
+(tu/expect-with-temp [Collection [collection]
+                      Card       [card-1     {:collection_id (u/get-id collection)}]
+                      Card       [card-2     {:collection_id (u/get-id collection)}]]
+  ["You don't have permissions to do that."
+   [(u/get-id collection) (u/get-id collection)]]
+  (POST-card-collections! :rasta 403 nil [card-1 card-2]))
+
+;; Check that we aren't allowed to move Cards if we don't have permissions for the Card
+(tu/expect-with-temp [Collection [collection]
+                      Database   [database]
+                      Table      [table      {:db_id (u/get-id database)}]
+                      Card       [card-1     {:dataset_query (mbql-count-query (u/get-id database) (u/get-id table))}]
+                      Card       [card-2     {:dataset_query (mbql-count-query (u/get-id database) (u/get-id table))}]]
+  ["You don't have permissions to do that."
+   [nil nil]]
+  (do
+    (perms/revoke-permissions! (perms-group/all-users) (u/get-id database))
+    (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+    (POST-card-collections! :rasta 403 collection [card-1 card-2])))
