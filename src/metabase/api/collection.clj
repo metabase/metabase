@@ -6,16 +6,21 @@
             [metabase.db :as db]
             (metabase.models [card :refer [Card]]
                              [collection :refer [Collection], :as collection]
+                             [hydrate :refer [hydrate]]
                              [interface :as models])
             [metabase.util.schema :as su]))
 
 
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for.
+   This includes `:can_write`, which means whether the current user is allowed to add or remove Cards to this Collection; keep in mind
+   that regardless of this status you must be a superuser to modify properties of Collections themselves.
+
    By default, this returns non-archived Collections, but instead you can show archived ones by passing `?archived=true`."
   [archived]
   {archived (s/maybe su/BooleanString)}
-  (filterv models/can-read? (db/select Collection :archived (Boolean/parseBoolean archived) {:order-by [[:%lower.name :asc]]})))
+  (-> (filterv models/can-read? (db/select Collection :archived (Boolean/parseBoolean archived) {:order-by [[:%lower.name :asc]]}))
+      (hydrate :can_write)))
 
 (api/defendpoint GET "/:id"
   "Fetch a specific (non-archived) Collection, including cards that belong to it."
