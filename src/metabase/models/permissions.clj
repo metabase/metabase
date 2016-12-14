@@ -174,15 +174,13 @@
 (defn- pre-insert [permissions]
   (u/prog1 permissions
     (assert-valid permissions)
-    ;; NOCOMMIT
-    (println (u/format-color 'green "Granting permissions for group %d: %s" (:group_id permissions) (:object permissions)))))
+    (log/debug (u/format-color 'green "Granting permissions for group %d: %s" (:group_id permissions) (:object permissions)))))
 
 (defn- pre-update [_]
   (throw (Exception. "You cannot update a permissions entry! Delete it and create a new one.")))
 
 (defn- pre-cascade-delete [permissions]
-  ;; NOCOMMIT
-  (println (u/format-color 'red "Revoking permissions for group %d: %s" (:group_id permissions) (:object permissions)))
+  (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" (:group_id permissions) (:object permissions)))
   (assert-not-admin-group permissions))
 
 
@@ -468,10 +466,9 @@
 (defn log-permissions-changes
   "Log changes to the permissions graph."
   [old new]
-  ;; NOCOMMIT
-  (printf "Changing permissions: 🔏\nFROM:\n%s\nTO:\n%s\n"
-          (u/pprint-to-str 'magenta old)
-          (u/pprint-to-str 'blue new)))
+  (log/debug (format "Changing permissions: 🔏\nFROM:\n%s\nTO:\n%s\n"
+                     (u/pprint-to-str 'magenta old)
+                     (u/pprint-to-str 'blue new))))
 
 (s/defn ^:always-validate update-graph!
   "Update the permissions graph, making any changes neccesary to make it match NEW-GRAPH.
