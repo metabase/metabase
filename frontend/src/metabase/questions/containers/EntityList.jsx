@@ -20,7 +20,7 @@ import _ from "underscore";
 import { selectSection, setSearchText, setItemSelected, setAllSelected, setArchived } from "../questions";
 import {
     getSection, getEntityType, getEntityIds,
-    getSectionName, getSectionLoading, getSectionError,
+    getSectionLoading, getSectionError,
     getSearchText,
     getVisibleCount, getSelectedCount, getAllAreSelected, getSectionIsArchive,
     getLabelsWithSelectedState
@@ -37,7 +37,6 @@ const mapStateToProps = (state, props) => {
 
       searchText:       getSearchText(state),
 
-      name:             getSectionName(state),
       visibleCount:     getVisibleCount(state),
       selectedCount:    getSelectedCount(state),
       allAreSelected:   getAllAreSelected(state),
@@ -109,7 +108,6 @@ export default class EntityList extends Component {
         query:              PropTypes.object,
 
         section:            PropTypes.string,
-        name:               PropTypes.string.isRequired,
         loading:            PropTypes.bool.isRequired,
         error:              PropTypes.any,
         entityType:         PropTypes.string.isRequired,
@@ -125,11 +123,13 @@ export default class EntityList extends Component {
         setAllSelected:     PropTypes.func.isRequired,
         setArchived:        PropTypes.func.isRequired,
         selectSection:      PropTypes.func.isRequired,
-        onChangeSection:    PropTypes.func
+
+        onChangeSection:    PropTypes.func,
+        showSearchWidget:   PropTypes.bool,
     };
 
     static defaultProps = {
-        showEntityFilterWidget: true
+        showSearchWidget: true,
     }
 
     componentDidUpdate(prevProps) {
@@ -158,11 +158,11 @@ export default class EntityList extends Component {
     render() {
         const {
             style,
-            name, loading, error,
+            loading, error,
             entityType, entityIds,
-            searchText, setSearchText,
+            searchText, setSearchText, showSearchWidget,
             visibleCount, selectedCount, allAreSelected, sectionIsArchive, labels,
-            setItemSelected, setAllSelected, setArchived, onChangeSection
+            setItemSelected, setAllSelected, setArchived, onChangeSection,
         } = this.props;
         const section = this.getSection();
         return (
@@ -179,7 +179,7 @@ export default class EntityList extends Component {
                                 setArchived={setArchived}
                                 labels={labels}
                             />
-                        : entityIds.length > 0 ?
+                        : (entityIds.length > 0 && showSearchWidget) ?
                             <SearchHeader
                                 searchText={searchText}
                                 setSearchText={setSearchText}

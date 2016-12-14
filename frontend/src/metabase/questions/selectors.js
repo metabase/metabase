@@ -94,6 +94,11 @@ export const getSelectedEntities = createSelector(
         visibleEntities.filter(entity => selectedIds[entity.id])
 );
 
+export const getTotalCount = createSelector(
+    [getAllEntities],
+    (entities) => entities.length
+);
+
 export const getVisibleCount = createSelector(
     [getVisibleEntities],
     (visibleEntities) => visibleEntities.length

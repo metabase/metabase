@@ -6,19 +6,30 @@ import HeaderWithBack from "metabase/components/HeaderWithBack";
 import ExpandingSearchField from "../components/ExpandingSearchField";
 import EntityList from "./EntityList";
 
+import { inflect } from "metabase/lib/formatting";
+
+import { getTotalCount } from "../selectors";
 import { search } from "../questions";
+
+const mapStateToProps = (state, props) => ({
+    totalCount: getTotalCount(state),
+})
 
 const mapDispatchToProps = ({
     search
 })
 
-@connect(null, mapDispatchToProps)
+@connect(mapStateToProps, mapDispatchToProps)
 class SearchResults extends Component {
     render () {
+        const { totalCount } = this.props;
         return (
             <div className="px4 pt3">
                 <div className="flex align-center">
-                    <HeaderWithBack name="Search results" />
+                    <HeaderWithBack name={totalCount != null ?
+                        `${totalCount} ${inflect("result", totalCount)}` :
+                        "Search results"}
+                    />
                     <div className="ml-auto flex align-center">
                         <ExpandingSearchField
                             active
@@ -27,7 +38,7 @@ class SearchResults extends Component {
                         />
                     </div>
                 </div>
-                <EntityList query={this.props.location.query} />
+                <EntityList query={this.props.location.query} showSearchWidget={false} />
             </div>
         );
     }
